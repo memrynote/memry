@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { Check, Minus, Plus, X } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
+import { RelatedLinks } from '@/components/shared/RelatedLinks'
 import { Button } from '@/components/ui/button'
 import { NewsletterSignup } from '@/components/site/NewsletterSignup'
 import { ALTERNATIVES, type AltCell, type AlternativeConfig } from '@/lib/alternatives'
@@ -185,6 +186,16 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
           </div>
         </Container>
       </section>
+
+      {config.related && (
+        <section className="py-16">
+          <Container size="md">
+            <motion.div {...REVEAL} className="mx-auto max-w-3xl">
+              <RelatedLinks title="Keep reading" links={config.related} />
+            </motion.div>
+          </Container>
+        </section>
+      )}
 
       <section className="py-16">
         <Container size="md">

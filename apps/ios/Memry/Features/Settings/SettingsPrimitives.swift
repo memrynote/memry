@@ -15,7 +15,24 @@ struct SettingsLinkRow: View {
         NavigationLink(value: route) {
             SettingsRowLabel(title: title, symbol: symbol, value: value)
         }
+        .settingsRowSelection(route)
         .accessibilityIdentifier("settings.row.\(route.identifier)")
+    }
+}
+
+extension View {
+    /// The split view's selected root row shows `SelectedRowFill`.
+    func settingsRowSelection(_ route: SettingsRoute) -> some View {
+        modifier(SettingsRowSelection(route: route))
+    }
+}
+
+private struct SettingsRowSelection: ViewModifier {
+    let route: SettingsRoute
+    @Environment(\.settingsSelection) private var selection
+
+    func body(content: Content) -> some View {
+        content.selectedRowBackground(selection == route)
     }
 }
 

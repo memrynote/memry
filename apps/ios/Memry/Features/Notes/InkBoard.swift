@@ -35,9 +35,15 @@ final class InkBoard {
     /// The canvas was deleted or is unreadable: nothing on the surface can
     /// be saved, so it may close without saving.
     private(set) var canvasLost = false
+    /// Another device's version of this board, kept by a pull as a copy
+    /// (`merge.rs::write_conflict_copy`) and offered from the surface.
+    private(set) var conflictCopy: CanvasRecord?
     /// Schedules a vault sync pass (debounced) after each save.
     @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
+    /// The note the board belongs to and the board's title, which name its
+    /// conflict copies.
+    @ObservationIgnored private var owner: (noteId: String, title: String?)?
     @ObservationIgnored private var ledger = InkLedger()
     @ObservationIgnored private var latest: PKDrawing?
     @ObservationIgnored private var saving: Task<Bool, Never>?
@@ -59,6 +65,10 @@ final class InkBoard {
     @ObservationIgnored var endBackgroundTask: (UIBackgroundTaskIdentifier) -> Void = {
         UIApplication.shared.endBackgroundTask($0)
     }
+
+    /// Writes one save tries before it gives up until the next save. Each
+    /// retry follows a pull that landed between the save's read and write.
+    static let saveAttempts = 3
 
     /// Room left around the board's drawing on screen.
     private static let margin: CGFloat = 40
@@ -117,10 +127,26 @@ final class InkBoard {
             }
             latest = nil
             phase = .open
+            owner = record.ownerNoteId.map { ($0, record.title) }
+            await findCopies()
         } catch {
             if Task.isCancelled { return }
             Log.interface.error("drawing canvas did not load")
             phase = .unavailable(WhiteboardCopy.loadFailed)
+        }
+    }
+
+    /// Looks for a conflict copy of this board: a canvas of the same note
+    /// titled the way the core titles one.
+    func findCopies() async {
+        guard let owner else { return }
+        let copyTitle = "\(owner.title ?? "Canvas") (conflict copy)"
+        do {
+            conflictCopy = try await boards.boards(ownedBy: owner.noteId)
+                .first { $0.id != canvasId && $0.title?.hasPrefix(copyTitle) == true }
+        } catch {
+            if Task.isCancelled { return }
+            Log.interface.error("drawing conflict copies did not load")
         }
     }
 
@@ -185,7 +211,7 @@ final class InkBoard {
         let (edit, ids) = ledger.diff(strokes)
         guard !edit.isEmpty else { return true }
         do {
-            guard let record = try await boards.board(canvasId) else {
+            guard var record = try await boards.board(canvasId) else {
                 throw InkSaveError.canvasGone
             }
             // The iPad writes only its own changes since its last read or
@@ -193,35 +219,47 @@ final class InkBoard {
             // elsewhere: a desktop erase, which leaves no tombstone, or a
             // pull that moved this canvas into a conflict copy, which keeps
             // it, as desktop's own whiteboard does. It is never written back.
-            guard let stored = InkScene.versions(in: record.scene),
-                  let result = InkScene.apply(edit, to: record.scene, stamp: stamp),
-                  let written = InkScene.versions(in: result.scene)
-            else {
-                throw InkSaveError.unreadable
+            for _ in 0 ..< Self.saveAttempts {
+                guard let stored = InkScene.versions(in: record.scene),
+                      let result = InkScene.apply(edit, to: record.scene, stamp: stamp),
+                      let written = InkScene.versions(in: result.scene)
+                else {
+                    throw InkSaveError.unreadable
+                }
+                // A pull that landed after the read refuses the write (#4820),
+                // and the same edit goes again over the scene the pull stored.
+                if case let .stale(current) = try await boards.save(canvasId, scene: result.scene, expected: record.scene) {
+                    record = current
+                    continue
+                }
+                ledger.commit(strokes, ids: ids, addedIds: result.addedIds)
+                // This save holds every stroke an earlier failed one held.
+                saveFailure = nil
+                canvasLost = false
+                requestSync?()
+                if stored == shown {
+                    shown = written
+                } else if latest == nil, queued == 1 {
+                    // The board changed under the surface: show it as stored, so
+                    // the user sees what desktop sees. With more drawing still to
+                    // save, the next save does this.
+                    _ = show(result.scene)
+                }
+                return true
             }
-            try await boards.save(canvasId, scene: result.scene)
-            ledger.commit(strokes, ids: ids, addedIds: result.addedIds)
-            // This save holds every stroke an earlier failed one held.
-            saveFailure = nil
-            canvasLost = false
-            requestSync?()
-            if stored == shown {
-                shown = written
-            } else if latest == nil, queued == 1 {
-                // The board changed under the surface: show it as stored, so
-                // the user sees what desktop sees. With more drawing still to
-                // save, the next save does this.
-                _ = show(result.scene)
-            }
-            return true
+            throw InkSaveError.outpaced
         } catch {
             Log.interface.error("drawing did not save")
             // The drawing a retry saves is never older than the newest one handed to the board.
             if queued == 1 { latest = latest ?? drawing }
-            canvasLost = error is InkSaveError
+            canvasLost = switch error {
+            case InkSaveError.canvasGone, InkSaveError.unreadable: true
+            default: false
+            }
             saveFailure = switch error {
             case InkSaveError.canvasGone: "\(WhiteboardCopy.missingTitle). \(WhiteboardCopy.missingBody)"
             case InkSaveError.unreadable: "\(WhiteboardCopy.unreadableTitle). \(WhiteboardCopy.unreadableBody)"
+            case InkSaveError.outpaced: WhiteboardCopy.saveFailed
             default: ErrorMapping.userFacing(error).guidance ?? WhiteboardCopy.saveFailed
             }
             return false
@@ -232,4 +270,6 @@ final class InkBoard {
 private enum InkSaveError: Error {
     case canvasGone
     case unreadable
+    /// Pulls kept landing between the read and the write.
+    case outpaced
 }

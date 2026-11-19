@@ -31,6 +31,8 @@ export type AlternativeConfig = {
   migration: { importer: string | null; steps: readonly string[] }
   faqs: readonly { question: string; answer: string }[]
   footnote: string
+  // Internal links shown after the deep-dive sections.
+  related?: readonly { label: string; href: string; description: string }[]
 }
 
 const COMPARISON_FOOTNOTE =
@@ -89,7 +91,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'End-to-end encrypted sync, included',
-        body: 'Obsidian Sync is a separate paid add-on. memrynote includes zero-knowledge, end-to-end encrypted sync built on XChaCha20-Poly1305 — the server only ever holds ciphertext, and your keys never leave your devices. Local use is free forever; sync is an optional upgrade, not a wall in front of your own notes.'
+        body: 'Obsidian Sync is a separate paid add-on. memrynote includes zero-knowledge, end-to-end encrypted sync built on XChaCha20-Poly1305 — the server only ever holds your notes as ciphertext, and your keys never leave your devices. Local use is free forever; sync is an optional upgrade, not a wall in front of your own notes.'
       }
     ],
     pricing: {
@@ -135,9 +137,9 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The private Notion alternative that',
     headingAccent: 'can’t read your notes.',
     intro:
-      'memrynote is a private, end-to-end encrypted alternative to Notion. Where Notion stores your pages on its servers — where staff can technically access them — memrynote keeps every note as a plain Markdown file on your own device and encrypts sync with XChaCha20-Poly1305, so the server only ever holds ciphertext. It combines notes, tasks, a calendar, and a daily journal in one offline-first workspace, runs on macOS, Windows, and Linux, and needs no account to get started. It is open source and free for local use, so your second brain stays yours even if the company disappears.',
+      'memrynote is a private, end-to-end encrypted alternative to Notion. Where Notion stores your pages on its servers — where staff can technically access them — memrynote keeps every note as a plain Markdown file on your own device and encrypts sync with XChaCha20-Poly1305, so the server only ever holds your notes as ciphertext. It combines notes, tasks, a calendar, and a daily journal in one offline-first workspace, runs on macOS, Windows, and Linux, and needs no account to get started. It is open source and free for local use, so your second brain stays yours even if the company disappears.',
     rows: [
-      { feature: 'Local-first & offline', memry: true, competitor: false },
+      { feature: 'Notes stored on your own device', memry: true, competitor: false },
       { feature: 'End-to-end encryption', memry: true, competitor: false },
       { feature: 'Plain Markdown files', memry: true, competitor: false },
       { feature: 'Works offline', memry: true, competitor: 'partial' },
@@ -145,7 +147,9 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Daily journal', memry: true, competitor: 'partial' },
       { feature: 'No vendor access to your data', memry: true, competitor: false },
       { feature: 'Open source', memry: true, competitor: false },
-      { feature: 'Free tier', memry: true, competitor: 'partial' }
+      { feature: 'Free tier', memry: true, competitor: 'partial' },
+      { feature: 'Sharing & real-time collaboration', memry: false, competitor: true },
+      { feature: 'Mobile & web apps', memry: 'partial', competitor: true }
     ],
     reasons: [
       {
@@ -168,7 +172,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     sections: [
       {
         heading: 'Is memrynote a private Notion alternative?',
-        body: 'Yes. memrynote is an end-to-end encrypted, local-first alternative to Notion. Where Notion stores your pages on its servers in a form staff can technically access, memrynote keeps every note as a plain Markdown file on your device and encrypts sync so the server only holds ciphertext. You get notes, tasks, a calendar, and a daily journal in one offline-first workspace — open source, with no account required to start.'
+        body: 'Yes. memrynote is an end-to-end encrypted, local-first alternative to Notion. Where Notion stores your pages on its servers in a form staff can technically access, memrynote keeps every note as a plain Markdown file on your device and encrypts sync so the server only holds your notes as ciphertext. You get notes, tasks, a calendar, and a daily journal in one offline-first workspace — open source, with no account required to start.'
       },
       {
         heading: 'Your notes as files, not blocks in a database',
@@ -181,6 +185,14 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         heading: 'Works offline, no account required',
         body: 'Notion is cloud-first and degrades without a connection. memrynote is offline-first: the entire workspace — notes, tasks, calendar, journal, search — runs locally with no login. Sync is an option you switch on, not a requirement for opening your own notes.'
+      },
+      {
+        heading: 'Moving your Notion workspace',
+        body: 'memrynote imports Notion’s HTML export. In Notion, choose Export with the HTML format, all content, and subpages included, then open memrynote → Settings → Import → Notion and pick the .zip. Large exports that Notion splits into several parts import in one run. Each page becomes a Markdown note under a Notion folder that mirrors your page tree. Links between pages become [[wiki-links]], images and files are copied into your vault, and database properties become note properties. Database views, such as boards and timelines, do not come across. Your Notion workspace stays as it is while you compare.'
+      },
+      {
+        heading: 'Where Notion is still the better pick',
+        body: 'Notion is built for teams. It has shared pages with comments and permissions, real-time editing, relational databases with formulas and many views, web publishing, and apps for iPhone, Android, and the web. memrynote is a private workspace for one person, synced across your own devices. It has no sharing, no web app, and no Android app, and its iPhone app is in beta on TestFlight. If your team plans its work together in Notion, keep Notion for that work and use memrynote for what is yours alone.'
       }
     ],
     pricing: {
@@ -190,21 +202,21 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     migration: {
       importer: 'Notion',
       steps: [
-        'In Notion, export your workspace as “Markdown & CSV”.',
-        'Open memrynote → Settings → Import and choose the Notion importer.',
-        'Pages import as Markdown notes and databases as structured notes, landing in a folder you own.'
+        'In Notion, choose Export, then pick the HTML format with all content and subpages included.',
+        'Open memrynote → Settings → Import, choose the Notion importer, and select the exported .zip.',
+        'Pages arrive as Markdown notes in a Notion folder, with page links as wiki-links and database properties as note properties.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my Notion workspace?',
         answer:
-          'Yes. Export your Notion workspace as Markdown & CSV, then use memrynote’s built-in Notion importer. Pages become Markdown notes and databases become structured notes in your local vault.'
+          'Yes. Export your Notion workspace as HTML, then use the Notion importer in memrynote → Settings → Import. Pages become Markdown notes in your vault, links between pages become wiki-links, and database properties become note properties. The importer does not read Notion’s Markdown & CSV export.'
       },
       {
         question: 'Is memrynote end-to-end encrypted? Is Notion?',
         answer:
-          'memrynote is end-to-end encrypted: notes are encrypted on your device and the server only stores ciphertext. Notion does not offer end-to-end encryption — its servers can read your content.'
+          'memrynote is end-to-end encrypted: notes are encrypted on your device and the server only stores them as ciphertext. Notion does not offer end-to-end encryption — its servers can read your content.'
       },
       {
         question: 'Does memrynote work offline?',
@@ -215,9 +227,32 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         question: 'Is memrynote free?',
         answer:
           'Yes — local use is free forever and open source. Optional encrypted sync starts at $5/mo.'
+      },
+      {
+        question: 'Can memrynote replace Notion for a team?',
+        answer:
+          'Not today. A memrynote vault syncs across one person’s devices, and there is no sharing or real-time collaboration. Shared vaults are on the roadmap. memrynote replaces Notion for personal notes, tasks, planning, and journaling.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'Notion alternatives compared',
+        href: '/blog/private-notion-alternatives-that-work-offline',
+        description:
+          'memrynote, AppFlowy, AFFiNE, Anytype, and Obsidian: license, where your notes live, and offline use.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Seven open source note apps compared on license, platforms, and sync.'
+      },
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      }
+    ]
   },
   {
     pageKey: 'noteplanAlternative',
@@ -282,8 +317,8 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       importer: 'NotePlan',
       steps: [
         'Open memrynote → Settings → Import and choose the NotePlan importer.',
-        'Select your NotePlan data folder or one of its backups. Daily notes become journal entries, other notes keep their folder tree, and tasks become memrynote tasks.',
-        'Enable encrypted cross-platform sync to use the same vault on Windows, macOS, and Linux.'
+        'Pick the NotePlan data folder (the picker opens there on macOS) or one of its backups.',
+        'Daily notes become journal entries, other notes become Markdown notes, and NotePlan tasks become real tasks with their due dates.'
       ]
     },
     faqs: [
@@ -300,12 +335,12 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Can I import my NotePlan notes into memrynote?',
         answer:
-          'Yes. memrynote has a built-in NotePlan importer. Open Settings → Import, choose NotePlan, and select your NotePlan folder. Daily notes become journal entries, notes keep their folders, and tasks arrive as memrynote tasks with their due and completed dates.'
+          'Yes. The NotePlan importer in Settings → Import reads your NotePlan folder or a backup of it. Daily notes become journal entries, folders and #tags carry over, and tasks become real tasks that link back to the note they came from.'
       },
       {
         question: 'Is sync encrypted?',
         answer:
-          'Yes. memrynote syncs with zero-knowledge, end-to-end encryption, so the server only ever stores ciphertext — no iCloud dependency.'
+          'Yes. memrynote syncs with zero-knowledge, end-to-end encryption, so the server only ever stores your notes as ciphertext — no iCloud dependency.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -340,7 +375,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Encrypted sync',
-        body: 'Zero-knowledge end-to-end encryption, so the server only holds ciphertext and your keys never leave your devices.'
+        body: 'Zero-knowledge end-to-end encryption, so the server only holds your notes as ciphertext and your keys never leave your devices.'
       },
       {
         title: 'One complete workspace',
@@ -362,7 +397,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'End-to-end encrypted sync, not cloud-stored objects',
-        body: 'Capacities syncs through its cloud without end-to-end encryption, which means the service can read your notes. memrynote encrypts every note on your device with XChaCha20-Poly1305 before it leaves your machine, using zero-knowledge keys the server never receives. The server stores only ciphertext, and sync is optional — never a requirement to access your own notes.'
+        body: 'Capacities syncs through its cloud without end-to-end encryption, which means the service can read your notes. memrynote encrypts every note on your device with XChaCha20-Poly1305 before it leaves your machine, using zero-knowledge keys the server never receives. The server stores your notes only as ciphertext, and sync is optional — never a requirement to access your own notes.'
       }
     ],
     pricing: {
@@ -386,7 +421,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is Capacities end-to-end encrypted?',
         answer:
-          'No. Capacities syncs your knowledge base through its cloud without end-to-end encryption, so the service can read your content. memrynote encrypts everything on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores ciphertext.'
+          'No. Capacities syncs your knowledge base through its cloud without end-to-end encryption, so the service can read your content. memrynote encrypts everything on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores your notes as ciphertext.'
       },
       {
         question: 'Does memrynote work offline like a desktop app?',
@@ -408,7 +443,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The private Evernote alternative with',
     headingAccent: 'end-to-end encryption and no note limits.',
     intro:
-      'memrynote is a private, local-first alternative to Evernote. Where Evernote stores all your notes on its servers in a proprietary format, memrynote keeps every note as a plain Markdown file on your device and encrypts sync with XChaCha20-Poly1305 so the server only ever holds ciphertext. It combines notes, tasks, a calendar, a daily journal, and an inbox in one offline-first workspace, runs on macOS, Windows, and Linux, and needs no account to get started. Evernote’s free tier limits you to 50 notes on one device; memrynote’s local vault is free forever with no note limit and no device restriction. It is open source, and your notes are portable Markdown files you can read anywhere, without memrynote installed.',
+      'memrynote is a private, local-first alternative to Evernote. Where Evernote stores all your notes on its servers in a proprietary format, memrynote keeps every note as a plain Markdown file on your device and encrypts sync with XChaCha20-Poly1305 so the server only ever holds your notes as ciphertext. It combines notes, tasks, a calendar, a daily journal, and an inbox in one offline-first workspace, runs on macOS, Windows, and Linux, and needs no account to get started. Evernote’s free tier limits you to 50 notes on one device; memrynote’s local vault is free forever with no note limit and no device restriction. It is open source, and your notes are portable Markdown files you can read anywhere, without memrynote installed.',
     rows: [
       { feature: 'Local-first, offline, no account required', memry: true, competitor: false },
       { feature: 'End-to-end encryption', memry: true, competitor: false },
@@ -417,7 +452,10 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Built-in tasks, projects & calendar', memry: true, competitor: 'partial' },
       { feature: 'Daily journal', memry: true, competitor: false },
       { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
-      { feature: 'Web clipper & OCR', memry: 'partial', competitor: true },
+      { feature: 'Web clipper', memry: true, competitor: true },
+      { feature: 'Search text inside PDFs & images', memry: true, competitor: true },
+      { feature: 'Web app', memry: false, competitor: true },
+      { feature: 'Shared notebooks & collaboration', memry: false, competitor: true },
       { feature: 'Open source', memry: true, competitor: false }
     ],
     reasons: [
@@ -449,23 +487,36 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Notes, tasks, and calendar in one app',
-        body: 'Evernote is built around note capture; task management is a limited add-on and there is no built-in calendar or daily journal. memrynote ships tasks with projects, custom statuses, subtasks, recurring tasks, and Kanban, list, and calendar views as native features. A daily journal and an inbox with web clips, voice capture, and PDF extraction are built in too.'
+        body: 'Evernote has tasks with due dates and reminders, and a calendar that connects to Google or Microsoft calendars. It has no projects with custom statuses, no Kanban board, and no daily journal. memrynote ships tasks with projects, custom statuses, subtasks, recurring tasks, and Kanban, list, and calendar views. A daily journal and an inbox for web clips, voice notes, and PDFs are built in too.'
       },
       {
         heading: 'End-to-end encryption Evernote doesn’t offer',
         body: 'Evernote encrypts data at rest and in transit, but it is not end-to-end encrypted — Evernote can read your notes. memrynote encrypts every note on your device with XChaCha20-Poly1305 before sync, using zero-knowledge keys that never reach the server. Local use needs no account, no subscription, and no connection to any server.'
+      },
+      {
+        heading: 'Search, clipping, and scanned documents',
+        body: 'Two Evernote habits carry over. The memrynote web clipper for Chrome, Edge, and Firefox saves a page as a readable article, a selection, a full-page screenshot, or the PDF itself, straight into your inbox. Search reads the text inside PDFs, photos, and scans in your vault, so a receipt or a whiteboard photo turns up by what is written on it. Text recognition runs on your computer and the files never leave it. The clipper sends clips to the desktop app, so it needs memrynote installed on that computer.'
+      },
+      {
+        heading: 'Importing your Evernote notes',
+        body: 'Export each notebook from Evernote as an .enex file, then open memrynote → Settings → Import → Evernote and select the files. Each .enex file becomes a folder under Evernote in your vault. Notes turn into Markdown, attachments are saved and embedded where they appeared, checklists become checkboxes, tags stay tags, and created and updated dates carry over. A few things do not survive: links between Evernote notes do not become wiki-links, handwriting is saved as a file but not shown, and sections you encrypted inside Evernote are skipped.'
+      },
+      {
+        heading: 'Where Evernote is still the better pick',
+        body: 'Evernote has mature apps for iPhone, iPad, Android, Windows, Mac, and the web, so you can reach your notes from any browser. You can share notes and notebooks with other people, and it connects to Gmail, Outlook, and Slack. memrynote runs on macOS, Windows, and Linux, its iPhone app is in beta on TestFlight, and there is no Android or web app yet. A vault syncs across your own devices only. If you rely on shared notebooks or Android, Evernote still fits that better.'
       }
     ],
     pricing: {
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
-      competitor: 'Free (50 notes, 1 device); paid plans from ~$8.25/mo annually (as of mid-2026).'
+      competitor:
+        'Free plan with 50 notes, 1 notebook, and 1 device. Starter and Advanced plans raise the limits; check Evernote’s plans page for current prices.'
     },
     migration: {
       importer: 'Evernote',
       steps: [
-        'In Evernote, choose File → Export and export your notes as Evernote XML (.enex).',
-        'Open memrynote → Settings → Import, choose the Evernote importer, and select your .enex file.',
-        'Notes land as plain Markdown files in your local vault with attachments preserved, ready to read offline.'
+        'In Evernote, export each notebook as an .enex file (File → Export Notes → ENEX).',
+        'Open memrynote → Settings → Import, choose the Evernote importer, and select one or more .enex files.',
+        'Each file becomes a folder of Markdown notes, with attachments, tags, checklists, and dates kept.'
       ]
     },
     faqs: [
@@ -477,7 +528,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is memrynote end-to-end encrypted? Is Evernote?',
         answer:
-          'memrynote is end-to-end encrypted: notes are encrypted on your device and the server only holds ciphertext. Evernote encrypts data at rest and in transit but is not end-to-end encrypted, so Evernote can read your notes.'
+          'memrynote is end-to-end encrypted: notes are encrypted on your device and the server only holds them as ciphertext. Evernote encrypts data at rest and in transit but is not end-to-end encrypted, so Evernote can read your notes.'
       },
       {
         question: 'Does memrynote have a mobile app like Evernote?',
@@ -488,9 +539,36 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         question: 'Does memrynote limit how many notes I can store for free?',
         answer:
           'No. memrynote’s local vault is free forever with no note limit. Evernote’s free tier caps you at 50 notes on one device, as of mid-2026.'
+      },
+      {
+        question: 'What is the best Evernote alternative?',
+        answer:
+          'It depends on what you used Evernote for. If you want notes you own as Markdown files, end-to-end encrypted sync, and tasks, a calendar, and a journal in one desktop app, memrynote fits. If you need Android or a web app, choose an app that has them today, such as Notesnook, which encrypts by default. If you share notebooks with other people, pick an app built for sharing.'
+      },
+      {
+        question: 'What does not carry over from Evernote?',
+        answer:
+          'Links between Evernote notes do not become wiki-links, handwriting is saved as a file but not displayed, and sections you encrypted inside Evernote are skipped. Notes, attachments, tags, checklists, and dates all import.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'Migrating from Evernote to Markdown',
+        href: '/blog/migrating-from-evernote-notion-to-markdown',
+        description: 'A step-by-step guide to moving .enex exports into plain Markdown files.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Joplin, Notesnook, Standard Notes, and more compared on license and sync.'
+      },
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      }
+    ]
   },
   {
     pageKey: 'logseqAlternative',
@@ -544,7 +622,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Encrypted sync that doesn’t need iCloud or Dropbox',
-        body: 'Logseq users typically sync for free via iCloud, Dropbox, or Git — none end-to-end encrypted — or pay for Logseq Sync. memrynote includes zero-knowledge, end-to-end encrypted sync built on XChaCha20-Poly1305: your keys never leave your devices and the server stores only ciphertext, on every operating system. Local use is always free; encrypted sync is an optional upgrade.'
+        body: 'Logseq users typically sync for free via iCloud, Dropbox, or Git — none end-to-end encrypted — or pay for Logseq Sync. memrynote includes zero-knowledge, end-to-end encrypted sync built on XChaCha20-Poly1305: your keys never leave your devices and the server stores your notes only as ciphertext, on every operating system. Local use is always free; encrypted sync is an optional upgrade.'
       }
     ],
     pricing: {
@@ -614,7 +692,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Zero-knowledge encrypted sync',
-        body: 'XChaCha20-Poly1305 encryption with keys that never leave your devices — the server only ever stores ciphertext.'
+        body: 'XChaCha20-Poly1305 encryption with keys that never leave your devices — the server only ever stores your notes as ciphertext.'
       },
       {
         title: 'Free local vault, forever',
@@ -636,7 +714,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Sync, encryption, and file portability compared',
-        body: 'Both memrynote and Anytype encrypt data end-to-end before it leaves your device. Anytype uses peer-to-peer sync to route data directly between devices; memrynote uses its own zero-knowledge server, encrypting with XChaCha20-Poly1305 so the server stores only ciphertext. The bigger portability gap is the file layer: memrynote’s Markdown files are readable by any tool; Anytype’s object store requires the app to decode them.'
+        body: 'Both memrynote and Anytype encrypt data end-to-end before it leaves your device. Anytype uses peer-to-peer sync to route data directly between devices; memrynote uses its own zero-knowledge server, encrypting with XChaCha20-Poly1305 so the server stores your notes only as ciphertext. The bigger portability gap is the file layer: memrynote’s Markdown files are readable by any tool; Anytype’s object store requires the app to decode them.'
       }
     ],
     pricing: {
@@ -709,7 +787,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Encrypted sync you control',
-        body: 'Zero-knowledge end-to-end encryption: the server only ever holds ciphertext and your keys never leave your devices.'
+        body: 'Zero-knowledge end-to-end encryption: the server only ever holds your notes as ciphertext and your keys never leave your devices.'
       }
     ],
     sections: [
@@ -774,7 +852,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The cross-platform Bear alternative with',
     headingAccent: 'tasks, a calendar & files you own.',
     intro:
-      'memrynote is a cross-platform alternative to Bear for people who need more than a beautiful Apple-native writing app. Bear runs only on iPhone, iPad, and Mac, and stores notes in its own database rather than plain files you can open anywhere. memrynote runs natively on macOS, Windows, and Linux, saves every note as a Markdown file in a folder you own, and ships task management, a calendar, a daily journal, and an inbox as built-in features. Sync is end-to-end encrypted with XChaCha20-Poly1305 and zero-knowledge keys, so the server never holds readable data. Bear Pro costs ~$2.99/mo or ~$29.99/yr as of mid-2026; memrynote is free for local use, with optional encrypted sync from $5/mo. It is open source and works fully offline.',
+      'memrynote is a cross-platform alternative to Bear for people who need more than a beautiful Apple-native writing app. Bear runs only on iPhone, iPad, and Mac, and stores notes in its own database rather than plain files you can open anywhere. memrynote runs natively on macOS, Windows, and Linux, saves every note as a Markdown file in a folder you own, and ships task management, a calendar, a daily journal, and an inbox as built-in features. Sync is end-to-end encrypted with XChaCha20-Poly1305 and zero-knowledge keys, so the server never holds your notes in readable form. Bear Pro costs ~$2.99/mo or ~$29.99/yr as of mid-2026; memrynote is free for local use, with optional encrypted sync from $5/mo. It is open source and works fully offline.',
     rows: [
       { feature: 'macOS support', memry: true, competitor: true },
       { feature: 'Windows & Linux support', memry: true, competitor: false },
@@ -801,7 +879,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Encrypted by default',
-        body: 'Zero-knowledge, end-to-end encrypted sync — the server only ever holds ciphertext.'
+        body: 'Zero-knowledge, end-to-end encrypted sync — the server only ever holds your notes as ciphertext.'
       }
     ],
     sections: [
@@ -892,7 +970,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Encrypted & offline-first',
-        body: 'Zero-knowledge sync and full offline use; the server only ever holds ciphertext.'
+        body: 'Zero-knowledge sync and full offline use; the server only ever holds your notes as ciphertext.'
       }
     ],
     sections: [
@@ -956,7 +1034,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The OneNote alternative that',
     headingAccent: 'keeps your notes on your device.',
     intro:
-      'memrynote is a private, local-first alternative to Microsoft OneNote. Where OneNote stores notebooks in OneDrive — tied to a Microsoft account and readable by Microsoft — memrynote keeps every note as a plain Markdown file on your device and encrypts sync end-to-end with XChaCha20-Poly1305, so the server only ever holds ciphertext. It combines notes, tasks, a calendar, and a daily journal in one offline-first workspace, runs on macOS, Windows, and Linux, and is open source. The local vault is free forever; sync starts at $5/mo. OneNote is free and leads where memrynote does not: freeform canvas pages with ink and handwriting, mobile apps, and deep Microsoft 365 integration. If those matter most, OneNote has the edge. If Markdown ownership, zero-knowledge privacy, and an integrated workflow matter more, memrynote is the better fit.',
+      'memrynote is a private, local-first alternative to Microsoft OneNote. Where OneNote stores notebooks in OneDrive — tied to a Microsoft account and readable by Microsoft — memrynote keeps every note as a plain Markdown file on your device and encrypts sync end-to-end with XChaCha20-Poly1305, so the server only ever holds your notes as ciphertext. It combines notes, tasks, a calendar, and a daily journal in one offline-first workspace, runs on macOS, Windows, and Linux, and is open source. The local vault is free forever; sync starts at $5/mo. OneNote is free and leads where memrynote does not: freeform canvas pages with ink and handwriting, mobile apps, and deep Microsoft 365 integration. If those matter most, OneNote has the edge. If Markdown ownership, zero-knowledge privacy, and an integrated workflow matter more, memrynote is the better fit.',
     rows: [
       { feature: 'Plain Markdown files you own', memry: true, competitor: false },
       { feature: 'End-to-end encrypted sync', memry: true, competitor: false },
@@ -966,7 +1044,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Free tier', memry: true, competitor: true },
       { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Real-time collaboration', memry: false, competitor: true },
-      { feature: 'Freeform canvas & ink / handwriting', memry: false, competitor: true }
+      { feature: 'Freeform canvas & ink / handwriting', memry: 'partial', competitor: true }
     ],
     reasons: [
       {
@@ -979,7 +1057,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Private by design',
-        body: 'Zero-knowledge end-to-end encryption; the sync server holds only ciphertext and never sees your keys.'
+        body: 'Zero-knowledge end-to-end encryption; the sync server holds your notes only as ciphertext and never sees your keys.'
       },
       {
         title: 'Open & cross-platform',
@@ -993,15 +1071,19 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Your notes, not Microsoft’s',
-        body: 'OneNote stores your notebooks in OneDrive, where Microsoft can technically read your content — it is not end-to-end encrypted. memrynote encrypts every note with XChaCha20-Poly1305 on your device before it leaves; the sync server holds only ciphertext and never sees your keys. Notes also live as plain .md files you can open in any text editor, so your data stays readable regardless of what happens to the service.'
+        body: 'OneNote stores your notebooks in OneDrive, where Microsoft can technically read your content — it is not end-to-end encrypted. memrynote encrypts every note with XChaCha20-Poly1305 on your device before it leaves; the sync server holds your notes only as ciphertext and never sees your keys. Notes also live as plain .md files you can open in any text editor, so your data stays readable regardless of what happens to the service.'
       },
       {
         heading: 'One workspace: notes, tasks, calendar, journal',
         body: 'OneNote gives you freeform notebook pages and basic checkboxes; a real task system, calendar, or daily journal means adding Microsoft To Do, Outlook, or another app. memrynote builds all four into one offline-first workspace: Markdown notes with wiki-links and backlinks, projects with custom statuses and subtasks, a calendar that surfaces due dates and journal entries, and a quick-capture inbox.'
       },
       {
-        heading: 'Migrating from OneNote',
-        body: 'memrynote has a built-in OneNote importer. Open Settings → Import, choose OneNote, and sign in with your Microsoft account in the browser. Pick the notebooks and sections to bring over. Each page becomes a Markdown note in a folder per notebook and section. Images and file attachments come along, to-do tags become checkboxes, handwriting is saved as an image, and created and modified dates carry over. The importer reads notebooks stored in OneDrive. Running it again picks up only new pages.'
+        heading: 'Import your OneNote notebooks',
+        body: 'memrynote imports OneNote directly. Open Settings → Import → OneNote, sign in with your Microsoft account in the browser, and pick the notebooks, section groups, and sections to bring over. Each page becomes a Markdown note in a OneNote folder that mirrors your notebooks, and subpages nest under their parent page. Headings, lists, tables, to-do tags, images, and file attachments carry over, along with created and modified dates. Handwriting and drawings arrive as an image at the end of the note, not as editable ink. Running the import again picks up only new pages. Microsoft limits how fast its OneNote service answers, so a large import may pause for up to a minute at a time before it continues.'
+      },
+      {
+        heading: 'Where OneNote is still the better pick',
+        body: 'OneNote pages are freeform: you click anywhere to type, and you write with a pen right inside the page. Notes in memrynote are documents, and ink lives on separate canvas boards. OneNote also lets several people edit a shared notebook at once, runs on iPhone, iPad, Android, and the web, and ties into Outlook and Teams. memrynote syncs your own devices only, its iPhone app is in beta on TestFlight, and there is no Android or web app yet. If you take handwritten notes with a stylus or share notebooks with a class or team, OneNote still fits that better.'
       }
     ],
     pricing: {
@@ -1011,26 +1093,26 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     migration: {
       importer: 'OneNote',
       steps: [
-        'Open memrynote → Settings → Import and choose the OneNote importer.',
+        'Open memrynote → Settings → Import and click Import next to OneNote.',
         'Sign in with your Microsoft account in the browser, then pick the notebooks and sections to import.',
-        'Each page arrives as a Markdown note with its images, attachments, and dates, ready to read offline.'
+        'Pages land as Markdown notes in a OneNote folder, with subpages, images, attachments, and to-do checkboxes.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my OneNote notebooks into memrynote?',
         answer:
-          'Yes. Open Settings → Import, choose OneNote, and sign in with your Microsoft account. Pick the notebooks and sections you want. Each page arrives as a Markdown note with its images, attachments, and created and modified dates. Running the import again picks up only new pages.'
+          'Yes. Open Settings → Import → OneNote and sign in with your Microsoft account. memrynote lists your notebooks and sections, and you choose which to import. Each page becomes a Markdown note, and running the import again only adds pages that are new since the last run.'
       },
       {
         question: 'Is OneNote end-to-end encrypted?',
         answer:
-          'No. OneNote stores notebooks in OneDrive with encryption in transit and at rest, but not end-to-end — Microsoft can technically read your content. memrynote encrypts every note on your device so the server only ever holds ciphertext.'
+          'No. OneNote stores notebooks in OneDrive with encryption in transit and at rest, but not end-to-end — Microsoft can technically read your content. memrynote encrypts every note on your device so the server only ever holds your notes as ciphertext.'
       },
       {
         question: 'Does memrynote need a Microsoft account?',
         answer:
-          'No. memrynote works fully offline with no account at all. Optional encrypted sync uses your own memrynote account and is independent of Microsoft.'
+          'No. memrynote works fully offline with no account at all. Optional encrypted sync uses your own memrynote account and is independent of Microsoft. You sign in to Microsoft only to run the OneNote import, and Switch account in the import dialog forgets that sign-in.'
       },
       {
         question: 'Does memrynote have mobile apps like OneNote?',
@@ -1038,7 +1120,24 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
           'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Seven open source note apps compared on license, platforms, and sync.'
+      },
+      {
+        label: 'Markdown notes in memrynote',
+        href: '/features/notes',
+        description: 'Wiki-links, backlinks, properties, and version history on plain .md files.'
+      }
+    ]
   },
   {
     pageKey: 'upnoteAlternative',
@@ -1088,7 +1187,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Is memrynote’s sync more private than UpNote’s?',
-        body: 'Yes. UpNote syncs with encryption in transit but no end-to-end protection, so the sync server can technically read your notes. memrynote encrypts every note with XChaCha20-Poly1305 before it leaves your device; the server holds only ciphertext and your keys never leave your machines. If you prefer no cloud at all, the app works fully offline.'
+        body: 'Yes. UpNote syncs with encryption in transit but no end-to-end protection, so the sync server can technically read your notes. memrynote encrypts every note with XChaCha20-Poly1305 before it leaves your device; the server holds your notes only as ciphertext and your keys never leave your machines. If you prefer no cloud at all, the app works fully offline.'
       },
       {
         heading: 'Does memrynote go beyond note-taking?',
@@ -1116,7 +1215,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does UpNote support end-to-end encryption?',
         answer:
-          'No. UpNote syncs with encryption in transit but not end-to-end, so the sync server can technically access your notes. memrynote uses XChaCha20-Poly1305 end-to-end encryption, so the server stores only ciphertext.'
+          'No. UpNote syncs with encryption in transit but not end-to-end, so the sync server can technically access your notes. memrynote uses XChaCha20-Poly1305 end-to-end encryption, so the server stores your notes only as ciphertext.'
       },
       {
         question: 'Does UpNote store my notes as files I can access outside the app?',
@@ -1196,7 +1295,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'How does memrynote sync compare to Joplin’s?',
-        body: 'Joplin can sync to Joplin Cloud, Dropbox, OneDrive, Nextcloud, or any WebDAV server — a broader set of backends than memrynote offers. memrynote provides its own end-to-end encrypted cloud rather than delegating to third-party storage. Both encrypt on the device before upload, so the server holds only ciphertext. If you must sync to your own Dropbox or self-hosted server, Joplin is the better fit today.'
+        body: 'Joplin can sync to Joplin Cloud, Dropbox, OneDrive, Nextcloud, or any WebDAV server — a broader set of backends than memrynote offers. memrynote provides its own end-to-end encrypted cloud rather than delegating to third-party storage. Both encrypt on the device before upload, so the server holds your notes only as ciphertext. If you must sync to your own Dropbox or self-hosted server, Joplin is the better fit today.'
       }
     ],
     pricing: {
@@ -1220,7 +1319,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does Joplin have end-to-end encryption?',
         answer:
-          'Yes. Joplin supports end-to-end encryption across all sync backends, enabled by a master password on each device. The sync server stores only ciphertext. memrynote is also end-to-end encrypted with zero-knowledge keys.'
+          'Yes. Joplin supports end-to-end encryption across all sync backends, enabled by a master password on each device. The sync server stores your notes only as ciphertext. memrynote is also end-to-end encrypted with zero-knowledge keys.'
       },
       {
         question: 'Does Joplin have mobile apps?',
@@ -1242,7 +1341,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The Google Keep alternative with',
     headingAccent: 'notes, tasks & encryption you control.',
     intro:
-      'memrynote is a private, local-first alternative to Google Keep that upgrades disposable sticky notes into a full second brain: Markdown notes with wiki-links and backlinks, task projects with Kanban and Calendar views, a daily journal, and an inbox — all in one app on macOS, Windows, and Linux, with an iPhone app in TestFlight beta. Where Keep stores notes in your Google account and targets fast mobile capture, memrynote keeps every note as a plain .md file in a folder you own and encrypts sync with XChaCha20-Poly1305, so the server only ever holds ciphertext. Migrating is simple: export via Google Takeout and import in memrynote. If you rely on Google’s mobile apps, real-time sharing, or deep Google Calendar integration, Keep remains the easier path. For data ownership, zero-knowledge encryption, and a real note-taking workspace, memrynote is the upgrade.',
+      'memrynote is a private, local-first alternative to Google Keep that upgrades disposable sticky notes into a full second brain: Markdown notes with wiki-links and backlinks, task projects with Kanban and Calendar views, a daily journal, and an inbox — all in one app on macOS, Windows, and Linux, with an iPhone app in TestFlight beta. Where Keep stores notes in your Google account and targets fast mobile capture, memrynote keeps every note as a plain .md file in a folder you own and encrypts sync with XChaCha20-Poly1305, so the server only ever holds your notes as ciphertext. Migrating is simple: export via Google Takeout and import in memrynote. If you rely on Google’s mobile apps, real-time sharing, or deep Google Calendar integration, Keep remains the easier path. For data ownership, zero-knowledge encryption, and a real note-taking workspace, memrynote is the upgrade.',
     rows: [
       { feature: 'Free to use', memry: 'partial', competitor: true },
       { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
@@ -1257,7 +1356,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     reasons: [
       {
         title: 'Privacy by design',
-        body: 'Notes are encrypted on your device before sync; the server holds only ciphertext, instead of living in your Google account.'
+        body: 'Notes are encrypted on your device before sync; the server holds them only as ciphertext, instead of living in your Google account.'
       },
       {
         title: 'A real workspace',
@@ -1279,7 +1378,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Privacy by design, not by policy',
-        body: 'Google Keep stores your notes in your Google account, accessible to Google and subject to legal requests. memrynote encrypts every note with XChaCha20-Poly1305 on your device before it reaches any server; keys are generated locally and never transmitted. The sync server holds only ciphertext, no Google account is required, and memrynote is open source so the encryption can be audited.'
+        body: 'Google Keep stores your notes in your Google account, accessible to Google and subject to legal requests. memrynote encrypts every note with XChaCha20-Poly1305 on your device before it reaches any server; keys are generated locally and never transmitted. The sync server holds your notes only as ciphertext, no Google account is required, and memrynote is open source so the encryption can be audited.'
       },
       {
         heading: 'A full workspace, not a wall of stickies',
@@ -1311,7 +1410,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is Google Keep end-to-end encrypted?',
         answer:
-          'No. Google Keep stores notes in your Google account, where Google can access them. memrynote encrypts every note on your device with XChaCha20-Poly1305, so the sync server only ever holds ciphertext.'
+          'No. Google Keep stores notes in your Google account, where Google can access them. memrynote encrypts every note on your device with XChaCha20-Poly1305, so the sync server only ever holds your notes as ciphertext.'
       },
       {
         question: 'Does memrynote do more than Google Keep?',
@@ -1333,7 +1432,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The Tana alternative with',
     headingAccent: 'local Markdown files and privacy by default.',
     intro:
-      'memrynote is a local-first, private alternative to Tana. Tana is a powerful supertag-driven outliner, but it lives in the cloud, is not end-to-end encrypted, and keeps your knowledge in a proprietary graph you can only fully use inside Tana. memrynote stores every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only ever holds ciphertext, and works fully offline without an account. It ships notes with wiki-links and backlinks, tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox as first-class features — no schema to design first. It runs on macOS, Windows, and Linux, is open source, and is free for local use.',
+      'memrynote is a local-first, private alternative to Tana. Tana is a powerful supertag-driven outliner, but it lives in the cloud, is not end-to-end encrypted, and keeps your knowledge in a proprietary graph you can only fully use inside Tana. memrynote stores every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only ever holds your notes as ciphertext, and works fully offline without an account. It ships notes with wiki-links and backlinks, tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox as first-class features — no schema to design first. It runs on macOS, Windows, and Linux, is open source, and is free for local use.',
     rows: [
       { feature: 'Local Markdown files you own', memry: true, competitor: false },
       { feature: 'Works fully offline', memry: true, competitor: 'partial' },
@@ -1352,7 +1451,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Private by default',
-        body: 'Zero-knowledge end-to-end encryption: the server only ever holds ciphertext and your keys never leave your devices.'
+        body: 'Zero-knowledge end-to-end encryption: the server only ever holds your notes as ciphertext and your keys never leave your devices.'
       },
       {
         title: 'No schema to design',
@@ -1366,7 +1465,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     sections: [
       {
         heading: 'Is memrynote a good Tana alternative?',
-        body: 'Yes, if you want privacy and portable files more than a cloud outliner. Tana is excellent at supertag-driven, database-style structure, but it stores your knowledge in a proprietary cloud graph and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and works fully offline. It also ships tasks, a calendar, and a journal as ready-made features, so you spend less time building schema and more time writing.'
+        body: 'Yes, if you want privacy and portable files more than a cloud outliner. Tana is excellent at supertag-driven, database-style structure, but it stores your knowledge in a proprietary cloud graph and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file you own, encrypts sync so the server only holds your notes as ciphertext, and works fully offline. It also ships tasks, a calendar, and a journal as ready-made features, so you spend less time building schema and more time writing.'
       },
       {
         heading: 'Plain Markdown files versus Tana’s cloud graph',
@@ -1407,7 +1506,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is Tana end-to-end encrypted?',
         answer:
-          'No. Tana runs in the cloud and is not end-to-end encrypted, so the service can technically read your workspace. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores ciphertext.'
+          'No. Tana runs in the cloud and is not end-to-end encrypted, so the service can technically read your workspace. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores your notes as ciphertext.'
       },
       {
         question: 'Does memrynote work offline like a desktop app?',
@@ -1424,7 +1523,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The Heptabase alternative with',
     headingAccent: 'plain Markdown files and a built-in daily workspace.',
     intro:
-      'memrynote is a local-first alternative to Heptabase for people who want to own their files and run their whole day in one app. Heptabase is a beautiful visual canvas for learning and research, where notes live as cards on infinite whiteboards — but it stores your content in its own cloud format and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only holds ciphertext, and ships notes, tasks, a calendar, a daily journal, and a capture inbox as first-class features. It runs on macOS, Windows, and Linux, is open source, and is free for local use. memrynote has a canvas too: live cards for your real notes, tasks, events, projects, and files, kept as a plain .excalidraw file in your vault. Heptabase remains the more mature choice for spatial, whiteboard-first thinking; memrynote wins on file ownership, privacy, and an integrated task-and-calendar workflow.',
+      'memrynote is a local-first alternative to Heptabase for people who want to own their files and run their whole day in one app. Heptabase is a beautiful visual canvas for learning and research, where notes live as cards on infinite whiteboards — but it stores your content in its own cloud format and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only holds your notes as ciphertext, and ships notes, tasks, a calendar, a daily journal, and a capture inbox as first-class features. It runs on macOS, Windows, and Linux, is open source, and is free for local use. memrynote has a canvas too: live cards for your real notes, tasks, events, projects, and files, kept as a plain .excalidraw file in your vault. Heptabase remains the more mature choice for spatial, whiteboard-first thinking; memrynote wins on file ownership, privacy, and an integrated task-and-calendar workflow.',
     rows: [
       { feature: 'Local Markdown files you own', memry: true, competitor: false },
       { feature: 'Works fully offline', memry: true, competitor: true },
@@ -1447,7 +1546,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Encrypted & private',
-        body: 'Zero-knowledge, end-to-end encrypted sync, so the server only ever holds ciphertext and your keys stay on your devices.'
+        body: 'Zero-knowledge, end-to-end encrypted sync, so the server only ever holds your notes as ciphertext and your keys stay on your devices.'
       },
       {
         title: 'Open & cross-platform',
@@ -1457,7 +1556,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     sections: [
       {
         heading: 'Is memrynote a good Heptabase alternative?',
-        body: 'Yes, if you value owning your files and running tasks, a calendar, and a journal in one place. Heptabase is a superb visual canvas for connecting ideas spatially, but it keeps your content in a proprietary cloud format and is not end-to-end encrypted. memrynote stores every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and ships a complete daily workspace. memrynote has a canvas for spatial work, but if your thinking is whiteboard-first, Heptabase is still the more mature tool; if it is document- and workflow-first, memrynote is the better home.'
+        body: 'Yes, if you value owning your files and running tasks, a calendar, and a journal in one place. Heptabase is a superb visual canvas for connecting ideas spatially, but it keeps your content in a proprietary cloud format and is not end-to-end encrypted. memrynote stores every note as a plain Markdown file you own, encrypts sync so the server only holds your notes as ciphertext, and ships a complete daily workspace. memrynote has a canvas for spatial work, but if your thinking is whiteboard-first, Heptabase is still the more mature tool; if it is document- and workflow-first, memrynote is the better home.'
       },
       {
         heading: 'Plain Markdown files versus Heptabase cards',
@@ -1508,7 +1607,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is Heptabase end-to-end encrypted?',
         answer:
-          'No. Heptabase syncs through its cloud without end-to-end encryption, so the service can read your content. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores ciphertext.'
+          'No. Heptabase syncs through its cloud without end-to-end encryption, so the service can read your content. memrynote encrypts every note on your device with XChaCha20-Poly1305 and zero-knowledge keys — the server only ever stores your notes as ciphertext.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -1520,7 +1619,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The encrypted Standard Notes alternative with',
     headingAccent: 'your notes as plain files.',
     intro:
-      'memrynote is an end-to-end encrypted alternative to Standard Notes that keeps every note as a plain Markdown file in a folder you own. Sync is zero-knowledge: notes are encrypted on your device with XChaCha20-Poly1305 and the server only stores ciphertext. Beyond notes, memrynote ships tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox in the same encrypted vault, so your whole day lives in one private place. It runs on macOS, Windows, and Linux, works fully offline without an account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+      'memrynote is an end-to-end encrypted alternative to Standard Notes that keeps every note as a plain Markdown file in a folder you own. Sync is zero-knowledge: notes are encrypted on your device with XChaCha20-Poly1305 and the server only stores them as ciphertext. Beyond notes, memrynote ships tasks with projects and Kanban views, a calendar, a daily journal, and a capture inbox in the same encrypted vault, so your whole day lives in one private place. It runs on macOS, Windows, and Linux, works fully offline without an account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
     rows: [
       { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
       { feature: 'Open source', memry: true, competitor: true },
@@ -1583,7 +1682,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is memrynote end-to-end encrypted like Standard Notes?',
         answer:
-          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync, using keys the server never receives. The server stores only ciphertext.'
+          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync, using keys the server never receives. The server stores your notes only as ciphertext.'
       },
       {
         question: 'Can I move my notes from Standard Notes to memrynote?',
@@ -1610,7 +1709,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The private Notesnook alternative with',
     headingAccent: 'tasks, calendar & journal built in.',
     intro:
-      'memrynote is an end-to-end encrypted, local-first alternative to Notesnook. Your notes are plain Markdown files in a folder you own, and sync is zero-knowledge: each item is encrypted on your device with XChaCha20-Poly1305 so the server only stores ciphertext. Where a notes app stops at notes, memrynote adds task projects with Kanban and calendar views, a calendar, a daily journal, and a capture inbox in the same encrypted vault. It runs on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+      'memrynote is an end-to-end encrypted, local-first alternative to Notesnook. Your notes are plain Markdown files in a folder you own, and sync is zero-knowledge: each item is encrypted on your device with XChaCha20-Poly1305 so the server only stores your notes as ciphertext. Where a notes app stops at notes, memrynote adds task projects with Kanban and calendar views, a calendar, a daily journal, and a capture inbox in the same encrypted vault. It runs on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
     rows: [
       { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
       { feature: 'Open source', memry: true, competitor: true },
@@ -1673,7 +1772,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is memrynote end-to-end encrypted like Notesnook?',
         answer:
-          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync. The server only stores ciphertext and never receives your keys.'
+          'Yes. memrynote encrypts every note, task, and journal entry on your device with XChaCha20-Poly1305 before sync. The server only stores your notes as ciphertext and never receives your keys.'
       },
       {
         question: 'Can I import my Notesnook notes?',
@@ -1700,7 +1799,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The private Day One alternative for',
     headingAccent: 'Windows, macOS & Linux.',
     intro:
-      'memrynote is a private journaling alternative to Day One that stores each daily entry as a plain Markdown file in a folder you own. Entries sync with zero-knowledge, end-to-end encryption: they are encrypted on your device with XChaCha20-Poly1305 and the server only stores ciphertext. Your journal sits in the same vault as your notes, tasks, and calendar, so each entry can show what you planned and finished that day. memrynote runs natively on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
+      'memrynote is a private journaling alternative to Day One that stores each daily entry as a plain Markdown file in a folder you own. Entries sync with zero-knowledge, end-to-end encryption: they are encrypted on your device with XChaCha20-Poly1305 and the server only stores them as ciphertext. Your journal sits in the same vault as your notes, tasks, and calendar, so each entry can show what you planned and finished that day. memrynote runs natively on macOS, Windows, and Linux, works fully offline with no account, is open source under AGPL-3.0, and is free for local use, with hosted sync from $5/mo.',
     rows: [
       { feature: 'End-to-end encrypted sync', memry: true, competitor: true },
       { feature: 'Entries as plain Markdown files on disk', memry: true, competitor: false },
@@ -1744,7 +1843,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Zero-knowledge encryption for every entry',
-        body: 'When you sync, memrynote encrypts each entry on your device with XChaCha20-Poly1305 using keys derived on your machine. The server stores only ciphertext. If you never turn on sync, your journal never leaves your computer.'
+        body: 'When you sync, memrynote encrypts each entry on your device with XChaCha20-Poly1305 using keys derived on your machine. The server stores your notes only as ciphertext. If you never turn on sync, your journal never leaves your computer.'
       }
     ],
     pricing: {
@@ -1764,7 +1863,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: "Is memrynote's journal end-to-end encrypted?",
         answer:
-          'Yes. When you sync, every journal entry is encrypted on your device with XChaCha20-Poly1305. The server only stores ciphertext and never receives your keys.'
+          'Yes. When you sync, every journal entry is encrypted on your device with XChaCha20-Poly1305. The server only stores your notes as ciphertext and never receives your keys.'
       },
       {
         question: 'Does memrynote run on Windows and Linux?',

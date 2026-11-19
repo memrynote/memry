@@ -105,8 +105,8 @@ extension View {
     }
 
     /// The row whose item the detail column shows.
-    @ViewBuilder func inboxCurrentRow(_ current: Bool) -> some View {
-        if current { listRowBackground(Tokens.Canvas.surfaceActive.color) } else { self }
+    func inboxCurrentRow(_ current: Bool) -> some View {
+        selectedRowBackground(current)
     }
 
     func inboxItemRow() -> some View {

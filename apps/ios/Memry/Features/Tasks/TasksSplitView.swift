@@ -115,9 +115,7 @@ struct TaskOpenLink<Label: View>: View {
             Button { router.open(.task(id)) } label: {
                 label().background {
                     if router.detailTask == id {
-                        RoundedRectangle(cornerRadius: Tokens.Radius.small)
-                            .fill(Tokens.Canvas.surfaceActive.color)
-                            .padding(-Tokens.Space.tight)
+                        SelectedRowFill().padding(-Tokens.Space.tight)
                     }
                 }
             }
