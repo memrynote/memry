@@ -204,17 +204,21 @@ fn validate(inputs: &[StatusInput<'_>]) -> Result<(), StorageError> {
         )));
     }
     for input in inputs {
-        let chars = input.name.chars().count();
-        if input.name.trim().is_empty() || chars > MAX_STATUS_NAME_CHARS {
-            return Err(invalid(format!(
-                "status name `{}` must be 1 to {MAX_STATUS_NAME_CHARS} characters",
-                input.name
-            )));
-        }
+        valid_status_name(input.name)?;
         valid_color(input.color)?;
         if input.order < 0 {
             return Err(invalid(format!("status order {} is negative", input.order)));
         }
+    }
+    Ok(())
+}
+
+/// A status name: 1 to [`MAX_STATUS_NAME_CHARS`] characters, not blank.
+pub(super) fn valid_status_name(name: &str) -> Result<(), StorageError> {
+    if name.trim().is_empty() || name.chars().count() > MAX_STATUS_NAME_CHARS {
+        return Err(invalid(format!(
+            "status name `{name}` must be 1 to {MAX_STATUS_NAME_CHARS} characters"
+        )));
     }
     Ok(())
 }

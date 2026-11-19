@@ -29,9 +29,12 @@ pub(super) struct KeychainWait {
 }
 
 impl Loop {
-    /// Opens the socket once a driver is open, unless something holds it shut.
+    /// Opens the socket once a driver is open, unless something holds it shut. A stop holds it
+    /// shut even before the loop reads the stop command: a loop back from a keychain prompt may
+    /// still have commands queued ahead of it.
     pub(super) fn ensure_socket(&mut self) {
         let wanted = self.realtime.is_none()
+            && !*self.stopping.borrow()
             && !self.socket_off
             && !self.socket_refused
             && self.online
