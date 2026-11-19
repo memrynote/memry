@@ -84,7 +84,11 @@ const fetchClocks = async (
   const records: Record<string, ServerRecord> = {}
   for (const itemIds of chunks([...live.keys()])) {
     const page = RecordPullResponseSchema.parse(await request(client, '/sync/pull', { itemIds }))
-    for (const item of page.items) records[item.id] = { type: item.type, clock: item.clock ?? {} }
+    for (const item of page.items) {
+      // A clockless row would make any stale local copy compare equal.
+      if (!item.clock) throw new Error(`oracle: live ${item.type} ${item.id} has no clock`)
+      records[item.id] = { type: item.type, clock: item.clock }
+    }
   }
   for (const [id, type] of live) {
     if (!records[id])
@@ -158,12 +162,23 @@ const fetchBodies = async (
           if (bodies[id]) bodies[id].snapshot = meta
         }
       }
-      for (const { noteId } of notes) {
+      // A note behind the 8 MB byte budget gets `updates: []` with `hasMore`
+      // (crdt.ts planUpdatePage) and is asked again from the same `since`. The
+      // first note of a request always fits, so a request where no note moves
+      // would loop forever.
+      let progressed = false
+      for (const { noteId, since } of notes) {
         const page = batch.notes[noteId]
         if (!page) throw new Error(`oracle: batch omitted ${noteId}`)
         bodies[noteId].updateSequences.push(...page.updates.map((u) => u.sequenceNum))
         const last = page.updates.at(-1)
-        if (page.hasMore && last) next.push({ noteId, since: last.sequenceNum })
+        if (last || !page.hasMore) progressed = true
+        if (page.hasMore) next.push({ noteId, since: last?.sequenceNum ?? since })
+      }
+      if (!progressed) {
+        throw new Error(
+          `oracle: batch made no progress for ${notes.map((n) => n.noteId).join(',')}`
+        )
       }
     }
     pending = next

@@ -38,6 +38,8 @@ export class SimulatedDevice {
   private tombstoneClocks = new Map<string, VectorClock>()
   /** CRDT documents pulled item by item: baseline revision and applied update sequences. */
   private bodies = new Map<string, LocalBody>()
+  /** Each body's applied payloads (base64) in apply order, the harness's document content. */
+  private bodyParts = new Map<string, string[]>()
 
   constructor(identity: DeviceIdentity, fetchFn: FetchFn) {
     this.identity = identity
@@ -257,25 +259,44 @@ export class SimulatedDevice {
   async pullBodies(noteIds: string[]): Promise<void> {
     for (const noteId of noteIds) {
       const snapshot = (await this.request(`/sync/crdt/snapshot/${noteId}`)) as {
+        snapshot: string | null
         sequenceNum: number
         revision: string | null
       }
-      const body: LocalBody = { snapshotRevision: snapshot.revision, appliedSequences: [] }
+      const parts = snapshot.snapshot ? [snapshot.snapshot] : []
       let since = snapshot.sequenceNum
       for (;;) {
         const batch = (await this.request('/sync/crdt/updates/batch', {
           notes: [{ noteId, since }]
         })) as {
-          notes: Record<string, { updates: Array<{ sequenceNum: number }>; hasMore: boolean }>
+          notes: Record<
+            string,
+            { updates: Array<{ sequenceNum: number; data: string }>; hasMore: boolean }
+          >
         }
         const page = batch.notes[noteId]
-        body.appliedSequences.push(...page.updates.map((u) => u.sequenceNum))
+        parts.push(...page.updates.map((u) => u.data))
         const last = page.updates.at(-1)
-        if (!page.hasMore || !last) break
+        if (!page.hasMore) {
+          since = last?.sequenceNum ?? since
+          break
+        }
+        // Alone in its request, a note always gets its first update (crdt.ts
+        // planUpdatePage), so an empty page with more to come is a stuck pull.
+        if (!last) throw new Error(`body pull for ${noteId} made no progress at ${since}`)
         since = last.sequenceNum
       }
-      this.bodies.set(noteId, body)
+      this.bodies.set(noteId, {
+        snapshotRevision: snapshot.revision,
+        appliedThrough: since,
+        empty: parts.length === 0
+      })
+      this.bodyParts.set(noteId, parts)
     }
+  }
+
+  getBodyParts(noteId: string): string[] {
+    return [...(this.bodyParts.get(noteId) ?? [])]
   }
 
   /** The device's records and bodies in the zero-loss oracle's local shape. */

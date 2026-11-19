@@ -40,13 +40,16 @@ export interface LocalRecord {
 }
 
 /**
- * What a device applied to one CRDT document: the snapshot revision it holds as
- * baseline (null for none) and every update sequence it applied on top, in
- * apply order, one entry per application.
+ * What a device persists for one CRDT document: the snapshot revision it holds
+ * as baseline (null for none), the highest update sequence it applied (0 for
+ * none), and whether the document's content is empty. Clients keep a watermark,
+ * not an apply log, so a gap below it or an update applied twice is invisible
+ * here: the semantic body digest (§12.11) catches those.
  */
 export interface LocalBody {
   snapshotRevision: string | null
-  appliedSequences: number[]
+  appliedThrough: number
+  empty: boolean
 }
 
 export interface LocalVaultState {
@@ -65,8 +68,8 @@ export type FindingKind =
   | 'body_missing'
   | 'body_stale_snapshot'
   | 'body_short'
-  | 'body_applied_twice'
   | 'body_unknown_sequence'
+  | 'body_unexpected_content'
   | 'digest_missing'
   | 'digest_mismatch'
 
@@ -131,21 +134,22 @@ const checkRecords = (truth: ServerVaultTruth, local: LocalVaultState): Finding[
   return findings
 }
 
-const duplicatesOf = (values: number[]): number[] => {
-  const seen = new Set<number>()
-  const repeated = new Set<number>()
-  for (const value of values) {
-    if (seen.has(value)) repeated.add(value)
-    seen.add(value)
-  }
-  return [...repeated]
-}
-
 const checkBody = (id: string, server: ServerBody, mine: LocalBody | undefined): Finding[] => {
-  const applied = mine?.appliedSequences ?? []
   const localRevision = mine?.snapshotRevision ?? null
-  const serverHasBody = server.snapshot !== null || server.updateSequences.length > 0
-  if (serverHasBody && localRevision === null && applied.length === 0) {
+  const appliedThrough = mine?.appliedThrough ?? 0
+  if (server.snapshot === null && server.updateSequences.length === 0) {
+    // Expected-empty (RCA-5225 rule 1): the server holds no body for this note.
+    return mine && !mine.empty
+      ? [
+          {
+            kind: 'body_unexpected_content',
+            itemId: id,
+            detail: 'server holds no body, device has content'
+          }
+        ]
+      : []
+  }
+  if (localRevision === null && appliedThrough === 0) {
     return [{ kind: 'body_missing', itemId: id, detail: 'server holds a body, device none' }]
   }
 
@@ -159,43 +163,51 @@ const checkBody = (id: string, server: ServerBody, mine: LocalBody | undefined):
     })
   }
 
-  const watermark = server.snapshot?.sequenceNum ?? 0
-  const appliedSet = new Set(applied)
-  const short = server.updateSequences.filter((seq) => seq > watermark && !appliedSet.has(seq))
-  if (short.length > 0) {
+  const serverThrough = Math.max(server.snapshot?.sequenceNum ?? 0, ...server.updateSequences)
+  if (appliedThrough < serverThrough) {
     findings.push({
       kind: 'body_short',
       itemId: id,
-      detail: `missing update sequences ${short.join(',')} (snapshot through ${watermark})`
+      detail: `applied through ${appliedThrough}, server through ${serverThrough}`
     })
-  }
-
-  const twice = duplicatesOf(applied)
-  if (twice.length > 0) {
-    findings.push({
-      kind: 'body_applied_twice',
-      itemId: id,
-      detail: `update sequences applied more than once: ${twice.join(',')}`
-    })
-  }
-
-  const known = new Set(server.updateSequences)
-  const unknown = [...appliedSet].filter((seq) => seq > watermark && !known.has(seq))
-  if (unknown.length > 0) {
+  } else if (appliedThrough > serverThrough) {
     findings.push({
       kind: 'body_unknown_sequence',
       itemId: id,
-      detail: `applied sequences the server does not hold: ${unknown.join(',')}`
+      detail: `applied through ${appliedThrough}, beyond server ${serverThrough}`
     })
   }
   return findings
 }
 
+export interface StructuralReport {
+  findings: Finding[]
+  counts: {
+    /** Manifest notes with no body row on the server; a rise is the loss signal. */
+    expected_empty: number
+    /** Local bodies whose id is not in the manifest (RCA-5225 rule 2); never required. */
+    body_without_record: number
+  }
+}
+
 /** Structural check: the device against the server's manifest and body sequences. */
-export const checkStructural = (truth: ServerVaultTruth, local: LocalVaultState): Finding[] => [
-  ...checkRecords(truth, local),
-  ...Object.entries(truth.bodies).flatMap(([id, server]) => checkBody(id, server, local.bodies[id]))
-]
+export const checkStructural = (
+  truth: ServerVaultTruth,
+  local: LocalVaultState
+): StructuralReport => ({
+  findings: [
+    ...checkRecords(truth, local),
+    ...Object.entries(truth.bodies).flatMap(([id, server]) =>
+      checkBody(id, server, local.bodies[id])
+    )
+  ],
+  counts: {
+    expected_empty: Object.values(truth.bodies).filter(
+      (body) => body.snapshot === null && body.updateSequences.length === 0
+    ).length,
+    body_without_record: Object.keys(local.bodies).filter((id) => !truth.records[id]).length
+  }
+})
 
 export interface DeviceDigests {
   label: string
@@ -228,15 +240,24 @@ export const checkSemantic = (a: DeviceDigests, b: DeviceDigests): Finding[] => 
   return findings
 }
 
-export const formatFindings = (findings: Finding[]): string =>
-  findings.length === 0
-    ? 'zero-loss oracle GREEN: 0 findings'
-    : [
-        `zero-loss oracle RED: ${findings.length} finding(s)`,
-        ...findings.map((f) => `  ${f.kind} ${f.itemId}: ${f.detail}`)
-      ].join('\n')
+export const formatFindings = (
+  findings: Finding[],
+  counts: Partial<StructuralReport['counts']> = {}
+): string => {
+  const tally = Object.entries(counts).map(([name, n]) => `${name}=${n}`)
+  return [
+    findings.length === 0
+      ? 'zero-loss oracle GREEN: 0 findings'
+      : `zero-loss oracle RED: ${findings.length} finding(s)`,
+    ...(tally.length > 0 ? [`  counts: ${tally.join(' ')}`] : []),
+    ...findings.map((f) => `  ${f.kind} ${f.itemId}: ${f.detail}`)
+  ].join('\n')
+}
 
 /** Throws with every finding named when the oracle is red. */
-export const assertZeroLoss = (findings: Finding[]): void => {
-  if (findings.length > 0) throw new Error(formatFindings(findings))
+export const assertZeroLoss = (
+  findings: Finding[],
+  counts?: Partial<StructuralReport['counts']>
+): void => {
+  if (findings.length > 0) throw new Error(formatFindings(findings, counts))
 }
