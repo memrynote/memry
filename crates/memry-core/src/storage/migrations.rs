@@ -218,6 +218,12 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "attachment_sync",
         sql: include_str!("migrations/data/0034_attachment_sync.sql"),
     },
+    // Must not land before 0035-0040 (other open PRs): versions are contiguous.
+    Migration {
+        version: 41,
+        name: "inbox_suggestion_feedback",
+        sql: include_str!("migrations/data/0041_inbox_suggestion_feedback.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

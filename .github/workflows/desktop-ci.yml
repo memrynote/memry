@@ -212,6 +212,10 @@ jobs:
       - name: Check HTML text vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:html-text:check
 
+      # The inbox folder scoring vectors come from Electron's inbox/folder-scoring.ts the same way.
+      - name: Check inbox suggestion vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:inbox-suggest:check
+
       # The note export vectors come from Electron's export-utils.ts and export-image-inliner.ts.
       - name: Check note export vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:export:check
