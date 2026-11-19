@@ -193,6 +193,8 @@ impl VaultSync {
             pull: Arc::new(RwLock::new(LastPull::of(&pulled, false))),
             admission: None,
         };
+        // Built per pass, so it takes no pre-push hook: its deferral counts would restart every
+        // pass and never reach the limit. Hooks go on the driver's coordinator (`driver/mod.rs`).
         let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
             .with_vault(&self.vault_id)
             .with_at_rest_key(self.at_rest.clone())

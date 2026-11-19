@@ -67,6 +67,8 @@ mod api_vault_sync;
 mod attachment_cache;
 #[path = "attachment_download.rs"]
 mod attachment_download;
+#[path = "attachment_holds.rs"]
+mod attachment_holds;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
