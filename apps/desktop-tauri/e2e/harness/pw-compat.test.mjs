@@ -4,7 +4,13 @@ import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
 import { memryPwInstall, INSTALL_SCRIPT } from './pw-compat/in-page.mjs'
-import { keyToCodepoint, parseKeyCombo, pressActions, typeActions } from './pw-compat/keys.ts'
+import {
+  heldFlags,
+  keyToCodepoint,
+  parseKeyCombo,
+  pressActions,
+  typeActions
+} from './pw-compat/keys.ts'
 import { describeSpec, rootSpec, specs } from './pw-compat/selector-spec.ts'
 
 // ---- keys -------------------------------------------------------------------------------------
@@ -26,6 +32,16 @@ test('ControlOrMeta follows the platform', () => {
   assert.equal(keyToCodepoint('ControlOrMeta', 'darwin'), '\uE03D')
   assert.equal(keyToCodepoint('ControlOrMeta', 'win32'), '\uE009')
   assert.equal(keyToCodepoint('ControlOrMeta', 'linux'), '\uE009')
+})
+
+test('a click holds the flags of its modifier keys, ControlOrMeta by platform', () => {
+  const none = { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }
+  assert.deepEqual(heldFlags(['ControlOrMeta'], 'darwin'), { ...none, metaKey: true })
+  assert.deepEqual(heldFlags(['ControlOrMeta', 'Shift'], 'linux'), {
+    ...none,
+    ctrlKey: true,
+    shiftKey: true
+  })
 })
 
 test('key combos split on plus, and a lone plus is the plus key', () => {
@@ -393,3 +409,24 @@ for (const windowFocused of [true, false]) {
     assert.deepEqual(events, ['focusin', 'focusout'])
   })
 }
+
+// tauri-plugin-wdio-webdriver 1.5.0 sends its synthetic clicks without the held modifiers.
+test('a held modifier reaches the page on the driver click that lacked it, once', () => {
+  const { dom, pw } = page('<button id="b">Tag</button>')
+  const seen = []
+  const button = dom.window.document.getElementById('b')
+  button.addEventListener('click', (event) => seen.push([event.metaKey, event.ctrlKey]))
+  const click = () =>
+    button.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
+
+  pw.hold({ metaKey: true, ctrlKey: false, shiftKey: false, altKey: false })
+  click()
+  assert.deepEqual(seen, [[true, false]])
+
+  pw.hold(null)
+  click()
+  assert.deepEqual(seen, [
+    [true, false],
+    [false, false]
+  ])
+})

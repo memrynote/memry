@@ -153,6 +153,8 @@ mod fold_untrusted;
 mod folder_file;
 #[path = "folder_prune.rs"]
 mod folder_prune;
+#[path = "folder_view.rs"]
+mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_boards.rs"]

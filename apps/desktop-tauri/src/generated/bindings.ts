@@ -185,6 +185,28 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  `folder-view:get-available-properties`. */
+	folderViewAvailableProperties: (scope: ViewScope) => __TAURI_INVOKE<AvailablePropertiesView>("folder_view_available_properties", { scope }),
+	/**  `folder-view:delete-view`. */
+	folderViewDeleteView: (scope: ViewScope, viewName: string) => __TAURI_INVOKE<null>("folder_view_delete_view", { scope, viewName }),
+	/**  `folder-view:folder-exists`. */
+	folderViewFolderExists: (folderPath: string) => __TAURI_INVOKE<boolean>("folder_view_folder_exists", { folderPath }),
+	/**
+	 *  `folder-view:get-config`: the folder's `.folder.md` as `notes_get_folder_config` reads it;
+	 *  the renderer fills in the default view.
+	 */
+	folderViewGetConfig: (folderPath: string) => __TAURI_INVOKE<FolderConfigView | null>("folder_view_get_config", { folderPath }),
+	/**  `folder-view:get-views`. */
+	folderViewGetViews: (scope: ViewScope) => __TAURI_INVOKE<SavedViewsView>("folder_view_get_views", { scope }),
+	/**  `folder-view:list-with-properties`. */
+	folderViewList: (input: ListInput) => __TAURI_INVOKE<ListView>("folder_view_list", { input }),
+	/**  `folder-view:set-config`. */
+	folderViewSetConfig: (folderPath: string, config: { [key in string]: Value }) => __TAURI_INVOKE<null>("folder_view_set_config", { folderPath, config }),
+	/**
+	 *  `folder-view:set-view`: adds the view or replaces the one named `previousName` (else its
+	 *  own name).
+	 */
+	folderViewSetView: (scope: ViewScope, view: { [key in string]: Value }, previousName: string | null) => __TAURI_INVOKE<null>("folder_view_set_view", { scope, view, previousName }),
 	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
 	/**  `false` when there was no such board. */
 	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
@@ -1291,6 +1313,20 @@ export type AuthSessionExpiredEvent = {
 /**  The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it). */
 export type AuthSessionRefreshedEvent = Record<string, never>;
 
+/**  `GetAvailablePropertiesResponse`. */
+export type AvailablePropertiesView = {
+	builtIn: BuiltInColumnView[],
+	properties: AvailablePropertyView[],
+	formulas: FormulaView[],
+};
+
+/**  `AvailableProperty`. */
+export type AvailablePropertyView = {
+	name: string,
+	type: string,
+	usageCount: number,
+};
+
 /**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
 export type BacklinkContextView = {
 	snippet: string,
@@ -1363,6 +1399,13 @@ export type BillingUsage = {
 };
 
 export type BuildKind = "dev" | "packaged";
+
+/**  A built-in column (`GetAvailablePropertiesResponse.builtIn`). */
+export type BuiltInColumnView = {
+	id: string,
+	displayName: string,
+	type: string,
+};
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
 export type CaptionRect = {
@@ -1922,6 +1965,12 @@ export type FolderView = {
 /**  Chapter 02 §2.3.4: `None` is unknown and the device list falls back to `platform`. */
 export type FormFactor = "phone" | "tablet";
 
+/**  A folder's formula. */
+export type FormulaView = {
+	id: string,
+	expression: string,
+};
+
 /**  `GetHistoryInput`. */
 export type GetHistoryInput = {
 	limit: number | null,
@@ -2440,6 +2489,26 @@ export type LinkingQrView = {
 	sessionId: string,
 	/**  Epoch seconds, as the server sent it. */
 	expiresAt: number,
+};
+
+/**
+ *  `ListWithPropertiesRequestSchema`: 500 rows from the first when a field is absent.
+ *  `properties` is accepted and unused, as in Electron: every property is listed.
+ */
+export type ListInput = {
+	scope: ViewScope,
+	properties?: string[] | null,
+	limit?: number | null,
+	offset?: number | null,
+	rows?: RowSetInput | null,
+};
+
+/**  `ListWithPropertiesResponse`. */
+export type ListView = {
+	notes: RowView[],
+	total: number,
+	hasMore: boolean,
+	complete?: boolean | null,
 };
 
 /**  The UI language changed (`locale:changed`). */
@@ -3305,6 +3374,30 @@ export type ResumeSyncResult = {
 	pendingCount: number,
 };
 
+/**  `NoteWithProperties.kind`. */
+export type RowKindView = "note" | "task" | "inbox";
+
+/**  `ListWithPropertiesRequestSchema.rows`. */
+export type RowSetInput = "objects" | "mentions";
+
+/**  `NoteWithProperties`. */
+export type RowView = {
+	id: string,
+	path: string,
+	title: string,
+	emoji: string | null,
+	cover?: string | null,
+	folder: string,
+	tags: string[],
+	created: string,
+	modified: string,
+	wordCount: number,
+	properties: { [key in string]: Value },
+	kind?: RowKindView | null,
+	fileType: string,
+	viaTag?: string | null,
+};
+
 /**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
 export type SameDayEntryView = {
 	id: string,
@@ -3319,6 +3412,17 @@ export type SameDayEntryView = {
 export type SandboxInfo = {
 	path: string,
 	exists: boolean,
+};
+
+/**
+ *  A scope's saved views. With none saved, `views` is `None` and the renderer shows its
+ *  `DEFAULT_VIEW`, given `fieldColumns` (the fields of a tag with fields) as its middle
+ *  columns: the default view stays one constant of `@memry/contracts`.
+ */
+export type SavedViewsView = {
+	views: Value[] | null,
+	defaultIndex: number,
+	fieldColumns: string[] | null,
 };
 
 /**  `SearchObjectsSchema`. */
@@ -4418,6 +4522,9 @@ export type VersionView = {
 	reason: string,
 	createdAt: string,
 };
+
+/**  `ViewScope`. */
+export type ViewScope = { kind: "folder"; path: string } | { kind: "tag"; tag: string; andTags?: string[] | null };
 
 /**  `VoiceModelProgressEvent.phase`. */
 export type VoiceModelPhase = "downloading" | "loading" | "ready" | "error";

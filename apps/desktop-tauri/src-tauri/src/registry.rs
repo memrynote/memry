@@ -95,6 +95,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // folder view
+            crate::commands::folder_view::folder_view_available_properties,
+            crate::commands::folder_view::folder_view_delete_view,
+            crate::commands::folder_view::folder_view_folder_exists,
+            crate::commands::folder_view::folder_view_get_config,
+            crate::commands::folder_view::folder_view_get_views,
+            crate::commands::folder_view::folder_view_list,
+            crate::commands::folder_view::folder_view_set_config,
+            crate::commands::folder_view::folder_view_set_view,
             // home pages (`home_pages_set_cover_upload` is a binary command)
             crate::commands::home_pages::home_pages_create::<Wry>,
             crate::commands::home_pages::home_pages_delete::<Wry>,

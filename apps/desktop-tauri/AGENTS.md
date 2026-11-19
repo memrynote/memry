@@ -39,6 +39,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature (Rust CI fails when a crate turns it on) and inspector code sits behind `cfg(debug_assertions)`.
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.
 - React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.
+- `pnpm seed1k` (`cargo xtask seed bench [--vault <dir>] [--count 1000] [--seed 42]`, from `crates/`) wipes `~/MemryBenchVault` and writes the benchmark vault in Rust (`crates/xtask`). The same count and seed give the TypeScript generator's bytes; `crates/xtask/tests/bulk_notes_golden.rs` holds the hashes it recorded. The demo, rich and small seeds still run on Electron until Step 40f.
 
 ## Startup
 

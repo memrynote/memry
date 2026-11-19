@@ -1,4 +1,5 @@
 import { foldTag } from '@memry/shared/tag-fold'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { getI18n } from 'react-i18next'
 /**
  * NotePage Component
@@ -743,6 +744,22 @@ export function NotePage({ noteId }: NotePageProps) {
     }))
     // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
   }, [note?.headerTags, tagColorMap, tagIconMap])
+
+  // The editor shows a tag as a chip only when it is in this list, and reads it once, when it
+  // binds. The index adds the body's `#tags` to `note.tags` on its own schedule, so a note just
+  // added to the vault would open with plain `#tag` text; the journal page passes the same union.
+  // Folded by `foldTag`, header spelling first, as Electron's `mergeTagLists` builds the index list.
+  const editorTags = useMemo(() => {
+    const byKey = new Map<string, string>()
+    for (const tag of [
+      ...(note?.tags ?? []),
+      ...extractInlineTagsFromMarkdown(editorInitialContent)
+    ]) {
+      const key = foldTag(tag)
+      if (!byKey.has(key)) byKey.set(key, tag)
+    }
+    return [...byKey.values()]
+  }, [note?.tags, editorInitialContent])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((tagInfo) => ({
@@ -2042,7 +2059,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
                     initialHighlight={initialHighlight}
                     initialAnchorId={initialAnchorId}
-                    noteTags={note.tags}
+                    noteTags={editorTags}
                     onInlineTagsChange={handleInlineTagsChange}
                     tagColorMap={tagColorMap}
                     tagIconMap={tagIconMap}

@@ -42,6 +42,7 @@ import {
   type VaultSwitchSource
 } from '@/lib/vault-switch-state'
 import { createLogger } from '@/lib/logger'
+import { vaultFolderPath } from '@/lib/vault-folder-path'
 
 const log = createLogger('Vault')
 
@@ -368,6 +369,18 @@ export function useVault() {
   )
 
   /**
+   * Create `<parentPath>/<name>` and open it. Main closes the open vault, so this
+   * is a switch like `switchVault`.
+   */
+  const createVault = useCallback(
+    (parentPath: string, name: string): Promise<SelectVaultResponse> =>
+      runSwitch(vaultFolderPath(parentPath, name), { name, source: 'menu' }, () =>
+        vaultService.create(parentPath, name)
+      ),
+    [runSwitch]
+  )
+
+  /**
    * Update vault configuration.
    *
    * @returns the error message when the update was refused, else null
@@ -442,6 +455,7 @@ export function useVault() {
     closeVault,
     switchVault,
     downloadVault,
+    createVault,
     updateConfig,
     reindex,
     clearError,
