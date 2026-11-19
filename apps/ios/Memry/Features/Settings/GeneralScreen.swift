@@ -4,8 +4,8 @@ import SwiftUI
 // Spec 006 ST40 / ST41, artboards 09 / 09b / 10. Language is synced (F5) and
 // takes effect at the next launch; everything else here is this iPhone's
 // (§5.2): time and date format with a live example, week start, the new-notes
-// folder, spell check and usage metrics. The diagnostic report (11) is not
-// offered: iOS has no report channel (§7).
+// folder, spell check and usage metrics. The diagnostic report (11) is in-app
+// feedback with the diagnostic log attached on request (`Features/Feedback`).
 struct GeneralScreen: View {
     let context: SettingsContext
     @State private var local = LocalSettings.shared
@@ -78,6 +78,11 @@ struct GeneralScreen: View {
                 Text(SettingsCopy.privacy)
             } footer: {
                 SettingsFooter(SettingsCopy.privacyFooter)
+            }
+            Section {
+                SettingsLinkRow(title: FeedbackCopy.title, symbol: "bubble.left", route: .feedback)
+            } footer: {
+                SettingsFooter(FeedbackCopy.generalFooter)
             }
         }
         .settingsList()

@@ -108,10 +108,13 @@ struct Log: Sendable {
     /// it, a `StaticString` and an `ErrorCode`, so it widens nothing.
     private let telemetryCategory: LogSubsystem?
 
+    /// Production lines also go to ``DiagnosticLog``, the bounded on-disk copy
+    /// in-app feedback attaches when the user opts in.
     init(_ category: LogSubsystem) {
         let logger = Logger(subsystem: Log.subsystem, category: category.rawValue)
         sink = { level, line in
             logger.log(level: level, "\(line, privacy: .public)")
+            DiagnosticLog.shared.append(level, category, line)
         }
         telemetryCategory = category
     }

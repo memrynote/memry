@@ -928,6 +928,13 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func submitAppStoreTransaction(signedTransactionInfo: String) async throws  -> BillingStatus
     
     /**
+     * Sends one feedback submission, already serialised by the shell. Never
+     * retries on its own: a person is waiting on the answer, and sending
+     * twice would email twice.
+     */
+    func sendFeedback(payloadJson: Data) async throws 
+    
+    /**
      * The approver half of linking over this session.
      */
     func deviceApprover()  -> DeviceApprover
@@ -1636,6 +1643,27 @@ open func submitAppStoreTransaction(signedTransactionInfo: String)async throws  
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeBillingStatus_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sends one feedback submission, already serialised by the shell. Never
+     * retries on its own: a person is waiting on the answer, and sending
+     * twice would email twice.
+     */
+open func sendFeedback(payloadJson: Data)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_send_feedback(
+                        self.uniffiCloneHandle(),FfiConverterData.lower(payloadJson)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -37195,6 +37223,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_submit_app_store_transaction() != 52828) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_send_feedback() != 47073) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {

@@ -207,6 +207,26 @@ dialog lists exactly what is sent so nothing is collected out of sight:
 
 Note content, titles, tags and file paths are never included.
 
+The team's email also shows the account email and user id (read from your sign-in on the server,
+not sent by the app), and the time the feedback arrived, in UTC.
+
+### On iPhone and iPad
+
+The iPhone app sends feedback through the same form. Open **Settings → General → Send feedback**
+or **Settings → About → Send feedback**. While a vault is setting up for the first time, the
+**Send feedback** button under the progress bar opens the same form.
+
+On top of what the desktop dialog sends, the iPhone form adds the app build number, the iOS version
+and the device model (such as `iPhone17,3`), and offers one more item:
+
+- **Diagnostic logs**, only when you turn on **Attach diagnostic logs**. It is off every time the
+  form opens. **Preview logs** shows the exact text that would be attached. The log is the app's
+  own record of what it did over recent launches: event names, counts, durations, HTTP status
+  codes and error codes. It never holds note text, titles, keys, tokens or your recovery phrase,
+  because the app's logger only accepts fixed messages and numbers. The phone keeps at most about
+  400 KB of it and drops the oldest lines first. The logs arrive as a text file attached to the
+  team's email.
+
 ---
 
 ## Join the iPhone Beta

@@ -33,6 +33,7 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Read the idiom on main before any background work can ask for it.
         _ = ThisDevice.isPad
+        DiagnosticLog.shared.markLaunch(.current())
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
         SemanticBackgroundTask.register()

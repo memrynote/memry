@@ -162,7 +162,6 @@ enum SettingsCopy {
     static func version(_ version: String, _ build: String) -> String { "Version \(version) (\(build))" }
     static let loveMemry = "Love memrynote?"
     static let starGitHub = "Star us on GitHub"
-    static let feedback = "Share feedback"
     static let privacyPolicy = "Privacy policy"
     static let terms = "Terms"
     static let licenses = "Open-source licenses"

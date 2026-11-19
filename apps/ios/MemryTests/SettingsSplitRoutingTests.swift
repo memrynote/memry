@@ -36,7 +36,7 @@ struct SettingsSplitRoutingTests {
         router.setSettingsSplit(true)
         let rows: [(SettingsRoute, SettingsRoute)] = [
             (.devices, .account), (.storage, .account), (.font, .appearance),
-            (.newNotesFolder, .general), (.template("t1"), .templates), (.property("status"), .properties),
+            (.newNotesFolder, .general), (.feedback, .general), (.template("t1"), .templates), (.property("status"), .properties),
         ]
         for (route, row) in rows {
             router.openSettings(route)

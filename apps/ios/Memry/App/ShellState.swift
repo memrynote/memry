@@ -180,7 +180,11 @@ final class ShellState {
     /// locked can be asked again — and unlocking the phone is exactly what the
     /// user was told to do.
     func scenePhaseChanged(to phase: ScenePhase) {
+        // In the diagnostic log, so a feedback report shows when the app was
+        // suspended between the lines around it.
+        if phase == .background { Log.app.notice("the app moved to the background") }
         guard phase == .active else { return }
+        Log.app.notice("the app became active")
         emitter.emit(CoreEvent(.scenePhase))
         resumeSemanticDownload()
     }
