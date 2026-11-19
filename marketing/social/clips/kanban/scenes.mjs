@@ -85,7 +85,7 @@ export const scenes = {
     const save = page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })
     // Save sits below the window's edge until the dialog scrolls.
     await rec.glide(800, 600, 350)
-    for (let i = 0; i < 12 && (await save.boundingBox()).y + 40 > 900; i++) {
+    for (let i = 0; i < 12 && (await save.boundingBox()).y + 40 > 810; i++) {
       await page.mouse.wheel(0, 40)
       await sleep(40)
     }
