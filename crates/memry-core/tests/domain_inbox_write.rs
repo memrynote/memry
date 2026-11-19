@@ -7,6 +7,7 @@
 //! | a link capture awaits enrichment; x.com is social      | `captureLink`, `storeSocialMetadata`|
 //! | snooze, unsnooze, archive, unarchive push explicit null| `snooze.ts`, `crud.ts`              |
 //! | a resurface pass that cannot clear one clears none     | `processDueItems`, one transaction  |
+//! | a resurface pass queues one push per cleared snooze    | `processDueItems`, push per item    |
 //! | a snooze is due from its instant, whatever its offset  | `getDueSnoozeItems` (`<=`)          |
 //! | a delete tombstones and queues a delete                | `handleDeletePermanent`             |
 //! | filing to a folder makes a bodied note and files it    | `fileToFolder`, `markItemAsFiled`   |
@@ -305,6 +306,57 @@ fn a_resurface_pass_that_cannot_clear_one_capture_clears_none() {
         Ok(())
     })
     .expect("atomic pass");
+}
+
+/// A pass that clears N snoozes queues N pushes, one per item, and each push
+/// carries the cleared fields as explicit nulls so a peer clears too. The
+/// outbox is drained first: an enqueue supersedes the item's earlier rows, so
+/// the snooze's own row would otherwise stand in for the pass's.
+#[test]
+fn a_resurface_pass_queues_one_push_per_cleared_snooze_with_explicit_nulls() {
+    let db = open("resurface-queue");
+    db.call_blocking(|conn| {
+        let mut ids = Vec::new();
+        for (title, until, reason) in [
+            ("first", NOW + 1_000, "later"),
+            ("second", NOW + 2_000, "soon"),
+            ("not due", NOW + 10_000, "much later"),
+        ] {
+            let item = created(write::capture_text(
+                conn, title, None, None, false, DEVICE, NOW,
+            )?);
+            write::snooze(conn, &item.id, until, Some(reason), DEVICE, NOW)?.acknowledge();
+            ids.push(item.id);
+        }
+        conn.execute("DELETE FROM outbox", []).expect("drain");
+
+        let back = write::resurface_due(conn, DEVICE, NOW + 3_000)?;
+
+        let due = &ids[..2];
+        assert_eq!(
+            back.iter().map(|item| item.id.as_str()).collect::<Vec<_>>(),
+            [due[0].as_str(), due[1].as_str()]
+        );
+        assert_eq!(
+            outbox(conn),
+            due.iter()
+                .map(|id| ("inbox".to_owned(), id.clone(), "upsert".to_owned()))
+                .collect::<Vec<_>>(),
+            "one upsert per cleared snooze, none for the one still snoozed"
+        );
+        for id in due {
+            let p = payload(conn, id);
+            for key in ["snoozedUntil", "snoozeReason"] {
+                assert_eq!(p.get(key), Some(&Value::Null), "{key} is an explicit null");
+            }
+        }
+        assert_eq!(
+            payload(conn, &ids[2])["snoozedUntil"],
+            json!("2026-09-24T12:00:10.000Z")
+        );
+        Ok(())
+    })
+    .expect("queued pass");
 }
 
 /// Due at the instant itself (`lte`), and an instant a peer wrote with an
