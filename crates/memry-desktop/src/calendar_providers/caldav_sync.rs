@@ -51,6 +51,9 @@ pub enum SyncError {
     Credential(#[from] CredentialError),
     #[error("a calendar task failed: {0}")]
     Task(String),
+    /// `syncCaldavNow` came back with this many calendars that did not pull.
+    #[error("{0} CalDAV calendars failed to sync")]
+    Partial(u32),
 }
 
 impl CoreError for SyncError {

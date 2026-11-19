@@ -49,7 +49,8 @@ pub enum ConnectCode {
     NotCaldav,
     NoCalendars,
     OutdatedDevices,
-    /// A refresh that failed (`refreshCaldav`'s `sync_failed`).
+    // A refresh that failed (`refreshCaldav`'s `sync_failed`); a plain comment, because a doc
+    // comment on a variant breaks the generated union across lines.
     SyncFailed,
 }
 
