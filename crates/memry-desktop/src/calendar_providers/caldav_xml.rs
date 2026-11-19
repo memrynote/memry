@@ -294,10 +294,11 @@ pub fn parse_multistatus(body: &str) -> Result<Option<Vec<DavResponse>>, XmlErro
     Ok(parse_multistatus_with_token(body)?.map(|(responses, _)| responses))
 }
 
+/// A multistatus's responses and its own `<sync-token>`.
+pub type Multistatus = (Vec<DavResponse>, Option<String>);
+
 /// [`parse_multistatus`] with the document's own `<sync-token>` (RFC 6578).
-pub fn parse_multistatus_with_token(
-    body: &str,
-) -> Result<Option<(Vec<DavResponse>, Option<String>)>, XmlError> {
+pub fn parse_multistatus_with_token(body: &str) -> Result<Option<Multistatus>, XmlError> {
     let mut reader = Reader::from_str(body);
     let mut state = State::default();
     let mut rooted = None;

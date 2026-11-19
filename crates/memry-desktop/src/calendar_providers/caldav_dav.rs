@@ -79,8 +79,12 @@ fn for_status(status: u16, retry_after: Option<&str>, forbidden_is_auth: bool) -
 }
 
 fn failed(reply: &Reply, what: &str, forbidden_is_auth: bool) -> DavError {
-    for_status(reply.status, reply.retry_after.as_deref(), forbidden_is_auth)
-        .unwrap_or_else(|| DavError::Failed(format!("{what}: {}", reply.status)))
+    for_status(
+        reply.status,
+        reply.retry_after.as_deref(),
+        forbidden_is_auth,
+    )
+    .unwrap_or_else(|| DavError::Failed(format!("{what}: {}", reply.status)))
 }
 
 impl From<TransportError> for DavError {
@@ -222,7 +226,8 @@ pub async fn multiget(
             "{XML_HEAD}<c:calendar-multiget {NAMESPACES}><d:prop><d:getetag/><c:calendar-data/>\
              </d:prop>{paths}</c:calendar-multiget>"
         );
-        let (responses, _) = report(transport, b"REPORT", collection, "1", body, "multiget").await?;
+        let (responses, _) =
+            report(transport, b"REPORT", collection, "1", body, "multiget").await?;
         out.extend(objects(responses, collection));
     }
     Ok(out)
@@ -252,8 +257,15 @@ pub async fn sync_collection(
          <d:sync-level>1</d:sync-level><d:prop><d:getetag/></d:prop></d:sync-collection>",
         escape(token)
     );
-    let (responses, token) =
-        report(transport, b"REPORT", collection, "1", body, "sync-collection").await?;
+    let (responses, token) = report(
+        transport,
+        b"REPORT",
+        collection,
+        "1",
+        body,
+        "sync-collection",
+    )
+    .await?;
     let mut changes = SyncChanges {
         token,
         ..SyncChanges::default()
@@ -306,7 +318,15 @@ pub async fn put(
         Precondition::Create => ("If-None-Match", "*".to_owned()),
         Precondition::Match(etag) => ("If-Match", etag.to_owned()),
     });
-    let reply = send(transport, b"PUT", &url, None, Some(data.to_owned()), headers).await?;
+    let reply = send(
+        transport,
+        b"PUT",
+        &url,
+        None,
+        Some(data.to_owned()),
+        headers,
+    )
+    .await?;
     if !ok(reply.status) {
         return Err(failed(&reply, "PUT object", false));
     }

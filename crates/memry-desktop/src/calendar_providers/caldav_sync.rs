@@ -196,7 +196,7 @@ impl CaldavSync {
         failed: bool,
     ) -> Result<(), SyncError> {
         let mut current = self.auth_failures(open).await?;
-        if current.get(account) == Some(&Value::Bool(true)) == failed {
+        if (current.get(account) == Some(&Value::Bool(true))) == failed {
             return Ok(());
         }
         if failed {
@@ -221,7 +221,8 @@ impl CaldavSync {
             return Ok(None);
         };
         let credentials = self.credentials.clone();
-        let password = blocking(move || credentials.get(CALDAV, &id, SecretKind::Password)).await??;
+        let password =
+            blocking(move || credentials.get(CALDAV, &id, SecretKind::Password)).await??;
         Ok(password.map(|p| self.http.transport(&server, &meta.username, p.as_str())))
     }
 
@@ -237,10 +238,15 @@ impl CaldavSync {
             .ok_or(SyncError::NotFound("CalDAV calendar not found"))?;
         let account = sources
             .iter()
-            .find(|a| live(a, "account") && a.account_id.is_some() && a.account_id == source.account_id)
+            .find(|a| {
+                live(a, "account") && a.account_id.is_some() && a.account_id == source.account_id
+            })
             .ok_or(SyncError::NotFound("CalDAV account not found"))?;
         let account_id = account.account_id.clone().unwrap_or_default();
-        let transport = self.transport(account).await?.ok_or(SyncError::NoPassword)?;
+        let transport = self
+            .transport(account)
+            .await?
+            .ok_or(SyncError::NoPassword)?;
         let pulled = match self.pull(source, &transport).await {
             Err(DavError::TokenGone) => self.pull_full(source, &transport).await,
             other => other,
@@ -256,8 +262,12 @@ impl CaldavSync {
                     self.set_auth_failure(open, &account_id, true).await?;
                 }
                 let (writer, id, text) = (calendar.clone(), source.id.clone(), error.to_string());
-                if let Err(error) = blocking(move || writer.provider_source_error(id, text)).await? {
-                    tracing::warn!(scope = SCOPE, "could not record a CalDAV pull failure: {error}");
+                if let Err(error) = blocking(move || writer.provider_source_error(id, text)).await?
+                {
+                    tracing::warn!(
+                        scope = SCOPE,
+                        "could not record a CalDAV pull failure: {error}"
+                    );
                 }
             }
         }
@@ -275,7 +285,8 @@ impl CaldavSync {
             None => self.pull_full(source, transport).await,
             Some(Cursor::Token(token)) => {
                 let changes = caldav_dav::sync_collection(transport, &collection, &token).await?;
-                let objects = caldav_dav::multiget(transport, &collection, &changes.changed).await?;
+                let objects =
+                    caldav_dav::multiget(transport, &collection, &changes.changed).await?;
                 Ok(Pulled {
                     objects,
                     removed: changes.deleted,
@@ -297,9 +308,13 @@ impl CaldavSync {
                     });
                 }
                 let window = ics::window(now_ms());
-                let objects =
-                    caldav_dav::query_window(transport, &collection, window.start_ms, window.end_ms)
-                        .await?;
+                let objects = caldav_dav::query_window(
+                    transport,
+                    &collection,
+                    window.start_ms,
+                    window.end_ms,
+                )
+                .await?;
                 Ok(Pulled {
                     objects,
                     removed: Vec::new(),
@@ -330,7 +345,8 @@ impl CaldavSync {
         };
         let window = ics::window(now_ms());
         let objects =
-            caldav_dav::query_window(transport, &collection, window.start_ms, window.end_ms).await?;
+            caldav_dav::query_window(transport, &collection, window.start_ms, window.end_ms)
+                .await?;
         Ok(Pulled {
             objects,
             removed: Vec::new(),
@@ -363,7 +379,12 @@ impl CaldavSync {
             if self.transport(account).await?.is_none() {
                 continue;
             }
-            if !self.running.lock().unwrap_or_else(PoisonError::into_inner).insert(id.clone()) {
+            if !self
+                .running
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(id.clone())
+            {
                 continue;
             }
             let calendars = sources.iter().filter(|s| {
@@ -376,7 +397,8 @@ impl CaldavSync {
                         summary.failed += 1;
                         tracing::warn!(scope = SCOPE, source = %source.id, "CalDAV calendar sync failed: {error}");
                         if let SyncError::Dav(DavError::RateLimited(ms)) = error {
-                            summary.retry_after_ms = Some(summary.retry_after_ms.unwrap_or(0).max(ms));
+                            summary.retry_after_ms =
+                                Some(summary.retry_after_ms.unwrap_or(0).max(ms));
                             break;
                         }
                         if error.is_auth() {
@@ -385,7 +407,10 @@ impl CaldavSync {
                     }
                 }
             }
-            self.running.lock().unwrap_or_else(PoisonError::into_inner).remove(&id);
+            self.running
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&id);
         }
         Ok(summary)
     }
@@ -400,7 +425,11 @@ pub(super) async fn apply_objects(
     full: bool,
     cursor: Option<String>,
 ) -> Result<u32, SyncError> {
-    let text: String = objects.iter().map(|o| o.data.as_str()).collect::<Vec<_>>().join("\n");
+    let text: String = objects
+        .iter()
+        .map(|o| o.data.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
     let zones = feed_zones(&text, now_ms());
     let objects = objects
         .into_iter()
@@ -410,9 +439,15 @@ pub(super) async fn apply_objects(
             data: o.data,
         })
         .collect();
-    let (writer, id, url) = (calendar.clone(), source.id.clone(), source.remote_id.clone());
-    Ok(blocking(move || writer.caldav_apply_pull(id, url, objects, removed, full, cursor, zones))
-        .await??)
+    let (writer, id, url) = (
+        calendar.clone(),
+        source.id.clone(),
+        source.remote_id.clone(),
+    );
+    Ok(
+        blocking(move || writer.caldav_apply_pull(id, url, objects, removed, full, cursor, zones))
+            .await??,
+    )
 }
 
 async fn apply(
@@ -420,5 +455,13 @@ async fn apply(
     source: &CalendarSourceRecord,
     pulled: Pulled,
 ) -> Result<u32, SyncError> {
-    apply_objects(calendar, source, pulled.objects, pulled.removed, pulled.full, pulled.cursor).await
+    apply_objects(
+        calendar,
+        source,
+        pulled.objects,
+        pulled.removed,
+        pulled.full,
+        pulled.cursor,
+    )
+    .await
 }

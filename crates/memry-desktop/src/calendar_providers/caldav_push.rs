@@ -15,10 +15,11 @@
 //! and sends nothing. An update or delete needs no journal: a replay carries the old ETag and
 //! takes the conflict path, a delete of an object already gone counts as deleted.
 //!
-//! **Conflicts.** A 412 never overwrites the remote: an update that meets one takes the object the
-//! server holds now through the pull (`caldav_apply_pull`, which writes it back into the item); a
-//! delete that meets one keeps the remote object and retires the binding, so the next pull mirrors
-//! it; excluding one occurrence retries once on the fresh object, which leaves the rest of it.
+//! **Conflicts.** A 412 never overwrites the remote, and the drain never overwrites the local edit:
+//! an update that meets one fails and stays queued (Electron merges field by field against the
+//! last pushed snapshot, `push-conflict-retry.ts:120-130`; the core has no API for that merge yet);
+//! a delete that meets one keeps the remote object and retires the binding, so the next pull
+//! mirrors it; excluding one occurrence retries once on the fresh object, which leaves the rest.
 
 use std::sync::Arc;
 
@@ -29,9 +30,7 @@ use memry_core::domain::calendar_items::providers::CALDAV;
 use serde_json::{Map, Value, json};
 
 use super::caldav_dav::{self, DavError, Precondition};
-use super::caldav_sync::{
-    CaldavSync, SyncError, apply_objects, blocking, live, now_ms,
-};
+use super::caldav_sync::{CaldavSync, SyncError, apply_objects, blocking, live, now_ms};
 use super::caldav_transport::Transport;
 use super::zones::named_zones;
 use crate::session::OpenVault;
@@ -103,9 +102,10 @@ impl CaldavSync {
             failures: self.auth_failures(open).await?,
         };
         let reader = pass.calendar.clone();
-        let enabled = blocking(move || reader.setting("calendar.caldav.pushEventsToProvider".into()))
-            .await??
-            .is_none_or(|v| v != "false");
+        let enabled =
+            blocking(move || reader.setting("calendar.caldav.pushEventsToProvider".into()))
+                .await??
+                .is_none_or(|v| v != "false");
         let mut held = Vec::new();
         for account in pass.sources.iter().filter(|s| live(s, "account")) {
             if self.usable(&pass, account).await?.is_some() {
@@ -182,7 +182,7 @@ impl CaldavSync {
         } else {
             None
         };
-        let zones = named_zones(event.and_then(|e| e.timezone), now_ms());
+        let zones = named_zones(event.map(|e| e.timezone), now_ms());
         let (writer, t, id, held) = (
             pass.calendar.clone(),
             item.source_type.to_owned(),
@@ -215,7 +215,10 @@ impl CaldavSync {
             return self.skip(pass, item).await;
         }
         let Some(source) = pass.calendar_source(&plan.calendar_id) else {
-            tracing::info!(scope = SCOPE, "skipping a CalDAV write: the calendar is disconnected");
+            tracing::info!(
+                scope = SCOPE,
+                "skipping a CalDAV write: the calendar is disconnected"
+            );
             return self.skip(pass, item).await;
         };
         let Some(account) = source.account_id.as_deref().and_then(|id| pass.account(id)) else {
@@ -229,13 +232,15 @@ impl CaldavSync {
             let Some(object) = caldav_dav::get(&transport, &href).await? else {
                 return self.gone(pass, item, source, &plan, &href).await;
             };
-            plan = self.plan(pass, item, held, Some(dav_object(object))).await?;
+            plan = self
+                .plan(pass, item, held, Some(dav_object(object)))
+                .await?;
         }
         match plan.action.as_str() {
             "upsert" if plan.if_match.is_none() => {
                 self.create(open, pass, item, &plan, &transport).await
             }
-            "upsert" => self.update(pass, item, source, &plan, &transport).await,
+            "upsert" => self.update(pass, item, &plan, &transport).await,
             "delete" => self.delete(pass, item, &plan, &transport).await,
             "exclude" => self.exclude(pass, item, held, &plan, &transport).await,
             "none" => self.skip(pass, item).await,
@@ -267,8 +272,15 @@ impl CaldavSync {
             return self.deleted(pass, item, binding).await;
         }
         let cursor = source.sync_cursor.clone();
-        apply_objects(&pass.calendar, source, Vec::new(), vec![href.to_owned()], false, cursor)
-            .await?;
+        apply_objects(
+            &pass.calendar,
+            source,
+            Vec::new(),
+            vec![href.to_owned()],
+            false,
+            cursor,
+        )
+        .await?;
         Ok(Outcome::Pushed)
     }
 
@@ -303,7 +315,7 @@ impl CaldavSync {
         } else {
             None
         };
-        let zones = named_zones(event.and_then(|e| e.timezone), now_ms());
+        let zones = named_zones(event.map(|e| e.timezone), now_ms());
         let (writer, t, id, calendar_id, remote) = (
             pass.calendar.clone(),
             item.source_type.to_owned(),
@@ -312,7 +324,16 @@ impl CaldavSync {
             remote_event_id.to_owned(),
         );
         blocking(move || {
-            writer.push_done(t, id, CALDAV.to_owned(), calendar_id, remote, etag, Some(body), zones)
+            writer.push_done(
+                t,
+                id,
+                CALDAV.to_owned(),
+                calendar_id,
+                remote,
+                etag,
+                Some(body),
+                zones,
+            )
         })
         .await??;
         Ok(Outcome::Pushed)
@@ -388,31 +409,28 @@ impl CaldavSync {
         &self,
         pass: &Pass,
         item: &Item<'_>,
-        source: &CalendarSourceRecord,
         plan: &CalendarPushPlan,
         transport: &Transport,
     ) -> Result<Outcome, SyncError> {
-        let (Some(href), Some(body), Some(if_match)) =
-            (plan.href.as_deref(), plan.body.as_deref(), plan.if_match.as_deref())
-        else {
+        let (Some(href), Some(body), Some(if_match)) = (
+            plan.href.as_deref(),
+            plan.body.as_deref(),
+            plan.if_match.as_deref(),
+        ) else {
             return self.skip(pass, item).await;
         };
         match caldav_dav::put(transport, href, body, Precondition::Match(if_match)).await {
             Ok(etag) => {
                 let (etag, data) = Self::written(transport, href, body, etag).await?;
-                let remote = plan.remote_event_id.clone().unwrap_or_else(|| href.to_owned());
-                self.done(pass, item, &plan.calendar_id, &remote, etag, data).await
+                let remote = plan
+                    .remote_event_id
+                    .clone()
+                    .unwrap_or_else(|| href.to_owned());
+                self.done(pass, item, &plan.calendar_id, &remote, etag, data)
+                    .await
             }
-            Err(DavError::Conflict) => {
-                // The remote changed: it wins, through the pull's write-back.
-                let current = caldav_dav::get(transport, href).await?;
-                let removed = if current.is_none() { vec![href.to_owned()] } else { Vec::new() };
-                let cursor = source.sync_cursor.clone();
-                let objects = current.into_iter().collect();
-                apply_objects(&pass.calendar, source, objects, removed, false, cursor).await?;
-                tracing::info!(scope = SCOPE, "a CalDAV update met a remote change; the remote kept it");
-                Ok(Outcome::Pushed)
-            }
+            // Both sides changed. Neither is overwritten: the item stays queued with the
+            // conflict until the core can merge the two field by field.
             Err(error) => Err(error.into()),
         }
     }
@@ -452,9 +470,11 @@ impl CaldavSync {
     ) -> Result<Outcome, SyncError> {
         let mut plan = plan.clone();
         for attempt in 0..2 {
-            let (Some(href), Some(body), Some(binding)) =
-                (plan.href.clone(), plan.body.clone(), plan.binding_id.clone())
-            else {
+            let (Some(href), Some(body), Some(binding)) = (
+                plan.href.clone(),
+                plan.body.clone(),
+                plan.binding_id.clone(),
+            ) else {
                 return self.skip(pass, item).await;
             };
             let if_match = plan.if_match.clone().unwrap_or_else(|| "*".to_owned());
@@ -464,7 +484,9 @@ impl CaldavSync {
                     let Some(object) = caldav_dav::get(transport, &href).await? else {
                         return self.deleted(pass, item, binding).await;
                     };
-                    plan = self.plan(pass, item, held, Some(dav_object(object))).await?;
+                    plan = self
+                        .plan(pass, item, held, Some(dav_object(object)))
+                        .await?;
                     if plan.action != "exclude" {
                         return self.deleted(pass, item, binding).await;
                     }
@@ -477,13 +499,19 @@ impl CaldavSync {
 
     async fn pending(&self, open: &OpenVault) -> Result<Map<String, Value>, SyncError> {
         let settings = open.vault.app_settings(self.store.clone())?;
-        Ok(match blocking(move || settings.get_local(PENDING_CREATES_KEY)).await?? {
-            Some(Value::Object(map)) => map,
-            _ => Map::new(),
-        })
+        Ok(
+            match blocking(move || settings.get_local(PENDING_CREATES_KEY)).await?? {
+                Some(Value::Object(map)) => map,
+                _ => Map::new(),
+            },
+        )
     }
 
-    async fn set_pending(&self, open: &OpenVault, map: Map<String, Value>) -> Result<(), SyncError> {
+    async fn set_pending(
+        &self,
+        open: &OpenVault,
+        map: Map<String, Value>,
+    ) -> Result<(), SyncError> {
         let settings = open.vault.app_settings(self.store.clone())?;
         blocking(move || settings.set_local(PENDING_CREATES_KEY, &Value::Object(map))).await??;
         Ok(())
