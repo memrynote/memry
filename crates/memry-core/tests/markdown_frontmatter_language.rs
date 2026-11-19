@@ -1,32 +1,13 @@
 //! gray-matter 4.0.3's language line: `---<language>` names the engine that parses the block
 //! (`matter.language` and `lib/engine.js`). A whole-file reader (an importer, a legacy
-//! template, a `.folder.md`) meets it in files written by other tools. Only YAML is read.
+//! template, a `.folder.md`) meets it in files written by other tools.
 
 #![cfg(feature = "markdown")]
 
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, gray_matter_data, gray_matter_parts, parse_markdown_note,
 };
-use memry_test_kit::{DEFAULT_CASES, proptest_config};
-
-/// Opening lines that name a language other than YAML, as gray-matter reads them: the name is
-/// trimmed, and `lib/engine.js` aliases it case-insensitively.
-const NOT_YAML: [&str; 14] = [
-    "---json",
-    "---JSON",
-    "---Json",
-    "---json  ",
-    "--- json",
-    "---json\r",
-    "---js",
-    "---JS",
-    "--- javascript",
-    "---Javascript ",
-    "---coffee",
-    "---CoffeeScript",
-    "---cson",
-    "---toml",
-];
+use memry_test_kit::{DEFAULT_CASES, on_small_stack, proptest_config};
 use proptest::prelude::*;
 
 fn one(key: &str, value: YamlValue) -> YamlValue {
@@ -58,28 +39,57 @@ fn the_yaml_aliases_take_any_case_and_surrounding_space() {
     }
 }
 
-/// Every language but YAML leaves the frontmatter unreadable, as Electron's patched
-/// gray-matter does (#5154): a `json` block is never parsed and a `javascript` one never run.
-/// The split still ends at the closing delimiter, so none of it becomes body text.
 #[test]
-fn every_language_but_yaml_is_refused() {
-    for open in NOT_YAML {
+fn a_json_block_parses_as_json_parse_does() {
+    let text = "---json\n{\"b\": [1, null], \"a\": \"x\", \"2\": true, \"1\": 0}\n---\nbody";
+    let YamlValue::Map(map) = gray_matter_data(text).unwrap() else {
+        panic!("not a map");
+    };
+    // JSON.parse puts integer keys first, ascending, then the rest in their order.
+    let keys: Vec<String> = map.iter().map(|(key, _)| key.to_string()).collect();
+    assert_eq!(keys, ["1", "2", "b", "a"]);
+    assert_eq!(map.get("a"), Some(&YamlValue::String("x".into())));
+    assert_eq!(gray_matter_parts(text).unwrap().1, "body");
+    // `null` is gray-matter's empty data, and a JSON error is a parse error.
+    assert_eq!(
+        gray_matter_data("---json\nnull\n---\n").unwrap(),
+        YamlValue::map(YamlMap::new())
+    );
+    assert!(gray_matter_data("---json\na: 1\n---\n").is_err());
+    // Only the exact name: `aliase` returns `JSON` unchanged and no engine has it.
+    assert!(gray_matter_data("---JSON\n{}\n---\n").is_err());
+}
+
+/// gray-matter trims the language name (`matter.language`), so space around `json` and a CRLF
+/// opener still pick the JSON engine; the name's case does not (`---Json` is not registered).
+#[test]
+fn a_json_language_name_is_trimmed_but_case_sensitive() {
+    for open in ["--- json", "---json  ", "---json\r"] {
         let text = format!("{open}\n{{\"a\": 1}}\n---\nbody");
-        let error = gray_matter_data(&text).unwrap_err();
-        assert!(
-            error.message.contains("is not supported"),
-            "{open:?}: {error}"
+        assert_eq!(
+            gray_matter_data(&text).unwrap(),
+            one("a", YamlValue::Number(1.0)),
+            "{open:?}"
         );
         assert_eq!(gray_matter_parts(&text).unwrap().1, "body", "{open:?}");
     }
+    let error = gray_matter_data("---Json\n{\"a\": 1}\n---\n").unwrap_err();
+    assert!(error.message.contains("is not registered"), "{error}");
 }
 
 /// The note reader takes only a bare `---` line as an opener (`splitFrontmatterBlock`), so a
-/// language line there, YAML's included, starts plain body text.
+/// language line there, YAML's and JSON's included, starts plain body text.
 #[test]
 fn the_note_reader_reads_a_language_line_as_body() {
-    for open in NOT_YAML.iter().chain(&["---yaml"]) {
-        let text = format!("{open}\na: 1\n---\nbody\n");
+    for open in [
+        "---json",
+        "--- json",
+        "---JSON",
+        "---js",
+        "---coffee",
+        "---yaml",
+    ] {
+        let text = format!("{open}\n{{\"a\": 1}}\n---\nbody\n");
         let note = parse_markdown_note(&text).unwrap();
         assert_eq!(note.frontmatter, YamlValue::map(YamlMap::new()), "{open:?}");
         assert_eq!(note.raw_frontmatter_block, None, "{open:?}");
@@ -87,13 +97,32 @@ fn the_note_reader_reads_a_language_line_as_body() {
     }
 }
 
+/// gray-matter's JavaScript engine `eval`s the block. Electron would run code from an imported
+/// file; here the block is refused instead (a deliberate difference).
 #[test]
-fn a_refused_language_is_named_unless_the_block_is_blank() {
+fn a_javascript_block_is_refused_not_evaluated() {
+    for open in [
+        "---js",
+        "---javascript",
+        "---JS",
+        "--- javascript",
+        "---Javascript ",
+    ] {
+        let text = format!("{open}\n{{a: 1}}\n---\nbody");
+        let error = gray_matter_data(&text).unwrap_err();
+        assert!(error.message.contains("not evaluated"), "{open:?}: {error}");
+        assert_eq!(gray_matter_parts(&text).unwrap().1, "body", "{open:?}");
+    }
+}
+
+#[test]
+fn an_unknown_language_is_not_registered_unless_the_block_is_blank() {
     let error = gray_matter_data("---toml\na = 1\n---\n").unwrap_err();
     assert!(
-        error.message.contains("\"toml\" is not supported"),
+        error.message.contains("\"toml\" is not registered"),
         "{error}"
     );
+    assert!(gray_matter_data("---coffee\na: 1\n---\n").is_err());
     // A long token is clipped in the message.
     let long = "x".repeat(100_000);
     let error = gray_matter_data(&format!("---{long}\na = 1\n---\n")).unwrap_err();
@@ -101,7 +130,7 @@ fn a_refused_language_is_named_unless_the_block_is_blank() {
     assert!(
         error
             .message
-            .contains(&format!("\"{}…\" is not supported", "x".repeat(64)))
+            .contains(&format!("\"{}…\" is not registered", "x".repeat(64)))
     );
     // A blank block is empty data before any engine is looked up.
     assert_eq!(
@@ -132,6 +161,16 @@ fn a_blank_language_line_keeps_its_bytes() {
         gray_matter_parts("---  \na: 1\n---\n"),
         Some(("  \na: 1", ""))
     );
+}
+
+/// serde_json caps nesting at 128 levels, so a deep JSON block fails closed on a spawned
+/// thread's stack instead of overflowing it.
+#[test]
+fn a_deep_json_block_fails_closed_on_a_small_stack() {
+    let depth = 200_000;
+    let text = format!("---json\n{}{}\n---\n", "[".repeat(depth), "]".repeat(depth));
+    let outcome = on_small_stack(move || gray_matter_data(&text).map(|_| ()));
+    assert!(outcome.is_err());
 }
 
 proptest! {

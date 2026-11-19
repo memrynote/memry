@@ -43,7 +43,7 @@ ciborium = { workspace = true }
 flate2 = { workspace = true }
 serde = { workspace = true }
 # `float_roundtrip`: JSON.parse reads every float to the nearest f64; the default parser
-# can land one ULP off (#4278: iOS reading the floats desktop wrote).
+# can land one ULP off (a `---json` frontmatter block, and iOS reading what desktop wrote).
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 thiserror = { workspace = true }
 base64 = { workspace = true }

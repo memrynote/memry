@@ -70,32 +70,42 @@ fn deep_frontmatter_fails_its_note_on_a_small_stack() {
     assert_eq!(ops(&calls, "createNote"), 1);
 }
 
-/// Only YAML frontmatter imports. A file whose opening line names another language (any case,
-/// any space gray-matter trims) fails with unreadable frontmatter, as in Electron's patched
-/// gray-matter (#5154): its block is never parsed as JSON nor run as JavaScript.
+/// The language line picks gray-matter's engine as in Electron: YAML and JSON (name trimmed,
+/// `json` exact) import; `javascript` (refused, never run), an unregistered name and invalid JSON
+/// fail the file with unreadable frontmatter.
 #[test]
-fn a_non_yaml_frontmatter_language_fails_its_note() {
-    let refused = [
-        "---json",
-        "---JSON",
-        "---json  ",
-        "--- json",
-        "---json\r",
-        "---js",
-        "---JS",
-        "--- javascript",
-        "---Javascript ",
-        "---coffee",
-        "---toml",
+fn a_frontmatter_language_line_imports_as_gray_matter_reads_it() {
+    let json = "{\"title\": \"T\", \"k\": 1}";
+    let failing = [
+        ("---JSON", json),
+        ("---Json", json),
+        ("---js", json),
+        ("---JS", json),
+        ("--- javascript", json),
+        ("---Javascript ", json),
+        ("---coffee", json),
+        ("---toml", json),
+        ("---json", "title: T"),
+    ];
+    let importing = [
+        ("---json", json),
+        ("---json  ", json),
+        ("--- json", json),
+        ("---json\r", json),
+        ("---", "title: T\nk: 1"),
+        ("---yaml", "title: T\nk: 1"),
+        ("--- YML ", "title: T\nk: 1"),
     ];
     let dir = tempfile::tempdir().unwrap();
-    for (at, open) in refused.iter().enumerate() {
-        let file = format!("{open}\n{{\"title\": \"T\", \"k\": 1}}\n---\nbody\n");
-        fs::write(dir.path().join(format!("refused-{at}.md")), file).unwrap();
+    let write = |name: String, (open, matter): &(&str, &str)| {
+        let file = format!("{open}\n{matter}\n---\nbody\n");
+        fs::write(dir.path().join(name), file).unwrap();
+    };
+    for (at, case) in failing.iter().enumerate() {
+        write(format!("failing-{at}.md"), case);
     }
-    for (at, open) in ["---", "---yaml", "--- YML "].iter().enumerate() {
-        let file = format!("{open}\nk: 1\n---\nbody\n");
-        fs::write(dir.path().join(format!("yaml-{at}.md")), file).unwrap();
+    for (at, case) in importing.iter().enumerate() {
+        write(format!("importing-{at}.md"), case);
     }
 
     let (summary, calls) = run(&MarkdownImporter, &[dir.path()]);
@@ -105,20 +115,18 @@ fn a_non_yaml_frontmatter_language_fails_its_note() {
         .map(|f| f.item.rsplit(['/', '\\']).next().unwrap())
         .collect();
     failed.sort_unstable();
-    let mut expected: Vec<String> = (0..refused.len())
-        .map(|at| format!("refused-{at}.md"))
+    let mut expected: Vec<String> = (0..failing.len())
+        .map(|at| format!("failing-{at}.md"))
         .collect();
     expected.sort_unstable();
     assert_eq!(failed, expected, "{summary:?}");
-    assert!(
-        summary
-            .failed
-            .iter()
-            .all(|f| f.error.contains("is not supported")),
-        "{summary:?}"
-    );
-    assert_eq!(summary.imported, 3, "the YAML files import");
-    assert_eq!(ops(&calls, "createNote"), 3);
+    assert_eq!(summary.imported, importing.len(), "{summary:?}");
+    let notes: Vec<&Value> = calls.iter().filter(|c| c["op"] == "createNote").collect();
+    assert_eq!(notes.len(), importing.len());
+    for note in notes {
+        assert_eq!(note["title"], "T", "{note}");
+        assert_eq!(note["properties"], serde_json::json!([["k", 1]]), "{note}");
+    }
 }
 
 #[test]
