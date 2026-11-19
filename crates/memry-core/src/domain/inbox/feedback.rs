@@ -37,7 +37,8 @@ pub struct FeedbackStats {
 /// the confidence is stored as `Math.round(confidence * 100)`.
 pub fn track(conn: &Connection, feedback: &Feedback<'_>, now_ms: i64) -> Result<(), StorageError> {
     let accepted = feedback.suggested_to == feedback.actual_to;
-    let confidence = (feedback.confidence * 100.0 + 0.5).floor() as i64;
+    // `Math.round` and `f64::round` agree on a confidence, which is never negative.
+    let confidence = (feedback.confidence * 100.0).round() as i64;
     // A `Vec<String>` always serialises.
     let json = |tags: &[String]| serde_json::to_string(tags).unwrap_or_else(|_| "[]".to_owned());
     conn.execute(

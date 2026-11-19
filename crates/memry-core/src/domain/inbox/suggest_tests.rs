@@ -339,4 +339,10 @@ fn folder_reasons_name_the_dominant_signal() {
     );
     assert_eq!(folder_reason(&score("a", 0.0, 0.0)), "Suggested folder a");
     assert_eq!(folder_reason(&score("", 0.0, 0.0)), "Root folder");
+    // `if (score.topNoteTitle)`: an empty title is falsy.
+    let untitled = FolderScore {
+        top_note_title: Some(String::new()),
+        ..score("a", 1.0, 0.0)
+    };
+    assert_eq!(folder_reason(&untitled), "Folder name matches \"a\"");
 }

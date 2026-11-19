@@ -234,7 +234,8 @@ pub fn recent_destination_confidence(count: i64) -> f64 {
 /// `folderReason`: the reason text from the dominant signal.
 pub fn folder_reason(score: &FolderScore) -> String {
     let path = score.path.as_str();
-    if let Some(title) = &score.top_note_title {
+    // `if (score.topNoteTitle)`: an empty title is falsy.
+    if let Some(title) = score.top_note_title.as_deref().filter(|t| !t.is_empty()) {
         return if path.is_empty() {
             format!("Similar to \"{title}\" in root")
         } else {
@@ -457,8 +458,8 @@ pub fn assemble(
                 note_id: Some(hit.note_id.clone()),
                 note_title: Some(hit.title.clone()),
                 confidence: *score,
-                // `Math.round` of a value in 0..=100.
-                reason: format!("Similar content ({}% match)", (score * 100.0 + 0.5).floor()),
+                // `Math.round` of a value in 0..=100, where `f64::round` agrees.
+                reason: format!("Similar content ({}% match)", (score * 100.0).round()),
                 suggested_tags: Vec::new(),
                 suggested_note: Some(SuggestedNote {
                     id: hit.note_id.clone(),

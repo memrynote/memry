@@ -53,7 +53,7 @@ pub fn convert_to_task(
         None => inbox_project(conn)?,
     };
     let title = note_title(&item, now);
-    let tags = merged_tags(&item, &[]);
+    let tags = merged_tags(&item.tags, &[]);
     let task_id = tasks::new_task_id();
     let description = if item.item_type == "voice" {
         item.transcription.clone().or_else(|| item.content.clone())

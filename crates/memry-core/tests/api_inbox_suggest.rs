@@ -15,6 +15,9 @@ use memry_core::api::inbox_suggest::{InboxSuggestHit, InboxSuggestIndex};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use memry_core::sync::apply::apply_inbound;
+use serde_json::{Value, json};
 
 const NOW: &str = "2026-11-18T09:30";
 
@@ -102,7 +105,8 @@ fn suggestions_come_from_filed_captures_and_the_index() {
         ]
     );
     assert!((found[1].confidence - 0.5).abs() < 1e-12);
-    assert_eq!(found[2].suggested_tags, ["Project"]);
+    // `mergedTags`: the capture's tags, then `inbox`.
+    assert_eq!(found[2].suggested_tags, ["Project", "inbox"]);
     assert!(
         inbox
             .suggestions("missing".into(), InboxSuggestIndex::default())
@@ -219,6 +223,76 @@ fn the_review_tick_fires_once_per_local_day() {
         empty.review_due("2026-11-18".into(), 0).expect("empty"),
         None
     );
+}
+
+/// A peer's settings payload: this device's synced settings with `edit`
+/// applied and `path`'s clock ticked for `peer`, so it dominates.
+fn peer_settings(vault: &Vault, path: &str, edit: impl FnOnce(&mut Value)) -> InboundRecord {
+    let raw = vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(sync_items::push_payload(conn, "settings", "synced_settings")?.expect("payload"))
+        })
+        .expect("the local settings");
+    let mut payload: Value = serde_json::from_str(&raw).expect("json");
+    edit(&mut payload["settings"]);
+    payload["fieldClocks"][path]["peer"] = json!(1);
+    InboundRecord {
+        item_type: "settings".into(),
+        item_id: "synced_settings".into(),
+        payload_json: payload.to_string(),
+        server_cursor: Some(9),
+        signer_device_id: Some("peer".into()),
+        updated_at: 1,
+        deleted_at: None,
+    }
+}
+
+/// Electron re-arms the once-a-day guard when the schedule changes, on a
+/// local write (`writeInboxReviewSettings`) and synced in from a peer
+/// (`propagateMergedSettings`), so the new time can fire again today.
+#[test]
+fn a_changed_review_schedule_re_arms_the_guard_locally_and_from_a_peer() {
+    let (vault, inbox, _store) = open();
+    capture(&inbox, "something to review");
+    let at = |time: &str| InboxReviewSettings {
+        enabled: true,
+        time: time.into(),
+    };
+    inbox.set_review_settings(at("18:00")).expect("18:00");
+    let due = |minutes: u32| {
+        inbox
+            .review_due("2026-11-18".into(), minutes)
+            .expect("tick")
+    };
+    assert_eq!(due(18 * 60), Some(1));
+    inbox.set_review_settings(at("20:00")).expect("20:00");
+    assert_eq!(due(20 * 60), Some(1), "a new time fires again today");
+    inbox.set_review_settings(at("20:00")).expect("unchanged");
+    assert_eq!(
+        due(20 * 60 + 30),
+        None,
+        "an unchanged schedule keeps the guard"
+    );
+
+    let apply = |record: InboundRecord| {
+        vault
+            .db_handle()
+            .call_blocking(move |conn| apply_inbound(conn, &record, 2))
+            .expect("apply")
+    };
+    let theme = peer_settings(&vault, "general.theme", |s| {
+        s["general"] = json!({"theme": "dark"});
+    });
+    assert_eq!(apply(theme), ApplyOutcome::Applied);
+    assert_eq!(due(21 * 60), None, "another setting keeps the guard");
+
+    let moved = peer_settings(&vault, "inbox.reviewReminderTime", |s| {
+        s["inbox"]["reviewReminderTime"] = json!("21:00");
+    });
+    assert_eq!(apply(moved), ApplyOutcome::Applied);
+    assert_eq!(inbox.review_settings().expect("read").time, "21:00");
+    assert_eq!(due(21 * 60), Some(1), "a synced-in time fires again today");
 }
 
 /// `convertToEvent`: a UTC event titled from the capture with its text as

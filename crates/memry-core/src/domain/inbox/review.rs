@@ -5,12 +5,16 @@
 //! The shell owns the clock and the notification. The core owns the decision
 //! and its once-per-local-day guard, `inbox.reviewLastNotifiedDate`: a
 //! device-local key, stored as Electron's `setSetting` stores it (the bare
-//! `YYYY-MM-DD` text) in `local_settings`.
+//! `YYYY-MM-DD` text) through [`app_settings`]. Every settings write and
+//! every synced-in settings record re-arms it when the schedule changes
+//! ([`rearm_if_rescheduled`]).
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::Connection;
+use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::failed;
+use crate::domain::app_settings;
+use crate::domain::settings::value_at;
 
 /// `INBOX_REVIEW_LAST_NOTIFIED_KEY`.
 pub const LAST_NOTIFIED_KEY: &str = "inbox.reviewLastNotifiedDate";
@@ -73,14 +77,31 @@ pub fn decide(input: &Decision<'_>) -> bool {
     input.last_notified != Some(input.today) && input.now_minutes >= target
 }
 
-fn last_notified(conn: &Connection) -> Result<Option<String>, StorageError> {
-    conn.query_row(
-        "SELECT value FROM local_settings WHERE key = ?1",
-        params![LAST_NOTIFIED_KEY],
-        |row| row.get(0),
-    )
-    .optional()
-    .map_err(failed)
+/// The synced values that decide when the nudge fires, as stored.
+pub(crate) type Schedule = [Option<Value>; 2];
+
+/// The [`Schedule`] in a synced `settings` object.
+pub(crate) fn schedule(settings: &Map<String, Value>) -> Schedule {
+    [
+        ["inbox", "reviewReminderEnabled"],
+        ["inbox", "reviewReminderTime"],
+    ]
+    .map(|path| value_at(settings, &path).cloned())
+}
+
+/// Clears the guard when the schedule moved, so a new time (or a reminder
+/// just switched on) can fire again today: Electron's
+/// `deleteSetting(INBOX_REVIEW_LAST_NOTIFIED_KEY)` in
+/// `writeInboxReviewSettings` and `propagateMergedSettings`.
+pub(crate) fn rearm_if_rescheduled(
+    conn: &Connection,
+    before: &Schedule,
+    after: &Schedule,
+) -> Result<(), StorageError> {
+    if before == after {
+        return Ok(());
+    }
+    app_settings::drop_local_in(conn, LAST_NOTIFIED_KEY)
 }
 
 /// `runReviewTick` without the notification: `Some(count)` when the nudge is
@@ -98,7 +119,7 @@ pub fn due(
         return Ok(None);
     }
     let inbox_count = super::reviewable_count(conn)?;
-    let last = last_notified(conn)?;
+    let last = app_settings::local_text_in(conn, LAST_NOTIFIED_KEY)?;
     let fire = decide(&Decision {
         enabled,
         target: &target,
@@ -110,12 +131,7 @@ pub fn due(
     if !fire {
         return Ok(None);
     }
-    conn.execute(
-        "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-        params![LAST_NOTIFIED_KEY, today, now_ms],
-    )
-    .map_err(failed)?;
+    app_settings::put_local_text_in(conn, LAST_NOTIFIED_KEY, today, now_ms)?;
     Ok(Some(inbox_count))
 }
 

@@ -8,6 +8,7 @@ use rusqlite::{Connection, params};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 
+use super::filing::merged_tags;
 use super::suggest::folder_of;
 
 /// A filing-history pattern: captures of one type filed to one place.
@@ -20,8 +21,10 @@ pub struct FilingPattern {
 }
 
 /// `getFilingPatterns`: the ten most used (`filed_to`, `filed_action`) pairs
-/// of live filed captures of `item_type`, each with the tags of the latest
-/// capture filed there. Ties break on the pair, ascending.
+/// of live filed captures of `item_type`, each with the latest capture's
+/// `mergedTags` (its tags, then `inbox`, as `filing_history.tags` holds them).
+/// Tags added only in the filing dialog are not kept on the capture, so they
+/// are missing here. Ties break on the pair, ascending.
 pub fn filing_patterns(
     conn: &Connection,
     item_type: &str,
@@ -59,7 +62,7 @@ pub fn filing_patterns(
                 destination: folder_of(&filed_to).to_owned(),
                 action,
                 count,
-                tags: super::tags_of(conn, &latest)?,
+                tags: merged_tags(&super::tags_of(conn, &latest)?, &[]),
             })
         })
         .collect()
