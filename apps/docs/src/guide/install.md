@@ -29,6 +29,9 @@ On macOS you can also install with [Homebrew](https://brew.sh):
 brew install --cask memrynote/tap/memry
 ```
 
+The cask needs macOS 13 (Ventura) or later. On macOS 12, `brew upgrade` refuses the cask and
+stops with an error, so Homebrew keeps the version you already have installed.
+
 After installing, head to [First Run & Vault Setup](./first-run) to create your encrypted vault.
 
 ## Linux requirements and troubleshooting
