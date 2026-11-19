@@ -13,7 +13,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::editor::Editor;
 use memry_core::crdt::resident::EDITOR_LIFECYCLE;
+use memry_core::domain::write_back::BodyRead;
+use memry_core::markdown::convert::NoEmbeds;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::pm::model::{any_to_json, json_to_any};
+use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::markdown::shared::critic_markup::{CriticMarkupMark, serialize_critic_markup};
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
@@ -25,7 +29,7 @@ use yrs::updates::decoder::Decode;
 use yrs::{Any, Array as _, Doc, ReadTxn as _, StateVector, Transact as _, Update};
 
 use crate::index_support::until;
-use crate::vault_env::{Env, env, indexed};
+use crate::vault_env::{Env, QUIET, env, indexed};
 
 const WINDOW: &str = "main";
 const EDITOR: &str = "editor-1";
@@ -345,4 +349,58 @@ fn a_marks_only_save_of_an_open_note_leaves_its_body_as_it_is() {
     notes.update(&open, save(&id, &both)).unwrap();
 
     assert_eq!(state_of(&editor, &id), before, "the save rewrote the body");
+}
+
+/// S14-24: the window moves its marks with its typing and keeps those offsets (#4425), so the
+/// document's stay where the marks were when it last wrote them. The user types `beta. ` before
+/// a suggestion on "Alpha" and a comment on "beta", and the window saves. The write-back that
+/// follows the save writes the document's body over that file: it keeps both marks where the
+/// save put them, instead of moving the comment to the first "beta" and dropping the suggestion
+/// with the text it replaced.
+#[test]
+fn the_write_back_after_a_typed_save_keeps_the_windows_mark_places() {
+    let suggestion = |start: i64| {
+        json!({
+            "id": "s1",
+            "kind": "substitution",
+            "visibleText": "Alpha",
+            "originalText": "Old",
+            "start": start,
+            "end": start + 5,
+        })
+    };
+    let marks = |shift: i64| -> Vec<CriticMarkupMark> {
+        [suggestion(shift), comment("c2", "beta", 10 + shift)]
+            .into_iter()
+            .map(|mark| serde_json::from_value(mark).unwrap())
+            .collect()
+    };
+    let (e, notes, store) = opened(&[("Plan.md", &serialize_critic_markup(PLAIN, &marks(0)))]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    editor.open(&id, WINDOW).unwrap();
+
+    let typed = serialize_critic_markup(&format!("beta. {PLAIN}"), &marks(6));
+    notes.update(&open, save(&id, &typed)).unwrap();
+
+    let converter = Converter::new(CalloutTypes::new(Vec::new()));
+    let Ok(BodyRead::Body(body)) = e
+        .core()
+        .write_back()
+        .body(&converter, &id, "Plan.md", &typed, &NoEmbeds)
+    else {
+        panic!("the document has no body to write");
+    };
+    assert_eq!(
+        body.markdown.trim_end(),
+        typed.trim_end(),
+        "the write-back moved or dropped a mark"
+    );
+    std::thread::sleep(QUIET);
+    assert_eq!(
+        e.read("Plan.md"),
+        typed,
+        "the scheduled write-back moved a mark"
+    );
 }
