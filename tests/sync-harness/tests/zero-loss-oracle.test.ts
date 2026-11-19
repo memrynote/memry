@@ -239,6 +239,24 @@ describe('Sync Harness — zero-loss oracle (#5225)', () => {
     expectRed(checkStructural(truth, local).findings, 'body_unexpected_content', noteEmpty)
   })
 
+  // VERIFY-5242: an expected-empty note has no body to have applied.
+  it('goes red on a watermark or snapshot in an expected-empty note', () => {
+    const watermark = structuredClone(after)
+    watermark.bodies[noteEmpty].appliedThrough = 2
+    expectRed(checkStructural(truth, watermark).findings, 'body_unknown_sequence', noteEmpty)
+
+    const snapshot = structuredClone(after)
+    snapshot.bodies[noteEmpty].snapshotRevision = 'rev-1'
+    expectRed(checkStructural(truth, snapshot).findings, 'body_unknown_sequence', noteEmpty)
+  })
+
+  // VERIFY-5242: a wiped document whose watermark survived still holds no Yjs state.
+  it('goes red on an empty body the server holds content for', () => {
+    const local = structuredClone(after)
+    local.bodies[noteA].empty = true
+    expectRed(checkStructural(truth, local).findings, 'body_missing', noteA)
+  })
+
   // REVIEW-5242 probes: a note behind the batch byte budget gets an empty page with hasMore.
   it('keeps every server update when a batch page is empty with hasMore', async () => {
     const budgeted = await fetchServerTruth({
@@ -271,5 +289,34 @@ describe('Sync Harness — zero-loss oracle (#5225)', () => {
         fetch: clockless
       })
     ).rejects.toThrow(`oracle: live task ${task} has no clock`)
+  })
+
+  // VERIFY-5242: settings is not clock-required; desktop pushes it without a
+  // top-level clock and rows from before #1223 can be clockless. Runs last: it
+  // adds a record to the server.
+  it('reads a clockless settings row and still checks its existence and type', async () => {
+    const settingsId = crypto.randomUUID()
+    await reader.createItem('settings', settingsId, { theme: 'dark' })
+    const pushed = await reader.push([reader.getItem(settingsId)!])
+    if (pushed.rejected.length > 0) throw new Error('settings push rejected')
+    const db = await server.getD1()
+    await db.prepare('UPDATE sync_items SET clock = NULL WHERE item_id = ?').bind(settingsId).run()
+
+    const clockless = await fetchServerTruth({
+      baseUrl: 'http://localhost',
+      accessToken: readerId.accessToken,
+      fetch: fetchFn
+    })
+    expect(clockless.records[settingsId]).toEqual({ type: 'settings', clock: null })
+    const local = reader.oracleState()
+    expect(checkStructural(clockless, local).findings).toEqual([])
+
+    const missing = structuredClone(local)
+    delete missing.records[settingsId]
+    expectRed(checkStructural(clockless, missing).findings, 'missing_record', settingsId)
+
+    const retyped = structuredClone(local)
+    retyped.records[settingsId].type = 'task'
+    expectRed(checkStructural(clockless, retyped).findings, 'type_mismatch', settingsId)
   })
 })

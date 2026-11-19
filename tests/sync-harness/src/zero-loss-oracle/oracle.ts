@@ -8,10 +8,14 @@
 
 export type VectorClock = Record<string, number>
 
-/** One live record on the server: its type and the clock of its stored row. */
+/**
+ * One live record on the server: its type and the clock of its stored row. The
+ * clock is null only for a type that is not clock-required (settings), and the
+ * oracle then skips the clock compare.
+ */
 export interface ServerRecord {
   type: string
-  clock: VectorClock
+  clock: VectorClock | null
 }
 
 /**
@@ -42,7 +46,7 @@ export interface LocalRecord {
 /**
  * What a device persists for one CRDT document: the snapshot revision it holds
  * as baseline (null for none), the highest update sequence it applied (0 for
- * none), and whether the document's content is empty. Clients keep a watermark,
+ * none), and whether the device holds no applied Yjs state. Clients keep a watermark,
  * not an apply log, so a gap below it or an update applied twice is invisible
  * here: the semantic body digest (§12.11) catches those.
  */
@@ -104,7 +108,10 @@ const checkRecords = (truth: ServerVaultTruth, local: LocalVaultState): Finding[
         itemId: id,
         detail: `server ${server.type}, local ${mine.type}`
       })
-    } else if (!dominates(mine.clock, server.clock) || !dominates(server.clock, mine.clock)) {
+    } else if (
+      server.clock !== null &&
+      (!dominates(mine.clock, server.clock) || !dominates(server.clock, mine.clock))
+    ) {
       const behind = dominates(server.clock, mine.clock)
       findings.push({
         kind: behind ? 'stale_record' : 'clock_diverged',
@@ -139,18 +146,31 @@ const checkBody = (id: string, server: ServerBody, mine: LocalBody | undefined):
   const appliedThrough = mine?.appliedThrough ?? 0
   if (server.snapshot === null && server.updateSequences.length === 0) {
     // Expected-empty (RCA-5225 rule 1): the server holds no body for this note.
-    return mine && !mine.empty
-      ? [
-          {
-            kind: 'body_unexpected_content',
-            itemId: id,
-            detail: 'server holds no body, device has content'
-          }
-        ]
-      : []
+    const findings: Finding[] = []
+    if (mine && !mine.empty) {
+      findings.push({
+        kind: 'body_unexpected_content',
+        itemId: id,
+        detail: 'server holds no body, device has content'
+      })
+    }
+    if (localRevision !== null || appliedThrough !== 0) {
+      findings.push({
+        kind: 'body_unknown_sequence',
+        itemId: id,
+        detail: `server holds no body, local snapshot ${localRevision ?? 'none'} applied through ${appliedThrough}`
+      })
+    }
+    return findings
   }
-  if (localRevision === null && appliedThrough === 0) {
-    return [{ kind: 'body_missing', itemId: id, detail: 'server holds a body, device none' }]
+  if (!mine || mine.empty || (localRevision === null && appliedThrough === 0)) {
+    return [
+      {
+        kind: 'body_missing',
+        itemId: id,
+        detail: `server holds a body, device ${mine?.empty ? 'holds no Yjs state' : 'none'}`
+      }
+    ]
   }
 
   const findings: Finding[] = []

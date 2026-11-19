@@ -1,5 +1,6 @@
 import {
   CRDT_SYNC_ITEM_TYPES,
+  RECORD_CLOCK_REQUIRED_ITEM_TYPES,
   RECORD_SYNC_ITEM_TYPES,
   RecordChangesResponseSchema,
   RecordPullResponseSchema,
@@ -81,13 +82,17 @@ const fetchClocks = async (
   client: OracleServerClient,
   live: Map<string, string>
 ): Promise<Record<string, ServerRecord>> => {
+  const clockRequired = new Set<string>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
   const records: Record<string, ServerRecord> = {}
   for (const itemIds of chunks([...live.keys()])) {
     const page = RecordPullResponseSchema.parse(await request(client, '/sync/pull', { itemIds }))
     for (const item of page.items) {
-      // A clockless row would make any stale local copy compare equal.
-      if (!item.clock) throw new Error(`oracle: live ${item.type} ${item.id} has no clock`)
-      records[item.id] = { type: item.type, clock: item.clock }
+      // A clockless row of a clock-required type would make any stale local
+      // copy compare equal. Other types (settings) may be stored without one.
+      if (!item.clock && clockRequired.has(item.type)) {
+        throw new Error(`oracle: live ${item.type} ${item.id} has no clock`)
+      }
+      records[item.id] = { type: item.type, clock: item.clock ?? null }
     }
   }
   for (const [id, type] of live) {
