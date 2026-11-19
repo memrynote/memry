@@ -12,7 +12,7 @@ use memry_desktop::calendar_providers::caldav_accounts::{
     BasicConnection, CaldavAccounts, CaldavError, Connection, non_empty,
 };
 use memry_desktop::calendar_providers::caldav_discover::ConnectCode;
-use memry_desktop::calendar_providers::caldav_sync::{CaldavSync, SyncError};
+use memry_desktop::calendar_providers::caldav_sync::SyncError;
 use memry_desktop::calendar_providers::caldav_transport::{self, CaldavHttp};
 use memry_desktop::calendar_providers::credentials::ProviderCredentials;
 use memry_desktop::calendar_providers::provider_status::ProviderStatus;
@@ -287,7 +287,7 @@ pub async fn calendar_connect_provider(
             // `connectCaldav`'s `void syncCaldavNow(db)`: the answer does not wait for it.
             let (sync, open) = (accounts.sync(), open.clone());
             tauri::async_runtime::spawn(async move {
-                if let Err(error) = sync_and_drain(&sync, &open, None).await {
+                if let Err(error) = sync.sync_and_drain(&open, None).await {
                     tracing::warn!(
                         scope = SCOPE,
                         "first CalDAV sync after connect failed: {error}"
@@ -309,29 +309,6 @@ pub async fn calendar_connect_provider(
     answer(&accounts, &open, &provider, failure)
         .await
         .map_err(|e| thrown(COMMAND, &e))
-}
-
-/// Every account's pull (or one's), then the push drain. A calendar that failed to pull fails
-/// the pass; an item the drain could not write stays queued with its reason and is only logged.
-async fn sync_and_drain(
-    sync: &CaldavSync,
-    open: &OpenVault,
-    account_id: Option<&str>,
-) -> Result<(), SyncError> {
-    let summary = sync.sync_now(open, account_id).await?;
-    let drained = sync.drain(open).await?;
-    if drained.failed > 0 || drained.waiting > 0 {
-        tracing::info!(
-            scope = SCOPE,
-            failed = drained.failed,
-            waiting = drained.waiting,
-            "CalDAV writes left queued"
-        );
-    }
-    if summary.failed > 0 {
-        return Err(SyncError::Partial(summary.failed));
-    }
-    Ok(())
 }
 
 /// `calendar:refresh-provider` (`caldav-provider.ts:91-115`): with `sourceId`, that calendar's
@@ -361,7 +338,7 @@ pub async fn calendar_refresh_provider(
     let sync = accounts.sync();
     let outcome = match source_id {
         Some(source) => sync.sync_source(&open, &source).await.map(|_| ()),
-        None => sync_and_drain(&sync, &open, account_id.as_deref()).await,
+        None => sync.sync_and_drain(&open, account_id.as_deref()).await,
     };
     let failure = match outcome {
         Ok(()) => None,

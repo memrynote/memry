@@ -16,6 +16,7 @@ use memry_core::api::calendar_records::{
 use memry_core::api::errors::AuthError;
 use memry_core::protocol::account_admin::AccountDevice;
 use memry_desktop::calendar_providers::caldav_accounts::CaldavAccounts;
+use memry_desktop::calendar_providers::caldav_push::PENDING_CREATES_KEY;
 use memry_desktop::calendar_providers::caldav_sync::CaldavSync;
 use memry_desktop::calendar_providers::caldav_transport::TIMEOUT;
 use memry_desktop::calendar_providers::writer_compat::{AccountDevices, SignIn};
@@ -176,7 +177,10 @@ fn tomorrow() -> jiff::Timestamp {
 }
 
 fn ics(uid: &str, title: &str) -> String {
-    let start = tomorrow();
+    ics_at(uid, title, tomorrow())
+}
+
+fn ics_at(uid: &str, title: &str, start: jiff::Timestamp) -> String {
     let end = start + jiff::SignedDuration::from_hours(1);
     let at = |t: jiff::Timestamp| t.strftime("%Y%m%dT%H%M%SZ").to_string();
     format!(
@@ -565,4 +569,147 @@ async fn a_drain_cut_off_after_its_put_lands_one_object_after_a_restart() {
     assert_eq!(puts[1].target, path);
     assert!(puts[1].if_match.is_some());
     assert_eq!(only_object(&rig), path);
+}
+
+/// The UID Memry minted for an object it created (`<uid>.ics`).
+fn uid_of(path: &str) -> String {
+    path.rsplit('/')
+        .next()
+        .unwrap()
+        .trim_end_matches(".ics")
+        .to_owned()
+}
+
+/// `sync_and_drain` while a local edit is queued and the remote object changed too: the pull
+/// never puts the remote fields over the edit, which ends on the server or still queued.
+#[tokio::test]
+async fn a_sync_keeps_a_queued_edit_when_the_remote_object_changed_too() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    let path = only_object(&rig);
+    retitle(&open, &id, "Local");
+    let remote = rig
+        .dav
+        .store
+        .object(&path)
+        .unwrap()
+        .1
+        .replace("END:VEVENT", "LOCATION:Room 1\r\nEND:VEVENT");
+    rig.dav.store.put_remote(&path, &remote);
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    assert_eq!(titles(&open, "event"), ["Local"]);
+    let sent = rig
+        .dav
+        .store
+        .object(&path)
+        .unwrap()
+        .1
+        .contains("SUMMARY:Local");
+    assert!(sent || queued(&open) == [id], "the local edit was lost");
+}
+
+/// A bound object has no mirror row; a pull by ctag still sees it deleted on the server.
+#[tokio::test]
+async fn a_ctag_pull_deletes_the_item_of_a_bound_object_deleted_on_the_server() {
+    let rig = Rig::new(false).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    assert!(cursor(&open, &source).unwrap().starts_with("ctag:"));
+    assert_eq!(titles(&open, "event"), ["Standup"]);
+
+    rig.dav.store.delete_remote(&only_object(&rig));
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    assert!(titles(&open, "event").is_empty());
+}
+
+/// A bound object moved out of the window on the server is not in the window query; a full pull
+/// finds it by its ETag and the item follows it.
+#[tokio::test]
+async fn a_full_pull_follows_a_bound_object_moved_out_of_the_window() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    let path = only_object(&rig);
+    let later = tomorrow() + jiff::SignedDuration::from_hours(2 * 366 * 24);
+    rig.dav
+        .store
+        .put_remote(&path, &ics_at(&uid_of(&path), "Moved", later));
+
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    let event = calendar(&open).event(id).unwrap().unwrap();
+    assert_eq!(event.title, "Moved");
+    assert!(titles(&open, "event").is_empty());
+}
+
+fn pending_creates(open: &OpenVault) -> serde_json::Value {
+    open.vault
+        .app_settings(with_device_key())
+        .unwrap()
+        .get_local(PENDING_CREATES_KEY)
+        .unwrap()
+        .unwrap_or(serde_json::Value::Null)
+}
+
+/// A create whose `PUT` failed leaves its journal entry; the item deleted before the next drain
+/// takes the entry with it.
+#[tokio::test]
+async fn a_create_journal_entry_leaves_with_an_item_deleted_before_its_drain() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.set_hook(|seen, reply| {
+        if seen.method == "PUT" {
+            Reply::status(500)
+        } else {
+            reply
+        }
+    });
+    assert_eq!(rig.sync().drain(&open).await.unwrap().failed, 1);
+    rig.clear_hook();
+    assert!(pending_creates(&open).get(format!("event:{id}")).is_some());
+
+    calendar(&open).delete_event(id.clone()).unwrap();
+    rig.sync().drain(&open).await.unwrap();
+    assert!(queued(&open).is_empty());
+    assert!(pending_creates(&open).get(format!("event:{id}")).is_none());
+}
+
+/// A create that meets a 412 (its own earlier write is there) records the server's copy, so the
+/// next update patches what the server holds, not what this device sent.
+#[tokio::test]
+async fn a_create_that_meets_a_412_keeps_the_server_copy() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    let (dav, mut first) = (rig.dav.clone(), true);
+    rig.set_hook(move |seen, reply| {
+        if seen.method != "PUT" || !std::mem::take(&mut first) {
+            return reply;
+        }
+        let server = seen
+            .body
+            .replace("END:VEVENT", "X-SERVER-NOTE:kept\r\nEND:VEVENT");
+        dav.store.put_remote(&seen.target, &server);
+        Reply::status(412)
+    });
+    assert_eq!(rig.sync().drain(&open).await.unwrap().pushed, 1);
+    rig.clear_hook();
+
+    retitle(&open, &id, "Retro");
+    assert_eq!(rig.sync().drain(&open).await.unwrap().pushed, 1);
+    let puts = writes(&rig.harness.seen(), "PUT");
+    assert_eq!(puts.len(), 2);
+    assert!(puts[1].body.contains("SUMMARY:Retro"));
+    assert!(puts[1].body.contains("X-SERVER-NOTE:kept"));
 }

@@ -58,6 +58,7 @@ enum Outcome {
 struct Item<'a> {
     source_type: &'a str,
     source_id: &'a str,
+    queued_at: i64,
 }
 
 impl Item<'_> {
@@ -120,6 +121,7 @@ impl CaldavSync {
             let item = Item {
                 source_type: &queued.source_type,
                 source_id: &queued.source_id,
+                queued_at: queued.queued_at,
             };
             match self.push_one(open, &pass, &item, &held, enabled).await {
                 Ok(Outcome::Pushed) => summary.pushed += 1,
@@ -152,7 +154,46 @@ impl CaldavSync {
                 }
             }
         }
+        // A journal entry outlives its item only if the item left the queue without its create
+        // being recorded (deleted before this drain): nothing will replay it.
+        let reader = pass.calendar.clone();
+        let left: Vec<String> = blocking(move || reader.push_queue())
+            .await??
+            .into_iter()
+            .map(|q| format!("{}:{}", q.source_type, q.source_id))
+            .collect();
+        let mut pending = self.pending(open).await?;
+        let before = pending.len();
+        pending.retain(|key, _| left.contains(key));
+        if pending.len() != before {
+            self.set_pending(open, pending).await?;
+        }
         Ok(summary)
+    }
+
+    /// The push drain, then every account's pull (or one's). Draining first sends local edits
+    /// before the pull sees the remote; a pull skips items still queued either way. A calendar
+    /// that failed to pull fails the pass; an item the drain could not write stays queued with its
+    /// reason and is only logged.
+    pub async fn sync_and_drain(
+        &self,
+        open: &OpenVault,
+        account_id: Option<&str>,
+    ) -> Result<(), SyncError> {
+        let drained = self.drain(open).await?;
+        let summary = self.sync_now(open, account_id).await?;
+        if drained.failed > 0 || drained.waiting > 0 {
+            tracing::info!(
+                scope = SCOPE,
+                failed = drained.failed,
+                waiting = drained.waiting,
+                "CalDAV writes left queued"
+            );
+        }
+        if summary.failed > 0 {
+            return Err(SyncError::Partial(summary.failed));
+        }
+        Ok(())
     }
 
     /// `writableTransportFor`'s account half: a live account, not refused, with a password here.
@@ -316,17 +357,19 @@ impl CaldavSync {
             None
         };
         let zones = named_zones(event.map(|e| e.timezone), now_ms());
-        let (writer, t, id, calendar_id, remote) = (
+        let (writer, t, id, calendar_id, remote, queued_at) = (
             pass.calendar.clone(),
             item.source_type.to_owned(),
             item.source_id.to_owned(),
             calendar_id.to_owned(),
             remote_event_id.to_owned(),
+            item.queued_at,
         );
         blocking(move || {
             writer.push_done(
                 t,
                 id,
+                queued_at,
                 CALDAV.to_owned(),
                 calendar_id,
                 remote,
@@ -387,15 +430,17 @@ impl CaldavSync {
             json!({ "href": href, "calendarId": plan.calendar_id }),
         );
         self.set_pending(open, pending.clone()).await?;
-        let etag = match caldav_dav::put(transport, &href, &body, Precondition::Create).await {
-            Ok(etag) => etag,
-            // Something already sits at a UID this device just minted: its own earlier write.
-            Err(DavError::Conflict) => caldav_dav::get(transport, &href)
-                .await?
-                .and_then(|object| object.etag),
-            Err(error) => return Err(error.into()),
-        };
-        let (etag, data) = Self::written(transport, &href, &body, etag).await?;
+        let (etag, data) =
+            match caldav_dav::put(transport, &href, &body, Precondition::Create).await {
+                Ok(etag) => Self::written(transport, &href, &body, etag).await?,
+                // Something already sits at a UID this device just minted: its own earlier write,
+                // recorded as the server holds it.
+                Err(DavError::Conflict) => match caldav_dav::get(transport, &href).await? {
+                    Some(object) => (object.etag, object.data),
+                    None => (None, body),
+                },
+                Err(error) => return Err(error.into()),
+            };
         let remote = plan.remote_event_id.clone().unwrap_or_else(|| href.clone());
         let outcome = self
             .done(pass, item, &plan.calendar_id, &remote, etag, data)

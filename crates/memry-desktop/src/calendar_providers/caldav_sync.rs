@@ -255,7 +255,10 @@ impl CaldavSync {
             other => other,
         };
         let outcome = match pulled {
-            Ok(pulled) => apply(&calendar, source, pulled).await,
+            Ok(pulled) => {
+                self.apply_pulled(&calendar, source, &transport, pulled)
+                    .await
+            }
             Err(error) => Err(SyncError::from(error)),
         };
         match &outcome {
@@ -275,6 +278,51 @@ impl CaldavSync {
             }
         }
         outcome
+    }
+
+    /// A full listing (`pullFull`, a moved ctag) then the bound check: bound objects have no
+    /// mirror rows, and one moved out of the window or deleted is not in the window query. Each
+    /// unseen one is checked against the collection's ETags (`listObjectEtags`): a gone one is
+    /// removed, a changed one fetched, so its item follows the server.
+    async fn apply_pulled(
+        &self,
+        calendar: &Arc<VaultCalendar>,
+        source: &CalendarSourceRecord,
+        transport: &Transport,
+        mut pulled: Pulled,
+    ) -> Result<u32, SyncError> {
+        if pulled.full {
+            let (reader, url) = (calendar.clone(), source.remote_id.clone());
+            let unseen: Vec<_> = blocking(move || reader.caldav_bound_objects(url))
+                .await??
+                .into_iter()
+                .filter(|b| !pulled.objects.iter().any(|o| o.href == b.href))
+                .collect();
+            if !unseen.is_empty() {
+                let collection =
+                    Url::parse(&source.remote_id).map_err(|e| DavError::Failed(e.to_string()))?;
+                let listed = caldav_dav::list_etags(transport, &collection).await?;
+                let mut changed = Vec::new();
+                for bound in unseen {
+                    match listed.iter().find(|(href, _)| *href == bound.href) {
+                        None => pulled.removed.push(bound.href),
+                        Some((_, etag)) if *etag != bound.etag => changed.push(bound.href),
+                        Some(_) => {}
+                    }
+                }
+                let fetched = caldav_dav::multiget(transport, &collection, &changed).await?;
+                pulled.objects.extend(fetched);
+            }
+        }
+        apply_objects(
+            calendar,
+            source,
+            pulled.objects,
+            pulled.removed,
+            pulled.full,
+            pulled.cursor,
+        )
+        .await
     }
 
     async fn pull(
@@ -451,20 +499,4 @@ pub(super) async fn apply_objects(
         blocking(move || writer.caldav_apply_pull(id, url, objects, removed, full, cursor, zones))
             .await??,
     )
-}
-
-async fn apply(
-    calendar: &Arc<VaultCalendar>,
-    source: &CalendarSourceRecord,
-    pulled: Pulled,
-) -> Result<u32, SyncError> {
-    apply_objects(
-        calendar,
-        source,
-        pulled.objects,
-        pulled.removed,
-        pulled.full,
-        pulled.cursor,
-    )
-    .await
 }

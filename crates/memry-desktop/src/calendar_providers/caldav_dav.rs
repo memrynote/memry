@@ -233,6 +233,24 @@ pub async fn multiget(
     Ok(out)
 }
 
+/// `listObjectEtags`: every object in the collection with its ETag, no data.
+pub async fn list_etags(
+    transport: &Transport,
+    collection: &Url,
+) -> Result<Vec<(String, Option<String>)>, DavError> {
+    let body =
+        format!("{XML_HEAD}<d:propfind {NAMESPACES}><d:prop><d:getetag/></d:prop></d:propfind>");
+    let (responses, _) = report(transport, b"PROPFIND", collection, "1", body, "list").await?;
+    Ok(responses
+        .into_iter()
+        .filter(|r| ok(status_of(r)))
+        .filter_map(|r| {
+            let url = object_url(r.href.as_deref()?, collection)?;
+            Some((url.to_string(), r.props.getetag))
+        })
+        .collect())
+}
+
 /// `fetchCollectionCtag`: the ctag, else the sync token, else `None`.
 pub async fn collection_tag(
     transport: &Transport,

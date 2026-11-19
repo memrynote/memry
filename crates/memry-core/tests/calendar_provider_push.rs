@@ -554,7 +554,9 @@ fn a_bound_occurrence_follows_the_server_and_the_rest_of_the_series_mirrors() {
             json!({}),
             "phone",
             NOW,
-        )
+        )?;
+        // The push landed: the item left the queue, as `push_done` does.
+        providers::dequeue(conn, &t)
     })
     .expect("bound");
 
@@ -609,4 +611,100 @@ fn a_bound_occurrence_follows_the_server_and_the_rest_of_the_series_mirrors() {
         "SELECT id FROM calendar_bindings WHERE archived_at IS NULL",
     );
     assert!(bound.is_empty());
+}
+
+/// An edit made while the push of the one before was in flight: the push lands with the
+/// queue stamp it was planned from, so the newer edit stays queued and the next plan sends it.
+#[test]
+fn an_edit_made_during_a_push_stays_queued_and_is_sent_next() {
+    let db = open();
+    connect_work(&db);
+    let event_id = db
+        .call_blocking(|conn| {
+            write::create_event(
+                conn,
+                &NewEvent {
+                    title: "Standup".into(),
+                    start_at: "2026-03-10T09:00:00.000Z".into(),
+                    end_at: Some("2026-03-10T10:00:00.000Z".into()),
+                    timezone: "UTC".into(),
+                    target_calendar_id: Some(CAL.into()),
+                    ..NewEvent::default()
+                },
+                "phone",
+                NOW,
+            )
+        })
+        .expect("create");
+    let target = Target {
+        source_type: "event".into(),
+        source_id: event_id.clone(),
+    };
+    let planned = db
+        .call_blocking(|conn| providers::queue(conn))
+        .expect("queue")
+        .into_iter()
+        .find(|q| q.target == target)
+        .expect("queued")
+        .queued_at;
+
+    // The PUT of "Standup" is in flight; the user retitles the event.
+    let id = event_id.clone();
+    db.call_blocking(move |conn| {
+        write::update_event(
+            conn,
+            &id,
+            &EventPatch {
+                title: Some("Retro".into()),
+                ..EventPatch::default()
+            },
+            "phone",
+            NOW + 5,
+        )
+    })
+    .expect("update");
+
+    let (t, href) = (target.clone(), format!("{CAL}memry-1.ics"));
+    db.call_blocking(move |conn| {
+        providers::push_landed(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: href,
+                etag: Some("\"e1\"".into()),
+            },
+            Some("BEGIN:VCALENDAR\r\nSUMMARY:Standup\r\nEND:VCALENDAR\r\n".into()),
+            planned,
+            &FixedZone(0),
+            "UTC",
+            &Default::default(),
+            "phone",
+            NOW + 10,
+        )
+    })
+    .expect("landed");
+
+    let t = target.clone();
+    let queued = db
+        .call_blocking(|conn| providers::queue(conn))
+        .expect("queue");
+    assert!(
+        queued.iter().any(|q| q.target == t),
+        "the edit made during the push stays queued"
+    );
+    let (input, binding) = db
+        .call_blocking(move |conn| {
+            let input =
+                providers::upsert_input(conn, &t, &FixedZone(0), "UTC", &Default::default())?;
+            Ok((input, bindings::find(conn, "caldav", &t)?))
+        })
+        .expect("read");
+    let (input, binding) = (input.expect("on the calendar"), binding.expect("bound"));
+    assert_eq!(input["title"], "Retro");
+    assert!(
+        !bindings::same_as_snapshot(&binding, &input),
+        "the next plan sends the edit"
+    );
 }

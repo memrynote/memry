@@ -1,7 +1,7 @@
 //! The calendar objects behind [`super::dav::Dav`]: one versioned store answering the object
 //! requests a pull and a push make (calendar-query, calendar-multiget, sync-collection, the ctag
-//! PROPFIND, GET, PUT and DELETE), with ETags and `If-Match`/`If-None-Match` as RFC 4791 and
-//! RFC 6578 describe them. Every change bumps one version, which is the ctag, the ETag of the
+//! and ETag-listing PROPFINDs, GET, PUT and DELETE), with ETags and `If-Match`/`If-None-Match`
+//! as RFC 4791 and RFC 6578 describe them. Every change bumps one version, which is the ctag, the ETag of the
 //! object it wrote and the sync token.
 
 use std::collections::BTreeMap;
@@ -62,6 +62,29 @@ fn between<'a>(text: &'a str, open: &str, close: &str) -> Vec<&'a str> {
         .skip(1)
         .filter_map(|part| part.split_once(close).map(|(inside, _)| inside))
         .collect()
+}
+
+/// A calendar-query's time range, by date: an object whose `DTSTART` date falls outside it is
+/// left out, as a real server does. A series (or a date that does not read) is always in.
+fn in_range(query: &str, data: &str) -> bool {
+    let date = |text: &str| text.get(..8).map(str::to_owned);
+    let (Some(start), Some(end)) = (
+        between(query, "start=\"", "\"")
+            .first()
+            .and_then(|t| date(t)),
+        between(query, "end=\"", "\"").first().and_then(|t| date(t)),
+    ) else {
+        return true;
+    };
+    let dtstart = data
+        .lines()
+        .find(|l| l.starts_with("DTSTART"))
+        .and_then(|l| l.rsplit(':').next())
+        .and_then(date);
+    match dtstart {
+        Some(day) if !data.contains("RRULE") => day >= start && day <= end,
+        _ => true,
+    }
 }
 
 impl State {
@@ -138,9 +161,17 @@ impl Store {
                         None,
                     )
                 }
+                "PROPFIND" if seen.body.contains("getetag") => {
+                    let all: String = state
+                        .members(collection)
+                        .map(|(path, (etag, _))| object_response(path, etag, None))
+                        .collect();
+                    multistatus(&all, None)
+                }
                 "REPORT" if seen.body.contains("calendar-query") => {
                     let all: String = state
                         .members(collection)
+                        .filter(|(_, (_, data))| in_range(&seen.body, data))
                         .map(|(path, (etag, data))| object_response(path, etag, Some(data)))
                         .collect();
                     multistatus(&all, None)
