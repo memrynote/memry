@@ -92,9 +92,16 @@
       .error {
         max-width: 420px;
       }
+      /* Auto margins centre the view and, unlike `align-items: center`, never push a tall view
+         (a long translation) above the top, where the user could not scroll to it. */
+      [data-view='migration'] body {
+        align-items: flex-start;
+        overflow-y: auto;
+      }
       .migration {
         max-inline-size: 420px;
         inline-size: 100%;
+        margin-block: auto;
       }
       .migration h1 {
         margin: 0;
@@ -163,6 +170,9 @@
         opacity: 0.75;
         line-height: 1.5;
         margin-block-end: 12px;
+      }
+      .migration .details {
+        opacity: 0.8;
       }
       .migration .check {
         font-weight: 600;
