@@ -152,7 +152,10 @@ private struct NotesCreateControl: ViewModifier {
                 Task {
                     // Straight into the note that was just made: a create
                     // that leaves the user hunting for the row did half a job.
-                    if let id = await model.createNote(in: folderPath) { open(id) }
+                    if let id = await model.createNote(in: folderPath) {
+                        split?.created(id)
+                        open(id)
+                    }
                 }
             },
             newFolder: {

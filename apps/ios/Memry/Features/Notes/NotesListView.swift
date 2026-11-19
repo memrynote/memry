@@ -195,7 +195,10 @@ struct NotesListView: View {
         .onChange(of: notesLinks.newNoteRequested, initial: true) {
             guard notesLinks.takeNewNote() else { return }
             Task {
-                if let id = await model.createNote(in: nil) { notesLinks.open(id) }
+                if let id = await model.createNote(in: nil) {
+                    if router.isSplit { router.created(id) }
+                    notesLinks.open(id)
+                }
             }
         }
         .onChange(of: width, initial: true) { _, width in router.isSplit = width == .regular }

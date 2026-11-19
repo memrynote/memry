@@ -10,9 +10,11 @@
 //  list, and with a hardware keyboard the focus moves to the selected row.
 //  After New note that happens twice or more, a few hundred milliseconds
 //  apart, and the keys typed next went to the list: the note stayed
-//  "Untitled note". The app cannot turn the mirror off, so the title, which
-//  owns the new note's first caret, takes every such move back until the
-//  user moves the caret.
+//  "Untitled note". While the claim holds, the list's selection does not
+//  follow focus (`NotesListFocusHold`, #5100), so the mirror moves nothing:
+//  keys typed while the row held the focus were lost. The title, which owns
+//  the new note's first caret, still takes back any move to the selected
+//  row until the user moves the caret.
 //
 //  Invariant: the claim only ever returns the caret to the title while the
 //  user has made no move of their own, and a take-back never ends the edit.
@@ -95,6 +97,18 @@ struct TitleFocusClaim {
         case .byKey, .intoText, .elsewhere:
             end()
             return false
+        }
+    }
+
+    /// A focus move that did not start in the title. The list's mirror only
+    /// ever moves the focus to its selected row with no key pressed (#5100),
+    /// so any other move the user made: one by a key (Tab, an arrow, into
+    /// the list too), or into a text view or a control. It ends the claim,
+    /// and the list's selection follows focus again.
+    mutating func observed(_ move: TitleFocusMove) {
+        switch move {
+        case .byKey, .intoText, .elsewhere: end()
+        case .intoTitle, .toSelectedRow, .toNothing: break
         }
     }
 
