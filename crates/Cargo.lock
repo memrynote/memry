@@ -4206,6 +4206,7 @@ dependencies = [
  "zbus",
  "zbus-secret-service-keyring-store",
  "zeroize",
+ "zip",
 ]
 
 [[package]]

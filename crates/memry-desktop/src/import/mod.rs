@@ -13,11 +13,13 @@
 pub mod assets;
 pub mod context;
 pub mod csv;
+pub mod google_keep;
 pub mod markdown;
 pub mod messages;
 pub mod registry;
 pub mod runner;
 pub mod sink;
+pub mod zip;
 
 use std::io;
 use std::path::Path;
