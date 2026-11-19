@@ -4,6 +4,7 @@
 pub mod account;
 pub mod ai;
 pub mod attachments;
+pub mod billing;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
@@ -11,6 +12,7 @@ pub mod editor;
 pub mod electron_import;
 pub mod embedding;
 pub mod error;
+pub mod export;
 pub mod fold;
 pub mod http;
 pub mod i18n;

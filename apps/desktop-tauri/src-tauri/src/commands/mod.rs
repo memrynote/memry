@@ -8,6 +8,7 @@ pub mod ai_structured;
 pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
+pub mod billing;
 pub mod clipboard;
 pub mod custom_icons;
 pub mod devices;
@@ -20,6 +21,7 @@ pub mod folders;
 pub mod ios_beta;
 pub mod journal;
 pub mod large_file;
+pub mod launch;
 pub mod linking;
 pub mod locale;
 pub mod logging;
@@ -52,6 +54,7 @@ pub mod vault_files;
 pub mod vault_index;
 pub mod vault_locks;
 pub mod vault_notices;
+pub mod voice;
 
 use error::{CommandError, ErrorKind, log_failure};
 

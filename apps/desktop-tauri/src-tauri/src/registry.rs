@@ -54,6 +54,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
+            // billing
+            crate::commands::billing::account_change_plan,
+            crate::commands::billing::account_get_billing_status,
+            crate::commands::billing::account_open_billing_portal,
+            crate::commands::billing::account_preview_plan_change,
+            crate::commands::billing::account_refresh_billing_status,
+            crate::commands::billing::account_start_checkout,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -103,6 +110,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,
+            // launch
+            crate::commands::launch::launch_report_renderer_marks,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -349,6 +358,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_delete_kept,
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
+            // voice
+            crate::commands::voice::settings_download_voice_model,
+            crate::commands::voice::settings_get_voice_model_status,
+            crate::commands::voice::settings_get_voice_recording_readiness,
+            crate::commands::voice::settings_get_voice_transcription_openai_key_status,
+            crate::commands::voice::settings_open_os_microphone_settings,
+            crate::commands::voice::settings_set_voice_transcription_openai_key,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -449,6 +465,8 @@ pub fn builder() -> Builder<Wry> {
             // vault locks
             crate::events::VaultLocksChangedEvent,
             crate::events::VaultLocksExternalEditRestoredEvent,
+            // voice
+            crate::events::VoiceModelProgressEvent,
             // window
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,
