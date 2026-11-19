@@ -48,6 +48,8 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
+  bench bootstrap --vault <id>           dev only: wipe this profile's copy of the vault, run the
+                                         shells' first sync and body passes, print timing marks
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -127,6 +129,10 @@ pub enum Command {
         name: String,
         value_json: String,
         vault: Option<String>,
+    },
+    /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
+    BenchBootstrap {
+        vault: String,
     },
 }
 
@@ -258,6 +264,12 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
         }),
         "notes" => parse_notes(args),
         "journal" => parse_journal(args),
+        "bench" => match args.next().as_deref() {
+            Some("bootstrap") => Ok(Command::BenchBootstrap {
+                vault: required(args, "--vault", "bench bootstrap")?,
+            }),
+            _ => usage("bench needs a subcommand: bootstrap"),
+        },
         other => usage(format!("unknown command `{other}`")),
     }
 }
@@ -425,6 +437,12 @@ mod tests {
         );
         assert_eq!(invocation("push").command, Command::Push { vault: None });
         assert_eq!(
+            invocation("bench bootstrap --vault v-1").command,
+            Command::BenchBootstrap {
+                vault: "v-1".to_string()
+            }
+        );
+        assert_eq!(
             invocation("push --vault v-1").command,
             Command::Push {
                 vault: Some("v-1".to_string())
@@ -541,6 +559,9 @@ mod tests {
             "--server",
             "sync --once",
             "vaults --loud",
+            "bench",
+            "bench bootstrap",
+            "bench bootstrap v-1",
         ] {
             assert!(run(line).is_err(), "`{line}` should not parse");
         }
@@ -564,6 +585,7 @@ mod tests {
             "journal append",
             "journal tags",
             "journal property",
+            "bench bootstrap --vault",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }

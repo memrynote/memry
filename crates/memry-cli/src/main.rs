@@ -6,6 +6,7 @@
 //! route, which retry, when to refresh, which status means what — is the
 //! core's (Constitution I).
 
+mod bench;
 mod cli;
 mod commands;
 mod edit;
@@ -76,5 +77,6 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             value_json,
             vault,
         } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
+        Command::BenchBootstrap { vault } => bench::bootstrap(&cli, &vault).await,
     }
 }

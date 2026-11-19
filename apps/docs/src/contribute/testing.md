@@ -100,6 +100,39 @@ Content comes from a seeded PRNG (`scripts/seed-data/bulk-notes.ts`), so the sam
 always wipes its target first, and writes `note_metadata` rows alongside the files so note ids stay
 stable when the indexer adopts them by path.
 
+### Bootstrap Benchmark
+
+`pnpm bench:bootstrap` times a fresh-device bootstrap of a staging vault and prints the same
+metrics for every shell. It refuses the production server.
+
+```bash
+# Core (crates/memry-cli). Sign the bench profile in once; it lives in ~/.memry-bench.
+pnpm bench:bootstrap core --login --email <address> --phrase-file <path>
+pnpm bench:bootstrap core --vault sandboxmobile --runs 2
+
+# Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
+pnpm bench:bootstrap electron --vault sandboxmobile
+```
+
+The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
+every request per endpoint, including the R2 pack downloads it routes through itself. A core run
+wipes the bench profile's copy of the vault and runs the shells' first sync, then the body passes,
+until no live note is owed a body. It never pushes. An Electron run starts the app and waits for
+you to sign in and download the vault from the account picker. Timing starts at that download.
+Afterwards, delete the downloaded vault folder and remove the device from another device.
+
+| Metric      | Definition                                                                                                                                                                                         |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `t_records` | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: the first `Pull timing`)                                                                                    |
+| `t_bodies`  | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`)                                                                              |
+| Requests    | Count, bytes and median latency per endpoint, split between the Worker and R2                                                                                                                      |
+| Bytes       | Per channel: records, packs, snapshots, updates                                                                                                                                                    |
+| Disruptions | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                        |
+| Limiter     | Local apply or client pacing when the network is idle half the run or more; otherwise line speed when busy throughput reaches half of `--line-mbps` (default 50), else request latency times count |
+
+Each run writes its metrics to `.perf/bootstrap-bench/`. The proxy speaks HTTP/1.1 to the shell, so
+a shell that relies on HTTP/2 multiplexing gets the proxy's 64 pooled upstream connections instead.
+
 ### Key Rules
 
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
