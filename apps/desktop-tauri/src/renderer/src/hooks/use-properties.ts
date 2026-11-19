@@ -4,6 +4,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { onNoteUpdated } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { inferType, getUniquePropertyName } from '@/lib/property-utils'
 import { toast } from 'sonner'
 import { getI18n } from 'react-i18next'
@@ -31,6 +32,7 @@ export interface UsePropertiesReturn {
 export function useProperties(entityId: string | null): UsePropertiesReturn {
   const [properties, setProperties] = useState<PropertyValue[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [listeningId, setListeningId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const propertiesRecord = useMemo(() => toRecord(properties), [properties])
@@ -64,17 +66,6 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   }, [entityId])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      await fetchProperties()
-      if (cancelled) return
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [fetchProperties])
-
-  useEffect(() => {
     if (!entityId) return undefined
     const unsub = window.api.onItemSynced((event) => {
       if (event.operation !== 'pull') return
@@ -90,15 +81,31 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   // graph, an agent) wrote since the last fetch survives. Refetch when an
   // update lands with properties this hook does not hold; this hook's own
   // writes echo back identical and are skipped.
+  // The first read waits for the listener: a change between a read and the listener going live
+  // sent its event to nobody (#4270), and a second read racing the first could answer older.
   useEffect(() => {
-    if (!entityId) return undefined
-    return onNoteUpdated((event) => {
-      if (event.id !== entityId) return
-      const next = event.changes.properties
-      if (!next) return
-      if (JSON.stringify(next) === JSON.stringify(propertiesRecordRef.current)) return
-      void fetchProperties()
-    })
+    if (!entityId) {
+      void (async () => {
+        await fetchProperties()
+      })()
+      return undefined
+    }
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id !== entityId) return
+            const next = event.changes.properties
+            if (!next) return
+            if (JSON.stringify(next) === JSON.stringify(propertiesRecordRef.current)) return
+            void fetchProperties()
+          }, live)
+      ],
+      () => {
+        setListeningId(entityId)
+        void fetchProperties()
+      }
+    )
   }, [entityId, fetchProperties])
 
   const updateProperty = useCallback(
@@ -266,7 +273,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   return {
     properties,
     propertiesRecord,
-    isLoading,
+    isLoading: isLoading || (entityId !== null && listeningId !== entityId),
     error,
     updateProperty,
     addProperty,

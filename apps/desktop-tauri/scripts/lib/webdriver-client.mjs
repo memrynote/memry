@@ -93,6 +93,9 @@ export function createClient(baseUrl) {
     currentWindow: (id) => call('GET', sessionPath(id, '/window')),
     windowHandles: (id) => call('GET', sessionPath(id, '/window/handles')),
     switchWindow: (id, handle) => call('POST', sessionPath(id, '/window'), { handle }),
+    /** @returns {Promise<{ x: number, y: number, width: number, height: number }>} logical px */
+    windowRect: (id) => call('GET', sessionPath(id, '/window/rect')),
+    setWindowRect: (id, rect) => call('POST', sessionPath(id, '/window/rect'), rect),
     /** @returns {Promise<string>} the element id */
     async findElement(id, css) {
       const value = await call('POST', sessionPath(id, '/element'), {
