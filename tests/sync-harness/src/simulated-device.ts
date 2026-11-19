@@ -1,6 +1,7 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { encryptItemForPush, decryptItemFromPull, initCrypto } from './crypto.js'
 import type { DeviceIdentity, FetchFn, VectorClock, SyncItem, PullItemData } from './types.js'
+import type { LocalBody, LocalVaultState } from './zero-loss-oracle/index.js'
 
 interface ChangesResponse {
   items: Array<{
@@ -35,6 +36,8 @@ export class SimulatedDevice {
   private devicePublicKeys = new Map<string, Uint8Array>()
   /** Highest delete clock seen per id, local or pulled (#2409). */
   private tombstoneClocks = new Map<string, VectorClock>()
+  /** CRDT documents pulled item by item: baseline revision and applied update sequences. */
+  private bodies = new Map<string, LocalBody>()
 
   constructor(identity: DeviceIdentity, fetchFn: FetchFn) {
     this.identity = identity
@@ -244,6 +247,66 @@ export class SimulatedDevice {
     }
 
     return { applied: applied.length, items: applied }
+  }
+
+  /**
+   * Pulls each body the item-granular way (protocol 07): the snapshot as
+   * baseline, then every update past its sequence through the batch endpoint.
+   * Only sequences are kept: the harness checks what was applied, not the bytes.
+   */
+  async pullBodies(noteIds: string[]): Promise<void> {
+    for (const noteId of noteIds) {
+      const snapshot = (await this.request(`/sync/crdt/snapshot/${noteId}`)) as {
+        sequenceNum: number
+        revision: string | null
+      }
+      const body: LocalBody = { snapshotRevision: snapshot.revision, appliedSequences: [] }
+      let since = snapshot.sequenceNum
+      for (;;) {
+        const batch = (await this.request('/sync/crdt/updates/batch', {
+          notes: [{ noteId, since }]
+        })) as {
+          notes: Record<string, { updates: Array<{ sequenceNum: number }>; hasMore: boolean }>
+        }
+        const page = batch.notes[noteId]
+        body.appliedSequences.push(...page.updates.map((u) => u.sequenceNum))
+        const last = page.updates.at(-1)
+        if (!page.hasMore || !last) break
+        since = last.sequenceNum
+      }
+      this.bodies.set(noteId, body)
+    }
+  }
+
+  /** The device's records and bodies in the zero-loss oracle's local shape. */
+  oracleState(): LocalVaultState {
+    const records: LocalVaultState['records'] = {}
+    for (const [id, clock] of this.tombstoneClocks) {
+      records[id] = { type: 'unknown', clock, deleted: true }
+    }
+    for (const item of this.items.values()) {
+      records[item.id] = {
+        type: item.type,
+        clock: item.clock,
+        deleted: item.operation === 'delete'
+      }
+    }
+    return { records, bodies: Object.fromEntries(this.bodies) }
+  }
+
+  private async request(path: string, body?: unknown): Promise<unknown> {
+    const response = await this.fetchFn(`http://localhost${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.identity.accessToken}`
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) })
+    })
+    if (!response.ok) {
+      throw new Error(`${path} failed (${response.status}): ${await response.text()}`)
+    }
+    return response.json()
   }
 
   private recordTombstoneClock(itemId: string, clock: VectorClock): void {
