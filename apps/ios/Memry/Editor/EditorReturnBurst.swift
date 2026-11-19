@@ -38,16 +38,31 @@ struct ReturnBurst {
     /// The core made no block while the keys were carried: the redrawn row
     /// keeps them.
     var refused = false
+    /// The kind of the block the Return makes, whose Backspace at its start
+    /// a Backspace before it takes the caret is (`backspaceHeld`); `nil`
+    /// for a block made below nested blocks, which takes none.
+    var makes: String?
+    /// The text the Return moved to that block, cut from the source: a
+    /// Backspace that takes the Return back puts it back.
+    var cut: NSAttributedString?
+    /// A Backspace turned that block into a paragraph.
+    var backspaced = false
+    /// A Backspace reached the source after it gave up the caret, with no
+    /// key carried: the made block's Backspace at its start, which it takes
+    /// as it takes the caret (`carriesEdit`).
+    var withdrawn = false
 }
 
 /// The block a Return in a one-line field (the note's title, a journal
 /// day's first line) moves the caret to, and the way to take the keys the
 /// field held for it meanwhile (`LineReturn`).
 struct TitleBurst {
-    /// Takes the keys the field held. `moved` is false when the block
-    /// refused the caret: the field keeps its keys, stops holding them so
-    /// its Return works again, and answers `nil`.
-    typealias Take = @MainActor (_ moved: Bool) -> String?
+    /// Takes the keys the field held, and the keys its line put back that
+    /// the keyboard may still deliver to the block (`LateKeys`). `moved` is
+    /// false when the block refused the caret: the field keeps its keys,
+    /// stops holding them so its Return works again, and answers neither.
+    typealias Take = @MainActor (_ moved: Bool) -> Taken
+    typealias Taken = (held: String?, late: LateKeys?)
 
     let target: String
     let take: Take
@@ -56,13 +71,61 @@ struct TitleBurst {
 extension EditorSession {
     /// Return was pressed in `field` and its new block is on its way: keys
     /// typed in `field` from now are held for that block.
-    func startReturnBurst(in field: BlockField) {
+    func startReturnBurst(in field: BlockField, makes: String?, cut: NSAttributedString?) {
         let text = field.textView.text as NSString
         let caret = min(field.textView.selectedRange.location, text.length)
         returnBurst = ReturnBurst(
             source: field, blockId: field.blockId, head: text.substring(to: caret), tail: text.substring(from: caret),
-            typed: field.typed
+            typed: field.typed, makes: makes, cut: cut
         )
+    }
+
+    /// Backspace in `field` before it holds a key for its Return's block:
+    /// the caret would be at that block's start, as on desktop, so it is
+    /// that block's Backspace (#4834). A block that is not a paragraph turns
+    /// into one; a paragraph merges back into `field`'s block, which takes
+    /// the Return back. Answers whether it took the Backspace.
+    func backspaceHeld(in field: BlockField) -> Bool {
+        guard let burst = returnBurst, holdsKeys(field), let makes = burst.makes else { return false }
+        let view = field.textView
+        let head = (burst.head as NSString).length
+        guard view.markedTextRange == nil, view.text == burst.head + burst.tail,
+              view.selectedRange == NSRange(location: head, length: 0)
+        else { return false }
+        if makes != "paragraph", !burst.backspaced {
+            returnBurst?.backspaced = true
+            // Not made yet: its write turns it (`makeBlock`).
+            if let target = burst.target {
+                enqueue { [weak self] in
+                    await self?.turnParagraph(target, from: makes)
+                    await self?.didChange()
+                }
+            }
+            return true
+        }
+        takeBack(burst, in: field)
+        return true
+    }
+
+    /// Takes back the Return `burst` holds keys for: its text comes back to
+    /// `field`, which keeps the caret at the join, and the block it made
+    /// merges back.
+    private func takeBack(_ burst: ReturnBurst, in field: BlockField) {
+        returnBurst = nil
+        let view = field.textView
+        let head = (burst.head as NSString).length
+        if let cut = burst.cut { view.textStorage.insert(cut, at: head) }
+        view.selectedRange = NSRange(location: head, length: 0)
+        view.forgetTyping()
+        // The block as the core holds it once the merge lands.
+        field.base = view.textStorage.string
+        guard let target = burst.target else { return withdrawnReturn = burst.blockId }
+        if pendingFocus == target { pendingFocus = nil }
+        if caretAtStart == target { caretAtStart = nil }
+        field.written = enqueue { [weak self] in
+            await self?.mergeBack(target, into: burst.blockId)
+            await self?.didChange()
+        }
     }
 
     /// The core made `blockId` for the Return in `field`, whose row a type
@@ -111,6 +174,7 @@ extension EditorSession {
         guard let burst = returnBurst else { return nil }
         let view = field.textView
         let head = (burst.head as NSString).length
+        if text.isEmpty, range.length > 0, NSMaxRange(range) == head, backspaceHeld(in: field) { return false }
         let end = (view.text as NSString).length - (burst.tail as NSString).length
         if range.location >= head, NSMaxRange(range) <= end { return true }
         if range.location < head, range.length > 0, !text.isEmpty, range != view.selectedRange { return false }
@@ -154,8 +218,10 @@ extension EditorSession {
     /// such a key came out after the carried keys but ahead of the caret,
     /// so the next keys landed before it (`milk⏎eggs⏎` stored as
     /// `milk|egs|g`, #4737). A key typed at the caret joins the carried
-    /// keys, and a Backspace takes back the last of them. Any other text
-    /// (an autocorrection) is refused.
+    /// keys, and a Backspace takes back the last of them, or with none
+    /// carried is the made block's Backspace at its start (`withdrawn`): it
+    /// deleted the source's last character. Any other text (an
+    /// autocorrection) is refused.
     func carriesEdit(_ range: NSRange, _ text: String, in field: BlockField) -> Bool {
         guard let burst = returnBurst, burst.source === field, burst.ended,
               field.textView.text == burst.head + burst.tail
@@ -166,7 +232,11 @@ extension EditorSession {
             return true
         }
         if !text.isEmpty { return true }
-        guard range.length > 0, NSMaxRange(range) == head, var carried = burst.carried else { return false }
+        guard range.length > 0, NSMaxRange(range) == head else { return false }
+        guard var carried = burst.carried else {
+            returnBurst?.withdrawn = true
+            return true
+        }
         carried.removeLast()
         returnBurst?.carried = carried.isEmpty ? nil : carried
         return true
@@ -220,7 +290,12 @@ extension EditorSession {
         if handing || redraw && returnBurst?.source === shortcutField { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
         if redraw { returnBurst?.handing = false }
-        if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
+        if caretAtStart == field.blockId {
+            caretAtStart = nil
+            textView.selectedRange = NSRange(location: 0, length: 0)
+        } else if atEnd {
+            textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        }
         // The old row may have left already, so nothing else holds the caret.
         if !took, redraw {
             Log.interface.error("the row a type change redrew did not take the caret")
@@ -229,9 +304,12 @@ extension EditorSession {
         if fromTitle, let burst = titleBurst {
             titleBurst = nil
             // The field kept the caret, so its keys stay with it.
-            guard let held = burst.take(took) else { return }
-            type(held, into: field)
-            if !textView.isFirstResponder, field.dirty { commit(field) }
+            let (held, late) = burst.take(took)
+            if let held {
+                type(held, into: field)
+                if !textView.isFirstResponder, field.dirty { commit(field) }
+            }
+            lateKeys = late.map { (field.blockId, $0) }
             return
         }
         guard handing, let burst = returnBurst else { return }
@@ -244,11 +322,41 @@ extension EditorSession {
         }
         // A source that was not editing never resigned: its keys come now.
         let held = burst.ended ? burst.carried : heldKeys(burst)
+        if burst.withdrawn {
+            // The keys carried after it go at the join: typed at the made
+            // block's start, they merge back with its text, and the caret
+            // follows them.
+            if let held { type(held, into: field) }
+            backspaceAtStart(field)
+            guard let held, let joined = self.field, joined.blockId == burst.blockId else { return }
+            let caret = joined.textView.selectedRange.location + (held as NSString).length
+            joined.textView.selectedRange = NSRange(location: min(caret, joined.textView.textStorage.length), length: 0)
+            return
+        }
         guard let held else { return }
         if !burst.ended { removeHeldKeys(burst, held) }
         type(held, into: field)
         // Typing commits as editing ends, which never began here.
         if !textView.isFirstResponder, field.dirty { commit(field) }
+    }
+
+    /// Whether `text`, about to be typed into `field`, is only keys the
+    /// title's Return put back in its line that the keyboard delivered
+    /// after all: they are dropped (`LateKeys`). Any other edit, in any
+    /// block, ends the wait for them.
+    func dropsLateKeys(_ text: String, in field: BlockField) -> Bool {
+        guard var late = lateKeys else { return false }
+        lateKeys = nil
+        guard late.blockId == field.blockId, !text.isEmpty, text.allSatisfy({ late.keys.arrived($0) }) else { return false }
+        if late.keys.waiting { lateKeys = late }
+        return true
+    }
+
+    /// A hardware key went down in `field`: a key it types later is that
+    /// key, not a late one.
+    func keyWentDown(_ characters: String, in field: BlockField) {
+        guard lateKeys?.blockId == field.blockId else { return }
+        lateKeys?.keys.pressed(characters)
     }
 
     /// `field` is not in a window yet, and takes the caret as it moves in

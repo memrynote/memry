@@ -71,10 +71,12 @@ struct JournalFirstLineTests {
         let write: JournalFirstLineDraft.Write = { _, _ in true }
 
         type("line\n", into: draft, write: write)
-        #expect(draft.takeHeld(true) == "\n", "a Return typed at normal speed made no new block")
+        let first = draft.takeHeld(true).held
+        #expect(first == "\n", "a Return typed at normal speed made no new block")
 
         type("line\nmore", into: draft, write: write)
-        #expect(draft.takeHeld(true) == "\nmore")
+        let taken = draft.takeHeld(true).held
+        #expect(taken == "\nmore")
         #expect(draft.text.isEmpty)
     }
 
@@ -96,7 +98,7 @@ struct JournalFirstLineTests {
         #expect(try await body(page) == ["line"])
         #expect(page.handingOff, "the field went before the line's block took the caret")
         let burst = try #require(page.editor.session.titleBurst, "the line's block does not take the caret")
-        #expect(burst.take(true) == "\nmore")
+        #expect(burst.take(true).held == "\nmore")
         #expect(!page.handingOff)
         #expect(draft.text.isEmpty)
     }
@@ -139,7 +141,9 @@ struct JournalFirstLineTests {
         let draft = JournalFirstLineDraft()
         type("line\nmore", into: draft) { _, _ in true }
 
-        #expect(draft.takeHeld(false) == nil)
+        let taken = draft.takeHeld(false).held
+
+        #expect(taken == nil)
         #expect(draft.text == "more")
         #expect(draft.returned == nil)
     }

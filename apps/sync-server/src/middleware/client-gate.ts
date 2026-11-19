@@ -8,9 +8,9 @@ import type { AppContext } from '../types'
 
 // Reads are NEVER gated -- neither by the version floor nor by the kill switch
 // -- so a device dropped to read-only can still open every note it owns
-// (FR-010). GET/HEAD/OPTIONS are reads, and so are the POSTs below: they carry
-// an id list in the body and only select (#4716). Anything else mutates and
-// goes through the policy check.
+// (FR-010). GET/HEAD/OPTIONS are reads, and so are the POSTs below (#4716): they
+// change no client-authored state. A pull may stamp sync_items.blob_missing_at on
+// a lost blob (markSyncItemBlobMissing, server-set, idempotent). All else is gated.
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const READ_POST_PATHS = new Set([
   '/sync/pull',

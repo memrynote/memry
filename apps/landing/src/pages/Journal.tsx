@@ -26,6 +26,7 @@ import {
 import { Container } from '@/components/layout/Container'
 import { FeatureHeroScreenshot } from '@/components/shared/FeatureHeroScreenshot'
 import { PageHead } from '@/components/shared/PageHead'
+import { RelatedLinks } from '@/components/shared/RelatedLinks'
 import { Button } from '@/components/ui/button'
 import {
   Accordion,
@@ -58,7 +59,7 @@ const fadeUpVariant = {
 export function JournalFeaturePage() {
   return (
     <>
-      <PageHead page="journal" />
+      <PageHead page="journal" faqs={JOURNAL_FAQ} />
       <main>
         <JournalHero />
         <EverythingInOnePlace />
@@ -69,6 +70,7 @@ export function JournalFeaturePage() {
         <WorksWithRest />
         <JournalUseCases />
         <MoreJournalFeatures />
+        <CompareJournalApps />
         <JournalFaq />
         <JournalFinalCta />
       </main>
@@ -100,13 +102,14 @@ function JournalHero() {
         >
           <Eyebrow>Journal</Eyebrow>
           <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
-            Reflect.
+            A private journaling app.
             <br />
-            <span className="italic text-terracotta">Daily.</span>
+            <span className="italic text-terracotta">One page a day.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            A premium daily writing experience with rich context and statistics. Build your writing
-            habit, one entry at a time.
+            Each entry is a plain Markdown file in a folder you own, with your schedule and tasks
+            beside the page and past years below it. Sync is end-to-end encrypted. On macOS,
+            Windows, and Linux, with an iPhone app in beta on TestFlight.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -948,7 +951,42 @@ function MoreJournalFeatures() {
   )
 }
 
+const JOURNAL_COMPARISONS = [
+  {
+    label: 'The best journaling apps in 2026',
+    href: '/blog/best-journaling-apps',
+    description: 'Day One, Apple Journal, Journey, Diarium, Obsidian, and memrynote compared.'
+  },
+  {
+    label: 'The most private journal apps',
+    href: '/blog/most-private-journaling-apps',
+    description: 'Which apps encrypt entries end to end, work offline, and publish their code.'
+  },
+  {
+    label: 'memrynote vs Day One',
+    href: '/day-one-alternative',
+    description: 'For Day One users who want Windows, Linux, or entries as plain files.'
+  }
+] as const
+
+function CompareJournalApps() {
+  return (
+    <section className="py-24 md:py-28">
+      <Container>
+        <motion.div {...fadeUp}>
+          <RelatedLinks title="Choosing a journal app" links={JOURNAL_COMPARISONS} />
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
+
 const JOURNAL_FAQ = [
+  {
+    question: 'Is memrynote a private journal app?',
+    answer:
+      'Yes. Entries stay on your computer and the journal works offline with no account. If you turn on sync, each entry is encrypted on your device with XChaCha20-Poly1305 before upload, so the server stores it only as ciphertext and never holds your keys. The code is open source under AGPL-3.0.'
+  },
   {
     question: 'Where are journal entries stored?',
     answer:
@@ -962,7 +1000,17 @@ const JOURNAL_FAQ = [
   {
     question: 'Are entries encrypted?',
     answer:
-      'On disk they sit as plain markdown in your vault. When you sync across your own devices, payloads are end-to-end encrypted with XChaCha20-Poly1305 — the server never sees plaintext.'
+      'On disk they are plain Markdown in your vault, so turn on FileVault, BitLocker, or LUKS if you want them encrypted there. When you sync, each entry is encrypted on your device with XChaCha20-Poly1305 and the server stores it only as ciphertext. Tag names and folder paths are visible to the server, because sync uses them as item IDs.'
+  },
+  {
+    question: 'Does the journal work on iPhone?',
+    answer:
+      'The iPhone app is in beta on TestFlight. Its Journal tab reads and writes the same days, templates, and reminders as the desktop app, and changes sync both ways. Join at memrynote.com/ios-beta. There is no Android app yet.'
+  },
+  {
+    question: 'Can I bring my old journal with me?',
+    answer:
+      'Yes. Settings → Import brings in Apple Journal exports (text and location, not photos), NotePlan daily notes as journal entries, and folders of Markdown files. You can also copy dated .md files into the journal folder, and memrynote picks them up.'
   },
   {
     question: 'What shows up in the day context sidebar?',

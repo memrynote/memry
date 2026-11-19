@@ -73,8 +73,12 @@ alone:
 
 - every `GET`, `HEAD` and `OPTIONS` request
   (`apps/sync-server/src/middleware/client-gate.ts:14`);
-- these four `POST` routes, which carry an id list in the body and only select
-  (`apps/sync-server/src/middleware/client-gate.ts:15-20`):
+- these four `POST` routes, which carry an id list in the body and change no
+  client-authored state (`apps/sync-server/src/middleware/client-gate.ts:15-20`).
+  `POST /sync/pull` and `POST /sync/records/pull` MAY stamp
+  `sync_items.blob_missing_at` on a live row whose blob is lost; the server sets
+  it, and a repeat pull keeps the first stamp
+  (`apps/sync-server/src/services/sync.ts:1571`, called at `:1646`; #2302):
 
 | Route                                  | Registered at                                                                             |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- |

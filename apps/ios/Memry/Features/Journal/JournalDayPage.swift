@@ -119,12 +119,6 @@ struct JournalDayPage: View {
         if let detail = model.detail {
             let taskBridge = taskBridge(model)
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                if !JournalWriteGate.metadataWrites {
-                    JournalDayReadOnlyMetadata(
-                        metadata: JournalNoteBridge.metadata(store.cachedDay(date)),
-                        explains: Bindable(model).explainsReadOnlyMetadata
-                    )
-                }
                 NotePageContent(
                     model: model.read,
                     detail: detail,

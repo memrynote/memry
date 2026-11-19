@@ -2060,9 +2060,25 @@ public protocol CanvasesProtocol: AnyObject, Sendable {
     func create(title: String?, ownerNoteId: String?, scene: String?) throws  -> CanvasRecord
     
     /**
+     * Every live canvas owned by the note `owner_note_id`, ordered by id: its
+     * whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+     * owner. Empty when the note owns none.
+     */
+    func list(ownerNoteId: String) throws  -> [CanvasRecord]
+    
+    /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
      */
     func setScene(id: String, scene: String) throws  -> CanvasRecord
+    
+    /**
+     * Replaces a canvas's scene only if the stored scene is still `expected`,
+     * the `scene` of the record the edit was built on. Checked and written in
+     * one transaction, so a pull between the caller's read and this write is
+     * reported as `Stale` instead of being overwritten. Fails with `NotFound`
+     * for a deleted canvas.
+     */
+    func setSceneExpecting(id: String, scene: String, expected: String) throws  -> CanvasSceneWrite
     
 }
 /**
@@ -2151,6 +2167,21 @@ open func create(title: String?, ownerNoteId: String?, scene: String?)throws  ->
 }
     
     /**
+     * Every live canvas owned by the note `owner_note_id`, ordered by id: its
+     * whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+     * owner. Empty when the note owns none.
+     */
+open func list(ownerNoteId: String)throws  -> [CanvasRecord]  {
+    return try  FfiConverterSequenceTypeCanvasRecord.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_list(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(ownerNoteId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
      */
 open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
@@ -2160,6 +2191,25 @@ open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),
         FfiConverterString.lower(scene),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Replaces a canvas's scene only if the stored scene is still `expected`,
+     * the `scene` of the record the edit was built on. Checked and written in
+     * one transaction, so a pull between the caller's read and this write is
+     * reported as `Stale` instead of being overwritten. Fails with `NotFound`
+     * for a deleted canvas.
+     */
+open func setSceneExpecting(id: String, scene: String, expected: String)throws  -> CanvasSceneWrite  {
+    return try  FfiConverterTypeCanvasSceneWrite_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_canvases_set_scene_expecting(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(scene),
+        FfiConverterString.lower(expected),uniffiCallStatus
     )
 })
 }
@@ -28880,6 +28930,25 @@ public enum BlockEdit: Equatable, Hashable {
      */
     case mergeBlocks(blockId: String, intoBlockId: String
     )
+    /**
+     * Return inside a block's text (desktop's `splitBlockTr`): the inline
+     * content from `at` on, marks and inline nodes kept, moves to a new
+     * block `new_block_id` right after `block_id`. `MergeBlocks` of the new
+     * block into `block_id` undoes it.
+     *
+     * `at` counts characters of the block's text as `ReplaceText` spells
+     * it: Unicode scalar values, each inline node one U+FFFC. A byte offset
+     * could not tell the caret before a textless node (a date) from the
+     * caret after it.
+     *
+     * `kind` names the new block's type, with its default props. `None`
+     * gives it `block_id`'s type and props, as desktop's split at a block's
+     * start does. A block with nested blocks is refused: on desktop they go
+     * with the tail, and `MergeBlocks` refuses to bring them back. Last, to
+     * keep earlier FFI indices.
+     */
+    case splitBlock(blockId: String, at: UInt32, kind: String? = nil, newBlockId: String
+    )
 
 
 
@@ -28971,6 +29040,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 24: return .mergeBlocks(blockId: try FfiConverterString.read(from: &buf), intoBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 25: return .splitBlock(blockId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterOptionString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -29143,6 +29215,14 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(intoBlockId, into: &buf)
             
+        
+        case let .splitBlock(blockId,at,kind,newBlockId):
+            writeInt(&buf, Int32(25))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            FfiConverterOptionString.write(kind, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
+            
         }
     }
 }
@@ -29239,6 +29319,88 @@ public func FfiConverterTypeCalendarTextChange_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeCalendarTextChange_lower(_ value: CalendarTextChange) -> RustBuffer {
     return FfiConverterTypeCalendarTextChange.lower(value)
+}
+
+
+
+/**
+ * What [`Canvases::set_scene_expecting`] did.
+ */
+
+public enum CanvasSceneWrite: Equatable, Hashable {
+    
+    /**
+     * The new scene is stored.
+     */
+    case written(canvas: CanvasRecord
+    )
+    /**
+     * The stored scene changed since `expected` was read (a pull landed), so
+     * nothing was written. Re-apply the edit to `current` and write again.
+     */
+    case stale(current: CanvasRecord
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CanvasSceneWrite: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCanvasSceneWrite: FfiConverterRustBuffer {
+    typealias SwiftType = CanvasSceneWrite
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CanvasSceneWrite {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .written(canvas: try FfiConverterTypeCanvasRecord.read(from: &buf)
+        )
+        
+        case 2: return .stale(current: try FfiConverterTypeCanvasRecord.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CanvasSceneWrite, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .written(canvas):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeCanvasRecord.write(canvas, into: &buf)
+            
+        
+        case let .stale(current):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeCanvasRecord.write(current, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasSceneWrite_lift(_ buf: RustBuffer) throws -> CanvasSceneWrite {
+    return try FfiConverterTypeCanvasSceneWrite.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCanvasSceneWrite_lower(_ value: CanvasSceneWrite) -> RustBuffer {
+    return FfiConverterTypeCanvasSceneWrite.lower(value)
 }
 
 
@@ -34684,6 +34846,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarZoneTransition: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCanvasRecord: FfiConverterRustBuffer {
+    typealias SwiftType = [CanvasRecord]
+
+    public static func write(_ value: [CanvasRecord], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCanvasRecord.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CanvasRecord] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CanvasRecord]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCanvasRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeDueReminderItem: FfiConverterRustBuffer {
     typealias SwiftType = [DueReminderItem]
 
@@ -37124,7 +37311,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_canvases_list() != 54789) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_canvases_set_scene() != 42908) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_canvases_set_scene_expecting() != 15694) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {

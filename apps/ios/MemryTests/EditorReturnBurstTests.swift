@@ -22,29 +22,56 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
     let inserts = Mutex(Inserts.land)
     /// The same for a block's text, which the core writes or holds.
     let texts = Mutex(Inserts.land)
+    /// The same for a block's props.
+    let props = Mutex(Inserts.land)
     enum Inserts { case land, wait, refuse }
     struct Refused: Error {}
 
     init(_ blocks: [Block]) { self.blocks = Mutex(blocks) }
 
     func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
-        if case .insertBlock = edit {
+        if Self.makesBlock(edit) {
             while inserts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
             if inserts.withLock({ $0 }) == .refuse { throw Refused() }
         }
         switch edit {
         case .setText, .replaceText:
             while texts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
+        case .setProp:
+            while props.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
         default:
             break
         }
         return blocks.withLock { blocks in
             switch edit {
-            case let .setText(blockId, text), let .replaceText(blockId, text, _):
+            case let .setText(blockId, text), let .replaceText(blockId, text, nil):
                 update(&blocks, blockId) { $0.inline = Self.runs(text) }
+            case let .replaceText(blockId, text, base?):
+                // The user's change, `base` to `text`, on the live block, as
+                // the core rebases it.
+                update(&blocks, blockId) { $0.inline = Self.runs(Self.rebase(BlockText.shown($0.inline), from: base, to: text)) }
             case let .insertBlock(kind, after, text, newId):
                 let index = blocks.firstIndex { $0.id == after }.map { $0 + 1 } ?? blocks.count
                 blocks.insert(Block(id: newId, kind: kind, depth: 0, props: [], inline: Self.runs(text)), at: index)
+            case let .splitBlock(blockId, at, kind, newId):
+                guard let index = blocks.firstIndex(where: { $0.id == blockId }) else { return false }
+                let scalars = Array(BlockText.shown(blocks[index].inline).unicodeScalars)
+                var head = String.UnicodeScalarView()
+                head.append(contentsOf: scalars[..<Int(at)])
+                var tail = String.UnicodeScalarView()
+                tail.append(contentsOf: scalars[Int(at)...])
+                let source = blocks[index]
+                blocks[index].inline = Self.runs(String(head))
+                blocks.insert(
+                    Block(id: newId, kind: kind ?? source.kind, depth: source.depth, props: kind == nil ? source.props : [], inline: Self.runs(String(tail))),
+                    at: index + 1
+                )
+            case let .mergeBlocks(blockId, into):
+                guard let from = blocks.firstIndex(where: { $0.id == blockId }),
+                      let to = blocks.firstIndex(where: { $0.id == into })
+                else { return false }
+                blocks[to].inline = Self.runs(BlockText.shown(blocks[to].inline) + BlockText.shown(blocks[from].inline))
+                blocks.remove(at: from)
             case let .delete(blockId):
                 blocks.removeAll { $0.id == blockId }
             case let .setProp(blockId, name, value):
@@ -55,6 +82,24 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
                 break
             }
             return true
+        }
+    }
+
+    private static func rebase(_ live: String, from base: String, to text: String) -> String {
+        let (live, base, text) = (Array(live), Array(base), Array(text))
+        var prefix = 0
+        while prefix < min(base.count, text.count), base[prefix] == text[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < min(base.count, text.count) - prefix, base[base.count - 1 - suffix] == text[text.count - 1 - suffix] { suffix += 1 }
+        let removed = base.count - prefix - suffix
+        guard prefix + removed <= live.count else { return String(text) }
+        return String(live[..<prefix] + text[prefix ..< text.count - suffix] + live[(prefix + removed)...])
+    }
+
+    private static func makesBlock(_ edit: BlockEdit) -> Bool {
+        switch edit {
+        case .insertBlock, .splitBlock: true
+        default: false
         }
     }
 
@@ -106,6 +151,8 @@ private final class Screen {
     let editor: BodyEditor
     let model: NoteEditorViewModel
     let window: UIWindow
+    /// The blocks the page draws, which a re-read of the note sets.
+    let page: Page
 
     /// The block typed in, then a paragraph for each of `below`.
     init(_ kind: String = "paragraph", depth: UInt32 = 0, text: String, below: [String] = []) throws {
@@ -115,7 +162,7 @@ private final class Screen {
         }
         editor = BodyEditor(blocks)
         model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let page = Page(blocks)
+        page = Page(blocks)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
@@ -304,16 +351,189 @@ struct EditorReturnBurstTests {
         #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs"])
     }
 
-    /// Return with the caret inside the text: the keys typed after it go to
-    /// the new block, and the text around the caret stays whole.
-    @Test(.timeLimit(.minutes(1))) func keysAfterAReturnMidTextLeaveTheTextWhole() async throws {
-        let shown = try await Screen.run(text: "headtail") { screen in
+    /// #4834: Return with the caret inside the text splits the block there,
+    /// as on desktop, and the keys typed after it go to the new block's
+    /// start, before the text the Return moved.
+    @Test(.timeLimit(.minutes(1))) func keysAfterAReturnMidTextGoBeforeTheTextItMoved() async throws {
+        let (blocks, caret) = try await Screen.run(text: "headtail") { screen in
             _ = try await screen.start(caret: 4)
             screen.keys("\nnew")
             try await screen.finish(blocks: 2)
+            return (screen.editor.all, screen.model.session.caretAtStart)
+        }
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["head", "newtail"], "\(blocks)")
+        #expect(blocks.map(\.kind) == ["paragraph", "paragraph"])
+        #expect(caret == nil)
+    }
+
+    /// The new block takes the caret at its start, where the moved text
+    /// begins.
+    @Test(.timeLimit(.minutes(1))) func theSplitBlockTakesTheCaretAtItsStart() async throws {
+        let (text, caret) = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            screen.keys("\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            return (screen.focused?.text, screen.focused?.selectedRange)
+        }
+        #expect(text == "world")
+        #expect(caret == NSRange(location: 0, length: 0))
+    }
+
+    /// A heading split mid-text leaves a paragraph below, as desktop's
+    /// `splitBlockTr` without `keepType`; split at its start, the heading
+    /// moves down whole and leaves an empty heading above.
+    @Test(.timeLimit(.minutes(1)), arguments: [(3, ["heading", "paragraph"], ["abc", "def"]), (0, ["heading", "heading"], ["", "abcdef"])])
+    func aHeadingSplitsAsOnDesktop(caret: Int, kinds: [String], shown: [String]) async throws {
+        let blocks = try await Screen.run("heading", text: "abcdef") { screen in
+            _ = try await screen.start(caret: caret)
+            screen.keys("\n")
+            try await screen.finish(blocks: 2)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == kinds)
+        #expect(blocks.map { BlockText.shown($0.inline) } == shown)
+    }
+
+    /// The issue's HID check: `helloworld`, the caret between, Return, then
+    /// Backspace before the new block takes the caret: one block again.
+    @Test(.timeLimit(.minutes(1)), arguments: ["", "X"])
+    func backspaceRightAfterAMidTextReturnTakesItBack(later: String) async throws {
+        let shown = try await Screen.run(text: "helloworld") { screen in
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            screen.backspace()
+            screen.keys(later)
+            try await screen.finish(blocks: 1)
             return screen.editor.shown
         }
-        #expect(shown == ["headtail", "new"], "\(shown)")
+        #expect(shown == ["hello\(later)world"], "\(shown)")
+    }
+
+    /// The same Backspace, then the core refuses the split: the Backspace
+    /// already put the text back, so it comes back once, and nothing waits
+    /// to merge the next Return's block away.
+    @Test(.timeLimit(.minutes(1))) func aRefusedSplitTakenBackKeepsTheTextOnce() async throws {
+        let (shown, withdrawn) = try await Screen.run(text: "helloworld") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            screen.backspace()
+            try await screen.finish(blocks: 1)
+            return (screen.editor.shown, screen.model.session.withdrawnReturn)
+        }
+        #expect(shown == ["helloworld"], "\(shown)")
+        #expect(withdrawn == nil)
+    }
+
+    /// After that refusal, the next Return in the block still splits it.
+    @Test(.timeLimit(.minutes(1))) func theReturnAfterARefusedTakenBackSplitSplits() async throws {
+        let shown = try await Screen.run(text: "helloworld") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            screen.backspace()
+            try await screen.finish(blocks: 1)
+            screen.editor.inserts.withLock { $0 = .land }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["hello", "world"], "\(shown)")
+    }
+
+    /// The same Backspace once the new block holds the caret: it merges back.
+    @Test(.timeLimit(.minutes(1))) func backspaceAtTheSplitBlocksStartMergesItBack() async throws {
+        let shown = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            screen.keys("\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first || screen.model.session.returnBurst != nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.model.session.blocks = { screen.editor.all }
+            screen.backspace()
+            screen.keys("X")
+            try await screen.finish(blocks: 1)
+            return screen.editor.shown
+        }
+        #expect(shown == ["helloXworld"], "\(shown)")
+    }
+
+    /// VERIFY-5122: keys typed at once after that Backspace go at the join,
+    /// on screen and in the store, while the merge is on its way. The row
+    /// above showed only its own text until the merge redrew it, so the keys
+    /// went after `hello`, and the commit's rebase put them after `world`.
+    @Test(.timeLimit(.minutes(1))) func keysAfterTheMergingBackspaceGoAtTheJoin() async throws {
+        let (seen, shown) = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            screen.keys("\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first || screen.model.session.returnBurst != nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.model.session.blocks = { screen.editor.all }
+            screen.backspace()
+            screen.keys("xy")
+            for _ in 0 ..< 80 where screen.editor.all.count > 1 { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            let seen = screen.focused?.text
+            try await screen.finish(blocks: 1)
+            return (seen, screen.editor.shown)
+        }
+        #expect(seen == "helloxyworld", "\(String(describing: seen))")
+        #expect(shown == ["helloxyworld"], "\(shown)")
+    }
+
+    /// A Backspace UIKit hands the old row as it gives up the caret to the
+    /// new block is that block's Backspace at its start: it takes the
+    /// Return back, and the next keys go at the join. It deleted the old
+    /// block's last character.
+    @Test(.timeLimit(.minutes(1))) func aBackspaceQueuedForTheResigningRowTakesTheReturnBack() async throws {
+        let (late, seen, shown) = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            var late = false
+            let observer = NotificationCenter.default.addObserver(
+                forName: UITextView.textDidEndEditingNotification, object: first, queue: nil
+            ) { _ in
+                MainActor.assumeIsolated {
+                    guard !late, screen.model.session.returnBurst?.ended == true else { return }
+                    late = true
+                    let range = NSRange(location: first.selectedRange.location - 1, length: 1)
+                    if first.delegate?.textView?(first, shouldChangeTextIn: range, replacementText: "") != false {
+                        first.deleteBackward()
+                    }
+                }
+            }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            screen.model.session.blocks = { screen.editor.all }
+            screen.keys("\n")
+            for _ in 0 ..< 80 where !late || screen.focused == nil || screen.model.session.returnBurst != nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.keys("xy")
+            for _ in 0 ..< 80 where screen.editor.all.count > 1 { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            let seen = screen.focused?.text
+            try await screen.finish(blocks: 1)
+            return (late, seen, screen.editor.shown)
+        }
+        #expect(late, "a Backspace reached the old row after it gave up the caret")
+        #expect(seen == "helloxyworld", "\(String(describing: seen))")
+        #expect(shown == ["helloxyworld"], "\(shown)")
+    }
+
+    /// The core refuses the split: the moved text comes back after the keys
+    /// typed meanwhile, which stay where they were typed.
+    @Test(.timeLimit(.minutes(1))) func aRefusedSplitPutsTheTextBack() async throws {
+        let shown = try await Screen.run(text: "helloworld") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\nabc")
+            try await screen.finish(blocks: 1)
+            return screen.editor.shown
+        }
+        #expect(shown == ["helloabcworld"], "\(shown)")
     }
 
     /// An IME composition begun before the new block takes the caret moves
@@ -429,6 +649,32 @@ struct EditorReturnBurstTests {
             return seen.held
         }
         #expect(held == true, "a text view holds the caret as the old row leaves")
+    }
+
+    /// #4756: the page re-reads the note while a block shortcut is still
+    /// writing (the title's rename, the body taking the caret) and redraws
+    /// the row in its new shape before the shortcut asked for the caret. The
+    /// new row takes the caret as it moves in, so the keys typed from then
+    /// land in it: they reached no text view (`[] milk` stored as `m`).
+    @Test(.timeLimit(.minutes(1))) func aRowRedrawnBeforeTheShortcutAsksForTheCaretTakesIt() async throws {
+        let (blocks, focused) = try await Screen.run(text: "") { screen in
+            let item = try await screen.start()
+            screen.editor.props.withLock { $0 = .wait }
+            screen.keys("[] ")
+            for _ in 0 ..< 80 where screen.editor.all.first?.kind != "checkListItem" {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.page.blocks = screen.editor.all
+            for _ in 0 ..< 80 where screen.textViews().contains(item) { try await Task.sleep(for: .milliseconds(25)) }
+            let focused = screen.focused != nil
+            screen.keys("milk")
+            screen.editor.props.withLock { $0 = .land }
+            try await screen.finish(blocks: 1)
+            return (screen.editor.all, focused)
+        }
+        #expect(focused, "no text view holds the caret once the row is redrawn")
+        #expect(blocks.map(\.kind) == ["checkListItem"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk"], "\(blocks.map { BlockText.shown($0.inline) })")
     }
 
     /// A second Return while the item turns into a paragraph is a
@@ -692,9 +938,10 @@ struct EditorReturnBurstTests {
 
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)
 
-    /// Backspace past the Return deletes the text before it, as before #4692:
-    /// the keys then stay in the old block, and nothing is lost.
-    @Test(.timeLimit(.minutes(1))) func backspacePastTheReturnDeletesAndKeepsTheKeys() async throws {
+    /// #4834 (#4707 L3): Backspace right after the Return is the new
+    /// block's Backspace at its start, as on desktop: it takes the Return
+    /// back, and the keys after it land at the join.
+    @Test(.timeLimit(.minutes(1))) func backspaceRightAfterReturnTakesItBack() async throws {
         let shown = try await Screen.run(text: "") { screen in
             _ = try await screen.start()
             screen.keys("Alpha\n")
@@ -703,7 +950,7 @@ struct EditorReturnBurstTests {
             try await screen.finish(blocks: 2)
             return screen.editor.shown
         }
-        #expect(shown == ["AlphBeta", ""], "\(shown)")
+        #expect(shown == ["AlphaBeta"], "\(shown)")
     }
 
     /// Typing where an arrow moved the caret lands there.
@@ -719,9 +966,10 @@ struct EditorReturnBurstTests {
         #expect(shown == ["AlXphaBe", ""], "\(shown)")
     }
 
-    /// Backspace at the block's start does what it does anywhere: a
-    /// checklist item turns into a paragraph.
-    @Test(.timeLimit(.minutes(1))) func backspaceAtTheStartActsAsUsual() async throws {
+    /// Return at a checklist item's start moves the item down whole, and a
+    /// Backspace right after acts on it as on desktop: it turns into a
+    /// paragraph, and the empty item above stays.
+    @Test(.timeLimit(.minutes(1))) func backspaceAtTheStartActsOnTheNewItem() async throws {
         let blocks = try await Screen.run("checkListItem", text: "milk") { screen in
             _ = try await screen.start(caret: 0)
             screen.keys("\n")
@@ -729,8 +977,8 @@ struct EditorReturnBurstTests {
             try await screen.finish(blocks: 2)
             return screen.editor.all
         }
-        #expect(blocks.map(\.kind) == ["paragraph", "checkListItem"])
-        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", ""])
+        #expect(blocks.map(\.kind) == ["checkListItem", "paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["", "milk"])
     }
 
     // MARK: Links and attachments in held keys (REVIEW-4707 M2)

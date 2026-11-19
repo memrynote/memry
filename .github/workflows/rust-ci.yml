@@ -53,10 +53,18 @@ jobs:
           toolchain: '1.98.1'
           components: rustfmt, clippy
 
+      # rust-cache keys on job id + OS + arch, not the image. A cache built on a newer
+      # `ubuntu-latest` (glibc 2.39+) was restored on ubuntu-22.04 and its build scripts failed
+      # with `GLIBC_2.39 not found` (#3846). ImageOS (`ubuntu24`, `ubuntu26`) names the release.
+      - name: Runner image
+        id: image
+        run: echo "os=${ImageOS:?ImageOS is unset, so the cargo cache key cannot name the image}" >> "$GITHUB_OUTPUT"
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          key: ${{ steps.image.outputs.os }}
 
       - name: Format
         run: cargo fmt --all --check

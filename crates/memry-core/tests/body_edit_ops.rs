@@ -1796,3 +1796,86 @@ fn an_empty_range_at_a_trailing_textless_node_still_lands() {
     apply(&document, &atom(2, "dateMention")).expect("the date");
     assert_eq!(spelled(&document), ["q ", "dateMention", "wikiLink"]);
 }
+
+/// #4808: offsets are UTF-8 bytes. A node after multibyte text keeps the
+/// text after it: counting the run in characters made the tail look empty.
+#[test]
+fn a_node_after_multibyte_text_keeps_the_text_after_it() {
+    let document = opened(&body(&[("a", "paragraph", "A にほn  z")]));
+    apply(&document, &atom("A にほn ".len() as u32, "dateMention")).expect("the date");
+    assert_eq!(spelled(&document), ["A にほn ", "dateMention", " z"]);
+}
+
+/// #4398: an offset inside a character is refused, and the block is left as
+/// it was. yrs underflowed on it: a panic in debug, a wrapped length in
+/// release.
+#[test]
+fn a_node_inside_a_character_is_refused() {
+    let document = opened(&body(&[("a", "paragraph", "A 語 z")]));
+    for (start, end) in [(3, 3), (2, 3), (3, 5)] {
+        let refused = apply(
+            &document,
+            &BlockEdit::InsertInline {
+                block_id: "a".to_owned(),
+                start,
+                end,
+                kind: "dateMention".to_owned(),
+                text: String::new(),
+                attrs: inline_attrs(&[("date", "2026-01-01")]),
+            },
+        );
+        assert!(
+            matches!(
+                refused,
+                Err(memry_core::crdt::CrdtError::Undecodable { .. })
+            ),
+            "{start}..{end}: {refused:?}"
+        );
+        assert_eq!(spelled(&document), ["A 語 z"]);
+    }
+}
+
+/// #4808: a multibyte tail with a mark in it comes back whole and with the
+/// mark where it was.
+#[test]
+fn a_formatted_multibyte_tail_keeps_its_text_and_marks() {
+    let document = opened(&body(&[("a", "paragraph", "q にほん語 z")]));
+    let bold = "q にほ".len() as u32;
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "a".to_owned(),
+            start: bold,
+            end: bold + "ん語".len() as u32,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold");
+    apply(&document, &atom(2, "wikiLink")).expect("the link");
+    let block = extract_blocks(&document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+    let runs: Vec<(String, bool)> = block
+        .inline
+        .iter()
+        .map(|run| {
+            (
+                run.text.clone(),
+                run.marks.iter().any(|mark| mark == "bold"),
+            )
+        })
+        .collect();
+    assert_eq!(
+        runs,
+        [
+            ("q ".to_owned(), false),
+            (String::new(), false),
+            ("にほ".to_owned(), false),
+            ("ん語".to_owned(), true),
+            (" z".to_owned(), false),
+        ]
+    );
+}

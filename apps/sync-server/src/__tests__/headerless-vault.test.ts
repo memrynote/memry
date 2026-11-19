@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { errorHandler } from '../lib/errors'
+import { isReadRequest } from '../middleware/client-gate'
 import { blob } from '../routes/blob'
+import { bootstrap } from '../routes/bootstrap'
 import { sync } from '../routes/sync'
 import type { AppContext } from '../types'
 
@@ -32,6 +34,7 @@ const app = new Hono<AppContext>()
 app.onError(errorHandler)
 app.route('/sync', sync)
 app.route('/sync', blob)
+app.route('/sync/bootstrap', bootstrap)
 
 const rateLimiter = {
   idFromName: (name: string) => name,
@@ -289,6 +292,40 @@ const HEADERLESS_READS = [
   { route: 'GET /sync/ws', path: '/sync/ws', status: 426 }
 ]
 
+// Concrete URLs for every write route behind the paid-sync middleware.
+const HEADERLESS_WRITES = [
+  ['POST', '/sync/push'],
+  ['POST', '/sync/records/push'],
+  ['POST', '/sync/crdt/updates'],
+  ['POST', '/sync/crdt/snapshot'],
+  ['POST', '/sync/crdt/snapshot/batch'],
+  ['DELETE', '/sync/blob/:blob_key', '/sync/blob/item-1'],
+  ['POST', '/sync/attachments/upload/initiate'],
+  [
+    'PUT',
+    '/sync/attachments/upload/:session_id/chunk/:chunk_index',
+    '/sync/attachments/upload/session-1/chunk/0'
+  ],
+  [
+    'POST',
+    '/sync/attachments/upload/:session_id/complete',
+    '/sync/attachments/upload/session-1/complete'
+  ],
+  ['DELETE', '/sync/attachments/upload/:session_id', '/sync/attachments/upload/session-1'],
+  ['POST', '/sync/attachments/dereference'],
+  ['POST', '/sync/attachments/holds'],
+  ['POST', '/sync/attachments/holds/release'],
+  ['PUT', '/sync/attachments/:attachment_id/manifest', '/sync/attachments/att-1/manifest'],
+  ['POST', '/sync/bootstrap'],
+  ['POST', '/sync/bootstrap/renew'],
+  ['POST', '/sync/bootstrap/close']
+].map(([method, routePattern, path = routePattern]) => ({
+  route: `${method} ${routePattern}`,
+  routePattern: `${method} ${routePattern}`,
+  method,
+  path
+}))
+
 describe.each([
   { plan: 'plus', maxVaults: 1 },
   { plan: 'believer', maxVaults: null }
@@ -319,13 +356,36 @@ describe.each([
   })
 
   // Compat: a build that predates the header still gets `default` on its
-  // first push, exactly as before. The item is refused on its own (per-item
-  // outcome), after the middleware has run.
-  it('still creates `default` on a header-less write', async () => {
-    const res = await request('/sync/push', json({ items: [{ id: 'task-1', type: 'task' }] }))
+  // first write, exactly as before, on every write route. The route may refuse
+  // the request on its own (validation, missing session), after the middleware
+  // has run. #4278 review: a write wrongly added to the client gate's read list
+  // would put its rows under `default` with no `sync_vaults` row.
+  it.each(HEADERLESS_WRITES)('still creates `default` on a header-less $route', async (write) => {
+    await request(write.path, { ...json({}), method: write.method })
+
+    expect(vaultIds()).toEqual(['default'])
+  })
+
+  // A header on a read still creates its vault: a client that names a vault is
+  // registering it by using it, and only the header-less read is read-only.
+  it('creates the vault a read names in X-Memry-Vault-Id', async () => {
+    const res = await request('/sync/manifest', { headers: { 'X-Memry-Vault-Id': 'vault-new' } })
 
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ accepted: [], rejected: [{ id: 'task-1' }] })
-    expect(vaultIds()).toEqual(['default'])
+    expect(vaultIds()).toEqual(['vault-new'])
+  })
+
+  // The table above is the checklist; the router is the source. A new write
+  // route that is missing from the table fails here instead of going untested.
+  it('lists every write route the router serves', () => {
+    const served = new Set(
+      app.routes
+        .filter((r) => r.method !== 'ALL' && !isReadRequest(r.method, r.path))
+        // Auth-only routes registered above the paid-sync middleware.
+        .filter((r) => !r.path.startsWith('/sync/vaults'))
+        .map((r) => `${r.method} ${r.path}`)
+    )
+
+    expect([...served].toSorted()).toEqual(HEADERLESS_WRITES.map((w) => w.routePattern).toSorted())
   })
 })

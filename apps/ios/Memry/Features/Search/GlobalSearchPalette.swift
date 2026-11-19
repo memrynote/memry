@@ -51,7 +51,10 @@ private struct SearchRowHighlight: ViewModifier {
         content
             .id(key)
             .listRowBackground(highlight.map { _ in
-                isHighlighted ? Tokens.Canvas.surfaceActive.color : Tokens.Canvas.background.color
+                ZStack {
+                    Tokens.Canvas.background.color
+                    if isHighlighted { SelectedRowFill() }
+                }
             })
             .accessibilityAddTraits(isHighlighted ? .isSelected : [])
     }

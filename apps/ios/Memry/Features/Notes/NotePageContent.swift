@@ -193,14 +193,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             )) { request in
                 ViewQuerySheet(request: request) { editorModel.session.saveView($0) }
             }
-            .fullScreenCover(item: Binding(
-                get: { whiteboards == nil ? nil : editorModel.session.whiteboardEdit },
-                set: { if $0 == nil { editorModel.session.finishWhiteboard() } }
-            )) { request in
-                if let whiteboards {
-                    WhiteboardEditor(request: request, boards: whiteboards)
-                }
-            }
+            .modifier(WhiteboardPresentation(session: editorModel.session, boards: whiteboards))
         }
         if let tapBelowBody {
             Color.clear

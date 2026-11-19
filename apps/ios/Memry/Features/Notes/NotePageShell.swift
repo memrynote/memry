@@ -195,8 +195,9 @@ final class NotePageActions {
             status = .idle
             requestSync?()
         } catch {
-            Log.storage.error("a note page action did not land")
-            status = .failed(ErrorMapping.userFacing(error))
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a note page action did not land", .code(mapped.code))
+            status = .failed(mapped)
         }
     }
 }
