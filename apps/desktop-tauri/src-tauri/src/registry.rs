@@ -54,6 +54,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
+            // billing
+            crate::commands::billing::account_change_plan,
+            crate::commands::billing::account_get_billing_status,
+            crate::commands::billing::account_open_billing_portal,
+            crate::commands::billing::account_preview_plan_change,
+            crate::commands::billing::account_refresh_billing_status,
+            crate::commands::billing::account_start_checkout,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -88,6 +95,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // folder view
+            crate::commands::folder_view::folder_view_available_properties,
+            crate::commands::folder_view::folder_view_delete_view,
+            crate::commands::folder_view::folder_view_folder_exists,
+            crate::commands::folder_view::folder_view_get_config,
+            crate::commands::folder_view::folder_view_get_views,
+            crate::commands::folder_view::folder_view_list,
+            crate::commands::folder_view::folder_view_set_config,
+            crate::commands::folder_view::folder_view_set_view,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -103,6 +119,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,
+            // launch
+            crate::commands::launch::launch_report_renderer_marks,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -145,6 +163,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get_all_positions::<Wry>,
             crate::commands::notes::notes_get_by_path,
             crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_get_list_item,
             crate::commands::notes::notes_get_links,
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_get_unlinked_mentions,
@@ -215,10 +234,19 @@ pub fn builder() -> Builder<Wry> {
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
+            crate::commands::shortcuts::shortcut_register_sticky,
+            crate::commands::shortcuts::shortcut_set_sticky,
             // spell
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
+            // stickies
+            crate::commands::stickies::sticky_delete_draft,
+            crate::commands::stickies::sticky_get_session,
+            crate::commands::stickies::sticky_list_drafts,
+            crate::commands::stickies::sticky_resize,
+            crate::commands::stickies::sticky_save_draft,
+            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -281,6 +309,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
+            crate::commands::tags::tags_is_gone,
             crate::commands::tags::tags_list_categories,
             crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename::<Wry>,
@@ -404,6 +433,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // stickies
+            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,

@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Vorheriger Tresor",
           "description": "Zum vorherigen Tresor in der Seitenleiste wechseln"
+        },
+        "todayJournal": {
+          "label": "Heutiges Journal",
+          "description": "Das Journal beim heutigen Eintrag öffnen"
         }
       },
       "tabs": {

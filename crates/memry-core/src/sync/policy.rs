@@ -41,7 +41,7 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use serde_json::Value as Json;
 
 use crate::api::errors::ApiError;
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 
 use super::state::{SyncState, WriteGate, evaluate_gate};
 
@@ -340,12 +340,21 @@ impl PolicyTier {
 ///
 /// `now_ms` is read once the answer is in, so the server clock is compared with the local one
 /// at the same moment, not one round trip (and its retries) earlier.
-pub async fn poll(http: &HttpClient, tier: &PolicyTier, now_ms: impl Fn() -> i64) -> WriteGate {
+/// `vault` is the selected vault, sent as `X-Memry-Vault-Id` (§5.2).
+pub async fn poll(
+    http: &HttpClient,
+    tier: &PolicyTier,
+    vault: Option<&str>,
+    now_ms: impl Fn() -> i64,
+) -> WriteGate {
     // Chapter 07 §7.10's polled ladder: `retryOn429: false`, because for a
     // polled call the poll cadence is itself the retry.
-    let request = ApiRequest::get(STATUS_PATH)
+    let mut request = ApiRequest::get(STATUS_PATH)
         .auth(Auth::Session)
         .retry(RetryPolicy::polled());
+    if let Some(vault) = vault {
+        request = request.header(VAULT_ID_HEADER, vault);
+    }
     match http.send_json::<Json>(request).await {
         Ok(body) => tier.learn(&body, now_ms()),
         Err(error) => {

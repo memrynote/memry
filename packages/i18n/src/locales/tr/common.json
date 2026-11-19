@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Henüz kasa yok",
       "openVault": "Kasayı aç",
+      "createVault": "Kasa oluştur",
+      "openFolderAsVault": "Klasörü kasa olarak aç",
       "settings": "Ayarlar",
       "remove": "Kaldır “",
       "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",

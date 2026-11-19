@@ -80,6 +80,7 @@ pub mod fields;
 pub mod lifecycle;
 pub mod model;
 pub mod structure;
+pub mod update;
 
 pub use batch::{Prior, Removed, TaskWrite, undo, write_fields};
 pub use bulk::*;
@@ -90,6 +91,7 @@ pub use model::{StatusKind, TASK_ID_LEN, new_task_id, status_kind};
 pub use structure::{
     SubtaskDisposal, delete_with_subtasks, reorder, set_parent, set_project, set_status,
 };
+pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "task";
@@ -98,6 +100,11 @@ pub const ITEM_TYPE: &str = "task";
 /// claim made here is that it is a non-empty string a `(type, id)` key can
 /// hold.
 pub const MAX_ITEM_ID_LEN: usize = 128;
+
+/// A task's three list fields. They are outside `TASK_SYNCABLE_FIELDS`, so
+/// they tick no field clock (§6.7); a concurrent merge unions them (§6.7.1)
+/// and an undo restores them.
+pub(crate) const UNCLOCKED_LISTS: [&str; 3] = ["tags", "linkedNoteIds", "linkedCanvasIds"];
 
 /// What a new task carries.
 ///
@@ -293,10 +300,11 @@ pub fn set_archived(
 /// Replaces the task's tags, deduped case-insensitively.
 ///
 /// **`tags` is not in `TASK_SYNCABLE_FIELDS`** (§6.7), so no field clock ticks
-/// for it and it is not merged at all: on a concurrent apply the local list
-/// survives, and on the wholesale-apply branch the remote's does. That is the
-/// rule as written, and it is why [`super::tags`] excludes `task` from
-/// `TAGGABLE_TYPES` rather than treating it like a note.
+/// for it: on a concurrent apply both lists are unioned (§6.7.1, so a tag
+/// removed here comes back while a concurrent peer still holds it), and on the
+/// wholesale-apply branch the remote's list replaces this one. It is why
+/// [`super::tags`] excludes `task` from `TAGGABLE_TYPES` rather than treating
+/// it like a note.
 pub fn set_tags(
     conn: &Connection,
     task_id: &str,
@@ -359,7 +367,14 @@ pub fn apply_remote(
     clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let local = TASK_FIELDS.local(conn, record)?;
-    let inbound = task_merge::apply_remote_merged(conn, record, &TASK_SYNCABLE_FIELDS, now_ms)?;
+    let inbound = task_merge::apply_remote_merged(
+        conn,
+        record,
+        &TASK_SYNCABLE_FIELDS,
+        &UNCLOCKED_LISTS,
+        task_merge::Carry::Union,
+        now_ms,
+    )?;
     TASK_FIELDS.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
     Ok(inbound)
 }

@@ -24,6 +24,7 @@ use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend};
+use crate::sync::events::OnSyncEvent;
 use crate::sync::gate::SyncStartGate;
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
@@ -41,14 +42,18 @@ pub struct OpenVaultBinding {
 
 struct Slot {
     gate: Weak<SyncStartGate>,
-    state: BindingState,
+    /// `None` until the first decision, which is always reported: the vault before may have
+    /// been held, and the renderer still shows its binding.
+    state: Option<BindingState>,
 }
 
 impl OpenVaultBinding {
     /// The binding of the vault sync runs for; `Bound` when none runs (`NEUTRAL_STATE`).
     pub fn state(&self) -> BindingState {
         match lock(&self.slot).as_ref() {
-            Some(slot) if slot.gate.strong_count() > 0 => slot.state.clone(),
+            Some(slot) if slot.gate.strong_count() > 0 => {
+                slot.state.clone().unwrap_or(BindingState::Bound)
+            }
             _ => BindingState::Bound,
         }
     }
@@ -77,9 +82,11 @@ impl OpenVaultBinding {
     }
 
     fn track(&self, gate: &Arc<SyncStartGate>) {
+        // Reads as Electron's neutral `Bound` until the first decision, as with no supervisor: a
+        // read right after sign-in is not `unknown`.
         *lock(&self.slot) = Some(Slot {
             gate: Arc::downgrade(gate),
-            state: BindingState::Unknown,
+            state: None,
         });
     }
 
@@ -94,13 +101,16 @@ impl OpenVaultBinding {
             return false;
         };
         gate.set_binding(state.gate());
-        if current.state == *state {
+        if current.state.as_ref() == Some(state) {
             return false;
         }
-        current.state = state.clone();
+        current.state = Some(state.clone());
         true
     }
 }
+
+/// Told each new gate before its supervisor starts.
+pub type GateHook = Arc<dyn Fn(&Arc<SyncStartGate>) + Send + Sync>;
 
 /// What a supervisor of the app is built from, beyond the open vault.
 pub struct SyncWiring {
@@ -115,11 +125,15 @@ pub struct SyncWiring {
     pub keychain_recovered: broadcast::Sender<()>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    pub on_event: OnSyncEvent,
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// Each new gate, before its supervisor starts: billing tells it the plan
+    /// (`BillingService::attach_gate`).
+    pub on_gate: GateHook,
 }
 
 /// The open vault without keeping it open: a closed vault ends the binding task.
@@ -162,6 +176,7 @@ impl SyncWiring {
     fn start(self: &Arc<Self>, open: &OpenVault, signals: &AuthSignals) -> SyncSupervisor {
         let gate = Arc::new(SyncStartGate::default());
         self.bindings.track(&gate);
+        (self.on_gate)(&gate);
         let account = Arc::clone(&self.account);
         let backend = VaultSyncBackend::new(
             Arc::clone(&open.vault),
@@ -183,6 +198,7 @@ impl SyncWiring {
                 telemetry: self.telemetry.clone(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
+                on_event: Arc::clone(&self.on_event),
             },
         );
         self.runtime
@@ -193,6 +209,10 @@ impl SyncWiring {
     /// Decides the vault's binding, tells its gate, and retries `Unknown` while the gate lives.
     async fn bind(self: Arc<Self>, held: HeldOpen, gate: Weak<SyncStartGate>) {
         loop {
+            // A closed vault or a stopped sync (a sign-out detaches it) decides nothing.
+            if gate.upgrade().is_none() {
+                return;
+            }
             let Some(open) = held.get() else { return };
             let state = match self
                 .account
@@ -272,8 +292,9 @@ mod tests {
         let open = Arc::new(SyncStartGate::default());
         bindings.track(&open);
 
+        assert_eq!(bindings.state(), BindingState::Bound, "before any decision");
         assert!(!bindings.publish(&closed, &BindingState::Foreign));
-        assert_eq!(bindings.state(), BindingState::Unknown);
+        assert_eq!(bindings.state(), BindingState::Bound);
         assert!(bindings.publish(&open, &BindingState::LocalOnly));
         assert!(
             !bindings.publish(&open, &BindingState::LocalOnly),
@@ -284,5 +305,21 @@ mod tests {
         drop(open);
         assert_eq!(bindings.state(), BindingState::Bound);
         assert!(bindings.gate().is_none());
+    }
+
+    /// A switch from a held vault to a bound one reports `Bound`, so the renderer leaves the
+    /// held vault's binding prompt.
+    #[test]
+    fn a_switch_from_a_held_vault_to_a_bound_one_is_reported() {
+        let bindings = OpenVaultBinding::default();
+        let held = Arc::new(SyncStartGate::default());
+        bindings.track(&held);
+        assert!(bindings.publish(&held, &BindingState::LocalOnly));
+
+        let bound = Arc::new(SyncStartGate::default());
+        bindings.track(&bound);
+
+        assert!(bindings.publish(&bound, &BindingState::Bound));
+        assert_eq!(bindings.state(), BindingState::Bound);
     }
 }

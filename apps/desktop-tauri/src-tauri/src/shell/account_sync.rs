@@ -21,10 +21,10 @@ use crate::commands::error::CommandError;
 use crate::events::{
     AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
     SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncStatusChangedEvent,
-    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast,
+    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast, broadcast_sync_event,
 };
 use crate::power::PowerMonitor;
-use crate::shell::services;
+use crate::shell::{billing, services};
 use crate::startup::{self, Stage};
 
 pub fn register_stages() {
@@ -58,9 +58,11 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             let _ = recovered.send(());
         });
 
+    let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
     let status_app = app.clone();
+    let event_app = app.clone();
     let list_app = app.clone();
     let wiring = Arc::new(SyncWiring {
         runtime,
@@ -74,11 +76,13 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         on_status: Arc::new(move |status| {
             broadcast(&status_app, SyncStatusChangedEvent(status.clone()));
         }),
+        on_event: Arc::new(move |event| broadcast_sync_event(&event_app, event)),
         bindings: bindings.clone(),
         on_binding: Arc::new(move |state: &BindingState| {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
         on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
+        on_gate: Arc::new(move |gate| billing.attach_gate(gate)),
     });
     app.manage(bindings);
     app.manage(wiring);

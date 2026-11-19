@@ -81,7 +81,7 @@ export const scenes = {
     await rec.type(']] next week', { cps: 14 })
     await sleep(300)
     // The dashed link: hovering it says the note is not there yet.
-    const chip = page.locator('span.wiki-link:visible', { hasText: NEW })
+    const chip = page.locator('span.wiki-link:visible').filter({ hasText: NEW })
     const c = await rec.center(chip)
     await rec.glide(c.x - 20, c.y + 3, 400)
     await page

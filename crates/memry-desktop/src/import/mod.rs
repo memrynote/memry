@@ -15,6 +15,7 @@ pub mod context;
 pub mod csv;
 pub mod markdown;
 pub mod messages;
+pub mod obsidian_tasks;
 pub mod registry;
 pub mod runner;
 pub mod sink;
