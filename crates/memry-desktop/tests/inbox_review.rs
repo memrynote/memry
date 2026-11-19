@@ -363,8 +363,9 @@ async fn closed_channels_leave_the_scheduler_asleep_until_the_minute() {
             .is_pending()
     );
     assert_eq!(ticks.load(Ordering::SeqCst), 1, "the launch's catch-up");
-    // A loop that went on reading a closed channel would be cut off by tokio's budget and
-    // wake itself to spin again.
+    // A loop that went on reading a closed channel would be cut off by tokio's budget, which
+    // defers its wake to the scheduler: the wake lands once this task yields.
+    settle().await;
     assert_eq!(wakes.0.load(Ordering::SeqCst), 0, "asleep until the minute");
 }
 
