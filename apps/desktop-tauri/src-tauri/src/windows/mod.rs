@@ -12,6 +12,7 @@ pub mod registry;
 pub mod reveal;
 pub mod scripts;
 pub mod startup_error;
+pub mod sticky;
 #[cfg(windows)]
 pub mod win32_caption;
 pub mod zoom;

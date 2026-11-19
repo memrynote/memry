@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Vorige kluis",
           "description": "Ga naar de vorige kluis in de zijbalk"
+        },
+        "todayJournal": {
+          "label": "Dagboek van vandaag",
+          "description": "Open het dagboek op het item van vandaag"
         }
       },
       "tabs": {

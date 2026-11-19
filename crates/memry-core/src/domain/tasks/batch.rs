@@ -26,12 +26,7 @@ use crate::sync::{outbox, versioned};
 use super::super::notes::{clock_in, failed, insert_local, tombstone_local};
 use super::create::seeded;
 use super::model::{find_live, new_task_id};
-use super::{ITEM_TYPE, edit_merged_in};
-
-/// The fields outside `TASK_SYNCABLE_FIELDS` a task write may change. They
-/// merge by no field clock (§6.7), but they are still user data an undo
-/// restores.
-const UNCLOCKED_FIELDS: [&str; 3] = ["tags", "linkedNoteIds", "linkedCanvasIds"];
+use super::{ITEM_TYPE, UNCLOCKED_LISTS, edit_merged_in};
 
 /// What one task looked like before a write changed it: each changed field
 /// with its **prior** value (`null` when the key was absent or null).
@@ -369,7 +364,7 @@ fn restamped(stored: &Object, prior: &Value) -> Result<Value, StorageError> {
 fn restorable_field(field: &str) -> Result<&'static str, StorageError> {
     TASK_SYNCABLE_FIELDS
         .iter()
-        .chain(UNCLOCKED_FIELDS.iter())
+        .chain(UNCLOCKED_LISTS.iter())
         .copied()
         .find(|known| *known == field)
         .ok_or_else(|| StorageError::Invalid {
