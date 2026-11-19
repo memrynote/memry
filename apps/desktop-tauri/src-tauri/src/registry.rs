@@ -407,6 +407,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::InboxOpenItemEvent,
             crate::events::InboxReviewDueEvent,
             crate::events::InboxReviewOpenEvent,
+            crate::events::InboxSnoozeDueEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,

@@ -7,7 +7,6 @@ import {
   onInboxArchived,
   onInboxFiled,
   onInboxSnoozed,
-  onInboxSnoozeDue,
   onInboxTranscriptionComplete,
   onInboxMetadataComplete,
   onInboxProcessingError,
@@ -125,7 +124,6 @@ describe('inbox-service', () => {
     api.onInboxArchived = vi.fn(() => unsubscribe)
     api.onInboxFiled = vi.fn(() => unsubscribe)
     api.onInboxSnoozed = vi.fn(() => unsubscribe)
-    api.onInboxSnoozeDue = vi.fn(() => unsubscribe)
     api.onInboxTranscriptionComplete = vi.fn(() => unsubscribe)
     api.onInboxMetadataComplete = vi.fn(() => unsubscribe)
     api.onInboxProcessingError = vi.fn(() => unsubscribe)
@@ -135,7 +133,6 @@ describe('inbox-service', () => {
     expect(onInboxArchived(vi.fn())).toBe(unsubscribe)
     expect(onInboxFiled(vi.fn())).toBe(unsubscribe)
     expect(onInboxSnoozed(vi.fn())).toBe(unsubscribe)
-    expect(onInboxSnoozeDue(vi.fn())).toBe(unsubscribe)
     expect(onInboxTranscriptionComplete(vi.fn())).toBe(unsubscribe)
     expect(onInboxMetadataComplete(vi.fn())).toBe(unsubscribe)
     expect(onInboxProcessingError(vi.fn())).toBe(unsubscribe)
