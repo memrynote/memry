@@ -85,6 +85,11 @@ fn register_stages() {
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
+    startup::register(
+        Stage::Handlers,
+        "import grants",
+        commands::notes_import::init,
+    );
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
     shutdown::register_stages();

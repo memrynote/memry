@@ -13,7 +13,6 @@ import type {
   PortedJournalMethod
 } from '../renderer/src/services/journal-service'
 import type * as TasksRpc from '@memry/rpc/tasks'
-import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
 import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
@@ -1479,72 +1478,10 @@ interface SyncSetupClientAPI {
   getRecoveryPhrase: () => Promise<string | null>
 }
 
-// Account API
-type BillingPlanId = 'plus' | 'pro' | 'believer'
-type BillingPlan = 'free' | BillingPlanId
-type BillingCadence = 'monthly' | 'annual' | 'lifetime'
-type BillingStatusValue = 'inactive' | 'active' | 'past_due' | 'paused' | 'canceled'
-
-interface BillingStatus {
-  plan: BillingPlan
-  cadence: BillingCadence | null
-  status: BillingStatusValue
-  source: string
-  email: string | null
-  limits: {
-    storageLimit: number
-    maxFileSize: number
-    maxVaults: number | null
-    versionHistoryDays: number
-  }
-  usage: {
-    storageUsed: number
-  }
-  expiresAt: number | null
-  canManageBilling: boolean
-}
-
-interface BillingActionResult {
-  success: boolean
-  error?: string
-}
-
+// Account API. The billing calls are `commands.account*` (generated bindings).
 interface AccountClientAPI {
   getInfo: () => Promise<{ email: string | null; joinedAt: number | null }>
   signOut: () => Promise<{ success: boolean; keychainWarning?: string }>
-  startCheckout: (
-    input?: StartCheckoutInput
-  ) => Promise<BillingActionResult & { checkoutUrl?: string }>
-  getBillingStatus: () => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-  refreshBillingStatus: (input?: {
-    transactionId?: string
-  }) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-  openBillingPortal: () => Promise<
-    BillingActionResult & { portalUrl?: string; reason?: 'no-billing-customer' }
-  >
-  previewPlanChange: (
-    input: PlanChangeTarget
-  ) => Promise<PlanChangePreview | (BillingActionResult & { plan?: never })>
-  changePlan: (
-    input: PlanChangeTarget
-  ) => Promise<BillingStatus | (BillingActionResult & { status?: never })>
-}
-
-interface PlanChangeTarget {
-  plan: 'plus' | 'pro'
-  cadence: 'monthly' | 'annual'
-}
-
-interface PlanChangePreview {
-  plan: PlanChangeTarget['plan']
-  cadence: PlanChangeTarget['cadence']
-  isUpgrade: boolean
-  effective: 'immediate' | 'next_billing_period'
-  /** Minor units (cents), straight from Paddle. `null` when nothing is charged today. */
-  immediateChargeAmount: string | null
-  recurringAmount: string
-  currencyCode: string
-  nextBilledAt: string | null
 }
 
 // Sync Operations API

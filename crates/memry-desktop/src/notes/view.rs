@@ -9,8 +9,7 @@ use serde_json::{Map, Value, json};
 
 use crate::vault::file_types::FileType;
 
-/// `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
-/// refuses until then.
+/// `NoteCreateSchema`.
 #[derive(Debug, Clone, Default, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteCreateInput {
@@ -31,6 +30,9 @@ pub struct NoteCreateInput {
     #[serde(default, deserialize_with = "crate::templates::present")]
     #[specta(optional, type = Option<String>)]
     pub emoji: Option<Option<String>>,
+    /// The body's checkbox lines stay checklists (`NewNoteFile::plain_checklists`).
+    #[serde(default)]
+    pub plain_checklists: Option<bool>,
 }
 
 /// `NoteSizeClass`.

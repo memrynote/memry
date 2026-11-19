@@ -45,6 +45,9 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 # The IANA zones Readwise highlight dates are written in (`readwise::text::format_day`), as
 # Electron's `Intl.DateTimeFormat` reads them.
 chrono-tz = "0.10.4"
+# The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
+# chrono's `clock` feature already builds it, so the lockfile gains no crate.
+iana-time-zone = "0.1.65"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
@@ -200,6 +203,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "obsidian_task_local_zone"
+path = "tests/obsidian_task_local_zone.rs"
+
+[[test]]
 name = "activity_log_memory"
 path = "tests/activity_log_memory.rs"
 
@@ -234,6 +241,10 @@ path = "tests/model_download_proxy.rs"
 [[test]]
 name = "sync_harness"
 path = "tests/sync_harness.rs"
+
+[[test]]
+name = "attachments_harness"
+path = "tests/attachments_harness.rs"
 
 [[test]]
 name = "sync_driver_harness"
@@ -282,6 +293,10 @@ path = "tests/redact_vectors.rs"
 [[test]]
 name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
+
+[[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
 
 [[test]]
 name = "telemetry_vectors"
