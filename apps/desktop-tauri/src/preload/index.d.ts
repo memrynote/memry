@@ -1876,9 +1876,6 @@ interface API
   onReminderDismissed: (callback: (event: ReminderDismissedEvent) => void) => () => void
   onReminderSnoozed: (callback: (event: ReminderSnoozedEvent) => void) => () => void
   onReminderClicked: (callback: (event: ReminderClickedEvent) => void) => () => void
-  // Inbox review event subscriptions
-  onInboxReviewDue: (callback: (event: { count: number }) => void) => () => void
-  onInboxReviewOpen: (callback: () => void) => () => void
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions

@@ -188,6 +188,8 @@ export const settingsService = {
   registerStickyShortcut: (): Promise<StickyShortcutResult> => commands.shortcutRegisterSticky(),
   setStickyShortcut: (binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult> =>
     commands.shortcutSetSticky(binding),
+  sendTestInboxReviewNotification: (): Promise<{ supported: boolean }> =>
+    commands.settingsSendTestInboxReviewNotification(),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {

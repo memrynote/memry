@@ -14,32 +14,46 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem })
 }))
 
-let dueCb: ((e: { count: number }) => void) | null = null
-let openCb: (() => void) | null = null
-const unsubscribeDue = vi.fn()
-const unsubscribeOpen = vi.fn()
+const mocks = vi.hoisted(() => ({
+  listeners: new Map<string, (event: { payload: unknown }) => void>(),
+  unlisten: new Map<string, () => void>()
+}))
+
+// The Rust scheduler's events, as the generated bindings deliver them.
+vi.mock('../../../generated/bindings', () => {
+  const event = (name: string) => ({
+    listen: vi.fn(async (handler: (event: { payload: unknown }) => void) => {
+      mocks.listeners.set(name, handler)
+      const unlisten = vi.fn()
+      mocks.unlisten.set(name, unlisten)
+      return unlisten
+    })
+  })
+  return {
+    commands: {},
+    events: {
+      inboxReviewDueEvent: event('due'),
+      inboxReviewOpenEvent: event('open')
+    }
+  }
+})
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+const dueCb = (payload: { count: number }) => mocks.listeners.get('due')?.({ payload })
+const openCb = () => mocks.listeners.get('open')?.({ payload: {} })
 
 describe('useInboxReviewNotifications', () => {
   beforeEach(() => {
     toastFn.mockClear()
     openSidebarItem.mockClear()
-    unsubscribeDue.mockClear()
-    unsubscribeOpen.mockClear()
-    window.api = {
-      onInboxReviewDue: vi.fn((cb) => {
-        dueCb = cb
-        return unsubscribeDue
-      }),
-      onInboxReviewOpen: vi.fn((cb) => {
-        openCb = cb
-        return unsubscribeOpen
-      })
-    } as never
+    mocks.listeners.clear()
+    mocks.unlisten.clear()
   })
 
-  it('shows a calm toast with an open-inbox action on review-due', () => {
+  it('shows a calm toast with an open-inbox action on review-due', async () => {
     renderHook(() => useInboxReviewNotifications())
-    dueCb?.({ count: 4 })
+    await flush()
+    dueCb({ count: 4 })
 
     expect(toastFn).toHaveBeenCalledTimes(1)
     const [, options] = toastFn.mock.calls[0] as [string, { action: { onClick: () => void } }]
@@ -52,20 +66,23 @@ describe('useInboxReviewNotifications', () => {
     )
   })
 
-  it('opens the inbox on review-open', () => {
+  it('opens the inbox on review-open', async () => {
     renderHook(() => useInboxReviewNotifications())
-    openCb?.()
+    await flush()
+    openCb()
 
     expect(openSidebarItem).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'inbox', title: 'Inbox', path: '/inbox' })
     )
   })
 
-  it('unsubscribes both listeners on unmount', () => {
+  it('unsubscribes both listeners on unmount', async () => {
     const { unmount } = renderHook(() => useInboxReviewNotifications())
+    await flush()
     unmount()
+    await flush()
 
-    expect(unsubscribeDue).toHaveBeenCalled()
-    expect(unsubscribeOpen).toHaveBeenCalled()
+    expect(mocks.unlisten.get('due')).toHaveBeenCalled()
+    expect(mocks.unlisten.get('open')).toHaveBeenCalled()
   })
 })
