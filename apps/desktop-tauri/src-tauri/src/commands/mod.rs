@@ -19,6 +19,7 @@ pub mod drop_stage;
 pub mod editor;
 pub mod error;
 pub mod fold;
+pub mod folder_view;
 pub mod folders;
 pub mod ios_beta;
 pub mod journal;

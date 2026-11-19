@@ -538,8 +538,9 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:118`). A task's three list
-fields are the one exception, unioned by §6.7.1 beside the field merge.
+`merged` (`packages/sync-client/src/field-merge.ts:118`). Two exceptions ride
+beside the field merge: a task's three list fields, unioned by §6.7.1, and a
+project's two nested arrays, replaced by the remote's by §6.7.2.
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:42-46`). It is what
@@ -561,7 +562,7 @@ payload carries with the union of the local list and the remote list
    is refused: `TaskSyncPayloadSchema` accepts only an array of strings
    (`packages/contracts/src/sync-payloads.ts:56-58`), and the core flags the
    record corrupt with the item id and list name
-   (`crates/memry-core/src/domain/task_merge.rs:248-279`).
+   (`crates/memry-core/src/domain/task_merge/carried.rs:200-232`).
 2. **Order.** Order is not part of the rule, and a reader MUST NOT depend on
    it. Electron builds the union as the local entries, then the remote's new
    ones (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`), but
@@ -592,7 +593,8 @@ payload carries with the union of the local list and the remote list
    §11.11) lets them push. A client that stored such a row verbatim would drop
    the local list and push the shorter list with its next edit. The core copies
    the local value into the remote payload before it stores the row
-   (`crates/memry-core/src/domain/task_merge.rs:281-326`, called at `:184-187`).
+   (`crates/memry-core/src/domain/task_merge/carried.rs:244-296`, called at
+   `crates/memry-core/src/domain/task_merge.rs:180`).
    A tombstone, a remote that will not parse, and a deleted or corrupt local
    row keep nothing.
 
@@ -600,12 +602,90 @@ The merged row is re-queued at the union clock by §6.5.2 P3, so the union
 reaches the server and the peer. A client that kept only the local lists would
 re-push them under a clock that dominates the peer's row, and an entry the peer
 added would be lost on every device. Desktop's Rust core does the union in
-`crates/memry-core/src/domain/task_merge.rs` (`union_list`), on the one apply
+`crates/memry-core/src/domain/task_merge/carried.rs` (`union_list`), on the one apply
 path that pull, first sync and relay share (`crates/memry-core/src/sync/apply/record.rs:85`).
 
 The `field-merge` vector class does not cover this rule: the union is inline in
 the task handler and not in `mergeTaskFields`. The two-device tests in
 `crates/memry-core/tests/sync_list_fields_union.rs` pin it.
+
+### 6.7.2 A project's nested arrays take the remote's on both branches
+
+**Normative.** `statuses` and `links` are outside `PROJECT_SYNCABLE_FIELDS` and
+carry no field clock (Kaan, 18 Nov: match Electron). On every `project` apply
+that §6.3.1 does not skip, a client MUST replace each of the two arrays that the
+remote payload carries with the remote's array, and MUST keep each array that
+the remote omits at its local value. Electron runs `if (data.statuses)` and
+`if (data.links)` after the field merge of the concurrent branch (`:204-238`)
+and after the apply branch (`:239-257`) alike
+(`apps/desktop/src/main/sync/item-handlers/project-handler.ts:259-265`):
+
+1. **Concurrent branch.** The remote's array wins whole. The arrays are not
+   unioned and not merged entry by entry: `reconcileStatuses` deletes every
+   local status the remote does not list and writes the remote's
+   (`:39-78`), and `reconcileLinks` does the same for the links
+   (`:116-168`). When one device renames a status and the other device
+   concurrently retitles the project, the device that merges takes the other
+   device's statuses, and §6.5.2 P3's re-push carries that result to every
+   device. The rename survives only when the renaming device pushes first.
+   A status that one device adds, with tasks moved onto it, is dropped the
+   same way, and those tasks keep a `statusId` no status has: Electron clears
+   it to `null` on receipt (`resolveStatusId`,
+   `apps/desktop/src/main/sync/item-handlers/task-handler.ts:45-65`), the core
+   reads it as a to-do status
+   (`crates/memry-core/src/domain/tasks/structure.rs:164`), and no task data
+   is lost.
+2. **Wholesale branch.** A remote that omits an array keeps the local array.
+   Electron builds that predate the project hub push no `links`, and the write
+   floor (chapter 11 §11.11) lets them push. A client that stored such a row
+   verbatim would drop the local array and push the shorter row with its next
+   edit.
+3. **`null`.** `ProjectSyncPayloadSchema` declares both arrays optional and not
+   nullable (`packages/contracts/src/sync-payloads.ts:261`, `:263`), so
+   Electron refuses a record that carries `null`. The core applies it as
+   chapter 13 §13.4's clear on both branches, because its projector already
+   reads an explicit `null` array as empty
+   (`crates/memry-core/src/storage/repositories/projectors/projects.rs:113`).
+4. **Shape.** A remote array of any other shape is refused, and so is an
+   array with an entry that `StatusSyncSchema` or `ProjectLinkSyncSchema`
+   refuses (`packages/contracts/src/sync-payloads.ts:227-247`: a required key
+   missing, or a key of the wrong type, `null` included). On the concurrent
+   branch the core flags the record corrupt with the item id, the array name
+   and the entry's index
+   (`crates/memry-core/src/domain/task_merge/carried.rs:116-186`); stored, a
+   bad entry would be re-pushed at the union clock and every Electron peer
+   would refuse the row. On the wholesale branch the projector flags a
+   non-array (`Kind::Array`, `projectors/projects.rs:41-42`) and skips an
+   entry without an `id`; the core does not re-push that row.
+5. **A markdown note's link.** A markdown note's membership is its own
+   `project` property, a list of project names, and Electron derives the
+   note's link row from it. `reconcileLinks` deletes only table-owned rows
+   (`:116-137`, `listTableOwnedProjectLinks`), so no inbound project removes a
+   markdown note from a project. The core mirrors that link into the `links`
+   array (`crates/memry-core/src/domain/projects/links.rs:1-19`), so on both
+   branches it keeps each local `links` entry whose item is a markdown note
+   that the remote array does not list (matched by `itemId`) and whose
+   `project` property still names the project, under its local name or the
+   remote's. The kept entries follow the remote's entries
+   (`crates/memry-core/src/domain/projects/links.rs:212-243`).
+
+**Known divergence, inside an entry.** The core stores the remote array as the
+payload. Electron reconciles rows: a remote link without `pinned` keeps the
+local row's pin (`:150`), a remote status keeps the local row's `createdAt`
+(`:53-61`), and a markdown note's link applies only `pinned` and `position` to
+the row this device derived from the note's `project` property, never
+membership (`:94-114`, `:119-131`). The core has no per-device derived link
+row. A markdown note's remote entry, `pinned` and `position` included, replaces
+the local one, and a remote that lists a markdown note this device's property
+does not name still adds it to the hub. Item 5 keeps the membership the remote
+omits; it does not remove membership the remote adds.
+
+The core runs the rule in
+`crates/memry-core/src/domain/task_merge/carried.rs` (`Carry::Remote`), passed
+by `crates/memry-core/src/domain/projects/mod.rs:323-340`. The `field-merge`
+vector class does not cover it: the rule is inline in the project handler and
+not in `mergeProjectFields`. The two-device tests in
+`crates/memry-core/tests/sync_project_nested_arrays.rs` pin it.
 
 ## 6.8 Which types merge which way — Q06.5
 
@@ -614,10 +694,11 @@ the task handler and not in `mergeTaskFields`. The two-device tests in
 | Type                            | Algorithm                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
 | `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`, plus the list union of §6.7.1               |
-| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
+| `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`, plus the nested arrays of §6.7.2         |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
 | `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
+| `note`                          | the document-level resolver of §6.3.1, plus the reference union of §6.8.1                  |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
@@ -635,6 +716,66 @@ above is the enumeration.
 whatever the row's algorithm decided.
 
 **Disposition of Q06.5: answered** (this section).
+
+### 6.8.1 A note's attachment references are unioned on apply
+
+**Normative.** `attachmentReferences` (chapter 14 §14.7) carries no field
+clock. When a client applies a remote `note` over a live local note, on
+§6.3.1's concurrent branch and on its apply branch alike, it MUST store the
+union of the local list and the remote list in place of the remote list
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`, `:537-553`):
+
+1. **Presence.** A remote list that is absent, `null` or `[]` leaves the local
+   list unchanged (`if (!remote?.length) return undefined`, `:139`). Desktop
+   pushes the key only when the list is non-empty
+   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:79-81`),
+   so a peer that removed its last reference sends no key.
+2. **Order.** The result starts with the local entries in their order, local
+   duplicates kept, then adds each remote id the result does not hold yet, in
+   the remote's order (`:140-144`). Ids compare by exact string equality.
+3. **Prune.** The client then drops each id it has itself proved gone, and
+   only when all three of these hold
+   (`pruneUnresolvableReferences`,
+   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`;
+   `crates/memry-core/src/sync/attachments/store/download_failures.rs:213-246`):
+   - this device recorded `MISSING_PROBE_LIMIT` (3) failures of reason
+     `missing` for the id under this note, each probe at least 24 h after the
+     one before (`attachment-download-state.ts:26-34`, `:205-210`;
+     `download_failures.rs:24-27`, `:133-135`). A 404 or 410 counts as
+     missing, and so does a manifest signature that does not verify
+     (`attachment-download-state.ts:108-118`; `download_failures.rs:9-11`);
+   - the failure has no retry left: `next_attempt_at IS NULL`, which the
+     third missing record sets (`attachment-download-state.ts:346`;
+     `download_failures.rs:229-230`);
+   - no `attachment_upload_queue` row is queued for the note
+     (`attachment-download-state.ts:331-337`; `download_failures.rs:222`).
+
+   One 404, a transient failure, or an id never probed drops nothing, so a
+   slow upload is never pruned. A prune that fails keeps every id, and the
+   note still applies (`attachment-download-state.ts:362-364`).
+
+4. **No removal set.** The union cannot express a removal. An id one device
+   removes stays on every device that still holds it, whichever clock wins, and
+   that device's next push of the note brings it back everywhere. Only the
+   prune of rule 3 drops an id for good.
+5. **Scope.** A new note, a tombstone and a skip store the remote's value
+   unchanged (`:702-704`). Desktop leaves the list of a local binary note
+   untouched (`:255-342`); desktop pushes no list for one (`:40-52`), so a
+   remote binary note carries none and rule 1 gives the same result.
+
+On the concurrent branch the union is part of the merged row that §6.5.2 P3
+re-queues at the union clock, so it reaches the server and the peer. A client
+that stored the remote list there would re-push it under a clock that
+dominates the local row, and the id only this device held would be lost on
+every device. The two devices of a concurrent upload can hold the same ids in
+different orders: the merging device keeps its own first, and the other device
+unions the merged row over its own list on the apply branch.
+
+The Rust core runs the union in `crates/memry-core/src/domain/notes/merge.rs`,
+on the one apply path that pull, first sync and relay share
+(`crates/memry-core/src/sync/apply/record.rs:89`). No vector class covers this
+rule. The two-device tests in
+`crates/memry-core/tests/sync_note_attachment_union.rs` pin it.
 
 ## 6.9 Settings use a third shape
 
