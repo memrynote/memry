@@ -297,7 +297,7 @@ impl PullLoop {
         let clock_device = self.clock_device.clone();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
-        // Invariant (§5.11, #5231): a page's records and its cursor commit in
+        // Invariant (§5.11, #5231): a page's applied records and its cursor commit in
         // one transaction or not at all.
         let (outcomes, advanced_documents) = self
             .db

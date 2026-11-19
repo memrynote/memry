@@ -40,13 +40,16 @@ pub fn begin(conn: &Connection) -> rusqlite::Result<NestedTx<'_>> {
 }
 
 impl NestedTx<'_> {
+    /// A failed COMMIT or RELEASE leaves this open, so the drop rolls it back
+    /// instead of leaving a dead transaction under every later write.
     pub fn commit(mut self) -> rusqlite::Result<()> {
-        self.open = false;
         if self.savepoint {
-            self.conn.execute_batch(&format!("RELEASE {SAVEPOINT}"))
+            self.conn.execute_batch(&format!("RELEASE {SAVEPOINT}"))?;
         } else {
-            self.conn.execute_batch("COMMIT")
+            self.conn.execute_batch("COMMIT")?;
         }
+        self.open = false;
+        Ok(())
     }
 
     fn rollback(&self) -> rusqlite::Result<()> {
@@ -192,6 +195,66 @@ mod tests {
             offenders.is_empty(),
             "open transactions with storage::nested_tx::begin, which nests: {offenders:?}"
         );
+    }
+
+    fn rows(conn: &Connection) -> Vec<i64> {
+        conn.prepare("SELECT n FROM t ORDER BY n")
+            .expect("prepare")
+            .query_map([], |row| row.get(0))
+            .expect("query")
+            .collect::<Result<_, _>>()
+            .expect("rows")
+    }
+
+    #[test]
+    fn probe_a_failed_commit_leaves_no_open_transaction() {
+        let conn = Connection::open_in_memory().expect("open");
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+             CREATE TABLE p (id INTEGER PRIMARY KEY);
+             CREATE TABLE c (p INTEGER REFERENCES p(id) DEFERRABLE INITIALLY DEFERRED);",
+        )
+        .expect("schema");
+        let txn = begin(&conn).expect("begin");
+        txn.execute("INSERT INTO c VALUES (1)", []).expect("insert");
+        assert!(txn.commit().is_err(), "the deferred key fails the COMMIT");
+        assert!(conn.is_autocommit(), "a failed COMMIT is rolled back");
+        let left: i64 = conn
+            .query_row("SELECT COUNT(*) FROM c", [], |row| row.get(0))
+            .expect("count");
+        assert_eq!(left, 0);
+    }
+
+    static INTERRUPT_RELEASE: std::sync::Mutex<Option<rusqlite::InterruptHandle>> =
+        std::sync::Mutex::new(None);
+
+    /// Interrupts the next `RELEASE` while it runs, which fails it.
+    fn interrupt_release(event: rusqlite::trace::TraceEvent<'_>) {
+        if let rusqlite::trace::TraceEvent::Stmt(_, sql) = event
+            && sql.starts_with("RELEASE")
+            && let Some(handle) = INTERRUPT_RELEASE.lock().expect("the handle").take()
+        {
+            handle.interrupt();
+        }
+    }
+
+    #[test]
+    fn a_failed_release_rolls_the_savepoint_back() {
+        let conn = setup();
+        conn.trace_v2(
+            rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+            Some(interrupt_release),
+        );
+        let outer = begin(&conn).expect("outer");
+        outer.execute("INSERT INTO t VALUES (1)", []).expect("one");
+        let inner = begin(&outer).expect("inner");
+        inner.execute("INSERT INTO t VALUES (2)", []).expect("two");
+        *INTERRUPT_RELEASE.lock().expect("the handle") = Some(conn.get_interrupt_handle());
+        assert!(inner.commit().is_err(), "the interrupted RELEASE fails");
+        assert!(!conn.is_autocommit(), "the outer transaction stays open");
+        outer.commit().expect("commit");
+        conn.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+        assert_eq!(rows(&conn), [1], "the failed savepoint's write is gone");
     }
 
     #[test]
