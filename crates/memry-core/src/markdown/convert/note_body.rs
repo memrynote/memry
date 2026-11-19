@@ -16,7 +16,7 @@ use super::writing::{EncodedWritingRanges, insert_writing_sentinels, writing_fro
 use super::writing_roots::{
     WritingAlternative, read_writing_alternatives, read_writing_ghosts, read_writing_overflow,
 };
-use crate::markdown::shared::critic_markup::units::{slice_units, to_units};
+use crate::markdown::shared::critic_markup::units::{index_of_units, slice_units, to_units};
 use crate::markdown::shared::critic_markup::{
     CriticMarkupKind, CriticMarkupMark, parse_critic_markup, serialize_critic_markup,
 };
@@ -143,13 +143,17 @@ pub fn serialize_note_body<T: ReadTxn>(
 /// keeps those offsets (#4425; Electron's writes them into the document), so a mark's range in
 /// the document can be stale, and the file the body is written over holds the window's last
 /// save. A mark takes the range of the same mark in the file, moved onto `plain` through the
-/// text diff since (a merge or another window): first when the file's text is `plain`, else
-/// only when the document's range does not hold the mark's text (a peer that writes its offsets
-/// is ahead of the file). A comment is the same mark by its id first; a suggestion's id is its
-/// parse position, so a suggestion is the same by its kind and texts. A comment placed nowhere
-/// is left to the serializer, which moves it to the first copy of its words; any other mark
-/// would be dropped with the text it replaced, so the file is kept as it is instead. Without a
-/// file to write over (the feed's and the identity's comparisons) the marks pass as they are.
+/// text diff since (a merge or another window), unless the document's range holds the mark's
+/// text, differs, and touches text the diff changed while the file's text is not `plain` (a
+/// peer that writes its offsets is ahead of the file). A comment is the same mark by its id
+/// first; a suggestion's id is its parse position, so a suggestion is the same by its kind and
+/// texts. A comment placed nowhere is left to the serializer, which moves it to the first copy
+/// of its words; any other mark would be dropped with the text it replaced, so the file is kept
+/// as it is instead. A write with no file to write over (`read_file_body` answers `Ok(None)`:
+/// a kept note's restore, a held day's first file) has nothing to keep and nothing to map
+/// against: a mark whose range does not hold its words takes their first copy, and one whose
+/// words are gone passes as it is. Without `read_file_body` (the feed's and the identity's
+/// comparisons) the marks pass as they are.
 fn placed_marks(
     marks: &[CriticMarkupMark],
     plain: &str,
@@ -164,12 +168,21 @@ fn placed_marks(
             && end >= start
             && slice_units(&units, start, end) == to_units(&mark.visible_text).as_slice()
     };
+    let body = match read() {
+        Ok(None) => {
+            return Some(
+                marks
+                    .iter()
+                    .map(|mark| at_its_words(mark, &units))
+                    .collect(),
+            );
+        }
+        read => read.ok().flatten().unwrap_or_default(),
+    };
     // Decoded as `restore_file_spelling` reads it: the writing markers count toward no offset.
-    let file = read().ok().flatten().map(|body| {
-        let decoded = decode_writing_markers(&with_lf_line_endings(&body));
-        without_writing_sentinels(&parse_critic_markup(&decoded.text), &decoded.sentinels)
-    });
-    let (file_text, file_marks) = file.map_or_else(Default::default, |f| (f.plain_text, f.marks));
+    let decoded = decode_writing_markers(&with_lf_line_endings(&body));
+    let file = without_writing_sentinels(&parse_critic_markup(&decoded.text), &decoded.sentinels);
+    let (file_text, file_marks) = (file.plain_text, file.marks);
     let moved = OffsetMap::new(&file_text, plain);
     // The serializer and the save may disagree on the body's last line break.
     let same_text = file_text.trim_end_matches('\n') == plain.trim_end_matches('\n');
@@ -188,17 +201,18 @@ fn placed_marks(
                 (same && holds(mark, range)).then_some((at, range))
             })
         };
-        let range = match (
-            same_text,
-            in_file(true).or_else(|| in_file(false)),
-            in_document,
-        ) {
-            (true, Some((at, range)), _) | (false, Some((at, range)), None) => {
+        let peer_ahead = |range: (i64, i64)| {
+            !same_text && moved.as_ref().is_none_or(|map| map.touches_change(range))
+        };
+        let range = match (in_file(true).or_else(|| in_file(false)), in_document) {
+            (Some((_, filed)), Some(document)) if document != filed && peer_ahead(document) => {
+                Some(document)
+            }
+            (Some((at, range)), _) => {
                 filed[at] = None;
                 Some(range)
             }
-            (_, _, Some(range)) => Some(range),
-            (_, None, None) => None,
+            (None, document) => document,
         };
         match range {
             Some((start, end)) => placed.push(CriticMarkupMark {
@@ -211,6 +225,22 @@ fn placed_marks(
         }
     }
     Some(placed)
+}
+
+/// `mark` where its range holds its words, else at their first copy in `units`, else as it is.
+fn at_its_words(mark: &CriticMarkupMark, units: &[u16]) -> CriticMarkupMark {
+    let visible = to_units(&mark.visible_text);
+    let holds = mark.start >= 0
+        && mark.end >= mark.start
+        && slice_units(units, mark.start, mark.end) == visible.as_slice();
+    match index_of_units(units, &visible).filter(|_| !holds && !visible.is_empty()) {
+        Some(start) => CriticMarkupMark {
+            start: start as i64,
+            end: (start + visible.len()) as i64,
+            ..mark.clone()
+        },
+        None => mark.clone(),
+    }
 }
 
 fn characters(text: &str) -> Vec<&str> {
@@ -254,6 +284,23 @@ impl OffsetMap {
     /// the diff changed. Text inserted right at an end stays outside the range.
     fn range(&self, start: i64, end: i64) -> Option<(i64, i64)> {
         Some((self.offset(start, true)?, self.offset(end, false)?))
+    }
+
+    /// Whether the document's `start..end` holds or splits text the diff changed; true when an
+    /// end splits a character.
+    fn touches_change(&self, (start, end): (i64, i64)) -> bool {
+        let (Ok(start), Ok(end)) = (self.doc.binary_search(&start), self.doc.binary_search(&end))
+        else {
+            return true;
+        };
+        self.hunks.iter().any(|hunk| {
+            let side_end = hunk.side_start + hunk.side_length;
+            if hunk.side_length == 0 {
+                start < hunk.side_start && hunk.side_start < end
+            } else {
+                start < side_end && hunk.side_start < end
+            }
+        })
     }
 
     fn offset(&self, offset: i64, is_start: bool) -> Option<i64> {
@@ -304,6 +351,53 @@ mod tests {
         };
         placed_marks(marks, plain, &options)
             .map(|marks| marks.iter().map(|mark| mark.start).collect())
+    }
+
+    /// The marks' starts for a write-back with no file to map against (FIX-5196B).
+    fn placed_without_file(marks: &[CriticMarkupMark], plain: &str) -> Option<Vec<i64>> {
+        let read = || Ok(None);
+        let options = SerializeOptions {
+            read_file_body: Some(&read),
+            ..SerializeOptions::default()
+        };
+        placed_marks(marks, plain, &options)
+            .map(|marks| marks.iter().map(|mark| mark.start).collect())
+    }
+
+    /// A kept note's restore and a held day's first file have no file to write over: a
+    /// suggestion whose range does not hold its words takes their first copy, and one whose
+    /// words are gone passes as it is, rather than the write being refused for good.
+    #[test]
+    fn without_a_file_a_stale_suggestion_takes_the_first_copy_of_its_words() {
+        assert_eq!(
+            placed_without_file(&[suggestion("Alpha", 0)], "beta Alpha"),
+            Some(vec![5])
+        );
+        assert_eq!(
+            placed_without_file(&[suggestion("Alpha", 0)], "beta"),
+            Some(vec![0])
+        );
+    }
+
+    /// A merge changed text away from the mark: a stale document range on another copy of its
+    /// words, over text the file already had, gives way to the file's range moved by the diff.
+    #[test]
+    fn after_a_merge_a_stale_range_on_another_copy_takes_the_files_range() {
+        let file = serialize_critic_markup("beta beta beta x", &[suggestion("beta", 10)]);
+        assert_eq!(
+            placed(&[suggestion("beta", 5)], "beta beta beta y", &file),
+            Some(vec![10])
+        );
+    }
+
+    /// The decoded file's text is the document's, so its range wins over a stale one on another
+    /// copy; read with its markers, the file's text differs inside that copy and the stale range
+    /// would stand (VERIFY-5196).
+    #[test]
+    fn a_file_whose_markers_decode_to_the_documents_text_places_the_mark() {
+        let rest = serialize_critic_markup(" beta", &[comment(1)]);
+        let file = format!("be<!--ghost-->ta<!--/ghost-->{rest}");
+        assert_eq!(placed(&[comment(0)], "beta beta", &file), Some(vec![5]));
     }
 
     /// A range that holds its text stays when the file is behind the document: a peer that

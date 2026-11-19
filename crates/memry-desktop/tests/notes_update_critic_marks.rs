@@ -13,6 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::editor::Editor;
 use memry_core::crdt::BODY_FRAGMENT;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::resident::EDITOR_LIFECYCLE;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::convert::NoEmbeds;
@@ -22,6 +23,7 @@ use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::markdown::shared::critic_markup::{CriticMarkupMark, serialize_critic_markup};
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
+use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
@@ -335,6 +337,40 @@ fn a_late_journal_save_leaves_the_marks_of_an_open_day_to_its_window() {
     );
 }
 
+/// FIX-5196B: a day another device made holds a suggestion its window left at a stale range,
+/// and no file here. The create writes the day's file from its body with the suggestion on its
+/// words: there is no file to map the range against, so nothing refuses it.
+#[test]
+fn a_held_days_first_file_keeps_its_stale_suggestion() {
+    let (e, notes, store) = opened(&[]);
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store.clone()).unwrap();
+    let edit = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "beta Alpha".into(),
+        new_block_id: "b-synced".into(),
+    };
+    journal.edit_day("2025-01-17".into(), edit).unwrap();
+    let id = "j2025-01-17";
+    let editor = open.vault.editor(store).unwrap();
+    let copy = window_copy(&editor.open(id, WINDOW).unwrap().state);
+    let stale = json!({
+        "id": "s1", "kind": "substitution", "visibleText": "Alpha", "originalText": "Old",
+        "start": 0, "end": 5,
+    });
+    editor
+        .apply_update(id, &window_writes_marks(&copy, &[stale]), WINDOW)
+        .unwrap();
+
+    let day = NewDay {
+        date: "2025-01-17".into(),
+        ..NewDay::default()
+    };
+    notes.create_day(&open, day).unwrap();
+    let file = e.read("journal/2025-01-17.md");
+    assert!(file.contains("beta {~~Old~>Alpha~~}"), "{file}");
+}
+
 /// A save whose text differs from the document's only in its marks leaves the body of an open
 /// note as it is: rewriting it would replace every block under the window.
 #[test]
@@ -390,10 +426,10 @@ fn the_write_back_after_a_typed_save_keeps_the_windows_mark_places() {
     notes.update(&open, save(&id, &typed)).unwrap();
 
     let converter = Converter::new(CalloutTypes::new(Vec::new()));
-    let Ok(BodyRead::Body(body)) = e
-        .core()
-        .write_back()
-        .body(&converter, &id, "Plan.md", &typed, &NoEmbeds)
+    let Ok(BodyRead::Body(body)) =
+        e.core()
+            .write_back()
+            .body(&converter, &id, "Plan.md", Some(&typed), &NoEmbeds)
     else {
         panic!("the document has no body to write");
     };

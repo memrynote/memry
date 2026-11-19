@@ -307,7 +307,7 @@ pub(crate) fn output_over(
         &converter,
         note_id,
         path,
-        old_body.strip_prefix(BOM).unwrap_or(old_body),
+        Some(old_body.strip_prefix(BOM).unwrap_or(old_body)),
         &embeds,
     );
     let body = match read {

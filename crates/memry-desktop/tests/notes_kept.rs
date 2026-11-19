@@ -351,6 +351,45 @@ fn a_kept_notes_delete_moves_its_text_to_the_trash_then_syncs_the_delete() {
     assert_eq!(read::get(&open, &id, None).unwrap(), None);
 }
 
+/// FIX-5196B: the app typed before a suggestion and left its range where it was, then the file
+/// was deleted outside the app. No file is there to map the range against: the restore and the
+/// trash copy put the suggestion on its words instead of refusing the note for good.
+#[test]
+fn a_kept_note_with_a_stale_suggestion_is_restored_and_trashed_with_it() {
+    const SUGGESTED: &str = "{~~Old~>Alpha~~}\n";
+    const TYPED: &str = "beta {~~Old~>Alpha~~}";
+    let typed_before = |e: &Env, store: &Arc<dyn SecureStore>, id: &str| {
+        std::thread::sleep(Duration::from_millis(2));
+        e.edit_in_app(store, id, "beta Alpha");
+    };
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_by("a.md", SUGGESTED, bin, typed_before);
+    let open = e.session.current().unwrap();
+    kept::restore(&notes, &notices, &open, &id).unwrap();
+    assert!(e.read("a.md").contains(TYPED), "{}", e.read("a.md"));
+    assert!(!is_listed(&notices, &id), "{:?}", notices.list());
+
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_by("b.md", SUGGESTED, bin, typed_before);
+    let open = e.session.current().unwrap();
+    kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    assert!(
+        e.read("b.trashed").contains(TYPED),
+        "{}",
+        e.read("b.trashed")
+    );
+}
+
 #[test]
 fn a_kept_note_the_trash_refuses_stays_kept_with_no_file_left() {
     let KeptNote {
