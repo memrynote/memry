@@ -84,8 +84,7 @@ pub(crate) fn track<R: Runtime>(app: &AppHandle<R>, name: &str, action: &str) {
     }
 }
 
-/// `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
-/// (Step 32) is not read: the renderer's service refuses it until its step.
+/// `notes:create`, from a template when one is named or a tag names one.
 // Generic over the runtime so a test drives it on a mock app (`tests/notes_rename.rs`).
 #[tauri::command]
 #[specta::specta]
@@ -103,6 +102,7 @@ pub async fn notes_create<R: Runtime>(
             properties: input.properties.unwrap_or_default(),
             emoji: input.emoji,
             template: input.template,
+            plain_checklists: input.plain_checklists.unwrap_or(false),
         };
         let created = service(&app)?
             .create(&open, note)
