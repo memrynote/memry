@@ -1,6 +1,6 @@
 # Account on the Web
 
-You can sign in at [memrynote.com](https://memrynote.com) to manage your account and
+You can sign in at [memrynote.com](https://memrynote.com/?utm_source=docs&utm_medium=referral&utm_campaign=web_account) to manage your account and
 billing from a browser — no desktop app required. Click **Account** in the site header to
 reach the sign-in page.
 

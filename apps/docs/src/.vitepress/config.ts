@@ -219,6 +219,7 @@ function unifiedSidebar() {
         { text: 'Sync Protocol', link: '/architecture/sync-protocol' },
         { text: 'Vault Packs', link: '/architecture/vault-packs' },
         { text: 'Cryptography', link: '/architecture/cryptography' },
+        { text: 'Security White Paper', link: '/architecture/security-white-paper' },
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
         { text: 'Calendar Providers', link: '/architecture/calendar-providers' },
         { text: 'Readwise Vault Formats', link: '/architecture/readwise-vault-formats' },

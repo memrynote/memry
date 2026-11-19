@@ -333,7 +333,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
           'Yes. memrynote has the same daily-note, task-backlink, and calendar workflow, so your planning habits carry over.'
       },
       {
-        question: 'Can memrynote read my NotePlan Markdown files?',
+        question: 'Can I import my NotePlan notes into memrynote?',
         answer:
           'Yes. The NotePlan importer in Settings → Import reads your NotePlan folder or a backup of it. Daily notes become journal entries, folders and #tags carry over, and tasks become real tasks that link back to the note they came from.'
       },

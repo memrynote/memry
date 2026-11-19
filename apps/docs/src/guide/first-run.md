@@ -35,7 +35,7 @@ The setup replaces the sidebar tour, so the tour does not run afterwards.
 
 With **Sync across my devices**, setup asks for your email and a six-digit code, then shows a new account's 24-word recovery phrase and asks for three of its words back (see [Recovery Phrase](#recovery-phrase)). If the email already has an account, setup switches to unlocking that account on this computer instead.
 
-Next comes the plan: Plus, Pro or Believer, monthly or yearly. **Continue to checkout** opens the payment page in your browser with that plan already chosen. Setup waits for the payment and moves on by itself once it goes through. **Not now** continues without a plan: everything stays on this computer, and the Ready screen offers **Choose a plan** to go back. Plans and prices are on [memrynote.com/pricing](https://memrynote.com/pricing).
+Next comes the plan: Plus, Pro or Believer, monthly or yearly. **Continue to checkout** opens the payment page in your browser with that plan already chosen. Setup waits for the payment and moves on by itself once it goes through. **Not now** continues without a plan: everything stays on this computer, and the Ready screen offers **Choose a plan** to go back. Plans and prices are on [memrynote.com/pricing](https://memrynote.com/pricing?utm_source=docs&utm_medium=referral&utm_campaign=first_run).
 
 ## Signing In on Another Computer
 
