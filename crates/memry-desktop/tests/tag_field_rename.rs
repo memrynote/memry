@@ -105,10 +105,11 @@ fn opened_with(files: &[(&str, &str)], finished: Arc<dyn Fn() + Send + Sync>) ->
     for (path, text) in files {
         e.write(path, text);
     }
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
     let store = store.into_inner().unwrap().unwrap();
     let notes = NotesService::new(e.tier.clone(), store.clone());
-    register_resume(&notes, &e.session, finished);
+    register_resume(&notes, &index, &e.session, finished);
     e.open();
     e.facts_until(indexed);
     let vault = Vault { e, notes, store };

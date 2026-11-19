@@ -23,8 +23,8 @@ use crate::vault::watch::VaultEvent;
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
 
 /// The open's build, as the task tells it. Owed from the open, and again at the walk's end, to
-/// the end of the pass that reports it (stopped or failed included), or until a reindex took
-/// it.
+/// the end of the pass that reports it (stopped or failed included), or of the reindexes that
+/// took it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenBuild {
     /// Owed again: the walk ended after a pass had taken it.
@@ -276,14 +276,16 @@ impl Indexer {
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
             if owed.walked() && !waiting.is_empty() {
-                // A reindex reports through its own callback, which refreshes the list.
-                if std::mem::take(&mut owed.report) {
-                    report(OpenBuild::Ended);
-                }
+                // A reindex reports through its own callback, which refreshes the list. The
+                // open's build ends after it, once the rows hold every note.
+                let carried = std::mem::take(&mut owed.report);
                 for (progress, answer) in waiting.drain(..) {
                     // The asker may have gone; the work is done either way.
                     let _ = answer
                         .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
+                }
+                if carried {
+                    report(OpenBuild::Ended);
                 }
             }
             let next = owed.next();
