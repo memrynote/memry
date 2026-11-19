@@ -73,7 +73,7 @@ impl From<PullError> for SyncError {
 static PASS_GATES: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+pub(super) fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
     // A poisoned map only means another thread panicked while inserting; the
     // map itself is still a valid set of locks.
     let mut gates = PASS_GATES
@@ -101,7 +101,8 @@ impl VaultSync {
     /// queued. Safe to call repeatedly. Passes over one vault run one at a
     /// time: two overlapping passes would push the same outbox rows twice and
     /// report the second copy as rejected, so a second call waits for the
-    /// first and then runs its own pass.
+    /// first and then runs its own pass. It waits for a running
+    /// [`VaultSync::first_sync`] the same way.
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
         let gate = pass_gate(&self.vault_id);
         let _held = gate.lock().await;

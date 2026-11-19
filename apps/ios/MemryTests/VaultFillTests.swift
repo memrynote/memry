@@ -134,6 +134,49 @@ private func tick(_ phase: SyncPhase, _ done: UInt64, _ total: UInt64) -> SyncPr
     SyncProgress(phase: phase, completed: done, total: total)
 }
 
+/// A first sync that lands notes and ticks, then holds until the test lets it
+/// end: the run a user browses through.
+final class HeldFiller: VaultFilling, @unchecked Sendable {
+    private let store: VaultStore
+    private let fills: Int
+    private let ticks: [SyncProgress]
+    private let release = Mutex<CheckedContinuation<Void, Never>?>(nil)
+
+    init(store: VaultStore, fills: Int, ticks: [SyncProgress]) {
+        self.store = store
+        self.fills = fills
+        self.ticks = ticks
+    }
+
+    var isHeld: Bool { release.withLock { $0 != nil } }
+
+    func finish() {
+        release.withLock { held in
+            held?.resume()
+            held = nil
+        }
+    }
+
+    func isFirstSyncComplete() async throws -> Bool { false }
+
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary {
+        store.fill(fills)
+        for tick in ticks {
+            await MainActor.run { progress(tick) }
+        }
+        await withCheckedContinuation { continuation in
+            release.withLock { $0 = continuation }
+        }
+        return .applied(UInt32(fills))
+    }
+
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        BodyFetchSummary(updates: 1, baselines: 0, stopped: false)
+    }
+}
+
 @MainActor
 @Suite("T237 the vault fill", .serialized)
 struct VaultFillTests {
@@ -154,6 +197,7 @@ struct VaultFillTests {
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
         #expect(fill.phase == .filled)
+        #expect(fill.banner == .none)
         #expect(filler.history == [.gate, .first])
 
         // And only now is there anything to list.
@@ -232,6 +276,8 @@ struct VaultFillTests {
             return
         }
         #expect(error.code != ErrorMapping.unrecognised.code)
+        #expect(fill.banner == .failure(error))
+        #expect(!fill.isPending, "a stopped run holds no pass back")
 
         // The forty that arrived are real and are still listed.
         await browse.loadIfNeeded()
@@ -287,7 +333,58 @@ struct VaultFillTests {
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
         #expect(fill.phase == .filled)
-        #expect(fill.incomplete != nil)
+        let sentence = try #require(fill.incomplete)
+        #expect(fill.banner == .incomplete(sentence))
+    }
+
+    /// The incident this exists for: a first sync that ran for a day showed a
+    /// bar and never the notes already on the phone. While the run is still
+    /// going, the screen holds a strip rather than a replacement, and the
+    /// list on screen re-reads into the notes that landed.
+    @Test("a run that has not finished shows its notes under a progress strip")
+    func aRunningFillShowsItsNotes() async throws {
+        let store = VaultStore()
+        let browse = VaultBrowseViewModel(reader: StoreNotes(store: store))
+        await browse.loadIfNeeded()
+        #expect(browse.phase == .empty)
+
+        let ticks = [
+            tick(.refs, 1, 1),
+            tick(.metadata, 100, 1200), tick(.metadata, 200, 1200), tick(.metadata, 300, 1200),
+            tick(.metadata, 400, 1200), tick(.metadata, 500, 1200), tick(.metadata, 600, 1200),
+            tick(.metadata, 1200, 1200),
+            tick(.bodies, 3, 500),
+        ]
+        let filler = HeldFiller(store: store, fills: 40, ticks: ticks)
+        let fill = VaultFillViewModel(filler: filler)
+        #expect(fill.banner == .none, "the local gate shows nothing over the vault")
+        #expect(fill.isPending, "and holds the vault's passes until it answers")
+
+        let run = Task { await fill.begin() }
+        // Bounded: two seconds, then it fails rather than waits (spec-defect 99).
+        for _ in 0..<200 where !filler.isHeld {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(filler.isHeld)
+
+        #expect(fill.banner == .progress(tick(.bodies, 3, 500)))
+        #expect(fill.isPending)
+        // A bump per pass, every 500 items of metadata, and its last item.
+        #expect(fill.landed == 5)
+        await browse.refresh()
+        guard case let .ready(outline) = browse.phase else {
+            Issue.record("the notes that landed mid-run were not listed")
+            filler.finish()
+            await run.value
+            return
+        }
+        #expect(outline.rootNotes.count == 40)
+
+        filler.finish()
+        await run.value
+        #expect(fill.banner == .none)
+        #expect(!fill.isPending, "the passes held for the run go now")
+        #expect(fill.landed == 6, "the end of the run re-reads the lists once more")
     }
 }
 

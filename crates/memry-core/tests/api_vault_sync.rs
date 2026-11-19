@@ -405,6 +405,45 @@ async fn a_body_fetch_for_a_note_this_vault_does_not_hold_is_refused() {
     assert_eq!(transport.call_count(), 0, "and nothing was asked of anyone");
 }
 
+/// A shell browses the vault while its first sync runs, and a write or a
+/// foreground asks for a pass meanwhile. The pass waits for the first sync:
+/// both page the one record cursor and spend the same rate-limit buckets, so
+/// running them together rewinds each other's cursor and slows the fill.
+///
+/// The transport answers in script order, so a pass that ran inside the first
+/// sync would take its responses and break it.
+#[tokio::test]
+async fn a_pass_asked_for_during_the_first_sync_waits_for_it() {
+    let vault = scratch_vault("gated");
+    let (public, secret) = keypair();
+
+    let mut script = first_sync_script(&public, secret, OLD);
+    script.push(devices_response(&public));
+    script.push(error_response(
+        403,
+        "SYNC_VAULT_FORBIDDEN",
+        "the pass's first page",
+    ));
+    // Held in flight, so the pass is asked for while the first sync runs.
+    let transport = FakeTransport::slow(script, 20);
+    let sync = vault.sync(session(transport.clone(), true));
+
+    let (first, pass) = tokio::join!(sync.first_sync(None), async {
+        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        sync.sync_now().await
+    });
+
+    first.expect("the first sync ran alone");
+    assert!(
+        matches!(pass, Err(SyncError::Api { .. })),
+        "the pass ran after it and met its own scripted page: {pass:?}"
+    );
+    let urls: Vec<String> = transport.calls().into_iter().map(|c| c.url).collect();
+    assert_eq!(urls.len(), 7, "{urls:?}");
+    assert!(urls[5].ends_with("/auth/devices"), "{urls:?}");
+    assert!(urls[6].contains("/sync/changes"), "{urls:?}");
+}
+
 /// No master key means no vault key, and a pull with no vault key could only
 /// record every item as corrupt. It refuses before the first request, and the
 /// variant says "locked", not "the network failed" and not "the keychain is

@@ -379,10 +379,20 @@ impl VaultSync {
     /// through leaves the notes that did arrive visible and readable; it throws,
     /// and what it throws is the reason. A shell must render that reason, never
     /// an empty state.
+    ///
+    /// **A [`Self::sync_now`] asked for meanwhile waits for this run**, as a
+    /// second pass waits for the first: the shell shows the vault while it
+    /// fills, so writes and foregrounds ask for passes during it.
     pub async fn first_sync(
         &self,
         progress: Option<Arc<dyn SyncProgressListener>>,
     ) -> Result<FirstSyncSummary, SyncError> {
+        // A first sync is a pass over this vault, and passes run one at a
+        // time. A shell browses the vault while this runs, so a write or a
+        // foreground asks for `sync_now` meanwhile; run alongside, both page
+        // the one record cursor and spend the same rate-limit buckets.
+        let gate = pass::pass_gate(&self.vault_id);
+        let _held = gate.lock().await;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

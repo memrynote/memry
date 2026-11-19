@@ -41,9 +41,9 @@ protocol VaultFilling: Sendable {
     /// Whether this device has already finished a first sync for this vault.
     ///
     /// **Makes no request.** That is the whole point of asking: the entry gate
-    /// decides whether to show a setting-up screen without going near the
-    /// network, so a phone in a lift does not sit on a spinner to be told it
-    /// was already done.
+    /// decides whether to start a first sync without going near the network,
+    /// so a phone in a lift does not show a progress strip to be told it was
+    /// already done.
     func isFirstSyncComplete() async throws -> Bool
 
     /// The first sync: refs, then metadata newest first, then bodies for the

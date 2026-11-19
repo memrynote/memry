@@ -3,6 +3,23 @@ import MemryCore
 import Observation
 
 // The note read screen's value types and the view model's derived reads, split from `NoteRead.swift` so the stored state and its writes stay in one file.
+//
+// **Four outcomes, four screens, and no arm shared between them.** This is the
+// single most likely bug in this task, so the distinction is carried by types
+// rather than by care:
+//
+//   * `read` **threw** — the note may exist and may hold anything. `.unreadable`.
+//   * `read` returned **nil** — this vault holds no live note by that id.
+//     `.missing`. A restored navigation path lands here, and so does a note
+//     deleted on another device.
+//   * the body is **not on this device** — `present == false`. `.notPulled`.
+//   * the body is **empty** — `present == true`, no text. `.empty`.
+//
+// The first two are `Phase` cases; the last two are ``NoteBodyPreview`` cases,
+// because they are facts about a note that was read successfully and so must
+// still show its title and its dates. Collapsing any pair would report an
+// unread note as an empty one, which is the failure `domain/reads.rs` says the
+// whole module was written against.
 
 /// Where a note route in the browse stack points.
 ///

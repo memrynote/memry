@@ -4,6 +4,12 @@ import Observation
 
 // T237, the state half. The first sync of one opened vault (FR-028).
 //
+// **The vault is usable in every phase.** The screen draws the vault's
+// contents under whatever this model says, so a first sync that runs for
+// minutes, or never finishes, still leaves every note that has arrived
+// readable. `banner` is the only thing a phase decides, and `landed` tells the
+// lists on screen when to re-read while the run fills them.
+//
 // **Four phases, and the failure is not one of the empty ones.** A pull that
 // throws part way through has still landed every note it applied before the
 // throw — metadata lands before bodies and each pass is durable as it goes —
@@ -43,7 +49,23 @@ final class VaultFillViewModel {
         case failed(UserFacingError)
     }
 
+    /// What sits above the vault's contents. Never instead of them.
+    enum Banner: Equatable {
+        case none
+        /// The run, as a compact strip; `nil` before the first tick.
+        case progress(SyncProgress?)
+        case failure(UserFacingError)
+        /// The run finished, and some of it could not be opened.
+        case incomplete(String)
+    }
+
     private(set) var phase: Phase = .checking
+
+    /// Bumped each time the run has landed rows a list shows, so a list on
+    /// screen re-reads mid-run rather than only once it ends.
+    private(set) var landed = 0
+    /// Metadata items the last bump covered.
+    private var landedThrough: UInt64 = 0
 
     /// What the run did, or `nil` when no run happened on this screen.
     private(set) var summary: FirstSyncSummary?
@@ -58,6 +80,28 @@ final class VaultFillViewModel {
 
     init(filler: any VaultFilling) {
         self.filler = filler
+    }
+
+    /// Until the gate answers and while the run goes. The vault's own sync
+    /// passes wait for this to end: started first, a pass takes the core's
+    /// pass gate and pulls the whole feed unwindowed, with the first sync and
+    /// its progress queued behind it.
+    var isPending: Bool {
+        switch phase {
+        case .checking, .filling: true
+        case .filled, .failed: false
+        }
+    }
+
+    /// `.checking` is one local row and shows nothing: a banner that flashed
+    /// up on every launch of a synced vault would be noise.
+    var banner: Banner {
+        switch phase {
+        case .checking: .none
+        case let .filling(progress): .progress(progress)
+        case .filled: incomplete.map(Banner.incomplete) ?? .none
+        case let .failed(error): .failure(error)
+        }
     }
 
     /// Whether the pull left anything behind it.
@@ -129,6 +173,7 @@ final class VaultFillViewModel {
         }
         let elapsed = UInt64(max(0, (ContinuousClock.now - start) / .milliseconds(1)))
         Log.sync.notice("the first sync ran for", .milliseconds(elapsed))
+        landed += 1
     }
 
     /// One tick from the core, already hopped to this actor by
@@ -139,9 +184,29 @@ final class VaultFillViewModel {
     /// without this guard it would put the progress bar back and hide the
     /// reason. Nothing outside a running pull may move this screen.
     private func report(_ progress: SyncProgress) {
-        guard case let .filling(last) = phase else { return }
-        if last?.phase != progress.phase { Self.logReached(progress) }
+        guard case let .filling(previous) = phase else { return }
+        if previous?.phase != progress.phase { Self.logReached(progress) }
         phase = .filling(progress)
+        if landedAgain(after: previous, progress) { landed += 1 }
+    }
+
+    /// Metadata applied in one re-read of the lists. A tick lands a hundred
+    /// items, and re-reading a vault of thousands on each would hold the core
+    /// queue the screens read through.
+    static let landedStride: UInt64 = 500
+
+    /// A new pass (the refs pass files deletes), every `landedStride` items
+    /// of metadata, and its last item. Bodies change no list row.
+    private func landedAgain(after previous: SyncProgress?, _ progress: SyncProgress) -> Bool {
+        if previous?.phase != progress.phase {
+            landedThrough = 0
+            return true
+        }
+        guard progress.phase == .metadata,
+              progress.completed >= landedThrough + Self.landedStride || progress.completed == progress.total
+        else { return false }
+        landedThrough = progress.completed
+        return true
     }
 
     /// One diagnostic line per pass, not per tick: the bodies pass alone
