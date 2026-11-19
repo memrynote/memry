@@ -101,7 +101,10 @@ const createHarness = (
   options: { lastCursor?: string; storeId?: string | null; omitProvider?: boolean } = {}
 ): Harness => {
   const order: string[] = []
-  const setStateValue = vi.fn()
+  const state = new Map<string, string>(
+    options.lastCursor === undefined ? [] : [[SYNC_STATE_KEYS.LAST_CURSOR, options.lastCursor]]
+  )
+  const setStateValue = vi.fn((key: string, value: string) => state.set(key, value))
   const deviceKeys: string[] = []
   const provider: ProviderMock | undefined = options.omitProvider
     ? undefined
@@ -140,10 +143,9 @@ const createHarness = (
   } as unknown as SyncContext
 
   const stateManager = {
-    getStateValue: vi.fn((key: string) =>
-      key === SYNC_STATE_KEYS.LAST_CURSOR ? options.lastCursor : undefined
-    ),
+    getStateValue: vi.fn((key: string) => state.get(key)),
     setStateValue,
+    deleteStateValue: vi.fn((key: string) => state.delete(key)),
     isPaused: vi.fn(() => false),
     recordHistory: vi.fn(),
     updateLastSyncAt: vi.fn()

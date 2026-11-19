@@ -403,6 +403,7 @@ export class PushCoordinator {
           })
 
           lastServerTime = response.value.serverTime
+          this.ctx.lockProgress++
           pushLag.record(dedupedItems, response.value, this.ctx.deps.queue)
           if (pushItems.length >= batchSize) batchSize = this.raiseCeilingAfterCleanPush(batchSize)
           const acceptedSet = new Set(response.value.accepted)

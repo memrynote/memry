@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./simulated-server": "./src/simulated-server.ts"
+    "./simulated-server": "./src/simulated-server.ts",
+    "./zero-loss-oracle": "./src/zero-loss-oracle/index.ts"
   },
   "scripts": {
     "build:worker": "tsx scripts/build-worker.ts",

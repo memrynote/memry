@@ -533,6 +533,14 @@ gap and owes the document a re-pull
 take the stop-at-gap side**: it is the only one under which no update can be
 skipped permanently.
 
+Updates read from a pack add one condition: the cursor moves across a packed
+update only when its `sequenceNum` is the cursor plus one, a missing number is
+pulled from the server, never skipped, and a packed update is used only above
+the document's `floor`, read from the routes after the pack, so a purged update a
+pack still holds is never applied. An answer without `floor`, which every server
+sends today, leaves packed updates unusable (chapter 08 §8.4.3,
+`packages/contracts/src/sync-api.ts:814-818`).
+
 ## 7.10 Retry policy and rate limits
 
 **Normative.** Every CRDT request uses `maxRetries: 3`, `baseDelayMs: 2000`,
@@ -593,9 +601,18 @@ snapshot endpoint under the §7.13.2 gate.
 
 - an update entry is `{ sequenceNum, data, createdAt, signerDeviceId }`, where
   `data` is base64 of the **packed envelope** of chapter 04 §4.11;
+  a `crdt_update` pack entry carries the same entry, with the envelope bytes as
+  its payload and the other three fields as its meta
+  (`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:814-818`,
+  chapter 08 §8.4.3);
 - the batch response is
   `{ notes: Record<noteId, { updates, hasMore }>, snapshotMeta?: Record<noteId,
   { sequenceNum, revision, signerDeviceId }> }`;
+- both forms gain an optional `floor` per document in step 05 (#5228): the
+  single form at the top level, the batch form inside each `notes` entry. It is
+  the highest purged sequence number (§7.4, §7.15), 0 when none. No server sends
+  it yet, and a reader of packed updates treats its absence as "use no packed
+  update" (chapter 08 §8.4.3). The item-granular routes never need it;
 - the snapshot response is
   `{ snapshot, sequenceNum, signerDeviceId, revision? }`, with `snapshot` null
   when absent.

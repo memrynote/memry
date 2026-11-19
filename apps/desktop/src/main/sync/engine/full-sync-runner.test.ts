@@ -191,8 +191,8 @@ interface Harness {
     scheduleSync: ReturnType<typeof vi.fn>
   }
   emitToRenderer: ReturnType<typeof vi.fn>
-  setStateValue: ReturnType<typeof vi.fn>
-  getStateValue: ReturnType<typeof vi.fn>
+  setStateValue: Mock<(key: string, value: string) => void>
+  getStateValue: Mock<(key: string) => string | undefined>
   isPaused: ReturnType<typeof vi.fn>
   clearPendingAfterFullSync: ReturnType<typeof vi.fn>
   purgeOldErrors: ReturnType<typeof vi.fn>
@@ -275,12 +275,20 @@ function createHarness(
     fullSyncActive: false
   } as unknown as SyncContext
 
-  const setStateValue = vi.fn((key: string) => {
+  const state = new Map<string, string>()
+  const setStateValue = vi.fn((key: string, value: string) => {
     calls.push(`setState:${key}`)
+    state.set(key, value)
   })
-  const getStateValue = vi.fn((_key: string) => undefined as string | undefined)
+  const getStateValue = vi.fn((key: string) => state.get(key))
+  const deleteStateValue = vi.fn((key: string) => state.delete(key))
   const isPaused = vi.fn(() => false)
-  const stateManager = { setStateValue, getStateValue, isPaused } as unknown as SyncStateManager
+  const stateManager = {
+    setStateValue,
+    getStateValue,
+    deleteStateValue,
+    isPaused
+  } as unknown as SyncStateManager
 
   const clearPendingAfterFullSync = vi.fn(() => {
     calls.push('clearPendingAfterFullSync')
@@ -372,6 +380,7 @@ describe('FullSyncRunner', () => {
 
       expect(h.calls).toEqual([
         `setState:${SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR}`,
+        'setState:bootstrapPending',
         'pull',
         'seed',
         'push',
@@ -1976,7 +1985,6 @@ describe('FullSyncRunner', () => {
 
     it('#then a run with no persisted cursor arms a first_full_sync bootstrap', async () => {
       const h = createHarness()
-      h.getStateValue.mockReturnValue(undefined)
 
       await h.runner.run()
 
@@ -1991,6 +1999,52 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+    })
+
+    /** A pull that lands pages but never reaches the head of the feed. */
+    function interruptedPull(h: Harness): void {
+      h.actions.pull.mockImplementation(async (): Promise<SyncRunOutcome> => {
+        h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+        return { status: 'incomplete' }
+      })
+    }
+
+    it('#then a key without a timestamp from an earlier build still resumes a bootstrap that started on this build', async () => {
+      const h = createHarness()
+      h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+      h.setStateValue('bootstrapPending', '1')
+
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a clock corrected forward after the first launch does not end the resume window early', async () => {
+      const now = Date.now()
+      const h = createHarness()
+      interruptedPull(h)
+      vi.setSystemTime(now - 48 * 60 * 60 * 1000)
+      await h.runner.run()
+
+      vi.setSystemTime(now + 60_000)
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a server that refuses the bootstrap (409) ends the resume', async () => {
+      const h = createHarness()
+      interruptedPull(h)
+      await h.runner.run()
+
+      mocks.openBootstrapSession.mockResolvedValueOnce('ineligible')
+      await h.runner.run()
+      expect(h.getStateValue('bootstrapPending')).toBeUndefined()
+
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
       expect(mocks.beginBootstrap).not.toHaveBeenCalled()
     })
 
