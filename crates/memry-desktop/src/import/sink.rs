@@ -78,6 +78,30 @@ pub struct ImportedJournalEntry {
     pub properties: Option<YamlMap>,
 }
 
+/// `InboxItemPlan` (`packages/importers/src/raindrop/types.ts`): one bookmark for the inbox.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportedBookmark {
+    pub title: String,
+    pub content: Option<String>,
+    pub source_url: String,
+    /// The source's ISO 8601 creation time; `None` is the import time.
+    pub created_at: Option<String>,
+    pub tags: Vec<String>,
+    pub metadata: BookmarkMetadata,
+}
+
+/// `InboxItemPlan.metadata`, kept when the article extraction later rewrites the content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BookmarkMetadata {
+    pub url: String,
+    pub excerpt: String,
+    pub note: String,
+    pub folder: String,
+    pub favorite: bool,
+    pub hero_image: String,
+    pub highlights: String,
+}
+
 /// The writes of one import run. Called from the blocking thread the runner runs the importer
 /// on, one call at a time.
 pub trait ImportSink: Send + Sync {
@@ -128,6 +152,11 @@ pub trait ImportSink: Send + Sync {
 
     /// `createJournalEntry`: writes the entry of `entry.date`.
     fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError>;
+
+    /// Raindrop's `saveBookmark`: inserts a `link` inbox item with its tags (processing
+    /// complete, captured by `api`, modified now) and, for an http(s) URL, queues the article
+    /// extraction job. `Err` fails that bookmark; the import goes on.
+    fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError>;
 
     /// Runs once after the importer returned, before the runner reports `done`: the production
     /// sink waits for the index to hold every note it wrote (`flushProjectionEvents`), so a

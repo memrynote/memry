@@ -203,6 +203,11 @@ fn noteplan_importer_matches_the_typescript_importer() {
 }
 
 #[test]
+fn raindrop_importer_matches_the_typescript_importer() {
+    assert_source("raindrop");
+}
+
+#[test]
 fn roam_importer_matches_the_typescript_importer() {
     assert_source("roam");
 }
