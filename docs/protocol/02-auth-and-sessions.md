@@ -217,8 +217,8 @@ no `clockTolerance` and `jose` defaults to 0
 wrong by more than the token's remaining life fails every request.** The single
 exception is setup-token **renewal**, which passes
 `clockTolerance: SETUP_TOKEN_RENEWAL_WINDOW_SECONDS`
-(`apps/sync-server/src/services/auth.ts:290`) and then bounds the result with the
-signed `renewable_until` claim (`:298`).
+(`apps/sync-server/src/services/auth.ts:354`) and then bounds the result with the
+signed `renewable_until` claim (`:374`).
 
 A conforming client SHOULD detect and surface clock skew rather than presenting
 a stream of unexplained 401s; chapter 05 §5.16 gives the skew threshold the
@@ -467,15 +467,33 @@ on that path (`apps/desktop/src/main/sync/linking-service.ts:493-521`).
 
 **Normative.** Refresh token rows are stored as a hex SHA-256 of the token. On
 `POST /auth/refresh` the server looks for an unrevoked, unexpired row for
-`(token_hash, user_id, device_id)` (`apps/sync-server/src/services/auth.ts:176-181`).
-If there is none it looks for a row revoked within the last
-`ROTATION_GRACE_SECONDS = 10` (`apps/sync-server/src/services/auth.ts:79`,
-`:184-189`) and, if found, returns the current active token — this is what makes
-a double-submitted refresh safe.
+`(token_hash, user_id, device_id)` (`apps/sync-server/src/services/auth.ts:207-213`).
+A rotation retires that row and records the row it issued in its place as
+`replaced_by` (`:108-126`, migration `0021_refresh_token_successor.sql`).
 
-**Outside that grace window, an unknown refresh token revokes every token for
-that device** before answering `401 AUTH_INVALID_TOKEN`
-(`apps/sync-server/src/services/auth.ts:199-204`).
+**Exactly one request rotates a given row.** The retire is conditional on the
+row still being unrevoked, and the successor is inserted only when that retire
+landed, all in one batch (`:111`, `:117-127`). Of two concurrent refreshes with
+the same token, the one whose retire lands first rotates it. The other re-reads
+(`:245-266`), finds the token rotated with an unused successor, and is answered
+through the lost-rotation grace below, which retires the winner's successor.
+Both requests get `200`, and one token stays live for the device.
+
+**A rotation whose answer was lost is re-issued.** The server commits a rotation
+before it answers, so a client that never reads the answer (a request timeout
+while its main thread was stalled, a dropped connection, a suspended app) still
+holds the retired token and retries with it. When the presented token was
+rotated less than `ROTATION_GRACE_SECONDS = 900` ago (`:83`) and its
+`replaced_by` successor is still unrevoked, the server retires that unused
+successor, issues a new pair, and points the presented token's `replaced_by` at
+the new row (`:214-230`). A further retry with the same token is honored the same
+way. The window counts from the first rotation, and a retry does not extend it.
+
+**Every other reuse revokes every token for that device** before answering
+`401 AUTH_INVALID_TOKEN` (`:247-254`): a token rotated more than
+`ROTATION_GRACE_SECONDS` ago, a token rotated before `replaced_by` existed, and
+above all a token whose successor was already used. A used successor means two
+holders, so reuse after it is theft, and the server ends the device's session.
 
 **A client that retries a refresh naively locks itself out.** This is why the
 client side treats a 401 on refresh as terminal after three attempts (§2.10).
@@ -552,10 +570,10 @@ retryable there, and the replay here is not an attempt there.
 | OTP `MAX_EMAIL_REQUESTS` / window    | 3 per 600 s | `apps/sync-server/src/services/otp.ts:6-7`  |
 | `ACCESS_TOKEN_EXPIRY`                | `15m`       | `apps/sync-server/src/services/auth.ts:8`   |
 | `REFRESH_TOKEN_EXPIRY`               | `7d`        | `apps/sync-server/src/services/auth.ts:9`   |
-| `SETUP_TOKEN_EXPIRY`                 | `5m`        | `apps/sync-server/src/services/auth.ts:217` |
-| `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:231` |
-| `ROTATION_GRACE_SECONDS`             | 10          | `apps/sync-server/src/services/auth.ts:79`  |
-| `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:80`  |
+| `SETUP_TOKEN_EXPIRY`                 | `5m`        | `apps/sync-server/src/services/auth.ts:282` |
+| `SETUP_TOKEN_RENEWAL_WINDOW_SECONDS` | 86400       | `apps/sync-server/src/services/auth.ts:296` |
+| `ROTATION_GRACE_SECONDS`             | 900         | `apps/sync-server/src/services/auth.ts:83`  |
+| `MAX_ROTATION_ATTEMPTS`              | 3           | `apps/sync-server/src/services/auth.ts:84`  |
 | `MAX_DEVICES_PER_USER`               | 50          | `apps/sync-server/src/routes/auth.ts:562`   |
 | `OAUTH_STATE_EXPIRY`                 | `5m`        | `apps/sync-server/src/routes/auth.ts:168`   |
 

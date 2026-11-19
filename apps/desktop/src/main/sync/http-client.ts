@@ -77,6 +77,39 @@ interface ServerErrorResponse {
 // per attempt; withRetry owns the retry budget on top of it.
 export const SYNC_REQUEST_TIMEOUT_MS = 60_000
 
+/** A deadline timer this late means the main thread was stalled, not the network. */
+const STALLED_TIMER_LATENESS_MS = 1_000
+/** Turns of a live event loop the request gets after a stall, to read what arrived during it. */
+const AFTER_STALL_GRACE_MS = 5_000
+
+/**
+ * The per-request deadline, counted in time the event loop could run.
+ *
+ * After a long main-thread stall the deadline timer and the server's answer
+ * are both ready, and timers run before network I/O. An AbortSignal.timeout
+ * then discards an answer that arrived long before the deadline. For a token
+ * refresh the server had already rotated, that discarded answer cost the
+ * session. A timer that fires late gives the request a few seconds of live
+ * loop instead of aborting it. A black-holed socket on a responsive loop still
+ * times out on schedule.
+ */
+const createRequestDeadline = (timeoutMs: number): { signal: AbortSignal; clear: () => void } => {
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const arm = (ms: number): void => {
+    const dueAt = performance.now() + ms
+    timer = setTimeout(() => {
+      if (performance.now() - dueAt > STALLED_TIMER_LATENESS_MS) {
+        arm(AFTER_STALL_GRACE_MS)
+        return
+      }
+      controller.abort(new DOMException('The request timed out.', 'TimeoutError'))
+    }, ms)
+  }
+  arm(timeoutMs)
+  return { signal: controller.signal, clear: () => clearTimeout(timer) }
+}
+
 export const syncFetch = async <T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
   path: string,
@@ -125,6 +158,7 @@ export const syncFetch = async <T>(
       path === '/sync/crdt/snapshot' ||
       path === '/sync/crdt/snapshot/batch')
   const release = isCrdtPush ? admitCrdtPush() : undefined
+  const deadline = createRequestDeadline(timeoutMs)
   try {
     let response: Response
     try {
@@ -132,9 +166,7 @@ export const syncFetch = async <T>(
         method,
         headers,
         body: body != null ? JSON.stringify(body) : undefined,
-        signal: signal
-          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
-          : AbortSignal.timeout(timeoutMs)
+        signal: signal ? AbortSignal.any([deadline.signal, signal]) : deadline.signal
       })
     } catch (error) {
       if (signal?.aborted) throw signal.reason
@@ -158,6 +190,12 @@ export const syncFetch = async <T>(
     try {
       responseBody = await response.json()
     } catch {
+      // The deadline also covers the body. A read it cut off is a timeout, not
+      // a malformed answer.
+      if (signal?.aborted) throw signal.reason
+      if (deadline.signal.aborted) {
+        throw new NetworkError(getMainI18n().t('errors:sync.requestTimedOut'))
+      }
       if (!response.ok) {
         throw new SyncServerError(`Server returned ${response.status}`, response.status)
       }
@@ -190,6 +228,7 @@ export const syncFetch = async <T>(
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     return responseBody as T
   } finally {
+    deadline.clear()
     release?.()
   }
 }
