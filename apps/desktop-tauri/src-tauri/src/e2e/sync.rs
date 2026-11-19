@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use memry_desktop::account::AccountService;
 use memry_desktop::account::e2e_bootstrap::E2eDevice;
-use memry_desktop::account::vault_sync::OpenVaultBinding;
+use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::session::Session;
 use memry_desktop::sync::gate::{Entitlement, VaultBinding};
@@ -95,4 +95,30 @@ pub async fn e2e_bootstrap_sync_device(
         .map_err(|e| invalid("e2e_bootstrap_sync_device", e))?;
     account_sync::attach_if_signed_in(app);
     Ok(Bootstrapped { device_id })
+}
+
+/// Electron's `restartSyncRuntimeForTests`: stops the open vault's supervisor without the
+/// shutdown's final rounds and builds a new one, which decides the vault's binding again. Answers
+/// once the new supervisor runs; fails while sync is not wired or the account is signed out.
+#[tauri::command]
+pub async fn e2e_restart_sync_runtime(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    let wiring = app
+        .try_state::<Arc<SyncWiring>>()
+        .map(|wiring| Arc::clone(wiring.inner()))
+        .ok_or_else(|| invalid("e2e_no_sync", "sync is not wired yet"))?;
+    if !wiring.account.info().signed_in {
+        return Err(invalid("e2e_signed_out", "the account is signed out"));
+    }
+    let session = app.state::<Session>().inner().clone();
+    let restarted = tauri::async_runtime::spawn_blocking(move || {
+        session.attach_sync(wiring.factory());
+        session.sync_supervisor().is_some()
+    })
+    .await
+    .map_err(|e| invalid("e2e_restart_sync_runtime", e))?;
+    if restarted {
+        Ok(())
+    } else {
+        Err(invalid("e2e_no_supervisor", "no vault is open to sync"))
+    }
 }

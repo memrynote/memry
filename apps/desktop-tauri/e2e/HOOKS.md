@@ -48,7 +48,7 @@ Electron suite.
 | `triggerQuickCaptureShortcutForE2E`         | `e2e_trigger_quick_capture_shortcut`      | Step 11 (#3528) |
 | `getQuickCaptureShortcutRegistrationForE2E` | `e2e_quick_capture_shortcut_registration` | Step 11 (#3528) |
 | `disconnectSyncSocketForTests`              | `e2e_disconnect_sync_socket`              | Step 17 (#3534) |
-| `getSyncStateValueForTests`                 | `e2e_sync_state_value`                    | Step 17 (#3534) |
+| `getSyncStateValueForTests`                 | `e2e_debug_query` over `meta`             | Step 17 (#3534) |
 | `pauseSyncForTests`                         | `e2e_pause_sync`                          | Step 17 (#3534) |
 | `pushQueuedSyncRowsForTests`                | `e2e_push_queued_sync_rows`               | Step 17 (#3534) |
 | `startSyncWakeProbeForTests`                | `e2e_start_sync_wake_probe`               | Step 17 (#3534) |
@@ -58,7 +58,7 @@ Electron suite.
 | `getCrdtBodyDebtsForTests`                  | `e2e_crdt_body_debts`                     | Step 14 (#3531) |
 | `pullSyncForTests`                          | `e2e_pull_sync`                           | Step 17 (#3534) |
 | `getSyncWakeProbeForTests`                  | `e2e_sync_wake_probe`                     | Step 17 (#3534) |
-| `listCrdtStoreDirsForTests`                 | `e2e_list_crdt_store_dirs`                | Step 14 (#3531) |
+| `listCrdtStoreDirsForTests`                 | none: the store is `data.db`; see below   | Step 17 (#3534) |
 | `restartSyncRuntimeForTests`                | `e2e_restart_sync_runtime`                | Step 17 (#3534) |
 
 ## Debug handles
@@ -120,6 +120,24 @@ not read. The server is the control file's `syncServerUrl`: a fixture that sets
 `fixtures/sync-auth-fixtures.ts` wraps it (`bootstrapSyncDevice`, `bootstrappedSyncPair`), and
 `specs/sync/sync-bootstrap.e2e.ts` waits for the first sync pass after it. The sign-in exists
 only in the e2e build (`memry-core` and `memry-desktop` feature `e2e`).
+
+`e2e_restart_sync_runtime` (`src-tauri/src/e2e/sync.rs`) is Electron's
+`restartSyncRuntimeForTests`: it stops the open vault's supervisor without the shutdown's final
+rounds and builds a new one through `Session::attach_sync`, which decides the vault's binding
+again. It answers once the new supervisor runs, and fails while the account is signed out.
+
+Electron's sync state keys live in the vault's `data.db` `meta` table, which a spec reads with
+`e2e_debug_query`. `specs/two-device/sync-adoption-store-restart.e2e.ts` reads three:
+
+| Electron                                  | `meta` key                   |
+| ----------------------------------------- | ---------------------------- |
+| `noteBodyLegacySweep`                     | `sync.note_body_legacy_pull` |
+| `crdtStoreEpoch`                          | `vault.id`                   |
+| `listCrdtStoreDirsForTests` (the one dir) | `sync.server_vault_id`       |
+
+Electron names the CRDT store directory after the vault uuid and renames it on adoption. The
+Tauri store is the vault's `data.db`, so there is no directory to list: the adopted id is the
+binding `sync.server_vault_id`, and `vault.id` is the database's own identity, minted once.
 
 ## Spelling
 

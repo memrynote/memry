@@ -58,6 +58,7 @@ e2e_commands! {
     ],
     sync => [
         e2e_bootstrap_sync_device,
+        e2e_restart_sync_runtime,
         e2e_set_gate_inputs,
         e2e_set_network_online
     ],
