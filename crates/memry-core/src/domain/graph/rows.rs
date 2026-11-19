@@ -169,11 +169,10 @@ pub(super) fn projects(
 }
 
 /// `(task id, note id)` for each note a live task links (`tasks.linked_note_ids`, Electron's
-/// `task_notes`), once per pair. `column` is `t.id` or `j.value` (the note id). A list that
-/// is not a JSON array links nothing.
+/// `task_notes`), once per pair, for the tasks among the ids. A list that is not a JSON array
+/// links nothing.
 pub(super) fn task_notes(
     data: &Connection,
-    column: &str,
     among: Among<'_>,
 ) -> Result<Vec<(String, String)>, StorageError> {
     let sql = format!(
@@ -181,7 +180,7 @@ pub(super) fn task_notes(
            CASE WHEN json_valid(t.linked_note_ids) AND json_type(t.linked_note_ids) = 'array' \
            THEN t.linked_note_ids ELSE '[]' END) j \
          WHERE t.deleted_at IS NULL AND j.type = 'text'{}",
-        filter(column, among)
+        filter("t.id", among)
     );
     collect(data, &sql, among, |row| Ok((row.get(0)?, row.get(1)?)))
 }

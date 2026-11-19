@@ -253,7 +253,7 @@ pub fn graph_data(data: &Connection, index: &Connection) -> Result<GraphData, St
             edges.push(edge(&host, &source, EdgeKind::Portal));
         }
     }
-    for (task, note) in rows::task_notes(data, "t.id", Among::All)? {
+    for (task, note) in rows::task_notes(data, Among::All)? {
         if both(&task, &note) {
             edges.push(edge(&task, &note, EdgeKind::TaskNote));
         }
@@ -270,5 +270,7 @@ pub fn graph_data(data: &Connection, index: &Connection) -> Result<GraphData, St
     Ok(GraphData { nodes, edges })
 }
 
+#[cfg(test)]
+mod bench;
 #[cfg(test)]
 mod tests;

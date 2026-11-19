@@ -34,6 +34,10 @@ struct Walk {
     resolved: HashSet<String>,
     /// `tasks.project_id` of each resolved task.
     task_projects: HashMap<String, String>,
+    /// The live tasks linking each note, read on the first ring that has a note. Finding a
+    /// note's tasks scans every task's `linked_note_ids` JSON (no `task_notes` table), so the
+    /// walk scans once instead of once per ring.
+    tasks_by_note: Option<HashMap<String, Vec<String>>>,
 }
 
 fn json_ids<'a>(ids: impl IntoIterator<Item = &'a String>) -> Result<String, StorageError> {
@@ -90,7 +94,7 @@ impl Walk {
 
     /// Every whole-graph edge touching `frontier`, both directions of every relationship.
     fn incident(
-        &self,
+        &mut self,
         data: &Connection,
         index: &Connection,
         frontier: &[String],
@@ -174,8 +178,24 @@ impl Walk {
         }
 
         let mut task_notes = HashSet::new();
-        task_notes.extend(rows::task_notes(data, "t.id", Among::Ids(&task_list))?);
-        task_notes.extend(rows::task_notes(data, "j.value", notes_among)?);
+        task_notes.extend(rows::task_notes(data, Among::Ids(&task_list))?);
+        if !notes.is_empty() {
+            let by_note = match &mut self.tasks_by_note {
+                Some(by_note) => by_note,
+                slot => {
+                    let mut by_note: HashMap<String, Vec<String>> = HashMap::new();
+                    for (task, note) in rows::task_notes(data, Among::All)? {
+                        by_note.entry(note).or_default().push(task);
+                    }
+                    slot.insert(by_note)
+                }
+            };
+            for note in &notes {
+                for task in by_note.get(note).into_iter().flatten() {
+                    task_notes.insert((task.clone(), note.clone()));
+                }
+            }
+        }
         for (task, note) in task_notes {
             out.push(both(
                 format!("task-note\0{task}\0{note}"),
