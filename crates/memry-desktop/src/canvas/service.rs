@@ -221,9 +221,16 @@ impl CanvasService {
     /// One live canvas with the scene of its document (`getCanvas`). Records the document as
     /// read, so the next save expects it.
     pub fn get(&self, id: &str, now_ms: i64) -> Result<Option<CanvasView>, CanvasError> {
-        self.write::<_, CanvasError>(|conn| {
+        let view = self.write::<_, CanvasError>(|conn| {
             let Some(canvas) = canvas::get(conn, id)? else {
                 return Ok(None);
+            };
+            // An edit made on disk reaches the record before the document is served as read.
+            let found = self.locate(conn, id)?;
+            let settled = self.settle_in(conn, &canvas, found, now_ms)?;
+            let canvas = match settled.scene_changed() {
+                true => canvas::get(conn, id)?.unwrap_or(canvas),
+                false => canvas,
             };
             let (scene, unreadable) = match self.locate(conn, id)? {
                 Found::File { path, document, .. } => {
@@ -246,12 +253,20 @@ impl CanvasService {
                 }
                 Found::None => (canvas.scene.clone(), None),
             };
-            Ok(Some(CanvasView {
+            let view = CanvasView {
                 summary: summary(canvas),
                 scene,
                 unreadable,
-            }))
-        })
+            };
+            Ok(Some((view, settled.scene_changed())))
+        })?;
+        let Some((view, changed)) = view else {
+            return Ok(None);
+        };
+        if changed {
+            self.rewrite_edges(id, &view.scene)?;
+        }
+        Ok(Some(view))
     }
 
     /// `createCanvas`: the document at a path named for the title, then the record.

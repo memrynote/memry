@@ -293,6 +293,20 @@ fn register_task_defaults(app: &AppHandle<Wry>, session: &Session) {
     memry_desktop::tasks::defaults::register(session, store.inner().clone());
 }
 
+/// The canvas reconcile in the background of every open, as Electron's `reconcileCanvasFiles`
+/// (Step 30e2).
+fn register_canvas_reconcile(app: &AppHandle<Wry>, session: &Session) {
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "CanvasReconcile",
+            "no device identity store: vaults open without a canvas reconcile"
+        );
+        return;
+    };
+    memry_desktop::canvas::reconcile::register(session, store.inner().clone());
+}
+
 /// The chunked attachment uploads, ended with the vault and swept at its next open (14f-2).
 fn register_uploads(app: &AppHandle<Wry>, session: &Session) {
     let uploads = Uploads::new();
@@ -400,6 +414,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_large_files(app, &session);
     register_uploads(app, &session);
     register_task_defaults(app, &session);
+    register_canvas_reconcile(app, &session);
     crate::ml_worker::register(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.

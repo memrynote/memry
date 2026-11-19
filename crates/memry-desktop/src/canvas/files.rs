@@ -83,3 +83,32 @@ pub(crate) fn refile(
     .map(drop)
     .map_err(failed)
 }
+
+/// When the row was last written: the scene the canvas's record held then is the one its
+/// document held.
+pub(crate) fn written_at(conn: &Connection, canvas_id: &str) -> Result<Option<i64>, StorageError> {
+    conn.query_row(
+        "SELECT written_at FROM canvas_files WHERE canvas_id = ?1",
+        [canvas_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Every row as `(canvas_id, file_path, live)`; `live` is false for a canvas that is deleted or
+/// has no record.
+pub(crate) fn all(conn: &Connection) -> Result<Vec<(String, String, bool)>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT f.canvas_id, f.file_path,
+                    EXISTS (SELECT 1 FROM canvases c WHERE c.id = f.canvas_id AND c.deleted_at IS NULL)
+             FROM canvas_files f",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}

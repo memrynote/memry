@@ -164,7 +164,7 @@ impl CanvasService {
     }
 
     /// Files the drawing found edited on disk as a new canvas beside the original.
-    fn conflict_copy(
+    pub(super) fn conflict_copy(
         &self,
         conn: &Connection,
         canvas: &Canvas,
