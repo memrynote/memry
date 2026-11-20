@@ -7,7 +7,6 @@ use std::sync::Arc;
 use memry_desktop::account::binding::BindingChoice;
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::account::{AccountService, KeyRepair};
-use memry_desktop::billing::BillingService;
 use memry_desktop::session::Session;
 use memry_desktop::sync::gate::{GateDecision, SyncNotStartedReason};
 use serde::{Deserialize, Serialize};
@@ -62,12 +61,7 @@ async fn sign_out<R: Runtime>(
 ) -> Result<SignOutResult, CommandError> {
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let session = app.state::<Session>().inner().clone();
-    let signed_out = account.sign_out(&session).await;
-    // A billing answer still in flight is the account's that left.
-    if let Some(billing) = app.try_state::<Arc<BillingService>>() {
-        billing.forget();
-    }
-    let signed_out = signed_out.map_err(|error| {
+    let signed_out = account.sign_out(&session).await.map_err(|error| {
         let mapped = CommandError::from_core(&error);
         log_failure(command, &mapped);
         mapped
@@ -99,12 +93,9 @@ pub async fn sync_repair_device_keys(
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let session = app.state::<Session>().inner().clone();
     let repaired = account.repair_device_keys(&session).await;
-    // A teardown that failed after the keychain step still signed the account out: its billing
-    // answer and binding go as for a finished one.
+    // A teardown that failed after the keychain step still signed the account out: its binding
+    // goes as for a finished one.
     if account.is_signed_out() {
-        if let Some(billing) = app.try_state::<Arc<BillingService>>() {
-            billing.forget();
-        }
         report_binding(&app);
     }
     let repaired = repaired.map_err(|error| {
