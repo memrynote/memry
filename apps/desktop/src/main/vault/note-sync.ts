@@ -109,6 +109,11 @@ export interface CanonicalNoteRef {
   createdAt: string
   modifiedAt: string
   fileSize: number | null
+  /**
+   * Other rows fold to this file's path (#5263): their bytes may be the ones
+   * on disk, so the file's size says nothing about this row.
+   */
+  sharesFile: boolean
   emoji: string | null
   localOnly: boolean
 }
@@ -134,15 +139,14 @@ export function findCanonicalNoteForFile(
 ): CanonicalNoteRef | null {
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
+  const exact = getNoteMetadataByPath(dataDb, relativePath)
+  const candidates =
+    exact || !volumeIgnoresCase(vaultPath) ? [] : listNoteMetadataByFoldedPath(dataDb, relativePath)
   const row =
-    getNoteMetadataByPath(dataDb, relativePath) ??
-    (volumeIgnoresCase(vaultPath)
-      ? listNoteMetadataByFoldedPath(dataDb, relativePath).find(
-          (candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath
-        )
-      : undefined)
+    exact ?? candidates.find((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
   return row
     ? {
+        sharesFile: candidates.length > 1,
         id: row.id,
         path: row.path,
         title: row.title,
@@ -192,6 +196,8 @@ export interface NoteSyncInput {
   localOnly?: boolean
   /** Emoji icon (sidecar-only state) */
   emoji?: string | null
+  /** The hash the index keeps when the doc has not taken these bytes; defaults to theirs. */
+  contentHash?: string
 }
 
 /**
@@ -259,7 +265,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const wordCount = calculateWordCount(parsedContent)
   const characterCount = parsedContent.length
   const snippet = createSnippet(parsedContent)
-  const contentHash = generateContentHash(fileContent)
+  const contentHash = input.contentHash ?? generateContentHash(fileContent)
   const date = extractDateFromPath(path)
   const emoji = input.emoji ?? null
   const rawCover = frontmatter[COVER_FRONTMATTER_KEY]

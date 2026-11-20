@@ -239,7 +239,6 @@ async function indexMarkdownFile(
   const edited = indexedHash != null && indexedHash !== generateContentHash(content)
   const modifiedAt = (edited ? null : keptModifiedAt(canonical, relativePath)) ?? parsed.modified
 
-  // Use syncNoteToCache for unified cache operations
   try {
     const result = syncNoteToCache(
       db,
@@ -256,7 +255,13 @@ async function indexMarkdownFile(
         // is written with emoji=null and the note falls back to the default icon.
         emoji: canonical?.emoji,
         createdAt: parsed.created,
-        modifiedAt
+        modifiedAt,
+        // The walk never moves the indexed hash past bytes the CRDT doc has
+        // not taken: a hash that matches the edit tells the write-back the doc
+        // holds it, and the write-back then writes the doc's older body over
+        // it. The write-back's outside-edit check, the watcher, or the doc's
+        // seed takes the edit in and moves the hash.
+        ...(edited ? { contentHash: indexedHash } : {})
       },
       { isNew: true }
     )

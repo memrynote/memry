@@ -57,7 +57,13 @@ vi.mock('../sync/local-mutations', () => ({
 }))
 vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local',
-  getCrdtProvider: vi.fn(() => ({ initForNote: vi.fn(async () => {}), updateMeta: vi.fn() }))
+  getCrdtProvider: vi.fn(() => ({
+    initForNote: vi.fn(async () => {}),
+    updateMeta: vi.fn(),
+    getDoc: () => undefined,
+    recordOwedFullState: vi.fn(),
+    hasPersistence: () => true
+  }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
 vi.mock('../sync/crdt-external-feed', async (importOriginal) => ({
@@ -71,17 +77,21 @@ vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 vi.mock('../database/client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  getDatabase: vi.fn()
+  getDatabase: vi.fn(),
+  getIndexDatabase: vi.fn()
 }))
 
 import { getDatabase, getIndexDatabase } from '../database'
-import { getDatabase as getClientDatabase } from '../database/client'
+import {
+  getDatabase as getClientDatabase,
+  getIndexDatabase as getClientIndexDatabase
+} from '../database/client'
 import { oweUnsyncedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { getStatus } from './index'
 import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../sync/local-mutations'
 import { feedExternalEditToCrdt, takeOwedFile } from '../sync/crdt-external-feed'
 import { markdownToYFragment } from '../sync/blocknote-converter'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -126,6 +136,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     index = createTestIndexDb()
     vi.mocked(getDatabase).mockReturnValue(asClientDb(data.db))
     vi.mocked(getClientDatabase).mockReturnValue(asClientDb(data.db))
+    vi.mocked(getClientIndexDatabase).mockReturnValue(index.db)
     vi.mocked(getIndexDatabase).mockReturnValue(index.db)
     vi.mocked(getStatus).mockReturnValue({
       isOpen: true,
@@ -493,6 +504,19 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
   // the second write replaces the first body on disk (#5263). The file still
   // belongs to the row the disk spells: neither row is re-keyed onto the
   // other, and nothing is pushed.
+  it('the watcher pushes no applied attachment that shares its file with a case twin', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('twin-small', 'SuperNotes/p.png', 'png')
+    seed('twin-large', 'SUPERNOTES/p.png', 'larger-png-bytes')
+    await passSentinel()
+
+    const updates = vi
+      .mocked(enqueueLocalSyncUpdate)
+      .mock.calls.filter(([, id]) => id.startsWith('twin-'))
+    expect(updates).toEqual([])
+  }, 20_000)
+
   it('keeps both rows of two remote notes that share one file', async () => {
     await watch()
     seed('remote-lower', 'Supernotes/a.md', '# a\n\nlower\n')
@@ -561,6 +585,55 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
   // table first, so a row the index has not seen is still found.
   // Quit after the pull wrote the file, edited outside before the next open:
   // the walk finds a body other than the indexed one, a local edit.
+  /** The doc the store holds for a pulled note: its body as the server has it. */
+  async function storedDoc(markdown: string, relativePath: string): Promise<Y.Doc> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment('prosemirror'), relativePath)
+    return doc
+  }
+
+  // The store holds the pulled doc, so no pull owes the file. A remote update
+  // writes the doc back after the walk, and must take the edit in, not
+  // overwrite it.
+  it('vault open leaves an outside edit for the doc to take, so a write-back keeps it', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), '# a\n\noffline edit\n')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await writebackNow('remote-note', await storedDoc('# a\n\nbody remote\n', 'Supernotes/a.md'))
+
+    expect({
+      file: fs.readFileSync(path.join(vault.path, 'Supernotes/a.md'), 'utf8'),
+      fed: vi.mocked(feedExternalEditToCrdt).mock.calls.map(([id, markdown]) => [id, markdown])
+    }).toEqual({
+      file: '# a\n\noffline edit\n',
+      fed: [['remote-note', expect.stringContaining('offline edit')]]
+    })
+  })
+
+  it('vault open with no outside edit keeps the indexed hash and feeds nothing', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await writebackNow('remote-note', await storedDoc('# a\n\nbody\n', 'Supernotes/a.md'))
+
+    expect({
+      cache: index.db
+        .select({ path: noteCache.path, contentHash: noteCache.contentHash })
+        .from(noteCache)
+        .where(eq(noteCache.id, 'remote-note'))
+        .get(),
+      fed: vi.mocked(feedExternalEditToCrdt).mock.calls.length
+    }).toEqual({
+      cache: { path: 'Supernotes/a.md', contentHash: generateContentHash('# a\n\nbody\n') },
+      fed: 0
+    })
+  })
+
   it('vault open keeps an outside edit of an applied note owed', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
     seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')

@@ -697,9 +697,13 @@ export class VaultWatcher {
     // A size other than the row's is a file replaced before adoption: a local
     // change, stamped and pushed as `handleNonMarkdownFileChange` does. A pull
     // writes the row with size 0 and records the size once the download lands,
-    // so 0 says nothing about the file.
+    // so 0 says nothing about the file, and neither does a file other rows
+    // share.
     const replaced =
-      fileType !== 'markdown' && !!claimed.fileSize && claimed.fileSize !== stats.size
+      fileType !== 'markdown' &&
+      !claimed.sharesFile &&
+      !!claimed.fileSize &&
+      claimed.fileSize !== stats.size
     if (fileType === 'markdown') {
       syncNoteStatToCache(
         db,
