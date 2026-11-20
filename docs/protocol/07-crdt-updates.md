@@ -828,17 +828,19 @@ and recorded).**
 **Normative (server, #2986).** When the server accepts a `delete` of a `note` or
 `journal` record, it purges that document's body after the commit
 (`purgeDeletedDocumentBodies`,
-`apps/sync-server/src/services/document-body-purge.ts:84-188`, called from push
+`apps/sync-server/src/services/document-body-purge.ts:77-198`, called from push
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
-`crdt_snapshots` rows. When the document has any body row, the same batch
-drops every `crdt_update` pack of the vault and resets that kind's pack
-watermark (chapter 08 §8.4.3). Then, when it deleted a snapshot, it drops every
-`crdt_snapshot` pack of the vault and resets that kind's pack watermark, and
-it deletes the snapshot objects. Every pack it drops is recorded in
-`pack_replaced_objects` as due in the batch that drops it, and deleted by the
-replaced-object pass (chapter 08 §8.12).
+`crdt_snapshots` rows. The same batch takes every `crdt_update` and
+`crdt_snapshot` pack that holds the document out of the listing, and the
+purge then rewrites each without the document (chapter 08 §8.13). A body kind
+whose listed packs include one written before migration 0024, which does not
+record the documents it holds, is instead dropped whole and its pack
+watermark reset, when the document has rows of that kind (chapter 08 §8.4.3,
+§8.13). The purge then deletes the snapshot objects. Every pack object it
+takes out of the listing is deleted by the replaced-object pass (chapter 08
+§8.12) once its rewrite commits or its kind is reset.
 Every statement re-checks that a `note` or `journal` record for the id is
 deleted and none is live, so a re-create that commits first keeps its body. A
 purge failure never fails the push. The 6-hourly cleanup
@@ -851,23 +853,23 @@ The reason is the re-create. A journal day's id is `j<date>` on every device
 re-create's record passes delete-wins (chapter 05 §5.8), the id is no longer
 tombstoned, and a device with no local body pulls it from sequence 0. When the
 server kept the deleted body, that pull returned the deleted snapshot and
-updates, and the deleted text came back inside the new day. Packs are dropped
-whole because they are immutable, hold many notes, and an older revision of the
-purged snapshot can sit in any pack built before its last write. Compaction
-rebuilds them without the dead note. Chapter 08 §8.13 narrows this to the packs
-that hold the document, for every kind: a step 06 MUST (#5229) removes its
-ciphertext from pack objects within `PACK_PURGE_DEADLINE_SECONDS` = 900 of the
-purge's commit (`packages/contracts/src/sync-api.ts:793-794`). Until it does,
-a fresh device bootstraps
-those bodies item by item.
+updates, and the deleted text came back inside the new day. Packs are
+immutable and hold many notes, so a pack that holds the document is rewritten
+without it, and an older revision of the purged snapshot can sit in any pack
+built before its last write. `pack_index.documents` names every document a
+body pack holds, so the purge finds all of them. The document's body
+ciphertext leaves pack objects within `PACK_PURGE_DEADLINE_SECONDS` = 900 of
+the purge's commit (`packages/contracts/src/sync-api.ts:793-794`), with the
+exceptions chapter 08 §8.13 states. Until a rewrite commits, a fresh device
+bootstraps the other documents of that pack item by item.
 
 A compaction run that selected the old snapshot before the purge commits its
 `pack_index` row and watermark in one batch, and only while every packed
 snapshot row still exists with the packed `blob_key`
-(`apps/sync-server/src/services/pack-compaction.ts:608-613`). Otherwise it deletes
+(`apps/sync-server/src/services/pack-compaction.ts:385-390`). Otherwise it deletes
 the pack object and leaves the watermark, so the next run reselects
-(`apps/sync-server/src/services/pack-compaction.ts:662`). A run that commits
-first is dropped by the purge's later pack drop.
+(`apps/sync-server/src/services/pack-compaction.ts:440`). A run that commits
+first is taken out of the listing and rewritten by the purge.
 
 Before #2986 the server kept the rows. Clients MUST NOT rely on either
 behaviour: a server from before #2986 still holds the rows, and the purge of an

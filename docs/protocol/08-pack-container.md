@@ -116,7 +116,7 @@ actually behaves rather than as it ought to.
 | `crdt_update`   | the document id      | `server_cursor`                 | §8.4.3                       |
 
 (`packages/contracts/src/pack-format.ts:31-36`.) Every pack holds entries of one
-kind, the one its listing row names (`apps/sync-server/src/services/pack-compaction.ts:215`
+kind, the one its listing row names (`apps/sync-server/src/services/pack-selection.ts:114`
 selects one kind per pack). A reader still checks each entry's own `kind`.
 
 Snapshot entries carry `{sequenceNum, revision}` in `metaBytes`, which is the
@@ -127,7 +127,7 @@ manifest's `snapshot.revision` (§8.4.3), before trusting the bytes** (`packages
 
 **Normative: a server from step 05 (#5228) on produces `crdt_update = 2`.**
 The writer packs the kinds `PACKED_KINDS` names
-(`apps/sync-server/src/services/pack-compaction.ts:148`): `crdt_snapshot`,
+(`apps/sync-server/src/services/pack-compaction.ts:98`): `crdt_snapshot`,
 `record` from step 04 (#5227, #5253) on, and `crdt_update` from step 05 on,
 whose entries follow §8.4.3
 (`apps/sync-server/src/services/pack-update-selection.ts`). An older server
@@ -323,24 +323,29 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   404, and the reader falls back the same way (fail closed, §8.11).
 - **Purge dependency.** Whenever the §7.15 purge removes a document that has
   any body row (a `crdt_updates` or a `crdt_snapshots` row), it MUST take
-  every `crdt_update` pack that holds that
-  document out of the listing, and rewrite it, as §8.13 states for every kind,
-  with the same commit-time recheck §7.15 gives snapshot compaction. Until the
-  membership index of §8.13 exists, that is every `crdt_update` pack of the
-  vault, and the same batch MUST reset the `crdt_update` pack watermark, as
-  the purge does for `crdt_snapshot`
-  (`apps/sync-server/src/services/document-body-purge.ts:174-177`); without the
+  every `crdt_update` pack that holds that document out of the listing and
+  rewrite it without the document, as §8.13 states, with the same commit-time
+  recheck §7.15 gives snapshot compaction. A server from step 06b (#5229)
+  finds those packs through `pack_index.documents` (migration 0024, §8.13).
+  While the vault still lists a `crdt_update` pack written before migration
+  0024, whose `documents` is NULL, the server cannot tell which packs hold the
+  document, so the same batch drops every `crdt_update` pack of the vault and
+  resets that kind's pack watermark (`packKindReset`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:32`, called at
+  `apps/sync-server/src/services/document-body-purge.ts:146-149`); without the
   reset, compaction never packs the other documents of a dropped pack again.
-  Keying on update rows alone is not enough: a snapshot that claims the
-  packed updates prunes their rows (#2299), and the packs still hold them.
-  The purge does both in the D1 batch that deletes the body rows,
-  conditioned on the document having one, so the drop and the delete commit
-  together (`apps/sync-server/src/services/document-body-purge.ts:98-154`). A
+  Keying that drop on update rows alone is not enough: a snapshot that claims
+  the packed updates prunes their rows (#2299), and the packs still hold them
+  (`apps/sync-server/src/services/document-body-purge.ts:98-102`). The purge
+  does this in the D1 batch that deletes the body rows, so the removal and the
+  delete commit together
+  (`apps/sync-server/src/services/document-body-purge.ts:93-176`). A
   compaction run that selected the rows before the purge fails its
   commit-time recheck (`updatesCurrent`,
-  `apps/sync-server/src/services/pack-update-selection.ts`). This shipped with
-  the first kind 2 writer (step 05, #5228). The floor covers a reader that
-  holds a pack from before the purge; the drop keeps later listings clean.
+  `apps/sync-server/src/services/pack-update-selection.ts`). The drop shipped
+  with the first kind 2 writer (step 05, #5228); step 06b scoped it. The floor
+  covers a reader that holds a pack from before the purge; the removal keeps
+  later listings clean.
 - **Verification.** The reader opens the envelope with the document id as
   associated data and checks it against `signerDeviceId`'s key, as for an
   update the route returned (chapter 07 §7.14).
@@ -452,7 +457,7 @@ purge dropped never lands on the key the purge then deletes. A reader takes
 the object from the listed `url` and never parses the key. What changes is the listing.
 A pack's `pack_index` row may be removed, by a rollup that replaces it
 (§8.12) or by a purge (§8.13), and the object is deleted after the grace
-period of §8.12. Stale entries therefore stay as dead bytes for the life of
+period of §8.12, or at once when it may hold a purged body (§8.12, §8.13). Stale entries therefore stay as dead bytes for the life of
 the object, not forever. A client MUST NOT expect a pack it has read to
 change, MUST NOT expect a listed pack to stay listed or downloadable, and MUST
 NOT treat a pack as authoritative: individual blobs remain the source of truth
@@ -550,9 +555,10 @@ records a coverage range on every `record` pack it builds or rolls up
 (`cover_from`, `cover_through`, migration 0023) and lists none of it yet. Its
 body packs carry no range until step 07, because its snapshot builds still
 select on `created_at`. Its builds and rollups pack the body rows of a deleted
-document while those rows exist, and the purge drops the packs that hold them
-(§8.13). A `record` watermark written before migration 0023 has a NULL
-`covered_through`, and the packs built from it stay caches only.
+document while those rows exist, and the purge takes the body packs that hold
+them out of the listing and rewrites them (§8.13). A `record` watermark
+written before migration 0023 has a NULL `covered_through`, and the packs
+built from it stay caches only.
 
 - A writer selects rows of every kind by `server_cursor` above the kind's
   watermark. A pack's `coverFrom` is the `coverThrough` of the kind's previous
@@ -575,19 +581,19 @@ document while those rows exist, and the purge drops the packs that hold them
   insert applied.** The insert does nothing on a conflict on
   `(user_id, vault_id, item_kind, min_cursor)`
   (`apps/sync-server/migrations/0007_pack_index.sql:32`,
-  `apps/sync-server/src/services/pack-index-write.ts:67`), and two snapshot
+  `apps/sync-server/src/services/pack-index-write.ts:90`), and two snapshot
   packs whose first entries share a `created_at` second share `min_cursor`. A
   watermark that moved past a pack that was never listed would leave its rows
   in no pack and in no gap a reader can see. The batch's watermark and
   coverage statements are guarded on the new row's id existing, so no schema
   changes. The insert is guarded too on the watermark and `covered_through`
   still being the ones the build selected under (`watermarkUnchanged`,
-  `apps/sync-server/src/services/pack-index-write.ts:161`): of two builds that
+  `apps/sync-server/src/services/pack-index-write.ts:186`): of two builds that
   selected one window, only the first to commit lists, and the other deletes
   its own object. A writer that finds its insert would conflict rolls the listed pack
   and its new rows into one pack instead (§8.12), taking only the new rows that
   fit beside the listed pack's current entries
-  (`apps/sync-server/src/services/pack-compaction.ts:406-439`). When none fit or
+  (`apps/sync-server/src/services/pack-compaction.ts:180-213`). When none fit or
   the listed pack cannot be read, a `record` or `crdt_update` writer lists
   nothing and the watermark holds, logged at error level; those kinds sort on
   the unique `server_cursor`, so only a foreign row collides. A `crdt_snapshot`
@@ -600,13 +606,14 @@ document while those rows exist, and the purge drops the packs that hold them
   in `pack_replaced_objects`, due at once, when its row is absent after the
   batch (`apps/sync-server/src/services/pack-replaced-objects.ts`,
   `recordUnlisted`). This covers a build or rollup that lost the watermark or
-  the index swap. When the batch itself throws, the writer records the object
-  the same way, best effort, deletes it only if a separate read finds its row
-  absent (a batch can commit and lose its response), and rethrows
-  (`listingBatch`). The writer then deletes the object, and a failed delete is
-  retried by the deletion pass of §8.12, not left for the orphan sweep. The
-  object was never listed, so no reader holds a URL to it and it waits for no
-  grace period.
+  the index swap. The writer then deletes the object, and a failed delete is
+  retried by the deletion pass of §8.12, not left for the orphan sweep. When
+  the batch itself throws, the writer records the object the same way, best
+  effort, and rethrows without deleting it (`listingBatch`): a batch can
+  commit and lose its response, and that commit can land after any read the
+  writer makes. The deletion pass deletes the object later, and only while no
+  row lists its key. The object was never listed, so no reader holds a URL to
+  it and it waits for no grace period.
 - **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
   `crdt_update` while the vault holds a needed row of that kind with a NULL
   `server_cursor`: such a row is in no range and never in the feed (chapter 07
@@ -625,7 +632,7 @@ document while those rows exist, and the purge drops the packs that hold them
 
 **This closes the same-second under-coverage.** The snapshot writer used a
 `(created_at, note_id)` watermark
-(`apps/sync-server/src/services/pack-compaction.ts:220`); a snapshot written
+(`apps/sync-server/src/services/pack-selection.ts:119`); a snapshot written
 in the watermark's second with a smaller `note_id`, including every rewrite,
 which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:128`),
 sorted below it and stayed item-granular forever. `server_cursor` is strictly
@@ -809,25 +816,25 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:347`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:314`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:324`). A run never spans an excluded pack, so
+  among packs already read (`:291`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
   chain. Body inputs separated by a gap chain only when the gap no longer
   holds a needed row (§8.10, **Bridging a body gap**). A rollup reads packs, not source blobs, so
-  the 256-item build cap (`apps/sync-server/src/services/pack-compaction.ts:124`)
+  the 256-item build cap (`apps/sync-server/src/services/pack-selection.ts:40`)
   does not bind it; §8.14 does.
 - **Replace, not modify.** The new pack is a new object under a key no pack
   object of the vault has used (§8.8). One D1 batch deletes the old
   `pack_index` rows, inserts the new row and records each old object for
   deletion. The old rows are deleted first in that batch: rows are unique on
   `(user_id, vault_id, item_kind, min_cursor)` and a conflicting insert does
-  nothing (`apps/sync-server/src/services/pack-index-write.ts:67`), so the
+  nothing (`apps/sync-server/src/services/pack-index-write.ts:90`), so the
   listing never holds an old pack and its replacement at once. The batch
   inserts the new row only if every input pack's listing row still exists,
-  so a purge or a shed (§8.13) that removed an input after the rollup read it
+  so a purge or a kind reset (§8.13) that removed an input after the rollup read it
   wins, and the rollup's object is recorded and deleted unlisted (§8.10,
   **Unlisted objects**). The new pack also drops
   every record entry whose row is now a marker. The batch carries the
@@ -838,21 +845,22 @@ coverage ranges chain, and writes one pack that replaces them:
   lifetime of 300 s (`apps/sync-server/src/services/r2-presign.ts:27`). A URL
   is signed only at listing time, from a listed row, so every URL that names
   the object expires before the object goes. A server MUST NOT raise the
-  presign lifetime above half the grace period. The deletion job of §8.13
-  deletes the objects of replaced packs too. From step 06a a purge (chapter
-  07 §7.15) makes every replaced object of each kind it drops due in the batch
-  that drops the listing, and deletes them at once: such an object may hold
-  the purged body, and the reader the grace protects already lost the listed
-  packs of that kind to the same purge. The packs it drops from the listing
-  are recorded as due in the same batch, before their rows go, so the same
-  deletion covers them. A failed delete stays due. Only then does the purge
-  enqueue a compaction message `PACK_REPLACED_GRACE_SECONDS` + 60 s later
-  (`PACK_PURGE_RETRY_DELAY_SECONDS`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts`), whose deletion
-  pass runs before its builds and again after them, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:723,751`).
-  A message whose last pass leaves objects due fails, so the queue redelivers
-  it inside the deadline; builds it committed stay committed.
+  presign lifetime above half the grace period. The deletion pass
+  (`deleteReplacedPackObjects`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:76`) deletes the
+  objects of replaced packs and of purged ones (§8.13). It runs for every vault
+  at the start of every backfill tick
+  (`apps/sync-server/src/services/pack-backfill.ts:147`), and for one vault at
+  the start and the end of every compaction message, so a build that fails
+  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:510,538`).
+  A body purge (chapter 07 §7.15) skips the grace for objects that may hold
+  the purged body: in the batch that deletes the body rows it makes due at once
+  every replaced object of each body kind the document has rows of, except an
+  object waiting for its purge rewrite (§8.13), and deletes them before it
+  returns (`apps/sync-server/src/services/document-body-purge.ts:136-145`). A
+  reader that listed one of them meets a 404 (below). A failed delete stays
+  due. A message whose last pass leaves objects due fails, so the queue
+  redelivers it; builds it committed stay committed.
 - **A 404 between listing and download.** A reader treats a pack that answers
   404, 403 or any other failure as unusable: its range is a gap (§8.10), its
   items stay on the item routes and the feed. It MAY list again once to find
@@ -861,41 +869,102 @@ coverage ranges chain, and writes one pack that replaces them:
 
 ## 8.13 Scoped purge
 
-**Normative, step 06 MUST** (#5229); no server scopes the purge yet. When the
-chapter 07 §7.15 purge removes a document's body, only the packs that hold it
-are touched, and the document's ciphertext MUST leave every pack object within
-`PACK_PURGE_DEADLINE_SECONDS` = 900 of the purge's commit
-(`packages/contracts/src/sync-api.ts:793-794`):
+**Normative, step 06 MUST** (#5229). A server from step 06b (#5229, migration 0024) scopes the purge for the body kinds. When the chapter 07 §7.15 purge
+removes a document's body, it touches only the `crdt_snapshot` and
+`crdt_update` packs that hold the document, and the document's body
+ciphertext MUST leave every pack object within `PACK_PURGE_DEADLINE_SECONDS`
+= 900 of the purge's commit (`packages/contracts/src/sync-api.ts:793-794`).
+**The 900 s bound** below states what holds the deadline and when it can
+fail. `record` packs are not scoped yet (**Not implemented yet**, below).
 
-- **Finding them.** A writer records, in the batch that inserts a pack row,
-  one membership row per document the pack holds: the entry id for
-  `crdt_snapshot` and `crdt_update`, and the `note:` or `journal:` id of a
-  `record` entry. The purge reads the packs of a document from those rows.
+- **Finding them.** The statement that inserts a body pack row records the
+  distinct document ids of its entries as a JSON array in
+  `pack_index.documents` (`packDocuments`,
+  `apps/sync-server/src/services/pack-index-write.ts:57`). Builds, rollups and
+  purge rewrites all record it. `record` packs carry NULL. The purge finds a
+  document's packs with `json_each` over that column
+  (`apps/sync-server/src/services/document-body-purge.ts:33-35`).
+- **Packs written before migration 0024.** Their `documents` is NULL, so the
+  server cannot tell which documents they hold. While the vault lists such a
+  pack of a body kind and the document has rows of that kind (for
+  `crdt_update`, any body row, §8.4.3), the purge batch drops every pack of
+  that kind in the vault, makes their objects due at once and resets the
+  kind's watermark, as every purge did before step 06b (`packKindReset`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:32`). The rebuild
+  records `documents`, so the next purge of that kind is scoped.
 - **Out of the listing at once.** The purge batch that deletes the body rows
-  also deletes the listing rows of those packs and records their objects for
-  deletion.
-- **Rewrite.** Each removed pack is rewritten under the same coverage range
-  and a new key, as a rollup of one pack (§8.12). It drops the document's body
-  entries and its record entries below the record's current cursor, and keeps
-  the record entry at that cursor, the tombstone: a fresh reader learns the
-  delete and its clock from it, and without that clock a re-create is refused
-  with `SYNC_DELETE_WINS` (chapter 05 §5.8). Until the rewrite commits its
-  range is a gap, which lowers a reader's tail start (§8.10): speed, not
-  data. The rewrite reads the old object, so it MUST commit before the old
-  object is deleted. When the deadline forces the deletion first, the server
-  rebuilds that range from source rows instead, so no range stays a gap.
-- **Object deletion.** The purge batch enqueues a queue message delayed by
-  `PACK_REPLACED_GRACE_SECONDS` (§8.12). Its consumer deletes each recorded
-  object whose rewrite has committed. A sweep that runs at most every 300 s
-  covers every recorded deletion past its grace period, whether its queue
-  message failed, waited, or was never delivered. A deletion waits for a
-  rewrite in flight only while the next sweep still falls inside the
-  deadline. Every object is gone within 900 s of the purge's commit unless two
-  delete attempts fail; a lost queue message counts as one. A deletion still
-  pending past the deadline raises an alert, an error log with the vault and
-  the object count, and the sweep keeps retrying it. This replaces today's purge, which logs a failed
-  snapshot-object delete and drops it
-  (`apps/sync-server/src/services/document-body-purge.ts:190-206`).
+  also deletes the listing row of each pack whose `documents` names the
+  document. It records the pack's object in `pack_replaced_objects` as a
+  pending rewrite: `replaced_by = 'rewrite'`, `removed_at` the purge time
+  (`apps/sync-server/src/services/document-body-purge.ts:150-165`). Other
+  packs keep their rows and objects. Every statement rechecks that the
+  document is dead, so a re-create that commits first keeps its packs.
+- **Rewrite.** Each pending object is rewritten as a rollup of one pack
+  (§8.12): the same kind, `minCursor` and `maxCursor`, a new key, and every
+  entry whose row is still current. The purged document has no rows left, so
+  none of its entries is kept (`rewritePurgedPacks`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:185`). The commit is
+  guarded on the rewrite still pending, on every kept entry still current
+  (the recheck of chapter 07 §7.15) and on the listing cap (§8.14). The same
+  batch makes the old object due at once. A pack left with no current entry
+  gets no new pack, and its old object is made due. Body packs carry no
+  coverage range yet (§8.10), so until the rewrite commits a reader takes the
+  pack's other documents item by item: speed, not data.
+- **A rewrite that fails resets the kind.** A rewrite that cannot read or
+  verify the old object, or that loses its commit twice to a concurrent
+  prune, purge or listing, resets the kind of the vault instead
+  (`packKindReset`): every pack of the kind leaves the listing, every object
+  of the kind is due at once, and compaction rebuilds the kind from source
+  rows. No pack's other documents stay unpacked.
+- **When rewrites run.** After its batch commits, the purge runs up to
+  `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
+  of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:195-196`).
+  Every compaction message of the vault runs the same rewrite pass before its
+  first deletion pass
+  (`apps/sync-server/src/services/pack-compaction.ts:506`). When rewrites or
+  due objects remain, the purge's caller enqueues a compaction message
+  delayed by `PACK_PURGE_RETRY_DELAY_SECONDS` = `PACK_REPLACED_GRACE_SECONDS`
+  - 60 = 660 (`apps/sync-server/src/services/pack-replaced-objects.ts:18`;
+    push: `apps/sync-server/src/routes/sync.ts:589`; cleanup:
+    `apps/sync-server/src/services/cleanup.ts:358`).
+- **A rewrite still pending past its grace.** A deletion pass that finds a
+  pending rewrite whose `removed_at` is at least `PACK_REPLACED_GRACE_SECONDS`
+  old resets that kind of the vault (`packKindReset`) and deletes the object
+  (`resetUnrewritten`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:134`). A deletion
+  never waits for a rewrite past the grace, and the range of a rewrite that
+  never ran is rebuilt from source rows instead of staying unpacked.
+- **The 900 s bound.** For a purge that commits at `T`:
+  1. When the purge needs at most four rewrites and R2 answers, every old
+     object is deleted before the purge returns, inside the push request or
+     the cleanup tick that ran it.
+  2. Otherwise the delayed message runs at `T + 660`. Its rewrite pass runs
+     four more rewrites. Its first deletion pass finds every rewrite still
+     pending past its grace (`removed_at = T`), resets those kinds and
+     deletes those objects, and its last deletion pass deletes the objects
+     the reset made due
+     (`apps/sync-server/src/services/pack-compaction.ts:510,538`).
+  3. A message whose last pass leaves objects due or rewrites pending throws
+     (`apps/sync-server/src/services/pack-compaction.ts:550`), so Queues
+     redelivers it, up to `max_retries` = 3 times with no retry delay
+     (`apps/sync-server/wrangler.toml:63`), inside the remaining 240 s.
+
+  No sweep runs more often than the 6-hourly cron. The bound fails when the
+  delayed message is never enqueued (a push enqueues it best effort, after
+  its response), when all four deliveries fail (R2 or D1 down for that
+  window), or when the purge itself fails (below). A message that still
+  leaves objects due logs `replaced pack objects still due after the
+  compaction message; redelivered` at error level with the vault. The
+  fallback is the deletion pass at the start of every backfill tick, which
+  covers every vault and resets pending rewrites the same way
+  (`apps/sync-server/src/services/pack-backfill.ts:147`), and every later
+  compaction message of the vault.
+
+- **Snapshot source objects.** The purge deletes the document's
+  `crdt_snapshots` objects, which are not pack objects, best effort: a failed
+  delete is logged and leaves unreachable objects
+  (`apps/sync-server/src/services/document-body-purge.ts:200-216`). The 900 s
+  bound covers pack objects only.
 - **A purge that fails.** The purge runs after the push that deleted the
   document commits, and its failure never fails the push (chapter 07 §7.15).
   The 900 s bound runs from the purge's commit, so it does not cover a purge
@@ -903,15 +972,26 @@ are touched, and the document's ciphertext MUST leave every pack object within
   `apps/sync-server/src/services/cleanup.ts`) runs the purge again, and the
   bound runs from that commit. Until then the document's packs stay listed,
   and the rules below keep their entries inert.
-- **Purged-tombstone markers.** Before the chapter 05 §5.12.3 shed turns a
-  tombstone into a marker, the same steps take every record pack holding that
-  `(type, id)` out of the listing, and the shed waits at least
-  `PACK_REPLACED_GRACE_SECONDS` after that removal. A URL signed while such a
-  pack was listed expires within 300 s (§8.12), so no reader downloads it
-  after the shed. A reader that downloaded it before the shed meets the
-  tombstone through a pack or the feed (§8.10), and the manifest reconcile
-  (§8.10) drops the live entry in any case. The rewrite drops every entry of
-  that `(type, id)`, because a marker has no payload to pack.
+- **Not implemented yet** (step 06 MUSTs, tracked in #5247):
+  - **Record entries.** The purge does not touch `record` packs. Entries of
+    older versions of the deleted document's record stay in record pack
+    objects until a rollup drops them (§8.12). The rule: each record pack
+    holding the document is rewritten as above, dropping its record entries
+    below the record's current cursor and keeping the entry at that cursor,
+    the tombstone. A fresh reader learns the delete and its clock from it,
+    and without that clock a re-create is refused with `SYNC_DELETE_WINS`
+    (chapter 05 §5.8).
+  - **Purged-tombstone markers.** Before the chapter 05 §5.12.3 shed turns a
+    tombstone into a marker, the same steps take every record pack holding
+    that `(type, id)` out of the listing, and the shed waits at least
+    `PACK_REPLACED_GRACE_SECONDS` after that removal. A URL signed while such
+    a pack was listed expires within 300 s (§8.12), so no reader downloads it
+    after the shed. A reader that downloaded it before the shed meets the
+    tombstone through a pack or the feed (§8.10), and the manifest reconcile
+    (§8.10) drops the live entry in any case. The rewrite drops every entry
+    of that `(type, id)`, because a marker has no payload to pack. Today the
+    shed empties the row in place, and the manifest reconcile alone keeps
+    a packed entry of it inert.
 
 **Why a lingering entry is harmless.** A reader can still hold bytes of a pack
 it listed or downloaded before the purge. Each kind has the rule that makes
@@ -938,7 +1018,7 @@ and at most `PACK_TARGET_BYTES` = 24 MiB of payload
 first; every entry stays under `PACK_MAX_INDEX_ENTRY_BYTES`
 (`packages/contracts/src/pack-format.ts:88`). A build from source blobs is
 also capped at 256 items by its subrequest budget
-(`apps/sync-server/src/services/pack-compaction.ts:124`); a rollup is not
+(`apps/sync-server/src/services/pack-selection.ts:40`); a rollup is not
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
@@ -973,7 +1053,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:738`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:525`).
 A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
 
@@ -985,7 +1065,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:340-344`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:307-311`), and the backfill tick
 rolls the kind up every tick while it is above the bound, so an operator sees
 it once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.
