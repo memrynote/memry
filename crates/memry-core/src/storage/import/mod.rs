@@ -17,6 +17,10 @@ use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
+mod records;
+
+pub use records::ImportRecord;
+
 /// `meta` key a finished import writes into the staged `data.db`, last. Its
 /// presence in `<vault>/.memry/core/data.db` means the vault was imported.
 /// Shipped key: older and newer builds ignore it, so its value only grows.

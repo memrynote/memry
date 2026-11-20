@@ -120,6 +120,8 @@ pub struct TableReport {
 /// What an importer of [`tables::TABLE_MAP`] reads from and writes to.
 pub struct TableCtx<'a> {
     pub source: &'a Connection,
+    /// [`VaultImportInput::vault_id`].
+    pub vault_id: &'a str,
     pub writer: &'a mut ImportWriter,
     pub now_ms: i64,
 }
@@ -146,6 +148,9 @@ impl Paths {
 pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, ImportError> {
     let paths = Paths::new(&input.vault_dir);
     if let Some(outcome) = existing_core(&paths)? {
+        if matches!(outcome, StageOutcome::NativeFirst) {
+            install::restore_replaced_index(&paths)?;
+        }
         remove_staging(&paths)?;
         return Ok(outcome);
     }
@@ -186,6 +191,9 @@ fn existing_core(paths: &Paths) -> Result<Option<StageOutcome>, ImportError> {
     if memry_core::storage::recovery::pending_recovery(&data)?.is_some() {
         return Ok(Some(StageOutcome::NativeFirst));
     }
+    // A marker naming no quarantine is no pending recovery, but install would refuse it: stop
+    // here instead of staging a whole import that can never install.
+    install::refuse_if_present(&memry_core::storage::recovery::marker_path(&data))?;
     // A WAL with no database beside it is no leftover of ours (install never writes one); it
     // may hold a native core's last writes, so it is reported and never deleted.
     for sidecar in install::sidecars(&data) {
@@ -229,6 +237,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 }
                 let mut ctx = TableCtx {
                     source: sources.conn(mapping.db),
+                    vault_id: &input.vault_id,
                     writer: &mut writer,
                     now_ms: input.now_ms,
                 };
@@ -248,7 +257,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
-    checks::run(&mut report, &writer)?;
+    checks::run(&mut report, &sources, &writer)?;
     drop(sources);
     source::remove(&paths.staging)?;
     writer.finish(&marker(&report, input.now_ms))?;
