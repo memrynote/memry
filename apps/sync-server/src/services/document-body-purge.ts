@@ -1,5 +1,8 @@
 import { deleteBlobs } from './blob'
 import { createLogger } from '../lib/logger'
+import type { Guard } from './pack-index-write'
+import { rewritePurgedPacks } from './pack-purge-rewrite'
+import { REWRITE_PENDING, deleteReplacedPackObjects, packKindReset } from './pack-replaced-objects'
 
 const logger = createLogger('DocumentBodyPurge')
 
@@ -16,13 +19,25 @@ const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault
 
 const BODY_ROWS = 'user_id = ? AND vault_id = ? AND note_id = ?'
 
-// Six statements per document, one db.batch per chunk.
+// Sixteen statements per document, one db.batch per chunk.
 const PURGE_CHUNK = 20
+
+const BODY_KINDS = ['crdt_update', 'crdt_snapshot'] as const
+type BodyKind = (typeof BODY_KINDS)[number]
+
+/** A listed pack of `kind` written before migration 0024: the documents it holds are unknown. */
+const unknownPack = (kind: BodyKind): string =>
+  `EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = '${kind}'
+     AND documents IS NULL)`
+
+/** The `pack_index` row holds the document (its `documents`, migration 0024). */
+const HOLDS = `documents IS NOT NULL
+  AND EXISTS (SELECT 1 FROM json_each(pack_index.documents) WHERE value = ?)`
 
 /**
  * Removes the server body of deleted notes and journals (#2986, protocol 07
  * §7.15): their `crdt_updates` and `crdt_snapshots` rows, the snapshot objects,
- * and the bytes they were charged for.
+ * the bytes they were charged for, and their entries in every listed pack.
  *
  * A deleted id can be re-created (a journal day is always `j<date>`), and a
  * device pulls a re-created document's body from sequence 0. Left in place, the
@@ -31,22 +46,33 @@ const PURGE_CHUNK = 20
  * Per document, in one transaction: the highest sequence number is kept in
  * `crdt_sequence_floors`, so the re-created body numbers on from it and a device
  * still holding the old cursor does not skip it; storage is refunded; the rows
- * are deleted. A pack is immutable and holds many notes, so the packs that may
- * hold this body are dropped with their kind's watermark reset, and compaction
- * rebuilds them without the dead note. Every `crdt_update` pack of the vault
- * goes in the same transaction as the rows whenever the document has any body
- * row (protocol 08 §8.4.3): a pack left listed would hand a fresh device the
- * deleted updates, and a pack built before a snapshot pruned its update rows
- * still holds them (REVIEW-5260). Every `crdt_snapshot` pack goes after the rows when a
- * snapshot was deleted, because an older revision of this note may sit in any
- * pack built before its current row. Packs are a derived cache, so this costs
- * bootstrap speed until the rebuild, never data.
+ * are deleted. A pack is immutable and holds many documents, so per body kind
+ * (protocol 08 §8.13):
  *
- * Idempotent: a re-run finds no rows and changes nothing. Object deletes are
- * best-effort; a failure leaves unreachable objects, never a row without its
- * object. A compaction run that selected the old body rows before this purge
- * publishes nothing: its pack commit is guarded on those rows
- * (`pack-compaction.ts`).
+ * - every listed pack whose `documents` names the document leaves the listing
+ *   in the same transaction, its object recorded as a pending rewrite
+ *   (pack-purge-rewrite.ts). This call then rewrites it without the deleted
+ *   entries and deletes the old object. Other packs are untouched.
+ * - a kind that still lists a pack written before migration 0024 (`documents`
+ *   NULL) is dropped whole and its watermark reset, as every purge did before,
+ *   when the document has a row of it (a `crdt_update` pack: any body row,
+ *   because a pack built before a snapshot pruned the update rows still holds
+ *   them, REVIEW-5260). Its rebuild records `documents`, so the next purge is
+ *   scoped.
+ * - every replaced object of the kind, which may hold the body, is made due
+ *   at once and deleted by the replaced-object pass before this returns.
+ *
+ * Packs are a derived cache, so a dropped pack costs bootstrap speed until the
+ * rebuild, never data.
+ *
+ * Idempotent: a re-run finds no rows and changes nothing. Snapshot object
+ * deletes are best-effort; a failure leaves unreachable objects, never a row
+ * without its object. Returns true when pack objects that may hold the body are
+ * still due or waiting for their rewrite after this call (a failed R2 delete,
+ * a full batch, or more rewrites than one pass): the caller then enqueues the
+ * delayed retry message. A compaction run that selected the old body rows
+ * before this purge publishes nothing: its pack commit is guarded on those
+ * rows (`pack-compaction.ts`).
  */
 export const purgeDeletedDocumentBodies = async (
   db: D1Database,
@@ -54,19 +80,31 @@ export const purgeDeletedDocumentBodies = async (
   userId: string,
   vaultId: string,
   noteIds: readonly string[]
-): Promise<void> => {
+): Promise<boolean> => {
   const ids = [...new Set(noteIds)]
-  if (ids.length === 0) return
+  if (ids.length === 0) return false
 
   const now = Math.floor(Date.now() / 1000)
+  const scope = { userId, vaultId }
   const snapshotKeys: string[] = []
-  const updatePackKeys: string[] = []
+  let due = false
+  let rewrite = false
   for (let i = 0; i < ids.length; i += PURGE_CHUNK) {
     const statements = ids.slice(i, i + PURGE_CHUNK).flatMap((noteId) => {
       const body = [userId, vaultId, noteId]
       const dead = [userId, vaultId, noteId, userId, vaultId, noteId]
-      const hasBody = `(EXISTS (SELECT 1 FROM crdt_updates WHERE ${BODY_ROWS})
-        OR EXISTS (SELECT 1 FROM crdt_snapshots WHERE ${BODY_ROWS})) AND ${DEAD}`
+      // The rows a kind's packs may hold, read before the row deletes below.
+      const hasRows: Record<BodyKind, Guard> = {
+        crdt_update: {
+          sql: `(EXISTS (SELECT 1 FROM crdt_updates WHERE ${BODY_ROWS})
+            OR EXISTS (SELECT 1 FROM crdt_snapshots WHERE ${BODY_ROWS})) AND ${DEAD}`,
+          bind: [...body, ...body, ...dead]
+        },
+        crdt_snapshot: {
+          sql: `EXISTS (SELECT 1 FROM crdt_snapshots WHERE ${BODY_ROWS}) AND ${DEAD}`,
+          bind: [...body, ...dead]
+        }
+      }
       return [
         db
           .prepare(
@@ -91,20 +129,42 @@ export const purgeDeletedDocumentBodies = async (
              WHERE id = ? AND ${DEAD}`
           )
           .bind(...body, ...body, now, userId, ...dead),
-        // Before the row delete, which the condition reads.
-        db
-          .prepare(
-            `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
-               AND ${hasBody}
-             RETURNING pack_key`
-          )
-          .bind(userId, vaultId, ...body, ...body, ...dead),
-        db
-          .prepare(
-            `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
-               AND ${hasBody}`
-          )
-          .bind(userId, vaultId, ...body, ...body, ...dead),
+        ...BODY_KINDS.flatMap((kind) => {
+          const has = hasRows[kind]
+          const holds = { sql: `${HOLDS} AND ${DEAD}`, bind: [noteId, ...dead] }
+          return [
+            // Replaced objects of the kind may hold the body: due at once. A
+            // pending rewrite waits for its rewrite, which drops the body.
+            db
+              .prepare(
+                `UPDATE pack_replaced_objects SET removed_at = 0
+                 WHERE user_id = ? AND vault_id = ? AND instr(pack_key, '/packs/${kind}/') > 0
+                   AND replaced_by <> '${REWRITE_PENDING}' AND ${has.sql}
+                 RETURNING pack_key AS replaced_key`
+              )
+              .bind(userId, vaultId, ...has.bind),
+            ...packKindReset(db, scope, kind, {
+              sql: `${has.sql} AND ${unknownPack(kind)}`,
+              bind: [...has.bind, userId, vaultId]
+            }),
+            db
+              .prepare(
+                `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+                 SELECT pack_key, user_id, vault_id, '${REWRITE_PENDING}', ? FROM pack_index
+                 WHERE user_id = ? AND vault_id = ? AND item_kind = '${kind}' AND ${holds.sql}
+                 ON CONFLICT (pack_key) DO UPDATE SET replaced_by = excluded.replaced_by,
+                   removed_at = excluded.removed_at`
+              )
+              .bind(now, userId, vaultId, ...holds.bind),
+            db
+              .prepare(
+                `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = '${kind}'
+                   AND ${holds.sql}
+                 RETURNING id AS rewrite_id`
+              )
+              .bind(userId, vaultId, ...holds.bind)
+          ]
+        }),
         db
           .prepare(`DELETE FROM crdt_updates WHERE ${BODY_ROWS} AND ${DEAD}`)
           .bind(...body, ...dead),
@@ -113,35 +173,28 @@ export const purgeDeletedDocumentBodies = async (
           .bind(...body, ...dead)
       ]
     })
-    const results = await db.batch<{ blob_key?: string; pack_key?: string }>(statements)
+    const results = await db.batch<{
+      blob_key?: string
+      replaced_key?: string
+      rewrite_id?: string
+    }>(statements)
     for (const result of results) {
       for (const row of result.results ?? []) {
         if (row.blob_key) snapshotKeys.push(row.blob_key)
-        if (row.pack_key) updatePackKeys.push(row.pack_key)
+        if (row.replaced_key) due = true
+        if (row.rewrite_id) rewrite = true
       }
     }
   }
 
-  if (snapshotKeys.length === 0) {
-    await deleteObjects(storage, userId, vaultId, updatePackKeys)
-    return
-  }
-
-  const [packs] = await db.batch<{ pack_key: string }>([
-    db
-      .prepare(
-        `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'
-         RETURNING pack_key`
-      )
-      .bind(userId, vaultId),
-    db
-      .prepare(
-        `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'`
-      )
-      .bind(userId, vaultId)
-  ])
-  const packKeys = (packs.results ?? []).map((row) => row.pack_key)
-  await deleteObjects(storage, userId, vaultId, [...snapshotKeys, ...packKeys, ...updatePackKeys])
+  await deleteObjects(storage, userId, vaultId, snapshotKeys)
+  if (!due && !rewrite) return false
+  // A rewrite makes its old object due; the deletion pass then removes it. What
+  // either leaves is retried by the caller's delayed compaction message
+  // (PACK_PURGE_RETRY_DELAY_SECONDS), which runs both again.
+  const rewrites = rewrite ? await rewritePurgedPacks(db, storage, scope) : { pending: false }
+  const deletion = await deleteReplacedPackObjects(db, storage, scope)
+  return rewrites.pending || deletion.pending
 }
 
 const deleteObjects = async (

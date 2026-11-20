@@ -97,7 +97,24 @@ describe('wrangler config', () => {
     expect(toml).toContain('queue = "memry-pack-compaction-production"')
   })
 
-  it('declares a bounded pack compaction consumer for dev, staging, and production', () => {
+  // #5278: backfill messages ride their own queue, so a push nudge or a purge's
+  // delayed retry never waits behind a backfill chain.
+  it('declares a separate pack backfill queue for dev, staging, and production', () => {
+    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
+
+    for (const [prefix, env] of [
+      ['queues', 'dev'],
+      ['env.staging.queues', 'staging'],
+      ['env.production.queues', 'production']
+    ]) {
+      expect(toml).toContain(
+        `[[${prefix}.producers]]\nbinding = "PACK_BACKFILL_QUEUE"\nqueue = "memry-pack-backfill-${env}"`
+      )
+      expect(toml).toContain(`[[${prefix}.consumers]]\nqueue = "memry-pack-backfill-${env}"`)
+    }
+  })
+
+  it('declares bounded pack compaction and backfill consumers for dev, staging, and production', () => {
     const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
 
     // One pack build ≈ 269 subrequests; batch size must stay 1 so an
@@ -105,10 +122,11 @@ describe('wrangler config', () => {
     const consumers = toml.match(/\[\[queues\.consumers\]\]/g) ?? []
     const stagingConsumers = toml.match(/\[\[env\.staging\.queues\.consumers\]\]/g) ?? []
     const productionConsumers = toml.match(/\[\[env\.production\.queues\.consumers\]\]/g) ?? []
-    expect(consumers.length + stagingConsumers.length + productionConsumers.length).toBe(3)
+    // Compaction and backfill (#5278) per environment.
+    expect(consumers.length + stagingConsumers.length + productionConsumers.length).toBe(6)
 
-    expect(toml.match(/max_batch_size = 1/g)?.length).toBe(3)
-    expect(toml.match(/max_concurrency = 1/g)?.length).toBe(3)
-    expect(toml.match(/max_retries = 3/g)?.length).toBe(3)
+    expect(toml.match(/max_batch_size = 1/g)?.length).toBe(6)
+    expect(toml.match(/max_concurrency = 1/g)?.length).toBe(6)
+    expect(toml.match(/max_retries = 3/g)?.length).toBe(6)
   })
 })

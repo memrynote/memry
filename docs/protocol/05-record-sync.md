@@ -11,22 +11,22 @@ cursor (§5.11.1, chapter 07 §7.17).
 ## 5.1 Routes
 
 **Normative.** Every route below is served under both `/sync/*`
-(`apps/sync-server/src/routes/sync.ts:559-565`) and `/sync/records/*`
-(`apps/sync-server/src/routes/sync.ts:557`). **A new client uses the unprefixed
+(`apps/sync-server/src/routes/sync.ts:560-566`) and `/sync/records/*`
+(`apps/sync-server/src/routes/sync.ts:558`). **A new client uses the unprefixed
 form** (chapter 00 §0.3.1).
 
 | Method              | Path                                    | Query / body                                                                                                                                                                          |
 | ------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)                                                                              |
-| GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`)                                                                  |
-| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:344-397`)                                                                    |
+| GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:328-332`)                                                                  |
+| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:345-398`)                                                                    |
 | POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                                                                                             |
 | POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                                                                                                |
 | GET                 | `/sync/items/:id`                       | one item                                                                                                                                                                              |
 | GET                 | `/sync/packs`                           | keyset `cursor` (chapter 08)                                                                                                                                                          |
-| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:96`, `:133`, `:157`)                                                                                                         |
-| PUT                 | `/sync/vaults/:vaultId/icon`            | the vault icon, last writer wins (§5.11.1, `apps/sync-server/src/routes/sync.ts:200`)                                                                                                 |
-| GET                 | `/sync/storage`                         | account-wide quota; above the vault middleware, so it takes no `X-Memry-Vault-Id` and never creates a vault; `402` without an active plan (`apps/sync-server/src/routes/sync.ts:215`) |
+| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:97`, `:133`, `:157`)                                                                                                         |
+| PUT                 | `/sync/vaults/:vaultId/icon`            | the vault icon, last writer wins (§5.11.1, `apps/sync-server/src/routes/sync.ts:201`)                                                                                                 |
+| GET                 | `/sync/storage`                         | account-wide quota; above the vault middleware, so it takes no `X-Memry-Vault-Id` and never creates a vault; `402` without an active plan (`apps/sync-server/src/routes/sync.ts:216`) |
 
 ## 5.2 Headers on every request
 
@@ -120,7 +120,7 @@ shipped TypeScript client declares all 25
 ### 5.3.1 The subset path — Q05.1
 
 **Normative.** The server serves **only** the resolved set. `getChanges` takes
-the resolved subscription (`apps/sync-server/src/routes/sync.ts:372-375`) and
+the resolved subscription (`apps/sync-server/src/routes/sync.ts:373-376`) and
 filters on it, so **a subscribed-out type is never served in `items`**, and
 body rows are served only when `note_body` was declared.
 
@@ -262,7 +262,7 @@ shrinking update still commits and is the way out of the quota.
 
 ## 5.7 Replay detection is a clock dominance rule, not a timestamp window
 
-**Normative** (`apps/sync-server/src/services/sync.ts:179-190`). An incoming push
+**Normative** (`apps/sync-server/src/services/sync.ts:189-200`). An incoming push
 is a **replay** when a row already exists **and**:
 
 - the incoming item carries no clock at all (`:180`), **or**
@@ -270,23 +270,23 @@ is a **replay** when a row already exists **and**:
   (`:183-187`).
 
 Replays are rejected **per item** with reason `SYNC_REPLAY_DETECTED`; they do not
-fail the batch (`apps/sync-server/src/services/sync.ts:542`).
+fail the batch (`apps/sync-server/src/services/sync.ts:552`).
 
 **The check is skipped entirely for types outside
 `RECORD_CLOCK_REQUIRED_ITEM_TYPES`**
-(`apps/sync-server/src/services/sync.ts:215-221`), so a `settings` push is never
+(`apps/sync-server/src/services/sync.ts:225-231`), so a `settings` push is never
 a replay.
 
 ## 5.8 Delete wins over a concurrent write
 
-**Normative** (`apps/sync-server/src/services/sync.ts:234-245`). A non-`delete`
+**Normative** (`apps/sync-server/src/services/sync.ts:244-255`). A non-`delete`
 push against an id whose stored row has `deleted_at` set is rejected with
 `SYNC_DELETE_WINS` **unless the incoming clock happens strictly after the stored
 one** — dominating every component and exceeding at least one
-(`apps/sync-server/src/services/sync.ts:193-202`).
+(`apps/sync-server/src/services/sync.ts:203-212`).
 
 The reason is on record
-(`apps/sync-server/src/services/sync.ts:224-233`): `detectReplay` passes as soon
+(`apps/sync-server/src/services/sync.ts:234-243`): `detectReplay` passes as soon
 as **one** component is ahead, which a device that edited the item before it saw
 the delete always satisfies, so without this rule the next write clears the
 tombstone and the item returns to every device's manifest. Types without a
@@ -420,7 +420,7 @@ assume neither.**
 **Normative.** `serializePayload` builds `{dataNonce, encryptedData,
 encryptedKey, keyNonce}` and applies
 `JSON.stringify(payload, Object.keys(payload).sort())`
-(`apps/sync-server/src/services/sync.ts:261-269`). Plain JavaScript string sort
+(`apps/sync-server/src/services/sync.ts:271-279`). Plain JavaScript string sort
 gives
 
 ```
@@ -431,7 +431,7 @@ The bytes are
 `{"dataNonce":"…","encryptedData":"…","encryptedKey":"…","keyNonce":"…"}` — no
 whitespace, UTF-8. That exact string is the R2 object, and
 `contentHash = lowercase hex SHA-256` of those same bytes
-(`apps/sync-server/src/services/sync.ts:247-259`).
+(`apps/sync-server/src/services/sync.ts:257-269`).
 
 The server re-parses the object on pull and returns the four fields as `blob`, so
 **a client never sees the canonical JSON** — only the four fields.
@@ -483,15 +483,15 @@ The last two apply only to `GET /sync/changes?inline=1` (§5.11.2).
 `effectiveLimit = Math.min(limit ?? DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT)`,
 and to 100 when the request asked `inline=1` (`MAX_INLINE_CHANGES_LIMIT`,
 §5.11.2) or declared `note_body` (`MAX_NOTE_BODY_CHANGES_LIMIT`), because such
-a page carries payload bytes (`apps/sync-server/src/services/sync.ts:1116-1123`).
+a page carries payload bytes (`apps/sync-server/src/services/sync.ts:1131-1139`).
 The manifest clamps the same way against `MAX_MANIFEST_PAGE_LIMIT`
-(`apps/sync-server/src/services/sync.ts:909`).
+(`apps/sync-server/src/services/sync.ts:919`).
 
 A `limit` that is **not a positive integer** is a different case and is rejected
-`400 VALIDATION_ERROR` (`apps/sync-server/src/routes/sync.ts:319-321`, `:353-355`);
+`400 VALIDATION_ERROR` (`apps/sync-server/src/routes/sync.ts:320-322`, `:353-355`);
 a `cursor` that is not a non-negative integer is `400 SYNC_INVALID_CURSOR`
 (`:323-325`, `:348-350`). `logQueryValidationFailure` throws — its return type is
-`never` (`apps/sync-server/src/routes/sync.ts:173-181`) — so none of these is a
+`never` (`apps/sync-server/src/routes/sync.ts:174-182`) — so none of these is a
 silently ignored parameter.
 
 **A client MUST NOT infer its page size from what it asked for.** It MUST read
@@ -622,7 +622,7 @@ A ref row is metadata only. It carries **no ciphertext**.
 
 `modifiedAt` is **epoch seconds**, not milliseconds: it is the row's
 `updated_at`, written as `Math.floor(Date.now() / 1000)`
-(`apps/sync-server/src/services/sync.ts:634`, read back at `:944` and `:1013`).
+(`apps/sync-server/src/services/sync.ts:644`, read back at `:944` and `:1013`).
 This table said epoch ms until #2280 needed a millisecond commit time and found
 the column could not supply one.
 
@@ -637,7 +637,7 @@ manifest ref carries only `serverCursor` (see `GET /sync/manifest` below).
 
 Both are absent against a server that predates them. `committedAtMs` is also
 absent for a row last written before migration `0010`, which has no commit time
-and is not backfilled (`apps/sync-server/src/services/sync.ts:1077-1079`).
+and is not backfilled (`apps/sync-server/src/services/sync.ts:1092-1094`).
 `serverCursor` is a trace key, never a pull cursor (§5.11). A client that does
 not know the fields ignores them; one that does MUST treat either as optional.
 
@@ -711,7 +711,7 @@ An `update` entry without `data` was too large to inline; a `snapshot` entry is
 always a ref. Chapter 07 §7.17 gives the fetch rules.
 
 `serverTimeMs` is the server's epoch-ms time when it answered the page
-(`apps/sync-server/src/routes/sync.ts:396`), optional because an older server
+(`apps/sync-server/src/routes/sync.ts:397`), optional because an older server
 does not send it. It exists so a client can estimate its clock offset from the
 request's round-trip midpoint for the latency trace. It is not an input to any
 sync decision; §5.16 skew detection keeps using the seconds `serverTime`.
@@ -750,7 +750,7 @@ null.
 
 **`POST /sync/vaults`** — request `{ vaultUuid, encryptedName, nameNonce }`
 (`vaultUuid` 1–128 characters, the name fields 1–2048 and 1–128), response
-`{ success: true }` (`apps/sync-server/src/routes/sync.ts:98-133`). It registers
+`{ success: true }` (`apps/sync-server/src/routes/sync.ts:99-134`). It registers
 a vault the account does not hold yet or renames one it does, so a repeat is not
 an error. `encryptedName` is the name sealed with XChaCha20-Poly1305 under the
 vault key (chapter 01 §1.6) with `vault-name-v1:<vaultUuid>` as associated data,
@@ -791,12 +791,12 @@ middleware, so it takes no `X-Memry-Vault-Id`.
 
 **Normative.** `GET /sync/changes?inline=1` returns the page's payloads with
 its refs, so a device woken by one small change applies it after one request
-instead of two (`apps/sync-server/src/services/sync.ts:1096`).
+instead of two (`apps/sync-server/src/services/sync.ts:1111`).
 
 - **Opt-in.** Without the `inline` query the response has no `inline` key and
   is byte-for-byte the pre-inline response. `inline` is absent or `1`; any
   other value is `400 VALIDATION_ERROR`, never a silently ignored parameter
-  (`apps/sync-server/src/routes/sync.ts:366-369`). A server that predates the
+  (`apps/sync-server/src/routes/sync.ts:367-370`). A server that predates the
   query ignores it, and the reader sees a page with no `inline`.
 - **Page clamp.** An inline page holds at most `MAX_INLINE_CHANGES_LIMIT` (100)
   rows, whatever `limit` asked (clamped, never rejected, §5.10.1). A client
@@ -809,10 +809,10 @@ instead of two (`apps/sync-server/src/services/sync.ts:1096`).
   `INLINE_MAX_BLOB_BYTES` (64 KiB), so a response stays near 6.5 MB.
 - **Coverage is by id.** `POST /sync/pull` ids are untyped (§5.12.1), so the
   server puts an id in `inline` only when every row this page holds for that
-  id is in `inline` (`apps/sync-server/src/services/sync.ts:981-986`). A row
+  id is in `inline` (`apps/sync-server/src/services/sync.ts:991-996`). A row
   the server cannot read (missing blob, missing signer metadata, corrupt
   stored data) takes its whole id out of `inline`; the page still answers 200
-  (`apps/sync-server/src/services/sync.ts:1006-1026`).
+  (`apps/sync-server/src/services/sync.ts:1016-1039`).
 - **Reader.** The reader MUST pull, with `POST /sync/pull`, every page id
   (`items` ∪ `deleted`) that no `inline` element names, and only those
   (`apps/desktop/src/main/sync/engine/changes-page.ts:28`). It MUST NOT infer

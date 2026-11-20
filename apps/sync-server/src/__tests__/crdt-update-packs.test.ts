@@ -2,21 +2,18 @@ import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
+import { b64Of, bodyFromPacks, type BatchAnswer, type Downloaded } from './pack-body-reader'
+import { runBackfillTick } from './pack-queue-memory'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { storeUpdatesWithCursor } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
-import { runPackBackfill } from '../services/pack-backfill'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
-import { extractEntry, parsePack, type PackedEntry } from '../services/pack-format'
-import {
-  UPDATE_PACK_MAX_WAIT_SECONDS,
-  UPDATE_PACK_MIN_ROWS,
-  updateSelectionQuery
-} from '../services/pack-update-selection'
+import { parsePack } from '../services/pack-format'
+import { PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from '../services/pack-sizing'
+import { updateSelectionQuery } from '../services/pack-update-selection'
 import type { AppContext, Bindings } from '../types'
 import {
-  CrdtUpdatePackEntryMetaSchema,
   PACK_LIST_MAX_PACKS_PER_VAULT,
   type PackListResponse,
   type RecordSyncItemType
@@ -25,8 +22,9 @@ import {
 /**
  * #5228: the server builds crdt_update (kind 2) packs (protocol 08 §8.4.3), and
  * the two prerequisites the contract puts on the first kind 2 writer: the
- * explicit `floor` on both update routes, and a purge that drops every
- * crdt_update pack whenever it deletes an update row. Real routes, services,
+ * explicit `floor` on both update routes, and a purge that takes every
+ * crdt_update pack holding a deleted document's updates out of the listing.
+ * Real routes, services,
  * SQL and schema; only auth is stubbed.
  */
 
@@ -55,7 +53,6 @@ let signingKey: CryptoKey
 
 const now = () => Math.floor(Date.now() / 1000)
 const b64 = (length: number, fill: number) => Buffer.alloc(length, fill).toString('base64')
-const b64Of = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64')
 const bytes = (...values: number[]): ArrayBuffer => new Uint8Array(values).buffer
 
 const seed = async (): Promise<void> => {
@@ -169,7 +166,7 @@ const writeSnapshot = (noteId: string, data: ArrayBuffer, coversThrough?: number
   )
 
 /** Moves the clock past the update minimum fill's wait, so any unpacked update row is due. */
-const passFillWait = () => vi.setSystemTime(Date.now() + (UPDATE_PACK_MAX_WAIT_SECONDS + 1) * 1000)
+const passFillWait = () => vi.setSystemTime(Date.now() + (PACK_SETTLE_SECONDS + 1) * 1000)
 
 /**
  * Builds packs until no kind has anything left above its watermark: the push
@@ -186,12 +183,6 @@ const compactAll = async (): Promise<void> => {
     if (!results.some((result) => result.built)) return
   }
   throw new Error('compaction did not drain')
-}
-
-interface Downloaded {
-  summary: PackListResponse['packs'][number]
-  bytes: Uint8Array
-  entries: PackedEntry[]
 }
 
 /** Every listed pack through GET /sync/packs, downloaded and verified. */
@@ -212,61 +203,6 @@ const downloadPacks = async (app: App): Promise<Downloaded[]> => {
     cursor = page.nextCursor
   } while (cursor)
   return out
-}
-
-interface BatchAnswer {
-  notes: Record<string, { updates: unknown[]; hasMore: boolean; floor?: number }>
-  snapshotMeta: Record<string, { sequenceNum: number; revision: string }>
-}
-
-/**
- * A reader of protocol 08 §8.4.3 and §8.10 (Bodies): a packed snapshot is the
- * baseline only when its revision matches `snapshotMeta`, and a packed update
- * applies only above `floor` and at cursor + 1, both read from the batch route
- * after the packs. Answers the body as base64 chunks, or null when the packs
- * do not cover the note and the routes would have to fill a gap.
- */
-const bodyFromPacks = (
-  packs: Downloaded[],
-  noteId: string,
-  answer: BatchAnswer
-): string[] | null => {
-  const floor = answer.notes[noteId]?.floor
-  if (floor === undefined) return null
-  const body: string[] = []
-  // Below the floor the server holds nothing of this incarnation.
-  let cursor = floor
-  const meta = answer.snapshotMeta[noteId]
-  if (meta) {
-    const baseline = packs
-      .flatMap((pack) => pack.entries.map((entry) => ({ pack, entry })))
-      .find(
-        ({ entry }) =>
-          entry.kind === 'crdt_snapshot' &&
-          entry.id === noteId &&
-          entry.meta?.revision === meta.revision
-      )
-    if (!baseline) return null
-    body.push(b64Of(extractEntry(baseline.pack.bytes, baseline.entry)))
-    cursor = Math.max(cursor, meta.sequenceNum)
-  }
-  const updates = packs
-    .flatMap((pack) =>
-      pack.entries
-        .filter((entry) => entry.kind === 'crdt_update' && entry.id === noteId)
-        .map((entry) => ({
-          meta: CrdtUpdatePackEntryMetaSchema.parse(entry.meta),
-          data: b64Of(extractEntry(pack.bytes, entry))
-        }))
-    )
-    .toSorted((a, b) => a.meta.sequenceNum - b.meta.sequenceNum)
-  for (const update of updates) {
-    if (update.meta.sequenceNum <= cursor || update.meta.sequenceNum <= floor) continue
-    if (update.meta.sequenceNum !== cursor + 1) return null
-    body.push(update.data)
-    cursor++
-  }
-  return body
 }
 
 /** The same body through GET /sync/crdt/snapshot/:noteId plus GET /sync/crdt/updates. */
@@ -435,10 +371,7 @@ describe('crdt_update packs (#5228)', () => {
   it('the cron backfill builds no update pack below the minimum fill', async () => {
     await writeUpdates('note-a', bytes(1, 1))
 
-    expect(await runPackBackfill(harness.db, storage)).toMatchObject({
-      packsBuilt: 0,
-      scopesVisited: 0
-    })
+    expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
     expect(updatePackCount()).toBe(0)
   })
 
@@ -446,16 +379,16 @@ describe('crdt_update packs (#5228)', () => {
     await writeUpdates('note-a', bytes(1, 1))
     passFillWait()
 
-    expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
+    await runBackfillTick(harness.db, storage)
     expect(updatePackCount()).toBe(1)
   })
 
   it('the cron backfill builds an update pack once the vault holds the minimum row count', async () => {
-    for (let i = 0; i < UPDATE_PACK_MIN_ROWS; i += 64) {
+    for (let i = 0; i < PACK_MIN_FILL_ROWS; i += 64) {
       await writeUpdates(`note-${i}`, ...Array.from({ length: 64 }, (_, j) => bytes(i % 256, j)))
     }
 
-    expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
+    await runBackfillTick(harness.db, storage)
     expect(updatePackCount()).toBe(1)
   })
 
@@ -542,7 +475,7 @@ describe('the listing cap (REVIEW-5260 P2, VERIFY-5260, protocol 08 §8.14)', ()
     await writeUpdates('note-a', bytes(1, 1))
     passFillWait()
 
-    await runPackBackfill(harness.db, storage)
+    await runBackfillTick(harness.db, storage)
 
     expect(updatePackCount()).toBe(1)
   })
@@ -620,8 +553,8 @@ describe('floor on the update routes (#5228, protocol 07 §7.11)', () => {
   })
 })
 
-describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () => {
-  it('drops every update pack and resets the watermark when it deletes only update rows', async () => {
+describe('the purge rewrites the crdt_update packs that hold the document (#5228, #5229, protocol 08 §8.13)', () => {
+  it('rewrites the update pack without the deleted updates and keeps the watermark', async () => {
     const app = buildApp()
     await pushJournal(app, { [DEVICE_ID]: 1 })
     await writeUpdates('j2026-05-01', bytes(1, 1), bytes(1, 2))
@@ -633,14 +566,11 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
 
     await pushJournal(app, { [DEVICE_ID]: 2 }, true)
 
-    expect(updatePackCount()).toBe(0)
+    expect(updatePackCount()).toBe(1)
     expect(count(`SELECT COUNT(*) AS n FROM pack_watermarks WHERE item_kind = 'crdt_update'`)).toBe(
-      0
+      1
     )
     expect(await storage.get(packKey)).toBeNull()
-
-    // The reset lets compaction pack the live note again, without the dead one.
-    await compactAll()
     const ids = (await downloadPacks(app)).flatMap((pack) =>
       pack.entries.filter((entry) => entry.kind === 'crdt_update').map((entry) => entry.id)
     )
@@ -698,7 +628,9 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
   })
 
   // VERIFY-5260 V4: a row written before per-build keys keeps its
-  // `<min>_<max>.pack` key; the gate, the listing and the purge all take it as is.
+  // `<min>_<max>.pack` key; the build, the listing and the purge all take it as
+  // is. Its stand-in bytes cannot be rolled in, so the build lists nothing over
+  // it and holds the watermark (#5229 P6).
   it('a pack under the old range-only key is gated, listed and purged', async () => {
     const app = buildApp()
     await pushJournal(app, { [DEVICE_ID]: 1 })
@@ -713,7 +645,7 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
       .run(USER_ID, VAULT_ID, oldKey, cursor! - 1, cursor, now())
     passFillWait()
 
-    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).packKey).toBe(oldKey)
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(false)
     expect(updatePackCount()).toBe(1)
     const page = await request<PackListResponse>(app, '/sync/packs')
     expect(page.packs.map((pack) => pack.packKey)).toContain(oldKey)

@@ -15,6 +15,7 @@ use memry_core::protocol::pack::{
     self, PACK_HEADER_SIZE, PACK_MAGIC, PACK_MAX_ENTRIES, PACK_VERSION, PackError, PackKind,
     PackRegion,
 };
+use memry_core::sync::pack_bootstrap::body_plan::plan_packed_updates;
 use support::{hex_field, str_field, vector_file};
 
 /// `meta.layout` and `meta.kindCodes` are the chapter's tables in
@@ -161,6 +162,58 @@ fn pack_entry_contract_vectors() {
     }
 
     assert!(checked >= 7, "entryContract cases went missing: {checked}");
+}
+
+/// Chapter 08 §8.4.3 over each `updatePlans` case: the production planner
+/// against the TypeScript reference's answers (`planPackedUpdates` in
+/// `pack-container.test.ts`). Equal payloads are equal digests, so the entry
+/// digest stands for the payload the reference compares.
+#[test]
+fn pack_update_plan_vectors() {
+    let vectors = vector_file("pack-container");
+    let mut checked = 0;
+    for case in vectors["cases"].as_array().expect("cases") {
+        let Some(plans) = case["entryContract"]["updatePlans"].as_array() else {
+            continue;
+        };
+        let name = str_field(case, "name");
+        let parsed = pack::parse_pack(&hex_field(case, "packHex"))
+            .unwrap_or_else(|error| panic!("{name}: the pack was refused: {error}"));
+        let entries: Vec<(i64, [u8; 32])> = parsed
+            .entries
+            .iter()
+            .filter(|e| e.kind == PackKind::CrdtUpdate)
+            .map(|e| {
+                let meta = e.meta.as_ref().expect("kind 2 meta");
+                (meta["sequenceNum"].as_i64().expect("sequenceNum"), e.sha256)
+            })
+            .collect();
+        for plan in plans {
+            let scenario = str_field(plan, "scenario");
+            let planned = plan_packed_updates(
+                &entries,
+                plan["cursor"].as_i64().expect("cursor"),
+                plan["floor"].as_i64(),
+                plan["floorReadAfterPack"]
+                    .as_bool()
+                    .expect("floorReadAfterPack"),
+            );
+            let apply: Vec<i64> = plan["apply"]
+                .as_array()
+                .expect("apply")
+                .iter()
+                .map(|n| n.as_i64().expect("a sequence number"))
+                .collect();
+            assert_eq!(planned.apply, apply, "{name}: {scenario}");
+            assert_eq!(
+                planned.cursor_after,
+                plan["cursorAfter"].as_i64().expect("cursorAfter"),
+                "{name}: {scenario}"
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked >= 7, "updatePlans cases went missing: {checked}");
 }
 
 #[test]

@@ -1,42 +1,64 @@
 import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../lib/logger'
-import { PACKED_KINDS, compactOneRange } from './pack-compaction'
+import { PACKED_KINDS, compactOneRange, type PackBuildOutcome } from './pack-compaction'
 import type { PackKindName } from './pack-format'
-import { UPDATE_PACK_MAX_WAIT_SECONDS, UPDATE_PACK_MIN_ROWS } from './pack-update-selection'
+import type { VaultScope } from './pack-index-write'
+import type { PackBackfillStep, PackCompactionMessageBody } from './pack-queue'
+import { withReplacedObjectPasses } from './pack-message-passes'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { ROLLUP_SUBREQUESTS, rollupKind } from './pack-rollup'
+import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
 const logger = createLogger('PackBackfill')
 
 /**
- * Cron-paced backfill of historical items into packs (#1839).
+ * Backfill of historical items into packs (#1839), fanned out over the pack
+ * queue (#5278).
  *
- * Pacing model — deliberately NO sleeps or busy loops inside the invocation:
- * Worker CPU time is billed wall-CPU, and sleeping burns neither less CPU nor
- * helps anyone. Instead each invocation does a BOUNDED amount of work (a few
- * packs total across all vaults) and relies on two resumable facts to make
- * progress over time:
- *   - watermarks (pack_watermarks) remember exactly where every
- *     user+vault+kind left off, and
- *   - the 6-hourly cleanup cron re-invokes this task (see index.ts), so the
- *     backlog drains at `PACKS_PER_BACKFILL_TICK` packs per tick until done.
- * A vault mid-backfill is simply continued next tick; nothing is lost, and a
- * crashed tick leaves the watermarks where they were.
+ * The 6-hourly cron builds nothing itself. It enqueues one backfill message per
+ * vault and kind with work left: a build backlog that meets the minimum fill,
+ * or more packs listed than the kind's bound. Each message runs in its own
+ * consumer invocation with its own subrequest budget, rolls up and builds until
+ * the kind is drained or the budget is spent, and re-enqueues itself while work
+ * may remain. Messages ride their own queue (PACK_BACKFILL_QUEUE), so a push
+ * nudge or a purge's delayed retry never waits behind a backfill. The two
+ * consumers can run one message each for the same vault at once: builds take
+ * the watermark by compare-and-swap and a rollup swap applies only while its
+ * inputs are still listed, so neither lists a range twice. A vault's backlog drains in minutes instead of 3 packs per tick.
+ *
+ * Bounds:
+ * - Fan-out: at most BACKFILL_MESSAGES_PER_SOURCE messages per source (the
+ *   rollup scopes and each kind's backlog), BACKFILL_MESSAGES_PER_TICK in all,
+ *   one sendBatch (Queues takes at most 100 per call).
+ * - Chain: a message re-enqueues itself unless a build ended the chain
+ *   (ENDS_CHAIN: below the fill, the listing cap, a held range), and at most
+ *   BACKFILL_MAX_HOPS messages follow one cron message.
+ * - Per message: SUBREQUEST_BUDGET_PER_MESSAGE, 3 builds or 12 rollups.
+ *
+ * Watermarks remember where each user+vault+kind left off, and every build
+ * takes its watermark with a compare-and-swap, so a duplicate or redelivered
+ * message never lists a range twice; a dropped chain resumes on the next tick.
  */
 
-// Packs targeted per cron invocation, across ALL vaults combined.
-//
-// SUBREQUEST ARITHMETIC (see pack-compaction.ts): one pack costs ~269
-// subrequests (budgeted at 300 below). The tick shares its invocation's
-// paid-plan ceiling of 1000 with the sweep's other cleanup tasks, so
-//   3 packs x 300 = 900  leaves ~100 for the rest of the sweep;
-// 4 packs would push past the ceiling and kill the whole cron invocation.
-// The loop stops as soon as this budget is spent, whichever limit binds
-// first (tick count or subrequest estimate).
-export const PACKS_PER_BACKFILL_TICK = 3
+// Each source (the rollup scopes, and each kind's build backlog) gets its own
+// share, so one source's backlog cannot starve another's, and a tick sends
+// at most 4 x 25 = 100 messages in one sendBatch.
+export const BACKFILL_MESSAGES_PER_SOURCE = 25
+export const BACKFILL_MESSAGES_PER_TICK = BACKFILL_MESSAGES_PER_SOURCE * (PACKED_KINDS.length + 1)
+export const BACKFILL_MAX_HOPS = 64
+// Delay before a chain's next message, so nudges and other vaults' messages
+// interleave with a long chain instead of queueing behind it.
+export const BACKFILL_HOP_DELAY_SECONDS = 10
 
-// Conservative per-pack subrequest estimate matching pack-compaction.ts (~269).
+// SUBREQUEST ARITHMETIC (see pack-compaction.ts): one pack costs ~269
+// subrequests (budgeted at 300), one rollup ROLLUP_SUBREQUESTS (72). A message
+// owns its invocation: the Workers Paid plan allows 10,000 subrequests per
+// invocation (developers.cloudflare.com/workers/platform/limits), and the
+// budget stays at 900 of the 1000 compaction has always planned around, so a
+// message's CPU and memory stay those of a compaction nudge.
 const SUBREQUESTS_PER_PACK = 300
-const SUBREQUEST_CEILING_PER_TICK = 900
+const SUBREQUEST_BUDGET_PER_MESSAGE = 900
 
 interface BacklogVaultRow {
   user_id: string
@@ -52,9 +74,9 @@ interface BacklogVaultRow {
  * created_at index from 0007. A full
  * index scan every 6 hours is acceptable for an admin-paced maintenance job;
  * LIMIT keeps the result bounded regardless of account count. A vault at the
- * listing cap is left out, and an update backlog counts only once it meets the
- * minimum fill (pack-update-selection.ts), so the tick spends no budget on a
- * vault whose build would be a noop.
+ * listing cap is left out, and a backlog counts only once it meets the
+ * minimum fill (pack-sizing.ts), so the tick spends no budget on a vault whose
+ * build would be a noop.
  */
 const findBacklogVaults = async (
   db: D1Database,
@@ -68,19 +90,17 @@ const findBacklogVaults = async (
         ? 'crdt_updates si'
         : 'crdt_snapshots si'
   const sortColumn = kind === 'crdt_snapshot' ? 'si.created_at' : 'si.server_cursor'
+  const timeColumn = kind === 'record' ? 'si.updated_at' : 'si.created_at'
   // A vault at the listing cap (§8.14) builds nothing, so it is no backlog:
   // left in, it sorts first every tick and spends the budget of every vault.
   const room = {
     sql: '(SELECT COUNT(*) FROM pack_index p WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?',
     bind: [PACK_LIST_MAX_PACKS_PER_VAULT]
   }
-  const fill =
-    kind === 'crdt_update'
-      ? {
-          sql: ' AND (COUNT(*) >= ? OR MIN(si.created_at) <= ?)',
-          bind: [UPDATE_PACK_MIN_ROWS, Math.floor(Date.now() / 1000) - UPDATE_PACK_MAX_WAIT_SECONDS]
-        }
-      : { sql: '', bind: [] }
+  const fill = {
+    sql: ` AND (COUNT(*) >= ? OR MIN(${timeColumn}) <= ?)`,
+    bind: [PACK_MIN_FILL_ROWS, Math.floor(Date.now() / 1000) - PACK_SETTLE_SECONDS]
+  }
   const result = await db
     .prepare(
       `SELECT si.user_id, si.vault_id, MIN(${sortColumn}) AS oldest_pending
@@ -98,55 +118,149 @@ const findBacklogVaults = async (
   return result.results ?? []
 }
 
-export interface BackfillTickResult {
-  packsBuilt: number
-  scopesVisited: number
-  budgetRemaining: number
+/** Kinds that list more packs than their bound (pack-sizing.ts), most packs first. */
+const findRollupScopes = async (
+  db: D1Database,
+  limit: number
+): Promise<Array<{ user_id: string; vault_id: string; item_kind: PackKindName }>> => {
+  const result = await db
+    .prepare(
+      `SELECT user_id, vault_id, item_kind, COUNT(*) AS packs FROM pack_index
+       GROUP BY user_id, vault_id, item_kind
+       HAVING COUNT(*) > ${PACK_COUNT_BOUND_SQL}
+       ORDER BY packs DESC
+       LIMIT ?`
+    )
+    .bind(limit)
+    .all<{ user_id: string; vault_id: string; item_kind: PackKindName }>()
+  return result.results ?? []
 }
 
 /**
- * One bounded backfill pass. Resumable by construction: every built pack
- * advances its watermark, so the next invocation continues where this stopped.
+ * The cron tick: delete replaced pack objects past their grace, then enqueue
+ * one backfill message per vault and kind with work, rollups first. Builds
+ * nothing in-line, so it spends a few subrequests of the sweep's invocation.
  */
 export const runPackBackfill = async (
   db: D1Database,
   storage: R2Bucket,
-  packsPerTick = PACKS_PER_BACKFILL_TICK
-): Promise<BackfillTickResult> => {
-  let budget = Math.min(packsPerTick * SUBREQUESTS_PER_PACK, SUBREQUEST_CEILING_PER_TICK)
-  let packsBuilt = 0
-  let scopesVisited = 0
-
-  outer: for (const kind of PACKED_KINDS) {
-    // Ask for more candidate scopes than the budget allows; extra rows are
-    // simply not visited this tick (the query is ordered oldest-first, so the
-    // worst backlogs drain first).
-    const vaults = await findBacklogVaults(db, kind, packsPerTick * 4 + 8)
-    for (const row of vaults) {
-      if (budget < SUBREQUESTS_PER_PACK || packsBuilt >= packsPerTick) break outer
-      try {
-        const result = await compactOneRange(
-          db,
-          storage,
-          { userId: row.user_id, vaultId: row.vault_id },
-          kind
-        )
-        if (result.built) packsBuilt++
-        budget -= SUBREQUESTS_PER_PACK
-        scopesVisited++
-      } catch (error) {
-        // One broken vault must not starve the rest of the backlog forever,
-        // but its failure IS interesting: log and move on. Watermark untouched
-        // means the same vault is retried next tick.
-        logger.error('backfill pack build failed', {
-          userId: row.user_id,
-          vaultId: row.vault_id,
-          kind,
-          error: error instanceof Error ? error.message : String(error)
-        })
-      }
+  queue: Queue<PackCompactionMessageBody> | undefined
+): Promise<{ enqueued: number }> => {
+  try {
+    await deleteReplacedPackObjects(db, storage)
+  } catch (error) {
+    logger.error('replaced pack object deletion failed', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  const bodies = new Map<string, PackCompactionMessageBody>()
+  const add = (userId: string, vaultId: string, kind: PackKindName): void => {
+    bodies.set(JSON.stringify([userId, vaultId, kind]), {
+      userId,
+      vaultId,
+      backfill: { kind, hop: 0 }
+    })
+  }
+  for (const row of await findRollupScopes(db, BACKFILL_MESSAGES_PER_SOURCE)) {
+    add(row.user_id, row.vault_id, row.item_kind)
+  }
+  for (const kind of PACKED_KINDS) {
+    for (const row of await findBacklogVaults(db, kind, BACKFILL_MESSAGES_PER_SOURCE)) {
+      add(row.user_id, row.vault_id, kind)
     }
   }
+  if (!queue) {
+    logger.warn('no pack queue bound; pack backfill not enqueued', { scopes: bodies.size })
+    return { enqueued: 0 }
+  }
+  if (bodies.size > 0) await queue.sendBatch([...bodies.values()].map((body) => ({ body })))
+  return { enqueued: bodies.size }
+}
 
-  return { packsBuilt, scopesVisited, budgetRemaining: budget }
+export interface BackfillMessageResult {
+  rollups: number
+  packsBuilt: number
+  /** True when a build ended the chain (ENDS_CHAIN): nothing more to list now. */
+  drained: boolean
+  /** True when it enqueued the chain's next message. */
+  continued: boolean
+}
+
+/** A rollup failure leaves the listing as it was; the build still runs. */
+const rolledUp = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  kind: PackKindName
+): Promise<boolean> => {
+  try {
+    return (await rollupKind(db, storage, scope, kind)) !== null
+  } catch (error) {
+    logger.error('backfill rollup failed', {
+      vaultId: scope.vaultId,
+      kind,
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return false
+  }
+}
+
+// Outcomes a further build of the kind cannot change within the chain: below
+// the fill (an empty scan included), the listing cap after the message's own
+// rollups, and a range collision that holds the watermark. Any other noop
+// moved the watermark or lost a race, so the next build may still list.
+const ENDS_CHAIN: ReadonlySet<PackBuildOutcome> = new Set(['not_ready', 'cap', 'held'])
+
+/**
+ * One backfill message: roll the kind up while it is above its bound and build
+ * while its backlog meets the minimum fill, within one invocation's budget,
+ * after the purge rewrite pass and between the replaced-object passes of
+ * withReplacedObjectPasses. Throws on a
+ * build failure or replaced objects still due, so Queues redelivers; a
+ * redelivery finds committed builds' watermarks moved.
+ */
+export const runBackfillMessage = async (
+  db: D1Database,
+  storage: R2Bucket,
+  queue: Queue<PackCompactionMessageBody> | undefined,
+  scope: VaultScope,
+  step: PackBackfillStep
+): Promise<BackfillMessageResult> => {
+  let rollups = 0
+  let packsBuilt = 0
+  let drained = false
+  await withReplacedObjectPasses(db, storage, scope, 'backfill message', async () => {
+    let budget = SUBREQUEST_BUDGET_PER_MESSAGE
+    for (;;) {
+      if (budget >= ROLLUP_SUBREQUESTS && (await rolledUp(db, storage, scope, step.kind))) {
+        rollups++
+        budget -= ROLLUP_SUBREQUESTS
+        continue
+      }
+      if (budget < SUBREQUESTS_PER_PACK) return
+      const result = await compactOneRange(db, storage, scope, step.kind)
+      budget -= SUBREQUESTS_PER_PACK
+      if (result.built) packsBuilt++
+      else if (ENDS_CHAIN.has(result.reason)) {
+        drained = true
+        return
+      }
+    }
+  })
+
+  const hop = step.hop + 1
+  const continued = !drained && hop < BACKFILL_MAX_HOPS && queue !== undefined
+  if (continued) {
+    await queue.send(
+      { userId: scope.userId, vaultId: scope.vaultId, backfill: { kind: step.kind, hop } },
+      { delaySeconds: BACKFILL_HOP_DELAY_SECONDS }
+    )
+  } else if (!drained) {
+    logger.warn('pack backfill chain stopped with work left; the next tick resumes it', {
+      vaultId: scope.vaultId,
+      kind: step.kind,
+      hop
+    })
+  }
+  return { rollups, packsBuilt, drained, continued }
 }

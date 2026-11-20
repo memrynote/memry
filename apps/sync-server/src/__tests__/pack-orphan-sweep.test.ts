@@ -4,7 +4,7 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { cleanupOrphanedPackObjects, PACK_ORPHAN_MIN_AGE_MS } from '../services/cleanup'
 import { storeUpdatesWithCursor } from '../services/crdt'
 import { compactOneRange } from '../services/pack-compaction'
-import { UPDATE_PACK_MAX_WAIT_SECONDS } from '../services/pack-update-selection'
+import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 
 /**
  * REVIEW-5260: a pack key is unique per build, so a build that fails between
@@ -40,14 +40,24 @@ const listedKeys = (): string[] =>
 /** One update build whose commit batch fails after its object PUT, then one that succeeds. */
 const failedThenBuilt = async (): Promise<void> => {
   await writeUpdate('note-a')
-  advance((UPDATE_PACK_MAX_WAIT_SECONDS + 1) * 1000)
+  advance((PACK_SETTLE_SECONDS + 1) * 1000)
+  // D1 goes away for the listing batch and its cleanup (REVIEW-5277 P3), as a
+  // Worker that dies after the PUT: the object is neither listed nor recorded.
   const failing = vi.spyOn(harness.db, 'batch').mockImplementationOnce(async () => {
     throw new Error('D1 unavailable')
   })
+  const prepare = harness.db.prepare.bind(harness.db)
+  const cleanup = vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+    if (sql.includes('pack_replaced_objects')) throw new Error('D1 unavailable')
+    return prepare(sql)
+  })
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
   await expect(compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).rejects.toThrow(
     'D1 unavailable'
   )
   failing.mockRestore()
+  cleanup.mockRestore()
+  logged.mockRestore()
   expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(true)
 }
 
@@ -90,7 +100,7 @@ describe('orphan pack object sweep (REVIEW-5260)', () => {
 
   it('never deletes an object a pack_index row lists, however old', async () => {
     await writeUpdate('note-a')
-    advance((UPDATE_PACK_MAX_WAIT_SECONDS + 1) * 1000)
+    advance((PACK_SETTLE_SECONDS + 1) * 1000)
     await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
     advance(30 * 24 * 60 * 60 * 1000)
 

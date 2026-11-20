@@ -41,7 +41,8 @@ vi.mock('../services/sync', () => ({
       }
     ],
     committedItems: [],
-    committedAtMs: 0
+    committedAtMs: 0,
+    purgeRetry: false
   }),
   pullItems: vi.fn().mockResolvedValue({ items: [], purgedTombstones: [], blobMissing: [] }),
   getItem: vi.fn().mockResolvedValue({
@@ -280,6 +281,7 @@ const makePushBatchResult = (
   ],
   committedItems: [],
   committedAtMs: 0,
+  purgeRetry: false,
   ...overrides
 })
 

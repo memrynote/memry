@@ -134,14 +134,14 @@ configured", not a client bug.
 
 | Bucket            | Steady state                                            | Elevated      | Key    |
 | ----------------- | ------------------------------------------------------- | ------------- | ------ |
-| `sync_changes`    | 60/min (`apps/sync-server/src/routes/sync.ts:219-220`)  | ×3 = 180/min  | user   |
-| `sync_pull`       | 120/min (`apps/sync-server/src/routes/sync.ts:226-227`) | ×3 = 360/min  | user   |
-| `sync_manifest`   | 30/min (`apps/sync-server/src/routes/sync.ts:239-240`)  | ×3 = 90/min   | user   |
-| `crdt_pull`       | 600/min (`apps/sync-server/src/routes/sync.ts:605-606`) | ×5 = 3000/min | device |
-| `crdt_batch_pull` | 30/min (`apps/sync-server/src/routes/sync.ts:616-617`)  | ×5 = 150/min  | device |
+| `sync_changes`    | 60/min (`apps/sync-server/src/routes/sync.ts:220-221`)  | ×3 = 180/min  | user   |
+| `sync_pull`       | 120/min (`apps/sync-server/src/routes/sync.ts:227-228`) | ×3 = 360/min  | user   |
+| `sync_manifest`   | 30/min (`apps/sync-server/src/routes/sync.ts:240-241`)  | ×3 = 90/min   | user   |
+| `crdt_pull`       | 600/min (`apps/sync-server/src/routes/sync.ts:615-616`) | ×5 = 3000/min | device |
+| `crdt_batch_pull` | 30/min (`apps/sync-server/src/routes/sync.ts:626-627`)  | ×5 = 150/min  | device |
 | `blob_download`   | 600/min (`apps/sync-server/src/routes/blob.ts:94-95`)   | ×5 = 3000/min | device |
 
-**`sync_push` is not elevated** (`apps/sync-server/src/routes/sync.ts:223-228`,
+**`sync_push` is not elevated** (`apps/sync-server/src/routes/sync.ts:224-229`,
 300/min per device): every elevated bucket is pull-only
 (`apps/sync-server/src/services/bootstrap-session.ts:274`).
 
