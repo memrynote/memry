@@ -475,18 +475,15 @@ impl BillingService {
         }
     }
 
-    /// A new vault supervisor's gate: the cached verdict at once, then the resolved one. Every
-    /// later answer goes to this gate until the next one replaces it.
+    /// A new vault supervisor's gate: the cached verdict at once, then the server's, which
+    /// [`Self::remember`] tells it in order with every later answer until the next gate
+    /// replaces it.
     pub fn attach_gate(self: &Arc<Self>, gate: &Arc<SyncStartGate>) {
         *lock(&self.gate) = Arc::downgrade(gate);
         gate.set_entitlement(verdict(self.cache.get().as_ref()));
         let service = Arc::clone(self);
-        let gate = Arc::downgrade(gate);
         self.runtime.spawn(async move {
-            let resolved = service.resolve_for_sync_start().await;
-            if let Some(gate) = gate.upgrade() {
-                gate.set_entitlement(resolved);
-            }
+            service.resolve_for_sync_start().await;
         });
     }
 
