@@ -24,13 +24,17 @@ not, and changes **nothing** about the pull shape.
 | Method | Path                    | Purpose             | Line   |
 | ------ | ----------------------- | ------------------- | ------ |
 | POST   | `/sync/bootstrap`       | open                | `:86`  |
-| POST   | `/sync/bootstrap/renew` | extend              | `:154` |
-| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:173` |
+| POST   | `/sync/bootstrap/renew` | extend              | `:160` |
+| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:179` |
 
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
 sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:35-38`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
 (`apps/sync-server/src/routes/bootstrap.ts:45-46`).
+
+Renew and close name their session only through the `X-Memry-Bootstrap-Token`
+header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:160-176`,
+`:179-187`).
 
 ## 10.3 The header
 
@@ -38,6 +42,13 @@ share one rate limiter of **30 requests per 60 s**, device-keyed
 (`packages/contracts/src/bootstrap-api.ts:18`), carrying the `token` from the
 open response **verbatim**, added to elevated requests only
 (`packages/contracts/src/bootstrap-api.ts:21-22`).
+
+**Normative.** `POST /sync/bootstrap/renew` and `POST /sync/bootstrap/close`
+MUST carry the session's token in `X-Memry-Bootstrap-Token`
+(`apps/sync-server/src/routes/bootstrap.ts:167`, `:184`). A request without it
+is answered `401 BOOTSTRAP_SESSION_INVALID`
+(`apps/sync-server/src/routes/bootstrap.ts:66-74`), and a close without it
+leaves the session holding its concurrency slot until the token expires.
 
 **Old servers ignore it and old clients never send it**
 (`packages/contracts/src/bootstrap-api.ts:8-10`), which is what makes the whole
@@ -80,7 +91,7 @@ session (`packages/contracts/src/sync-api.ts:805-820`).
 | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already pulled this vault and is past the resume window (§10.9)                                    |
 | `BOOTSTRAP_SESSION_LIMIT`     | 429    | the per-user concurrent cap                                                                                    |
-| `BOOTSTRAP_SESSION_INVALID`   | 401    | expired, forged or revoked token                                                                               |
+| `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:66-74`)          |
 | `BOOTSTRAP_IDENTITY_MISMATCH` | 403    | a valid token presented by another authenticated context; renewal and close require the session's own identity |
 | `BOOTSTRAP_SESSION_EXPIRED`   | 403    | the absolute maximum lifetime is spent                                                                         |
 | `BOOTSTRAP_UNAVAILABLE`       | 501    | the deployment has no HMAC key configured (`apps/sync-server/src/routes/bootstrap.ts:53-64`)                   |

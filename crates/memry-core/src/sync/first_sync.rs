@@ -265,34 +265,47 @@ impl FirstSync {
             None => 0,
         };
 
-        report.window_start = self.window_start(now_ms).await?;
-
-        // Records first (#5232): packs, then the feed from where they end,
-        // then the manifest decides, so the note list fills before any body.
-        let record_packs_used = self.record_packs_pass(&mut report).await?;
-        self.refs_pass(tail_cursor, &mut report).await?;
-        if record_packs_used {
-            self.reconcile(&mut report).await?;
-        }
-        self.metadata_pass(&mut report).await?;
-        // After the reconcile, so a document whose record is a tombstone or
-        // absent takes no packed body (§8.10).
-        let body_packs_used = self.body_packs_pass(&mut report).await?;
-        self.bodies_pass(report.window_start, body_packs_used, &mut report)
-            .await?;
-
-        self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
-            .await?;
+        // Close on every exit after the open, so a failed run frees its slot.
+        // A close failure is logged by the client and never fails the run.
+        let passes = self.passes(tail_cursor, now_ms, &mut report).await;
         if let Some(bootstrap) = &self.bootstrap {
             bootstrap.close().await;
         }
+        passes?;
         self.progress.progress(FirstSyncProgress {
             phase: FirstSyncPhase::Done,
             completed: 1,
             total: 1,
         });
         Ok(report)
+    }
+
+    async fn passes(
+        &self,
+        tail_cursor: i64,
+        now_ms: i64,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
+        report.window_start = self.window_start(now_ms).await?;
+
+        // Records first (#5232): packs, then the feed from where they end,
+        // then the manifest decides, so the note list fills before any body.
+        let record_packs_used = self.record_packs_pass(report).await?;
+        self.refs_pass(tail_cursor, report).await?;
+        if record_packs_used {
+            self.reconcile(report).await?;
+        }
+        self.metadata_pass(report).await?;
+        // After the reconcile, so a document whose record is a tombstone or
+        // absent takes no packed body (§8.10).
+        let body_packs_used = self.body_packs_pass(report).await?;
+        self.bodies_pass(report.window_start, body_packs_used, report)
+            .await?;
+
+        self.db
+            .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
+            .await?;
+        Ok(())
     }
 
     /// Records from `record` packs, once, on a device that holds no record
