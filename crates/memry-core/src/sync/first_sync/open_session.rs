@@ -22,11 +22,28 @@ impl Drop for OpenSession {
         };
         match tokio::runtime::Handle::try_current() {
             Ok(runtime) => {
-                runtime.spawn(async move { bootstrap.close().await });
+                let unfinished = CloseUnfinished;
+                runtime.spawn(async move {
+                    bootstrap.close().await;
+                    std::mem::forget(unfinished);
+                });
             }
             Err(_) => eprintln!(
                 "memry-core: a cancelled first sync left its bootstrap session open until expiry: no runtime to close it on"
             ),
         }
+    }
+}
+
+/// Owned by the close that `drop` hands to the runtime. A runtime that is
+/// shutting down drops its tasks, or the future of a task spawned on it, so
+/// this guard dropping means the close never finished.
+struct CloseUnfinished;
+
+impl Drop for CloseUnfinished {
+    fn drop(&mut self) {
+        eprintln!(
+            "memry-core: a cancelled first sync left its bootstrap session open until expiry: the runtime shut down before the close ran"
+        );
     }
 }

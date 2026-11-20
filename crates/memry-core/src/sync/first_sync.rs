@@ -68,6 +68,7 @@ use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 mod body_pass;
 mod open_session;
 mod refs_page;
+mod window;
 use open_session::OpenSession;
 use refs_page::{read_refs_page, reference_now};
 
@@ -529,27 +530,6 @@ impl FirstSync {
                 .await?,
         );
         Ok(())
-    }
-
-    /// The window boundary, chosen once and remembered.
-    async fn window_start(&self, now_ms: i64) -> Result<i64, FirstSyncError> {
-        // No window has no boundary to slide, so there is nothing to remember.
-        let Some(window_ms) = self.limits.recent_window_ms else {
-            return Ok(i64::MIN);
-        };
-        if let Some(stored) = self
-            .db
-            .call(|conn| read_meta(conn, META_FIRST_SYNC_WINDOW_START))
-            .await?
-            .and_then(|text| text.parse::<i64>().ok())
-        {
-            return Ok(stored);
-        }
-        let chosen = now_ms - window_ms;
-        self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_WINDOW_START, &chosen.to_string()))
-            .await?;
-        Ok(chosen)
     }
 
     /// §10.11 rule 1 and 2, applied at the one place a request is built: renew
