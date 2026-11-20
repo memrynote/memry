@@ -30,6 +30,16 @@ const request = (fields) => ({
 })
 
 describe('summarize', () => {
+  it('clips a request still in flight at the records mark to the window', () => {
+    const metrics = summarize({
+      marks: { startMs: 1_000, recordsMs: 2_000, bodiesMs: 9_000 },
+      lineMbps: 100,
+      requests: [request({ method: 'POST', path: '/sync/pull', startMs: 1_500, endMs: 4_000 })]
+    })
+    assert.equal(metrics.recordsBreakdown.endpoints['POST /sync/pull'].busyMs, 500)
+    assert.equal(metrics.recordsBreakdown.idleMs, 500)
+  })
+
   it('splits t_records by endpoint, local time and phase marks', () => {
     const metrics = summarize({
       marks: { startMs: 1_000, recordsMs: 4_000, bodiesMs: 9_000 },

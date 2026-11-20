@@ -115,9 +115,11 @@ export function limiterOf({ wallMs, busy, pacedMs = null, bytes, requests, lineM
  * phase marks as offsets. `phases`: `[atMs, name]`.
  */
 export function windowBreakdown(requests, fromMs, toMs, phases = []) {
-  const inside = requests.filter(
-    (r) => r.method !== 'WS' && !r.refused && r.startMs >= fromMs && r.startMs <= toMs
-  )
+  // Clipped to the window: a request still in flight at `toMs` counts only
+  // its part inside it.
+  const inside = requests
+    .filter((r) => r.method !== 'WS' && !r.refused && r.startMs >= fromMs && r.startMs <= toMs)
+    .map((r) => ({ ...r, startMs: Math.max(r.startMs, fromMs), endMs: Math.min(r.endMs, toMs) }))
   const groups = {}
   for (const request of inside) (groups[endpointOf(request)] ??= []).push(request)
   const endpoints = Object.fromEntries(

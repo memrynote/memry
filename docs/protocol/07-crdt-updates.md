@@ -557,13 +557,18 @@ document: a baseline when the advertised `revision` is not the one stored,
 whatever the cursor, and none when no server snapshot is advertised. Then,
 with or without a baseline, the answer's page is applied as the first page
 and paging continues on `hasMore`
-(`crates/memry-core/src/sync/body_pull.rs:300-326`,
-`crates/memry-core/src/sync/body_pull.rs:359-362`). The server pages
+(`crates/memry-core/src/sync/body_pull.rs:300-332`,
+`crates/memry-core/src/sync/body_pull.rs:365-368`). The server pages
 `sequenceNum > since` in order
 (`apps/sync-server/src/services/crdt.ts:270`), so after a baseline the page's
 rows above the new cursor are the start of the cursor's own page, and the
 rows at or below it are skipped as replays (§7.9). A page asked from above
-the cursor is never used. The page moves to the worker that pulls the
+the cursor is never used, and neither is the page of a document whose due
+baseline the snapshot GET no longer finds: that document was purged since
+the probe, and its page may hold the deleted incarnation's rows. A snapshot
+rewritten between the probe and the GET still takes the probe page: rows
+pushed after the probe arrive with the next feed pull, and the page's older
+meta costs a second snapshot GET. The page moves to the worker that pulls the
 document and is dropped once applied. Without a trusted answer, the document
 pages through the single-document route as before. A resumed first sync counts
 the settled documents as done before its first body request

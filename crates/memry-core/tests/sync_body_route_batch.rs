@@ -256,3 +256,39 @@ async fn a_batch_page_below_the_baseline_continues_from_the_snapshot() {
     );
     assert!(!is_owed(&db, "longdoc00001"));
 }
+
+/// Deleted and re-created under the same id between the probe and the
+/// snapshot GET: the old log is purged through 5 with no snapshot, and the
+/// new incarnation's rows are 6 and 7.
+fn recreate(server: &mut Server) {
+    let at = server
+        .docs
+        .iter()
+        .position(|doc| doc.id == "recreated001")
+        .unwrap();
+    let mut doc = ServerDoc::new("recreated001", 7).purged_through(5);
+    doc.snapshot = None;
+    server.docs[at] = doc;
+}
+
+/// REVIEW-5311 q6: a baseline was due, and the GET finds no snapshot. The
+/// probe page belongs to the purged incarnation, so it is not applied; the
+/// pull pages afresh and stores only the new incarnation's rows.
+#[tokio::test]
+async fn a_baseline_due_but_gone_at_the_get_does_not_apply_the_probe_page() {
+    let (db, dir) = body_pack_server::scratch("baseline-gone");
+    let mut server = Server::new(
+        vec![ServerDoc::new("recreated001", 5).snapshot_at(2)],
+        vec![],
+    );
+    server.records = true;
+    server.before.push((SNAPSHOT_GET.to_owned(), recreate));
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(update_seqs(&db, "recreated001"), vec![6, 7]);
+}

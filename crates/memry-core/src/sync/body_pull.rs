@@ -306,11 +306,17 @@ impl BodyPull {
                 Some(meta) => self.baseline_due(doc_id, meta).await?,
                 None => false,
             };
+            let mut lost_baseline = false;
             if due {
                 if self.fetch_baseline(doc_id, cursor, &mut report).await? {
                     cursor = self.read_cursor(doc_id).await?;
                 } else if !report.stopped.is_empty() {
                     return Ok(report);
+                } else {
+                    // The snapshot the probe saw is gone: the document was
+                    // purged since, so its page may hold a deleted
+                    // incarnation's rows (REVIEW-5311).
+                    lost_baseline = true;
                 }
             }
             // #5293: the answer is this document's first page already. The
@@ -320,7 +326,7 @@ impl BodyPull {
             // are the start of the cursor's own page, after a baseline too
             // (#5232); the loop skips the rest as replays (§7.9). A page from
             // above the cursor would leave a hole, so that one is fetched.
-            if answer.since <= cursor {
+            if answer.since <= cursor && !lost_baseline {
                 first_page = Some(answer.page);
             }
         } else {
