@@ -587,7 +587,7 @@ document while those rows exist, and the purge drops the packs that hold them
   its own object. A writer that finds its insert would conflict rolls the listed pack
   and its new rows into one pack instead (§8.12), taking only the new rows that
   fit beside the listed pack's current entries
-  (`apps/sync-server/src/services/pack-compaction.ts:406-439`). When none fit or
+  (`apps/sync-server/src/services/pack-compaction.ts:424-457`). When none fit or
   the listed pack cannot be read, a `record` or `crdt_update` writer lists
   nothing and the watermark holds, logged at error level; those kinds sort on
   the unique `server_cursor`, so only a foreign row collides. A `crdt_snapshot`
@@ -850,7 +850,8 @@ coverage ranges chain, and writes one pack that replaces them:
   (`PACK_PURGE_RETRY_DELAY_SECONDS`,
   `apps/sync-server/src/services/pack-replaced-objects.ts`), whose deletion
   pass runs before its builds and again after them, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:723,751`).
+  cannot block it (`withReplacedObjectPasses`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:154,164`).
   A message whose last pass leaves objects due fails, so the queue redelivers
   it inside the deadline; builds it committed stay committed.
 - **A 404 between listing and download.** A reader treats a pack that answers
@@ -966,14 +967,17 @@ passed the cap in days.
 
 **Backfill rate.** The 6-hourly cron builds nothing itself. It enqueues one
 backfill message per vault and kind whose backlog meets the fill or whose
-listed packs exceed the bound, at most 100 per tick, on the compaction queue
+listed packs exceed the bound, at most 25 per source (the kinds above the
+bound, and each kind's backlog), so 100 per tick, on a backfill queue of its
+own, so a push nudge or a purge's delayed retry never waits behind it
 (`runPackBackfill`, `apps/sync-server/src/services/pack-backfill.ts`). Each
 message runs in its own invocation, rolls the kind up and builds it within a
 budget of 900 subrequests (3 builds or 12 rollups), and enqueues the next
-message 10 s later while that budget ran out with work left, at most 64
-messages per chain. A message that finds nothing to roll up or build ends the
-chain. A vault's backlog therefore drains minutes after a tick, and a chain
-that stops at its bound resumes on the next tick from the watermark.
+message 10 s later, at most 64 messages per chain. Only a build that cannot
+list now ends the chain: below the fill (an empty scan included), at the
+listing cap, or held on a range collision. A vault's backlog therefore drains
+minutes after a tick, and a chain that stops at its bound resumes on the next
+tick from the watermark.
 
 **The pack bound.** A server keeps each kind at most
 `2 * (ceil(entries / 4096) + ceil(bytes / PACK_TARGET_BYTES)) + 2` listed
@@ -985,7 +989,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:738`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:753`).
 A backfill message that spends its budget on its last build has none left to
 roll up, so a kind may list `bound + 1` until the chain's next message, the
 next tick or a compaction message rolls it up.

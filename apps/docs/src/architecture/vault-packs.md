@@ -90,13 +90,18 @@ Compaction is triggered two ways, both of which converge on the same idempotent 
   handled warning rather than an unhandled 500, so it stays visible without reading as an outage.
   Any enqueue failure that is not backpressure still surfaces as a genuine unhandled error.
 - **Cron backfill.** The 6-hourly sweep builds nothing itself (#5278). It enqueues one backfill
-  message per vault and kind with work, at most `BACKFILL_MESSAGES_PER_TICK` = 100 per tick, rollup
-  scopes first and then build backlogs oldest first. Each message runs in its own consumer
-  invocation, rolls up and builds within 900 subrequests (3 builds or 12 rollups), and re-enqueues
-  itself `BACKFILL_HOP_DELAY_SECONDS` = 10 s later while its budget ran out with work left, at most
-  `BACKFILL_MAX_HOPS` = 64 messages per chain. A message that finds nothing to do ends the chain,
-  so a vault's backlog drains minutes after a tick instead of 3 packs per tick across all vaults.
-  A dropped or bounded chain resumes on the next tick from the watermark.
+  message per vault and kind with work on its own queue (`PACK_BACKFILL_QUEUE`,
+  `memry-pack-backfill-<env>`), so nudges and the purge's delayed retry never wait behind it. Each
+  source (the kinds above their bound, and each kind's build backlog, oldest first) gets at most
+  `BACKFILL_MESSAGES_PER_SOURCE` = 25 messages, 100 per tick, so no kind starves another. Each
+  message runs in its own consumer invocation, rolls up and builds within 900 subrequests (3 builds
+  or 12 rollups), and re-enqueues itself `BACKFILL_HOP_DELAY_SECONDS` = 10 s later, at most
+  `BACKFILL_MAX_HOPS` = 64 messages per chain. Only a build that cannot list now ends the chain
+  (`PackBuildResult.reason` below the fill, at the listing cap, or held on a collision); a window
+  of holes or a lost race does not. A vault's backlog drains minutes after a tick instead of 3
+  packs per tick across all vaults, and a dropped or bounded chain resumes on the next tick from
+  the watermark. The two consumers may run one message each for a vault at once; the build's
+  watermark compare-and-swap and the rollup's guarded swap keep them from listing a range twice.
 
 An absent `PACK_QUEUE` binding makes `enqueuePackCompaction` a no-op, which is how local dev
 without Queues keeps working: compaction is an optimisation, never a correctness requirement.

@@ -1,11 +1,11 @@
 import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../lib/logger'
-import { PACKED_KINDS, compactOneRange } from './pack-compaction'
+import { PACKED_KINDS, compactOneRange, type PackBuildOutcome } from './pack-compaction'
 import type { PackKindName } from './pack-format'
 import type { VaultScope } from './pack-index-write'
 import type { PackBackfillStep, PackCompactionMessageBody } from './pack-queue'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { deleteReplacedPackObjects, withReplacedObjectPasses } from './pack-replaced-objects'
 import { ROLLUP_SUBREQUESTS, rollupKind } from './pack-rollup'
 import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
@@ -20,14 +20,19 @@ const logger = createLogger('PackBackfill')
  * or more packs listed than the kind's bound. Each message runs in its own
  * consumer invocation with its own subrequest budget, rolls up and builds until
  * the kind is drained or the budget is spent, and re-enqueues itself while work
- * may remain. A vault's backlog drains in minutes instead of 3 packs per tick.
+ * may remain. Messages ride their own queue (PACK_BACKFILL_QUEUE), so a push
+ * nudge or a purge's delayed retry never waits behind a backfill. The two
+ * consumers can run one message each for the same vault at once: builds take
+ * the watermark by compare-and-swap and a rollup swap applies only while its
+ * inputs are still listed, so neither lists a range twice. A vault's backlog drains in minutes instead of 3 packs per tick.
  *
  * Bounds:
- * - Fan-out: at most BACKFILL_MESSAGES_PER_TICK messages per tick, one
- *   sendBatch (Queues takes at most 100 per call).
- * - Chain: a message re-enqueues only when it spent its budget with work still
- *   making progress, and at most BACKFILL_MAX_HOPS messages follow one cron
- *   message. A message that finds nothing to roll up or build ends the chain.
+ * - Fan-out: at most BACKFILL_MESSAGES_PER_SOURCE messages per source (the
+ *   rollup scopes and each kind's backlog), BACKFILL_MESSAGES_PER_TICK in all,
+ *   one sendBatch (Queues takes at most 100 per call).
+ * - Chain: a message re-enqueues itself unless a build ended the chain
+ *   (ENDS_CHAIN: below the fill, the listing cap, a held range), and at most
+ *   BACKFILL_MAX_HOPS messages follow one cron message.
  * - Per message: SUBREQUEST_BUDGET_PER_MESSAGE, 3 builds or 12 rollups.
  *
  * Watermarks remember where each user+vault+kind left off, and every build
@@ -35,7 +40,11 @@ const logger = createLogger('PackBackfill')
  * message never lists a range twice; a dropped chain resumes on the next tick.
  */
 
-export const BACKFILL_MESSAGES_PER_TICK = 100
+// Each source (the rollup scopes, and each kind's build backlog) gets its own
+// share, so one source's backlog cannot starve another's, and a tick sends
+// at most 4 x 25 = 100 messages in one sendBatch.
+export const BACKFILL_MESSAGES_PER_SOURCE = 25
+export const BACKFILL_MESSAGES_PER_TICK = BACKFILL_MESSAGES_PER_SOURCE * (PACKED_KINDS.length + 1)
 export const BACKFILL_MAX_HOPS = 64
 // Delay before a chain's next message, so nudges and other vaults' messages
 // interleave with a long chain instead of queueing behind it.
@@ -145,19 +154,17 @@ export const runPackBackfill = async (
   }
   const bodies = new Map<string, PackCompactionMessageBody>()
   const add = (userId: string, vaultId: string, kind: PackKindName): void => {
-    if (bodies.size >= BACKFILL_MESSAGES_PER_TICK) return
     bodies.set(JSON.stringify([userId, vaultId, kind]), {
       userId,
       vaultId,
       backfill: { kind, hop: 0 }
     })
   }
-  for (const row of await findRollupScopes(db, BACKFILL_MESSAGES_PER_TICK)) {
+  for (const row of await findRollupScopes(db, BACKFILL_MESSAGES_PER_SOURCE)) {
     add(row.user_id, row.vault_id, row.item_kind)
   }
   for (const kind of PACKED_KINDS) {
-    if (bodies.size >= BACKFILL_MESSAGES_PER_TICK) break
-    for (const row of await findBacklogVaults(db, kind, BACKFILL_MESSAGES_PER_TICK)) {
+    for (const row of await findBacklogVaults(db, kind, BACKFILL_MESSAGES_PER_SOURCE)) {
       add(row.user_id, row.vault_id, kind)
     }
   }
@@ -172,7 +179,7 @@ export const runPackBackfill = async (
 export interface BackfillMessageResult {
   rollups: number
   packsBuilt: number
-  /** True when the message found nothing left to roll up or build. */
+  /** True when a build ended the chain (ENDS_CHAIN): nothing more to list now. */
   drained: boolean
   /** True when it enqueued the chain's next message. */
   continued: boolean
@@ -197,12 +204,18 @@ const rolledUp = async (
   }
 }
 
+// Outcomes a further build of the kind cannot change within the chain: below
+// the fill (an empty scan included), the listing cap after the message's own
+// rollups, and a range collision that holds the watermark. Any other noop
+// moved the watermark or lost a race, so the next build may still list.
+const ENDS_CHAIN: ReadonlySet<PackBuildOutcome> = new Set(['not_ready', 'cap', 'held'])
+
 /**
  * One backfill message: roll the kind up while it is above its bound and build
- * while its backlog meets the minimum fill, within one invocation's budget.
- * A build that lists nothing (no fill, listing cap, nothing left) ends the
- * kind. Throws on a build failure or replaced objects still due, so Queues
- * redelivers; a redelivery finds committed builds' watermarks moved.
+ * while its backlog meets the minimum fill, within one invocation's budget,
+ * between the replaced-object passes of withReplacedObjectPasses. Throws on a
+ * build failure or replaced objects still due, so Queues redelivers; a
+ * redelivery finds committed builds' watermarks moved.
  */
 export const runBackfillMessage = async (
   db: D1Database,
@@ -211,40 +224,27 @@ export const runBackfillMessage = async (
   scope: VaultScope,
   step: PackBackfillStep
 ): Promise<BackfillMessageResult> => {
-  // As in compactVault: this deletion and the one after the builds keep a
-  // purged body's objects inside their deadline (protocol 08 §8.13).
-  await deleteReplacedPackObjects(db, storage, scope)
-  let budget = SUBREQUEST_BUDGET_PER_MESSAGE
   let rollups = 0
   let packsBuilt = 0
   let drained = false
-  let failure: { error: unknown } | null = null
-  try {
+  await withReplacedObjectPasses(db, storage, scope, 'backfill message', async () => {
+    let budget = SUBREQUEST_BUDGET_PER_MESSAGE
     for (;;) {
       if (budget >= ROLLUP_SUBREQUESTS && (await rolledUp(db, storage, scope, step.kind))) {
         rollups++
         budget -= ROLLUP_SUBREQUESTS
         continue
       }
-      if (budget < SUBREQUESTS_PER_PACK) break
+      if (budget < SUBREQUESTS_PER_PACK) return
       const result = await compactOneRange(db, storage, scope, step.kind)
       budget -= SUBREQUESTS_PER_PACK
-      if (!result.built) {
+      if (result.built) packsBuilt++
+      else if (ENDS_CHAIN.has(result.reason)) {
         drained = true
-        break
+        return
       }
-      packsBuilt++
     }
-  } catch (error) {
-    failure = { error }
-  }
-  if ((await deleteReplacedPackObjects(db, storage, scope)).pending) {
-    throw new Error(
-      'replaced pack objects still due after the backfill message',
-      failure ? { cause: failure.error } : {}
-    )
-  }
-  if (failure) throw failure.error
+  })
 
   const hop = step.hop + 1
   const continued = !drained && hop < BACKFILL_MAX_HOPS && queue !== undefined

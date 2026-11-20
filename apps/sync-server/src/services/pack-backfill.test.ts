@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PACK_MAX_ENTRIES } from '@memry/contracts/pack-format'
+import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { createMemoryQueue, runBackfillTick } from '../__tests__/pack-queue-memory'
 import {
   BACKFILL_HOP_DELAY_SECONDS,
   BACKFILL_MAX_HOPS,
+  BACKFILL_MESSAGES_PER_SOURCE,
   BACKFILL_MESSAGES_PER_TICK,
   runBackfillMessage,
   runPackBackfill
@@ -38,14 +40,16 @@ const seedVaultWithSnapshots = (
   userId: string,
   vaultId: string,
   count: number,
-  createdAtBase = 0
+  createdAtBase = 0,
+  options: { firstNote?: number; withoutBlobs?: boolean } = {}
 ): void => {
   seedUser(userId)
-  for (let i = 1; i <= count; i++) {
+  const first = options.firstNote ?? 1
+  for (let i = first; i < first + count; i++) {
     const noteId = `n-${i}`
     const blobKey = `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
     const bytes = new TextEncoder().encode(JSON.stringify({ n: `${userId}-${i}` }))
-    void storage.put(blobKey, bytes.slice().buffer)
+    if (!options.withoutBlobs) void storage.put(blobKey, bytes.slice().buffer)
     harness.raw
       .prepare(
         `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
@@ -152,16 +156,21 @@ describe('runPackBackfill (the cron tick)', () => {
     expect(await runPackBackfill(harness.db, storage, queue)).toEqual({ enqueued: 0 })
   })
 
-  it('bounds the fan-out per tick', async () => {
-    for (let i = 0; i <= BACKFILL_MESSAGES_PER_TICK; i++) {
+  // REVIEW-5279 P6: one kind's backlog took every slot of the tick.
+  it('bounds the fan-out per kind, so a snapshot backlog cannot starve crdt_update', async () => {
+    for (let i = 0; i <= BACKFILL_MESSAGES_PER_SOURCE; i++) {
       seedVaultWithSnapshots(`u-${i}`, 'default', 1, i * 10)
     }
+    seedUpdates('u-upd', 'default', PACK_MIN_FILL_ROWS)
     const queue = createMemoryQueue()
 
     expect(await runPackBackfill(harness.db, storage, queue)).toEqual({
-      enqueued: BACKFILL_MESSAGES_PER_TICK
+      enqueued: BACKFILL_MESSAGES_PER_SOURCE + 1
     })
-    expect(queue.sent).toHaveLength(BACKFILL_MESSAGES_PER_TICK)
+    const kinds = queue.sent.map((m) => m.body.backfill?.kind)
+    expect(kinds.filter((k) => k === 'crdt_snapshot')).toHaveLength(BACKFILL_MESSAGES_PER_SOURCE)
+    expect(kinds).toContain('crdt_update')
+    expect(BACKFILL_MESSAGES_PER_TICK).toBeLessThanOrEqual(100) // one sendBatch
   })
 
   it('builds nothing without a queue binding', async () => {
@@ -211,7 +220,7 @@ describe('backfill messages (#5278)', () => {
   it('a redelivered or duplicate message builds no second pack for a range', async () => {
     seedUpdates('u-dup', 'default', 4 * PACK_MAX_ENTRIES + 10)
     const queue = createMemoryQueue()
-    const env = { DB: harness.db, STORAGE: storage, PACK_QUEUE: queue }
+    const env = { DB: harness.db, STORAGE: storage, PACK_BACKFILL_QUEUE: queue }
     const first = { userId: 'u-dup', vaultId: 'default', backfill: { kind: 'crdt_update', hop: 0 } }
 
     // The same message delivered twice back to back, then the whole chain.
@@ -267,7 +276,7 @@ describe('backfill messages (#5278)', () => {
       }
     })
     const queue = createMemoryQueue()
-    const env = { DB: harness.db, STORAGE: brokenStorage, PACK_QUEUE: queue }
+    const env = { DB: harness.db, STORAGE: brokenStorage, PACK_BACKFILL_QUEUE: queue }
     await runPackBackfill(harness.db, brokenStorage, queue)
     const [broken, fine] = ['u-broken', 'u-fine'].map(
       (user) => queue.sent.find((m) => m.body.userId === user)!.body
@@ -303,5 +312,93 @@ describe('backfill messages (#5278)', () => {
       )
       .all() as Array<{ user_id: string }>
     expect(packed.map((row) => row.user_id)).toEqual(['u-dead1', 'u-dead2', 'u-dead3', 'u-live'])
+  })
+
+  // REVIEW-5279 P4: a build that moved the watermark without a pack (a window
+  // of holes) ended the chain with settled backlog left.
+  it('a window of holes does not end the chain', async () => {
+    seedVaultWithSnapshots('u-hole', 'default', 256, 0, { withoutBlobs: true })
+    seedVaultWithSnapshots('u-hole', 'default', 600, 1000, { firstNote: 257 })
+
+    const tick = await runBackfillTick(harness.db, storage)
+
+    expect(tick.enqueued).toBe(1)
+    expect(
+      count(
+        "SELECT SUM(item_count) c FROM pack_index WHERE user_id = 'u-hole' AND item_kind = 'crdt_snapshot'"
+      )
+    ).toBe(600)
+    expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
+  })
+
+  it('a vault at the listing cap ends the chain with no build', async () => {
+    seedUser('u-cap')
+    const insert = harness.raw.prepare(
+      `INSERT INTO pack_index (id, user_id, vault_id, item_kind, pack_key, min_cursor, max_cursor, item_count, byte_size, created_at)
+       VALUES (?, 'u-cap', 'default', 'record', ?, ?, ?, 4096, 24000000, 1)`
+    )
+    harness.raw.transaction(() => {
+      for (let i = 0; i < PACK_LIST_MAX_PACKS_PER_VAULT; i++) {
+        insert.run(`p${i}`, `k${i}`, i * 10 + 1, i * 10 + 9)
+      }
+    })()
+    seedUpdates('u-cap', 'default', PACK_MIN_FILL_ROWS)
+    const queue = createMemoryQueue()
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    expect((await runPackBackfill(harness.db, storage, queue)).enqueued).toBe(0)
+    const result = await runBackfillMessage(
+      harness.db,
+      storage,
+      queue,
+      { userId: 'u-cap', vaultId: 'default' },
+      { kind: 'crdt_update', hop: 0 }
+    )
+
+    expect(result).toMatchObject({ packsBuilt: 0, drained: true, continued: false })
+    expect(queue.sent).toHaveLength(0)
+    expect(count("SELECT COUNT(*) c FROM pack_index WHERE user_id = 'u-cap'")).toBe(
+      PACK_LIST_MAX_PACKS_PER_VAULT
+    )
+  })
+
+  // REVIEW-5279 #2: the backfill path copied compactVault's old pass handling.
+  it('keeps and logs the build error when the final deletion pass throws', async () => {
+    seedVaultWithSnapshots('u-pass', 'default', 3)
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/crdt_snapshot/')) throw new Error('r2 put 500 BUILD')
+      return put(key, value, options)
+    })
+    const prepare = harness.db.prepare.bind(harness.db)
+    let passes = 0
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+      if (sql.includes('FROM pack_replaced_objects r') && ++passes === 2) throw new Error('d1 down')
+      return prepare(sql)
+    })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const queue = createMemoryQueue()
+
+    const thrown = await runBackfillMessage(
+      harness.db,
+      storage,
+      queue,
+      { userId: 'u-pass', vaultId: 'default' },
+      { kind: 'crdt_snapshot', hop: 0 }
+    ).then(
+      () => null,
+      (error: unknown) => error
+    )
+
+    expect((thrown as Error).message).toBe('replaced pack objects still due')
+    expect(((thrown as Error).cause as Error).message).toBe('r2 put 500 BUILD')
+    const logged = errors.mock.calls
+      .map(
+        ([line]) =>
+          JSON.parse(String(line)) as { message: string; buildError?: string; passError?: string }
+      )
+      .find((entry) => entry.message.startsWith('replaced pack objects still due'))
+    expect(logged).toMatchObject({ buildError: 'r2 put 500 BUILD', passError: 'd1 down' })
+    expect(queue.sent).toHaveLength(0)
   })
 })

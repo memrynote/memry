@@ -36,7 +36,7 @@ export const runBackfillTick = async (
   const { enqueued } = await runPackBackfill(db, storage, queue)
   for (let i = 0; i < queue.sent.length; i++) {
     await handlePackQueueMessage(
-      { DB: db, STORAGE: storage, PACK_QUEUE: queue },
+      { DB: db, STORAGE: storage, PACK_BACKFILL_QUEUE: queue },
       queue.sent[i].body
     )
   }

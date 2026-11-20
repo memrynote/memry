@@ -65,7 +65,11 @@ export const handlePackCompactionMessage = async (
 
 /** ExportedHandlerQueueHandler body used by src/index.ts. */
 export const handlePackQueueMessage = async (
-  env: { DB: D1Database; STORAGE: R2Bucket; PACK_QUEUE?: Queue<PackCompactionMessageBody> },
+  env: {
+    DB: D1Database
+    STORAGE: R2Bucket
+    PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody>
+  },
   body: unknown
 ): Promise<void> => {
   const parsed = parsePackCompactionBody(body)
@@ -76,7 +80,7 @@ export const handlePackQueueMessage = async (
   const scope = { userId: parsed.userId, vaultId: parsed.vaultId }
   // throw -> retry
   if (parsed.backfill) {
-    await runBackfillMessage(env.DB, env.STORAGE, env.PACK_QUEUE, scope, parsed.backfill)
+    await runBackfillMessage(env.DB, env.STORAGE, env.PACK_BACKFILL_QUEUE, scope, parsed.backfill)
   } else {
     await handlePackCompactionMessage(env.DB, env.STORAGE, scope)
   }

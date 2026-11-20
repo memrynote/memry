@@ -270,7 +270,7 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     // Pack backfill (#1839) rides the 6-hourly trigger: it enqueues bounded
     // per-vault backfill messages and the queue consumer builds (#5278, see
     // pack-backfill.ts), resumed via watermarks until every vault is packed.
-    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE, env.PACK_QUEUE)]
+    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE, env.PACK_BACKFILL_QUEUE)]
   ]
 
   if (event.cron === DAILY_CRON) {
@@ -298,7 +298,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
 
 export { app }
 
-// Queue consumer for pack compaction (#1839). Thin on purpose — message
+// Queue consumer for pack compaction (#1839) and for the pack backfill queue
+// (#5278): the body says which, so one handler serves both. Thin on purpose — message
 // validation, retry semantics, and all compaction logic live in
 // services/pack-consumer.ts / services/pack-compaction.ts so they stay
 // testable without real Queues.
