@@ -22,6 +22,7 @@ use memry_core::sync::socket::HintSink;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::backend::SyncBackend;
+use super::events::OnSyncEvent;
 use super::frames::FrameSink;
 use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
@@ -50,6 +51,9 @@ pub struct SupervisorParts {
     pub signals: AuthSignals,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    /// The other sync events, each as it happens. Pulled records and quarantines come from a
+    /// pool thread after their page committed; the rest from the loop.
+    pub on_event: OnSyncEvent,
 }
 
 /// How long [`SyncSupervisor::stop_blocking`] waits for the loop.
@@ -59,7 +63,7 @@ pub(super) enum Command {
     Trigger(Trigger),
     RequestPush,
     SyncNow(oneshot::Sender<TriggerSyncResult>),
-    SetPaused(bool, oneshot::Sender<Result<(), StorageError>>),
+    SetPaused(bool, oneshot::Sender<Result<bool, StorageError>>),
     Reachable(Reachable),
     Socket {
         generation: u64,
@@ -208,7 +212,8 @@ impl SyncSupervisor {
     }
 
     /// Pauses or resumes sync, persisted in `meta` `sync.paused` before the driver is told.
-    pub async fn set_paused(&self, paused: bool) -> Result<(), StorageError> {
+    /// Answers the pause it replaced, read in the loop's turn so concurrent callers agree.
+    pub async fn set_paused(&self, paused: bool) -> Result<bool, StorageError> {
         let (reply, answer) = oneshot::channel();
         let gone = || StorageError::Failed {
             what: "sync is not running for this vault; the pause was not saved".into(),
@@ -293,6 +298,9 @@ impl ReachabilityObserver for Observer {
     }
 }
 
+#[cfg(test)]
+#[path = "supervisor_event_tests.rs"]
+mod event_tests;
 #[cfg(test)]
 #[path = "supervisor_review_tests.rs"]
 mod review_tests;

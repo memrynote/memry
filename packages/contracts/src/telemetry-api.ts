@@ -87,7 +87,11 @@ export const TelemetryEventNameSchema = z.enum([
   'home_board_customized',
   'reminder_created',
   'reminder_deleted',
-  'sync_bootstrap'
+  'sync_bootstrap',
+  // First launch of the Tauri build over an Electron install (Step 37, #3554).
+  'migration_started',
+  'migration_completed',
+  'migration_failed'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([

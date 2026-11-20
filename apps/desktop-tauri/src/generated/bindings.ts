@@ -118,6 +118,11 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
+	/**
+	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
+	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
+	 */
+	calendarEventkitRequestAccess: () => __TAURI_INVOKE<EventKitAuthorizationStatus>("calendar_eventkit_request_access"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -185,6 +190,50 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  `folder-view:get-available-properties`. */
+	folderViewAvailableProperties: (scope: ViewScope) => __TAURI_INVOKE<AvailablePropertiesView>("folder_view_available_properties", { scope }),
+	/**  `folder-view:delete-view`. */
+	folderViewDeleteView: (scope: ViewScope, viewName: string) => __TAURI_INVOKE<null>("folder_view_delete_view", { scope, viewName }),
+	/**  `folder-view:folder-exists`. */
+	folderViewFolderExists: (folderPath: string) => __TAURI_INVOKE<boolean>("folder_view_folder_exists", { folderPath }),
+	/**
+	 *  `folder-view:get-config`: the folder's `.folder.md` as `notes_get_folder_config` reads it;
+	 *  the renderer fills in the default view.
+	 */
+	folderViewGetConfig: (folderPath: string) => __TAURI_INVOKE<FolderConfigView | null>("folder_view_get_config", { folderPath }),
+	/**  `folder-view:get-views`. */
+	folderViewGetViews: (scope: ViewScope) => __TAURI_INVOKE<SavedViewsView>("folder_view_get_views", { scope }),
+	/**  `folder-view:list-with-properties`. */
+	folderViewList: (input: ListInput) => __TAURI_INVOKE<ListView>("folder_view_list", { input }),
+	/**  `folder-view:set-config`. */
+	folderViewSetConfig: (folderPath: string, config: { [key in string]: Value }) => __TAURI_INVOKE<null>("folder_view_set_config", { folderPath, config }),
+	/**
+	 *  `folder-view:set-view`: adds the view or replaces the one named `previousName` (else its
+	 *  own name).
+	 */
+	folderViewSetView: (scope: ViewScope, view: { [key in string]: Value }, previousName: string | null) => __TAURI_INVOKE<null>("folder_view_set_view", { scope, view, previousName }),
+	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
+	/**  `false` when there was no such board. */
+	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
+	homePagesGet: (id: string) => __TAURI_INVOKE<HomePageView | null>("home_pages_get", { id }),
+	/**  Every live board in the order every device agrees on. */
+	homePagesList: () => __TAURI_INVOKE<HomePageView[]>("home_pages_list"),
+	/**
+	 *  Brings the board's cover files in line with its cover. Until Step 30f syncs cover bytes,
+	 *  this only prunes files the cover no longer names.
+	 */
+	homePagesMaterializeCover: (id: string) => __TAURI_INVOKE<null>("home_pages_materialize_cover", { id }),
+	homePagesRemoveCover: (id: string) => __TAURI_INVOKE<HomePageView>("home_pages_remove_cover", { id }),
+	/**  Puts the boards in the order of `ids`. */
+	homePagesReorder: (ids: string[]) => __TAURI_INVOKE<null>("home_pages_reorder", { ids }),
+	/**
+	 *  A board's new banner from a wash, a link, Unsplash or an image already in the vault. Every
+	 *  image is copied into the board's own folder and the board saved in the same call.
+	 */
+	homePagesSetCover: (id: string, source: HomePageCoverSourceInput) => __TAURI_INVOKE<SetCoverOutcome>("home_pages_set_cover", { id, source }),
+	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
+	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
+	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -326,10 +375,7 @@ export const commands = {
 	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
 	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
 	notesSetFolderConfig: (folderPath: string, config: FolderConfigInput) => __TAURI_INVOKE<null>("notes_set_folder_config", { folderPath, config }),
-	/**
-	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
-	 *  (Step 32) is not read: the renderer's service refuses it until its step.
-	 */
+	/**  `notes:create`, from a template when one is named or a tag names one. */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
 	/**
 	 *  `notes:delete`. A file holding text the note never read goes to the OS trash; where the
@@ -350,6 +396,12 @@ export const commands = {
 	notesGetAllPositions: () => __TAURI_INVOKE<{ [key in string]: number }>("notes_get_all_positions"),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	/**
+	 *  The note as the list shows it, `None` once it is gone: a read of its row that opens nothing,
+	 *  so it counts no `note_opened`. The note page asks once its delete and rename listeners are
+	 *  live, for the event it may have missed before then (S14-1).
+	 */
+	notesGetListItem: (id: string) => __TAURI_INVOKE<NoteListItemView | null>("notes_get_list_item", { id }),
 	/**  The links the note makes and the notes linking to it, with the text around each link. */
 	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
 	/**  `notes:get-local-only-count`. */
@@ -392,6 +444,17 @@ export const commands = {
 	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
+	/**
+	 *  `notes:import-files`: copies the files into the folder, vault-relative, or the vault's
+	 *  default note folder. One file that fails leaves the others; a path neither dropped nor
+	 *  picked, a folder outside the vault or a locked one refuses the call.
+	 */
+	notesImportFiles: (input: ImportFilesInput) => __TAURI_INVOKE<ImportFilesResult>("notes_import_files", { input }),
+	/**
+	 *  `notes:show-import-dialog`: files to import, from the supported types or any. What it returns
+	 *  is what `notes_import_files` may read next.
+	 */
+	notesShowImportDialog: () => __TAURI_INVOKE<ImportDialogResult>("notes_show_import_dialog"),
 	/**
 	 *  `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
 	 *  target's body. The renderer removes them from the source only once this answers; a refused
@@ -530,6 +593,10 @@ export const commands = {
 	 *  registered again. Fails with the localized no-vault text while no vault is open.
 	 */
 	shortcutSetGlobalCapture: (binding: ShortcutBinding | null) => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_set_global_capture", { binding }),
+	/**  Registers the sticky's saved binding (none while no vault is open) and says what the OS did. */
+	shortcutRegisterSticky: () => __TAURI_INVOKE<StickyShortcutResult>("shortcut_register_sticky"),
+	/**  Register first, save second, as [`shortcut_set_global_capture`]. */
+	shortcutSetSticky: (binding: ShortcutBinding | null) => __TAURI_INVOKE<StickyShortcutResult>("shortcut_set_sticky", { binding }),
 	/**  Whether `word` is misspelled, with up to eight suggestions. */
 	spellCheckWord: (word: string) => __TAURI_INVOKE<SpellResult>("spell_check_word", { word }),
 	/**
@@ -539,6 +606,15 @@ export const commands = {
 	spellAddWord: (word: string) => __TAURI_INVOKE<boolean>("spell_add_word", { word }),
 	/**  Adds each valid word and returns how many were taken (the Electron dictionary import). */
 	spellAddWords: (words: string[]) => __TAURI_INVOKE<number>("spell_add_words", { words }),
+	/**  Whether there was a draft to delete. */
+	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
+	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
+	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
+	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
+	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
+	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
+	/**  Closes the sticky; its renderer saved the draft before asking. */
+	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**
 	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
 	 *  runtime.
@@ -574,6 +650,11 @@ export const commands = {
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
 	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
+	/**
+	 *  A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+	 *  this build does not know (`settings:getCalendarProviderSettings`).
+	 */
+	settingsGetCalendarProvider: (provider: string) => __TAURI_INVOKE<Value | null>("settings_get_calendar_provider", { provider }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -594,6 +675,12 @@ export const commands = {
 	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
+	/**
+	 *  Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+	 *  provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+	 *  `settings_invalid_value`, and nothing is written.
+	 */
+	settingsSetCalendarProvider: (provider: string, updates: Value) => __TAURI_INVOKE<null>("settings_set_calendar_provider", { provider, updates }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -649,7 +736,11 @@ export const commands = {
 	syncResume: (input: SyncControlInput) => __TAURI_INVOKE<ResumeSyncResult>("sync_resume", { input }),
 	/**  `sync:trigger-sync` (Sync Now). */
 	syncTrigger: () => __TAURI_INVOKE<TriggerSyncResult>("sync_trigger"),
-	/**  `sync:update-synced-setting`. */
+	/**
+	 *  `sync:update-synced-setting`: written through the settings owner and announced as
+	 *  `settings-changed`. The Wry-only follow-ups of a settings write (tray, login item, menu) are
+	 *  not run: no renderer path sends a field they read through this channel.
+	 */
 	syncUpdateSyncedSetting: (input: UpdateSyncedSettingInput) => __TAURI_INVOKE<UpdateSyncedSettingResult>("sync_update_synced_setting", { input }),
 	/**  `account:sign-out`. */
 	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
@@ -657,6 +748,12 @@ export const commands = {
 	syncGetVaultBinding: () => __TAURI_INVOKE<VaultBindingState>("sync_get_vault_binding"),
 	/**  `sync:auth-logout`. */
 	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
+	/**
+	 *  `sync:repair-device-keys`: a listed device restarts sync and answers whether its gate lets it
+	 *  run (`reasonSyncDidNotStart`, `device-registration.ts:400-413`); otherwise the device signed
+	 *  out keeping its master key and queue.
+	 */
+	syncRepairDeviceKeys: () => __TAURI_INVOKE<RepairDeviceKeysResult>("sync_repair_device_keys"),
 	/**
 	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
 	 *  `success: false` with the state unchanged, as Electron answers.
@@ -680,6 +777,11 @@ export const commands = {
 	tagsDeleteCategory: (id: string) => __TAURI_INVOKE<null>("tags_delete_category", { id }),
 	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
 	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
+	/**
+	 *  Whether the tag a tab shows was renamed away or deleted ([`tags::gone`]): the tab asks once
+	 *  its rename and delete listeners are live, for the event it may have missed before then.
+	 */
+	tagsIsGone: (tag: string) => __TAURI_INVOKE<boolean>("tags_is_gone", { tag }),
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
 	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
 	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),
@@ -725,6 +827,10 @@ export const commands = {
 	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
 	/**  Saves the fields `input` names; a built-in is refused. */
 	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
+	settingsGetTerminalCommandStatus: () => __TAURI_INVOKE<TerminalCommandStatus>("settings_get_terminal_command_status"),
+	settingsInstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_install_terminal_command"),
+	settingsSetTerminalCommandDefaultVault: (vaultPath: string) => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_set_terminal_command_default_vault", { vaultPath }),
+	settingsUninstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_uninstall_terminal_command"),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -872,6 +978,9 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
+	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
+	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -895,6 +1004,7 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -1137,11 +1247,12 @@ export type AppendedBlocks = {
 	targetPath: string,
 };
 
-/**  `ApplyTemplateSchema`, the fields this step reads. */
+/**  `ApplyTemplateSchema`. */
 export type ApplyTemplateInput = {
 	noteId: string,
 	templateId: string,
 	mode: TemplateMode,
+	plainChecklists?: boolean,
 };
 
 /**  The kinds of a note whose file is not markdown. */
@@ -1243,6 +1354,20 @@ export type AuthSessionExpiredEvent = {
 /**  The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it). */
 export type AuthSessionRefreshedEvent = Record<string, never>;
 
+/**  `GetAvailablePropertiesResponse`. */
+export type AvailablePropertiesView = {
+	builtIn: BuiltInColumnView[],
+	properties: AvailablePropertyView[],
+	formulas: FormulaView[],
+};
+
+/**  `AvailableProperty`. */
+export type AvailablePropertyView = {
+	name: string,
+	type: string,
+	usageCount: number,
+};
+
 /**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
 export type BacklinkContextView = {
 	snippet: string,
@@ -1316,6 +1441,13 @@ export type BillingUsage = {
 
 export type BuildKind = "dev" | "packaged";
 
+/**  A built-in column (`GetAvailablePropertiesResponse.builtIn`). */
+export type BuiltInColumnView = {
+	id: string,
+	displayName: string,
+	type: string,
+};
+
 /**  A caption button's rectangle in client coordinates, physical pixels. */
 export type CaptionRect = {
 	x: number | null,
@@ -1373,6 +1505,20 @@ export type ContextMenuItem = {
 	accelerator?: string | null,
 	disabled?: boolean | null,
 	type?: ItemKind | null,
+};
+
+/**
+ *  `HomePageCoverFailure`: why a picked cover was not set. Each picker tab
+ *  shows the ones it knows.
+ */
+export type CoverFailure = "not-configured" | "offline" | "rate-limited" | "failed" | "write-failed" | "not-an-image" | "too-large";
+
+/**  `HomePageSetCoverFramingSchema.changes`: only the fields that changed. */
+export type CoverFramingInput = {
+	focusX?: number | null,
+	focusY?: number | null,
+	zoom?: number | null,
+	height?: number | null,
 };
 
 /**
@@ -1588,6 +1734,9 @@ export type ErrorDetail = {
 
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
+
+/**  `EKAuthorizationStatus` for events. `write_only` (macOS 14+) cannot read. */
+export type EventKitAuthorizationStatus = "not_determined" | "restricted" | "denied" | "write_only" | "full_access";
 
 export type ExistingTagView = {
 	key: string,
@@ -1860,6 +2009,12 @@ export type FolderView = {
 /**  Chapter 02 §2.3.4: `None` is unknown and the device list falls back to `platform`. */
 export type FormFactor = "phone" | "tablet";
 
+/**  A folder's formula. */
+export type FormulaView = {
+	id: string,
+	expression: string,
+};
+
 /**  `GetHistoryInput`. */
 export type GetHistoryInput = {
 	limit: number | null,
@@ -1929,6 +2084,66 @@ export type HeatmapEntryView = {
 	level: number,
 };
 
+/**  `HomePageCoverSource` less `upload`, which is the binary command. */
+export type HomePageCoverSourceInput = { kind: "wash"; id: string } | { kind: "url"; url: string } | { kind: "unsplash"; photo: UnsplashPhoto } | { kind: "vaultFile"; ownerNoteId: string; filename: string };
+
+/**
+ *  `HomePageCoverSync`: the fields the band reads. The record keeps every
+ *  other key a newer build wrote.
+ */
+export type HomePageCoverView = {
+	ref: string,
+	focus?: number | null,
+	focusX?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+	credit?: string | null,
+	creditUrl?: string | null,
+	attachmentId?: string | null,
+};
+
+/**  `HomePageCreateSchema`. */
+export type HomePageCreateInput = {
+	name: string,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board was made (`home-pages:created`). */
+export type HomePageCreatedEvent = {
+	id: string,
+};
+
+/**  A board was deleted (`home-pages:deleted`). */
+export type HomePageDeletedEvent = {
+	id: string,
+};
+
+/**  `HomePageUpdateSchema`: an absent field stays as it is. */
+export type HomePageUpdateInput = {
+	id: string,
+	name?: string | null,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board's name, widgets, position or cover changed (`home-pages:updated`). */
+export type HomePageUpdatedEvent = {
+	id: string,
+};
+
+/**  `HomePage`. */
+export type HomePageView = {
+	id: string,
+	name: string,
+	icon?: string | null,
+	position: number | null,
+	widgets: WidgetView[],
+	cover?: HomePageCoverView | null,
+};
+
 export type HttpMethod = "GET" | "POST";
 
 /**  `ImpactQuery`. */
@@ -1936,6 +2151,37 @@ export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | 
 
 /**  `ImpactResult`. */
 export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
+
+/**  `{ canceled, filePaths }` of `notes:show-import-dialog`. */
+export type ImportDialogResult = {
+	canceled: boolean,
+	filePaths: string[],
+};
+
+/**  `ImportFilesSchema`. */
+export type ImportFilesInput = {
+	sourcePaths: string[],
+	targetFolder?: string | null,
+	options?: PlainChecklistsOption | null,
+};
+
+/**  `ImportFilesResult`. */
+export type ImportFilesResult = {
+	success: boolean,
+	imported: number,
+	failed: number,
+	errors: string[],
+	importedFiles: ImportedFileInfo[],
+};
+
+/**  `ImportedFileInfo`. */
+export type ImportedFileInfo = {
+	/**  Absolute, as Electron's `path.join(targetDir, destFilename)`. */
+	destPath: string,
+	/**  The name the file had where it came from. */
+	filename: string,
+	fileType: FileType,
+};
 
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
@@ -2320,6 +2566,26 @@ export type LinkingQrView = {
 	expiresAt: number,
 };
 
+/**
+ *  `ListWithPropertiesRequestSchema`: 500 rows from the first when a field is absent.
+ *  `properties` is accepted and unused, as in Electron: every property is listed.
+ */
+export type ListInput = {
+	scope: ViewScope,
+	properties?: string[] | null,
+	limit?: number | null,
+	offset?: number | null,
+	rows?: RowSetInput | null,
+};
+
+/**  `ListWithPropertiesResponse`. */
+export type ListView = {
+	notes: RowView[],
+	total: number,
+	hasMore: boolean,
+	complete?: boolean | null,
+};
+
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
 	locale: string,
@@ -2468,10 +2734,7 @@ export type NoteClustersResponse = {
 	missing: string[],
 };
 
-/**
- *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
- *  refuses until then.
- */
+/**  `NoteCreateSchema`. */
 export type NoteCreateInput = {
 	title: string,
 	content?: string | null,
@@ -2483,6 +2746,8 @@ export type NoteCreateInput = {
 	template?: string | null,
 	/**  Absent: the template's icon, if any; `null`: no icon. */
 	emoji?: string | null,
+	/**  The body's checkbox lines stay checklists (`NewNoteFile::plain_checklists`). */
+	plainChecklists?: boolean | null,
 };
 
 /**  A note was made, by the app or from a file that appeared (`notes:created`). */
@@ -2833,6 +3098,11 @@ export type PauseSyncResult = {
 	wasPaused: boolean,
 };
 
+/**  `PlainChecklistsOptionSchema`. */
+export type PlainChecklistsOption = {
+	plainChecklists?: boolean | null,
+};
+
 export type PlanChangePeriod = "monthly" | "annual";
 
 export type PlanChangePlan = "plus" | "pro";
@@ -3115,6 +3385,9 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `RepairDeviceKeysResult` (`ipc-sync-ops.ts`). */
+export type RepairDeviceKeysResult = { status: "repaired" } | { status: "sync-not-started"; reason: SyncNotStartedReason } | { status: "sign-in-required" };
+
 /**  `ResolveVaultBindingResult`. */
 export type ResolveVaultBindingResult = {
 	success: boolean,
@@ -3183,6 +3456,30 @@ export type ResumeSyncResult = {
 	pendingCount: number,
 };
 
+/**  `NoteWithProperties.kind`. */
+export type RowKindView = "note" | "task" | "inbox";
+
+/**  `ListWithPropertiesRequestSchema.rows`. */
+export type RowSetInput = "objects" | "mentions";
+
+/**  `NoteWithProperties`. */
+export type RowView = {
+	id: string,
+	path: string,
+	title: string,
+	emoji: string | null,
+	cover?: string | null,
+	folder: string,
+	tags: string[],
+	created: string,
+	modified: string,
+	wordCount: number,
+	properties: { [key in string]: Value },
+	kind?: RowKindView | null,
+	fileType: string,
+	viaTag?: string | null,
+};
+
 /**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
 export type SameDayEntryView = {
 	id: string,
@@ -3197,6 +3494,17 @@ export type SameDayEntryView = {
 export type SandboxInfo = {
 	path: string,
 	exists: boolean,
+};
+
+/**
+ *  A scope's saved views. With none saved, `views` is `None` and the renderer shows its
+ *  `DEFAULT_VIEW`, given `fieldColumns` (the fields of a tag with fields) as its middle
+ *  columns: the default view stays one constant of `@memry/contracts`.
+ */
+export type SavedViewsView = {
+	views: Value[] | null,
+	defaultIndex: number,
+	fieldColumns: string[] | null,
 };
 
 /**  `SearchObjectsSchema`. */
@@ -3313,6 +3621,9 @@ export type SelectVaultResponse = {
 
 /**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
 export type SessionExpiredReason = "refresh_rejected";
+
+/**  What a set-cover call came to: `HomePageSetCoverResult`. */
+export type SetCoverOutcome = { status: "saved"; page: HomePageView } | { status: "failed"; reason: CoverFailure };
 
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
@@ -3431,6 +3742,40 @@ export type StartupState = {
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
 
+/**  `StickyDraft` of `@memry/contracts/sticky-api`. */
+export type StickyDraftView = {
+	id: string,
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**
+ *  A sticky draft was written or deleted (`sticky:drafts-changed`), sent to every window; the
+ *  edge tab and the sticky read the list again.
+ */
+export type StickyDraftsChangedEvent = null;
+
+/**  `StickySaveDraftInput`: no id creates a draft. */
+export type StickySaveDraftInput = {
+	id: string | null,
+	/**  At most 100000 characters. */
+	content: string,
+	kind: string,
+};
+
+/**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */
+export type StickyShortcutResult = {
+	status: ShortcutStatus,
+};
+
+/**  `StickyWindowSession`: the draft the open sticky shows, none for a blank one. */
+export type StickyWindowSession = {
+	draftId: string | null,
+};
+
 /**  `JournalStreak`, counted from this device's UTC date as Electron's `getJournalStreak`. */
 export type StreakView = {
 	currentStreak: number,
@@ -3480,7 +3825,10 @@ export type SyncHistoryEntry = {
 	type: string,
 	itemCount: number,
 	direction?: string | null,
-	/**  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`). */
+	/**
+	 *  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`);
+	 *  absent for empty text, as Electron's `r.details ? ... : undefined`.
+	 */
 	details?: Value | null,
 	durationMs?: number | null,
 	createdAt: number,
@@ -3510,12 +3858,13 @@ export type SyncItemRecoveredEvent = {
 	type: string,
 };
 
-/**  `sync:item-synced`: one item went up or came down. */
+/**
+ *  `sync:item-synced`, once per committed pull page: every record the page changed, each once
+ *  with its last operation. Notes and journals come from the vault tier's events instead.
+ */
 export type SyncItemSyncedEvent = {
-	itemId: string,
-	type: string,
 	operation: SyncDirection,
-	itemOperation?: SyncItemOperation | null,
+	items: SyncedItem[],
 };
 
 /**  A link this device started was approved (`sync:linking-approved`). */
@@ -3538,6 +3887,9 @@ export type SyncLinkingRequestedEvent = {
 	newDeviceName: string,
 	newDevicePlatform: string,
 };
+
+/**  `SyncNotStartedReason` in `ipc-sync-ops.ts`. */
+export type SyncNotStartedReason = "vault-binding" | "vault-foreign" | "entitlement" | "unavailable";
 
 /**
  *  Why Sync Now sent and received nothing. `busy` is in the contract and never produced here:
@@ -3583,6 +3935,13 @@ export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_
 
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
+
+/**  One record of a [`SyncItemSyncedEvent`]. */
+export type SyncedItem = {
+	itemId: string,
+	type: string,
+	itemOperation: SyncItemOperation,
+};
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
@@ -3827,6 +4186,39 @@ export type TemplateView = {
 	content: string,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**
+ *  `TerminalCommandMutationResult`: `{ success: true, status }` or
+ *  `{ success: false, error, status? }`.
+ */
+export type TerminalCommandMutationResult = {
+	success: boolean,
+	error?: string | null,
+	status?: TerminalCommandStatus | null,
+};
+
+export type TerminalCommandPlatform = "darwin" | "linux" | "win32";
+
+/**  `TerminalCommandStatus` (`packages/rpc/src/settings.ts`). */
+export type TerminalCommandStatus = {
+	supported: boolean,
+	installed: boolean,
+	command: string,
+	platform: TerminalCommandPlatform,
+	shimPath: string,
+	binDir: string,
+	targetPath: string,
+	inPath: boolean,
+	pathHint: string | null,
+	defaultVaultPath: string | null,
+	vaults: TerminalCommandVault[],
+};
+
+export type TerminalCommandVault = {
+	path: string,
+	name: string,
+	isDefault: boolean,
 };
 
 /**
@@ -4267,6 +4659,9 @@ export type VersionView = {
 	createdAt: string,
 };
 
+/**  `ViewScope`. */
+export type ViewScope = { kind: "folder"; path: string } | { kind: "tag"; tag: string; andTags?: string[] | null };
+
 /**  `VoiceModelProgressEvent.phase`. */
 export type VoiceModelPhase = "downloading" | "loading" | "ready" | "error";
 
@@ -4311,6 +4706,34 @@ export type VoiceRecordingReadiness = {
 export type WaitingMove = {
 	noteId: string,
 	path: string,
+};
+
+/**
+ *  `WidgetInstanceSchema`. Written back in its key order, which is the order
+ *  `JSON.stringify` gives the parsed object in Electron.
+ */
+export type WidgetInput = {
+	id: string,
+	type: string,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	config?: { [key in string]: Value },
+};
+
+/**
+ *  `WidgetInstance` as the grid reads it. A widget of a type this build does
+ *  not know comes through like any other.
+ */
+export type WidgetView = {
+	id: string,
+	type: string,
+	x: number | null,
+	y: number | null,
+	w: number | null,
+	h: number | null,
+	config: { [key in string]: Value },
 };
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */

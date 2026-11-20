@@ -148,6 +148,9 @@ type Report = Arc<dyn Fn(IndexReport) + Send + Sync>;
 struct Indexing {
     /// The open's build: from the open to the end of the pass that reports it.
     building: bool,
+    /// The open's build ended with a pass after the walk's `Indexed`: the rows hold every note
+    /// the open walk offered ([`NoteIndex::wait_built`]).
+    built: bool,
     /// Reindexes asked and not answered yet.
     asked: usize,
     /// The last step either reported; `0` of `0` before the first.
@@ -260,6 +263,7 @@ impl NoteIndex {
                 let mut indexing = lock(&index.indexing);
                 indexing.step = IndexProgress::default();
                 indexing.building = true;
+                indexing.built = false;
                 Ok(())
             }),
         );
@@ -307,7 +311,9 @@ impl NoteIndex {
                     handle.stop();
                 }
                 // No vault is open, so there is no status to send again.
-                lock(&index.indexing).building = false;
+                let mut indexing = lock(&index.indexing);
+                indexing.building = false;
+                indexing.built = false;
             }),
         );
     }
@@ -352,14 +358,16 @@ impl NoteIndex {
             OpenBuild::Owed => set_indexing(&self.indexing, &self.report, |state| {
                 state.start();
                 state.building = true;
+                state.built = false;
             }),
             OpenBuild::Step(step) => {
                 set_indexing(&self.indexing, &self.report, |state| state.step = step);
                 (self.report)(IndexReport::Progress(step));
             }
-            OpenBuild::Ended => {
-                set_indexing(&self.indexing, &self.report, |state| state.building = false);
-            }
+            OpenBuild::Ended { walked } => set_indexing(&self.indexing, &self.report, |state| {
+                state.building = false;
+                state.built = walked;
+            }),
         }
     }
 
@@ -380,6 +388,21 @@ impl NoteIndex {
             Ok(measured) => measured,
             Err(RecvTimeoutError::Timeout) => Ok(false),
             Err(RecvTimeoutError::Disconnected) => Err(self.gone()),
+        }
+    }
+
+    /// Blocks until the open's build ended, so the rows hold every note the open walk offered
+    /// (Electron resumes its jobs after `indexVault`). `false` when `cancel` says so, or the vault
+    /// closed or its task ended first: a job that reads the rows waits for the next open.
+    pub fn wait_built(&self, cancel: &dyn Fn() -> bool) -> bool {
+        loop {
+            if cancel() || !matches!(&*lock(&self.slot), Slot::Open { .. }) {
+                return false;
+            }
+            if lock(&self.indexing).built {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(50));
         }
     }
 
