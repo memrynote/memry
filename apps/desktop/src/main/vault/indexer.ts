@@ -21,7 +21,7 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { parseNote } from './frontmatter'
+import { generateContentHash, parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
@@ -34,6 +34,7 @@ import {
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
+  getNoteCacheById,
   getNoteCacheByPath,
   countNotes,
   countJournalEntries,
@@ -233,7 +234,10 @@ async function indexMarkdownFile(
 
   const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
   const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
-  const modifiedAt = keptModifiedAt(canonical, relativePath) ?? parsed.modified
+  // A body other than the one indexed is an edit made while Memry was closed.
+  const indexedHash = canonical ? getNoteCacheById(db, canonical.id)?.contentHash : undefined
+  const edited = indexedHash != null && indexedHash !== generateContentHash(content)
+  const modifiedAt = (edited ? null : keptModifiedAt(canonical, relativePath)) ?? parsed.modified
 
   // Use syncNoteToCache for unified cache operations
   try {
@@ -329,6 +333,10 @@ export async function indexBinaryFile(
  * edited since its sync, and the first pull into a doc the store never held
  * takes the file over the server body (#5276), as `adoptCaseVariantRow` does
  * in the watcher.
+ *
+ * Without an index row there is no body to compare, so an outside edit made
+ * before adoption keeps the synced stamp, and the pull's write-back replaces
+ * it with the server body.
  */
 function keptModifiedAt(canonical: CanonicalNoteRef | null, relativePath: string): string | null {
   return canonical && canonical.path !== relativePath ? canonical.modifiedAt : null

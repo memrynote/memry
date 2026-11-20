@@ -78,7 +78,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { getDatabase as getClientDatabase } from '../database/client'
 import { oweUnsyncedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { getStatus } from './index'
-import { enqueueLocalSyncCreate } from '../sync/local-mutations'
+import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../sync/local-mutations'
 import { feedExternalEditToCrdt, takeOwedFile } from '../sync/crdt-external-feed'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
@@ -160,7 +160,13 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     id: string,
     relativePath: string,
     body: string,
-    options: { indexed?: boolean; remote?: boolean; emoji?: string; localOnly?: boolean } = {}
+    options: {
+      indexed?: boolean
+      remote?: boolean
+      emoji?: string
+      localOnly?: boolean
+      fileSize?: number
+    } = {}
   ): void {
     const isMarkdown = relativePath.endsWith('.md')
     const fields = {
@@ -172,7 +178,8 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       localOnly: options.localOnly ?? false,
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z',
-      syncedAt: '2026-01-12T00:00:00.000Z'
+      syncedAt: '2026-01-12T00:00:00.000Z',
+      fileSize: options.fileSize ?? Buffer.byteLength(body)
     }
     // Through the repository, as sync and the indexer write rows.
     upsertNoteMetadata(asClientDb(data.db), fields)
@@ -361,6 +368,34 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     )
   }, 20_000)
 
+  it('the watcher pushes an applied attachment replaced before it was adopted', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('replaced', 'SuperNotes/p.png', 'png-bytes')
+    seed('downloading', 'SuperNotes/q.png', 'png-bytes', { fileSize: 0 })
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/p.png'), 'other-png-bytes')
+    await settleOn(() =>
+      expect(metadataRows()).toEqual([
+        { id: 'downloading', path: 'Supernotes/q.png' },
+        { id: 'replaced', path: 'Supernotes/p.png' }
+      ])
+    )
+    await passSentinel()
+
+    const unsynced = data.db
+      .select({ id: noteMetadata.id, path: noteMetadata.path, modifiedAt: noteMetadata.modifiedAt })
+      .from(noteMetadata)
+      .all()
+      .filter((row) => !isSentinel(row) && row.modifiedAt > '2026-01-12T00:00:00.000Z')
+    const updates = vi
+      .mocked(enqueueLocalSyncUpdate)
+      .mock.calls.filter(([, id]) => id === 'replaced' || id === 'downloading')
+    expect({ unsynced: unsynced.map((row) => row.id), updates }).toEqual({
+      unsynced: ['replaced'],
+      updates: [['note', 'replaced']]
+    })
+  }, 20_000)
+
   it('the watcher keeps the emoji of an applied attachment', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
     await watch()
@@ -524,6 +559,20 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
 
   // The fold index is a cache of note_metadata: the exact path goes to the
   // table first, so a row the index has not seen is still found.
+  // Quit after the pull wrote the file, edited outside before the next open:
+  // the walk finds a body other than the indexed one, a local edit.
+  it('vault open keeps an outside edit of an applied note owed', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), '# a\n\noffline edit\n')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+
+    oweUnsyncedFileBody('remote-note')
+    expect(owesFileBody('remote-note')).toBe(true)
+  })
+
   it('finds a row the fold index missed by its exact path', () => {
     seed('seen', 'Docs/a.md', '# a\n', { remote: false })
     expect(findCanonicalNoteForFile(vault.path, 'Docs/none.md')).toBeNull()
