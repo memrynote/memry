@@ -574,6 +574,52 @@ async fn a_501_open_falls_back_silently_and_is_not_retried() {
 }
 
 #[tokio::test]
+async fn a_renewal_names_its_session_and_keeps_the_window_open() {
+    // §10.2: renew carries the session's token, as Electron's renew does
+    // (`bootstrap-session.ts:155-170`). Without it the server answers 401 and
+    // the client drops elevation at the lead.
+    let (transport, client) = bootstrap(vec![
+        response(
+            200,
+            &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"session": {"token": "tok-2", "expiresAt": 8_200, "ttlSeconds": 3_600}})
+                .to_string(),
+        ),
+    ]);
+    assert!(client.open(1_000).await.elevated());
+
+    let lead = 4_600 - BOOTSTRAP_RENEW_LEAD_SECONDS;
+    assert!(client.renew_if_due(lead).await);
+
+    let renews = transport.calls_to("/sync/bootstrap/renew");
+    assert_eq!(renews.len(), 1);
+    assert_eq!(
+        renews[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("tok-1")
+    );
+    // The response's token and expiry replace the old ones, as Electron's
+    // `setBootstrapSessionState(res.session.token, res.session.expiresAt)`.
+    assert_eq!(client.state(), SessionState::Elevated);
+    assert_eq!(
+        client.header(4_700),
+        Some((BOOTSTRAP_TOKEN_HEADER, "tok-2".to_owned()))
+    );
+    assert!(client.renew_if_due(4_700).await);
+    assert_eq!(
+        transport.call_count(),
+        2,
+        "not due again until 8_200's lead"
+    );
+}
+
+#[tokio::test]
 async fn a_first_sync_that_outlives_the_session_drops_the_header_mid_run() {
     // §10.11 (Q10.2): the absolute lifetime is six hours, the renewal answers
     // `403 BOOTSTRAP_SESSION_EXPIRED`, and the client treats it as an

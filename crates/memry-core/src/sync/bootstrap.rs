@@ -230,8 +230,11 @@ impl BootstrapClient {
             return true;
         }
 
+        // The token names the session to extend; without it the server
+        // answers 401 and the window closes at the lead (§10.2).
         let request = self
             .request("POST", "/sync/bootstrap/renew")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::polled())
             .json(&json!({}));
 

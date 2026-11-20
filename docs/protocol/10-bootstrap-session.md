@@ -19,12 +19,12 @@ not, and changes **nothing** about the pull shape.
 ## 10.2 Routes
 
 **Normative** (`apps/sync-server/src/routes/bootstrap.ts`, mounted at
-`/sync/bootstrap`, `apps/sync-server/src/index.ts:221`):
+`/sync/bootstrap`, `apps/sync-server/src/index.ts:239`):
 
 | Method | Path                    | Purpose             | Line   |
 | ------ | ----------------------- | ------------------- | ------ |
 | POST   | `/sync/bootstrap`       | open                | `:86`  |
-| POST   | `/sync/bootstrap/renew` | extend              | `:154` |
+| POST   | `/sync/bootstrap/renew` | extend              | `:160` |
 | POST   | `/sync/bootstrap/close` | end; **idempotent** | `:179` |
 
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
@@ -66,9 +66,9 @@ feature additive.
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `session.expiresAt`           | epoch seconds at which the token stops being honoured (`:23-24`)                                                                                                                                                                 |
 | `session.ttlSeconds`          | mirrors `exp - iat`, for renewal scheduling (`:25-26`)                                                                                                                                                                           |
-| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-102`)                                                      |
-| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:104-108`, absent rows give `0` at `:148`)                                                 |
-| `packs`                       | **reserved; always present, always empty** until the pack pipeline lands (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:150`)                                                                                              |
+| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-108`)                                                      |
+| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:110-114`, absent rows give `0` at `:154`)                                                 |
+| `packs`                       | **reserved; always present, always empty** until the pack pipeline lands (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:156`)                                                                                              |
 | `attachments`                 | **informational only**, absent entirely on deployments that cannot presign (`:39-43`); `chunkHashes` is a first keyset page of at most `CHUNK_HASH_PAGE_LIMIT = 512` (`apps/sync-server/src/routes/bootstrap.ts:51`, `:126-130`) |
 | `attachments.nextChunkCursor` | **names where a continuation page would start; no continuation endpoint exists** (`:64-70`)                                                                                                                                      |
 
