@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { i18n as I18nInstance } from 'i18next'
 import type { ReactElement, ReactNode } from 'react'
+import { MotionConfig } from 'motion/react'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { TaskDetailDrawer, type TaskDetailDrawerProps } from './task-detail-drawer'
 import type { Task, Priority, RepeatConfig } from '@/data/task-model'
@@ -220,6 +221,18 @@ describe('TaskDetailDrawer — editable properties', () => {
     const drawer = screen.getByRole('complementary')
     expect(drawer).toHaveStyle({ width: '266px' })
     expect(drawer.firstElementChild).toHaveStyle({ width: '266px' })
+  })
+
+  it('fades in without sliding when the app reduces motion', () => {
+    // #given the app's Reduce motion setting, which reaches components as this MotionConfig
+    renderWithI18n(
+      <MotionConfig reducedMotion="always">
+        <TaskDetailDrawer {...defaultProps} />
+      </MotionConfig>
+    )
+
+    // #then the drawer starts where it ends: no sideways offset to slide in from
+    expect(screen.getByRole('complementary').style.transform).toBe('')
   })
 
   it('offers Open in Tasks only where the host provides it', () => {

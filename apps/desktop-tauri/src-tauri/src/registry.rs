@@ -1,6 +1,8 @@
 //! The single command list. Add a domain's commands under its comment, one fully qualified path
 //! per line, domains in alphabetical order, and its module under `src/commands/`.
 
+use std::collections::BTreeSet;
+
 use tauri::ipc::Invoke;
 use tauri::{Runtime, Wry};
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
@@ -61,6 +63,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
+            // calendar macOS (EventKit)
+            crate::commands::calendar_eventkit::calendar_eventkit_request_access,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -95,6 +99,26 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // folder view
+            crate::commands::folder_view::folder_view_available_properties,
+            crate::commands::folder_view::folder_view_delete_view,
+            crate::commands::folder_view::folder_view_folder_exists,
+            crate::commands::folder_view::folder_view_get_config,
+            crate::commands::folder_view::folder_view_get_views,
+            crate::commands::folder_view::folder_view_list,
+            crate::commands::folder_view::folder_view_set_config,
+            crate::commands::folder_view::folder_view_set_view,
+            // home pages (`home_pages_set_cover_upload` is a binary command)
+            crate::commands::home_pages::home_pages_create::<Wry>,
+            crate::commands::home_pages::home_pages_delete::<Wry>,
+            crate::commands::home_pages::home_pages_get::<Wry>,
+            crate::commands::home_pages::home_pages_list::<Wry>,
+            crate::commands::home_pages::home_pages_materialize_cover::<Wry>,
+            crate::commands::home_pages::home_pages_remove_cover::<Wry>,
+            crate::commands::home_pages::home_pages_reorder::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
+            crate::commands::home_pages::home_pages_update::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -165,6 +189,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
+            crate::commands::notes_import::notes_import_files::<Wry>,
+            crate::commands::notes_import::notes_show_import_dialog,
             crate::commands::notes::notes_append_blocks::<Wry>,
             crate::commands::notes::notes_undo_tag_template::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
@@ -285,9 +311,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::sync::sync_trigger::<Wry>,
             crate::commands::sync::sync_update_synced_setting::<Wry>,
             // sync account
-            crate::commands::sync_account::account_sign_out,
+            crate::commands::sync_account::account_sign_out::<Wry>,
             crate::commands::sync_account::sync_get_vault_binding,
-            crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_logout::<Wry>,
+            crate::commands::sync_account::sync_repair_device_keys,
             crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
@@ -402,6 +429,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // home pages
+            crate::events::HomePageCreatedEvent,
+            crate::events::HomePageDeletedEvent,
+            crate::events::HomePageUpdatedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal
@@ -505,6 +536,30 @@ pub fn dispatcher<R: Runtime>(
             typed_handler(invoke)
         }
     }
+}
+
+/// The `app-all` permission that `pnpm ipc:generate` writes to `permissions/app-all.json`: every
+/// command `bindings_ts` invokes and every binary command. Only the main window's capability
+/// grants it, so a command a domain step registers reaches the main window and no other.
+pub fn app_all_permission(bindings_ts: &str) -> Result<String, String> {
+    let mut names = BTreeSet::new();
+    for call in bindings_ts.split("__TAURI_INVOKE<").skip(1) {
+        let name = call
+            .split_once(">(\"")
+            .and_then(|(_, rest)| rest.split_once('"'))
+            .map(|(name, _)| name)
+            .ok_or_else(|| format!("no command name in `{}`", &call[..call.len().min(80)]))?;
+        names.insert(name);
+    }
+    names.extend(binary::COMMANDS.iter().copied());
+    let file = serde_json::json!({
+        "permission": [{
+            "identifier": "app-all",
+            "description": "Every app command, for the main window. Generated by `pnpm ipc:generate` from `registry::builder()` and `binary::COMMANDS`.",
+            "commands": { "allow": names },
+        }]
+    });
+    serde_json::to_string_pretty(&file).map_err(|e| format!("serialize app-all: {e}"))
 }
 
 pub fn invoke_handler(

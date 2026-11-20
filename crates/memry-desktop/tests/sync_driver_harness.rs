@@ -158,6 +158,7 @@ impl Local {
                 Arc::new(Online),
                 DriverConfig::desktop(),
                 all,
+                Vec::new(),
             )
             .await
     }
@@ -225,6 +226,7 @@ impl Device {
                 reachability,
                 DriverConfig::desktop(),
                 seeds,
+                Vec::new(),
             )
             .await
             .expect("the driver");
@@ -708,6 +710,7 @@ async fn passes_over_one_vault_serialize() {
             Arc::new(Online),
             DriverConfig::desktop(),
             Vec::new(),
+            Vec::new(),
         )
         .await
         .map(Arc::new)
@@ -887,6 +890,20 @@ async fn a_desktop_first_sync_pulls_every_body_old_or_past_the_phone_limit() {
     let seen = progress.0.lock().unwrap().clone();
     assert!(
         seen.iter().all(|p| p.processed_items <= p.total_items),
+        "{seen:?}"
+    );
+    // One `notes` bar that only moves forward and counts items, never server cursors
+    // (Electron's `initial-sync-progress.ts`).
+    let notes_done: Vec<u64> = seen
+        .iter()
+        .filter(|p| p.phase == InitialSyncPhase::Notes)
+        .map(|p| p.processed_items)
+        .collect();
+    assert!(notes_done.is_sorted(), "{notes_done:?}");
+    assert!(
+        seen.iter()
+            .filter(|p| p.phase == InitialSyncPhase::Notes)
+            .all(|p| p.total_items <= BODIES as u64),
         "{seen:?}"
     );
     let phases: Vec<InitialSyncPhase> = seen.iter().map(|p| p.phase).collect();

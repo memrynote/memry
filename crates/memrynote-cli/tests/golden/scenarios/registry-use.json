@@ -1,0 +1,88 @@
+{
+  "name": "registry-use",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{tmp}/a",
+        "name": "Alpha",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      },
+      {
+        "path": "{tmp}/b",
+        "name": "Beta",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      },
+      {
+        "path": "{tmp}/d1",
+        "name": "Dup",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      },
+      {
+        "path": "{tmp}/d2",
+        "name": "Dup",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      },
+      {
+        "path": "{home}",
+        "name": "Home",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      }
+    ]
+  },
+  "steps": [
+    {
+      "argv": ["vault", "current"]
+    },
+    {
+      "argv": ["vault", "use"]
+    },
+    {
+      "argv": ["vault", "use", ""]
+    },
+    {
+      "argv": ["vault", "use", "nope"]
+    },
+    {
+      "argv": ["vault", "use", "Dup"]
+    },
+    {
+      "argv": ["vault", "use", "Beta"]
+    },
+    {
+      "argv": ["--json", "vault", "current"]
+    },
+    {
+      "argv": ["--json", "vault", "use", "{tmp}/a"]
+    },
+    {
+      "argv": ["--json", "vault", "use", "./d1/../d1/"]
+    },
+    {
+      "argv": ["--json", "vault", "use", "d2"]
+    },
+    {
+      "argv": ["--json", "vault", "use", "--vault", "{tmp}/b"]
+    },
+    {
+      "argv": ["--json", "vault", "use", "~"]
+    },
+    {
+      "argv": ["--json", "vault", "list"]
+    }
+  ]
+}

@@ -5,25 +5,27 @@
 //! open the file. There is no migrations table, because a migrations table
 //! itself eventually needs migrating.
 //!
-//! §A.0 states the convention normatively, and it is easy to get subtly wrong:
-//! read `user_version`; for each migration whose version exceeds it, run that
-//! migration's statements inside **one** transaction, then set `user_version` to
-//! that migration's number **outside** that transaction, immediately after it
-//! commits. The two databases carry independent counters, which is why [`run`]
-//! takes the migration list rather than reading a global.
+//! §A.0 states the convention, and it is easy to get subtly wrong. Each pending
+//! migration runs in **one** `BEGIN IMMEDIATE` transaction that takes the write
+//! lock, reads `user_version` again, skips the migration when another connection
+//! already took the file to it or past it, and otherwise runs the statements and
+//! sets `user_version` to the migration's number before it commits. Two
+//! processes can open one file at once (the desktop app and the CLI): the second
+//! waits on the busy timeout for the first one's transaction, then sees its
+//! counter, so every migration applies once and the counter never moves back.
+//! The two databases carry independent counters, which is why [`run`] takes the
+//! migration list rather than reading a global.
 //!
-//! **Why the DDL is written `IF NOT EXISTS`.** Setting the counter outside the
-//! transaction leaves a window: a crash after the commit and before the pragma
-//! re-runs the migration on the next launch. The transaction is all or nothing,
-//! so on that re-run either every object already exists or none does; `IF NOT
-//! EXISTS` makes the first case a clean no-op that then sets the counter, and
-//! leaves the second case a normal first application. Without it, the crash
-//! window is unrecoverable: the database is at the older version and the
-//! migration can never succeed again.
+//! **Why the DDL is written `IF NOT EXISTS`.** Builds before this runner set the
+//! counter outside the transaction, after it committed. A crash in that window
+//! left a file whose objects exist at the older version, and this runner applies
+//! that migration again. `IF NOT EXISTS` makes that re-run a clean no-op that then
+//! sets the counter; without it, such a file could never migrate again.
 
-use rusqlite::Connection;
+use rusqlite::{Connection, TransactionBehavior};
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items;
 
 /// One hand-written, forward-only step.
 pub struct Migration {
@@ -223,6 +225,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "recents",
         sql: include_str!("migrations/data/0035_recents.sql"),
     },
+    Migration {
+        version: 36,
+        name: "canvases",
+        sql: include_str!("migrations/data/0036_canvases.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -287,6 +294,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "note_embedding_hashes",
         sql: include_str!("migrations/index/0011_note_embedding_hashes.sql"),
     },
+    Migration {
+        version: 12,
+        name: "canvas_refs",
+        sql: include_str!("migrations/index/0012_canvas_refs.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
@@ -304,11 +316,16 @@ pub fn user_version(conn: &Connection) -> Result<u32, StorageError> {
 }
 
 /// Migrates `data.db`, as every open of the file does: moves a file an earlier
-/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), then
-/// applies [`DATA_MIGRATIONS`].
+/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), applies
+/// [`DATA_MIGRATIONS`], then projects the stored payloads a projection table
+/// does not reflect yet ([`sync_items::heal_projections`]). That runs after the
+/// last migration, with the projector of this build, so a projector written
+/// for a later schema never runs against an earlier one.
 pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
     legacy_numbering::renumber(conn)?;
-    run(conn, DATA_MIGRATIONS)
+    let version = run(conn, DATA_MIGRATIONS)?;
+    sync_items::heal_projections(conn)?;
+    Ok(version)
 }
 
 /// Applies every migration newer than the database's `user_version`, in order,
@@ -317,26 +334,7 @@ pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
 /// A database already at or past the last version is left untouched, so calling
 /// this on every open is the intended use.
 pub fn run(conn: &mut Connection, migrations: &[Migration]) -> Result<u32, StorageError> {
-    let start = user_version(conn)?;
-    let mut current = start;
-
-    for migration in migrations.iter().filter(|m| m.version > start) {
-        let fail = |what: String| StorageError::Migration {
-            version: migration.version,
-            what: format!("{}: {what}", migration.name),
-        };
-
-        let tx = conn.transaction().map_err(|err| fail(err.to_string()))?;
-        tx.execute_batch(migration.sql)
-            .map_err(|err| fail(err.to_string()))?;
-        tx.commit().map_err(|err| fail(err.to_string()))?;
-
-        // Outside the transaction, immediately after it commits (§A.0).
-        set_user_version(conn, migration.version).map_err(|err| fail(err.to_string()))?;
-        current = migration.version;
-    }
-
-    Ok(current)
+    run_atomic(conn, migrations).map_err(StorageError::from)
 }
 
 /// A migration that failed, with the SQLite error that stopped it, so the caller
@@ -357,28 +355,39 @@ impl From<MigrationFailure> for StorageError {
     }
 }
 
-/// As [`run`], with `user_version` written **inside** each migration's
-/// transaction. SQLite commits the pragma with the schema change, so there is no
-/// window in which a migration has applied and its counter has not, and a
-/// migration need not be re-runnable. For `index.db`, which migrates in place;
-/// `data.db` keeps the §A.0 convention of [`run`].
+/// As [`run`], with the failed migration's SQLite error kept for the caller
+/// (`index_db` rebuilds on a defect and not on a lock).
 pub fn run_atomic(
     conn: &mut Connection,
     migrations: &[Migration],
 ) -> Result<u32, MigrationFailure> {
-    let start = user_version(conn).map_err(|err| MigrationFailure {
+    let read = |conn: &Connection| {
+        conn.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))
+            .map(|version| version as u32)
+    };
+    let mut current = read(conn).map_err(|error| MigrationFailure {
         version: 0,
         name: "read user_version",
-        error: rusqlite::Error::InvalidParameterName(err.to_string()),
+        error,
     })?;
-    let mut current = start;
-    for migration in migrations.iter().filter(|m| m.version > start) {
+    for migration in migrations {
+        if migration.version <= current {
+            continue;
+        }
         let fail = |error| MigrationFailure {
             version: migration.version,
             name: migration.name,
             error,
         };
-        let tx = conn.transaction().map_err(fail)?;
+        // The write lock before the counter is read: a second connection
+        // migrating the same file waits here, then sees how far the first got.
+        let tx = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(fail)?;
+        current = read(&tx).map_err(fail)?;
+        if migration.version <= current {
+            continue;
+        }
         tx.execute_batch(migration.sql).map_err(fail)?;
         tx.execute_batch(&format!("PRAGMA user_version = {}", migration.version))
             .map_err(fail)?;
@@ -388,19 +397,14 @@ pub fn run_atomic(
     Ok(current)
 }
 
-fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError> {
-    // `pragma_update` cannot bind a parameter to a pragma value, and the value
-    // is a `u32` this module owns, so there is nothing here to inject.
-    conn.execute_batch(&format!("PRAGMA user_version = {version}"))
-        .map_err(|err| StorageError::Failed {
-            what: format!("could not set user_version to {version}: {err}"),
-        })
-}
-
 #[cfg(test)]
 mod agent_records_tests;
 #[cfg(test)]
 mod attachment_sync_tests;
+#[cfg(test)]
+mod canvases_tests;
+#[cfg(test)]
+mod concurrent_open_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
 #[cfg(test)]

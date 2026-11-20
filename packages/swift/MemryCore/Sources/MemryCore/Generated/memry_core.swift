@@ -2069,6 +2069,8 @@ public protocol CanvasesProtocol: AnyObject, Sendable {
     
     /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     * A scene over the sync cap is saved here and held back from sync, and
+     * the record names its size (`sync_held_bytes`).
      */
     func setScene(id: String, scene: String) throws  -> CanvasRecord
     
@@ -2160,6 +2162,8 @@ open func create(title: String?, ownerNoteId: String?, scene: String?)throws  ->
     
     /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     * A scene over the sync cap is saved here and held back from sync, and
+     * the record names its size (`sync_held_bytes`).
      */
 open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
     return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -12843,7 +12847,8 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
     func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
     
@@ -13320,7 +13325,8 @@ open func feedRecordError(sourceId: String, code: String)throws   {try rustCallW
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
 open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
     return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -17649,6 +17655,12 @@ public struct CanvasRecord: Equatable, Hashable {
      * Excalidraw JSON in desktop's canonical form.
      */
     public var scene: String
+    /**
+     * The scene's size in bytes when it is over the sync cap: the canvas is
+     * saved on this device and held back from sync until it shrinks. `nil`
+     * when it syncs.
+     */
+    public var syncHeldBytes: UInt64?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -17658,11 +17670,17 @@ public struct CanvasRecord: Equatable, Hashable {
          */ownerNoteId: String?, 
         /**
          * Excalidraw JSON in desktop's canonical form.
-         */scene: String) {
+         */scene: String, 
+        /**
+         * The scene's size in bytes when it is over the sync cap: the canvas is
+         * saved on this device and held back from sync until it shrinks. `nil`
+         * when it syncs.
+         */syncHeldBytes: UInt64? = nil) {
         self.id = id
         self.title = title
         self.ownerNoteId = ownerNoteId
         self.scene = scene
+        self.syncHeldBytes = syncHeldBytes
     }
 
     
@@ -17684,7 +17702,8 @@ public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 title: FfiConverterOptionString.read(from: &buf), 
                 ownerNoteId: FfiConverterOptionString.read(from: &buf), 
-                scene: FfiConverterString.read(from: &buf)
+                scene: FfiConverterString.read(from: &buf), 
+                syncHeldBytes: FfiConverterOptionUInt64.read(from: &buf)
         )
     }
 
@@ -17693,6 +17712,7 @@ public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.title, into: &buf)
         FfiConverterOptionString.write(value.ownerNoteId, into: &buf)
         FfiConverterString.write(value.scene, into: &buf)
+        FfiConverterOptionUInt64.write(value.syncHeldBytes, into: &buf)
     }
 }
 
@@ -36987,7 +37007,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 25321) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
@@ -37014,7 +37034,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 42908) {
+    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 52976) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {

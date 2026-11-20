@@ -17,6 +17,7 @@ mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
+mod repair;
 pub mod session_events;
 mod teardown;
 pub mod vault_directory;
@@ -26,6 +27,7 @@ pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
+pub use repair::KeyRepair;
 pub use teardown::SignedOut;
 
 use std::sync::{Arc, Mutex};

@@ -1,0 +1,15 @@
+---
+tags:
+  - notes-101
+---
+- Launch day ^launch
+  - Saturn V lifts off from Kennedy Space Center ^liftoff
+  - Three astronauts aboard: Armstrong, Aldrin, Collins ^crew
+  - Trans-lunar injection after one and a half orbits ^tlinj
+- Landing ^landing
+  - Eagle separates from Columbia ^separ
+  - Armstrong takes manual control near the crater ^manual
+    - Fuel for about 25 seconds left at touchdown ^fuel
+  - "Tranquility Base here, the Eagle has landed" ^quote
+- Return ^return
+  - Splashdown in the Pacific, eight days after launch ^splash

@@ -24,10 +24,10 @@ Electron suite.
 | `resetVaultDirectoryThrottle`               | `e2e_reset_vault_directory_throttle`      | Step 17 (#3534) |
 | `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 14 (#3531) |
 | `seedCalendarProjection`                    | `e2e_seed_calendar_projection`            | Step 29 (#3546) |
-| `getCrdtDocMarkdown`                        | `e2e_crdt_doc_markdown`                   | Step 14 (#3531) |
+| `getCrdtDocMarkdown`                        | none, see Hooks without a command         | Step 14 (#3531) |
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |
 | `getWritebackDebugState`                    | `e2e_writeback_debug_state`               | Step 14 (#3531) |
-| `getCrdtMarkdownSourceState`                | `e2e_crdt_markdown_source_state`          | Step 14 (#3531) |
+| `getCrdtMarkdownSourceState`                | none, see Hooks without a command         | Step 14 (#3531) |
 | `simulateCrdtTeardownForTests`              | `sync_logout` (the real teardown)         | Step 19 (#3536) |
 | `seedGoogleCalendarTokens`                  | `e2e_seed_google_calendar_tokens`         | Step 29 (#3546) |
 | `getGooglePushChannelProbe`                 | `e2e_google_push_channel_probe`           | Step 29 (#3546) |
@@ -60,6 +60,13 @@ Electron suite.
 | `getSyncWakeProbeForTests`                  | `e2e_sync_wake_probe`                     | Step 17 (#3534) |
 | `listCrdtStoreDirsForTests`                 | none: the store is `data.db`; see below   | Step 17 (#3534) |
 | `restartSyncRuntimeForTests`                | `e2e_restart_sync_runtime`                | Step 17 (#3534) |
+
+## Hooks without a command
+
+`getCrdtDocMarkdown` and `getCrdtMarkdownSourceState` read Electron's shared document as
+markdown and the author's bytes kept beside it. The Tauri app keeps the author's spelling
+without a separate restore step, so a spec asserts on the note file the write-back saved: it
+reads the file (`fs`, `e2e_vault_read_file`) after waiting on `e2e_writeback_debug_state`.
 
 ## Debug handles
 

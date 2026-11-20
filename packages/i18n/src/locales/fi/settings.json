@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Edellinen holvi",
           "description": "Siirry sivupalkin edelliseen holviin"
+        },
+        "todayJournal": {
+          "label": "Tämän päivän päiväkirja",
+          "description": "Avaa päiväkirja tämän päivän merkintään"
         }
       },
       "tabs": {
@@ -2431,7 +2435,8 @@
         "vault-binding": "Tämän laitteen avaimet on palautettu, mutta tätä holvia ei ole vielä asetettu synkronoitumaan tilisi kanssa. Valitse synkronointitapa synkronointivalikosta.",
         "vault-foreign": "Tämän laitteen avaimet on palautettu, mutta tämä holvi kuuluu toiselle tilille. Se pysyy paikallisena tällä laitteella.",
         "entitlement": "Tämän laitteen avaimet on palautettu, mutta synkronointi vaatii aktiivisen Sync-tilauksen.",
-        "unavailable": "Tämän laitteen avaimet on palautettu, mutta synkronointia ei voitu käynnistää. Se yrittää uudelleen; käynnistä Memry uudelleen, jos se ei onnistu."
+        "unavailable": "Tämän laitteen avaimet on palautettu, mutta synkronointia ei voitu käynnistää. Se yrittää uudelleen; käynnistä Memry uudelleen, jos se ei onnistu.",
+        "unavailable-restart": "Tämän laitteen avaimet on palautettu, mutta synkronointia ei voitu käynnistää. Käynnistä Memry uudelleen; jos synkronointi ei vieläkään käynnisty, kirjaudu ulos ja takaisin sisään."
       }
     },
     "pagesSettingsAiInlineSection": {
