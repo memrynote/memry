@@ -7,10 +7,12 @@ import { generateVaultKey, initCrypto } from '../src/crypto.js'
 import { harnessDigests } from '../src/harness-digest.js'
 import type { DeviceIdentity, FetchFn } from '../src/types.js'
 import {
+  checkBootstrapCreated,
   checkSemantic,
   checkStructural,
   fetchServerTruth,
   formatFindings,
+  type ServerVaultTruth,
   type StructuralReport
 } from '../src/zero-loss-oracle/index.js'
 
@@ -36,6 +38,16 @@ interface Vault {
   freshDevice: (fetchFn?: FetchFn) => Promise<SimulatedDevice>
 }
 
+const readTruth = (identity: DeviceIdentity): Promise<ServerVaultTruth> =>
+  fetchServerTruth({
+    baseUrl: 'http://localhost',
+    accessToken: identity.accessToken,
+    fetch: serverFetch
+  })
+
+/** The server each fresh device met, read before its bootstrap starts (#5261). */
+const truthBeforeBootstrap = new WeakMap<SimulatedDevice, ServerVaultTruth>()
+
 const openVault = async (): Promise<Vault> => {
   const vaultKey = generateVaultKey()
   const authorId = await createTestDevice(server, { deviceName: 'author', vaultKey })
@@ -47,6 +59,7 @@ const openVault = async (): Promise<Vault> => {
       const identity = await createTestDevice(server, { userId: authorId.userId, vaultKey })
       const device = new SimulatedDevice(identity, fetchFn)
       device.registerPeerDevice(authorId.deviceId, authorId.signingPublicKey)
+      truthBeforeBootstrap.set(device, await readTruth(identity))
       return device
     }
   }
@@ -115,11 +128,7 @@ const runOracle = async (
   device: SimulatedDevice,
   vault: Vault
 ): Promise<StructuralReport> => {
-  const truth = await fetchServerTruth({
-    baseUrl: 'http://localhost',
-    accessToken: vault.authorId.accessToken,
-    fetch: serverFetch
-  })
+  const truth = await readTruth(vault.authorId)
   const reference = await vault.freshDevice()
   await bootstrap(reference)
   const report = checkStructural(truth, device.oracleState())
@@ -127,11 +136,15 @@ const runOracle = async (
     harnessDigests('device', device),
     harnessDigests('reference', reference)
   )
+  const before = truthBeforeBootstrap.get(device)
+  if (!before) throw new Error('runOracle: device was not made by freshDevice')
+  const created = checkBootstrapCreated(before, truth, device.identity.deviceId)
   console.log(
-    `[#5225 ${label}]\n${formatFindings([...report.findings, ...semantic], report.counts)}`
+    `[#5225 ${label}]\n${formatFindings([...report.findings, ...semantic, ...created], report.counts)}`
   )
   expect(report.findings).toEqual([])
   expect(semantic).toEqual([])
+  expect(created).toEqual([])
   return report
 }
 
