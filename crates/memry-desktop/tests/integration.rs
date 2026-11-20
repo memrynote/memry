@@ -111,6 +111,8 @@ mod block_refs;
 mod byte_preservation;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
