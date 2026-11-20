@@ -70,16 +70,25 @@ describe('healCaseVariantRows', () => {
     fs.writeFileSync(absolutePath, body)
   }
 
-  function seedRows(id: string, relativePath: string): void {
+  function seedRows(
+    id: string,
+    relativePath: string,
+    synced: { contentHash: string } | null = null
+  ): void {
     const fields = {
       id,
       path: relativePath,
       title: path.basename(relativePath, '.md'),
       fileType: 'markdown' as const,
       createdAt: '2026-01-10T00:00:00.000Z',
-      modifiedAt: '2026-01-12T00:00:00.000Z'
+      modifiedAt: '2026-01-12T00:00:00.000Z',
+      syncedAt: synced ? '2026-01-12T00:00:00.000Z' : null
     }
-    insertNoteCache(index.db, { ...fields, fileSize: 4, contentHash: `hash-${id}` })
+    insertNoteCache(index.db, {
+      ...fields,
+      fileSize: 4,
+      contentHash: synced?.contentHash ?? `hash-${id}`
+    })
     data.db.insert(noteMetadata).values(fields).run()
   }
 
@@ -135,6 +144,21 @@ describe('healCaseVariantRows', () => {
       ])
       expect(fs.readFileSync(path.join(vault.path, 'SuperNotes/Sub/a.md'), 'utf8')).toBe('body')
       expect(fs.readFileSync(path.join(vault.path, 'Other/b.md'), 'utf8')).toBe('kept')
+    }
+  )
+
+  // A pushed copy has a server item, but the index read the kept note's body
+  // for it. A synced row with its own body is a distinct note (#5297).
+  it.runIf(fileSystemIgnoresCase())(
+    'drops a synced copy of the same body and keeps a synced case twin',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      seedRows('twin', 'SUPERNOTES/a.md', { contentHash: 'hash-twin' })
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['original', 'twin'])
     }
   )
 
