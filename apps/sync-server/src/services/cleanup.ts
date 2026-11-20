@@ -353,10 +353,9 @@ export const cleanupDeletedDocumentBodies = async (
 
   let purged = 0
   for (const { userId, vaultId, noteIds } of byVault.values()) {
+    let retry: boolean
     try {
-      if (await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)) {
-        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
-      }
+      retry = await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
       purged += noteIds.length
     } catch (error) {
       logger.warn('Deleted document body purge failed, retried next tick', {
@@ -365,14 +364,16 @@ export const cleanupDeletedDocumentBodies = async (
       })
       // The purge may have committed its batch, and so made pack objects due or
       // left rewrites pending, before it threw (sync.ts does the same).
-      try {
-        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
-      } catch (enqueueError) {
-        logger.error('Deleted document body purge retry not enqueued', {
-          vaultId,
-          error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError)
-        })
-      }
+      retry = true
+    }
+    if (!retry) continue
+    try {
+      await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+    } catch (error) {
+      logger.error('Deleted document body purge retry not enqueued', {
+        vaultId,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   }
   return purged
