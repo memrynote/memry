@@ -12,6 +12,7 @@
 
 pub mod agent_conversation;
 pub mod agent_message;
+pub mod agent_queue;
 pub mod agent_records;
 pub mod app_settings;
 pub mod attachments;

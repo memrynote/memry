@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it } from 'node:test'
 
 import { scanTextForSecrets } from './check-staged-secrets.mjs'
@@ -273,5 +278,20 @@ describe('check-staged-secrets keychain descriptor objects', () => {
     assert.deepEqual(tsRules("  ACCESS_TOKEN: { entry: { value: 'hunter2secretvalue' } },"), [
       'high-risk-secret-assignment'
     ])
+  })
+})
+
+describe('check-staged-secrets file names', () => {
+  it('reads a staged file whose name is not ASCII', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'staged-secrets-'))
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: repo })
+      writeFileSync(join(repo, 'Kürk Mantolu Madonna.md'), 'a note\n')
+      execFileSync('git', ['add', '.'], { cwd: repo })
+      const script = fileURLToPath(new URL('./check-staged-secrets.mjs', import.meta.url))
+      execFileSync(process.execPath, [script], { cwd: repo, stdio: 'pipe' })
+    } finally {
+      rmSync(repo, { recursive: true, force: true })
+    }
   })
 })

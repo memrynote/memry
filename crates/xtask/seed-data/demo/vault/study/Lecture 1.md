@@ -1,0 +1,11 @@
+---
+tags:
+  - study
+---
+- Cells keep their instructions in DNA
+- DNA ^dna1
+  - double helix shape ^helx
+  - DNA is made of purines and pyrimidines ^purpyr
+  - Base pairs: A with T, C with G ^pairs
+- RNA copies DNA to build proteins ^rna1
+- Proteins fold into 3D shapes ^prot
