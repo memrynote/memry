@@ -41,3 +41,7 @@ packages/contracts/test-vectors/importers/** -text -whitespace
 # replayed byte for byte into a new vault. Re-exported, never hand-edited.
 crates/memry-desktop/resources/sandbox/** -text -whitespace linguist-generated
 crates/memry-desktop/tests/fixtures/sandbox/** -text -whitespace linguist-generated
+
+# The seed templates (Step 40), exported by apps/desktop/scripts/export-seed-templates.ts and
+# replayed byte for byte by `cargo xtask seed`. Re-exported, never hand-edited.
+crates/xtask/seed-data/** -text -whitespace linguist-generated
