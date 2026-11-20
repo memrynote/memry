@@ -52,7 +52,7 @@ pub use actions::{AttachmentInfo, AttachmentLocation, existing, list, locate};
 #[cfg(feature = "test-hooks")]
 pub use delete::delete_checked;
 pub use delete::{DeletedAttachment, delete};
-pub use reconcile::{PlannedRename, plan_renames, reconcile_renames};
+pub use reconcile::{PlannedRename, plan_renames, reconcile_downloaded_name, reconcile_renames};
 pub use references::{
     Incomplete, ReferenceScan, filenames, find_references, names_file, scan_steps,
 };

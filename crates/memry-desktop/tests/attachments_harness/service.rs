@@ -72,7 +72,7 @@ impl Reachability for Network {
 }
 
 /// The device's drivers, with background downloads switched by `auto`.
-fn sync_of(device: &Device, auto: &Arc<AtomicBool>) -> AttachmentSync {
+pub(super) fn sync_of(device: &Device, auto: &Arc<AtomicBool>) -> AttachmentSync {
     sync_on(device, auto, &Network::default())
 }
 
@@ -106,11 +106,11 @@ fn pulled() -> PassReport {
     }
 }
 
-fn on() -> Arc<AtomicBool> {
+pub(super) fn on() -> Arc<AtomicBool> {
     Arc::new(AtomicBool::new(true))
 }
 
-async fn start(device: &Device, sync: &AttachmentSync) {
+pub(super) async fn start(device: &Device, sync: &AttachmentSync) {
     sync.start(
         device.transfer().await,
         &device.clock_id,
@@ -118,7 +118,7 @@ async fn start(device: &Device, sync: &AttachmentSync) {
     );
 }
 
-async fn create_note(device: &Device, id: &'static str) {
+pub(super) async fn create_note(device: &Device, id: &'static str) {
     let clock = device.clock_id.clone();
     device
         .db
@@ -138,7 +138,7 @@ async fn create_note(device: &Device, id: &'static str) {
         .unwrap();
 }
 
-fn wanted(owner: &str, id: &str) -> AttachmentDownload {
+pub(super) fn wanted(owner: &str, id: &str) -> AttachmentDownload {
     AttachmentDownload {
         owner_id: owner.into(),
         attachment_id: id.into(),
@@ -148,7 +148,7 @@ fn wanted(owner: &str, id: &str) -> AttachmentDownload {
 }
 
 /// Polls `check` on the device's database until it holds (the drivers run on their own task).
-async fn until<T: Send + 'static>(
+pub(super) async fn until<T: Send + 'static>(
     device: &Device,
     what: &str,
     check: impl Fn(&rusqlite::Connection) -> Option<T> + Send + Sync + Clone + 'static,
@@ -163,7 +163,7 @@ async fn until<T: Send + 'static>(
     panic!("never happened: {what}");
 }
 
-fn recorded(
+pub(super) fn recorded(
     owner: &'static str,
     id: String,
 ) -> impl Fn(&rusqlite::Connection) -> Option<String> + Clone {

@@ -19,6 +19,8 @@
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "attachments_harness/placement.rs"]
+mod placement;
 #[path = "attachments_harness/service.rs"]
 mod service;
 
