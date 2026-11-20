@@ -58,7 +58,7 @@ impl ApplyObserver for DiskObserver {
         let mut locks = false;
         for record in applied {
             if FILE_TYPES.contains(&record.item_type.as_str()) {
-                self.tier.schedule(&record.item_id);
+                self.tier.schedule_pulled(&record.item_id);
             }
             locks |= record.item_type == LOCK_TYPE;
         }

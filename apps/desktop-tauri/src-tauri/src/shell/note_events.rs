@@ -26,6 +26,10 @@
 //! journal day renamed by a date format change sends nothing, as Electron's
 //! `journal-format-migration` sends nothing (one event per day would refetch the lists once
 //! per file).
+//!
+//! A pulled change the write-back gave a note's file (`ChangeSource::Sync`: its place or its
+//! frontmatter) sends a `sync` `notes:updated`, and pulled tags `notes:tags-changed`, as
+//! Electron's `applyUpsert` does; an open editor ignores a `sync` update (`use-note-body.ts`).
 
 use memry_desktop::notes::read;
 use memry_desktop::notes::view::NoteView;
@@ -38,7 +42,7 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
     NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteMovedEvent,
-    NoteOutsideEditKeptEvent, NoteRenamedEvent, NoteUpdatedEvent, broadcast,
+    NoteOutsideEditKeptEvent, NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent, broadcast,
 };
 
 /// Generic over the runtime so a test drives it on a mock app.
@@ -79,6 +83,7 @@ enum Outgoing {
     OutsideEditKept {
         note_id: String,
     },
+    TagsChanged,
 }
 
 fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
@@ -87,6 +92,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     };
     let outgoing = match outgoing {
         Outgoing::Deleted(event) => return broadcast(app, event),
+        Outgoing::TagsChanged => return broadcast(app, NoteTagsChangedEvent),
         Outgoing::Moved(event) => return broadcast(app, event),
         outgoing => outgoing,
     };
@@ -140,7 +146,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
                 );
             }
         },
-        Outgoing::Deleted(_) | Outgoing::Moved(_) => {}
+        Outgoing::Deleted(_) | Outgoing::Moved(_) | Outgoing::TagsChanged => {}
     }
 }
 
@@ -178,7 +184,8 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
                 source @ (ChangeSource::Watcher
                 | ChangeSource::AppEdit
                 | ChangeSource::LinkRewrite
-                | ChangeSource::Save),
+                | ChangeSource::Save
+                | ChangeSource::Sync),
             ..
         } => Some(Outgoing::Updated {
             note_id,
@@ -212,6 +219,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             MoveKind::JournalFormat => None,
         },
         Applied::OutsideEditKept { note_id, .. } => Some(Outgoing::OutsideEditKept { note_id }),
+        Applied::TagsPulled { .. } => Some(Outgoing::TagsChanged),
         _ => None,
     }
 }
@@ -223,6 +231,7 @@ fn source_of(source: ChangeSource) -> NoteEventSource {
         | ChangeSource::Walk
         | ChangeSource::AppEdit
         | ChangeSource::LinkRewrite => NoteEventSource::External,
+        ChangeSource::Sync => NoteEventSource::Sync,
     }
 }
 

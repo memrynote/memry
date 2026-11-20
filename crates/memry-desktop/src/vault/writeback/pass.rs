@@ -13,8 +13,10 @@ use memry_core::markdown::frontmatter::{
     ParsedMarkdownNote, YamlMap, YamlValue, serialize_parsed_markdown_note, split_frontmatter_block,
 };
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
+use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
+use super::place::{Found, Patch, Pulled, header_tags_of, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -97,9 +99,14 @@ pub struct Pass {
     /// What the write-back and the app's other writers wrote this run, and the outside edits the
     /// consumer read.
     pub(super) own_files: Arc<OwnFiles>,
+    /// Reaches the notes writer, for a pulled place's move (`place`).
+    pub(super) store: Arc<dyn SecureStore>,
+    /// The notes a pull changed whose pass has not taken the change yet (`place`).
+    pub(super) pulled: Pulled,
 }
 
 impl Pass {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         root: PathBuf,
         vault: Arc<Vault>,
@@ -108,6 +115,7 @@ impl Pass {
         echo: Arc<EchoGuard>,
         settings: Option<AppSettings>,
         own_files: Arc<OwnFiles>,
+        store: Arc<dyn SecureStore>,
     ) -> Self {
         Self {
             root,
@@ -117,7 +125,15 @@ impl Pass {
             echo,
             settings,
             own_files,
+            store,
+            pulled: Pulled::default(),
         }
+    }
+
+    /// A pull changed the note: its next pass gives its file the record's place and frontmatter
+    /// (`place`).
+    pub fn mark_pulled(&self, note_id: &str) {
+        self.pulled.mark(note_id);
     }
 
     /// Writes the note's body to its file, or says why the file was kept.
@@ -161,10 +177,49 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
+        // A pulled change: taken here, and given back to the next pass when this one stops.
+        let pulled = match self.pulled.take(note_id) {
+            false => None,
+            true => match self.vault.note_files().placed(note_id) {
+                Ok(record) => record,
+                Err(error) => {
+                    self.pulled.mark(note_id);
+                    return Outcome::Failed(format!("the pulled record: {error}"));
+                }
+            },
+        };
+        let mut path = row.path.clone();
+        let mut moved = false;
+        if let Some(record) = &pulled {
+            let found = Found {
+                path: &row.path,
+                file_hash: row.file_hash.as_deref(),
+            };
+            match self.place(&mut lane, note_id, &found, record) {
+                Ok(Some(new)) => (path, moved) = (new, true),
+                Ok(None) => {}
+                Err(outcome) => {
+                    self.pulled.mark(note_id);
+                    return outcome;
+                }
+            }
+        }
+        let patch = pulled.as_ref().map(|record| Patch {
+            record,
+            types: self.property_types(),
+        });
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
-        let output = match output_over(made, note_id, &row.path, &file) {
+        let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
             Ok(output) => output,
             Err(outcome) => return outcome,
+        };
+        let patched = pulled.is_some()
+            && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
+        // Electron's `applyUpsert` sends a `sync` `notes:updated` for every pulled place or
+        // frontmatter it gives the file.
+        let source = match moved || patched {
+            true => ChangeSource::Sync,
+            false => ChangeSource::App,
         };
         if output == file.raw {
             let stat = RowStat {
@@ -173,7 +228,7 @@ impl Pass {
                 content_hash: Some(row_hash.clone()),
                 file_hash: Some(row_hash),
             };
-            if let Err(error) = lane.put_as_of(note_id, &row.path, stat, (read_at, read_mark)) {
+            if let Err(error) = lane.put_as_of(note_id, &path, stat, (read_at, read_mark)) {
                 // The file is right; the note is behind once more on the next open, whose
                 // pass finds it unchanged again.
                 tracing::warn!(
@@ -182,10 +237,18 @@ impl Pass {
                     "the row was not stamped: {error}"
                 );
             }
+            if moved {
+                lane.publish(Applied::Changed {
+                    note_id: note_id.to_owned(),
+                    path,
+                    content_hash: Some(file.hash),
+                    source,
+                });
+            }
             return Outcome::Unchanged;
         }
         let hash = content_hash(&output);
-        let kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output);
+        let kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output, patched);
         let (version_kept, replaced_outside) = match kept {
             Ok(kept) => kept,
             Err(error) => {
@@ -194,18 +257,18 @@ impl Pass {
                 ));
             }
         };
-        self.echo.will_write(&row.path, &hash);
+        self.echo.will_write(&path, &hash);
         // A locked note's document takes only another device's edits (the core refuses local
         // ones), so its write-back goes through the lock, and its text becomes the baseline.
-        let written = Locks::new(&self.root, &self.vault).write_through(&row.path, &output, || {
-            write_note_over_checked(&self.root, &row.path, &output, &file.hash, between)
+        let written = Locks::new(&self.root, &self.vault).write_through(&path, &output, || {
+            write_note_over_checked(&self.root, &path, &output, &file.hash, between)
         });
         match written {
             // A writer of bytes the run did not write may still be writing the file replaced.
             Ok(replaced) if !self.own_files.ours(note_id, &file.hash) => {
                 let told = Applied::OutsideEditKept {
                     note_id: note_id.to_owned(),
-                    path: row.path.clone(),
+                    path: path.clone(),
                 };
                 replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
             }
@@ -226,24 +289,32 @@ impl Pass {
             content_hash: Some(hash.clone()),
             file_hash: Some(hash.clone()),
         };
-        if let Err(error) = lane.put_as_of(note_id, &row.path, stat, (read_at, read_mark)) {
+        if let Err(error) = lane.put_as_of(note_id, &path, stat, (read_at, read_mark)) {
             // The file holds the document's body and the row the old hash, so the next pass
             // reads it as an outside edit and keeps it. The feed (12e-3b) reads it back
             // `Unchanged` and records the hash; until then the file only waits.
             return Outcome::Failed(format!("the file was written, its row was not: {error}"));
         }
+        if let Some(record) = pulled.as_ref().filter(|_| patched) {
+            self.wrote_pulled(note_id, record);
+        }
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),
-            path: row.path.clone(),
+            path: path.clone(),
             content_hash: Some(hash.clone()),
-            source: ChangeSource::App,
+            source,
         });
+        if patched && header_tags_of(&file.raw) != header_tags_of(&output) {
+            lane.publish(Applied::TagsPulled {
+                note_id: note_id.to_owned(),
+            });
+        }
         // The one signal of outside text a version holds now: never `version_kept`, which the
         // app's own writes raise too.
         if replaced_outside {
             lane.publish(Applied::OutsideEditKept {
                 note_id: note_id.to_owned(),
-                path: row.path,
+                path,
             });
         }
         Outcome::Wrote {
@@ -267,13 +338,18 @@ impl Pass {
         raw: &str,
         hash: &str,
         output: &str,
+        pulled_frontmatter: bool,
     ) -> Result<(bool, bool), String> {
         if !replaces_unheld_bytes(raw, output) {
             return Ok((false, false));
         }
         let ours = self.own_files.ours(note_id, hash);
         let body = split_frontmatter_block(raw).body;
-        if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
+        // A pulled frontmatter rewrite always keeps the file it replaces first (#5309).
+        if ours
+            && !pulled_frontmatter
+            && !note_snapshots::is_significant(body, split_frontmatter_block(output).body)
+        {
             return Ok((false, false));
         }
         // Bytes the run did not write are an outside edit the body took, or a file of an
@@ -297,6 +373,7 @@ pub(crate) fn output_over(
     note_id: &str,
     path: &str,
     file: &NoteFile,
+    pulled: Option<&Patch<'_>>,
 ) -> Result<String, Outcome> {
     // A journal day's file takes the day's date in its frontmatter (`journal`).
     let file_date = match vault.write_back().file_date(note_id) {
@@ -349,6 +426,7 @@ pub(crate) fn output_over(
         &body.writing,
         &file.raw,
         (note_id, file_date.as_deref()),
+        pulled,
     )
     .map_err(Outcome::Failed)
 }
@@ -362,11 +440,18 @@ fn file_for(
     writing: &WritingFrontmatter,
     raw: &str,
     (note_id, file_date): (&str, Option<&str>),
+    pulled: Option<&Patch<'_>>,
 ) -> Result<String, String> {
+    // A file with no block takes a pulled frontmatter as an empty map.
+    if pulled.is_some() && parsed.raw_frontmatter_block.is_none() {
+        parsed.frontmatter = YamlValue::map(YamlMap::new());
+    }
     let edited = match &parsed.frontmatter {
         YamlValue::Map(map) => {
             let mut merged: YamlMap = (**map).clone();
-            let edited = merge_writing_yaml(&mut merged, writing);
+            let patched =
+                pulled.is_some_and(|pulled| patch(&mut merged, pulled.record, raw, &pulled.types));
+            let edited = merge_writing_yaml(&mut merged, writing) | patched;
             if edited {
                 if let Some(date) = file_date {
                     set_date(&mut merged, date);

@@ -67,6 +67,7 @@ pub(super) fn fixture() -> Fixture {
         echo.clone(),
         vault.app_settings(store.clone()).ok(),
         own_files.clone(),
+        store.clone(),
     );
     Fixture {
         writer: vault.notes_writer(store.clone()).unwrap(),

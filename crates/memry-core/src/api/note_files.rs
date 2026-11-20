@@ -9,12 +9,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use serde_json::{Map, Value};
+
 use crate::api::errors::StorageError;
 use crate::domain::inbox::queries::FiledVoice;
 use crate::domain::note_files::{self, FiledTextFile, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
 use crate::domain::owed_file_body;
+use crate::domain::properties;
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -172,6 +175,25 @@ impl NoteFiles {
         let id = id.to_owned();
         self.db
             .read_blocking(move |conn| note_files::unfiled(conn, &id))
+    }
+
+    /// The live markdown note `id` as its record reads now ([`note_files::placed`]).
+    pub fn placed(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::placed(conn, &id))
+    }
+
+    /// The write-back wrote the record's property `values` into the note's file
+    /// ([`properties::file_written`]).
+    pub fn file_properties_written(
+        &self,
+        id: &str,
+        values: Map<String, Value>,
+    ) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| properties::file_written(conn, &id, values))
     }
 
     /// Whether a day's file must wait to be named ([`note_files::days_wait`]).
