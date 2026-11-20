@@ -48,6 +48,9 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
+  bench bootstrap --vault <id> [--pass-interval <s>]
+                                         dev only: wipe this profile's copy of the vault, run the
+                                         first sync and body passes, print timing marks
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -127,6 +130,11 @@ pub enum Command {
         name: String,
         value_json: String,
         vault: Option<String>,
+    },
+    /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
+    BenchBootstrap {
+        vault: String,
+        pass_interval_secs: u64,
     },
 }
 
@@ -258,6 +266,15 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
         }),
         "notes" => parse_notes(args),
         "journal" => parse_journal(args),
+        "bench" => match args.next().as_deref() {
+            Some("bootstrap") => Ok(Command::BenchBootstrap {
+                vault: required(args, "--vault", "bench bootstrap")?,
+                pass_interval_secs: optional(args, "--pass-interval")?
+                    .map_or(Ok(0), |secs| secs.parse())
+                    .or_else(|_| usage("--pass-interval takes whole seconds"))?,
+            }),
+            _ => usage("bench needs a subcommand: bootstrap"),
+        },
         other => usage(format!("unknown command `{other}`")),
     }
 }
@@ -541,6 +558,9 @@ mod tests {
             "--server",
             "sync --once",
             "vaults --loud",
+            "bench",
+            "bench bootstrap",
+            "bench bootstrap v-1",
         ] {
             assert!(run(line).is_err(), "`{line}` should not parse");
         }
@@ -564,6 +584,7 @@ mod tests {
             "journal append",
             "journal tags",
             "journal property",
+            "bench bootstrap --vault",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }
