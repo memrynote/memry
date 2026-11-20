@@ -21,16 +21,18 @@ import {
   getIndexDatabase,
   closeIndexDatabase
 } from '../database'
-import { generateContentHash, parseNote } from './frontmatter'
+import { parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import {
   syncNoteToCache,
   syncFileToCache,
-  findCanonicalNoteForFile,
-  type CanonicalNoteRef
+  syncNoteStatToCache,
+  moveFileInCache,
+  findCanonicalNoteForFile
 } from './note-sync'
+import { processRename } from './rename-tracker'
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
@@ -41,7 +43,7 @@ import {
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { listPropertyDefinitions } from '@memry/storage-data'
+import { listPropertyDefinitions, updateNoteMetadata } from '@memry/storage-data'
 import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
@@ -182,6 +184,10 @@ async function indexFile(
   try {
     const db = getIndexDatabase()
 
+    if (!getNoteCacheByPath(db, relativePath)) {
+      await rekeyCaseVariantRow(db, vaultPath, relativePath, fileType)
+    }
+
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
     if (existingByPath && !forcePaths.has(relativePath)) {
@@ -199,6 +205,61 @@ async function indexFile(
     logger.error(`Error indexing file ${relativePath}:`, error)
     return { reason: 'index-failed', message: errorText(error) }
   }
+}
+
+/**
+ * A file the index lists under no path, whose canonical row spells its path in
+ * another case: sync applied it into a folder the disk spells differently
+ * (#5261). The row moves to the disk's spelling and keeps its id and dates,
+ * and the file then takes the exact-path code like any other. The file's mtime
+ * is sync's own write: stamped on the row, a pulled note reads as edited since
+ * its sync, and a pull takes the file over the server body (#5276).
+ *
+ * A row the index does not hold moves in the data DB only, so the walk indexes
+ * it as an exact-path row the index does not know.
+ */
+async function rekeyCaseVariantRow(
+  db: ReturnType<typeof getIndexDatabase>,
+  vaultPath: string,
+  relativePath: string,
+  fileType: NonNullable<ReturnType<typeof getFileType>>
+): Promise<void> {
+  const claimed = findCanonicalNoteForFile(vaultPath, relativePath)
+  if (!claimed || claimed.path === relativePath) return
+  const indexed = getNoteCacheById(db, claimed.id)
+  if (!indexed) {
+    updateNoteMetadata(getDatabase(), claimed.id, { path: relativePath })
+    return
+  }
+  const row = {
+    id: claimed.id,
+    path: relativePath,
+    title: claimed.title,
+    fileSize: indexed.fileSize ?? 0
+  }
+  if (fileType === 'markdown') {
+    syncNoteStatToCache(
+      db,
+      {
+        ...row,
+        createdAt: claimed.createdAt,
+        modifiedAt: claimed.modifiedAt,
+        localOnly: claimed.localOnly,
+        emoji: claimed.emoji
+      },
+      { isNew: false }
+    )
+  } else {
+    moveFileInCache(db, {
+      ...row,
+      fileType,
+      mimeType: getMimeType(getExtension(relativePath)),
+      createdAt: new Date(claimed.createdAt),
+      modifiedAt: new Date(claimed.modifiedAt)
+    })
+  }
+  await flushProjectionEvents()
+  processRename(claimed.id, claimed.path, relativePath, { sync: false })
 }
 
 /**
@@ -234,11 +295,8 @@ async function indexMarkdownFile(
 
   const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
   const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
-  // A body other than the one indexed is an edit made while Memry was closed.
-  const indexedHash = canonical ? getNoteCacheById(db, canonical.id)?.contentHash : undefined
-  const edited = indexedHash != null && indexedHash !== generateContentHash(content)
-  const modifiedAt = (edited ? null : keptModifiedAt(canonical, relativePath)) ?? parsed.modified
 
+  // Use syncNoteToCache for unified cache operations
   try {
     const result = syncNoteToCache(
       db,
@@ -255,13 +313,7 @@ async function indexMarkdownFile(
         // is written with emoji=null and the note falls back to the default icon.
         emoji: canonical?.emoji,
         createdAt: parsed.created,
-        modifiedAt,
-        // The walk never moves the indexed hash past bytes the CRDT doc has
-        // not taken: a hash that matches the edit tells the write-back the doc
-        // holds it, and the write-back then writes the doc's older body over
-        // it. The write-back's outside-edit check, the watcher, or the doc's
-        // seed takes the edit in and moves the hash.
-        ...(edited ? { contentHash: indexedHash } : {})
+        modifiedAt: parsed.modified
       },
       { isNew: true }
     )
@@ -305,9 +357,7 @@ export async function indexBinaryFile(
   // Get file stats for metadata
   const stats = await stat(absolutePath)
 
-  const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
-  const id = canonical?.id ?? generateNoteId()
-  const modifiedAt = keptModifiedAt(canonical, relativePath)
+  const id = findCanonicalNoteForFile(vaultPath, relativePath)?.id ?? generateNoteId()
 
   // Get MIME type
   const ext = getExtension(absolutePath)
@@ -324,27 +374,11 @@ export async function indexBinaryFile(
     mimeType,
     fileSize: stats.size,
     createdAt: stats.birthtime,
-    modifiedAt: modifiedAt ? new Date(modifiedAt) : stats.mtime
+    modifiedAt: stats.mtime
   })
   await flushProjectionEvents()
 
   return result.id
-}
-
-/**
- * The modifiedAt a row matched under another case of its path keeps. That file
- * is one sync applied into a folder the disk spells differently (#5261), so
- * its mtime is sync's own write. Stamped onto the row, a pulled note reads as
- * edited since its sync, and the first pull into a doc the store never held
- * takes the file over the server body (#5276), as `adoptCaseVariantRow` does
- * in the watcher.
- *
- * Without an index row there is no body to compare, so an outside edit made
- * before adoption keeps the synced stamp, and the pull's write-back replaces
- * it with the server body.
- */
-function keptModifiedAt(canonical: CanonicalNoteRef | null, relativePath: string): string | null {
-  return canonical && canonical.path !== relativePath ? canonical.modifiedAt : null
 }
 
 /**

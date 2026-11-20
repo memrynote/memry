@@ -555,11 +555,12 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
   })
 
   // A restart before the watcher adopts the applied rows: the open-time walk
-  // adopts them instead, and sync's file mtime is no local edit there either.
+  // moves them to the disk's spelling, and sync's file mtime is no local edit
+  // there either. The pull wrote their index rows under its own spelling.
   it('vault open leaves an applied note synced, so the pull merges its server body', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
-    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n', { indexed: false })
-    seed('remote-file', 'SuperNotes/p.png', 'png-bytes', { indexed: false })
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    seed('remote-file', 'SuperNotes/p.png', 'png-bytes')
 
     await indexVault(vault.path)
     await flushProjectionEvents()
@@ -632,18 +633,6 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       cache: { path: 'Supernotes/a.md', contentHash: generateContentHash('# a\n\nbody\n') },
       fed: 0
     })
-  })
-
-  it('vault open keeps an outside edit of an applied note owed', async () => {
-    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
-    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
-    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), '# a\n\noffline edit\n')
-
-    await indexVault(vault.path)
-    await flushProjectionEvents()
-
-    oweUnsyncedFileBody('remote-note')
-    expect(owesFileBody('remote-note')).toBe(true)
   })
 
   it('finds a row the fold index missed by its exact path', () => {

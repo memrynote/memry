@@ -196,8 +196,6 @@ export interface NoteSyncInput {
   localOnly?: boolean
   /** Emoji icon (sidecar-only state) */
   emoji?: string | null
-  /** The hash the index keeps when the doc has not taken these bytes; defaults to theirs. */
-  contentHash?: string
 }
 
 /**
@@ -265,7 +263,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const wordCount = calculateWordCount(parsedContent)
   const characterCount = parsedContent.length
   const snippet = createSnippet(parsedContent)
-  const contentHash = input.contentHash ?? generateContentHash(fileContent)
+  const contentHash = generateContentHash(fileContent)
   const date = extractDateFromPath(path)
   const emoji = input.emoji ?? null
   const rawCover = frontmatter[COVER_FRONTMATTER_KEY]
