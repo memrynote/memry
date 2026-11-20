@@ -190,6 +190,16 @@ interface ExpiredTombstoneRow {
 }
 
 /**
+ * A `sync_items si` row the shed takes: a tombstone past the owner's
+ * retention. Needs `LEFT JOIN sync_entitlements e ON e.user_id = si.user_id`
+ * and binds `now` (epoch seconds). Pack compaction reads it too, so it never
+ * leaves a hole for a row the shed will empty in place (#5227).
+ */
+export const EXPIRED_TOMBSTONE_SQL = `si.deleted_at IS NOT NULL
+         AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
+             < ? - (COALESCE(e.version_history_days, 0) * 86400)`
+
+/**
  * Sheds the payload of tombstones past the user's `version_history_days` and
  * keeps each row as a marker (#2302, protocol 05 §5.12.3). Deleting the row
  * is what let a device offline past retention resurrect the item: push
@@ -226,10 +236,8 @@ export const cleanupExpiredTombstones = async (
       `SELECT si.id, si.blob_key, si.user_id, si.size_bytes, si.server_cursor
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
-       WHERE si.deleted_at IS NOT NULL
-         AND si.blob_key <> ''
-         AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
-             < ? - (COALESCE(e.version_history_days, 0) * 86400)
+       WHERE si.blob_key <> ''
+         AND ${EXPIRED_TOMBSTONE_SQL}
        ORDER BY si.user_id
        LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )

@@ -14,9 +14,7 @@ const nowSec = () => Math.floor(Date.now() / 1000)
 let harness: SqliteD1
 let storage: R2Bucket
 
-// Snapshots, not records: PACKED_KINDS builds crdt_snapshot packs only (a
-// packed record carries no signature, so no client can verify one). The
-// ordering key for this kind is created_at epoch seconds.
+// Snapshots: the ordering key for this kind is created_at epoch seconds.
 const seedVaultWithSnapshots = (
   userId: string,
   vaultId: string,
@@ -170,9 +168,12 @@ describe('runPackBackfill', () => {
       await runPackBackfill(harness.db, storage)
     ]
 
+    // Tick 2 packs the live vault, then spends the rest on the record kind
+    // (#5227): the dead vaults' tombstone markers are not entries, and the
+    // record watermark moves past them.
     expect(ticks).toEqual([
       { packsBuilt: 0, scopesVisited: 3, budgetRemaining: 0 },
-      { packsBuilt: 1, scopesVisited: 1, budgetRemaining: 600 }
+      { packsBuilt: 1, scopesVisited: 3, budgetRemaining: 0 }
     ])
     const packed = harness.raw
       .prepare('SELECT DISTINCT user_id FROM pack_index ORDER BY user_id')
