@@ -19,18 +19,22 @@ not, and changes **nothing** about the pull shape.
 ## 10.2 Routes
 
 **Normative** (`apps/sync-server/src/routes/bootstrap.ts`, mounted at
-`/sync/bootstrap`, `apps/sync-server/src/index.ts:221`):
+`/sync/bootstrap`, `apps/sync-server/src/index.ts:239`):
 
 | Method | Path                    | Purpose             | Line   |
 | ------ | ----------------------- | ------------------- | ------ |
 | POST   | `/sync/bootstrap`       | open                | `:86`  |
-| POST   | `/sync/bootstrap/renew` | extend              | `:154` |
-| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:173` |
+| POST   | `/sync/bootstrap/renew` | extend              | `:160` |
+| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:179` |
 
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
 sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:35-38`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
 (`apps/sync-server/src/routes/bootstrap.ts:45-46`).
+
+Renew and close name their session only through the `X-Memry-Bootstrap-Token`
+header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:160-176`,
+`:179-187`).
 
 ## 10.3 The header
 
@@ -38,6 +42,13 @@ share one rate limiter of **30 requests per 60 s**, device-keyed
 (`packages/contracts/src/bootstrap-api.ts:18`), carrying the `token` from the
 open response **verbatim**, added to elevated requests only
 (`packages/contracts/src/bootstrap-api.ts:21-22`).
+
+**Normative.** `POST /sync/bootstrap/renew` and `POST /sync/bootstrap/close`
+MUST carry the session's token in `X-Memry-Bootstrap-Token`
+(`apps/sync-server/src/routes/bootstrap.ts:167`, `:184`). A request without it
+is answered `401 BOOTSTRAP_SESSION_INVALID`
+(`apps/sync-server/src/routes/bootstrap.ts:66-74`), and a close without it
+leaves the session holding its concurrency slot until the token expires.
 
 **Old servers ignore it and old clients never send it**
 (`packages/contracts/src/bootstrap-api.ts:8-10`), which is what makes the whole
@@ -59,9 +70,9 @@ feature additive.
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `session.expiresAt`           | epoch seconds at which the token stops being honoured (`:23-24`)                                                                                                                                                                 |
 | `session.ttlSeconds`          | mirrors `exp - iat`, for renewal scheduling (`:25-26`)                                                                                                                                                                           |
-| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-102`)                                                      |
-| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:104-108`, absent rows give `0` at `:148`)                                                 |
-| `packs`                       | **reserved; always present, always empty** until the pack pipeline lands (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:150`)                                                                                              |
+| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-108`)                                                      |
+| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:110-114`, absent rows give `0` at `:154`)                                                 |
+| `packs`                       | **reserved; always present, always empty** until the pack pipeline lands (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:156`)                                                                                              |
 | `attachments`                 | **informational only**, absent entirely on deployments that cannot presign (`:39-43`); `chunkHashes` is a first keyset page of at most `CHUNK_HASH_PAGE_LIMIT = 512` (`apps/sync-server/src/routes/bootstrap.ts:51`, `:126-130`) |
 | `attachments.nextChunkCursor` | **names where a continuation page would start; no continuation endpoint exists** (`:64-70`)                                                                                                                                      |
 
@@ -78,7 +89,7 @@ and MUST NOT treat `packs: []` as meaning the vault has no packs — use
 | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already synced this vault                                                                          |
 | `BOOTSTRAP_SESSION_LIMIT`     | 429    | the per-user concurrent cap                                                                                    |
-| `BOOTSTRAP_SESSION_INVALID`   | 401    | expired, forged or revoked token                                                                               |
+| `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:66-74`)          |
 | `BOOTSTRAP_IDENTITY_MISMATCH` | 403    | a valid token presented by another authenticated context; renewal and close require the session's own identity |
 | `BOOTSTRAP_SESSION_EXPIRED`   | 403    | the absolute maximum lifetime is spent                                                                         |
 | `BOOTSTRAP_UNAVAILABLE`       | 501    | the deployment has no HMAC key configured (`apps/sync-server/src/routes/bootstrap.ts:53-64`)                   |

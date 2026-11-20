@@ -209,7 +209,7 @@ plaintext in `data.db`. The exception is bounded:
   when the local record was pending or the remote's title won
   (`crates/memry-core/src/domain/agent_conversation/merge.rs:100-112`,
   `:128-131`). A local title edit seals the title and clears the mark
-  (`crates/memry-core/src/domain/agent_conversation/mod.rs:173-177`).
+  (`crates/memry-core/src/domain/agent_conversation/mod.rs:204-208`).
 - **A sealed value that does not open is an error, whatever its shape.** Under
   the installed key a value of a record that is not pending must open: one
   sealed under another key, an envelope of a version this build does not read
@@ -485,6 +485,34 @@ What an older build does with it depends on whether it keeps unknown keys:
   that push wins the document gate on a newer device, the absent key applies as
   `null` and the duration is lost on that task. Nothing else is corrupted.
 
+**Next occurrence (#3538).** Completing an open repeating task creates the
+next occurrence under a new random task id, on desktop
+(`packages/domain-tasks/src/repeat-completion.ts:96`) and in the core
+(`crates/memry-core/src/domain/tasks/lifecycle.rs:162`). Two devices that
+complete the same occurrence before syncing each create one, and both survive
+the merge. An undo tombstones only the occurrence its own completion created
+(`crates/memry-core/src/domain/tasks/batch.rs:283-285`).
+
+**Series end day (#3538).** The core reads `endDate` as an end **day**. An
+occurrence due on or before that day is in the series
+(`crates/memry-core/src/domain/recurrence.rs:97`, `:121`), and a completion
+creates the next occurrence only up to the end day's local midnight
+(`recurrence.rs:145-147`). Both rules hold in every time zone. Desktop reads
+`endDate` with `new Date`, as UTC midnight of the end day
+(`packages/domain-tasks/src/repeat-completion.ts:28`), and compares local
+instants against it (`packages/domain-tasks/src/parsing/recurrence.ts:132`,
+`:184`). West of UTC, the end day's occurrence falls after UTC midnight, so
+desktop ends the series one occurrence early. East of UTC, a completion made on
+the end day before UTC midnight still creates the next occurrence: in Auckland
+(UTC+13), completing the 03-10 occurrence of a series that ends 03-11 at 09:30
+on 03-11 creates the 03-11 occurrence, and the core creates none. Under UTC the
+two agree. The vectors are
+`packages/contracts/test-vectors/task-completion-spawn.json`
+(`packages/contracts/scripts/vectors/task-completion-spawn.ts`, generated under
+`TZ=UTC`; the `end-date-complete-on-end-day` row completes on the end day),
+verified by `packages/contracts/src/__tests__/task-completion-spawn.test.ts`
+and `crates/memry-core/tests/task_completion_spawn_vectors.rs`.
+
 **`fields` is not one of the sixteen, and chapter 06 §6.3 never merges it.** It is a
 versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
 
@@ -530,7 +558,7 @@ joins the map on every apply path and heals by chapter 06 §6.11
 (`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
 `crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
-`crates/memry-core/src/domain/tasks/lifecycle.rs:35`), pinned by
+`crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.
 
 ### 13.7.4 `project` — `:239-253`
@@ -1437,13 +1465,13 @@ schema requires every key except `clock` and `deletedAt`.
 (`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:86-187`).
 It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
 `trustList` and `pinned`
-(`crates/memry-core/src/domain/agent_conversation/mod.rs:36-38`):
+(`crates/memry-core/src/domain/agent_conversation/mod.rs:38-40`):
 
 1. a remote the schema refuses (a value of the wrong type, or `null` in a key
    the schema does not mark `.nullable()`) is refused before the clock is
    compared, nothing is written, and the pull ledgers it (§13.2.3)
    (`crates/memry-core/src/domain/agent_conversation/merge.rs:65-68`,
-   `crates/memry-core/src/domain/agent_conversation/mod.rs:40-53`);
+   `crates/memry-core/src/domain/agent_conversation/mod.rs:42-55`);
 2. no local record, or a remote clock that dominates the local one, stores the
    remote as sent (`:113-133`, `:178-186`); a local clock that dominates skips
    the remote (`:136-137`). An equal clock over the same payload skips; the
@@ -1499,21 +1527,35 @@ A message is immutable (§13.9):
    the schema does not mark `.nullable()`) is refused, nothing is written,
    and the pull ledgers it (§13.2.3)
    (`crates/memry-core/src/domain/agent_message/merge.rs:54-57`,
-   `crates/memry-core/src/domain/agent_message/mod.rs:37-49`);
+   `crates/memry-core/src/domain/agent_message/mod.rs:41-53`);
 3. a `status` that is not terminal, absent included, refuses the record:
    Electron returns `parse_error` (`:138`), and the Rust core records it
    corrupt without storing its payload
    (`crates/memry-core/src/domain/agent_message/merge.rs:58-63`,
    `crates/memry-core/src/sync/apply/record.rs:193-210`). A writer sends only the
    terminal statuses
-   (`crates/memry-core/src/domain/agent_message/mod.rs:34-35`, `:87`);
+   (`crates/memry-core/src/domain/agent_message/mod.rs:38-39`, `:92`). A
+   message still streaming is stored sealed on the writing device and never
+   queued (`apps/desktop/src/main/agent/storage/message-store.ts:198-237`,
+   `crates/memry-core/src/domain/agent_message/mod.rs:101-117`). It is
+   queued when it turns terminal while the account is paid, or later by the
+   backfill (`crates/memry-core/src/domain/agent_message/mod.rs:132-160`,
+   `crates/memry-core/src/domain/agent_queue.rs:41-61`, `:138-178`). The
+   backfill runs only while the vault's marker says a record may be waiting:
+   a write kept on the device while unpaid sets it, and a vault without the
+   marker row counts as waiting (`crates/memry-core/src/domain/agent_queue.rs:38-39`,
+   `:144-155`). Electron's entitlement gate and backfill have no production
+   caller, so Electron queues no agent record and no live Electron build is
+   an oracle for when one is queued (#3545 D1, D2)
+   (`apps/desktop/src/main/agent/sync/entitlement-gate.ts:20-30`,
+   `apps/desktop/src/main/agent/sync/backfill.ts:20-58`);
 4. without a vault key Electron skips the record (`:140-149`). The Rust core
    stores it pending (§13.2.3) instead;
 5. Electron defers a message whose conversation it does not hold to orphan
    repair (`:108-121`, `:156`). The Rust core has no parent check: it stores
    the message, which a read of its conversation returns once the
    conversation arrives
-   (`crates/memry-core/src/domain/agent_message/mod.rs:118-127`).
+   (`crates/memry-core/src/domain/agent_message/mod.rs:320-329`).
 
 A delete follows chapter 05 §5.8: the message survives a tombstone only when
 its local clock is strictly after the tombstone's (`:187-210`).

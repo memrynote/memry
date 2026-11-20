@@ -303,7 +303,7 @@ pub fn format_size(bytes: usize) -> String {
 }
 
 /// Six characters of `0-9a-z`, the `customAlphabet` prefix of Electron.
-fn random_prefix() -> String {
+pub fn random_prefix() -> String {
     const ALPHABET: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
     uuid::Uuid::new_v4().as_bytes()[..6]
         .iter()

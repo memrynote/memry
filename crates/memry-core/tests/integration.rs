@@ -221,6 +221,8 @@ mod domain_note_positions;
 mod domain_note_tasks;
 #[path = "domain_notes.rs"]
 mod domain_notes;
+#[path = "domain_project_note_property.rs"]
+mod domain_project_note_property;
 #[path = "domain_projects.rs"]
 mod domain_projects;
 #[path = "domain_projects_links.rs"]
@@ -253,6 +255,8 @@ mod domain_search_snippet;
 mod domain_tag_categories;
 #[path = "domain_task_activity.rs"]
 mod domain_task_activity;
+#[path = "domain_task_links.rs"]
+mod domain_task_links;
 #[path = "domain_task_settings.rs"]
 mod domain_task_settings;
 #[path = "domain_task_superseded.rs"]
@@ -265,6 +269,8 @@ mod domain_tasks;
 mod domain_tasks_lifecycle;
 #[path = "domain_tasks_list.rs"]
 mod domain_tasks_list;
+#[path = "domain_tasks_spawn.rs"]
+mod domain_tasks_spawn;
 #[path = "domain_tasks_update.rs"]
 mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]

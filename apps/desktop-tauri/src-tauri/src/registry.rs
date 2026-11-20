@@ -63,6 +63,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
+            // calendar macOS (EventKit)
+            crate::commands::calendar_eventkit::calendar_eventkit_request_access,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -106,6 +108,17 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::folder_view::folder_view_list,
             crate::commands::folder_view::folder_view_set_config,
             crate::commands::folder_view::folder_view_set_view,
+            // home pages (`home_pages_set_cover_upload` is a binary command)
+            crate::commands::home_pages::home_pages_create::<Wry>,
+            crate::commands::home_pages::home_pages_delete::<Wry>,
+            crate::commands::home_pages::home_pages_get::<Wry>,
+            crate::commands::home_pages::home_pages_list::<Wry>,
+            crate::commands::home_pages::home_pages_materialize_cover::<Wry>,
+            crate::commands::home_pages::home_pages_remove_cover::<Wry>,
+            crate::commands::home_pages::home_pages_reorder::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
+            crate::commands::home_pages::home_pages_update::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -267,11 +280,13 @@ pub fn builder() -> Builder<Wry> {
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_ai,
+            crate::commands::settings::settings_get_calendar_provider,
             crate::commands::settings::settings_get_group,
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
             crate::commands::settings::settings_set_ai::<Wry>,
+            crate::commands::settings::settings_set_calendar_provider,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
@@ -340,6 +355,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::templates::templates_get,
             crate::commands::templates::templates_list,
             crate::commands::templates::templates_update,
+            // terminal command
+            crate::commands::terminal_command::settings_get_terminal_command_status,
+            crate::commands::terminal_command::settings_install_terminal_command,
+            crate::commands::terminal_command::settings_set_terminal_command_default_vault,
+            crate::commands::terminal_command::settings_uninstall_terminal_command,
             // unsplash
             crate::commands::unsplash::unsplash_search,
             // updater
@@ -416,6 +436,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // home pages
+            crate::events::HomePageCreatedEvent,
+            crate::events::HomePageDeletedEvent,
+            crate::events::HomePageUpdatedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal

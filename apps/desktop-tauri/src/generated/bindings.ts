@@ -118,6 +118,11 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
+	/**
+	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
+	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
+	 */
+	calendarEventkitRequestAccess: () => __TAURI_INVOKE<EventKitAuthorizationStatus>("calendar_eventkit_request_access"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -207,6 +212,28 @@ export const commands = {
 	 *  own name).
 	 */
 	folderViewSetView: (scope: ViewScope, view: { [key in string]: Value }, previousName: string | null) => __TAURI_INVOKE<null>("folder_view_set_view", { scope, view, previousName }),
+	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
+	/**  `false` when there was no such board. */
+	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
+	homePagesGet: (id: string) => __TAURI_INVOKE<HomePageView | null>("home_pages_get", { id }),
+	/**  Every live board in the order every device agrees on. */
+	homePagesList: () => __TAURI_INVOKE<HomePageView[]>("home_pages_list"),
+	/**
+	 *  Brings the board's cover files in line with its cover. Until Step 30f syncs cover bytes,
+	 *  this only prunes files the cover no longer names.
+	 */
+	homePagesMaterializeCover: (id: string) => __TAURI_INVOKE<null>("home_pages_materialize_cover", { id }),
+	homePagesRemoveCover: (id: string) => __TAURI_INVOKE<HomePageView>("home_pages_remove_cover", { id }),
+	/**  Puts the boards in the order of `ids`. */
+	homePagesReorder: (ids: string[]) => __TAURI_INVOKE<null>("home_pages_reorder", { ids }),
+	/**
+	 *  A board's new banner from a wash, a link, Unsplash or an image already in the vault. Every
+	 *  image is copied into the board's own folder and the board saved in the same call.
+	 */
+	homePagesSetCover: (id: string, source: HomePageCoverSourceInput) => __TAURI_INVOKE<SetCoverOutcome>("home_pages_set_cover", { id, source }),
+	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
+	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
+	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -623,6 +650,11 @@ export const commands = {
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
 	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
+	/**
+	 *  A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+	 *  this build does not know (`settings:getCalendarProviderSettings`).
+	 */
+	settingsGetCalendarProvider: (provider: string) => __TAURI_INVOKE<Value | null>("settings_get_calendar_provider", { provider }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -643,6 +675,12 @@ export const commands = {
 	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
+	/**
+	 *  Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+	 *  provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+	 *  `settings_invalid_value`, and nothing is written.
+	 */
+	settingsSetCalendarProvider: (provider: string, updates: Value) => __TAURI_INVOKE<null>("settings_set_calendar_provider", { provider, updates }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -789,6 +827,10 @@ export const commands = {
 	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
 	/**  Saves the fields `input` names; a built-in is refused. */
 	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
+	settingsGetTerminalCommandStatus: () => __TAURI_INVOKE<TerminalCommandStatus>("settings_get_terminal_command_status"),
+	settingsInstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_install_terminal_command"),
+	settingsSetTerminalCommandDefaultVault: (vaultPath: string) => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_set_terminal_command_default_vault", { vaultPath }),
+	settingsUninstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_uninstall_terminal_command"),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -934,6 +976,9 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
+	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
+	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1461,6 +1506,20 @@ export type ContextMenuItem = {
 };
 
 /**
+ *  `HomePageCoverFailure`: why a picked cover was not set. Each picker tab
+ *  shows the ones it knows.
+ */
+export type CoverFailure = "not-configured" | "offline" | "rate-limited" | "failed" | "write-failed" | "not-an-image" | "too-large";
+
+/**  `HomePageSetCoverFramingSchema.changes`: only the fields that changed. */
+export type CoverFramingInput = {
+	focusX?: number | null,
+	focusY?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+};
+
+/**
  *  Whether this install's edits reach disk (`crdt:get-health`). Pulled by the renderer: the
  *  verdict lands while the window loads, before anything listens.
  */
@@ -1673,6 +1732,9 @@ export type ErrorDetail = {
 
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
+
+/**  `EKAuthorizationStatus` for events. `write_only` (macOS 14+) cannot read. */
+export type EventKitAuthorizationStatus = "not_determined" | "restricted" | "denied" | "write_only" | "full_access";
 
 export type ExistingTagView = {
 	key: string,
@@ -2018,6 +2080,66 @@ export type HeatmapEntryView = {
 	date: string,
 	characterCount: number,
 	level: number,
+};
+
+/**  `HomePageCoverSource` less `upload`, which is the binary command. */
+export type HomePageCoverSourceInput = { kind: "wash"; id: string } | { kind: "url"; url: string } | { kind: "unsplash"; photo: UnsplashPhoto } | { kind: "vaultFile"; ownerNoteId: string; filename: string };
+
+/**
+ *  `HomePageCoverSync`: the fields the band reads. The record keeps every
+ *  other key a newer build wrote.
+ */
+export type HomePageCoverView = {
+	ref: string,
+	focus?: number | null,
+	focusX?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+	credit?: string | null,
+	creditUrl?: string | null,
+	attachmentId?: string | null,
+};
+
+/**  `HomePageCreateSchema`. */
+export type HomePageCreateInput = {
+	name: string,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board was made (`home-pages:created`). */
+export type HomePageCreatedEvent = {
+	id: string,
+};
+
+/**  A board was deleted (`home-pages:deleted`). */
+export type HomePageDeletedEvent = {
+	id: string,
+};
+
+/**  `HomePageUpdateSchema`: an absent field stays as it is. */
+export type HomePageUpdateInput = {
+	id: string,
+	name?: string | null,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board's name, widgets, position or cover changed (`home-pages:updated`). */
+export type HomePageUpdatedEvent = {
+	id: string,
+};
+
+/**  `HomePage`. */
+export type HomePageView = {
+	id: string,
+	name: string,
+	icon?: string | null,
+	position: number | null,
+	widgets: WidgetView[],
+	cover?: HomePageCoverView | null,
 };
 
 export type HttpMethod = "GET" | "POST";
@@ -3498,6 +3620,9 @@ export type SelectVaultResponse = {
 /**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
 export type SessionExpiredReason = "refresh_rejected";
 
+/**  What a set-cover call came to: `HomePageSetCoverResult`. */
+export type SetCoverOutcome = { status: "saved"; page: HomePageView } | { status: "failed"; reason: CoverFailure };
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -4062,6 +4187,39 @@ export type TemplateView = {
 };
 
 /**
+ *  `TerminalCommandMutationResult`: `{ success: true, status }` or
+ *  `{ success: false, error, status? }`.
+ */
+export type TerminalCommandMutationResult = {
+	success: boolean,
+	error?: string | null,
+	status?: TerminalCommandStatus | null,
+};
+
+export type TerminalCommandPlatform = "darwin" | "linux" | "win32";
+
+/**  `TerminalCommandStatus` (`packages/rpc/src/settings.ts`). */
+export type TerminalCommandStatus = {
+	supported: boolean,
+	installed: boolean,
+	command: string,
+	platform: TerminalCommandPlatform,
+	shimPath: string,
+	binDir: string,
+	targetPath: string,
+	inPath: boolean,
+	pathHint: string | null,
+	defaultVaultPath: string | null,
+	vaults: TerminalCommandVault[],
+};
+
+export type TerminalCommandVault = {
+	path: string,
+	name: string,
+	isDefault: boolean,
+};
+
+/**
  *  The outcome of the settings screen's Test button. `detail` is the translated reason of a
  *  failure, `None` when `ok`.
  */
@@ -4539,6 +4697,34 @@ export type VoiceRecordingReadiness = {
 export type WaitingMove = {
 	noteId: string,
 	path: string,
+};
+
+/**
+ *  `WidgetInstanceSchema`. Written back in its key order, which is the order
+ *  `JSON.stringify` gives the parsed object in Electron.
+ */
+export type WidgetInput = {
+	id: string,
+	type: string,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	config?: { [key in string]: Value },
+};
+
+/**
+ *  `WidgetInstance` as the grid reads it. A widget of a type this build does
+ *  not know comes through like any other.
+ */
+export type WidgetView = {
+	id: string,
+	type: string,
+	x: number | null,
+	y: number | null,
+	w: number | null,
+	h: number | null,
+	config: { [key in string]: Value },
 };
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */
