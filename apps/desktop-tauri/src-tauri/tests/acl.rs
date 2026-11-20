@@ -40,23 +40,46 @@ fn strings(value: &Value) -> BTreeSet<String> {
         .collect()
 }
 
-/// Every permission of `permissions/`, by identifier, with the commands it allows.
+/// Every permission of `permissions/` and `permissions/e2e/`, by identifier, with the commands it
+/// allows.
 fn permissions() -> BTreeMap<String, BTreeSet<String>> {
     let mut found = BTreeMap::new();
-    for entry in fs::read_dir(src_tauri("permissions")).expect("permissions/") {
-        let name = entry.expect("dir entry").file_name();
-        let name = name.to_str().expect("utf-8 file name");
-        assert!(name.ends_with(".json"), "permissions/{name}: only JSON");
-        for permission in read_json(&format!("permissions/{name}"))["permission"]
-            .as_array()
-            .expect("[[permission]]")
-        {
-            let id = permission["identifier"].as_str().expect("identifier");
-            let allowed = strings(&permission["commands"]["allow"]);
-            assert!(found.insert(id.to_owned(), allowed).is_none(), "{id} twice");
+    for dir in ["permissions", "permissions/e2e"] {
+        for entry in fs::read_dir(src_tauri(dir)).expect(dir) {
+            let entry = entry.expect("dir entry");
+            if entry.file_type().expect("file type").is_dir() {
+                continue;
+            }
+            let name = entry.file_name();
+            let name = name.to_str().expect("utf-8 file name");
+            assert!(name.ends_with(".json"), "{dir}/{name}: only JSON");
+            for permission in read_json(&format!("{dir}/{name}"))["permission"]
+                .as_array()
+                .expect("[[permission]]")
+            {
+                let id = permission["identifier"].as_str().expect("identifier");
+                let allowed = strings(&permission["commands"]["allow"]);
+                assert!(found.insert(id.to_owned(), allowed).is_none(), "{id} twice");
+            }
         }
     }
     found
+}
+
+/// `generate_context!` embeds every permission `tauri-build` read, granted or not, and the
+/// capabilities, so these files are what the binary carries.
+const EMBEDDED_ACL: [&str; 2] = [
+    include_str!(concat!(env!("OUT_DIR"), "/acl-manifests.json")),
+    include_str!(concat!(env!("OUT_DIR"), "/capabilities.json")),
+];
+
+#[test]
+fn only_an_e2e_build_embeds_e2e_commands() {
+    assert_eq!(
+        EMBEDDED_ACL.iter().any(|acl| acl.contains("e2e_")),
+        cfg!(feature = "e2e"),
+        "a build without the e2e feature must embed no e2e_ command"
+    );
 }
 
 /// The names in the `e2e_commands!` call of `src/e2e/commands.rs`, read from the source because
@@ -99,7 +122,7 @@ fn every_permission_names_a_registered_command() {
     let app_all = &permissions["app-all"];
     let e2e = e2e_names();
     assert!(!e2e.is_empty());
-    assert_eq!(permissions["e2e-all"], e2e, "permissions/e2e.json");
+    assert_eq!(permissions["e2e-all"], e2e, "permissions/e2e/e2e.json");
     #[cfg(feature = "e2e")]
     assert_eq!(
         e2e,
@@ -336,6 +359,8 @@ fn each_window_reaches_only_its_commands_in_a_release_build() {
     check_table(false);
 }
 
+/// Only an `e2e` build has the `e2e-all` permission to grant (`build.rs`).
+#[cfg(feature = "e2e")]
 #[test]
 fn each_window_reaches_only_its_commands_in_an_e2e_build() {
     check_table(true);
