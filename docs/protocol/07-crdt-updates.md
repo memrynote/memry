@@ -528,20 +528,42 @@ snapshot first when:
 Otherwise pull incrementals from `since = cursor`.
 
 **A probe can settle a document without a pull.** The Rust core probes every
-document that holds a cursor through the batch route with `limit: 1`
-(`crates/memry-core/src/sync/body_pull/probe.rs:56-63`) and sends that
+document it pulls through the batch route, from its cursor or from `0` when it
+holds none, with the sweep `limit` of §7.3.1
+(`crates/memry-core/src/sync/body_pull/probe.rs:59`,
+`crates/memry-core/src/sync/body_pull/probe.rs:67-72`), and sends that
 document no further request when the answer proves the pull would fetch
-nothing (`crates/memry-core/src/sync/body_pull.rs:284-286`). It is proven only
-when all of these hold (`crates/memry-core/src/sync/body_pull/probe.rs:67-90`):
-the response carries a `snapshotMeta` object, so the server is new enough to
-advertise its snapshots; the document is a key of `notes`, with no update and
-`hasMore: false`; and either the document has no server snapshot, or the cursor
-is above `0`, at or past the snapshot's `sequenceNum`, and the snapshot's
-`revision` is the one stored (`baseline_due` is false). Anything else, a failed
-probe included, takes the ordinary pull, so a missed skip costs one request
-and a skip never hides an update or a baseline. A resumed first sync counts
+nothing (`crates/memry-core/src/sync/body_pull.rs:292-294`). It is proven only
+when the answer is trusted and all of these hold
+(`crates/memry-core/src/sync/body_pull/probe.rs:109-121`): no update and
+`hasMore: false`; the document holds a cursor; and either the document has no
+server snapshot, or the cursor is at or past the snapshot's `sequenceNum` and
+the snapshot's `revision` is the one stored (`baseline_due` is false). A held
+revision is a taken baseline at any cursor, `0` included: a snapshot pushed
+before any update row has `sequenceNum` 0. Anything else, a failed probe
+included, takes the ordinary pull, so a missed skip costs one request and a
+skip never hides an update or a baseline.
+
+**A trusted answer** (`crates/memry-core/src/sync/body_pull/probe.rs:81-108`)
+has a `snapshotMeta` object, so the server is new enough to advertise its
+snapshots; the document's `snapshotMeta` entry absent, `null` or parsed; the
+document a key of `notes` whose entry is a whole page: `updates` an array
+whose every entry parses, and `hasMore` a boolean; and, when no snapshot is
+advertised, a `floor` at or below `since`, since a log purged above `since`
+with no snapshot to take instead contradicts §7.11.
+
+**The probe's answer is the first page** (#5293). A trusted answer decides §7.8 for that
+document: a baseline when the advertised `revision` is not the one stored,
+whatever the cursor, and none when no server snapshot is advertised. With no
+baseline due, the answer's page is applied as the first page and paging
+continues on `hasMore`
+(`crates/memry-core/src/sync/body_pull.rs:299-317`,
+`crates/memry-core/src/sync/body_pull.rs:351-353`). The page moves to the
+worker that pulls the document and is dropped once applied. After a baseline, or
+without a trusted answer, the document pages through the single-document
+route as before. A resumed first sync counts
 the settled documents as done before its first body request
-(`crates/memry-core/src/sync/first_sync/body_pass.rs:58-70`).
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:186-193`).
 
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark

@@ -153,6 +153,7 @@ fn body_pull(db: &Db, transport: Arc<FakeTransport>) -> BodyPull {
 
 fn empty_log() -> Vec<Result<HttpResponse, memry_core::api::errors::TransportError>> {
     vec![
+        http_fakes::probe_refused(),
         response(200, &json!({"snapshot": null}).to_string()),
         response(200, &json!({"updates": [], "hasMore": false}).to_string()),
     ]
@@ -290,14 +291,18 @@ async fn an_install_left_without_body_state_heals_on_the_next_pass() {
     assert_eq!(reindexed_hits(&dir, WORD), Vec::<String>::new());
 
     let typed = body_update(&format!("I jotted down the router password {WORD} here."));
-    let mut script = Vec::new();
+    let mut script = vec![http_fakes::probe_refused()];
     // Swept in id order: the journal's log holds the text, the note's is empty.
     script.push(response(200, &json!({"snapshot": null}).to_string()));
     script.push(response(
         200,
         &json!({"updates": [{"sequenceNum": 1, "data": BASE64.encode(&typed), "signerDeviceId": "device-b", "createdAt": 1}], "hasMore": false}).to_string(),
     ));
-    script.extend(empty_log());
+    script.push(response(200, &json!({"snapshot": null}).to_string()));
+    script.push(response(
+        200,
+        &json!({"updates": [], "hasMore": false}).to_string(),
+    ));
     let transport = FakeTransport::new(script);
     let healed = body_step::run(&db, &body_pull(&db, transport.clone()))
         .await
@@ -365,6 +370,7 @@ async fn an_existing_note_edited_on_desktop(
         &body_pull(
             &db,
             FakeTransport::new(vec![
+                http_fakes::probe_refused(),
                 response(200, &json!({"snapshot": null}).to_string()),
                 response(
                     200,

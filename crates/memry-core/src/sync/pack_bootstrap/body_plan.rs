@@ -110,7 +110,7 @@ pub fn current(check: &BodyCheck, cursor: Option<i64>, stored_revision: Option<&
         ServerSnapshot::Some {
             sequence_num,
             revision,
-        } => cursor > 0 && cursor >= *sequence_num && stored_revision == Some(revision.as_str()),
+        } => cursor >= *sequence_num && stored_revision == Some(revision.as_str()),
         ServerSnapshot::Unknown => false,
     }
 }
@@ -164,7 +164,9 @@ mod tests {
         assert!(!current(&check(ServerSnapshot::None, None), Some(9), None));
         assert!(current(&check(snap(3), Some(5)), Some(5), Some("r")));
         assert!(!current(&check(snap(3), Some(5)), Some(5), Some("old")));
-        assert!(!current(&check(snap(0), Some(0)), Some(0), Some("r")));
+        // A snapshot pushed before any update row sits at 0; held, it is all.
+        assert!(current(&check(snap(0), Some(0)), Some(0), Some("r")));
+        assert!(!current(&check(snap(0), Some(0)), Some(0), None));
         assert!(!current(
             &check(ServerSnapshot::Unknown, Some(5)),
             Some(5),
