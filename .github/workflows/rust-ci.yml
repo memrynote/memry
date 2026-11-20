@@ -48,6 +48,11 @@ on:
   # none of them; a SHA a scheduled run already finished is skipped.
   schedule:
     - cron: '41 */6 * * *'
+    # Daily cache warm: runs the `checks` leg of each OS the merge queue runs, and saves its cargo cache,
+    # so merge groups and PRs restore a warm cache. It is also a normal scheduled run (a post-merge run
+    # of the SHA when no earlier scheduled run passed it). The cron string is matched in the concurrency
+    # group and in the plan job's WARM; scripts/ci-tier.test.mjs checks that they agree.
+    - cron: '27 3 * * *'
 
 permissions:
   contents: read
@@ -56,7 +61,7 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && '-schedule') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && (github.event.schedule == '27 3 * * *' && '-schedule-warm' || '-schedule')) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
   # A push run of feat/tauri-v2 finishes (#5035): after a merge the queue tested it runs only plan and
   # gate (post-merge.sh), and a full run, after a cache-key change, saves the caches PRs restore. A
   # cancelled one saved none, and the next push had to run every leg again. A burst stays bounded: a
@@ -97,6 +102,7 @@ jobs:
       macos: ${{ steps.tier.outputs.macos }}
       linux_arm64: ${{ steps.tier.outputs.rust_linux_arm64 }}
       legs: ${{ steps.matrix.outputs.legs }}
+      warm: ${{ steps.matrix.outputs.warm }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       # The CI definitions and the Rust sources, whose `#[cfg(<os>)] mod` declarations tell the tier
@@ -121,7 +127,8 @@ jobs:
           post-merge: 'true'
 
       # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (#5035): the scheduled
-      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing.
+      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing. The
+      # daily cache-warm run (WARM) adds the `checks` leg of each merge-queue OS to either.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -131,10 +138,12 @@ jobs:
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
           POST_MERGE: ${{ steps.tier.outputs.post_merge }}
+          WARM: ${{ github.event_name == 'schedule' && github.event.schedule == '27 3 * * *' }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg warm "$WARM" \
             -f .github/actions/ci-tier/rust-legs.jq)
           echo "legs=$legs" >> "$GITHUB_OUTPUT"
+          echo "warm=$WARM" >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
@@ -151,7 +160,7 @@ jobs:
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
     needs: plan
-    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
+    if: ${{ !cancelled() && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
     # Each macOS leg runs every step in one job. With a cold cargo cache the Intel leg ran past 65
     # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
@@ -244,8 +253,11 @@ jobs:
           toolchain: '1.98.1'
           components: rustfmt, clippy
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
+      # The repo's cache cap is 10 GB and the `checks` entries are 2.5-3.3 GB each, so each OS has one
+      # entry and only its `checks` leg saves it: every other partition restores it and writes nothing.
+      # macOS legs (`all`) restore and never save: 2.5 GB more than the cap leaves. It saves on push,
+      # dispatch, the daily warm run and PRs into main. A tiered PR (base not main) and a merge-queue
+      # run restore what those saved and write nothing.
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -257,9 +269,11 @@ jobs:
           workspaces: crates
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
-          # The two test partitions build the same binaries and share one entry.
-          key: ${{ matrix.os }}-${{ matrix.part }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          # No partition in the key: tests and models restore the entry their OS's checks leg saved.
+          key: ${{ matrix.os }}-checks
+          save-if: ${{ matrix.part == 'checks' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          # The warm run exists to save: a flaky step must not lose its entry.
+          cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
