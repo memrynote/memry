@@ -6,14 +6,14 @@ use std::collections::{HashMap, HashSet};
 use jiff::tz::TimeZone;
 use memry_core::markdown::frontmatter::{js_trim, number_to_string};
 
+use super::ITEM_COST;
 use super::dates::{duration_ms, parse_instant, split_date_time};
 use super::order::{OrderKey, key_bytes, order_key};
 use super::rrule::rrule_to_repeat;
-use super::{Budget, ITEM_COST};
 use crate::import::csv_lex::step;
 use crate::import::messages::{ImportMessage, codes};
 use crate::import::todoist::json_number;
-use crate::import::{ImportedRepeat, ImportedStatus, StatusKind};
+use crate::import::{Budget, ImportedRepeat, ImportedStatus, StatusKind, WARNING_COST};
 use crate::web::extract::utils::date::iso_string;
 
 const INBOX: &str = "Inbox";
@@ -116,7 +116,7 @@ pub(super) fn map_rows(
 ) -> Result<Plan, String> {
     let mut warnings = Vec::new();
     let mut warn = |budget: &mut Budget, warning: ImportMessage| -> Result<(), String> {
-        budget.charge(super::WARNING_COST + 2 * warning.message.len())?;
+        budget.charge(WARNING_COST + 2 * warning.message.len())?;
         warnings.push(warning);
         Ok(())
     };

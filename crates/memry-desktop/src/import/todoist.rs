@@ -24,9 +24,9 @@ use tokio_util::sync::CancellationToken;
 use super::csv_lex::{lex, step};
 use super::messages::{ImportMessage, ImportText, codes, status};
 use super::{
-    FileSpec, ImportContext, ImportError, ImportInput, ImportPhase, ImportPreview, ImportSink,
-    ImportedProjectTask, Importer, ImporterMeta, MAX_PLANNED_BYTES, PreviewCount, PreviewGroup,
-    base_name, read_source_text,
+    Budget, FileSpec, ImportContext, ImportError, ImportInput, ImportPhase, ImportPreview,
+    ImportSink, ImportedProjectTask, Importer, ImporterMeta, MAX_PLANNED_BYTES, PreviewGroup,
+    SAMPLE_MAX, WARNING_COST, base_name, count, message, read_source_text,
 };
 use comment::comment_to_markdown;
 use dates::resolve_due_date;
@@ -34,11 +34,8 @@ use dates::resolve_due_date;
 /// What a planned task costs besides the text it stores: the struct, its strings' headers and
 /// the allocator's overhead.
 const ITEM_COST: usize = 512;
-/// What a warning costs besides its text, which it stores twice (message and params).
-const WARNING_COST: usize = 256;
 // The budget holds 300,000 tasks with 300 bytes of text and one warning each.
 const _: () = assert!(MAX_PLANNED_BYTES / (ITEM_COST + 300 + WARNING_COST + 2 * 100) >= 300_000);
-const SAMPLE_MAX: usize = 5;
 const DEFAULT_PROJECT: &str = "Imported Todoist Project";
 const TOO_MANY: &str = "The picked Todoist files hold more tasks than one import can take. \
                         Import fewer files at a time, or split the export into smaller files.";
@@ -140,7 +137,7 @@ struct Reader<'b> {
     /// `stack`, by indent level, as (level, task) in strictly increasing level.
     stack: Vec<(u64, usize)>,
     last_task: Option<usize>,
-    budget: &'b mut usize,
+    budget: &'b mut Budget,
     failure: Option<&'static str>,
 }
 
@@ -176,11 +173,8 @@ impl Reader<'_> {
     }
 
     fn charge(&mut self, cost: usize) -> bool {
-        match self.budget.checked_sub(cost) {
-            Some(left) => *self.budget = left,
-            None => {
-                self.failure.get_or_insert(TOO_MANY);
-            }
+        if let Err(failure) = self.budget.charge(cost) {
+            self.failure.get_or_insert(failure);
         }
         self.failure.is_none()
     }
@@ -348,7 +342,7 @@ fn project_name(path: &Path) -> String {
 }
 
 /// Reads and plans one file, charging `budget` only when the whole file fits.
-fn plan_file(path: &Path, today: NaiveDate, budget: &mut usize) -> Result<Plan, ImportMessage> {
+fn plan_file(path: &Path, today: NaiveDate, budget: &mut Budget) -> Result<Plan, ImportMessage> {
     let text = read_source_text(path).map_err(|error| message(error.to_string()))?;
     let text = text.strip_prefix('\u{FEFF}').unwrap_or(&text);
     let mut left = *budget;
@@ -383,14 +377,6 @@ fn plan_file(path: &Path, today: NaiveDate, budget: &mut usize) -> Result<Plan, 
     let plan = reader.plan;
     *budget = left;
     Ok(plan)
-}
-
-fn message(text: String) -> ImportMessage {
-    ImportMessage {
-        code: None,
-        message: text,
-        params: None,
-    }
 }
 
 pub struct TodoistImporter {
@@ -441,7 +427,7 @@ impl Importer for TodoistImporter {
         cancel: &CancellationToken,
     ) -> Result<ImportPreview, ImportError> {
         let today = self.today();
-        let mut budget = self.budget;
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let mut groups = Vec::new();
         for source in &input.source_paths {
             if cancel.is_cancelled() {
@@ -497,7 +483,7 @@ impl Importer for TodoistImporter {
         ctx.status(status("todoistImporting"));
 
         let today = self.today();
-        let mut budget = self.budget;
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let plans: Vec<(String, String, Result<Plan, ImportMessage>)> = input
             .source_paths
             .iter()
@@ -564,12 +550,5 @@ impl Importer for TodoistImporter {
             }
         }
         Ok(())
-    }
-}
-
-fn count(label_key: &str, value: usize) -> PreviewCount {
-    PreviewCount {
-        label_key: label_key.to_owned(),
-        value,
     }
 }

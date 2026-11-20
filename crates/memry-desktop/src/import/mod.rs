@@ -60,6 +60,50 @@ pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
 /// typical size; Electron had no bound.
 pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
 
+/// What a warning costs a plan besides its text.
+pub(crate) const WARNING_COST: usize = 256;
+
+/// The titles a preview group samples.
+pub(crate) const SAMPLE_MAX: usize = 5;
+
+/// The bytes one run's plans may still take, and the text a file fails with when its plan does not
+/// fit. Raindrop, Todoist and TickTick plan every picked file before the first write, so one
+/// budget spans the run.
+#[derive(Clone, Copy)]
+pub(crate) struct Budget {
+    left: usize,
+    too_many: &'static str,
+}
+
+impl Budget {
+    pub(crate) fn new(left: usize, too_many: &'static str) -> Self {
+        Self { left, too_many }
+    }
+
+    /// Takes `cost`; past what is left it takes nothing and returns the failure text.
+    pub(crate) fn charge(&mut self, cost: usize) -> Result<(), &'static str> {
+        self.left = self.left.checked_sub(cost).ok_or(self.too_many)?;
+        Ok(())
+    }
+}
+
+/// A message with neither a code nor params.
+pub(crate) fn message(text: String) -> ImportMessage {
+    ImportMessage {
+        code: None,
+        message: text,
+        params: None,
+    }
+}
+
+/// One count of a preview group.
+pub(crate) fn count(label_key: &str, value: usize) -> PreviewCount {
+    PreviewCount {
+        label_key: label_key.to_owned(),
+        value,
+    }
+}
+
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -293,3 +293,114 @@ fn a_reminder_past_the_date_range_fails_its_file() {
         );
     }
 }
+
+/// Names ICU accepts and jiff's tzdb lacks, one test each: the local `month-day hour:minute` that
+/// Node's ICU gives for 12:00Z on 2020-07-01, 2020-01-01 and 2020-03-15. US daylight time began on
+/// 03-08 and the `SystemV/*` rule begins on 04-26, so those zones are on standard time on 03-15.
+mod legacy_zones {
+    use super::*;
+
+    const INSTANTS: [&str; 3] = [
+        "2020-07-01T12:00:00Z",
+        "2020-01-01T12:00:00Z",
+        "2020-03-15T12:00:00Z",
+    ];
+
+    fn local_at(zone: &str, instants: &[&str]) -> Vec<String> {
+        let cells: Vec<(&str, &str, &str)> =
+            instants.iter().map(|at| (*at, zone, "false")).collect();
+        dues(&cells, None)
+            .into_iter()
+            .map(|(date, time)| {
+                format!(
+                    "{} {}",
+                    &date.as_str().unwrap()[5..],
+                    time.as_str().unwrap()
+                )
+            })
+            .collect()
+    }
+
+    macro_rules! zones {
+        ($($test:ident $zone:literal $want:expr;)*) => {$(
+            #[test]
+            fn $test() {
+                assert_eq!(local_at($zone, &INSTANTS), $want, $zone);
+            }
+        )*};
+    }
+
+    zones! {
+        act "ACT" ["07-01 21:30", "01-01 21:30", "03-15 21:30"];
+        aet "AET" ["07-01 22:00", "01-01 23:00", "03-15 23:00"];
+        agt "AGT" ["07-01 09:00", "01-01 09:00", "03-15 09:00"];
+        art "ART" ["07-01 14:00", "01-01 14:00", "03-15 14:00"];
+        ast "AST" ["07-01 04:00", "01-01 03:00", "03-15 04:00"];
+        bet "BET" ["07-01 09:00", "01-01 09:00", "03-15 09:00"];
+        bst "BST" ["07-01 18:00", "01-01 18:00", "03-15 18:00"];
+        cat "CAT" ["07-01 14:00", "01-01 14:00", "03-15 14:00"];
+        cnt "CNT" ["07-01 09:30", "01-01 08:30", "03-15 09:30"];
+        cst "CST" ["07-01 07:00", "01-01 06:00", "03-15 07:00"];
+        ctt "CTT" ["07-01 20:00", "01-01 20:00", "03-15 20:00"];
+        eat "EAT" ["07-01 15:00", "01-01 15:00", "03-15 15:00"];
+        ect "ECT" ["07-01 14:00", "01-01 13:00", "03-15 13:00"];
+        iet "IET" ["07-01 08:00", "01-01 07:00", "03-15 08:00"];
+        ist "IST" ["07-01 17:30", "01-01 17:30", "03-15 17:30"];
+        jst "JST" ["07-01 21:00", "01-01 21:00", "03-15 21:00"];
+        mit "MIT" ["07-02 01:00", "01-02 02:00", "03-16 02:00"];
+        net "NET" ["07-01 16:00", "01-01 16:00", "03-15 16:00"];
+        nst "NST" ["07-02 00:00", "01-02 01:00", "03-16 01:00"];
+        plt "PLT" ["07-01 17:00", "01-01 17:00", "03-15 17:00"];
+        pnt "PNT" ["07-01 05:00", "01-01 05:00", "03-15 05:00"];
+        prt "PRT" ["07-01 08:00", "01-01 08:00", "03-15 08:00"];
+        pst "PST" ["07-01 05:00", "01-01 04:00", "03-15 05:00"];
+        sst "SST" ["07-01 23:00", "01-01 23:00", "03-15 23:00"];
+        vst "VST" ["07-01 19:00", "01-01 19:00", "03-15 19:00"];
+        us_pacific_new "US/Pacific-New" ["07-01 05:00", "01-01 04:00", "03-15 05:00"];
+        canada_east_saskatchewan "Canada/East-Saskatchewan" ["07-01 06:00", "01-01 06:00", "03-15 06:00"];
+        systemv_ast4 "SystemV/AST4" ["07-01 08:00", "01-01 08:00", "03-15 08:00"];
+        systemv_cst6 "SystemV/CST6" ["07-01 06:00", "01-01 06:00", "03-15 06:00"];
+        systemv_est5 "SystemV/EST5" ["07-01 07:00", "01-01 07:00", "03-15 07:00"];
+        systemv_hst10 "SystemV/HST10" ["07-01 02:00", "01-01 02:00", "03-15 02:00"];
+        systemv_mst7 "SystemV/MST7" ["07-01 05:00", "01-01 05:00", "03-15 05:00"];
+        systemv_pst8 "SystemV/PST8" ["07-01 04:00", "01-01 04:00", "03-15 04:00"];
+        systemv_yst9 "SystemV/YST9" ["07-01 03:00", "01-01 03:00", "03-15 03:00"];
+        systemv_ast4adt "SystemV/AST4ADT" ["07-01 09:00", "01-01 08:00", "03-15 08:00"];
+        systemv_cst6cdt "SystemV/CST6CDT" ["07-01 07:00", "01-01 06:00", "03-15 06:00"];
+        systemv_est5edt "SystemV/EST5EDT" ["07-01 08:00", "01-01 07:00", "03-15 07:00"];
+        systemv_mst7mdt "SystemV/MST7MDT" ["07-01 06:00", "01-01 05:00", "03-15 05:00"];
+        systemv_pst8pdt "SystemV/PST8PDT" ["07-01 05:00", "01-01 04:00", "03-15 04:00"];
+        systemv_yst9ydt "SystemV/YST9YDT" ["07-01 04:00", "01-01 03:00", "03-15 03:00"];
+    }
+
+    #[test]
+    fn a_legacy_zone_name_matches_without_regard_to_case() {
+        let want = |zone: &str| local_at(zone, &INSTANTS);
+        assert_eq!(want("us/pacific-new"), want("US/Pacific-New"));
+        assert_eq!(want("pst"), want("PST"));
+        assert_eq!(want("SYSTEMV/pst8pdt"), want("SystemV/PST8PDT"));
+        assert_eq!(want("pst"), ["07-01 05:00", "01-01 04:00", "03-15 05:00"]);
+        assert_eq!(
+            want("SYSTEMV/pst8pdt"),
+            ["07-01 05:00", "01-01 04:00", "03-15 04:00"]
+        );
+    }
+
+    #[test]
+    fn a_systemv_zone_changes_on_the_last_sundays_of_april_and_october_at_02_00() {
+        let edges = [
+            "2020-04-26T09:59:00Z",
+            "2020-04-26T10:00:00Z",
+            "2020-10-25T08:59:00Z",
+            "2020-10-25T09:00:00Z",
+        ];
+        assert_eq!(
+            local_at("SystemV/PST8PDT", &edges),
+            ["04-26 01:59", "04-26 03:00", "10-25 01:59", "10-25 01:00"]
+        );
+        assert_eq!(
+            local_at("SystemV/AST4ADT", &edges),
+            ["04-26 06:59", "04-26 07:00", "10-25 04:59", "10-25 05:00"]
+        );
+    }
+}

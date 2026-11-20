@@ -20,9 +20,9 @@ use tokio_util::sync::CancellationToken;
 use super::csv_lex::{lex, step};
 use super::messages::{ImportMessage, ImportText, codes, status};
 use super::{
-    BookmarkMetadata, FileSpec, ImportContext, ImportError, ImportInput, ImportPhase,
+    BookmarkMetadata, Budget, FileSpec, ImportContext, ImportError, ImportInput, ImportPhase,
     ImportPreview, ImportSink, ImportedBookmark, Importer, ImporterMeta, MAX_PLANNED_BYTES,
-    PreviewCount, PreviewGroup, base_name, read_source_text,
+    PreviewGroup, SAMPLE_MAX, WARNING_COST, base_name, count, read_source_text,
 };
 use crate::web::extract::utils::date::parse_date;
 
@@ -31,11 +31,8 @@ use crate::web::extract::utils::date::parse_date;
 const ITEM_COST: usize = 1024;
 /// What one tag costs besides its text.
 const TAG_COST: usize = 48;
-/// What a skipped row costs: its number, and the warning the preview renders from it.
-const WARNING_COST: usize = 256;
 // The budget holds 300,000 bookmarks of 300 bytes of text, stored twice, and three tags each.
 const _: () = assert!(MAX_PLANNED_BYTES / (ITEM_COST + 2 * 300 + 3 * TAG_COST) >= 300_000);
-const SAMPLE_MAX: usize = 5;
 const UNSORTED: &str = "unsorted";
 const TOO_MANY: &str = "The picked Raindrop files hold more bookmarks than one import can take. \
                         Import fewer files at a time, or split the export into smaller files.";
@@ -91,7 +88,7 @@ struct Reader<'b> {
     any_cell: bool,
     rows: usize,
     plan: Plan,
-    budget: &'b mut usize,
+    budget: &'b mut Budget,
     too_large: bool,
 }
 
@@ -130,10 +127,7 @@ impl Reader<'_> {
     }
 
     fn charge(&mut self, cost: usize) -> bool {
-        match self.budget.checked_sub(cost) {
-            Some(left) => *self.budget = left,
-            None => self.too_large = true,
-        }
+        self.too_large |= self.budget.charge(cost).is_err();
         !self.too_large
     }
 
@@ -238,7 +232,7 @@ fn is_iso_instant(text: &str) -> bool {
 }
 
 /// Reads and plans one file, charging `budget` only when the whole file fits.
-fn plan_file(path: &Path, budget: &mut usize) -> Result<Plan, ImportMessage> {
+fn plan_file(path: &Path, budget: &mut Budget) -> Result<Plan, ImportMessage> {
     let text = read_source_text(path).map_err(|error| ImportMessage {
         code: None,
         message: error.to_string(),
@@ -328,7 +322,7 @@ impl Importer for RaindropImporter {
         input: &ImportInput,
         cancel: &CancellationToken,
     ) -> Result<ImportPreview, ImportError> {
-        let mut budget = self.budget;
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let mut groups = Vec::new();
         for source in &input.source_paths {
             if cancel.is_cancelled() {
@@ -384,7 +378,7 @@ impl Importer for RaindropImporter {
         ctx.set_phase(ImportPhase::Importing);
         ctx.status(status("raindropImporting"));
 
-        let mut budget = self.budget;
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let plans: Vec<(String, Result<Plan, ImportMessage>)> = input
             .source_paths
             .iter()
@@ -432,12 +426,5 @@ impl Importer for RaindropImporter {
             }
         }
         Ok(())
-    }
-}
-
-fn count(label_key: &str, value: usize) -> PreviewCount {
-    PreviewCount {
-        label_key: label_key.to_owned(),
-        value,
     }
 }

@@ -793,6 +793,43 @@ fn a_cancel_after_the_first_task_creates_no_more() {
 }
 
 #[test]
+fn a_cancel_after_the_first_file_creates_nothing_for_the_next() {
+    let dir = tempfile::tempdir().unwrap();
+    let first = write(dir.path(), "a.csv", &backup(&[row(&[("List Name", "A")])]));
+    let second = write(dir.path(), "b.csv", &backup(&[row(&[("List Name", "B")])]));
+    let cancel = CancellationToken::new();
+    let timeline = Timeline::default();
+    let sink = RecordingSink::new(timeline.clone());
+    let watch = cancel.clone();
+    let mut ctx = ImportContext::new(
+        "ticktick",
+        cancel,
+        Box::new(move |progress| {
+            if progress.imported == 1 {
+                watch.cancel();
+            }
+        }),
+    );
+    importer()
+        .run(&input(&[first, second]), &mut ctx, &sink)
+        .unwrap();
+    let writes = timeline.lock().unwrap();
+    let count = |op: &str| writes.iter().filter(|w| w["op"] == op).count();
+    assert_eq!((count("createProject"), count("createTask")), (1, 1));
+    assert_eq!(ctx.summary().imported, 1);
+}
+
+#[test]
+fn a_cancelled_preview_reads_no_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let paths = ["a.csv", "b.csv"].map(|name| write(dir.path(), name, &backup(&[row(&[])])));
+    let cancel = CancellationToken::new();
+    cancel.cancel();
+    let preview = importer().preview(&input(&paths), &cancel).unwrap();
+    assert!(preview.groups.is_empty());
+}
+
+#[test]
 fn reading_takes_steps_linear_in_the_export() {
     let dir = tempfile::tempdir().unwrap();
     let n = 50_000;

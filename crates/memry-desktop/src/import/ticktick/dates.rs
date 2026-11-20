@@ -14,6 +14,7 @@ use jiff::tz::{AmbiguousOffset, Offset, TimeZone};
 use memry_core::markdown::frontmatter::js_trim;
 use regex::Regex;
 
+use super::legacy_zones::legacy_zone;
 use crate::web::extract::utils::date::{civil_from_days, parse_date_in};
 
 const DAY_MS: i64 = 86_400_000;
@@ -85,7 +86,8 @@ fn offset_zone(name: &str) -> Option<TimeZone> {
 }
 
 /// `timezone.trim() || 'UTC'` as `Intl.DateTimeFormat` resolves it, and UTC where it throws.
-/// ICU refuses the tzdb's `Factory` zone, which jiff reads as UTC anyway.
+/// ICU refuses the tzdb's `Factory` zone, which jiff reads as UTC anyway, and keeps names the
+/// tzdb dropped, which [`legacy_zone`] resolves.
 fn intl_zone(name: &str) -> TimeZone {
     let name = match js_trim(name) {
         "" => "UTC",
@@ -93,6 +95,7 @@ fn intl_zone(name: &str) -> TimeZone {
     };
     offset_zone(name)
         .or_else(|| jiff::tz::db().get(name).ok())
+        .or_else(|| legacy_zone(name))
         .unwrap_or(TimeZone::UTC)
 }
 

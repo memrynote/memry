@@ -13,6 +13,7 @@
 //! files still import.
 
 mod dates;
+mod legacy_zones;
 mod map;
 mod order;
 mod rrule;
@@ -28,9 +29,9 @@ use super::csv_lex::lex;
 use super::messages::{ImportMessage, ImportText, codes, status};
 use super::todoist::parse_int;
 use super::{
-    FileSpec, ImportContext, ImportError, ImportInput, ImportPhase, ImportPreview, ImportSink,
-    ImportedTickTickTask, Importer, ImporterMeta, MAX_PLANNED_BYTES, PreviewCount, PreviewGroup,
-    StatusKind, base_name, read_source_text,
+    Budget, FileSpec, ImportContext, ImportError, ImportInput, ImportPhase, ImportPreview,
+    ImportSink, ImportedTickTickTask, Importer, ImporterMeta, MAX_PLANNED_BYTES, PreviewGroup,
+    SAMPLE_MAX, StatusKind, WARNING_COST, base_name, count, message, read_source_text,
 };
 use crate::web::extract::utils::date::iso_string;
 use map::{Plan, Row, map_rows};
@@ -38,11 +39,8 @@ use map::{Plan, Row, map_rows};
 /// What a planned row or status costs besides the text it stores: the structs, their strings'
 /// headers and the allocator's overhead.
 const ITEM_COST: usize = 1024;
-/// What a warning costs besides its text, which it stores twice (message and params).
-const WARNING_COST: usize = 256;
 // The budget holds 300,000 tasks with 300 bytes of text and one warning each.
 const _: () = assert!(MAX_PLANNED_BYTES / (ITEM_COST + 300 + WARNING_COST + 2 * 100) >= 300_000);
-const SAMPLE_MAX: usize = 5;
 const TOO_MANY: &str = "The picked TickTick files hold more tasks than one import can take. \
                         Import fewer files at a time, or split the export into smaller files.";
 const HEADER_FIRST_CELL: &str = "Folder Name";
@@ -69,19 +67,6 @@ const COLUMNS: [&str; 19] = [
     "taskId",
     "parentId",
 ];
-
-/// The bytes one run's plans may still take.
-struct Budget(usize);
-
-impl Budget {
-    fn charge(&mut self, cost: usize) -> Result<(), String> {
-        self.0 = self
-            .0
-            .checked_sub(cost)
-            .ok_or_else(|| TOO_MANY.to_owned())?;
-        Ok(())
-    }
-}
 
 /// `int`: `parseInt(raw.trim(), 10)`, 0 for `NaN`.
 fn int(raw: &str) -> f64 {
@@ -117,7 +102,7 @@ struct Reader<'b> {
     filled: bool,
     rows: Vec<Row>,
     budget: &'b mut Budget,
-    failure: Option<String>,
+    failure: Option<&'static str>,
 }
 
 impl Reader<'_> {
@@ -216,7 +201,7 @@ fn plan_file(
 ) -> Result<Plan, ImportMessage> {
     let text = read_source_text(path).map_err(|error| message(error.to_string()))?;
     let text = text.strip_prefix('\u{FEFF}').unwrap_or(&text);
-    let mut left = Budget(budget.0);
+    let mut left = *budget;
     let mut reader = Reader {
         columns: None,
         header: None,
@@ -235,7 +220,7 @@ fn plan_file(
         None => reader.row_end(),
     });
     if let Some(failure) = reader.failure {
-        return Err(message(failure));
+        return Err(message(failure.to_owned()));
     }
     if reader.columns.is_none() {
         return Err(ImportMessage::coded(
@@ -247,14 +232,6 @@ fn plan_file(
     let plan = map_rows(rows, now, local, &mut left).map_err(message)?;
     *budget = left;
     Ok(plan)
-}
-
-fn message(text: String) -> ImportMessage {
-    ImportMessage {
-        code: None,
-        message: text,
-        params: None,
-    }
 }
 
 /// `applyPlan`: writes one file's plan. Warnings Electron collected and never showed are logged.
@@ -428,7 +405,7 @@ impl Importer for TickTickImporter {
         cancel: &CancellationToken,
     ) -> Result<ImportPreview, ImportError> {
         let (now, local) = (self.now_iso(), self.local());
-        let mut budget = Budget(self.budget);
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let mut groups = Vec::new();
         for source in &input.source_paths {
             if cancel.is_cancelled() {
@@ -477,7 +454,7 @@ impl Importer for TickTickImporter {
         ctx.status(status("ticktickImporting"));
 
         let (now, local) = (self.now_iso(), self.local());
-        let mut budget = Budget(self.budget);
+        let mut budget = Budget::new(self.budget, TOO_MANY);
         let plans: Vec<(String, Result<Plan, ImportMessage>)> = input
             .source_paths
             .iter()
@@ -510,12 +487,5 @@ impl Importer for TickTickImporter {
             ctx.report_progress(done, total);
         }
         Ok(())
-    }
-}
-
-fn count(label_key: &str, value: usize) -> PreviewCount {
-    PreviewCount {
-        label_key: label_key.to_owned(),
-        value,
     }
 }
