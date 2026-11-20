@@ -77,7 +77,10 @@ async fn upload(http: &HttpClient, attachment_id: &str, len: usize, seed: u8) ->
         attachment_id,
         "file.bin",
         len as u64,
-        &chunks,
+        &chunks
+            .iter()
+            .map(|c| c.reference.clone())
+            .collect::<Vec<_>>(),
     )
     .await
     .expect("initiate");

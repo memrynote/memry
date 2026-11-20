@@ -1114,3 +1114,72 @@ fn a_kept_copy_put_back_into_its_hidden_folder_is_shown_at_the_next_open() {
             .any(|(_, path)| path == "a (incomplete delete).md")
     });
 }
+
+/// A trash that refuses `vault/a.md` and takes every other file, as a trash that cannot take
+/// the one file at a kept note's path does.
+fn bin_all_but_a(path: &Path) -> Result<(), String> {
+    if path.parent().is_some_and(|dir| dir.ends_with("vault")) && path.ends_with("a.md") {
+        Err("this file cannot go to the trash".into())
+    } else {
+        bin_beside(path)
+    }
+}
+
+#[test]
+fn a_kept_notes_delete_refused_for_the_file_at_its_path_leaves_its_copy_in_the_trash() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("a.md", FILE, bin_all_but_a);
+    let open = e.session.current().unwrap();
+    e.write("a.md", MINE);
+    let pushed = record(&e, &id);
+
+    let refused = kept::delete(&notes, &notices, &open, &id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("a.md"), MINE, "the other file at the path went");
+    let trashed = e.vault.with_extension("trashed").join("a.md");
+    assert_eq!(
+        fs::read_to_string(trashed).ok().as_deref(),
+        Some(RESTORED),
+        "the copy is not in the trash"
+    );
+    assert_eq!(left_in(&e.vault), ["a.md"], "the hidden folder was left");
+    assert_eq!(record(&e, &id), pushed, "the note went");
+    assert!(is_listed(&notices, &id), "{:?}", notices.list());
+}
+
+/// A trash that takes the file and the folder holding it, as a trash that moved the folder
+/// does: `f/g/a.md` goes to `<vault>.trashed/a.md`, and `f/g` is gone.
+fn bin_with_folder(path: &Path) -> Result<(), String> {
+    bin_beside(path)?;
+    fs::remove_dir(path.parent().unwrap()).map_err(|error| error.to_string())
+}
+
+#[test]
+fn a_kept_notes_delete_whose_trash_took_its_folder_brings_back_no_folder() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_edited("f/g/a.md", "f", bin_with_folder);
+    let open = e.session.current().unwrap();
+
+    kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    let trashed = e.vault.with_extension("trashed").join("a.md");
+    assert_eq!(
+        fs::read_to_string(trashed).ok().as_deref(),
+        Some(RESTORED),
+        "the text is not in the trash"
+    );
+    assert!(!e.vault.join("f").exists(), "the deleted folder is back");
+    assert!(record(&e, &id).0);
+}

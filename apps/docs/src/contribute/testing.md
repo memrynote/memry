@@ -91,14 +91,16 @@ and wiki-links, roughly 2 KB of markdown each — spread evenly across ten folde
 
 ```bash
 pnpm seed1k                                  # ~/MemryBenchVault, 1000 notes, seed 42
-pnpm seed1k -- --count=5000                  # a larger corpus
-pnpm seed1k -- --vault=/tmp/bench --seed=7   # a second vault to compare against
+pnpm seed1k --count=5000                     # a larger corpus
+pnpm seed1k --vault=/tmp/bench --seed=7      # a second vault to compare against
 ```
 
 Content comes from a seeded PRNG (`scripts/seed-data/bulk-notes.ts`), so the same `--seed` and
 `--count` produce a byte-identical vault and two benchmark runs compare like for like. The command
-always wipes its target first, and writes `note_metadata` rows alongside the files so note ids stay
-stable when the indexer adopts them by path.
+(`cargo xtask seed bench` in `crates/`) wipes its target first, but only a missing or empty folder
+or an earlier benchmark vault (`.memry/config.json` title `memrynote Benchmark Vault`); it refuses
+any other folder. It writes only vault files: the app assigns note ids when it first indexes the
+vault, and tags get default colours.
 
 ### Key Rules
 

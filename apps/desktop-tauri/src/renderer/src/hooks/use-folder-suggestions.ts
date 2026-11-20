@@ -7,6 +7,7 @@
  * @module hooks/use-folder-suggestions
  */
 
+import { folderViewService } from '@/services/folder-view-service'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
@@ -78,7 +79,7 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
     setError(null)
 
     try {
-      const response = await window.api.folderView.getFolderSuggestions(noteId)
+      const response = await folderViewService.getFolderSuggestions(noteId)
 
       if (!mountedRef.current) return
 
