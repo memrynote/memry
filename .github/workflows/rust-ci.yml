@@ -833,7 +833,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install the sync harness
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
@@ -1006,7 +1005,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
