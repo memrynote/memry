@@ -7,6 +7,7 @@ import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-sessio
 import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
+import { scheduleSeedDuplicateScan } from '../crdt-seed-duplicates'
 import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext, SyncRunOutcome } from './sync-context'
 import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
@@ -546,6 +547,7 @@ export class FullSyncRunner {
             this.queueLegacyNoteBodySweep()
           }
           this.sweepSettledOnThisEngine = true
+          scheduleSeedDuplicateScan(this.ctx.deps.crdtProvider)
         }
       }
       // flushPendingCrdtPulls() ends with pumpPacedCrdtPulls() +

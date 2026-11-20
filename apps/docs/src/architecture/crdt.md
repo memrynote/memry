@@ -321,6 +321,17 @@ pass fetched, and the document still reads empty. A seed at that point would
 land beside the server body and duplicate it (#5286). The pull owes the note
 instead, and the retry merges the server body.
 
+Builds before that fix pushed such seeds, and the duplicates they made stay in
+the synced body. A read-only scan (`crdt-seed-duplicates.ts`) counts them once
+per launch, ten minutes after the first full sync settles. It reads every
+document in the store without compacting it. A document counts as forked when
+its fragment holds two live top-level items that both have no left and no right
+origin, which means two devices each wrote the first content into an empty
+body. It counts as duplicated when one of those items' text equals or contains
+the other's. A paragraph repeated inside one body never counts. The note ids go
+to the local log at info level, and a warn line with the counts only reaches
+the incident report and shipped logs. The scan repairs nothing (#5289).
+
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
 version restore, appended blocks, a template, a rename's link and embed
 rewrites) reaches the note's document through `feedExternalEditToCrdt`. In

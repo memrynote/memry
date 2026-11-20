@@ -21,7 +21,12 @@ import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
 import { crdtWriteback } from './crdt-writeback-port'
 import { recordNetworkUpdate } from './crdt-network-update'
-import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import {
+  openCrdtPersistence,
+  readOnlyStore,
+  type CrdtPersistence,
+  type CrdtStoreReader
+} from './crdt-persistence'
 import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
@@ -638,6 +643,11 @@ export class CrdtProvider {
    */
   hasPersistence(): boolean {
     return this.persistence !== null
+  }
+
+  /** The open store, for read-only scans. Null in in-memory mode. */
+  readOnlyStore(): CrdtStoreReader | null {
+    return this.persistence ? readOnlyStore(this.persistence) : null
   }
 
   /**
