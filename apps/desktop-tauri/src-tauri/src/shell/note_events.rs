@@ -157,11 +157,20 @@ fn file_title(path: &str) -> &str {
 }
 
 /// An edit in the app also says the header tags and the icon, as Electron's `updateNote` does.
+/// A pulled change leaves the text out: Electron's `applyUpsert` never sends `content`, so an
+/// open editor does not remount on a pull that did not touch its text (`note-handler.ts:563`).
 fn updated(note: &NoteView, source: NoteEventSource) -> NoteUpdatedEvent {
     let mut changes = note.changes();
-    if source == NoteEventSource::Internal {
-        changes.insert("headerTags".into(), json!(note.header_tags));
-        changes.insert("emoji".into(), json!(note.emoji));
+    match source {
+        NoteEventSource::Internal => {
+            changes.insert("headerTags".into(), json!(note.header_tags));
+            changes.insert("emoji".into(), json!(note.emoji));
+        }
+        NoteEventSource::Sync => {
+            changes.remove("content");
+            changes.remove("snippet");
+        }
+        NoteEventSource::External => {}
     }
     NoteUpdatedEvent {
         id: note.id.clone(),
@@ -385,5 +394,38 @@ mod tests {
             note_id: "n".into(),
         };
         assert_eq!(outgoing(tags), Some(Outgoing::TagsChanged));
+    }
+
+    /// A pulled change's `notes:updated` leaves out the text and its snippet, as Electron's
+    /// `applyUpsert` does (L563-567); an outside edit's carries them.
+    #[test]
+    fn a_pulled_update_carries_no_text() {
+        let note = NoteView {
+            id: "n".into(),
+            path: "n.md".into(),
+            title: "N".into(),
+            content: "Some text".into(),
+            frontmatter: Default::default(),
+            created: 1,
+            modified: 2,
+            tags: vec!["t".into()],
+            header_tags: Vec::new(),
+            aliases: Vec::new(),
+            word_count: 2,
+            properties: Default::default(),
+            emoji: None,
+            local_only: false,
+            size_class: memry_desktop::notes::view::SizeClass::Note,
+            large_file: None,
+            content_omitted: false,
+        };
+        let pulled = updated(&note, NoteEventSource::Sync).changes;
+        assert!(!pulled.contains_key("content"), "{pulled:?}");
+        assert!(!pulled.contains_key("snippet"), "{pulled:?}");
+        assert_eq!(pulled["title"], "N");
+        assert_eq!(pulled["tags"], json!(["t"]));
+        let outside = updated(&note, NoteEventSource::External).changes;
+        assert_eq!(outside["content"], "Some text");
+        assert!(outside.contains_key("snippet"));
     }
 }

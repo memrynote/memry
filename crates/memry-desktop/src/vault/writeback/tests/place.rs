@@ -16,15 +16,42 @@ fn note(f: &mut Fixture, text: &str) -> String {
     id
 }
 
+/// Marks the note as the sync observer does after `change` applied, with the title it had
+/// before.
+fn pulled(f: &Fixture, id: &str, change: impl FnOnce(&NotesWriter)) {
+    let before = f
+        .vault
+        .note_files()
+        .placed(id)
+        .unwrap()
+        .expect("a note")
+        .title;
+    change(&f.writer);
+    f.pass.mark_pulled(id, Some(&before));
+}
+
 fn pulled_rename(f: &Fixture, id: &str, title: &str) {
-    f.writer.rename(id.to_owned(), title.into()).unwrap();
-    f.pass.mark_pulled(id);
+    pulled(f, id, |w| w.rename(id.to_owned(), title.into()).unwrap());
 }
 
 fn pulled_tags(f: &Fixture, id: &str, tags: &[&str]) {
     let tags = tags.iter().map(|tag| (*tag).to_owned()).collect();
-    f.writer.set_tags(id.to_owned(), tags).unwrap();
-    f.pass.mark_pulled(id);
+    pulled(f, id, |w| w.set_tags(id.to_owned(), tags).unwrap());
+}
+
+fn pulled_folder(f: &Fixture, id: &str, folder: &str) {
+    pulled(f, id, |w| {
+        w.move_to_folder(id.to_owned(), Some(folder.into()))
+            .unwrap();
+    });
+}
+
+fn renamed_facts(f: &mut Fixture) -> usize {
+    let facts = f.facts();
+    facts
+        .iter()
+        .filter(|fact| matches!(fact, Applied::Renamed { .. }))
+        .count()
 }
 
 fn row_path(f: &Fixture, id: &str) -> String {
@@ -131,7 +158,7 @@ fn a_journal_day_never_moves() {
     let rel = "journal/2025-01-01.md";
     let text = "---\ntags:\n  - mine\n---\nA day.\n";
     let id = f.adopt_day(rel, "2025-01-01", text);
-    f.pass.mark_pulled(&id);
+    f.pass.mark_pulled(&id, Some("2025-01-01"));
     assert_eq!(f.run(&id), Outcome::Unchanged);
     assert_eq!(f.read(rel), text);
     assert!(
@@ -215,11 +242,163 @@ fn keys_the_record_does_not_hold_are_kept() {
 fn a_pulled_property_reaches_the_block() {
     let mut f = fixture();
     let id = note(&mut f, "first words\n");
-    f.writer
-        .set_property(id.clone(), "status".into(), "\"done\"".into())
-        .unwrap();
-    f.pass.mark_pulled(&id);
+    pulled(&f, &id, |w| {
+        w.set_property(id.clone(), "status".into(), "\"done\"".into())
+            .unwrap();
+    });
     let outcome = f.run(&id);
     assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
     assert_eq!(f.read("n.md"), "---\nstatus: done\n---\nfirst words\n");
+}
+
+/// A file named apart from its title (Electron numbers a taken name: `Untitled 1.md` titled
+/// `Untitled`) keeps its name on a pulled change that keeps the title (`titleChanged`).
+#[test]
+fn a_pulled_change_that_keeps_the_title_keeps_a_numbered_name() {
+    let mut f = fixture();
+    let id = f.writer.create("Untitled".into(), None).unwrap();
+    f.seed(&id, "Untitled 1.md", "first words\n");
+    pulled_tags(&f, &id, &["remote"]);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert!(!f.root.join("Untitled.md").exists());
+    assert_eq!(
+        f.read("Untitled 1.md"),
+        "---\ntags:\n  - remote\n---\nfirst words\n"
+    );
+    assert_eq!(row_path(&f, &id), "Untitled 1.md");
+    assert_eq!(renamed_facts(&mut f), 0);
+}
+
+/// A pulled folder alone moves the file under its name byte for byte, `Moved`.
+#[test]
+fn a_pulled_folder_moves_the_file_under_its_own_name() {
+    let mut f = fixture();
+    let id = f.writer.create("Untitled".into(), None).unwrap();
+    f.seed(&id, "Untitled 1.md", "first words\n");
+    std::fs::create_dir(f.root.join("Work")).unwrap();
+    pulled_folder(&f, &id, "Work");
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("Work/Untitled 1.md"), "first words\n");
+    assert!(!f.root.join("Untitled 1.md").exists());
+    assert_eq!(row_path(&f, &id), "Work/Untitled 1.md");
+    let facts = f.facts();
+    assert!(
+        facts.iter().any(|fact| matches!(
+            fact,
+            Applied::Renamed { new_path, kind: MoveKind::Moved, .. } if new_path == "Work/Untitled 1.md"
+        )),
+        "{facts:?}"
+    );
+}
+
+/// A pulled title renames the numbered file: the title changed.
+#[test]
+fn a_pulled_title_renames_a_numbered_file() {
+    let mut f = fixture();
+    let id = f.writer.create("Untitled".into(), None).unwrap();
+    f.seed(&id, "Untitled 1.md", "first words\n");
+    pulled_rename(&f, &id, "Plan");
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("Plan.md"), "first words\n");
+    assert_eq!(row_path(&f, &id), "Plan.md");
+}
+
+/// A pulled place that would make the note a journal day's file keeps it where it is.
+#[test]
+fn a_place_that_names_a_journal_day_keeps_the_file() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    std::fs::create_dir(f.root.join("journal")).unwrap();
+    pulled(&f, &id, |w| {
+        w.rename(id.clone(), "2025-01-02".into()).unwrap();
+        w.move_to_folder(id.clone(), Some("journal".into()))
+            .unwrap();
+    });
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("n.md"), "first words\n");
+    assert!(!f.root.join("journal/2025-01-02.md").exists());
+    assert_eq!(row_path(&f, &id), "n.md");
+}
+
+/// A move that cannot happen never holds the file back from the note's edits: the body is
+/// written at the file's path, the row and the file agree, and the move is tried by at most
+/// `PLACE_TRIES` passes.
+#[cfg(unix)]
+#[test]
+fn a_failed_move_still_writes_the_body_where_the_file_is() {
+    use std::os::unix::fs::PermissionsExt;
+
+    use crate::vault::writeback::place::PLACE_TRIES;
+
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    let work = f.root.join("Work");
+    std::fs::create_dir(&work).unwrap();
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o555)).unwrap();
+    pulled_folder(&f, &id, "Work");
+    for pass in 1..=PLACE_TRIES {
+        f.edit_in_app(&id, &format!("typed {pass}"));
+        let outcome = f.run(&id);
+        assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+        assert!(f.read("n.md").contains(&format!("typed {pass}")));
+        assert_eq!(row_path(&f, &id), "n.md");
+        assert!(!work.join("n.md").exists());
+    }
+    // The tries are spent: a writable folder no longer moves the file on a local pass.
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o755)).unwrap();
+    f.edit_in_app(&id, "typed after");
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert!(f.read("n.md").contains("typed after"));
+    assert!(!work.join("n.md").exists());
+}
+
+/// A move that failed once is tried again by the next pass.
+#[cfg(unix)]
+#[test]
+fn a_failed_move_is_tried_again() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    let work = f.root.join("Work");
+    std::fs::create_dir(&work).unwrap();
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o555)).unwrap();
+    pulled_folder(&f, &id, "Work");
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    std::fs::set_permissions(&work, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("Work/n.md"), "first words\n");
+    assert_eq!(row_path(&f, &id), "Work/n.md");
+}
+
+/// A pass that finds no file drops the mark: the file the consumer finds later is never moved
+/// by a local pass.
+#[test]
+fn a_pass_with_no_file_drops_the_mark() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    pulled_rename(&f, &id, "Renamed");
+    std::fs::rename(f.root.join("n.md"), f.root.join("aside")).unwrap();
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::NoFile));
+    std::fs::rename(f.root.join("aside"), f.root.join("n.md")).unwrap();
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("n.md"), "first words\n");
+    assert!(!f.root.join("Renamed.md").exists());
+}
+
+/// A row not read yet keeps the mark, as a changed file does: the pass after the read places
+/// the file.
+#[test]
+fn a_row_not_read_yet_keeps_the_mark() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    pulled_rename(&f, &id, "Renamed");
+    let hash = f.hash_of("n.md");
+    f.record(&id, "n.md", None);
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::NotRead));
+    f.record(&id, "n.md", hash);
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    assert_eq!(f.read("Renamed.md"), "first words\n");
 }

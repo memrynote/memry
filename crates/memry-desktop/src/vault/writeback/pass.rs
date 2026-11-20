@@ -131,9 +131,10 @@ impl Pass {
     }
 
     /// A pull changed the note: its next pass gives its file the record's place and frontmatter
-    /// (`place`).
-    pub fn mark_pulled(&self, note_id: &str) {
-        self.pulled.mark(note_id);
+    /// (`place`). `title_before` is its title before the pull: the file is renamed only when
+    /// the pulled title differs from it.
+    pub fn mark_pulled(&self, note_id: &str, title_before: Option<&str>) {
+        self.pulled.mark(note_id, title_before);
     }
 
     /// Writes the note's body to its file, or says why the file was kept.
@@ -159,11 +160,20 @@ impl Pass {
         let row = match lane.files().by_id(note_id) {
             Ok(Some(row)) => row,
             Ok(None) => {
-                return self.file_unfiled(&mut lane, note_id, (read_at, read_mark), between);
+                let outcome = self.file_unfiled(&mut lane, note_id, (read_at, read_mark), between);
+                // The first file takes the record's place and frontmatter.
+                if matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged) {
+                    self.pulled.take(note_id);
+                }
+                return outcome;
             }
             Err(error) => return Outcome::Failed(format!("note_files: {error}")),
         };
+        // No file to place, or one never placed: a mark kept would make a later local pass a
+        // pulled one. A row not read yet keeps it, as a file changed since its hash does: the
+        // pass after the read places the file.
         if row.file_type != FileType::Markdown.as_str() {
+            self.pulled.take(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
         let Some(row_hash) = row.content_hash else {
@@ -171,7 +181,10 @@ impl Pass {
         };
         let file = match read_note(&self.root, &row.path) {
             Ok(Some(file)) => file,
-            Ok(None) => return Outcome::Kept(Keep::NoFile),
+            Ok(None) => {
+                self.pulled.take(note_id);
+                return Outcome::Kept(Keep::NoFile);
+            }
             Err(error) => return Outcome::Failed(format!("the file could not be read: {error}")),
         };
         if file.hash != row_hash {
@@ -179,32 +192,33 @@ impl Pass {
         }
         // A pulled change: taken here, and given back to the next pass when this one stops.
         let pulled = match self.pulled.take(note_id) {
-            false => None,
-            true => match self.vault.note_files().placed(note_id) {
-                Ok(record) => record,
+            None => None,
+            Some(mark) => match self.vault.note_files().placed(note_id) {
+                Ok(record) => record.map(|record| (mark, record)),
                 Err(error) => {
-                    self.pulled.mark(note_id);
+                    self.pulled.put_back(note_id, mark);
                     return Outcome::Failed(format!("the pulled record: {error}"));
                 }
             },
         };
         let mut path = row.path.clone();
         let mut moved = false;
-        if let Some(record) = &pulled {
+        if let Some((mark, record)) = &pulled {
             let found = Found {
                 path: &row.path,
                 file_hash: row.file_hash.as_deref(),
             };
-            match self.place(&mut lane, note_id, &found, record) {
+            let title_before = mark.title_before.as_deref();
+            match self.place(&mut lane, note_id, &found, (record, title_before)) {
                 Ok(Some(new)) => (path, moved) = (new, true),
                 Ok(None) => {}
-                Err(outcome) => {
-                    self.pulled.mark(note_id);
-                    return outcome;
-                }
+                // The file and its row stay where they were, and the body is written there: a
+                // move that cannot happen never holds the file back from the note's edits.
+                Err(why) => self.pulled.retry(note_id, mark.clone(), &why),
             }
         }
-        let patch = pulled.as_ref().map(|record| Patch {
+        let pulled = pulled.as_ref().map(|(_, record)| record);
+        let patch = pulled.map(|record| Patch {
             record,
             types: self.property_types(),
         });
@@ -295,7 +309,7 @@ impl Pass {
             // `Unchanged` and records the hash; until then the file only waits.
             return Outcome::Failed(format!("the file was written, its row was not: {error}"));
         }
-        if let Some(record) = pulled.as_ref().filter(|_| patched) {
+        if let Some(record) = pulled.filter(|_| patched) {
             self.wrote_pulled(note_id, record);
         }
         lane.publish(Applied::Changed {

@@ -15,7 +15,7 @@
 //! | a journal day created on A gets its day file on B        | the write-back files an unfiled day   |
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
-//! | a pulled rename, move, tag or property reaches B (RED, Q5) | no owner yet: see `note_events.rs`    |
+//! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
 
 #![cfg(feature = "harness")]
 

@@ -7,7 +7,8 @@
 //! In the pass, under the rows' lane, after its row, hash and file checks (a missing file is
 //! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass):
 //! - **Place** ([`Pass::place`]). The record's folder as the disk spells it, under the name its
-//!   title makes ([`name_for`]; a folder-only change keeps the name byte for byte), numbered
+//!   title makes ([`name_for`]) when the pull changed the title ([`Mark::title_before`]), else
+//!   under the file's name byte for byte (Electron's `titleChanged`, `note-handler.ts:349`), numbered
 //!   `<name> 1.md` on when another note or file holds it ([`free_target`]). A journal day is
 //!   never placed: [`NoteFiles::placed`] reads notes only. A target that would make the note a
 //!   journal day's file, a locked note, and a locked folder keep the file where it is. The move is
@@ -16,7 +17,9 @@
 //!   record, row and slot in one transaction ([`Lane::move_by_app`]; the record already holds
 //!   the pulled place, so nothing is pushed), the file moved back when that fails, and a crash
 //!   in between finished by the next open. [`Applied::Renamed`] follows: `Renamed` for a new
-//!   name, `Moved` for a new folder alone.
+//!   name, `Moved` for a new folder alone. A move that fails keeps the file where it is: the
+//!   pass still writes the frontmatter and the body there, and the mark waits for the next pass,
+//!   [`PLACE_TRIES`] passes at most ([`Pulled::retry`]; Electron logs and goes on, L438-442).
 //! - **Frontmatter** ([`patch`], inside `file_for`). `tags` when the set differs
 //!   (case-insensitive), `aliases` when they differ, and each property value the record holds
 //!   that the file does not. A file key goes only when the record lacks it and the property
@@ -34,7 +37,7 @@ use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, parse_markdown_note};
 
-use super::{Outcome, Pass};
+use super::Pass;
 use crate::locks::Locks;
 use crate::notes::frontmatter::{aliases, is_reserved_key};
 use crate::notes::moves::{free_target, name_for, plain_folder};
@@ -47,20 +50,64 @@ use crate::vault::journal_format::JournalDays;
 
 const SCOPE: &str = "vault_writeback";
 
+/// The passes a failed move of a pulled place is tried in, the first included.
+pub(super) const PLACE_TRIES: u32 = 3;
+
 /// The notes a pull changed whose pass has not taken the change yet.
 #[derive(Default)]
-pub(super) struct Pulled(Mutex<HashSet<String>>);
+pub(super) struct Pulled(Mutex<HashMap<String, Mark>>);
+
+/// A pulled change a pass has not taken yet.
+#[derive(Debug, Clone)]
+pub(super) struct Mark {
+    /// The note's title before the first pull since its file was last placed; `None` when the
+    /// note was not here. The file takes the record's title only when it differs.
+    pub(super) title_before: Option<String>,
+    /// The passes whose move failed.
+    failed: u32,
+}
 
 impl Pulled {
-    pub(super) fn mark(&self, note_id: &str) {
-        self.set().insert(note_id.to_owned());
+    /// A later pull keeps the first one's title: the file still carries that one.
+    pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
+        self.map().entry(note_id.to_owned()).or_insert(Mark {
+            title_before: title_before.map(str::to_owned),
+            failed: 0,
+        });
     }
 
-    pub(super) fn take(&self, note_id: &str) -> bool {
-        self.set().remove(note_id)
+    pub(super) fn take(&self, note_id: &str) -> Option<Mark> {
+        self.map().remove(note_id)
     }
 
-    fn set(&self) -> MutexGuard<'_, HashSet<String>> {
+    /// Gives `mark` back to the next pass: this one stopped before it took the change.
+    pub(super) fn put_back(&self, note_id: &str, mark: Mark) {
+        self.map().insert(note_id.to_owned(), mark);
+    }
+
+    /// A move that failed: the next pass tries it again, until [`PLACE_TRIES`] passes failed;
+    /// then the file stays where it is until the next pull of the note.
+    pub(super) fn retry(&self, note_id: &str, mut mark: Mark, why: &str) {
+        mark.failed += 1;
+        if mark.failed >= PLACE_TRIES {
+            tracing::error!(
+                scope = SCOPE,
+                note_id,
+                tries = mark.failed,
+                "a pulled place is given up; the file stays where it is: {why}"
+            );
+            return;
+        }
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            tries = mark.failed,
+            "a pulled place waits for the next pass; the file stays where it is: {why}"
+        );
+        self.put_back(note_id, mark);
+    }
+
+    fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
@@ -92,18 +139,21 @@ pub(super) struct Found<'a> {
 
 impl Pass {
     /// Moves the note's file to the place its record names; the new path, `None` when the file
-    /// stays.
+    /// stays. `Err` with why when the move failed: the file and its row are where they were.
     pub(super) fn place(
         &self,
         lane: &mut Lane<'_>,
         note_id: &str,
         found: &Found<'_>,
-        record: &Unfiled,
-    ) -> Result<Option<String>, Outcome> {
+        (record, title_before): (&Unfiled, Option<&str>),
+    ) -> Result<Option<String>, String> {
         let root = self.root.as_path();
         let old = found.path;
         let (old_folder, name) = old.rsplit_once('/').unwrap_or(("", old));
-        let new_name = name_for(name, &record.title);
+        let new_name = match title_before == Some(record.title.as_str()) {
+            true => name.to_owned(),
+            false => name_for(name, &record.title),
+        };
         let target = plain_folder(record.folder_path.as_deref().unwrap_or(""))
             .and_then(|folder| free_target(lane, root, note_id, old, &folder, &new_name));
         let new = match target {
@@ -131,7 +181,7 @@ impl Pass {
         let writer = self
             .vault
             .notes_writer(self.store.clone())
-            .map_err(|error| Outcome::Failed(format!("the note's move: {error}")))?;
+            .map_err(|error| format!("the note's move: {error}"))?;
         let moved = AppMoved {
             old_path: old,
             new_path: &new,
@@ -146,12 +196,10 @@ impl Pass {
             hash: found.file_hash,
         };
         file.forward(lane, &writer, note_id, moved)
-            .map_err(|error| Outcome::Failed(format!("the note's file did not move: {error}")))?;
+            .map_err(|error| format!("the note's file did not move: {error}"))?;
         if let Err(error) = lane.move_by_app(&writer, note_id, moved) {
             file.back(lane, &writer, note_id);
-            return Err(Outcome::Failed(format!(
-                "the note's row did not follow its file: {error}"
-            )));
+            return Err(format!("the note's row did not follow its file: {error}"));
         }
         let renamed = new_name != name;
         tracing::info!(
