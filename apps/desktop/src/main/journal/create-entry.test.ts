@@ -68,7 +68,7 @@ describe('createJournalEntry', () => {
 
   // A create can land on a day file that already exists (an ipc create over
   // it, a NotePlan import, a journal-day merge). Its new body is not in the
-  // doc, so the baseline stays and the write-back feeds the file at open.
+  // doc, so the baseline stays and the next write-back feeds the file first.
   it('keeps the baseline when it writes a new body over an existing day file', async () => {
     disk.previousFile = 'old body'
     disk.baseline = generateContentHash('old body')

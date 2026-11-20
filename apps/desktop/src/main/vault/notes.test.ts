@@ -651,14 +651,16 @@ describe('notes operations', () => {
       expect(crdtMocks.feedExternalEditToCrdt.mock.calls).toEqual([[created.id, 'new content']])
     })
 
-    it('writes the body when the CRDT feed throws', async () => {
+    it('refuses the body, with the file untouched, when the CRDT feed throws', async () => {
       const created = await notes.createNote({ title: 'Feed Throws', content: 'Before' })
-      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('converter failed'))
+      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('store failed'))
 
-      await notes.updateNote({ id: created.id, content: 'After' })
+      await expect(notes.updateNote({ id: created.id, content: 'After' })).rejects.toThrow(
+        'store failed'
+      )
 
       const { content } = readTestNote(path.join(tempVault.path, created.path))
-      expect(content.trim()).toBe('After')
+      expect(content.trim()).toBe('Before')
     })
 
     it('T363: updates file content', async () => {

@@ -1173,7 +1173,22 @@ function getYjsTags(doc: Y.Doc): string[] {
   return tags
 }
 
+/**
+ * A body writer fed the doc and then failed to write the file
+ * (`landBodyEdit`): the next pass writes it. A closed doc is opened for it.
+ */
+function retryWriteback(noteId: string): void {
+  const doc = getCrdtProvider().getDoc(noteId)
+  if (doc) return scheduleWriteback(noteId, doc, 'local')
+  setTimeout(() => {
+    getCrdtProvider()
+      .materialize(noteId)
+      .catch((err: unknown) => reportWritebackFailure(noteId, err))
+  }, writebackDelayMs(noteId))
+}
+
 registerCrdtWritebackPort({
+  retryWriteback,
   scheduleWriteback,
   cancelWriteback,
   flushPendingWritebacks,

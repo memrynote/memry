@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { getNoteCacheById, insertNoteCache, updateNoteCache } from '@main/database/queries/notes'
 import { generateContentHash } from '../vault/frontmatter'
@@ -9,6 +9,9 @@ import {
   landBodyEdit,
   writeWithBaseline
 } from './writeback-baseline'
+
+const retryWriteback = vi.hoisted(() => vi.fn())
+vi.mock('./crdt-writeback-port', () => ({ crdtWriteback: () => ({ retryWriteback }) }))
 
 const A = '# Log\n\nFirst line.\n'
 const B = '# Log\n\nFirst line. Second.\n'
@@ -126,16 +129,32 @@ describe("Memry's own body edit (landBodyEdit)", () => {
     expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(true)
   })
 
-  it('writes the file and keeps the baseline when the feed throws', async () => {
+  it('throws with no file written and the baseline kept when the feed throws', async () => {
+    await expect(
+      landBodyEdit(index.db, 'n1', B, {
+        feed: async () => {
+          throw new Error('store failed')
+        },
+        write
+      })
+    ).rejects.toThrow('store failed')
+    expect(disk).toBe(A)
+    expect(cached().contentHash).toBe(generateContentHash(A))
+  })
+
+  // The doc holds the edit, so the caller must not keep a second copy.
+  it('resolves with the baseline kept and retries through the write-back when the write fails after the feed', async () => {
+    retryWriteback.mockClear()
     const published = await landBodyEdit(index.db, 'n1', B, {
-      feed: async () => {
-        throw new Error('store failed')
-      },
-      write
+      feed: async () => true,
+      write: async () => {
+        throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' })
+      }
     })
-    expect(disk).toBe(B)
+    expect(disk).toBe(A)
     expect(published).toBe(generateContentHash(A))
-    expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(true)
+    expect(isOutsideEdit(index.db, 'n1', cached(), A)).toBe(false)
+    expect(retryWriteback).toHaveBeenCalledWith('n1')
   })
 
   // A crash between the file write and the record: the pending hash names the
@@ -147,7 +166,7 @@ describe("Memry's own body edit (landBodyEdit)", () => {
         disk = B
         throw new Error('crash after the file write')
       }
-    }).catch(() => {})
+    })
     expect(cached().contentHash).toBe(generateContentHash(A))
     expect(isOutsideEdit(index.db, 'n1', cached(), disk)).toBe(false)
   })

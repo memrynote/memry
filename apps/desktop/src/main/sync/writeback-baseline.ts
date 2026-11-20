@@ -19,11 +19,15 @@
  *   blocks, task-line removal, version restore, a move's ref rewrite, a
  *   rename's link rewrites) feed the doc first, wait for the store to hold the
  *   update, and then write the file through `writeWithBaseline`
- *   (`landBodyEdit`, D-DOC-FIRST). A crash before the write leaves the doc
- *   ahead of the file, which the write-back writes; a crash after it leaves the
- *   pending hash naming Memry's own bytes. A doc that declines the feed (closed
- *   and empty, owed, large-file) gets the file written with the baseline kept,
- *   so the edit reads as an outside edit and is fed at open.
+ *   (`landBodyEdit`, D-DOC-FIRST). A locked note is refused before the feed.
+ *   A crash or a failed file write after the feed leaves the doc ahead of the
+ *   file with the baseline kept, and the write-back writes it; a crash after
+ *   the write leaves the pending hash naming Memry's own bytes. A store that
+ *   fails fails the writer, with no file written. A doc that declines the
+ *   feed (closed and empty, owed, large-file) gets the file written with the
+ *   baseline kept: the empty doc's next open seeds from the file, the owed
+ *   doc takes it after its merge (`takeOwedFile`), and a large-file note has
+ *   no doc.
  * - The watcher's ingest of an outside edit drains the cache sync's projection,
  *   feeds the doc, and records the bytes once the doc holds them
  *   (`ingestOutsideEdit`).
@@ -50,6 +54,8 @@ import type { getIndexDatabase } from '../database/client'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { flushProjectionEvents } from '../projections'
 import { createLogger } from '../lib/logger'
+import { assertNoteWritable } from '../vault-locks/registry'
+import { crdtWriteback } from './crdt-writeback-port'
 
 const log = createLogger('WritebackBaseline')
 
@@ -136,9 +142,17 @@ export function baselineBeforeFeed(indexDb: IndexDb, noteId: string, written: st
 
 /**
  * Lands Memry's own change of a note body (D-DOC-FIRST): `feed` puts it in the
- * doc, then `write` puts `fileContent` on disk through `writeWithBaseline`. A
- * feed that declines or fails still writes the file and keeps the baseline,
- * so the change is fed at open. Resolves the hash the cache sync publishes.
+ * doc, then `write` puts `fileContent` on disk through `writeWithBaseline`.
+ * Resolves the hash the cache sync publishes.
+ *
+ * - A locked note throws before the feed, so no caller puts an edit in a
+ *   locked note's doc.
+ * - A feed that rejects (the store failed) throws, with no file written and
+ *   the baseline kept: the caller keeps its copy of the edit.
+ * - A feed that declines writes the file and keeps the baseline.
+ * - Once the feed landed, the doc owns the change. A failed file write keeps
+ *   the baseline and resolves, and the write-back writes the file; throwing
+ *   would make the caller keep a second copy of an edit the doc holds.
  */
 export async function landBodyEdit(
   indexDb: IndexDb,
@@ -146,15 +160,25 @@ export async function landBodyEdit(
   fileContent: string,
   steps: { feed: () => Promise<boolean>; write: () => Promise<void> }
 ): Promise<string> {
+  assertNoteWritable(noteId)
   const fed = await steps.feed().catch((err: unknown) => {
-    log.error('Could not feed a body change to its doc; the file carries it', { noteId, err })
-    return false
+    log.error('Could not store a body change in its doc; nothing was written', { noteId, err })
+    throw err
   })
   if (!fed) {
     await steps.write()
     return baselineBeforeFeed(indexDb, noteId, fileContent)
   }
-  await writeWithBaseline(indexDb, noteId, fileContent, steps.write)
+  try {
+    await writeWithBaseline(indexDb, noteId, fileContent, steps.write)
+  } catch (err) {
+    log.error('The doc holds a body change its file write missed; the write-back writes it', {
+      noteId,
+      err
+    })
+    crdtWriteback().retryWriteback(noteId)
+    return baselineBeforeFeed(indexDb, noteId, fileContent)
+  }
   return generateContentHash(fileContent)
 }
 

@@ -18,7 +18,7 @@ import * as Y from 'yjs'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type * as PathsModule from '../lib/paths'
 import type * as FeedModule from './crdt-external-feed'
@@ -28,6 +28,13 @@ const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
   /** The next file write lands and then the process stops before it returns. */
   crashAfterWrite: false,
+  /** Every file write fails as a busy file does. */
+  failWrite: false,
+  /** Every store write fails. */
+  storeFail: false,
+  /** Store writes wait here; closing the store rejects them, as shutdown does. */
+  storeGate: null as null | { reject: (e: Error) => void; promise: Promise<void> },
+  lockedNoteIds: new Set<string>(),
   /** The next file write never lands. */
   crashBeforeWrite: false,
   /** The process stops at the next feed, before or after the doc takes it. */
@@ -59,13 +66,17 @@ vi.mock('./crdt-persistence', async () => {
         return doc
       },
       storeUpdate: async (noteId: string, update: Uint8Array) => {
+        if (h.storeFail) throw new Error('store write failed')
+        if (h.storeGate) await h.storeGate.promise
         h.store.set(noteId, [...(h.store.get(noteId) ?? []), update])
       },
       flushDocument: async () => {},
       clearDocument: async (noteId: string) => {
         h.store.delete(noteId)
       },
-      destroy: () => {},
+      destroy: () => {
+        h.storeGate?.reject(new Error('Database is not open'))
+      },
       getMeta: async () => undefined,
       setMeta: async () => {}
     })
@@ -105,6 +116,7 @@ vi.mock('../lib/paths', async (importOriginal) => ({
 vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {
+    if (h.failWrite) throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' })
     if (h.crashBeforeWrite) {
       h.crashBeforeWrite = false
       throw new Error('crashed before the write')
@@ -196,6 +208,9 @@ function stop(): Promise<never> {
   h.hangAtFeed = null
   return new Promise<never>(() => {})
 }
+vi.mock('../vault-locks/store', () => ({
+  listLockedRows: () => [...h.lockedNoteIds].map((target) => ({ targetKind: 'note', target }))
+}))
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))
 vi.mock('../projections', () => ({ flushProjectionEvents: async () => {} }))
 vi.mock('../notes/note-date-reminders', () => ({
@@ -214,14 +229,21 @@ import { hasPendingWriteback, resetWritebackState, writebackNow } from './crdt-w
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 import { appendBlocksToNote } from '../vault/append-blocks'
+import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { landSourceRewrite } from '../vault/rename-link-rewrite'
 import { updateJournalEntry } from '../journal/update-entry'
+import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache, NoteCache } from '@memry/db-schema/schema/notes-cache'
 
 beforeAll(() => {
   h.indexDb = createTestIndexDb().db
   h.contentHash = generateContentHash
+  installVaultLockSource({
+    dataDb: () => ({}) as never,
+    notePathOf: () => null,
+    noteIdAtPath: () => null
+  })
 })
 
 type Step = 'beforeFeed' | 'afterFeed' | 'beforeWrite' | 'afterWrite' | 'none'
@@ -233,6 +255,11 @@ function arm(step: Step): void {
   h.crashAfterWrite = step === 'afterWrite'
 }
 function disarm(): void {
+  h.failWrite = false
+  h.storeFail = false
+  h.storeGate = null
+  h.lockedNoteIds.clear()
+  invalidateVaultLocks()
   h.hangAtFeed = null
   h.crashBeforeWrite = false
   h.crashAfterWrite = false
@@ -415,5 +442,142 @@ describe("Memry's own body writers stopped at each crash point, then restarted (
     const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
     expect(h.files.get(file)).toContain('Outside.')
     expect(md).toContain('Outside.')
+  })
+})
+
+describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST-AMEND)', () => {
+  beforeEach(disarm)
+  const hashOf = (id: string): string | null | undefined =>
+    getNoteCacheById(h.indexDb as never, id)?.contentHash
+  const lock = (id: string): void => {
+    h.lockedNoteIds.add(id)
+    invalidateVaultLocks()
+  }
+  const outcome = (run: Promise<unknown>): Promise<string> =>
+    run.then(
+      () => 'resolved',
+      () => 'rejected'
+    )
+
+  it('append-blocks into a locked note: refused before the doc takes the block', async () => {
+    const id = 'locked-append'
+    const notePath = 'Locked/append.md'
+    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    insertNoteCache(h.indexDb as never, rowFor('src-locked', 'Locked/src.md', ''))
+    lock(id)
+    const res = await outcome(
+      appendBlocksToNote({ sourceNoteId: 'src-locked', targetNoteId: id, markdown: 'Moved.' })
+    )
+    const doc = getCrdtProvider().getDoc(id)!
+    // The renderer keeps the block in the source on a reject.
+    expect(res).toBe('rejected')
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).not.toContain('Moved.')
+    expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
+  })
+
+  it('journal save of a locked day: refused before the doc takes the edit', async () => {
+    const date = '2026-03-05'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    await seedNote(id, notePath, 'Morning.')
+    lock(id)
+    const res = await outcome(updateJournalEntry({ date, content: 'Morning. Saved.' }))
+    const doc = getCrdtProvider().getDoc(id)!
+    expect(res).toBe('rejected')
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).not.toContain('Saved.')
+  })
+
+  it('append-blocks whose file write fails after the feed resolves, and the write-back writes the file', async () => {
+    const id = 'ebusy'
+    const notePath = 'Busy/ebusy.md'
+    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    insertNoteCache(h.indexDb as never, rowFor('src-busy', 'Busy/src.md', ''))
+    h.failWrite = true
+    const res = await outcome(
+      appendBlocksToNote({ sourceNoteId: 'src-busy', targetNoteId: id, markdown: 'Moved.' })
+    )
+    h.failWrite = false
+    const doc = getCrdtProvider().getDoc(id)!
+    // Resolved, so the source drops the block: the doc holds the only copy.
+    expect(res).toBe('resolved')
+    expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
+    expect(hashOf(id)).toBe(generateContentHash(indexed))
+    await settle(id)
+    const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+    expect(count(md, 'Moved.')).toBe(1)
+    expect(count(h.files.get(`/vault/${notePath}`)!, 'Moved.')).toBe(1)
+  })
+
+  it('a store failure fails the writer with no file written; the doc state reaches the store with the next update', async () => {
+    const id = 'store-fail'
+    const notePath = 'Store/fail.md'
+    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    insertNoteCache(h.indexDb as never, rowFor('src-sf', 'Store/src.md', ''))
+    h.storeFail = true
+    const res = await outcome(
+      appendBlocksToNote({ sourceNoteId: 'src-sf', targetNoteId: id, markdown: 'Moved.' })
+    )
+    h.storeFail = false
+    // Rejected, so the source keeps the block; a second copy beats a loss.
+    expect(res).toBe('rejected')
+    expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
+    expect(hashOf(id)).toBe(generateContentHash(indexed))
+    const live = getCrdtProvider().getDoc(id)!
+    getCrdtProvider().applyRemoteUpdate(id, editOf(live, 'First line.', ' Remote.'))
+    await settle(id)
+    const doc = await restart(id)
+    const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+    const onDisk = h.files.get(`/vault/${notePath}`)!
+    expect.soft(md).toContain('Remote.')
+    expect.soft(onDisk).toContain('Remote.')
+    expect.soft(count(md, 'Moved.')).toBe(1)
+    expect.soft(count(onDisk, 'Moved.')).toBe(1)
+  })
+
+  it('after a store failure, whenPersisted resolves only once the store holds the whole doc', async () => {
+    const id = 'store-owed'
+    const notePath = 'Store/owed.md'
+    await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    h.storeFail = true
+    await expect(feedExternalEditToCrdt(id, '# Inbox\n\nFirst line.\n\nMoved.')).rejects.toThrow(
+      'store write failed'
+    )
+    await expect(getCrdtProvider().whenPersisted(id)).rejects.toThrow('store write failed')
+    h.storeFail = false
+    // An outside-edit ingest moves the baseline once this resolves.
+    await getCrdtProvider().whenPersisted(id)
+    const doc = await restart(id)
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toContain('Moved.')
+  })
+
+  it('shutdown during a feed: the writer settles, and a restart keeps the remote edit once', async () => {
+    const id = 'shutdown'
+    const notePath = 'Store/shutdown.md'
+    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    insertNoteCache(h.indexDb as never, rowFor('src-sd', 'Store/src-sd.md', ''))
+    let reject!: (e: Error) => void
+    const promise = new Promise<void>((_, r) => (reject = r))
+    promise.catch(() => {})
+    h.storeGate = { reject, promise }
+    const run = outcome(
+      appendBlocksToNote({ sourceNoteId: 'src-sd', targetNoteId: id, markdown: 'Moved.' })
+    )
+    // The doc took the block; its store write waits at the gate.
+    const live = getCrdtProvider().getDoc(id)!
+    await vi.waitFor(async () =>
+      expect(await yDocToMarkdown(live, CRDT_FRAGMENT_NAME, { notePath })).toContain('Moved.')
+    )
+    await getCrdtProvider().destroy()
+    expect(await run).toBe('rejected')
+    expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
+    const doc = await restart(id)
+    getCrdtProvider().applyRemoteUpdate(id, editOf(doc, 'First line.', ' Remote.'))
+    await settle(id)
+    const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+    const onDisk = h.files.get(`/vault/${notePath}`)!
+    expect.soft(md).toContain('Remote.')
+    expect.soft(onDisk).toContain('Remote.')
+    expect.soft(count(md, 'First line')).toBe(1)
+    expect.soft(md).not.toContain('Moved.')
   })
 })
