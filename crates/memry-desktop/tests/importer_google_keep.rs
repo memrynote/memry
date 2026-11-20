@@ -627,7 +627,8 @@ fn note_files_count_against_the_memory_cap_across_picked_zips() {
 }
 
 /// A header's declared size is only a hint. One that understates an entry passes the check
-/// before inflating, so the bytes inflated are counted too.
+/// before inflating; zip 9 then refuses the read as a broken archive once the inflated bytes pass
+/// the declared size, before they reach the caller's limit.
 #[test]
 fn an_entry_whose_header_understates_its_size_is_refused_while_inflating() {
     let mut archive = zip_bytes(&[("big.json", &[b'x'; 4096])]);
@@ -646,7 +647,11 @@ fn an_entry_whose_header_understates_its_size_is_refused_while_inflating() {
         let error = zips
             .read(entry.at, 64)
             .expect_err("4096 bytes inflate past a limit of 64");
-        assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge, "{error}");
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData, "{error}");
+        assert!(
+            error.to_string().contains("declared uncompressed size"),
+            "{error}"
+        );
         Ok(())
     })
     .unwrap();
@@ -672,6 +677,30 @@ fn of_two_entries_with_one_name_only_the_last_is_imported() {
     assert_eq!(summary.imported, 1);
     let titles: Vec<String> = sink.notes().into_iter().map(|n| n.title).collect();
     assert_eq!(titles, ["Second"]);
+}
+
+/// The importer reads entries into memory and never extracts, so a symlink entry is read as the
+/// text of its target, and the file it names is never opened.
+#[test]
+fn a_symlink_entry_is_read_as_its_target_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let secret = dir.path().join("secret.txt");
+    fs::write(&secret, b"host file content").unwrap();
+    let target = secret.to_str().unwrap();
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    zip.add_symlink("photo.jpg", target, SimpleFileOptions::default())
+        .unwrap();
+    let path = dir.path().join("link.zip");
+    fs::write(&path, zip.finish().unwrap().into_inner()).unwrap();
+
+    let mut zips = Zips::default();
+    let mut read = Vec::new();
+    zips.walk(&path, &CancellationToken::new(), &mut |zips, entry| {
+        read.push((entry.name.clone(), zips.read(entry.at, 1024)?));
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(read, [("photo.jpg".to_owned(), target.as_bytes().to_vec())]);
 }
 
 proptest! {

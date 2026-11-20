@@ -93,8 +93,10 @@ impl Zips {
             }
             let raw = self.archives[archive_at]
                 .name_for_index(index)
+                .transpose()
+                .map_err(zip_error)?
                 .unwrap_or_default()
-                .to_owned();
+                .into_owned();
             // yauzl without `strictFileNames` reads `\` as `/`.
             let filepath = raw.replace('\\', "/");
             if filepath.ends_with('/') {
