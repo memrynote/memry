@@ -10,6 +10,11 @@
 //! | an outside edit is never lost to a pulled body           | the write-back's hash rule, versions  |
 //! | an owed file is taken once and pushed                    | `takeOwedFile`, the open sweep        |
 //! | a pulled lock reaches the file while the lane is held    | lock observer, no rows' lane          |
+//! | a note created on A gets its file on B                   | the write-back files an unfiled note  |
+//! | an outside file at that name stays, the note is numbered | `free_path`, create-new only          |
+//! | a journal day created on A gets its day file on B        | the write-back files an unfiled day   |
+//! | a note with no file at open gets its file                | the open reconcile lists it           |
+//! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
 
 #![cfg(feature = "harness")]
 
@@ -17,6 +22,8 @@
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "sync_disk_harness/unfiled.rs"]
+mod unfiled;
 #[path = "vault_env/mod.rs"]
 mod vault_env;
 
@@ -140,6 +147,19 @@ impl Peer {
         pass(&self.driver).await;
     }
 
+    /// A note made on A in `folder` with `body` as its one paragraph.
+    fn create(&self, title: &str, folder: Option<&str>, body: &str) -> String {
+        let writer = self.core.notes_writer(self.store.clone()).unwrap();
+        let id = writer.create_with(title, folder, &[], None, None).unwrap();
+        let typed = BlockEdit::InsertParagraph {
+            after_block_id: None,
+            text: body.into(),
+            new_block_id: "a-first".into(),
+        };
+        assert!(writer.edit_block(id.clone(), typed).unwrap());
+        id
+    }
+
     fn body(&self, id: &str) -> String {
         let blocks = self.core.notes().blocks(id.to_owned()).unwrap();
         let blocks = blocks.expect("A holds the body");
@@ -225,6 +245,42 @@ impl Disk {
             .owes_file_body(&self.note)
             .unwrap()
     }
+}
+
+/// Waits until the file at `rel` holds `text`.
+fn until_holds(env: &Env, rel: &str, text: &str) -> String {
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let file = std::fs::read_to_string(env.vault.join(rel)).unwrap_or_default();
+        if file.contains(text) {
+            return file;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{rel} never took {text:?}: {file:?}"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+/// The row of `id` names `rel` and gets a hash: the file is written, then its row stamped.
+fn filed(env: &Env, id: &str, rel: &str) {
+    let files = env.core().note_files();
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let row = files.by_id(id).unwrap().expect("a row");
+        assert_eq!(row.path, rel);
+        if row.content_hash.is_some() {
+            return;
+        }
+        assert!(Instant::now() < deadline, "the row never got a hash");
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+fn listed(env: &Env, id: &str) {
+    let listed = env.core().note_files().listed_by_id(id).unwrap();
+    assert!(listed.is_some(), "the notes list shows it");
 }
 
 /// B's note and its body reach A, which then edits the first block and pushes the edit.
