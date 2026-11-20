@@ -10,6 +10,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crypto::keys::derive_vault_key;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
@@ -27,6 +28,14 @@ pub trait SyncPasses: Send + Sync {
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport>;
     /// A socket hint's pass; `None` while paused or when the hint was dropped.
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport>;
+    /// Whether this vault has not finished a first sync on this device.
+    async fn needs_first_sync(&self) -> Result<bool, SyncError>;
+    /// The first sync, its progress told to `progress`, then passes to the feed head. Answers
+    /// the last pass, with the rows every pass pushed; `None` while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError>;
     /// The vault's realtime socket: hints to `sink`, `on_connected` at each open, terminal
     /// closes latched in `latch`.
     fn realtime(
@@ -56,6 +65,17 @@ impl SyncPasses for SyncDriver {
     }
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
         SyncDriver::wake(self, cursor).await
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        SyncDriver::needs_first_sync(self).await
+    }
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        Ok(SyncDriver::first_sync(self, progress)
+            .await?
+            .and_then(|outcome| last_with_every_push(outcome.passes)))
     }
     fn realtime(
         &self,
@@ -98,6 +118,20 @@ impl SyncPasses for SyncDriver {
         let round = SyncDriver::final_snapshots(self, deadline).await;
         tracing::info!(?round, "final snapshot push");
     }
+}
+
+/// The first sync's last catch-up pass, with the rows and push time of all of them: Electron's
+/// full sync pushes once and tells queue-cleared with every row it sent
+/// (`full-sync-runner.ts:453`).
+pub(super) fn last_with_every_push(passes: Vec<PassReport>) -> Option<PassReport> {
+    let pushed_items = passes.iter().map(|pass| pass.pushed_items).sum();
+    let push_ms = passes.iter().map(|pass| pass.push_ms).sum();
+    passes.into_iter().last().map(|mut last| {
+        last.pushed |= pushed_items > 0;
+        last.pushed_items = pushed_items;
+        last.push_ms = push_ms;
+        last
+    })
 }
 
 #[async_trait::async_trait]
