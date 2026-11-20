@@ -6,12 +6,15 @@ import { b64Of, bodyFromPacks, type BatchAnswer, type Downloaded } from './pack-
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { storeUpdatesWithCursor } from '../services/crdt'
+import { cleanupDeletedDocumentBodies } from '../services/cleanup'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
+import { ALWAYS } from '../services/pack-index-write'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
 import {
   PACK_PURGE_RETRY_DELAY_SECONDS,
-  deleteReplacedPackObjects
+  deleteReplacedPackObjects,
+  packKindReset
 } from '../services/pack-replaced-objects'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
@@ -277,6 +280,38 @@ const holdsDay = async (key: string): Promise<boolean> => {
   return pack.entries.some((entry) => entry.id === DAY)
 }
 
+/** Runs `once` right after the first R2 PUT whose key matches, as a concurrent writer would. */
+const afterPut = (match: (key: string) => boolean, once: () => Promise<unknown>) => {
+  const realPut = storage.put.bind(storage)
+  let fired = false
+  storage.put = (async (...args: Parameters<R2Bucket['put']>) => {
+    const out = await realPut(...args)
+    if (!fired && match(args[0])) {
+      fired = true
+      await once()
+    }
+    return out
+  }) as R2Bucket['put']
+}
+
+/** `n` rounds, each packing one update of the day with one other note into its own update pack. */
+const rounds = async (app: App, n: number): Promise<void> => {
+  await createDoc(app, DAY)
+  for (let round = 0; round < n; round++) {
+    await createDoc(app, `note-${round}`)
+    await writeBody(DAY, [...DAY_UPDATE, round])
+    await writeBody(`note-${round}`, [0x30 + round])
+    await compactAll()
+  }
+}
+
+const listedIds = async (app: App, kind: string): Promise<string[]> =>
+  (await download(await listing(app)))
+    .flatMap((pack) => pack.entries)
+    .filter((entry) => entry.kind === kind)
+    .map((entry) => entry.id)
+    .toSorted()
+
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
   harness = createSqliteD1()
@@ -458,11 +493,12 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
     await push(app, deleteSpec(DAY))
 
     expect(bodyPacks().filter((pack) => pack.item_kind === 'crdt_snapshot')).toEqual([])
-    const watermarks = harness.raw
-      .prepare('SELECT item_kind FROM pack_watermarks ORDER BY item_kind')
-      .pluck()
-      .all()
-    expect(watermarks).not.toContain('crdt_snapshot')
+    const snapshotWatermark = harness.raw
+      .prepare(
+        `SELECT last_sort_value, last_sort_tiebreak FROM pack_watermarks WHERE item_kind = 'crdt_snapshot'`
+      )
+      .get()
+    expect(snapshotWatermark).toEqual({ last_sort_value: 0, last_sort_tiebreak: '' })
     // The update kind stays scoped.
     expect(
       bodyPacks()
@@ -482,5 +518,76 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
       .map((entry) => entry.id)
     expect(ids.toSorted()).toEqual(['note-a', 'note-b', 'note-c'])
     expect(await objectsHolding(DAY_SNAPSHOT)).toEqual([])
+  })
+
+  // REVIEW-5283 P6: a reset that deleted the watermark let a build in flight
+  // commit above it, so the reset range was never packed again.
+  it('a kind reset during an update build in flight loses no row and packs none twice', async () => {
+    const app = buildApp()
+    await rounds(app, 2)
+    for (const id of ['note-2', 'note-3']) {
+      await createDoc(app, id)
+      await writeBody(id, [0x40])
+    }
+    afterPut(
+      (key) => key.includes('/packs/crdt_update/'),
+      () => harness.db.batch(packKindReset(harness.db, SCOPE, 'crdt_update', ALWAYS))
+    )
+    await compactAll()
+    await compactAll()
+    const ids = await listedIds(app, 'crdt_update')
+    expect(ids.filter((id) => id !== DAY)).toEqual(['note-0', 'note-1', 'note-2', 'note-3'])
+    expect(ids.filter((id) => id === DAY)).toHaveLength(2)
+  })
+
+  // REVIEW-5283 P7: the reset made a stale record's listed pack due, and the
+  // pass then erased that record with the ones it had selected.
+  it('a deletion pass that resets a kind deletes every object the reset took out of the listing', async () => {
+    const app = buildApp()
+    await rounds(app, 5)
+    await push(app, deleteSpec(DAY))
+    const survivor = harness.raw
+      .prepare(
+        `SELECT pack_key FROM pack_index WHERE item_kind = 'crdt_update' ORDER BY min_cursor LIMIT 1`
+      )
+      .pluck()
+      .get() as string
+    // A stale record of a listed pack, as a listing batch that lost its response leaves.
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+         VALUES (?, ?, ?, 'unlisted', 0)`
+      )
+      .run(survivor, USER_ID, VAULT_ID)
+    vi.setSystemTime(Date.now() + (PACK_REPLACED_GRACE_SECONDS + 1) * 1000)
+    await deleteReplacedPackObjects(harness.db, storage)
+    await deleteReplacedPackObjects(harness.db, storage)
+
+    expect(bodyPacks().filter((pack) => pack.item_kind === 'crdt_update')).toEqual([])
+    expect(await storage.head(survivor)).toBeNull()
+  })
+
+  // REVIEW-5283: the cleanup path enqueued no retry when the purge threw after
+  // its batch committed, so the pack objects missed the deadline.
+  it('a cleanup purge that throws after its batch commits still enqueues the delayed retry', async () => {
+    const app = buildApp()
+    await createDoc(app, DAY)
+    await writeBody(DAY, DAY_UPDATE, DAY_SNAPSHOT)
+    await compactAll()
+    // A tombstone whose push purge never ran.
+    harness.raw
+      .prepare(`UPDATE sync_items SET deleted_at = ? WHERE item_id = ?`)
+      .run(now() * 1000, DAY)
+    const prepare = harness.db.prepare.bind(harness.db)
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql: string) => {
+      if (sql.includes('FROM pack_replaced_objects r')) throw new Error('D1 unavailable')
+      return prepare(sql)
+    })
+
+    await cleanupDeletedDocumentBodies(harness.db, storage, env)
+
+    expect(send).toHaveBeenCalledWith(expect.anything(), {
+      delaySeconds: PACK_PURGE_RETRY_DELAY_SECONDS
+    })
   })
 })

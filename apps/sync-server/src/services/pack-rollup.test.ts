@@ -607,7 +607,7 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     const prepare = harness.db.prepare.bind(harness.db)
     let passes = 0
     vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
-      if (sql.includes('FROM pack_replaced_objects r') && ++passes === 2) throw new Error('d1 down')
+      if (sql.includes('AS listed') && ++passes === 2) throw new Error('d1 down')
       return prepare(sql)
     })
     vi.spyOn(console, 'error').mockImplementation(() => undefined)

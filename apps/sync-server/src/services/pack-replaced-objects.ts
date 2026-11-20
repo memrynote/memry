@@ -53,11 +53,18 @@ export const packKindReset = (
          RETURNING pack_key AS replaced_key`
       )
       .bind(...vault, kindPath(kind), ...when.bind),
+    // Reset, not deleted: a build in flight selected under the old watermark,
+    // and its compare-and-swap passes when the row is absent, so it would list
+    // above the reset range and leave that range unpacked (REVIEW-5283 P6).
     db
       .prepare(
-        `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}`
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         SELECT ?, ?, ?, 0, '', ?, NULL WHERE ${when.sql}
+         ON CONFLICT (user_id, vault_id, item_kind) DO UPDATE SET
+           last_sort_value = 0, last_sort_tiebreak = '', covered_through = NULL,
+           updated_at = excluded.updated_at`
       )
-      .bind(...vault, kind, ...when.bind),
+      .bind(...vault, kind, Math.floor(Date.now() / 1000), ...when.bind),
     db
       .prepare(
         `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}`
@@ -80,29 +87,29 @@ export const deleteReplacedPackObjects = async (
 ): Promise<{ deleted: number; pending: boolean }> => {
   const due = Math.floor(Date.now() / 1000) - PACK_REPLACED_GRACE_SECONDS
   const where = scope ? 'AND r.user_id = ? AND r.vault_id = ?' : ''
+  const vault = scope ? [scope.userId, scope.vaultId] : []
+  // Before the select below, so the objects a reset makes due are in it.
+  const unrewritten = await db
+    .prepare(
+      `SELECT r.pack_key, r.user_id, r.vault_id FROM pack_replaced_objects r
+       WHERE r.removed_at <= ? AND r.replaced_by = '${REWRITE_PENDING}' ${where}`
+    )
+    .bind(due, ...vault)
+    .all<{ pack_key: string; user_id: string; vault_id: string }>()
+  await resetUnrewritten(db, unrewritten.results ?? [])
   const rows = await db
     .prepare(
-      `SELECT r.pack_key, r.user_id, r.vault_id, r.replaced_by, EXISTS (SELECT 1 FROM pack_index p
+      `SELECT r.pack_key, EXISTS (SELECT 1 FROM pack_index p
            WHERE p.user_id = r.user_id AND p.vault_id = r.vault_id AND p.pack_key = r.pack_key) AS listed
        FROM pack_replaced_objects r
        WHERE r.removed_at <= ? ${where}
        ORDER BY r.removed_at ASC
        LIMIT ?`
     )
-    .bind(due, ...(scope ? [scope.userId, scope.vaultId] : []), REPLACED_DELETE_BATCH)
-    .all<{
-      pack_key: string
-      user_id: string
-      vault_id: string
-      replaced_by: string
-      listed: number
-    }>()
+    .bind(due, ...vault, REPLACED_DELETE_BATCH)
+    .all<{ pack_key: string; listed: number }>()
   const found = rows.results ?? []
   if (found.length === 0) return { deleted: 0, pending: false }
-  const reset = await resetUnrewritten(
-    db,
-    found.filter((row) => row.replaced_by === REWRITE_PENDING)
-  )
   const doomed = found.filter((row) => !row.listed).map((row) => row.pack_key)
   try {
     if (doomed.length > 0) await storage.delete(doomed)
@@ -113,28 +120,31 @@ export const deleteReplacedPackObjects = async (
     })
     return { deleted: 0, pending: true }
   }
+  // A record found listed is dropped only while its pack is still listed: a
+  // reset or purge since the select made it the record of a due object.
+  const stale = found.filter((row) => row.listed).map((row) => row.pack_key)
   await db
-    .prepare('DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))')
-    .bind(JSON.stringify(found.map((row) => row.pack_key)))
+    .prepare(
+      `DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))
+         OR (pack_key IN (SELECT value FROM json_each(?))
+           AND EXISTS (SELECT 1 FROM pack_index p WHERE p.pack_key = pack_replaced_objects.pack_key))`
+    )
+    .bind(JSON.stringify(doomed), JSON.stringify(stale))
     .run()
   if (doomed.length > 0) logger.info('replaced pack objects deleted', { count: doomed.length })
-  return {
-    deleted: doomed.length,
-    pending: reset || found.length === REPLACED_DELETE_BATCH
-  }
+  return { deleted: doomed.length, pending: found.length === REPLACED_DELETE_BATCH }
 }
 
 /**
  * A purge rewrite still pending past its grace (protocol 08 §8.13): the object
  * goes now, so its range is rebuilt from source rows instead. Resets the kind
  * of each such object (packKindReset), which also makes the kind's listed
- * packs due. True when any kind was reset: those objects are due on the next
- * pass.
+ * packs due, so the pass that called it deletes them.
  */
 const resetUnrewritten = async (
   db: D1Database,
   rows: ReadonlyArray<{ pack_key: string; user_id: string; vault_id: string }>
-): Promise<boolean> => {
+): Promise<void> => {
   const kinds = new Map<string, { scope: VaultScope; kind: PackKindName }>()
   for (const row of rows) {
     const range = packKeyRange(row.pack_key)
@@ -150,7 +160,6 @@ const resetUnrewritten = async (
     })
     await db.batch(packKindReset(db, scope, kind, ALWAYS))
   }
-  return kinds.size > 0
 }
 
 /**

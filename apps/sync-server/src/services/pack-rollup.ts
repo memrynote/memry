@@ -13,13 +13,19 @@ import {
   allLive,
   packDocuments,
   packIndexInsert,
+  packKeyRange,
   packObjectKey,
   type Coverage,
   type Guard,
   type VaultScope
 } from './pack-index-write'
 import { recordsLive } from './pack-record-selection'
-import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import {
+  REWRITE_PENDING,
+  deleteUnlisted,
+  listingBatch,
+  recordUnlisted
+} from './pack-replaced-objects'
 import { liveIndexes, planOf, readPackObject } from './pack-repack'
 import { PACK_TARGET_BYTES, packCountBound } from './pack-sizing'
 import { snapshotsLive } from './pack-snapshot-selection'
@@ -73,11 +79,14 @@ const chains = (previous: ListedPack, next: ListedPack): boolean =>
  * chain and fit one pack by their listed counts. Longest, so tiny packs merge
  * before a full pack is rewritten. Empty when no two neighbours fit. An
  * `excluded` pack (one that could not be read) ends a run: merging across it
- * would list two packs over its range.
+ * would list two packs over its range. So does a `rewriting` min_cursor, the
+ * range of a pack waiting for its purge rewrite (protocol 08 §8.13), which
+ * lists its pack back there.
  */
 export const planRollup = (
   packs: readonly ListedPack[],
-  excluded: ReadonlySet<string> = new Set()
+  excluded: ReadonlySet<string> = new Set(),
+  rewriting: readonly number[] = []
 ): ListedPack[] => {
   let best: ListedPack[] = []
   for (let start = 0; start < packs.length; start++) {
@@ -89,6 +98,8 @@ export const planRollup = (
       const previous = run[run.length - 1]
       if (excluded.has(pack.id)) break
       if (previous && !chains(previous, pack)) break
+      if (previous && rewriting.some((min) => min >= previous.min_cursor && min <= pack.min_cursor))
+        break
       if (entries + pack.item_count > PACK_MAX_ENTRIES) break
       if (bytes + pack.byte_size > PACK_TARGET_BYTES) break
       entries += pack.item_count
@@ -277,7 +288,19 @@ export const rollupKind = async (
     .bind(scope.userId, scope.vaultId, kind)
     .all<ListedPack>()
   const packs = listed.results ?? []
-  let run = planRollup(packs)
+  const pending = await db
+    .prepare(
+      `SELECT pack_key FROM pack_replaced_objects
+       WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
+    )
+    .bind(scope.userId, scope.vaultId)
+    .all<{ pack_key: string }>()
+  const rewriting = (pending.results ?? []).flatMap(({ pack_key: key }) => {
+    const range = packKeyRange(key)
+    return range?.kind === kind ? [range.minSortValue] : []
+  })
+  const plan = (excluded: ReadonlySet<string> = new Set()) => planRollup(packs, excluded, rewriting)
+  let run = plan()
   // An unreadable input is excluded and the rollup re-planned over every listed
   // pack, so bad packs do not wedge the kind above its bound (VERIFY-5267 F4).
   // GETs stay within ROLLUP_MAX_INPUTS per rollup: once a re-plan would pass
@@ -289,7 +312,7 @@ export const rollupKind = async (
   const unreadIn = (list: readonly ListedPack[]) => list.filter((pack) => !read.has(pack.id))
   for (;;) {
     if (fetched + unreadIn(run).length > ROLLUP_MAX_INPUTS) {
-      run = planRollup(packs, new Set([...excluded, ...unreadIn(packs).map((pack) => pack.id)]))
+      run = plan(new Set([...excluded, ...unreadIn(packs).map((pack) => pack.id)]))
     }
     if (run.length === 0) {
       logger.warn('pack kind above its bound with no mergeable run', {
@@ -311,7 +334,7 @@ export const rollupKind = async (
       })
       excluded.add(pack.id)
     }
-    run = planRollup(packs, excluded)
+    run = plan(excluded)
   }
   let inputs = run.map((pack) => inputOf(read, pack))
 

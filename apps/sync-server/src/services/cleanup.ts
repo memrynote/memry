@@ -363,6 +363,16 @@ export const cleanupDeletedDocumentBodies = async (
         documents: noteIds.length,
         error: error instanceof Error ? error.message : String(error)
       })
+      // The purge may have committed its batch, and so made pack objects due or
+      // left rewrites pending, before it threw (sync.ts does the same).
+      try {
+        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+      } catch (enqueueError) {
+        logger.error('Deleted document body purge retry not enqueued', {
+          vaultId,
+          error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError)
+        })
+      }
     }
   }
   return purged

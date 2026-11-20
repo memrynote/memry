@@ -267,7 +267,9 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     await deleteDay(app)
 
     expect(count('pack_index')).toBe(0)
-    expect(count('pack_watermarks')).toBe(0)
+    expect(
+      harness.raw.prepare(`SELECT last_sort_value, last_sort_tiebreak FROM pack_watermarks`).all()
+    ).toEqual([{ last_sort_value: 0, last_sort_tiebreak: '' }])
     expect(await storage.get(packKey)).toBeNull()
   })
 

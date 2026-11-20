@@ -517,8 +517,9 @@ export const compactVault = async (
     // whose build listed a pack rolls up once more, so the message ends with the
     // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
     // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
-    // two replaced-object deletions 2 x 3 = 6, four purge rewrites 4 x 4 + 1 =
-    // 17: ~914.
+    // two replaced-object deletions 2 x 4 = 8, four purge rewrites at worst
+    // 4 x 10 + 1 = 41 (a GET, two attempts of a live read, PUT, batch and
+    // unlisted delete, and a kind reset): ~940.
     for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
       const result = await compactOneRange(db, storage, scope, kind)
       results.push(result)
