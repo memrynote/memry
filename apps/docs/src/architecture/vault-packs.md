@@ -396,9 +396,11 @@ cursor 0 with ranges that tile.
 
 **Bootstrap.** The open response carries the first pack page and its coverage, so a client needs
 no listing request to start. After the response it logs one line per open with each kind's
-coverage, its uncovered row count and the reason (`cache_only`, `never_packed`, `unanchored`,
-`tail`), and enqueues a backfill chain for each kind a build can extend on the nudge queue, ahead
-of the routine backfill fan-out (`pack-coverage.ts`). A client never waits for that work: it takes
+coverage, its uncovered row count (counted up to 256) and the reason (`cache_only`,
+`never_packed`, `unanchored`, `tail`), and starts a backfill chain for each kind a build can extend,
+on the backfill queue, so a push nudge or a purge retry never waits behind it. A vault's kind gets
+at most one chain start per 15 minutes, held in `pack_bootstrap_enqueues` (migration 0025), so
+repeated opens start one chain (`pack-coverage.ts`). A client never waits for that work: it takes
 whatever is not covered item by item.
 
 - **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,

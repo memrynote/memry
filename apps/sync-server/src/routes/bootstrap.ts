@@ -155,7 +155,7 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
     resolveR2PresignConfig(c.env)
   )
   // After the response: the per-bootstrap coverage log line, and compaction
-  // for each kind a build can extend, ahead of the routine backfill (#5230).
+  // for each kind a build can extend, at most once per window (#5230).
   waitUntilCaptured(c, reportBootstrapCoverage(c.env, { userId, vaultId }), {
     source: 'PackCoverage',
     action: 'bootstrap_coverage_failed'

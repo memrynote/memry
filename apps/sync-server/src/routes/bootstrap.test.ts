@@ -9,6 +9,7 @@ import {
   signBootstrapSession,
   verifyBootstrapSession
 } from '../services/bootstrap-session'
+import { BOOTSTRAP_ENQUEUE_SKIP_SECONDS, COVERAGE_COUNT_CAP } from '../services/pack-coverage'
 import type { AppContext } from '../types'
 import type * as RateLimitModule from '../middleware/rate-limit'
 
@@ -331,7 +332,7 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
     expect('packsNextCursor' in body).toBe(false)
   })
 
-  it('logs coverage per kind and enqueues an under-covered kind on the nudge queue', async () => {
+  it('logs coverage per kind and starts an under-covered kind on the backfill queue', async () => {
     // #given: 300 records and no pack yet, past the minimum fill
     seedDevice({ lastCursor: null })
     for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
@@ -343,12 +344,12 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
     const body = await open({ PACK_QUEUE: nudges, PACK_BACKFILL_QUEUE: backfills })
 
     // #then: the client is told nothing is covered and takes it item by item;
-    // the record chain starts ahead of the routine backfill queue
+    // the record chain starts on the backfill queue, so no nudge waits behind it
     expect(body.coverage).toEqual([])
-    expect(nudges.sent).toEqual([
+    expect(backfills.sent).toEqual([
       { body: { userId: 'user-1', vaultId: 'vault-1', backfill: { kind: 'record', hop: 0 } } }
     ])
-    expect(backfills.sent).toEqual([])
+    expect(nudges.sent).toEqual([])
     expect(coverageLog(info)?.kinds).toEqual([
       {
         kind: 'crdt_snapshot',
@@ -360,7 +361,7 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
       {
         kind: 'record',
         covered: false,
-        uncoveredRows: 300,
+        uncoveredRows: COVERAGE_COUNT_CAP,
         reason: 'never_packed',
         enqueued: true
       },
@@ -378,16 +379,17 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
     seedDevice({ lastCursor: null })
     seedItem('item-1', 10)
     seedRecordWatermark(10, null)
-    const nudges = createMemoryQueue()
+    const backfills = createMemoryQueue()
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
-    await open({ PACK_QUEUE: nudges })
-    expect(nudges.sent.map((sent) => sent.body.backfill?.kind)).toEqual(['record'])
+    await open({ PACK_BACKFILL_QUEUE: backfills })
+    expect(backfills.sent.map((sent) => sent.body.backfill?.kind)).toEqual(['record'])
 
     harness.raw.prepare('UPDATE pack_watermarks SET covered_through = 10').run()
-    nudges.sent.length = 0
+    harness.raw.prepare('DELETE FROM pack_bootstrap_enqueues').run()
+    backfills.sent.length = 0
     info.mockClear()
-    await open({ PACK_QUEUE: nudges })
-    expect(nudges.sent).toEqual([])
+    await open({ PACK_BACKFILL_QUEUE: backfills })
+    expect(backfills.sent).toEqual([])
     expect(coverageLog(info)?.kinds).toContainEqual({
       kind: 'record',
       covered: true,
@@ -399,8 +401,8 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
   it('a failed coverage report never fails the open', async () => {
     seedDevice({ lastCursor: null })
     for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
-    const nudges = createMemoryQueue()
-    nudges.sendBatch = async () => {
+    const backfills = createMemoryQueue()
+    backfills.sendBatch = async () => {
       throw new Error('queue down')
     }
     vi.spyOn(console, 'info').mockImplementation(() => undefined)
@@ -413,7 +415,7 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
         DB: harness.db,
         ENVIRONMENT: 'development',
         BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
-        PACK_QUEUE: nudges
+        PACK_BACKFILL_QUEUE: backfills
       }
     )
 
@@ -423,12 +425,12 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
 
   // The PR states subrequests per bootstrap. Before #5230 an open made 6 D1
   // calls on this seed, and the client then listed packs in a second request.
-  // Now: the listing batch in the response, the coverage batch and one queue
-  // send in waitUntil.
-  it('costs two D1 batches and one queue send more than before, and no listing request', async () => {
+  // Now: the listing batch in the response, and in waitUntil the coverage
+  // batch, the chain-start claim batch and one queue send.
+  it('costs three D1 batches and one queue send more than before, and no listing request', async () => {
     seedDevice({ lastCursor: null })
     for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
-    const nudges = createMemoryQueue()
+    const backfills = createMemoryQueue()
     vi.spyOn(console, 'info').mockImplementation(() => undefined)
     let calls = 0
     const tally =
@@ -464,14 +466,86 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
         DB: counted,
         ENVIRONMENT: 'development',
         BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
-        PACK_QUEUE: nudges,
+        PACK_BACKFILL_QUEUE: backfills,
         ...R2_ENV
       }
     )
     expect(res.status).toBe(200)
     await Promise.all(background)
-    expect(calls).toBe(8)
-    expect(nudges.sent).toHaveLength(1)
+    expect(calls).toBe(9)
+    expect(backfills.sent).toHaveLength(1)
+  })
+
+  it('starts a kind once per window however often the vault opens and closes', async () => {
+    // #given: a backlog a build can extend on every open (REVIEW-5291 P4)
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    const nudges = createMemoryQueue()
+    const backfills = createMemoryQueue()
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const cycle = async () => {
+      const body = await open({ PACK_QUEUE: nudges, PACK_BACKFILL_QUEUE: backfills })
+      const closed = await createApp().request(
+        '/sync/bootstrap/close',
+        { method: 'POST', headers: { 'X-Memry-Bootstrap-Token': body.session.token } },
+        { DB: harness.db, ENVIRONMENT: 'development', BOOTSTRAP_SESSION_HMAC_KEY: SECRET }
+      )
+      expect(closed.status).toBe(200)
+    }
+    try {
+      // #when: five open/close cycles inside the window
+      for (let i = 0; i < 5; i++) await cycle()
+
+      // #then: one chain start, on the backfill queue, none on the nudge queue
+      expect(backfills.sent).toEqual([
+        { body: { userId: 'user-1', vaultId: 'vault-1', backfill: { kind: 'record', hop: 0 } } }
+      ])
+      expect(nudges.sent).toEqual([])
+
+      // #when: an open once the window has passed starts the kind again
+      vi.setSystemTime(Date.now() + BOOTSTRAP_ENQUEUE_SKIP_SECONDS * 1000)
+      await cycle()
+      expect(backfills.sent).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reads coverage with bounded index seeks, whatever the backlog (REVIEW-5291 P6)', async () => {
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const statements: string[] = []
+    const db = harness.db
+    const recording: D1Database = Object.assign(Object.create(db) as D1Database, {
+      prepare: (sql: string) => {
+        statements.push(sql)
+        return db.prepare(sql)
+      }
+    })
+    const res = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      { DB: recording, ENVIRONMENT: 'development', BOOTSTRAP_SESSION_HMAC_KEY: SECRET }
+    )
+    expect(res.status).toBe(200)
+    await Promise.all(background)
+
+    const coverageReads = statements.filter((sql) => sql.includes('AS has_watermark'))
+    expect(coverageReads).toHaveLength(3)
+    for (const sql of coverageReads) {
+      const plan = (
+        harness.raw
+          .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+          .all('u', 'v', 'u', 'v', 'u', 'v', 'u', 'v', 'record') as Array<{ detail: string }>
+      ).map((row) => row.detail)
+      // Every source read is an index search, and the first-row read needs no sort.
+      expect(
+        plan.filter((detail) => / s\b/.test(detail)).every((d) => d.startsWith('SEARCH'))
+      ).toBe(true)
+      expect(plan.join('\n')).not.toMatch(/TEMP B-TREE/)
+    }
   })
 })
 
