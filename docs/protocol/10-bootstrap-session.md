@@ -150,7 +150,7 @@ which settles or owes every live document
 (`crates/memry-core/src/sync/first_sync.rs:7-13`). A vault the packs fully cover
 takes every body from them and owes nothing. The recent window is the
 partial-coverage path only: the first sync pulls the owed documents inside it
-(`crates/memry-core/src/sync/first_sync/body_pass.rs:100-110`), and the shell then
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:100-112`), and the shell then
 drains the rest in the foreground, at most `DRAIN_ROUND_DOCUMENTS = 400` owed
 documents a round, until none is owed
 (`crates/memry-core/src/sync/body_drain.rs:1-34`). `/sync/changes` runs at

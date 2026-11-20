@@ -68,6 +68,9 @@ struct VaultFillView<Content: View>: View {
         // core call it started runs to completion, which is what spec-defect
         // 108 leaves the shell with and why no button here claims otherwise.
         .task { await model.begin() }
+        // The drain is the model's own task, which a scene change only starts
+        // or joins, so the screen going away is what ends it.
+        .onDisappear { model.leave() }
         .onChange(of: scenePhase) { _, phase in
             guard phase != .inactive else { return }
             Task { await model.sceneChanged(active: phase == .active) }

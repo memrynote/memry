@@ -51,7 +51,7 @@ struct VaultFillDrainTests {
 
     /// Owed documents backing off after a failure come back as `remaining`
     /// with nothing pulled; asking again at once would spin.
-    @Test("a round that pulled nothing ends the drain")
+    @Test("a round that pulled nothing pauses the drain")
     func anEmptyRoundEndsTheDrain() async throws {
         let filler = StoreFiller(
             store: VaultStore(), alreadyComplete: true,
@@ -63,6 +63,61 @@ struct VaultFillDrainTests {
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
         #expect(filler.history == [.gate, .drain])
+    }
+
+    /// A 429 or a lost network on a round's first document pulls nothing
+    /// with bodies still owed. That pauses the drain; it does not end it.
+    @Test("a round that pulled nothing with bodies owed resumes on the next foreground")
+    func anEmptyRoundResumesOnForeground() async throws {
+        let filler = StoreFiller(
+            store: VaultStore(), alreadyComplete: true,
+            rounds: [
+                ([], .success(.round(0, remaining: 900))),
+                ([], .success(.round(400, remaining: 0))),
+            ]
+        )
+        let fill = VaultFillViewModel(filler: filler)
+        await fill.begin()
+        #expect(filler.history == [.gate, .drain])
+
+        await fill.sceneChanged(active: false)
+        await fill.sceneChanged(active: true)
+        #expect(filler.history == [.gate, .drain, .drain])
+        #expect(fill.phase == .filled)
+    }
+
+    @Test("a screen that goes away asks for no further round")
+    func leavingEndsTheDrain() async throws {
+        let filler = HeldDrainFiller(firstRound: .round(400, remaining: 500))
+        let fill = VaultFillViewModel(filler: filler)
+        let run = Task { await fill.begin() }
+        for _ in 0..<200 where !filler.isHeld {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(filler.isHeld)
+        fill.leave()
+        filler.finish()
+        await run.value
+        #expect(filler.rounds == 1)
+        #expect(fill.phase == .filled)
+    }
+
+    @Test("the strip keeps the first sync's count into the drain")
+    func theStripCarriesIntoTheDrain() async throws {
+        let filler = HeldDrainFiller(
+            firstSyncTicks: [bodies(500, of: 900), SyncProgress(phase: .done, completed: 900, total: 900)],
+            firstRoundTick: nil
+        )
+        let fill = VaultFillViewModel(filler: filler)
+        let run = Task { await fill.begin() }
+        for _ in 0..<200 where !filler.isHeld {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(filler.isHeld)
+        #expect(fill.strip == bodies(500, of: 900), "no gap between the first sync and the drain")
+        filler.finish()
+        await run.value
+        #expect(fill.strip == nil)
     }
 
     @Test("a failed round ends the drain quietly, and the bodies stay owed")
@@ -127,11 +182,29 @@ struct VaultFillDrainTests {
     }
 }
 
-/// An already-synced vault whose one drain round ticks, then holds.
+/// A vault whose first drain round ticks, then holds until ``finish()``.
+/// With `firstSyncTicks` it first runs a first sync that sends them; without,
+/// the gate says the vault is already synced. Rounds after the first owe
+/// nothing.
 final class HeldDrainFiller: VaultFilling, @unchecked Sendable {
     private let release = Mutex<CheckedContinuation<Void, Never>?>(nil)
+    private let count = Mutex(0)
+    private let firstSyncTicks: [SyncProgress]
+    private let firstRoundTick: SyncProgress?
+    private let firstRound: BodyDrainSummary
+
+    init(
+        firstSyncTicks: [SyncProgress] = [],
+        firstRoundTick: SyncProgress? = SyncProgress(phase: .bodies, completed: 3, total: 9),
+        firstRound: BodyDrainSummary = .round(9, remaining: 0)
+    ) {
+        self.firstSyncTicks = firstSyncTicks
+        self.firstRoundTick = firstRoundTick
+        self.firstRound = firstRound
+    }
 
     var isHeld: Bool { release.withLock { $0 != nil } }
+    var rounds: Int { count.withLock { $0 } }
 
     func finish() {
         release.withLock { held in
@@ -140,20 +213,32 @@ final class HeldDrainFiller: VaultFilling, @unchecked Sendable {
         }
     }
 
-    func isFirstSyncComplete() async throws -> Bool { true }
+    func isFirstSyncComplete() async throws -> Bool { firstSyncTicks.isEmpty }
 
     func firstSync(
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
-    ) async throws -> FirstSyncSummary { .none }
+    ) async throws -> FirstSyncSummary {
+        for tick in firstSyncTicks {
+            await MainActor.run { progress(tick) }
+        }
+        return .none
+    }
 
     func drainBodies(
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
     ) async throws -> BodyDrainSummary {
-        await MainActor.run { progress(bodies(3, of: 9)) }
+        let round = count.withLock { count in
+            count += 1
+            return count
+        }
+        guard round == 1 else { return .round(0, remaining: 0) }
+        if let tick = firstRoundTick {
+            await MainActor.run { progress(tick) }
+        }
         await withCheckedContinuation { continuation in
             release.withLock { $0 = continuation }
         }
-        return .round(9, remaining: 0)
+        return firstRound
     }
 
     func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
