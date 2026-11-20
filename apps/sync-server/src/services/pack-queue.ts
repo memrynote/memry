@@ -1,4 +1,5 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import type { PackKindName } from './pack-format'
 import type { VaultScope } from './pack-index-write'
 
 /**
@@ -7,9 +8,17 @@ import type { VaultScope } from './pack-index-write'
  * compaction core so a caller the core imports (cleanup.ts) can send one.
  */
 
+/** A backfill message's kind and its place in the chain (pack-backfill.ts, #5278). */
+export interface PackBackfillStep {
+  kind: PackKindName
+  hop: number
+}
+
+/** A nudge carries no `backfill`; a nudge never builds `crdt_update` packs. */
 export interface PackCompactionMessageBody {
   userId: string
   vaultId: string
+  backfill?: PackBackfillStep
 }
 
 // Backoff caps for a rate-limited send (#1997). Two short retries, upper-bounded

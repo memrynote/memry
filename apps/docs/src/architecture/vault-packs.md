@@ -89,10 +89,19 @@ Compaction is triggered two ways, both of which converge on the same idempotent 
   rows still sit above its watermark, so the cron backfill re-drives it. Telemetry records it as a
   handled warning rather than an unhandled 500, so it stays visible without reading as an outage.
   Any enqueue failure that is not backpressure still surfaces as a genuine unhandled error.
-- **Cron backfill.** The 6-hourly sweep drains historical backlog at `PACKS_PER_BACKFILL_TICK` = 3
-  packs per tick across all vaults, oldest backlog first, with no sleeps inside the invocation —
-  Worker CPU is billed wall-CPU, so pacing is expressed as bounded work per tick plus a resumable
-  watermark, never as waiting.
+- **Cron backfill.** The 6-hourly sweep builds nothing itself (#5278). It enqueues one backfill
+  message per vault and kind with work on its own queue (`PACK_BACKFILL_QUEUE`,
+  `memry-pack-backfill-<env>`), so nudges and the purge's delayed retry never wait behind it. Each
+  source (the kinds above their bound, and each kind's build backlog, oldest first) gets at most
+  `BACKFILL_MESSAGES_PER_SOURCE` = 25 messages, 100 per tick, so no kind starves another. Each
+  message runs in its own consumer invocation, rolls up and builds within 900 subrequests (3 builds
+  or 12 rollups), and re-enqueues itself `BACKFILL_HOP_DELAY_SECONDS` = 10 s later, at most
+  `BACKFILL_MAX_HOPS` = 64 messages per chain. Only a build that cannot list now ends the chain
+  (`PackBuildResult.reason` below the fill, at the listing cap, or held on a collision); a window
+  of holes or a lost race does not. A vault's backlog drains minutes after a tick instead of 3
+  packs per tick across all vaults, and a dropped or bounded chain resumes on the next tick from
+  the watermark. The two consumers may run one message each for a vault at once; the build's
+  watermark compare-and-swap and the rollup's guarded swap keep them from listing a range twice.
 
 An absent `PACK_QUEUE` binding makes `enqueuePackCompaction` a no-op, which is how local dev
 without Queues keeps working: compaction is an optimisation, never a correctness requirement.
@@ -119,8 +128,8 @@ before the pull that delivers the tombstone, so a packed body of a deleted note 
 as if it were live. A note id with any live `note` or `journal` row still packs, and so does one
 with no row yet, because a snapshot can land before its record. Dead rows stay in the scan and are
 skipped like oversized rows, so the watermark moves past a tail of them. If the filter ran in SQL,
-such a vault would scan nothing, stay first in the oldest-first backfill list, and spend each
-tick's budget. The filter only covers packs built after the delete.
+such a vault would scan nothing, stay first in the oldest-first backfill list, and take a message
+of each tick's fan-out. The filter only covers packs built after the delete.
 
 A pack built before the delete is immutable and still carries the body. A deleted id can come back:
 a journal day is always `j<date>`. If that pack survived, a fresh device would apply the deleted
@@ -235,7 +244,8 @@ before a purge never brings the deleted incarnation back. Whenever the purged do
 row, update or snapshot, the same D1 batch drops every `crdt_update` pack of the vault and resets
 that kind's watermark: a snapshot that pruned the packed update rows leaves them only in the packs.
 
-A push nudge builds no update pack. The cron backfill builds one under the minimum fill below.
+A push nudge builds no update pack. A backfill message the cron enqueues builds one under the
+minimum fill below.
 
 ### Minimum fill, rollup and the pack bound
 
@@ -246,7 +256,7 @@ afterwards. The staging vault `sandboxmobile` listed 230 snapshot packs holding 
 **Minimum fill.** A build of any kind cuts a pack only when the kind holds 256 unpacked rows, its
 rows reach 24 MB, or its oldest unpacked row is 24 hours old (`PACK_MIN_FILL_ROWS`,
 `PACK_SETTLE_SECONDS`, `services/pack-sizing.ts`). Younger rows stay on the item routes and the
-feed. `findBacklogVaults` skips a vault below that fill, so the tick spends no budget on it.
+feed. `findBacklogVaults` skips a vault below that fill, so the tick enqueues no message for it.
 
 **The bound.** A vault lists at most `2 * (ceil(entries / 4096) + ceil(bytes / 24 MB)) + 2` packs
 of one kind, where `entries` and `bytes` are what its listed packs of that kind hold
@@ -267,7 +277,7 @@ over every listed pack of the kind without it, downloading at most 64 packs in a
 spans an unreadable pack, and each one can split a run in two, so a kind lists at most its bound,
 plus twice its unreadable listed packs, plus the transient one. An unreadable pack stays listed and
 readers treat it as absent and take its range item by item. While the kind is above its bound,
-every tick's rollup reads it and logs it at error level with its id and kind
+every backfill message's rollup reads it and logs it at error level with its id and kind
 (`rollup input pack unreadable`). Within the bound no rollup reads it, so nothing reports it;
 detecting and rebuilding it there is #5272.
 
@@ -280,7 +290,7 @@ the union of its inputs'; body packs carry no coverage yet.
 **Grace period.** An old object stays readable for 600 seconds after its row leaves the listing,
 twice the presigned URL lifetime, so a client that listed it before the rollup still downloads it.
 `deleteReplacedPackObjects` deletes it after that, at the start and the end of every compaction
-message for that vault, so a failing build cannot block it, and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
+message for that vault, so a failing build cannot block it, at the start and the end of every backfill message, and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
 lose it, and the orphan sweep leaves every key in that table alone. A body purge skips the grace:
 it makes the replaced objects of each kind it drops due in the batch that drops the listing, records
 the listed packs it drops as due in the same batch, and deletes them all at once, because they may
@@ -292,10 +302,10 @@ at most five vaults per tick, about 41 subrequests.
 **Where it runs.** Every compaction message rolls up each kind once before building, which is what
 makes room in a vault at the 999-pack cap, and once more after a build that listed a pack, so the
 message ends at or under the bound. Builds take the watermark with a compare-and-swap, so a cron
-build and a queue build of one window never both list. Every backfill tick first rolls up the four kinds with
-the most packs above their bound, then builds with the rest of its budget, so a vault that stopped
-pushing still drains. A tick has no budget to roll up after its builds, so a kind it built for may
-list one pack above its bound until the next tick or message.
+build and a queue build of one window never both list. Every backfill tick enqueues each kind above
+its bound, and a backfill message rolls the kind up before each build, so a vault that stopped
+pushing still drains. A message that spends its budget on its last build has none left to roll up,
+so a kind may list one pack above its bound until the chain's next message or the next tick.
 
 **Observability.** Each rollup logs `pack rollup` with `packsBefore`, `packsAfter`, `bound`,
 `inputs`, `entriesIn`, `entriesKept` and `deadRatio`. For one vault, this D1 query gives packs and
