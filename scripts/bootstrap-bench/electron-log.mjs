@@ -46,3 +46,63 @@ export function electronMarks(events) {
     }
   }
 }
+
+const KEPT_PREFIXES = [
+  'Bootstrap window',
+  'Pull timing',
+  'fullSync:',
+  'Pull page processed',
+  'pullCrdtForNotes completed',
+  'Pack bootstrap finished',
+  'Sync lock held past stale threshold'
+]
+
+/**
+ * Follows main.log across the logger's renames (main.log -> main.1.log at
+ * 5 MB, four archives kept), so a long run keeps its first lines. Each call
+ * reads what was appended since the last one and returns the lines the
+ * benchmark reads.
+ */
+export function followLog(logPath, fs) {
+  const archivePath = logPath.replace(/\.log$/, '.1.log')
+  let inode = null
+  let offset = 0
+  let partial = ''
+  const lines = []
+
+  const readFrom = (file, from) => {
+    const size = fs.statSync(file).size
+    if (size <= from) return ''
+    const buffer = Buffer.alloc(size - from)
+    const fd = fs.openSync(file, 'r')
+    try {
+      fs.readSync(fd, buffer, 0, buffer.length, from)
+    } finally {
+      fs.closeSync(fd)
+    }
+    return buffer.toString('utf8')
+  }
+
+  return () => {
+    if (!fs.existsSync(logPath)) return lines
+    let text = ''
+    const current = fs.statSync(logPath).ino
+    if (inode !== null && current !== inode) {
+      // Rotated since the last read: finish the old file under its new name.
+      if (fs.existsSync(archivePath) && fs.statSync(archivePath).ino === inode) {
+        text += readFrom(archivePath, offset)
+      }
+      offset = 0
+    }
+    inode = current
+    const fresh = readFrom(logPath, offset)
+    offset += Buffer.byteLength(fresh)
+    text = partial + text + fresh
+    const split = text.split('\n')
+    partial = split.pop() ?? ''
+    for (const line of split) {
+      if (KEPT_PREFIXES.some((prefix) => line.includes(`] ${prefix}`))) lines.push(line)
+    }
+    return lines
+  }
+}

@@ -15,7 +15,7 @@ import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 import { parseKeychainDump } from '../../apps/desktop/scripts/purge-e2e-keychain.mjs'
-import { electronMarks, parseMainLog } from './electron-log.mjs'
+import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { formatReport, summarize } from './metrics.mjs'
 import { startProxy } from './proxy.mjs'
 
@@ -179,6 +179,7 @@ async function runElectron(proxy) {
   )
 
   let parsed = null
+  const readLog = followLog(logPath, fs)
   // Ctrl+C ends the wait and still runs the cleanup below.
   let interrupted = false
   const interrupt = () => (interrupted = true)
@@ -189,8 +190,7 @@ async function runElectron(proxy) {
     let runDeadline = null
     for (;;) {
       await sleep(LOG_POLL_MS)
-      const text = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : ''
-      parsed = electronMarks(parseMainLog(text))
+      parsed = electronMarks(parseMainLog(readLog().join('\n')))
       if (parsed?.marks.bodiesMs || interrupted) break
       if (parsed && runDeadline === null) {
         runDeadline = Date.now() + Number(values['timeout-min']) * 60_000
@@ -208,17 +208,18 @@ async function runElectron(proxy) {
     await sleep(3_000)
     const kept = path.join(OUT_DIR, `electron-main-${deviceId}.log`)
     fs.mkdirSync(OUT_DIR, { recursive: true })
-    if (fs.existsSync(logPath)) fs.copyFileSync(logPath, kept)
+    fs.writeFileSync(kept, `${readLog().join('\n')}\n`)
     for (const dir of [userDataDir, `${userDataDir}-${deviceId}`]) {
       fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
     }
     purgeBenchKeychain(deviceId)
-    console.log(`main.log kept at ${kept}`)
+    console.log(`main.log lines the benchmark read: ${kept}`)
     console.log(
       `Remove the downloaded vault folder (default ~/Documents/Memry/) and the staging device ` +
         `${deviceId} from another device's settings.`
     )
   }
+  if (!parsed) throw new Error('main.log never opened a bootstrap window')
   return parsed
 }
 

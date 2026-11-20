@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 import { describe, it } from 'node:test'
 
-import { electronMarks, parseMainLog } from './electron-log.mjs'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { busyMs, endpointOf, formatReport, limiterOf, summarize } from './metrics.mjs'
 
 const request = (fields) => ({
@@ -96,6 +100,15 @@ describe('endpointOf', () => {
       'GET /sync/crdt/snapshot/:id'
     )
     assert.equal(endpointOf(request({ path: '/sync/changes?limit=500' })), 'GET /sync/changes')
+    // Journal ids and short ids carry no uuid shape; the route decides.
+    assert.equal(
+      endpointOf(request({ path: '/sync/crdt/snapshot/j2099-10-16' })),
+      'GET /sync/crdt/snapshot/:id'
+    )
+    assert.equal(
+      endpointOf(request({ method: 'POST', path: '/sync/crdt/snapshot/batch' })),
+      'POST /sync/crdt/snapshot/batch'
+    )
   })
 })
 
@@ -117,6 +130,25 @@ describe('electron main.log', () => {
     assert.equal(parsed.staleLockReleases, 1)
     assert.equal(parsed.shell.snapshotGets, 140)
     assert.equal(parsed.shell.crdtGroups, 2)
+  })
+
+  it('keeps the first lines when the logger rotates main.log', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-log-'))
+    const live = path.join(dir, 'main.log')
+    const [, opened, , , timing, , closed] = log.split('\n')
+    try {
+      fs.writeFileSync(live, `${opened}\n`)
+      const read = followLog(live, fs)
+      read()
+      fs.appendFileSync(live, `${timing}\nnoise line\n`)
+      fs.renameSync(live, path.join(dir, 'main.1.log'))
+      fs.writeFileSync(live, `${closed}\n`)
+      const parsed = electronMarks(parseMainLog(read().join('\n')))
+      assert.equal(parsed.marks.recordsMs - parsed.marks.startMs, 50_000)
+      assert.equal(parsed.marks.bodiesMs - parsed.marks.startMs, 110_000)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('has no marks before a vault download starts', () => {

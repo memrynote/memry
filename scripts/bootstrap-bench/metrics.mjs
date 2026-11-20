@@ -1,17 +1,28 @@
 // The shell-agnostic half of the bootstrap benchmark (#5223): every shell hands
 // in the proxy's request log and three marks, and gets back the same metrics.
 
-const ID_SEGMENT = /^(?=.*\d)[A-Za-z0-9_-]{12,}$/
+// The Worker's parameterised routes; every other path is already an endpoint.
+const ROUTE_PARAMS = [
+  [/^\/sync\/crdt\/snapshot\/(?!batch$)[^/]+$/, '/sync/crdt/snapshot/:id'],
+  [/^\/sync\/items\/[^/]+$/, '/sync/items/:id'],
+  [/^\/sync\/blob\/[^/]+$/, '/sync/blob/:id'],
+  [/^\/sync\/attachments\/chunks\/[^/]+$/, '/sync/attachments/chunks/:id'],
+  [
+    /^\/sync\/attachments\/upload\/(?!initiate$)[^/]+(\/complete)?$/,
+    '/sync/attachments/upload/:id$1'
+  ],
+  [/^\/sync\/attachments\/[^/]+\/manifest$/, '/sync/attachments/:id/manifest'],
+  [/^\/devices\/[^/]+$/, '/devices/:id']
+]
 
-/** `/sync/crdt/snapshot/abc123…?x=1` -> `GET /sync/crdt/snapshot/:id`. */
+/** `/sync/crdt/snapshot/abc?x=1` -> `GET /sync/crdt/snapshot/:id`. */
 export function endpointOf(request) {
   if (request.host === 'r2') return `${request.method} r2:pack`
   const pathname = request.path.split('?')[0]
-  const normalized = pathname
-    .split('/')
-    .map((segment) => (ID_SEGMENT.test(segment) ? ':id' : segment))
-    .join('/')
-  return `${request.method} ${normalized}`
+  for (const [pattern, route] of ROUTE_PARAMS) {
+    if (pattern.test(pathname)) return `${request.method} ${pathname.replace(pattern, route)}`
+  }
+  return `${request.method} ${pathname}`
 }
 
 export function channelOf(request) {
