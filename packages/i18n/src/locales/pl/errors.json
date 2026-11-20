@@ -29,6 +29,7 @@
     "moveFailed": "Nie udało się przenieść notatki",
     "applyTemplateFailed": "Nie udało się zastosować szablonu",
     "appendBlocksFailed": "Nie udało się przenieść bloku do tej notatki",
+    "appendIntoCaseTwin": "Ta notatka współdzieli plik z notatką, której nazwa różni się tylko wielkością liter. Zmień nazwę jednej z nich, a następnie ponownie przenieś blok.",
     "exportPdfFailed": "Nie udało się wyeksportować pliku PDF",
     "exportHtmlFailed": "Nie udało się wyeksportować pliku HTML",
     "restoreVersionFailed": "Nie udało się przywrócić wersji",

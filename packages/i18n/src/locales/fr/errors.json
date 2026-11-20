@@ -29,6 +29,7 @@
     "moveFailed": "Impossible de déplacer la note",
     "applyTemplateFailed": "Impossible d'appliquer le modèle",
     "appendBlocksFailed": "Impossible de déplacer le bloc vers cette note",
+    "appendIntoCaseTwin": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse. Renommez l’une des deux, puis déplacez à nouveau le bloc.",
     "exportPdfFailed": "Impossible d'exporter en PDF",
     "exportHtmlFailed": "Impossible d'exporter en HTML",
     "restoreVersionFailed": "Impossible de restaurer la version",

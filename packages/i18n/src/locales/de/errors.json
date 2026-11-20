@@ -29,6 +29,7 @@
     "moveFailed": "Die Notiz konnte nicht verschoben werden",
     "applyTemplateFailed": "Die Vorlage konnte nicht angewendet werden",
     "appendBlocksFailed": "Der Block konnte nicht in diese Notiz verschoben werden",
+    "appendIntoCaseTwin": "Diese Notiz teilt ihre Datei mit einer Notiz, deren Name sich nur in der Groß- und Kleinschreibung unterscheidet. Benenne eine der beiden um und verschiebe den Block dann erneut.",
     "exportPdfFailed": "PDF konnte nicht exportiert werden",
     "exportHtmlFailed": "HTML konnte nicht exportiert werden",
     "restoreVersionFailed": "Die Version konnte nicht wiederhergestellt werden",

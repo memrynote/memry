@@ -29,6 +29,7 @@
     "moveFailed": "Gagal mengalihkan nota",
     "applyTemplateFailed": "Gagal menggunakan templat",
     "appendBlocksFailed": "Gagal mengalihkan blok ke nota itu",
+    "appendIntoCaseTwin": "Nota itu berkongsi failnya dengan nota yang namanya hanya berbeza pada huruf besar dan kecil. Namakan semula salah satu daripadanya, kemudian alihkan blok sekali lagi.",
     "exportPdfFailed": "Gagal mengeksport PDF",
     "exportHtmlFailed": "Gagal mengeksport HTML",
     "restoreVersionFailed": "Gagal memulihkan versi",

@@ -29,6 +29,7 @@
     "moveFailed": "تعذّر نقل الملاحظة",
     "applyTemplateFailed": "تعذّر تطبيق القالب",
     "appendBlocksFailed": "تعذّر نقل الكتلة إلى تلك الملاحظة",
+    "appendIntoCaseTwin": "تشترك تلك الملاحظة في ملفها مع ملاحظة يختلف اسمها فقط في حالة الأحرف. أعد تسمية إحداهما، ثم انقل الكتلة مرة أخرى.",
     "exportPdfFailed": "تعذّر التصدير إلى PDF",
     "exportHtmlFailed": "تعذّر التصدير إلى HTML",
     "restoreVersionFailed": "تعذّر استعادة الإصدار",

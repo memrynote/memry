@@ -29,6 +29,7 @@
     "moveFailed": "Gagal memindahkan catatan",
     "applyTemplateFailed": "Gagal menerapkan templat",
     "appendBlocksFailed": "Gagal memindahkan blok ke catatan tersebut",
+    "appendIntoCaseTwin": "Catatan itu berbagi file dengan catatan yang namanya hanya berbeda pada huruf besar dan kecil. Ganti nama salah satunya, lalu pindahkan blok lagi.",
     "exportPdfFailed": "Gagal mengekspor PDF",
     "exportHtmlFailed": "Gagal mengekspor HTML",
     "restoreVersionFailed": "Gagal memulihkan versi",

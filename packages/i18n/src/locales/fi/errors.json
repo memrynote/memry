@@ -29,6 +29,7 @@
     "moveFailed": "Muistiinpanon siirtäminen epäonnistui",
     "applyTemplateFailed": "Pohjan käyttäminen epäonnistui",
     "appendBlocksFailed": "Lohkon siirtäminen kyseiseen muistiinpanoon epäonnistui",
+    "appendIntoCaseTwin": "Muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta. Nimeä toinen niistä uudelleen ja siirrä lohko sitten uudelleen.",
     "exportPdfFailed": "PDF-tiedoston vieminen epäonnistui",
     "exportHtmlFailed": "HTML-tiedoston vieminen epäonnistui",
     "restoreVersionFailed": "Version palauttaminen epäonnistui",

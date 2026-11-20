@@ -29,6 +29,7 @@
     "moveFailed": "노트를 이동하지 못했습니다.",
     "applyTemplateFailed": "템플릿을 적용하지 못했습니다.",
     "appendBlocksFailed": "블록을 해당 노트로 옮기지 못했습니다.",
+    "appendIntoCaseTwin": "이 노트는 이름이 대소문자만 다른 노트와 파일을 공유합니다. 둘 중 하나의 이름을 바꾼 다음 블록을 다시 옮기세요.",
     "exportPdfFailed": "PDF로 내보내지 못했습니다.",
     "exportHtmlFailed": "HTML로 내보내지 못했습니다.",
     "restoreVersionFailed": "버전을 복원하지 못했습니다.",

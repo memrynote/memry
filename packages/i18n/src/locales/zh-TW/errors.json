@@ -29,6 +29,7 @@
     "moveFailed": "無法移動筆記",
     "applyTemplateFailed": "無法套用範本",
     "appendBlocksFailed": "無法將區塊移至該筆記",
+    "appendIntoCaseTwin": "該筆記與另一則名稱僅大小寫不同的筆記共用同一個檔案。請重新命名其中一則，然後再次移動區塊。",
     "exportPdfFailed": "無法匯出 PDF",
     "exportHtmlFailed": "無法匯出 HTML",
     "restoreVersionFailed": "無法還原版本",

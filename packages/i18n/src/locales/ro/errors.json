@@ -29,6 +29,7 @@
     "moveFailed": "Nu s-a putut muta notița",
     "applyTemplateFailed": "Nu s-a putut aplica șablonul",
     "appendBlocksFailed": "Nu s-a putut muta blocul în acea notiță",
+    "appendIntoCaseTwin": "Acea notiță are același fișier cu o notiță al cărei nume diferă doar prin majuscule și minuscule. Redenumește una dintre ele, apoi mută din nou blocul.",
     "exportPdfFailed": "Nu s-a putut exporta în PDF",
     "exportHtmlFailed": "Nu s-a putut exporta în HTML",
     "restoreVersionFailed": "Nu s-a putut restaura versiunea",

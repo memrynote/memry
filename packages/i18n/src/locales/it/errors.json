@@ -29,6 +29,7 @@
     "moveFailed": "Impossibile spostare la nota",
     "applyTemplateFailed": "Impossibile applicare il modello",
     "appendBlocksFailed": "Impossibile spostare il blocco in quella nota",
+    "appendIntoCaseTwin": "Quella nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole. Rinomina una delle due, quindi sposta di nuovo il blocco.",
     "exportPdfFailed": "Impossibile esportare in PDF",
     "exportHtmlFailed": "Impossibile esportare in HTML",
     "restoreVersionFailed": "Impossibile ripristinare la versione",
