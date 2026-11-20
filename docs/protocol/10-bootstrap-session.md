@@ -144,10 +144,19 @@ A 10 000-item vault, steady state:
 - a full body sweep of 10 000 notes is roughly **17 minutes unelevated** against
   **3.3 minutes elevated**.
 
-**Core obligation.** Meet FR-028 and SC-007 by **windowing** — refs, then recent
-metadata, then recent bodies — and by raising `/sync/changes` to `limit=500`, not
-by the session. A client SHOULD still open one, as desktop does: it is one cheap
-call with a silent fallback. A `501` on a staging deployment means "no bootstrap
+**Core obligation.** Meet FR-028 and SC-007 for the **whole vault**, from packs
+first: record packs and the feed for every note record, then the body pack phase,
+which settles or owes every live document
+(`crates/memry-core/src/sync/first_sync.rs:7-13`). A vault the packs fully cover
+takes every body from them and owes nothing. The recent window is the
+partial-coverage path only: the first sync pulls the owed documents inside it
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:100-110`), and the shell then
+drains the rest in the foreground, at most `DRAIN_ROUND_DOCUMENTS = 400` owed
+documents a round, until none is owed
+(`crates/memry-core/src/sync/body_drain.rs:1-34`). `/sync/changes` runs at
+`limit=500`. The session is never required: a client SHOULD still open one, as
+desktop does, because it is one cheap call with a silent fallback, and the drain
+opens one per round. A `501` on a staging deployment means "no bootstrap
 configured", not a client bug.
 
 **Disposition of Q10.1: answered (an optimisation, never required).**

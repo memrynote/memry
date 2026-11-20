@@ -369,8 +369,10 @@ impl VaultSync {
             .is_some())
     }
 
-    /// The first sync: refs to the end, then metadata newest first, then bodies
-    /// for the recent window (data-model §C.3, FR-028).
+    /// The first sync: note records for the whole vault, then bodies from packs
+    /// for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+    /// coverage it pulls the owed bodies of the recent window and leaves the
+    /// rest owed for [`Self::drain_bodies`].
     ///
     /// **`async`, and that is contract, not detail** (spec-defect 90). It is
     /// tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -458,12 +460,12 @@ impl VaultSync {
 
     /// One note's body, on demand (chapter 07 §7.8 – §7.11).
     ///
-    /// **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-    /// recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-    /// says "older content on demand" — so a note outside it arrives with its
+    /// **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+    /// leaves the bodies outside the recent window owed until
+    /// [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+    /// says "older content on demand": a note opened before then has its
     /// metadata and no body, and [`crate::api::notes::Notes::read`] answers
-    /// `NoteBody { present: false }`. Without this call that note could never
-    /// become readable, which is spec-defect 136 one layer down.
+    /// `NoteBody { present: false }`. This call makes it readable now.
     ///
     /// **`async`**, and one document rather than the whole feed: a handful of
     /// round trips, not tens.

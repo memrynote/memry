@@ -33,6 +33,9 @@ use super::{body_debt, body_heal};
 /// stream and ~200 ms a request, a third of that at four.
 pub const DRAIN_ROUND_DOCUMENTS: usize = 400;
 
+/// A chunk's owed documents, each with its probe answer when it had one.
+type Queue = VecDeque<(String, Option<Probed>)>;
+
 /// What one round did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DrainReport {
@@ -91,7 +94,7 @@ pub async fn run(
                 // Each document then pulls through the ordinary §7.8 path.
                 Err(BodyPullError::Api { .. }) => HashMap::new(),
             };
-        let queue: VecDeque<(String, Option<Probed>)> = chunk
+        let queue: Queue = chunk
             .iter()
             .map(|doc_id| (doc_id.clone(), probed.remove(doc_id)))
             .collect();
@@ -134,7 +137,7 @@ pub async fn run(
 async fn worker(
     db: Db,
     bodies: Arc<BodyPull>,
-    queue: Arc<Mutex<VecDeque<(String, Option<Probed>)>>>,
+    queue: Arc<Mutex<Queue>>,
     ended: Arc<AtomicBool>,
     tally: Arc<Tally>,
 ) -> Result<(BodyPullReport, usize), StorageError> {
