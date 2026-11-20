@@ -59,6 +59,17 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             let _ = recovered.send(());
         });
 
+    // One owner of the open vault's at-rest key, shared by sync and the agent (#3545 D3). Its
+    // close hook is registered before sync's and the agent's, so it runs after both let go.
+    let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
+    let at_rest_keys = account.at_rest_keys();
+    let closing = Arc::clone(&at_rest_keys);
+    session.on_close(
+        "at-rest-key",
+        Arc::new(move |open| closing.close(&open.vault)),
+    );
+    app.manage(at_rest_keys);
+
     let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
@@ -69,7 +80,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         runtime,
         account,
         registry: session.registry().clone(),
-        store: app.state::<Arc<DeviceIdentityStore>>().inner().clone(),
+        store,
         reachability,
         power: Some(power),
         keychain_recovered,

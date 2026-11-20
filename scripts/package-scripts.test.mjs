@@ -93,4 +93,10 @@ describe('seed scripts', () => {
       /^xtask = "run -p xtask --"$/m
     )
   })
+  it('seeds the demo, rich and small vaults through cargo xtask', () => {
+    assert.equal(rootPackage.scripts.seed, 'cd crates && cargo xtask seed demo')
+    assert.equal(rootPackage.scripts['seed:rich'], 'cd crates && cargo xtask seed rich')
+    assert.equal(rootPackage.scripts['seed:1'], 'cd crates && cargo xtask seed small --variant 1')
+    assert.equal(rootPackage.scripts['seed:2'], 'cd crates && cargo xtask seed small --variant 2')
+  })
 })

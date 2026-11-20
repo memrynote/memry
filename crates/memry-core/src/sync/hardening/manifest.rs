@@ -20,15 +20,19 @@
 //!   A row with anything already queued is left to that push.
 //!
 //! **Not re-uploaded: the types the server re-creates over a purged
-//! tombstone** (`RECREATABLE_AFTER_PURGE_ITEM_TYPES`, §5.12.3), notes and
-//! journals among them. The server accepts their `create` over a marker, and
-//! this core does not apply markers yet, so a re-upload of one would bring a
-//! deleted item back on every device. [`REUPLOADED`] is Electron's
-//! `REUPLOADABLE_TYPES` (`:268-288`) without them, without `task_activity`,
-//! whose retention this core does not track, and without `settings`, the one
-//! clock-exempt type (chapter 05 §5.4): the server's delete-wins check needs a
-//! clock to refuse a `create` over a purged tombstone, so a `settings` create
-//! is re-created over one just as the re-creatable types are.
+//! tombstone** (`RECREATABLE_AFTER_PURGE_ITEM_TYPES`, §5.12.3), notes,
+//! journals and bookmarks among them. The server accepts their `create` over
+//! a marker, and a marker the pull skipped (a run from cursor 0) or refused
+//! (unattested, an unknown signer, a quarantine) leaves no trace here, so a
+//! row still live here can be one another device deleted: its re-upload would
+//! bring the item back on every device (#4785). Electron re-uploads them and
+//! has that hole (`pull-coordinator.ts:312,816`, `:179-224`). [`REUPLOADED`]
+//! is Electron's `REUPLOADABLE_TYPES` (`:293-313`) without them, without
+//! `task_activity`, whose retention this core does not track, and without
+//! `settings`, the one clock-exempt type (chapter 05 §5.4): the server's
+//! delete-wins check needs a clock to refuse a `create` over a purged
+//! tombstone, so a `settings` create is re-created over one just as the
+//! re-creatable types are.
 
 use std::collections::BTreeSet;
 use std::sync::Mutex;

@@ -71,13 +71,12 @@ impl PullLoop {
                 still_open(&txn)?;
                 let advanced = match advance {
                     Some(advance) => {
-                        let at_head = (advance.at_head)(&totals);
                         // Stamped under the writer, as `body_pull::store_update` says why.
                         let advanced = note_body_feed::land_and_advance(
                             &txn,
                             advance.bodies,
                             advance.cursor.as_deref(),
-                            at_head,
+                            advance.at_head,
                             now_ms(),
                         )?;
                         still_open(&txn)?;
@@ -243,8 +242,10 @@ impl PullLoop {
 pub(super) struct Advance {
     pub bodies: FetchedBodies,
     pub cursor: Option<String>,
-    /// Whether the page reached the head of the feed, from its apply totals.
-    pub at_head: Box<dyn FnOnce(&ApplyTotals) -> bool + Send>,
+    /// Whether the page reached the head of the feed. A refused page at the head is still
+    /// the head: the cursor moves past it, so a run from cursor 0 ends there and the next
+    /// run's markers apply (§5.12.3).
+    pub at_head: bool,
 }
 
 /// Fails the page when SQLite rolled its transaction back on its own: writing

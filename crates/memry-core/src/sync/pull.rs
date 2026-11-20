@@ -49,7 +49,7 @@ use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAU
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
 
-use super::apply::{self, ApplyTotals, Pending};
+use super::apply::{self, Pending};
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::driver::Observers;
@@ -422,17 +422,12 @@ impl PullLoop {
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
         let mut feed = AppliedFeed::default();
-        let (decode_corrupt, decode_skipped) = (report.corrupt, report.skipped);
-        let has_more = report.has_more;
         let requested = !ids.is_empty();
         let advanced = page.next_cursor.clone().or(cursor);
         let advance = apply_step::Advance {
             bodies,
             cursor: advanced.clone(),
-            at_head: Box::new(move |totals: &ApplyTotals| {
-                let yielded = decode_skipped + yielded(totals);
-                !has_more && !breaker(yielded, decode_corrupt + totals.corrupt, requested)
-            }),
+            at_head: !report.has_more,
         };
         let (outcomes, advanced_documents) = self
             .apply_all(pending, untyped, owe_bodies, Some(advance), &mut feed)
@@ -553,10 +548,6 @@ impl PullLoop {
 /// corruption is refused.
 fn breaker(yielded: usize, corrupt: usize, requested: bool) -> bool {
     yielded == 0 && corrupt > 0 && requested
-}
-
-fn yielded(totals: &ApplyTotals) -> usize {
-    totals.applied + totals.deleted + totals.skipped + totals.expired
 }
 
 fn typed_covers(pending: &[Pending], id: &str) -> bool {

@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     settingsResetKeyboard: vi.fn(),
     settingsGetAi: vi.fn(),
     settingsSetAi: vi.fn(),
+    settingsGetCalendarProvider: vi.fn(),
+    settingsSetCalendarProvider: vi.fn(),
     settingsDownloadVoiceModel: vi.fn(),
     settingsSetVoiceTranscriptionOpenaiKey: vi.fn(),
     logWrite: vi.fn()
@@ -83,6 +85,27 @@ describe('settingsService', () => {
 
     expect(modes.notes).toBe('title-asc')
     expect(Object.keys(modes).length).toBeGreaterThan(1)
+  })
+
+  it('answers the calendar provider calls in the shapes the settings panels read', async () => {
+    mocks.commands.settingsGetCalendarProvider.mockResolvedValue(null)
+    mocks.commands.settingsSetCalendarProvider.mockRejectedValue({
+      code: 'settings_invalid_value',
+      message: 'Unsupported calendar provider: outlook'
+    })
+
+    expect(await settingsService.getCalendarProviderSettings({ provider: 'outlook' })).toBeNull()
+    expect(
+      await settingsService.setCalendarProviderSettings({
+        provider: 'outlook',
+        updates: { agentReadEventsConsent: true }
+      })
+    ).toEqual({ success: false, error: 'Unsupported calendar provider: outlook' })
+
+    await settingsService.setCalendarGoogleSettings({ pushEventsToGoogle: false })
+    expect(mocks.commands.settingsSetGroup).toHaveBeenCalledWith('calendar.google', {
+      pushEventsToGoogle: false
+    })
   })
 
   it('reads and writes the AI switches through their own commands', async () => {

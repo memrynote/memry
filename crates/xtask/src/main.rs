@@ -84,6 +84,7 @@ fn seed_bench(args: &[String]) -> Result<(), String> {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        ["seed", "demo" | "rich" | "small", ..] => xtask::seed_template::run(&args[1..]),
         ["seed", "bench", ..] => seed_bench(&args[2..]),
         _ => Err(USAGE.to_owned()),
     };

@@ -422,6 +422,8 @@ function installBillingCommands() {
   billing.accountOpenBillingPortal
     .mockReset()
     .mockResolvedValue({ success: true, portalUrl: 'https://paddle.test/portal' })
+  billing.accountPreviewPlanChange.mockReset()
+  billing.accountChangePlan.mockReset()
 }
 
 const PRO_MONTHLY = {

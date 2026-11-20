@@ -289,6 +289,49 @@ async fn a_refused_or_permanently_quarantined_item_is_not_pulled() {
     assert!(outcome.server_only.is_empty(), "{outcome:?}");
 }
 
+/// Every envelope fails to open: a page of only corruption, which the pull refuses (§5.14).
+struct Refusing;
+
+impl RecordCipher for Refusing {
+    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        Err(EnvelopeError::SignatureInvalid)
+    }
+}
+
+/// A run from cursor 0 whose head page is refused still reached the head: the cursor moved
+/// past that page, so the next run's markers apply (§5.12.3). Before, the flag stayed set and
+/// the next run skipped every marker on its pages.
+#[tokio::test]
+async fn a_refused_page_at_the_head_ends_a_run_from_cursor_zero() {
+    let db = scratch_db();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[("x1", "task")], "10")),
+        response(
+            200,
+            &json!({ "items": [envelope("x1", "task")] }).to_string(),
+        ),
+    ]);
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.0.0").expect("a valid identity"),
+    );
+    let pull = PullLoop::new(
+        Arc::new(http),
+        db.clone(),
+        declaration(),
+        Arc::new(Refusing),
+    );
+
+    let report = pull.run(1).await.expect("the run");
+
+    assert!(report.refused && !report.has_more, "{report:?}");
+    let from_zero = db
+        .call_blocking(|conn| read_meta(conn, "sync.purged_from_zero"))
+        .expect("read");
+    assert_eq!(from_zero, None);
+}
+
 #[tokio::test]
 async fn the_check_runs_at_most_once_per_30_minutes() {
     let db = scratch_db();
