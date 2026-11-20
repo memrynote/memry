@@ -111,13 +111,14 @@ export const updateEntrySource = (
  * `allLive` and the rollup. A deleted document's rows count while they exist
  * (protocol 08 §8.12). A purge (protocol 07
  * §7.15) or a prune (#2299) that committed after selection deleted the rows.
- * Cursors ride as one JSON bind, clear of D1's bind limit.
+ * Cursors ride as one JSON bind, clear of D1's bind limit. CROSS JOIN keeps
+ * `json_each` outer, as snapshotsLive does.
  */
 export const updatesLive = (
   scope: VaultScope,
   entries: ReadonlyArray<{ sortKey: number }>
 ): { sql: string; bind: unknown[] } => ({
-  sql: `FROM json_each(?) e JOIN crdt_updates s
+  sql: `FROM json_each(?) e CROSS JOIN crdt_updates s
           ON s.user_id = ? AND s.vault_id = ? AND s.server_cursor = e.value`,
   bind: [JSON.stringify(entries.map((entry) => entry.sortKey)), scope.userId, scope.vaultId]
 })

@@ -207,9 +207,11 @@ const rolledUp = async (
 
 // Outcomes a further build of the kind cannot change within the chain: below
 // the fill (an empty scan included), the listing cap after the message's own
-// rollups, and a range collision that holds the watermark. Any other noop
-// moved the watermark or lost a race, so the next build may still list.
-const ENDS_CHAIN: ReadonlySet<PackBuildOutcome> = new Set(['not_ready', 'cap', 'held'])
+// rollups, a range collision that holds the watermark, and a range abandoned
+// for a record row the shed empties, which the next build meets again until
+// the daily shed runs (VERIFY-5279 V5). Any other noop moved the watermark or
+// lost a race, so the next build may still list.
+const ENDS_CHAIN: ReadonlySet<PackBuildOutcome> = new Set(['not_ready', 'cap', 'held', 'abandoned'])
 
 /**
  * One backfill message: roll the kind up while it is above its bound and build
@@ -229,7 +231,11 @@ export const runBackfillMessage = async (
   let rollups = 0
   let packsBuilt = 0
   let drained = false
-  await withReplacedObjectPasses(db, storage, scope, 'backfill message', async () => {
+  // Pending purge rewrites do not fail a backfill message: the purge's own
+  // delayed message owns the deadline (pack-replaced-objects.ts), and a
+  // redelivery here would drop the chain (VERIFY-5283 V2).
+  const passes = { rewritesFatal: false }
+  await withReplacedObjectPasses(db, storage, scope, 'backfill message', passes, async () => {
     let budget = SUBREQUEST_BUDGET_PER_MESSAGE
     for (;;) {
       if (budget >= ROLLUP_SUBREQUESTS && (await rolledUp(db, storage, scope, step.kind))) {

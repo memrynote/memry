@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
+import { createMemoryQueue } from '../__tests__/pack-queue-memory'
 import { errorHandler } from '../lib/errors'
 import {
   BOOTSTRAP_RESUME_WINDOW_SECONDS,
@@ -61,16 +62,27 @@ const R2_ENV = {
 
 let harness: SqliteD1
 
+// Work the route hands to waitUntil, for tests to await after the response.
+let background: Array<Promise<unknown>> = []
+
 const createApp = () => {
   const app = new Hono<AppContext>()
   app.onError(errorHandler)
   app.route('/sync/bootstrap', bootstrap)
-  return app
+  const ctx = {
+    waitUntil: (promise: Promise<unknown>) => background.push(promise),
+    passThroughOnException: () => undefined
+  } as unknown as ExecutionContext
+  return {
+    request: (path: string, init: RequestInit, env: Record<string, unknown>) =>
+      app.request(path, init, env, ctx)
+  }
 }
 
 const now = () => Math.floor(Date.now() / 1000)
 
 beforeEach(() => {
+  background = []
   harness = createSqliteD1()
   harness.raw
     .prepare(
@@ -193,7 +205,7 @@ describe('POST /sync/bootstrap', () => {
     expect(res.status).toBe(200)
   })
 
-  it('opens a session for a fresh device carrying manifest page + tail cursor + packs placeholder', async () => {
+  it('opens a session for a fresh device carrying manifest page + tail cursor + empty pack page', async () => {
     // #given
     seedDevice({ lastCursor: null })
     for (let i = 1; i <= 3; i++) seedItem(`item-${i}`, i * 10)
@@ -212,7 +224,7 @@ describe('POST /sync/bootstrap', () => {
     const body = (await res.json()) as Record<string, any>
 
     // #then — first manifest page only, tail cursor is MAX(server_cursor),
-    // packs reserved empty, and NO attachments key without presign config.
+    // no packs and no coverage yet, and NO attachments key without presign config.
     expect(res.status).toBe(200)
     expect(body.manifest.items.map((i: { id: string }) => i.id)).toEqual([
       'item-1',
@@ -222,6 +234,8 @@ describe('POST /sync/bootstrap', () => {
     expect('nextCursor' in body.manifest).toBe(false)
     expect(body.tailCursor).toBe(30)
     expect(body.packs).toEqual([])
+    expect(body.coverage).toEqual([])
+    expect('packsNextCursor' in body).toBe(false)
     expect('attachments' in body).toBe(false)
 
     // The token verifies and binds to this exact device + vault.
@@ -256,6 +270,208 @@ describe('POST /sync/bootstrap', () => {
     expect(body.attachments.chunkHashes).toHaveLength(512)
     expect(body.attachments.chunkHashes[0]).toBe(`h${'0'.repeat(63)}`)
     expect(body.attachments.nextChunkCursor).toBe(`h${String(511).padStart(63, '0')}`)
+  })
+})
+
+describe('POST /sync/bootstrap pack coverage (#5230)', () => {
+  const seedRecordPack = (id: string, from: number, through: number): void => {
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at, cover_from, cover_through)
+         VALUES (?, 'user-1', 'vault-1', ?, 'record', ?, ?, 1, 64, 1, ?, ?)`
+      )
+      .run(id, `user-1/vaults/vault-1/packs/record/${id}.pack`, from + 1, through, from, through)
+  }
+  const seedRecordWatermark = (lastSortValue: number, coveredThrough: number | null): void => {
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         VALUES ('user-1', 'vault-1', 'record', ?, '', 1, ?)`
+      )
+      .run(lastSortValue, coveredThrough)
+  }
+  const open = async (extra: Record<string, unknown> = {}) => {
+    const res = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      { DB: harness.db, ENVIRONMENT: 'development', BOOTSTRAP_SESSION_HMAC_KEY: SECRET, ...extra }
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as Record<string, any>
+    await Promise.all(background)
+    return body
+  }
+  const coverageLog = (info: { mock: { calls: unknown[][] } }) =>
+    info.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as { message: string; kinds?: unknown })
+      .find((entry) => entry.message === 'bootstrap pack coverage')
+
+  it('returns the first pack page and its coverage, so no listing request is needed', async () => {
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 3; i++) seedItem(`item-${i}`, i * 10)
+    seedRecordPack('p1', 0, 20)
+    seedRecordPack('p2', 20, 30)
+    seedRecordWatermark(30, 30)
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    const body = await open(R2_ENV)
+
+    expect(body.coverage).toEqual([{ itemKind: 'record', packedThrough: 30, coveredThrough: 30 }])
+    expect(
+      body.packs.map((pack: Record<string, unknown>) => [
+        pack.id,
+        pack.coverFrom,
+        pack.coverThrough
+      ])
+    ).toEqual([
+      ['p2', 20, 30],
+      ['p1', 0, 20]
+    ])
+    expect(body.packs[0].url).toMatch(/^https:/)
+    expect('packsNextCursor' in body).toBe(false)
+  })
+
+  it('logs coverage per kind and enqueues an under-covered kind on the nudge queue', async () => {
+    // #given: 300 records and no pack yet, past the minimum fill
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    const nudges = createMemoryQueue()
+    const backfills = createMemoryQueue()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    // #when
+    const body = await open({ PACK_QUEUE: nudges, PACK_BACKFILL_QUEUE: backfills })
+
+    // #then: the client is told nothing is covered and takes it item by item;
+    // the record chain starts ahead of the routine backfill queue
+    expect(body.coverage).toEqual([])
+    expect(nudges.sent).toEqual([
+      { body: { userId: 'user-1', vaultId: 'vault-1', backfill: { kind: 'record', hop: 0 } } }
+    ])
+    expect(backfills.sent).toEqual([])
+    expect(coverageLog(info)?.kinds).toEqual([
+      {
+        kind: 'crdt_snapshot',
+        covered: false,
+        uncoveredRows: 0,
+        reason: 'cache_only',
+        enqueued: false
+      },
+      {
+        kind: 'record',
+        covered: false,
+        uncoveredRows: 300,
+        reason: 'never_packed',
+        enqueued: true
+      },
+      {
+        kind: 'crdt_update',
+        covered: false,
+        uncoveredRows: 0,
+        reason: 'cache_only',
+        enqueued: false
+      }
+    ])
+  })
+
+  it('enqueues an unanchored record chain whatever its backlog, and nothing for a covered vault', async () => {
+    seedDevice({ lastCursor: null })
+    seedItem('item-1', 10)
+    seedRecordWatermark(10, null)
+    const nudges = createMemoryQueue()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    await open({ PACK_QUEUE: nudges })
+    expect(nudges.sent.map((sent) => sent.body.backfill?.kind)).toEqual(['record'])
+
+    harness.raw.prepare('UPDATE pack_watermarks SET covered_through = 10').run()
+    nudges.sent.length = 0
+    info.mockClear()
+    await open({ PACK_QUEUE: nudges })
+    expect(nudges.sent).toEqual([])
+    expect(coverageLog(info)?.kinds).toContainEqual({
+      kind: 'record',
+      covered: true,
+      uncoveredRows: 0,
+      enqueued: false
+    })
+  })
+
+  it('a failed coverage report never fails the open', async () => {
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    const nudges = createMemoryQueue()
+    nudges.sendBatch = async () => {
+      throw new Error('queue down')
+    }
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const res = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
+        PACK_QUEUE: nudges
+      }
+    )
+
+    expect(res.status).toBe(200)
+    await Promise.allSettled(background)
+  })
+
+  // The PR states subrequests per bootstrap. Before #5230 an open made 6 D1
+  // calls on this seed, and the client then listed packs in a second request.
+  // Now: the listing batch in the response, the coverage batch and one queue
+  // send in waitUntil.
+  it('costs two D1 batches and one queue send more than before, and no listing request', async () => {
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    const nudges = createMemoryQueue()
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    let calls = 0
+    const tally =
+      <A extends unknown[], R>(call: (...args: A) => R) =>
+      (...args: A): R => {
+        calls++
+        return call(...args)
+      }
+    // The harness's bind returns the statement itself: wrap each one once.
+    const wrapped = new WeakSet<D1PreparedStatement>()
+    const countStatement = (statement: D1PreparedStatement): D1PreparedStatement => {
+      if (wrapped.has(statement)) return statement
+      wrapped.add(statement)
+      const bind = statement.bind.bind(statement)
+      return Object.assign(statement, {
+        bind: (...values: unknown[]) => countStatement(bind(...values)),
+        first: tally(statement.first.bind(statement)),
+        all: tally(statement.all.bind(statement)),
+        run: tally(statement.run.bind(statement)),
+        raw: tally(statement.raw.bind(statement))
+      })
+    }
+    const db = harness.db
+    const counted: D1Database = Object.assign(Object.create(db) as D1Database, {
+      prepare: (sql: string) => countStatement(db.prepare(sql)),
+      batch: tally(db.batch.bind(db))
+    })
+
+    const res = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: counted,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
+        PACK_QUEUE: nudges,
+        ...R2_ENV
+      }
+    )
+    expect(res.status).toBe(200)
+    await Promise.all(background)
+    expect(calls).toBe(8)
+    expect(nudges.sent).toHaveLength(1)
   })
 })
 

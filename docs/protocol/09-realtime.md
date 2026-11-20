@@ -425,7 +425,7 @@ socket's `changes_available` payload:
   returns for that row version, byte for byte, tombstones included with
   `deletedAt`. The push builds it from the values it just committed through
   the same constructor the pull uses
-  (`apps/sync-server/src/services/sync.ts:409`, `:491`, `:564`). Only accepted rows
+  (`apps/sync-server/src/services/sync.ts:433`, `:517`, `:590`). Only accepted rows
   appear, in ascending server cursor order. `committedAtMs` is the commit time
   of the push's latest wave, for the latency trace (#2280).
 - **Only negotiated types.** A socket receives only the item types it

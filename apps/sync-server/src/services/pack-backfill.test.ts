@@ -401,4 +401,30 @@ describe('backfill messages (#5278)', () => {
     expect(logged).toMatchObject({ buildError: 'r2 put 500 BUILD', passError: 'd1 down' })
     expect(queue.sent).toHaveLength(0)
   })
+
+  // VERIFY-5283 V2: a pending purge rewrite inside its grace failed every
+  // backfill message, so Queues dropped the chain after 4 tries.
+  it('pending purge rewrites do not fail a backfill message', async () => {
+    seedUpdates('u-pend', 'default', PACK_MIN_FILL_ROWS)
+    const removedAt = Math.floor(Date.now() / 1000)
+    for (let i = 0; i < 5; i++) {
+      harness.raw
+        .prepare(
+          `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+           VALUES (?, 'u-pend', 'default', 'rewrite', ?)`
+        )
+        .run(`u-pend/vaults/default/unparsed-${i}`, removedAt)
+    }
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const result = await runBackfillMessage(
+      harness.db,
+      storage,
+      createMemoryQueue(),
+      { userId: 'u-pend', vaultId: 'default' },
+      { kind: 'crdt_update', hop: 0 }
+    )
+
+    expect(result.packsBuilt).toBe(1)
+  })
 })

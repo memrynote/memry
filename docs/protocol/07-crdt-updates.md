@@ -559,9 +559,10 @@ cursor only if the snapshot's sequence number is ahead (`:195-197`).
 **Normative** (`packages/sync-client/src/pull/crdt-pull.ts:225-250`):
 
 - an update whose `sequenceNum <= cursor` is **skipped as a replay** (`:226`);
-- each accepted update is decrypted, persisted, and the watermark advanced and
-  written **per update, not per page** (`:246-248`). What the rule protects is
-  that the watermark never leads a stored update. The Rust core writes a page's
+- **the watermark MUST NOT lead a stored update**: a reader never persists a
+  watermark above an update it has not stored. Either strategy keeps it.
+  Desktop decrypts, persists and advances the watermark **per update**
+  (`:246-248`). The Rust core writes a page's
   accepted updates and the watermark of the last one in **one** transaction
   (`crates/memry-core/src/sync/body_pull/log_writes.rs:34-53`), so a kill
   mid-page leaves the watermark at the previous page and the page is pulled

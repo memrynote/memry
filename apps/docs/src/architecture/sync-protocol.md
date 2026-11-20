@@ -1985,12 +1985,10 @@ Besides the session, `POST /sync/bootstrap` answers with:
   start and a client must not treat the page as a complete inventory. URLs come from
   `POST /sync/attachments/presign-batch`, which keeps this response bounded no matter how
   attachment-heavy the vault is.
-- `packs` — always an empty array, and now permanently so. The route returns `packs: []`
-  unconditionally. It was reserved so the pack pipeline could plug in without a protocol change,
-  but the pipeline did not use it: the client discovers packs through
-  [`GET /sync/packs`](#pack-discovery) instead, and reads this field only to log its length. It is
-  dead weight in `BootstrapOpenResponseSchema` — it cannot be removed without a contract change, so
-  it stays, but nothing should be built on it.
+- `packs`, `packsNextCursor` and `coverage` — the first page of
+  [`GET /sync/packs`](#pack-discovery) with its coverage statement, read in one D1 batch, so a
+  client starts its pack walk without a listing request (#5230). A server before that sends
+  `packs: []` and neither of the others; a client then lists the packs itself.
 
 ## Presigned R2 Transfers
 
