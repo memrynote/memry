@@ -44,6 +44,7 @@ use crate::storage::repositories::{
     projectors::ItemContext,
     sync_items::{self, PAYLOAD_STATE_FULL},
 };
+use crate::sync::attachments::release::record_deleted_note;
 use crate::sync::clock::{self, OFFLINE_CLOCK_DEVICE_ID, VectorClock};
 use crate::sync::outbox::{self, Durable};
 use crate::sync::store;
@@ -198,7 +199,8 @@ pub fn move_to_folder(
     Ok(durable)
 }
 
-/// Tombstones a note.
+/// Tombstones a note, and records its attachments for the deleted-asset release
+/// ([`record_deleted_note`], before the row goes).
 pub fn delete(
     conn: &Connection,
     note_id: &str,
@@ -209,7 +211,10 @@ pub fn delete(
         conn,
         &outbox::Change::delete(ITEM_TYPE, note_id),
         now_ms,
-        |tx| tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms),
+        |tx| {
+            record_deleted_note(tx, note_id, now_ms)?;
+            tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
+        },
     )
 }
 
