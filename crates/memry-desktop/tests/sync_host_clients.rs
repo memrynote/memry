@@ -58,6 +58,14 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
     ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
     (
+        "crates/memry-desktop/src/services/voice/openai.rs",
+        "api.openai.com, the voice transcription's OpenAI engine, with only the person's OpenAI key",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/voice.rs",
+        "builds the voice OpenAI engine's client; its endpoint is the fixed api.openai.com constant",
+    ),
+    (
         "crates/memry-desktop/src/ai/catalog.rs",
         "the inline AI provider the person picked (OpenAI, Anthropic, Google, OpenRouter) or their local Ollama",
     ),
