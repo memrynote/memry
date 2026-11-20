@@ -16,7 +16,9 @@ use super::{
 };
 use crate::electron_import::report::{VaultSection, VaultStatus};
 use crate::electron_import::vault_db::CORE_DIR;
-use crate::electron_import::vault_prep::{DeferReason, Disposition, folder_id, plan_folder};
+use crate::electron_import::vault_prep::{
+    DeferReason, Disposition, VaultId, folder_id, plan_folder,
+};
 use crate::electron_import::ystore_import::takes_unclaimed_legacy;
 use crate::electron_import::{ElectronConfig, ImportError, Scratch};
 
@@ -243,13 +245,15 @@ fn deferred_import(
                 &ctx.tauri_data_dir,
                 ctx.free_space,
             )?;
+            let (id, kept) = kept_import_id(marker, run, path, id);
             // Recorded before the fold reads it, by vault uuid as Electron records its claim: a
             // crash or a rerun then gives it to this vault wherever it is mounted, and to no other.
-            let vault_id = vault::import_id(run.section(path), id).vault_id;
-            if marker.legacy_store_read_by.is_none()
-                && takes_unclaimed_legacy(&profile, path, &vault_id, config.as_ref(), &scratch)?
-            {
-                marker.legacy_store_read_by = Some(vault_id);
+            let claims = marker.legacy_store_read_by.is_none()
+                && takes_unclaimed_legacy(&profile, path, &id.vault_id, config.as_ref(), &scratch)?;
+            if claims {
+                marker.legacy_store_read_by = Some(id.vault_id.clone());
+            }
+            if claims || kept {
                 marker.write(&ctx.tauri_data_dir)?;
             }
             let phase = VaultPhase {
@@ -257,7 +261,7 @@ fn deferred_import(
                 ..phase
             };
             // The journal replay is the first launch's: its entries name the vaults present then.
-            vault::import(run, &phase, planned, id)?
+            vault::import(run, &phase, planned, &id)?
         }
         Disposition::Deferred(DeferReason::DataDbMissing) => {
             VaultSection::new(path, VaultStatus::NoData)
@@ -289,6 +293,33 @@ fn deferred_import(
         }
     };
     settle(ctx, marker, run, section)
+}
+
+/// The id `path` imports under, and whether its marker entry got it now. A minted id (no
+/// singleton, no config `vaultUuid`: a vault last opened in Electron before June 2026) is kept in
+/// the entry, written no later than the legacy claim that names it, so a retry after a failed
+/// fold imports under the same id and reads the store it claimed. The marker is the place: the
+/// singleton Electron would write is Electron's data, which the import never changes.
+fn kept_import_id(
+    marker: &mut Marker,
+    run: &Run<'_>,
+    path: &str,
+    planned: &VaultId,
+) -> (VaultId, bool) {
+    let mut id = vault::import_id(run.section(path), planned);
+    let Some(entry) = marker.vault_mut(path).filter(|_| id.minted) else {
+        return (id, false);
+    };
+    match &entry.vault_uuid {
+        Some(kept) => {
+            id.vault_id.clone_from(kept);
+            (id, false)
+        }
+        None => {
+            entry.vault_uuid = Some(id.vault_id.clone());
+            (id, true)
+        }
+    }
 }
 
 /// Saves a vault's final section, then its marker entry.

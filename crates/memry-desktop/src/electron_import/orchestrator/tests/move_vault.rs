@@ -442,3 +442,82 @@ fn a_stale_marker_write_keeps_the_recorded_legacy_claim() {
         Some(STRAY_UUID)
     );
 }
+
+/// Makes every file of the legacy store but `LOCK` unreadable, or readable again: its fold then
+/// fails after the claim is recorded.
+#[cfg(unix)]
+fn legacy_unreadable(w: &World, unreadable: bool) {
+    use std::os::unix::fs::PermissionsExt as _;
+    let mode = if unreadable { 0o000 } else { 0o644 };
+    for entry in fs::read_dir(w.profile.join("crdt-store")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.file_name() != Some("LOCK".as_ref()) {
+            fs::set_permissions(&path, fs::Permissions::from_mode(mode)).unwrap();
+        }
+    }
+}
+
+/// Away, with no uuid in its `data.db` or the config and missing at first launch, comes back;
+/// its first import fails in the fold, after its claim, then is retried. Returns the claim.
+#[cfg(unix)]
+fn fail_away_after_its_claim(w: &World) -> String {
+    let away = PathBuf::from(w.vault("Away"));
+    w.electron_vault("Away", None);
+    legacy_unreadable(w, true);
+    let failed = migrate_vault(&w.ctx(None), &away);
+    legacy_unreadable(w, false);
+    assert!(failed.is_err(), "the fold failed");
+    let claim = w.marker().unwrap().legacy_store_read_by.unwrap();
+    migrate_vault(&w.ctx(None), &away).unwrap();
+    claim
+}
+
+/// VERIFY-5140C C4: the retry at the same path imports under the id the claim names and reads
+/// the note once. Red with the minted id not kept in the marker entry (`{0, claimedByOther}`).
+#[cfg(unix)]
+#[test]
+fn a_uuidless_vault_whose_fold_failed_after_its_claim_reads_the_store_on_retry() {
+    let w = away_world(&[("Work", Some(WORK_UUID)), ("Away", None)]);
+
+    let claim = fail_away_after_its_claim(&w);
+
+    assert_eq!(fold(&w, "Away"), (json!(1), json!("read")));
+    assert_eq!(fold(&w, "Work"), (json!(1), json!("leftUnread")));
+    let marker = w.marker().unwrap();
+    let away = marker.vaults.iter().find(|v| v.path == w.vault("Away"));
+    assert_eq!(away.unwrap().vault_uuid.as_deref(), Some(claim.as_str()));
+}
+
+/// VERIFY-5140C finding 3: a profile whose one vault was last opened in Electron before June
+/// 2026 (no singleton, no config `vaultUuid`) reads the unclaimed legacy store as a listed vault
+/// with a uuid does, a failed first attempt included. Red with the minted id not kept.
+#[cfg(unix)]
+#[test]
+fn a_pre_june_profiles_uuidless_vault_reads_the_legacy_store() {
+    let w = away_world(&[("Away", None)]);
+
+    fail_away_after_its_claim(&w);
+
+    assert_eq!(fold(&w, "Away"), (json!(1), json!("read")));
+}
+
+/// Electron keeps a stale config entry for a moved vault (`crdt-store-path.ts:70`): Away, gone,
+/// and Away2 carry the same `vaultUuid`. Away2 is listed, so it never stands at Away's place;
+/// Work, the first present vault without a store, reads the store, and only Work. Red without
+/// `place`'s `!distinct.contains(vault_path)`: Away2 reads it too.
+#[test]
+fn a_listed_vault_never_stands_in_for_a_gone_entry_with_its_uuid() {
+    let w = World::new(&[
+        ("Away", Some(AWAY_UUID)),
+        ("Work", None),
+        ("Away2", Some(AWAY_UUID)),
+    ]);
+    w.electron_vault("Work", Some(WORK_UUID));
+    w.electron_vault("Away2", Some(AWAY_UUID));
+    legacy_store(&w);
+
+    w.run().unwrap();
+
+    assert_eq!(fold(&w, "Work"), (json!(1), json!("read")));
+    assert_eq!(fold(&w, "Away2"), (json!(0), json!("leftUnread")));
+}
