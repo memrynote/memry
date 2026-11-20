@@ -152,6 +152,15 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
       ])
   )
 
+  // Over the whole session, not the window: a shell's file watcher can push
+  // after the bodies are local (#5261).
+  const refusedItems = {}
+  for (const request of requests.filter((r) => r.refused)) {
+    for (const [key, count] of Object.entries(request.refusedItems ?? {})) {
+      refusedItems[key] = (refusedItems[key] ?? 0) + count
+    }
+  }
+
   const totalBytes = Object.values(bytes).reduce((a, b) => a + b, 0)
   const busy = busyMs(counted)
   const zeroReads = counted.filter(readsFromZero).length
@@ -164,6 +173,7 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
       r2: counted.filter((r) => r.host === 'r2').length,
       maxInFlight: maxInFlight(counted),
       writesRefused: inWindow.filter((r) => r.refused).length,
+      sessionRefused: { requests: requests.filter((r) => r.refused).length, items: refusedItems },
       byEndpoint
     },
     lineMbps,
@@ -197,7 +207,12 @@ export function formatReport(label, metrics) {
     `| t_records | ${seconds(metrics.tRecordsMs)} |`,
     `| t_bodies | ${seconds(metrics.tBodiesMs)} |`,
     `| Requests | ${metrics.requests.total} (Worker ${metrics.requests.worker}, R2 ${metrics.requests.r2}), at most ${metrics.requests.maxInFlight} in flight |`,
-    `| Writes refused | ${metrics.requests.writesRefused} |`,
+    `| Writes refused | ${metrics.requests.writesRefused} in the window; whole session ${metrics.requests.sessionRefused.requests} requests, items ${
+      Object.entries(metrics.requests.sessionRefused.items)
+        .toSorted((a, b) => b[1] - a[1])
+        .map(([key, count]) => `${key} ${count}`)
+        .join(', ') || 'none'
+    } |`,
     `| Bytes | records ${megabytes(metrics.bytes.records)}, packs ${megabytes(metrics.bytes.packs)}, snapshots ${megabytes(metrics.bytes.snapshots)}, updates ${megabytes(metrics.bytes.updates)}, other ${megabytes(metrics.bytes.other)} |`,
     `| Attachments | ${
       metrics.bytes.attachments === 0

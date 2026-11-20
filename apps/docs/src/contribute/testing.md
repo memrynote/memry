@@ -113,6 +113,13 @@ pnpm bench:bootstrap core --vault sandboxmobile --runs 2 [--pass-interval <secon
 
 # Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
 pnpm bench:bootstrap electron --vault sandboxmobile
+
+# Tauri: the e2e build of a feat/tauri-v2 worktree, with a temp profile and WebDriver on 9333.
+pnpm bench:bootstrap tauri --vault sandboxmobile --tauri-dir <feat/tauri-v2 worktree>
+
+# iOS: reinstalls a Debug simulator build, resets the simulator's keychain, launches it with
+# --sync-environment=local, which is http://localhost:8787, so the proxy listens there.
+pnpm bench:bootstrap ios --vault sandboxmobile --port 8787 --udid <simulator> --app <Memry.app>
 ```
 
 The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
@@ -130,17 +137,28 @@ the engine's best case. iOS runs a pass on each sync trigger (foreground, screen
 notices), so `--pass-interval` spaces the passes to match a cadence. An Electron run starts the app
 and waits for you to sign in and download the vault from the account picker. Timing starts at that
 download. Afterwards, delete the downloaded vault folder and remove the device from another device.
+Tauri and iOS runs wait the same way. The iOS run uninstalls the app and resets the simulator's
+keychain first, so give it a simulator of its own.
 
-| Metric         | Definition                                                                                                                                                                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
-| `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`)                                                                                                                                         |
-| Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                           |
-| Writes refused | Write requests the proxy answered with 403                                                                                                                                                                                                                    |
-| Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                               |
-| Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                            |
-| Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                   |
-| Limiter        | When the network is idle half the run or more: client pacing or local apply (core marks its sleeps, so it tells the two apart; Electron cannot). Otherwise line speed when busy throughput reaches half the measured line, else request latency times count   |
+Neither Rust-core shell logs every record applied or every body local. Their marks: start is the
+shell's own log line (Tauri `bootstrap window opened` in main.log, iOS `a first sync started` in the
+unified log). Records is iOS's `the first sync is pulling bodies`; Tauri has no such line, so its
+records mark is the proxy's first CRDT body request, the start of the core's bodies pass (an iOS run
+reports the same proxy point beside its log mark as a check). Bodies is read from the vault's
+`data.db`, opened read-only once a second: the first sync completed and no `sync.body_owed:*` row
+is left. The report's `Writes refused` line also counts the whole session's refused push items by
+type and operation, so a shell that pushes after the window closed still shows.
+
+| Metric         | Definition                                                                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch; Tauri and iOS: see above). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
+| `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`; Tauri and iOS: data.db has no debt left)                                                                                                                          |
+| Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                                                     |
+| Writes refused | Write requests the proxy answered with 403                                                                                                                                                                                                                                              |
+| Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                                                         |
+| Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                                                      |
+| Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                                             |
+| Limiter        | When the network is idle half the run or more: client pacing or local apply (core marks its sleeps, so it tells the two apart; Electron cannot). Otherwise line speed when busy throughput reaches half the measured line, else request latency times count                             |
 
 Each run writes its metrics to `.perf/bootstrap-bench/`. The proxy speaks HTTP/1.1 to the shell.
 Electron's `net.fetch` opens at most 6 sockets to one HTTP/1.1 host, so through the proxy Electron

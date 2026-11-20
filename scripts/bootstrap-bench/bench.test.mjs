@@ -3,12 +3,15 @@ import http from 'node:http'
 import { describe, it } from 'node:test'
 
 import fs from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
 import os from 'node:os'
 import path from 'node:path'
+import zlib from 'node:zlib'
 
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { busyMs, endpointOf, formatReport, limiterOf, maxInFlight, summarize } from './metrics.mjs'
 import { assertAllowedUpstream, startProxy } from './proxy.mjs'
+import { bodyDebt, findBootstrapDb, feedHeadMs, iosMarks, tauriStartMs } from './rust-shell.mjs'
 
 const request = (fields) => ({
   method: 'GET',
@@ -340,6 +343,161 @@ describe('proxy guards', () => {
         reads.map(([method, route]) => `${method} ${route}`)
       )
       assert.equal(proxy.requests.filter((r) => r.refused).length, writes.length)
+    } finally {
+      await proxy.close()
+      upstream.close()
+    }
+  })
+})
+
+describe('rust-core shells', () => {
+  const vaultDb = (file, keys) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    const db = new DatabaseSync(file)
+    db.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    for (const key of keys) db.prepare('INSERT INTO meta VALUES (?, ?)').run(key, '0:0')
+    db.close()
+  }
+
+  it('reads the body debt of the vault that is bootstrapping', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-db-'))
+    try {
+      vaultDb(path.join(dir, 'other/.memry/data.db'), ['sync.cursor'])
+      const bootstrapping = path.join(dir, 'vaults/v1/data.db')
+      vaultDb(bootstrapping, [
+        'sync.server_vault_id',
+        'sync.body_owed:a',
+        'sync.body_owed:b',
+        'sync.body_owed;not-a-debt',
+        'sync.body_owe:x'
+      ])
+      assert.equal(findBootstrapDb([dir], 0), bootstrapping)
+      assert.deepEqual(bodyDebt(bootstrapping), { bound: true, completed: false, owed: 2 })
+      // A vault left by an earlier run is older than this run's start.
+      assert.equal(findBootstrapDb([dir], Date.now() + 60_000), null)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('says every body is local once the first sync completed and nothing is owed', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-db-'))
+    try {
+      const file = path.join(dir, 'data.db')
+      vaultDb(file, ['sync.server_vault_id', 'first_sync.completed'])
+      assert.deepEqual(bodyDebt(file), { bound: true, completed: true, owed: 0 })
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('reads the iOS marks from the unified log stream', () => {
+    const at = (time, eventMessage) =>
+      JSON.stringify({ timestamp: `2026-11-20 01:00:${time}+0000`, eventMessage })
+    const marks = iosMarks([
+      'Filtering the log data using "subsystem == \\"com.memry.ios\\""',
+      at('00.000000', 'read the vault registry'),
+      at('01.500250', 'a first sync started'),
+      at('02.000000', 'the first sync is pulling metadata'),
+      at('09.250000', 'the first sync is pulling bodies'),
+      at('30.000000', 'a first sync finished'),
+      at('40.000000', 'a first sync started')
+    ])
+    const start = Date.parse('2026-11-20T01:00:01.500Z')
+    assert.equal(marks.startMs, start)
+    assert.equal(marks.recordsMs - start, 7_750)
+    assert.equal(marks.firstSyncMs - start, 28_500)
+  })
+
+  it('reads the Tauri start from main.log, also across a rotation', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-log-'))
+    const live = path.join(dir, 'main.log')
+    try {
+      fs.writeFileSync(live, '2026-11-20 01:00:00.000 [info] [auth] signed in\n')
+      const read = followLog(live, fs, ['bootstrap window'])
+      assert.equal(tauriStartMs(read()), null)
+      fs.appendFileSync(
+        live,
+        '2026-11-20 01:00:05.250 [info] [telemetry] bootstrap window opened source=vault_download\n'
+      )
+      fs.renameSync(live, path.join(dir, 'main.1.log'))
+      fs.writeFileSync(live, '2026-11-20 01:00:06.000 [info] [sync] sync signal\n')
+      assert.equal(tauriStartMs(read()), new Date(2026, 10, 20, 1, 0, 5, 250).getTime())
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('marks records at the feed head and the item fetches of its page', () => {
+    const page = (startMs, hasMore) =>
+      request({ path: '/sync/changes?cursor=1', startMs, endMs: startMs + 100, hasMore })
+    const pull = (startMs) =>
+      request({ method: 'POST', path: '/sync/pull', startMs, endMs: startMs + 300 })
+    const body = (startMs) =>
+      request({ path: '/sync/crdt/snapshot/n', startMs, endMs: startMs + 50 })
+    const requests = [
+      page(500, false),
+      page(1_000, true),
+      pull(1_200),
+      page(2_000, false),
+      pull(2_200),
+      pull(2_300),
+      request({ host: 'r2', path: '/p?sig=x', startMs: 2_400, endMs: 3_000 }),
+      body(2_700),
+      pull(5_000)
+    ]
+    assert.equal(feedHeadMs(requests, 1_000), 2_600)
+    assert.equal(feedHeadMs(requests.slice(1, 3), 1_000), null)
+  })
+
+  it('reads hasMore off a compressed feed page', async () => {
+    const upstream = http.createServer((req, res) => {
+      res.setHeader('content-encoding', 'gzip')
+      res.end(zlib.gzipSync(JSON.stringify({ items: [], hasMore: req.url.includes('more') })))
+    })
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
+    try {
+      // fetch decodes the gzip body itself, so the shell still gets the page.
+      assert.deepEqual(await (await fetch(`${proxy.url}/sync/changes?more=1`)).json(), {
+        items: [],
+        hasMore: true
+      })
+      await fetch(`${proxy.url}/sync/changes?cursor=9`)
+      assert.deepEqual(
+        proxy.requests.map((r) => r.hasMore),
+        [true, false]
+      )
+    } finally {
+      await proxy.close()
+      upstream.close()
+    }
+  })
+
+  it('counts refused push items by type and operation over the whole session', async () => {
+    const upstream = http.createServer((req, res) => res.end('{}'))
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
+    const item = (type, operation) => ({ id: 'x', type, operation, encryptedData: 'c2VjcmV0' })
+    const push = (items) =>
+      fetch(`${proxy.url}/sync/push`, { method: 'POST', body: JSON.stringify({ items }) })
+    try {
+      await push([item('note', 'create'), item('note', 'create'), item('folder_config', 'create')])
+      await push([item('note', 'update')])
+      await fetch(`${proxy.url}/sync/crdt/updates`, { method: 'POST', body: 'binary' })
+      const metrics = summarize({
+        requests: proxy.requests,
+        // The pushes land after the window closed and still count.
+        marks: { startMs: 0, bodiesMs: 1 },
+        lineMbps: 100
+      })
+      assert.deepEqual(metrics.requests.sessionRefused, {
+        requests: 3,
+        items: { 'note:create': 2, 'folder_config:create': 1, 'note:update': 1, other: 1 }
+      })
+      assert.equal(metrics.requests.writesRefused, 0)
+      assert.match(formatReport('t', metrics), /whole session 3 requests, items note:create 2, /)
+      assert.doesNotMatch(JSON.stringify(proxy.requests), /c2VjcmV0/)
     } finally {
       await proxy.close()
       upstream.close()
