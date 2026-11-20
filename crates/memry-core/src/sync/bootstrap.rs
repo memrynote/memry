@@ -30,9 +30,10 @@
 //!   absolute lifetime is six hours (§10.10) and a first sync that outlives it
 //!   gets `403 BOOTSTRAP_SESSION_EXPIRED` on renewal. That is **an ordinary
 //!   rate change, not an error**: no reset, no restart, no failure reported.
-//! - **Never open a second session.** The window is one-shot per device per
-//!   vault by design (§10.9), so an expired one cannot be replaced and a
-//!   second attempt can only earn a `409 BOOTSTRAP_NOT_ELIGIBLE`.
+//! - **Never open a second session in one run.** An expired session is not
+//!   replaced mid-run (§10.11 rule 3). A resumed run is a new client and opens
+//!   its own, which the server grants while the device is young enough
+//!   (§10.9).
 //!
 //! Progress reporting survives all of it, because progress is measured against
 //! `tailCursor` and the client's own cursor (§10.4), neither of which the
@@ -169,9 +170,7 @@ impl BootstrapClient {
             return BootstrapOpen {
                 session: None,
                 tail_cursor: 0,
-                fallback_reason: Some(
-                    "the bootstrap window is one-shot per device per vault (§10.9)".to_owned(),
-                ),
+                fallback_reason: Some("one bootstrap session per run (§10.11 rule 3)".to_owned()),
             };
         }
         self.lock().opened_once = true;

@@ -87,7 +87,7 @@ and MUST NOT treat `packs: []` as meaning the vault has no packs — use
 
 | Code                          | Status | Meaning                                                                                                        |
 | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
-| `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already synced this vault                                                                          |
+| `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already pulled this vault and is past the resume window (§10.9)                                    |
 | `BOOTSTRAP_SESSION_LIMIT`     | 429    | the per-user concurrent cap                                                                                    |
 | `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:66-74`)          |
 | `BOOTSTRAP_IDENTITY_MISMATCH` | 403    | a valid token presented by another authenticated context; renewal and close require the session's own identity |
@@ -185,7 +185,7 @@ from another device or vault elevates nothing
 (`apps/sync-server/src/services/bootstrap-session.ts:251-260`, `:267-268`).
 
 Renewal reuses the same `jti` and only extends `expires_at`
-(`apps/sync-server/src/services/bootstrap-session.ts:454-458`).
+(`apps/sync-server/src/services/bootstrap-session.ts:475-479`).
 
 **Accepted residual, on record**: because elevation is stateless — it reads only
 the signature and `exp`, never the ledger — **a token whose session was
@@ -196,17 +196,32 @@ is pull-only.
 
 ## 10.9 Eligibility and the concurrency cap
 
-**Normative.** Eligibility is "**this device has never completed a pull for this
-vault**": no `device_sync_state` row, or a NULL or zero `last_cursor_seen`
-(`apps/sync-server/src/services/bootstrap-session.ts:297-313`). `updateDeviceCursor`
-only writes when a changes page actually delivered items, so an absent row is a
-genuinely never-pulled device (`:309-311`).
+**Normative.** Eligibility is "**this device is still in its first sync of this
+vault**" (`apps/sync-server/src/services/bootstrap-session.ts:308-335`), which
+the server reads from two facts it owns:
+
+1. **never pulled**: no `device_sync_state` row, or a NULL or zero
+   `last_cursor_seen` (`:328`). `updateDeviceCursor` only writes when a changes
+   page actually delivered items, so an absent row is a genuinely never-pulled
+   device (`:325-327`);
+2. **or resuming**: the device row was registered less than
+   `BOOTSTRAP_RESUME_WINDOW_SECONDS` ago (`:306`, `:329-334`).
+
+The second clause exists because the first refs page moves `last_cursor_seen`
+off zero. A first sync the OS suspends or kills (iOS reruns it on every
+relaunch) used to be refused with `409` on every resume and finished at
+steady-state pacing, about a fifth of the elevated speed. The bound is the
+server's own `devices.created_at`, not a client claim: a re-registration
+already earns a new device row, so the window grants no elevation a new
+sign-in would not (`:297-305`). The protocol gains no field, so every client
+build that opens a session on a resumed run is elevated without an update.
 
 The concurrency cap, `MAX_CONCURRENT_BOOTSTRAP_SESSIONS = 2`
-(`apps/sync-server/src/services/bootstrap-session.ts:39`), is enforced
+(`apps/sync-server/src/services/bootstrap-session.ts:39`), applies to a
+resuming device exactly as to a fresh one, and is enforced
 **atomically inside a single INSERT with a COUNT subquery**
-(`:359-378`): `changes === 0` means the WHERE refused and the user is at cap
-(`:379-380`). There is no check-then-take interleaving point.
+(`:380-399`): `changes === 0` means the WHERE refused and the user is at cap
+(`:400-401`). There is no check-then-take interleaving point.
 
 ## 10.10 Constants
 
@@ -218,6 +233,7 @@ The concurrency cap, `MAX_CONCURRENT_BOOTSTRAP_SESSIONS = 2`
 | `MAX_CONCURRENT_BOOTSTRAP_SESSIONS`      | 2                         | `:39`                                                   |
 | `BOOTSTRAP_RENEW_LEAD_SECONDS`           | 300                       | `:41`                                                   |
 | `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 21600 (6 hours)           | `:53`                                                   |
+| `BOOTSTRAP_RESUME_WINDOW_SECONDS`        | 86400 (24 hours)          | `:306`                                                  |
 | `CHUNK_HASH_PAGE_LIMIT`                  | 512                       | `apps/sync-server/src/routes/bootstrap.ts:51`           |
 | session endpoint rate limit              | 30 per 60 s, device-keyed | `apps/sync-server/src/routes/bootstrap.ts:45-46`        |
 
@@ -236,8 +252,10 @@ as an error.** Concretely:
 2. on **any** renewal failure, drop the `X-Memry-Bootstrap-Token` header and
    continue at steady-state pacing — §10.5's fallback rule applies to renewal
    exactly as it applies to open;
-3. **MUST NOT** attempt to open a second session: the window is one-shot per
-   device per vault by design (§10.9), so an expired session cannot be replaced.
+3. **MUST NOT** open a second session within the same run: an expired session
+   is not replaced mid-run. A run that resumes an interrupted first sync after
+   the app relaunches MAY open a new one, and the server grants it while the
+   device is inside the resume window (§10.9).
 
 **FR-028's progress reporting MUST survive the transition.** Progress counts the
 items each pass has handled, never a cursor: the record cursor is a per-user

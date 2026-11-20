@@ -583,6 +583,22 @@ snapshot first when:
 
 Otherwise pull incrementals from `since = cursor`.
 
+**A probe can settle a document without a pull.** The Rust core probes every
+document that holds a cursor through the batch route with `limit: 1`
+(`crates/memry-core/src/sync/body_pull/probe.rs:56-63`) and sends that
+document no further request when the answer proves the pull would fetch
+nothing (`crates/memry-core/src/sync/body_pull.rs:283-285`). It is proven only
+when all of these hold (`crates/memry-core/src/sync/body_pull/probe.rs:67-90`):
+the response carries a `snapshotMeta` object, so the server is new enough to
+advertise its snapshots; the document is a key of `notes`, with no update and
+`hasMore: false`; and either the document has no server snapshot, or the cursor
+is above `0`, at or past the snapshot's `sequenceNum`, and the snapshot's
+`revision` is the one stored (`baseline_due` is false). Anything else, a failed
+probe included, takes the ordinary pull, so a missed skip costs one request
+and a skip never hides an update or a baseline. A resumed first sync counts
+the settled documents as done before its first body request
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:58-70`).
+
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark
 MUST take the snapshot first
