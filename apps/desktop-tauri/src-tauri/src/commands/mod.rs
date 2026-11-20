@@ -19,6 +19,7 @@ pub mod error;
 pub mod fold;
 pub mod folder_view;
 pub mod folders;
+pub mod home_pages;
 pub mod ios_beta;
 pub mod journal;
 pub mod large_file;
