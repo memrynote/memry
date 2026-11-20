@@ -4,7 +4,7 @@
 //! without closing the open vault. Real `memry-config.json`, real vault folders, a real session.
 
 use memry_desktop::account::AccountError;
-use memry_desktop::account::vault_directory::DownloadTarget;
+use memry_desktop::account::vault_directory::{DownloadTarget, suggest_vault_folder};
 use memry_desktop::registry::config::ConfigError;
 use memry_desktop::session::OpenSource;
 use serde_json::json;
@@ -240,6 +240,66 @@ fn an_existing_folder_is_left_alone_and_the_next_name_is_taken() {
         .collect();
     assert_eq!(entries, ["plan.md"]);
     assert!(f.registry.get(&theirs.to_string_lossy()).is_none());
+}
+
+/// A closed vault whose folder has the name is still held by a thread that overran its close:
+/// the download takes the next name, as Electron does, instead of waiting for the thread and
+/// failing with "restart the app".
+#[test]
+fn a_held_vault_folder_is_skipped_and_the_next_name_is_taken() {
+    let f = fixture();
+    cache(&f, json!([{ "vaultUuid": "uuid-work", "name": "Work" }]));
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+    let held = parent.join("work");
+    std::fs::create_dir_all(&held).unwrap();
+    session.open(&held, OpenSource::Select).unwrap();
+    let _thread = session.current().unwrap().vault;
+    session.close();
+
+    let target = f
+        .account
+        .prepare_vault_download(&session, "uuid-work", &parent)
+        .unwrap();
+
+    let folder = parent.join("work-2");
+    assert_eq!(target, DownloadTarget::Provisioned(folder.clone()));
+    assert!(folder.join(".memry/core/data.db").is_file());
+}
+
+/// Windows refuses a folder named after a device (`CON`, `NUL`, `COM1`, ...): a vault named like one downloads into `<slug>-vault`, on every OS, so one name
+/// maps to one folder everywhere.
+#[test]
+fn a_vault_named_like_a_windows_device_downloads_into_a_suffixed_folder() {
+    let f = fixture();
+    cache(&f, json!([{ "vaultUuid": "uuid-con", "name": "CON" }]));
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+
+    let target = f
+        .account
+        .prepare_vault_download(&session, "uuid-con", &parent)
+        .unwrap();
+
+    let folder = parent.join("con-vault");
+    assert_eq!(target, DownloadTarget::Provisioned(folder.clone()));
+    assert!(folder.join(".memry/core/data.db").is_file());
+
+    // The slug turns `.` into `-`, so `aux.txt` is `aux-txt`, which Windows accepts.
+    for (name, expected) in [
+        ("nul", "nul-vault"),
+        ("Com1", "com1-vault"),
+        ("LPT9", "lpt9-vault"),
+        ("prn ", "prn-vault"),
+        ("aux.txt", "aux-txt"),
+        ("Console", "console"),
+    ] {
+        assert_eq!(
+            suggest_vault_folder("u", Some(name), &parent),
+            parent.join(expected),
+            "{name}"
+        );
+    }
 }
 
 /// A link named like the vault whose target is gone still takes the name: `mkdir` refuses it, so

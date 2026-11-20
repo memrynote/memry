@@ -105,12 +105,16 @@ mod body_edit_restore;
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
+#[path = "calendar_feed_untrusted.rs"]
+mod calendar_feed_untrusted;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ical_vectors.rs"]
 mod calendar_ical_vectors;
 #[path = "calendar_provider_push.rs"]
 mod calendar_provider_push;
+#[path = "calendar_schema.rs"]
+mod calendar_schema;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
 #[path = "calendar_source_purge.rs"]
