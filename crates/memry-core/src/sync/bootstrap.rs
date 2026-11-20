@@ -289,14 +289,16 @@ impl BootstrapClient {
     /// Best effort and deliberately unexamined: §10.8 records that elevation
     /// is stateless, so a closed session's token keeps elevating from its own
     /// device until its `exp` regardless. Closing is a courtesy to the
-    /// concurrency cap, not a security boundary.
+    /// concurrency cap, not a security boundary. The token header is what
+    /// names the ledger row to free; without it the server answers 401.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
+        let Some(session) = self.lock().session.take() else {
             return;
-        }
+        };
         self.lock().finished = true;
         let request = self
             .request("POST", "/sync/bootstrap/close")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
         let _ = self.http.send_json::<Json>(request).await;

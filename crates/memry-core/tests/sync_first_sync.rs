@@ -1064,6 +1064,24 @@ async fn an_elevated_first_sync_pulls_bodies_in_parallel_with_the_session_token(
     assert!(crdt.iter().all(|call| {
         call.headers.get(BOOTSTRAP_TOKEN_HEADER).map(String::as_str) == Some("boot-token")
     }));
+    // The close names its session, or the server answers 401 and the user's
+    // concurrent-session slot stays held until the token expires (§10.2).
+    let closes: Vec<_> = transport
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|call| call.url.ends_with("/sync/bootstrap/close"))
+        .cloned()
+        .collect();
+    assert_eq!(closes.len(), 1);
+    assert_eq!(
+        closes[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("boot-token")
+    );
 
     // Overlapping, and never wider than the elevated cap.
     let widest = transport.max_in_flight.load(Ordering::SeqCst) as usize;

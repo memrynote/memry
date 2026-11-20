@@ -25,12 +25,19 @@ not, and changes **nothing** about the pull shape.
 | ------ | ----------------------- | ------------------- | ------ |
 | POST   | `/sync/bootstrap`       | open                | `:86`  |
 | POST   | `/sync/bootstrap/renew` | extend              | `:154` |
-| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:173` |
+| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:179` |
 
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
 sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:35-38`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
 (`apps/sync-server/src/routes/bootstrap.ts:45-46`).
+
+Renew and close carry the session's `X-Memry-Bootstrap-Token` (§10.3); the
+server reads it to find the session and answers **401**
+`BOOTSTRAP_SESSION_INVALID` without it
+(`apps/sync-server/src/routes/bootstrap.ts:66-74`, `:167`, `:184`). A close
+without the header frees nothing, and the slot stays held until the token
+expires.
 
 ## 10.3 The header
 
