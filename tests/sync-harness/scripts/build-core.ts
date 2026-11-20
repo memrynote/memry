@@ -1,4 +1,5 @@
 import { spawnSync } from 'child_process'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -7,6 +8,8 @@ import { fileURLToPath } from 'url'
 // and the core scenario skips. CI must run it, so there a missing cargo fails.
 
 const CRATES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../crates')
+// The binary `src/core-device.ts` runs.
+const BINARY = process.env.MEMRY_CLI_BIN ?? path.join(CRATES, 'target/debug/memry')
 
 if (spawnSync('cargo', ['--version'], { stdio: 'ignore' }).error) {
   const message =
@@ -15,7 +18,11 @@ if (spawnSync('cargo', ['--version'], { stdio: 'ignore' }).error) {
     console.error(message)
     process.exit(1)
   }
-  console.warn(`WARNING: ${message} The scenario skips.`)
+  console.warn(
+    fs.existsSync(BINARY)
+      ? `WARNING: ${message} The scenario runs the existing ${BINARY}, which may be stale.`
+      : `WARNING: ${message} The scenario skips.`
+  )
   process.exit(0)
 }
 

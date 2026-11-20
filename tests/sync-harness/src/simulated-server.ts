@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
 // Canonical schema = the ordered D1 migrations wrangler applies on deploy.
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../apps/sync-server/migrations')
+const BACKFILL_QUEUE = 'memry-pack-backfill-dev'
 
 export interface ServerKeys {
   publicKeyPem: string
@@ -40,6 +41,12 @@ export class SimulatedServer {
 
       d1Databases: { DB: 'test-db' },
       r2Buckets: { STORAGE: 'test-bucket' },
+
+      // The cron's pack backfill (#5278) enqueues here and this Worker's queue
+      // handler consumes, as in wrangler.toml. Push nudges (PACK_QUEUE) stay
+      // unbound, so packs are built only when a test runs the cron.
+      queueProducers: { PACK_BACKFILL_QUEUE: { queueName: BACKFILL_QUEUE } },
+      queueConsumers: { [BACKFILL_QUEUE]: { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 3 } },
 
       durableObjects: {
         USER_SYNC_STATE: 'UserSyncState',
@@ -95,34 +102,13 @@ export class SimulatedServer {
 
   /**
    * Run the Worker's scheduled handler. Since #5278 its pack backfill only
-   * enqueues; `deliverPackBackfill` runs the builds.
+   * enqueues: the bound backfill queue's consumer builds the packs after this
+   * returns, so a caller that needs them waits for `pack_index` to settle.
    */
   async triggerScheduled(cron = '0 */6 * * *'): Promise<void> {
     if (!this.mf) throw new Error('Server not started')
     const worker = await this.mf.getWorker()
     await worker.scheduled({ cron })
-  }
-
-  /**
-   * Delivers one pack backfill message (#5278) to the Worker's queue handler.
-   * The cron only enqueues backfill messages, and the harness binds no queue,
-   * so the harness plays the queue: each call is one consumer invocation that
-   * builds until the kind drains or its budget ends.
-   */
-  async deliverPackBackfill(userId: string, vaultId: string, kind: string): Promise<void> {
-    if (!this.mf) throw new Error('Server not started')
-    const worker = await this.mf.getWorker()
-    const result = await worker.queue('memry-pack-backfill-dev', [
-      {
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        attempts: 1,
-        body: { userId, vaultId, backfill: { kind, hop: 0 } }
-      }
-    ])
-    if (result.outcome !== 'ok' || result.retryBatch.retry) {
-      throw new Error(`pack backfill ${kind} failed: ${JSON.stringify(result)}`)
-    }
   }
 
   async getD1(): Promise<D1Database> {
