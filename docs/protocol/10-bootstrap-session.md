@@ -98,7 +98,7 @@ Desktop opens one only on a fresh device and swallows every failure
 (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:352-368`). The Rust
 core opens one for every first sync and stays silent on any failure
 (`crates/memry-core/src/api/sync/mod.rs:400-404`,
-`crates/memry-core/src/sync/first_sync.rs:228-235`). The platform-free engine
+`crates/memry-core/src/sync/first_sync.rs:285-288`). The platform-free engine
 never calls it.
 
 **The only consequence of never calling it is unelevated pull ceilings** (§10.7).
@@ -228,10 +228,17 @@ as an error.** Concretely:
 3. **MUST NOT** attempt to open a second session: the window is one-shot per
    device per vault by design (§10.9), so an expired session cannot be replaced.
 
-**FR-028's progress reporting MUST survive the transition.** Progress is measured
-against `tailCursor` and the client's own cursor (§10.4), neither of which the
-session affects, so the only observable change is that the remaining work takes
-longer. A client MUST NOT reset, restart, or report failure at this point.
+**FR-028's progress reporting MUST survive the transition.** Progress counts the
+items each pass has handled, never a cursor: the record cursor is a per-user
+sequence over every vault and every edit
+(`apps/sync-server/migrations/0001_baseline.sql:189-192`), and `tailCursor`
+(§10.4) is one too. The refs pass reports the refs and tombstones it has listed,
+against that count plus one page (`limit`) while `hasMore` is true and against
+the count alone once it is false (`crates/memry-core/src/sync/first_sync.rs:420-433`,
+as Electron's `apps/desktop/src/main/sync/engine/initial-sync-progress.ts:13`).
+The session changes no count, so the only observable change is that the
+remaining work takes longer. A client MUST NOT reset, restart, or report failure
+at this point.
 
 **Disposition of Q10.2: answered** (this section).
 

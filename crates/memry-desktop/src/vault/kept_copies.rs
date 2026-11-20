@@ -9,25 +9,33 @@
 //!
 //! **Reserved name, a vault-format contract.** A folder named exactly `.memry-kept-` and 12
 //! lowercase hex digits ([`is_kept_name`]) is this app's. Older builds that do not know the name
-//! skip it as any dot folder and lose nothing: its files stay on disk. Every newer build accepts
-//! it and sweeps it at open as below; a name off by one character is a user's folder, never
-//! touched.
+//! skip it as any dot folder, so none takes a copy for a note, and its files stay on disk until
+//! a folder delete: Electron's (`deleteFolder`, desktop `notes-crud.ts`) removes the folder
+//! holding it with everything inside, a copy put back from the trash before an open showed it
+//! included. Every newer build accepts it and sweeps it at open as below; a name off by one
+//! character is a user's folder, never touched.
 //!
 //! **The open's rule.** Before the watcher starts (beside the folder-move sweep,
 //! [`super::move_journal`]), every regular file in such a folder (found by the open's note
 //! count outside dot and excluded folders, never through a link) is one of two things:
 //!
 //! - **Owned**: a kept note's row names the copy's note path (`f/a.md`: the copy's name in the
-//!   folder holding the hidden one). That is a delete still running (in this process or
-//!   another), or one a crash stopped before its trash step. The copy only repeats text the
-//!   note's document holds, and the note is still listed as kept, so the file stays hidden and
-//!   is never swept or deleted: shown, it would be taken as a second note of the same text.
+//!   folder holding the hidden one). That is a delete still running in another process (none
+//!   of this process's runs at open: the open waits out every thread an earlier close of the
+//!   vault left, `ensure_not_held`), or one a crash stopped before its trash step. The copy
+//!   only repeats text the note's document holds, and the note is still listed as kept, so the
+//!   file stays hidden and is never swept or deleted: shown, it would be taken as a second note
+//!   of the same text.
 //! - **Ownerless**: the delete went through, and the copy came back from the trash (the
 //!   Windows Recycle Bin and the Linux trash restore a file to the folder it left, the hidden
 //!   one), or its note is no longer kept. It is renamed, never replacing anything, into the
 //!   folder holding the hidden one as `<name> (incomplete delete)<ext>`, then
 //!   `<name> (incomplete delete 2)<ext>` ..., the way a folder move's leftover becomes
 //!   `<name> (incomplete move)`. The open walk then finds it as a note.
+//!
+//!   Ownership is by path, so a crash leftover whose kept note's folder was renamed outside the
+//!   app (`g/.memry-kept-<id>/a.md`, the note still at `f/a.md`) is ownerless too: it is shown
+//!   as `g/a (incomplete delete).md`, a second note of the kept note's text. Nothing is lost.
 //!
 //! A hidden folder left empty is removed. Anything else in it (a folder, a link) stays.
 
