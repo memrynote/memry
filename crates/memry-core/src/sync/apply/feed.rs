@@ -1,4 +1,4 @@
-//! What [`super::apply_page`] tells the observers about each record
+//! What [`super::apply_page_into`] tells the observers about each record
 //! ([`crate::sync::driver::observer`]): its outcome, the fields a concurrent
 //! merge decided, a note revived by a losing tombstone, and the attachments an
 //! applied note references.
