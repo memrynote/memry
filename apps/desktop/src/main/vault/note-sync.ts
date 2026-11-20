@@ -24,6 +24,7 @@ import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/
 import { getDatabase, type IndexDb } from '../database'
 import { diskCaseOf, volumeIgnoresCase } from './disk-case'
 import { getPendingDelete } from './rename-tracker'
+import { createLogger } from '../lib/logger'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -175,6 +176,26 @@ export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: s
     posix.basename(claimed.path) === posix.basename(relativePath) &&
     getPendingDelete(claimed.id) === undefined
   )
+}
+
+const log = createLogger('NoteSync')
+
+/**
+ * Whether the file at `relativePath` is shared by case twins: distinct rows
+ * whose paths fold to it on a case-insensitive disk (#5263). The file holds
+ * one twin's body, so its bytes never enter note `noteId`'s doc. Taking them
+ * pushed one note's body into the other on every device (#5297). Every
+ * reader that feeds a note's file into its doc asks this first, and leaves
+ * the file to the twin repair.
+ */
+export function refusesCaseTwinFile(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  if (!findCanonicalNoteForFile(vaultPath, relativePath)?.sharesFile) return false
+  log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
+  return true
 }
 
 /** The path the canonical row gives note `id`, or null when it has no row. */

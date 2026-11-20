@@ -96,7 +96,7 @@ vi.mock('../vault/note-sync', () => ({
     if (h.row) h.row = { ...h.row, contentHash: h.contentHash(input.fileContent) }
   },
   deleteNoteFromCache: vi.fn(),
-  findCanonicalNoteForFile: () => null
+  refusesCaseTwinFile: () => false
 }))
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))
 vi.mock('../projections', () => ({ flushProjectionEvents: vi.fn() }))
