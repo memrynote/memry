@@ -8,7 +8,7 @@
  * @module vault/disk-case
  */
 
-import { realpathSync } from 'fs'
+import { existsSync, realpathSync } from 'fs'
 import path from 'path'
 import { normalizeRelativePath } from '../lib/paths'
 
@@ -37,4 +37,23 @@ export function diskCaseOf(vaultPath: string, relativePath: string): string | nu
   return onDisk !== relativePath && onDisk.toLowerCase() === relativePath.toLowerCase()
     ? onDisk
     : relativePath
+}
+
+const ignoresCaseByVault = new Map<string, boolean>()
+
+/**
+ * Whether the vault's volume ignores case, probed once per vault through its
+ * `.memry` folder. A case-sensitive volume (Linux, a case-sensitive APFS
+ * image) keeps every spelling as its own file, so no row in another case can
+ * name a file there. A vault without `.memry` counts as ignoring case: the
+ * caller still proves each match with `diskCaseOf`.
+ */
+export function volumeIgnoresCase(vaultPath: string): boolean {
+  let ignores = ignoresCaseByVault.get(vaultPath)
+  if (ignores === undefined) {
+    ignores =
+      !existsSync(path.join(vaultPath, '.memry')) || existsSync(path.join(vaultPath, '.MEMRY'))
+    ignoresCaseByVault.set(vaultPath, ignores)
+  }
+  return ignores
 }

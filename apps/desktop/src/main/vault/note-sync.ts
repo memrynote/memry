@@ -21,9 +21,7 @@ import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
-import { sql } from 'drizzle-orm'
-import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
-import { diskCaseOf } from './disk-case'
+import { diskCaseOf, volumeIgnoresCase } from './disk-case'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -38,6 +36,7 @@ import {
 import {
   getNoteMetadataById,
   getNoteMetadataByPath,
+  listNoteMetadataByFoldedPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
   updateNoteMetadata,
   type NoteMetadataDb
@@ -134,12 +133,11 @@ export function findCanonicalNoteForFile(
   if (!dataDb) return null
   const row =
     getNoteMetadataByPath(dataDb, relativePath) ??
-    dataDb
-      .select()
-      .from(noteMetadata)
-      .where(sql`${noteMetadata.path} = ${relativePath} COLLATE NOCASE`)
-      .all()
-      .find((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+    (volumeIgnoresCase(vaultPath)
+      ? listNoteMetadataByFoldedPath(dataDb, relativePath).find(
+          (candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath
+        )
+      : undefined)
   return row
     ? { id: row.id, path: row.path, title: row.title, createdAt: row.createdAt, emoji: row.emoji }
     : null
@@ -598,6 +596,37 @@ export interface FileSyncResult {
  * @param input - File sync input
  * @returns Sync result
  */
+/**
+ * Move a file's row to `input.path` and keep every other canonical column
+ * (emoji, local-only, sync bookkeeping), as `syncNoteStatToCache` with
+ * `isNew: false` does for markdown. `syncFileToCache` writes the whole row.
+ */
+export function moveFileInCache(_db: IndexDb, input: FileSyncInput): void {
+  const dataDb = getCanonicalDb()
+  if (dataDb) {
+    updateNoteMetadata(dataDb, input.id, {
+      path: input.path,
+      title: input.title,
+      fileSize: input.fileSize,
+      modifiedAt: input.modifiedAt.toISOString()
+    })
+  }
+  publishProjectionEvent({
+    type: 'note.upserted',
+    note: {
+      kind: 'file',
+      noteId: input.id,
+      path: input.path,
+      title: input.title,
+      fileType: input.fileType,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      createdAt: input.createdAt.toISOString(),
+      modifiedAt: input.modifiedAt.toISOString()
+    }
+  })
+}
+
 export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResult {
   const { result, note } = persistFile(db, input)
   publishProjectionEvent({ type: 'note.upserted', note })

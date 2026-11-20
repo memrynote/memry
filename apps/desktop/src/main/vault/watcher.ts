@@ -27,6 +27,7 @@ import {
   syncNoteToCache,
   syncNoteStatToCache,
   syncFileToCache,
+  moveFileInCache,
   deleteNoteFromCache,
   findCanonicalNoteForFile,
   findCanonicalNotePath,
@@ -48,6 +49,7 @@ import {
   checkForRename,
   clearAllPendingDeletes,
   hasPendingDeletes,
+  getPendingDelete,
   settleDeferredDeletes,
   discardDeferredDeletes,
   createDeferredDeletes,
@@ -217,6 +219,19 @@ async function isModifiedSince(absolutePath: string, indexedAt: string): Promise
 function isAppMoveEcho(vaultPath: string, relativePath: string): boolean {
   return (
     isAppFolderChange(relativePath) && findCanonicalNoteForFile(vaultPath, relativePath) !== null
+  )
+}
+
+/**
+ * Whether a file whose row spells its path in another case is the remote-apply
+ * shape (#5261): only the folder segments differ, and no unlink of the row's
+ * path is pending. Sync wrote the row's spelling into a folder the disk spells
+ * otherwise, and nothing was renamed.
+ */
+function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: string): boolean {
+  return (
+    path.posix.basename(claimed.path) === path.posix.basename(relativePath) &&
+    getPendingDelete(claimed.id) === undefined
   )
 }
 
@@ -614,10 +629,16 @@ export class VaultWatcher {
       // it runs behind the canonical write, so "no cache row" does not mean
       // "the vault has never seen this path". The canonical row is the one with
       // a unique path, and if it is already there this add has to adopt its id.
-      const claimed = findCanonicalNoteForFile(this.vaultPath, relativePath)
+      let claimed = findCanonicalNoteForFile(this.vaultPath, relativePath)
       if (claimed !== null && claimed.path !== relativePath) {
-        await this.adoptCaseVariantRow(absolutePath, relativePath, fileType, claimed, db)
-        return
+        if (isRemoteApplySpelling(claimed, relativePath)) {
+          await this.adoptCaseVariantRow(absolutePath, relativePath, fileType, claimed, db)
+          return
+        }
+        // A file renamed by case outside the app, or a folder renamed by case
+        // whose unlink is already pending: a rename, which the add path below
+        // matches to its pending delete and syncs, as before #5261.
+        claimed = null
       }
 
       if (fileType === 'markdown') {
@@ -686,7 +707,7 @@ export class VaultWatcher {
         { isNew: false }
       )
     } else {
-      syncFileToCache(db, {
+      moveFileInCache(db, {
         id: claimed.id,
         path: relativePath,
         title: claimed.title,
