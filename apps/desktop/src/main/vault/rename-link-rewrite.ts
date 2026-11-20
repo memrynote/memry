@@ -15,11 +15,13 @@
  *     re-ingest our own write),
  *  2. the index/canonical rows via `syncNoteToCache` — the re-projection is
  *     what refreshes `note_links.target_title`, so backlinks and the graph
- *     survive without a rebuild,
+ *     survive without a rebuild. It keeps the outside-edit baseline it finds,
  *  3. the renderer, via the same `notes:updated` event an external edit emits,
  *  4. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
  *     doc, a closed-but-persisted doc, and correctly leaves a note with no
  *     CRDT body alone. This is also what carries the rewrite to other devices.
+ *     The baseline moves to the rewrite only once the doc holds it
+ *     (`feedThenRecordBaseline`, sync/writeback-baseline.ts).
  *
  * A source that fails is logged and skipped: the rename itself already
  * happened, and repairing nine of ten links beats unwinding a filesystem
@@ -42,6 +44,7 @@ import {
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { baselineBeforeFeed, feedThenRecordBaseline } from '../sync/writeback-baseline'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
@@ -186,6 +189,7 @@ export async function landSourceRewrite(
       id: sourceId,
       path: sourcePath,
       fileContent: rewritten,
+      contentHash: baselineBeforeFeed(db, sourceId, rewritten),
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: source.title,
@@ -208,7 +212,9 @@ export async function landSourceRewrite(
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+  await feedThenRecordBaseline(db, sourceId, rewritten, () =>
+    feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+  )
 
   if (isJournalEntry(sourcePath)) {
     const journalDate = extractDateFromPath(sourcePath) ?? ''

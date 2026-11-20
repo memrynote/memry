@@ -42,6 +42,7 @@ vi.mock('../../database', () => ({ getDatabase: () => currentDb.value }))
 vi.mock('@main/database/queries/notes', async (importOriginal) => ({
   ...(await importOriginal<typeof NotesModule>()),
   noteCacheExists: vi.fn(() => true),
+  getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),
   deleteNoteCache: vi.fn(),
   updateNoteCache: vi.fn(),

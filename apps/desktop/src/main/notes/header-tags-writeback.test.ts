@@ -47,7 +47,8 @@ vi.mock('../sync/crdt-provider', () => ({
   })
 }))
 
-vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
+// The open doc takes a saved body; the test types that body into the doc itself.
+vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => true) }))
 
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),

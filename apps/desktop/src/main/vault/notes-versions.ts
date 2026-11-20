@@ -20,6 +20,7 @@ import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/no
 import { getDatabase, getIndexDatabase } from '../database'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { baselineBeforeFeed, feedThenRecordBaseline } from '../sync/writeback-baseline'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
@@ -115,6 +116,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
       id: cached.id,
       path: cached.path,
       fileContent: snapshot.fileContent,
+      contentHash: baselineBeforeFeed(db, cached.id, snapshot.fileContent),
       frontmatter: snapshotParsed.frontmatter,
       parsedContent: snapshotParsed.content,
       title: cached.title,
@@ -151,15 +153,15 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   })
 
   // The file is not the note's body while an editor holds it: the Y.Doc is.
-  // `syncNoteToCache` above refreshes the index row's content hash before the
-  // watcher reaches the file, so the watcher dedupes and never feeds the CRDT
-  // either (`vault/watcher.ts`) — without these two lines a restore of an open
-  // note shows nothing and the next write-back rewrites the file from the
-  // unrestored Y.Doc. Same closing step as `vault/append-blocks.ts`.
-  await feedExternalEditToCrdt(
-    cached.id,
-    snapshotParsed.content,
-    writingFrontmatterOf(snapshotParsed.frontmatter)
+  // Without the feed a restore of an open note shows nothing and the next
+  // write-back rewrites the file from the unrestored Y.Doc. The baseline moves
+  // only once the doc holds the restored bytes (sync/writeback-baseline.ts).
+  await feedThenRecordBaseline(db, cached.id, snapshot.fileContent, () =>
+    feedExternalEditToCrdt(
+      cached.id,
+      snapshotParsed.content,
+      writingFrontmatterOf(snapshotParsed.frontmatter)
+    )
   )
   replaceNoteTagsInCrdt(cached.id, syncResult.headerTags)
 

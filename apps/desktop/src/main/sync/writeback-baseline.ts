@@ -9,28 +9,38 @@
  *
  * Invariant: the baseline only names bytes the doc holds, so the bytes Memry
  * wrote or read into the doc never read as an outside edit, and an edit the
- * doc lacks always does. These writers go through here:
+ * doc lacks always does. Every writer of a note file goes through here:
  * - The write-back records the bytes it writes before and after the write, so
  *   a crash between the file write and the hash update leaves them its own,
  *   and records the file when the doc already serializes to it.
- * - A seed records the bytes it built the doc from, over any older hash.
- * - A reader that does not feed the doc (the ingest backfill) keeps the
- *   baseline it finds.
+ * - A seed, and the take of an owed file (`takeOwedFile`), record the bytes
+ *   they built the doc from, over any older hash.
+ * - Memry's other body writers (the note command, journal saves, appended
+ *   blocks, task-line removal, version restore, a rename's link rewrites, the
+ *   watcher's ingest) write the file, publish the baseline they find
+ *   (`baselineBeforeFeed`), feed the doc, and record their bytes only once the
+ *   doc holds them (`feedThenRecordBaseline`). A crash before the feed leaves
+ *   their bytes an outside edit, which the next write-back feeds instead of
+ *   writing the doc over them (#5304).
+ * - A writer or reader that does not feed the doc (a metadata-only note or
+ *   journal update, a rename that rewrites nothing, a remote journal apply,
+ *   the ingest backfill) keeps the baseline it finds unless its bytes only
+ *   change the frontmatter of the baseline (`baselineAfterWrite`,
+ *   `baselineAfterRead`).
+ * - A remote note create writes a new file with no baseline to keep, and the
+ *   cache sync measures it.
  *
- * Memry's other body writers (the note command, appended blocks, version
- * restore, a rename's link rewrites, the watcher's ingest) still write the
- * file, move the hash through the cache sync, and then feed the doc. A crash
- * between the hash and the feed leaves the hash past bytes the doc lacks.
- * Routing them through here is #5304. Any hash they move clears a pending
- * write (`updateNoteCache`, `insertNoteCache`), so a stale pending hash never
- * outlives the baseline it was written against.
+ * Any hash a writer moves clears a pending write (`updateNoteCache`,
+ * `insertNoteCache`), so a stale pending hash never outlives the baseline it
+ * was written against.
  *
  * @module sync/writeback-baseline
  */
 
 import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
 import type { getIndexDatabase } from '../database/client'
-import { generateContentHash } from '../vault/frontmatter'
+import { generateContentHash, parseNote } from '../vault/frontmatter'
+import { flushProjectionEvents } from '../projections'
 
 type IndexDb = ReturnType<typeof getIndexDatabase>
 type Baseline = { contentHash?: string | null; pendingWriteHash?: string | null }
@@ -103,4 +113,54 @@ export function recordUnchangedFile(
  */
 export function baselineAfterRead(baseline: Baseline | undefined, measuredHash: string): string {
   return baseline?.contentHash ?? measuredHash
+}
+
+/**
+ * The hash a writer publishes for bytes it wrote and has not fed to the doc
+ * yet: the baseline it finds, or the written hash when the note has none.
+ */
+export function baselineBeforeFeed(indexDb: IndexDb, noteId: string, written: string): string {
+  return baselineAfterRead(getNoteCacheById(indexDb, noteId), generateContentHash(written))
+}
+
+/**
+ * Feeds the doc the bytes a writer wrote, then records them as the baseline
+ * once the doc holds them. The cache sync's projection, which carries the
+ * baseline the writer found, drains first so it cannot land over the record.
+ * A baseline that moved meanwhile (a write-back pass) is left alone.
+ */
+export async function feedThenRecordBaseline(
+  indexDb: IndexDb,
+  noteId: string,
+  written: string,
+  feed: () => Promise<boolean>
+): Promise<boolean> {
+  const found = getNoteCacheById(indexDb, noteId)?.contentHash
+  const fed = await feed()
+  await flushProjectionEvents()
+  if (fed && getNoteCacheById(indexDb, noteId)?.contentHash === found) {
+    recordBaseline(indexDb, noteId, written)
+  }
+  return fed
+}
+
+/**
+ * The hash a writer that does not feed the doc publishes for `written`, the
+ * bytes it put over `previous`. The doc holds them when it held `previous`
+ * and the body is unchanged; otherwise the baseline stays. A missing file
+ * (`previous` null) is rewritten from the doc's side, as before.
+ */
+export function baselineAfterWrite(
+  indexDb: IndexDb,
+  noteId: string,
+  previous: string | null,
+  written: string
+): string {
+  const writtenHash = generateContentHash(written)
+  const baseline = getNoteCacheById(indexDb, noteId)?.contentHash
+  if (!baseline || previous === null || baseline === writtenHash) return writtenHash
+  const held =
+    generateContentHash(previous) === baseline &&
+    parseNote(previous).content === parseNote(written).content
+  return held ? writtenHash : baseline
 }

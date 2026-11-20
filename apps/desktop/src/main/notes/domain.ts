@@ -16,6 +16,7 @@ import type { NoteTagTemplateOutcome } from '@memry/contracts/notes-api'
 import { applyTagTemplateAfterAdd, undoTagTemplate } from './tag-template'
 import { extractTags } from '../vault/frontmatter'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { feedThenRecordBaseline } from '../sync/writeback-baseline'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database'
@@ -83,14 +84,18 @@ async function writeNoteBodyCommand(input: NoteUpdateInput): Promise<Note> {
 }
 
 async function writeNoteCommand(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  const { note, headerTagChange } = await updateNote(input)
-  // `updateNote` moves the index hash to the new bytes, so the watcher never
-  // feeds this edit, and the next write-back would put the doc's older body
-  // back over it (#2646). No `writing`: the doc keeps its own alternatives.
-  // The file is already written, so a failed feed must not fail the save.
+  const { note, headerTagChange, fileContent } = await updateNote(input)
+  // The watcher ignores Memry's own write, so without the feed the next
+  // write-back would put the doc's older body back over it (#2646). The
+  // baseline moves to the new bytes once the doc holds them (#5304). No
+  // `writing`: the doc keeps its own alternatives. The file is already
+  // written, so a failed feed must not fail the save.
   if (input.content !== undefined) {
+    const content = input.content
     try {
-      await feedExternalEditToCrdt(input.id, input.content)
+      await feedThenRecordBaseline(getIndexDatabase(), input.id, fileContent, () =>
+        feedExternalEditToCrdt(input.id, content)
+      )
     } catch (err) {
       log.error('Could not feed the saved body to the note CRDT doc', { noteId: input.id, err })
     }
@@ -111,7 +116,7 @@ async function writeNoteCommand(input: NoteUpdateInput): Promise<NoteUpdateOutco
     syncNoteUpdate(input.id, input.title)
   }
 
-  return { note, headerTagChange }
+  return { note, headerTagChange, fileContent }
 }
 
 /**

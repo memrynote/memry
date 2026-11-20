@@ -10,17 +10,16 @@
  *
  *  1. `markWritebackIgnored` so the watcher does not re-ingest our own write,
  *  2. `atomicWrite` the file,
- *  3. `syncNoteToCache` to re-project the index rows,
+ *  3. `syncNoteToCache` to re-project the index rows, keeping the
+ *     outside-edit baseline it finds,
  *  4. `notes:updated` with `source: 'external'` for the renderer,
- *  5. `await feedExternalEditToCrdt` for the note's CRDT body.
+ *  5. feed the note's CRDT body, then record the bytes as the baseline
+ *     (`feedThenRecordBaseline`, sync/writeback-baseline.ts).
  *
- * Step 5 is not optional. Because `syncNoteToCache` refreshes `contentHash`
- * first, the watcher's dedupe (`vault/watcher.ts`) returns early and never
- * feeds the CRDT — so when the target note IS open, its Y.Doc keeps the
- * pre-append body and the next writeback overwrites the appended text. Awaiting
- * the feed here is what makes a move into an open note survive. `notes:update`
- * and the MCP `vault_update_note` take the same step inside
- * `updateNoteCommand`.
+ * Step 5 is not optional. The watcher ignores this write, so when the target
+ * note IS open, its Y.Doc keeps the pre-append body until the feed. A crash
+ * before the feed leaves the appended bytes off the baseline, so the next
+ * write-back feeds them instead of writing the older body over them.
  *
  * @module vault/append-blocks
  */
@@ -31,6 +30,7 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { baselineBeforeFeed, feedThenRecordBaseline } from '../sync/writeback-baseline'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
@@ -101,6 +101,7 @@ export async function appendBlocksToNote(
       id: targetNoteId,
       path: target.path,
       fileContent: nextFile,
+      contentHash: baselineBeforeFeed(db, targetNoteId, nextFile),
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: target.title,
@@ -123,10 +124,8 @@ export async function appendBlocksToNote(
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
 
-  await feedExternalEditToCrdt(
-    targetNoteId,
-    parsed.content,
-    writingFrontmatterOf(parsed.frontmatter)
+  await feedThenRecordBaseline(db, targetNoteId, nextFile, () =>
+    feedExternalEditToCrdt(targetNoteId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
   )
 
   log.info('Appended blocks to note', { targetNoteId, sourceNoteId, chars: rewritten.length })

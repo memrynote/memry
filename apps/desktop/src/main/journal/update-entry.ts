@@ -22,6 +22,7 @@ import {
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import { syncJournalCache } from '../vault/journal-cache-sync'
+import { baselineAfterWrite, baselineBeforeFeed } from '../sync/writeback-baseline'
 import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { writebackNow } from '../sync/crdt-writeback'
@@ -84,7 +85,7 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     }
   }
 
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile } = await writeJournalEntryWithContent(
     input.date,
     newContent,
     newTags,
@@ -99,6 +100,11 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
       id: cacheId,
       path: journalPath,
       fileContent,
+      // A new body reaches the baseline once it is fed below.
+      contentHash:
+        input.content !== undefined
+          ? baselineBeforeFeed(db, cacheId, fileContent)
+          : baselineAfterWrite(db, cacheId, previousFile, fileContent),
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,
@@ -110,7 +116,9 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
   enqueueJournalUpdate(cacheId, entry.date)
 
   // An open editor is bound to the entry's doc (see feedJournalBodyToCrdt).
-  if (input.content !== undefined) await feedJournalBodyToCrdt(cacheId, input.content)
+  if (input.content !== undefined) {
+    await feedJournalBodyToCrdt(db, cacheId, input.content, fileContent)
+  }
 
   // The renderer caches whatever this returns (and whatever the event carries)
   // as the open entry, so both carry the cache id rather than `j<date>`.

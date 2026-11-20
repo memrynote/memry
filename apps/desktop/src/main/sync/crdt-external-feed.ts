@@ -44,6 +44,8 @@ import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { createSnapshot } from '../vault/note-snapshots'
+import { getIndexDatabase } from '../database'
+import { recordBaseline } from './writeback-baseline'
 import { extractTags, parseNote, serializeNote } from '../vault/frontmatter'
 
 const log = createLogger('CrdtExternalFeed')
@@ -181,6 +183,8 @@ export async function takeOwedFile(
   }
 
   replaceDocTags(doc, extractTags(parsed.frontmatter))
+  // The writer that owed the file kept the baseline, since the doc lacked it.
+  recordBaseline(getIndexDatabase(), noteId, file.raw)
   if (keepsVersion) {
     log.info('Applied the vault file over the server body; kept that as a version', { noteId })
   }

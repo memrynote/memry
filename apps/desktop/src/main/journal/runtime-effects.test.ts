@@ -8,6 +8,7 @@ vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncUpdate: vi.fn()
 }))
 
+import { createTestIndexDb } from '@tests/utils/test-db'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
@@ -29,16 +30,19 @@ describe('enqueueJournalDelete', () => {
 
 describe('feedJournalBodyToCrdt', () => {
   beforeEach(() => vi.clearAllMocks())
+  const indexDb = createTestIndexDb().db
 
   it('feeds the saved body into the entry doc', async () => {
     vi.mocked(feedExternalEditToCrdt).mockResolvedValue(true)
-    await feedJournalBodyToCrdt('entry-1', 'new body')
+    await feedJournalBodyToCrdt(indexDb, 'entry-1', 'new body', 'new body')
     expect(feedExternalEditToCrdt).toHaveBeenCalledWith('entry-1', 'new body')
   })
 
   // The file is already written when this runs, so the save must still succeed.
   it('does not fail the save when the feed rejects', async () => {
     vi.mocked(feedExternalEditToCrdt).mockRejectedValue(new Error('doc closed'))
-    await expect(feedJournalBodyToCrdt('entry-1', 'new body')).resolves.toBeUndefined()
+    await expect(
+      feedJournalBodyToCrdt(indexDb, 'entry-1', 'new body', 'new body')
+    ).resolves.toBeUndefined()
   })
 })

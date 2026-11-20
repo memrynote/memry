@@ -68,6 +68,8 @@ export interface JournalWriteResult {
   entry: JournalEntry
   fileContent: string
   frontmatter: JournalFrontmatter
+  /** The bytes the file held before this write; null when it had none. */
+  previousFile: string | null
 }
 
 // ============================================================================
@@ -427,7 +429,8 @@ function composeJournalEntry(
   return {
     entry: { ...written, createdAt: existing?.createdAt ?? written.createdAt },
     fileContent,
-    frontmatter: parsed.frontmatter
+    frontmatter: parsed.frontmatter,
+    previousFile
   }
 }
 

@@ -32,6 +32,7 @@ import {
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
+import { baselineAfterWrite, baselineBeforeFeed } from '../sync/writeback-baseline'
 import {
   atomicWrite,
   deleteFile,
@@ -215,6 +216,8 @@ export interface NoteUpdateInput {
 export interface NoteUpdateOutcome {
   note: Note
   headerTagChange: HeaderTagChange
+  /** The bytes the note file holds after the update. */
+  fileContent: string
 }
 
 /**
@@ -761,6 +764,12 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
           id: input.id,
           path: existing.path,
           fileContent,
+          // A new body reaches the baseline once the caller feeds it
+          // (`writeNoteCommand`); a metadata edit keeps the body the doc holds.
+          contentHash:
+            input.content !== undefined
+              ? baselineBeforeFeed(db, input.id, fileContent)
+              : baselineAfterWrite(db, input.id, currentRaw, fileContent),
           frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,
@@ -829,7 +838,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     emitNoteEvent('notes:tags-changed', undefined)
   }
 
-  return { note, headerTagChange }
+  return { note, headerTagChange, fileContent }
 }
 
 // ============================================================================

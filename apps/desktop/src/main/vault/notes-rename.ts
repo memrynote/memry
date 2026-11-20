@@ -29,6 +29,11 @@ import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
+import {
+  baselineAfterWrite,
+  baselineBeforeFeed,
+  feedThenRecordBaseline
+} from '../sync/writeback-baseline'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
   carryPositionToPath,
@@ -115,6 +120,8 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
         id,
         path: newRelativePath,
         fileContent,
+        // A rename leaves the bytes alone, so the baseline stays.
+        contentHash: baselineAfterWrite(db, id, fileContent, fileContent),
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: newTitle,
@@ -242,6 +249,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
         id,
         path: newRelativePath,
         fileContent,
+        contentHash:
+          rewritten === null
+            ? baselineAfterWrite(db, id, original, original)
+            : baselineBeforeFeed(db, id, rewritten),
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: existing.title,
@@ -260,8 +271,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       // file we just corrected — and persist it, so closing the note would not
       // undo the loss. The cache row already points at the new path, so the
       // embed resolution inside this call reads the note from where it now
-      // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
-      await feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+      // lives. File first, then the doc, then the baseline.
+      await feedThenRecordBaseline(db, id, rewritten, () =>
+        feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
+      )
     }
   }
 
