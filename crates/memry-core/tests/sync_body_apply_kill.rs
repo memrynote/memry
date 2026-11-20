@@ -197,6 +197,17 @@ fn kill_child(label: &str, mode: &str) -> Db {
         !status.success(),
         "the child must die mid-chunk, got {status}"
     );
+    // Killed by its own `abort()`, not by a failed assertion or a panic.
+    // SIGABRT is 6 on every Unix this crate builds for.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt as _;
+        assert_eq!(
+            status.signal(),
+            Some(6),
+            "the child must abort, got {status}"
+        );
+    }
     open_data(&dir.join("data.db")).expect("reopen data.db")
 }
 
