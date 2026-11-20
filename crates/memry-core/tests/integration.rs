@@ -101,6 +101,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "body_tags_reindex.rs"]
+mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]

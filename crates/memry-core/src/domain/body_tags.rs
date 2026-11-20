@@ -166,6 +166,33 @@ pub fn clear(data: &Connection, doc_id: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
+/// Runs `rewrite`, which replaces a document's cached body tags, as one commit. The tag readers
+/// (`used_tags`, `tag_counts`, `tags::gone`) run on their own connections and see the last
+/// commit, so a [`clear`] and a [`write`] in autocommit show a body that carries no tags between
+/// them. A savepoint, so it also nests in the caller's transaction.
+pub(crate) fn replaced_as_one<T>(
+    data: &Connection,
+    rewrite: impl FnOnce() -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    data.execute_batch("SAVEPOINT body_tags_rewrite")
+        .map_err(failed)?;
+    match rewrite() {
+        Ok(value) => {
+            data.execute_batch("RELEASE body_tags_rewrite")
+                .map_err(failed)?;
+            Ok(value)
+        }
+        Err(error) => match data
+            .execute_batch("ROLLBACK TO body_tags_rewrite; RELEASE body_tags_rewrite")
+        {
+            Ok(()) => Err(error),
+            Err(rollback) => Err(StorageError::Failed {
+                what: format!("{error}; the body tags it wrote were not rolled back: {rollback}"),
+            }),
+        },
+    }
+}
+
 /// `(item_type, item_id, tag)` for each body tag on a live note or journal.
 pub fn carriers(conn: &Connection) -> Result<Vec<(String, String, String)>, StorageError> {
     let mut statement = conn

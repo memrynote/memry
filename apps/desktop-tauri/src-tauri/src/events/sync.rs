@@ -1,7 +1,7 @@
 //! The sync events of `ipc-events.ts:8-32` the renderer listens to. Ids and small hints only:
 //! a listener reads anything bigger through its command.
 
-use memry_desktop::sync::events::{ItemOperation, SyncEvent};
+use memry_desktop::sync::events::{InitialSyncPhase as Phase, ItemOperation, SyncEvent};
 use memry_desktop::sync::status::SyncStatus;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
@@ -79,6 +79,20 @@ pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
             SyncItemRecoveredEvent {
                 item_id: item_id.clone(),
                 item_type: item_type.clone(),
+            },
+        ),
+        SyncEvent::InitialSyncProgress(progress) => broadcast(
+            app,
+            SyncInitialSyncProgressEvent {
+                phase: match progress.phase {
+                    Phase::Packs => InitialSyncPhase::Packs,
+                    Phase::Notes => InitialSyncPhase::Notes,
+                    Phase::Tasks => InitialSyncPhase::Tasks,
+                    Phase::Complete => InitialSyncPhase::Complete,
+                },
+                total_items: u32::try_from(progress.total_items).unwrap_or(u32::MAX),
+                processed_items: u32::try_from(progress.processed_items).unwrap_or(u32::MAX),
+                current_item_type: None,
             },
         ),
     }
