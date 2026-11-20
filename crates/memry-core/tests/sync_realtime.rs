@@ -700,6 +700,40 @@ async fn a_failed_close_is_not_an_error_and_still_ends_the_window() {
     assert_eq!(client.state(), SessionState::SteadyState);
 }
 
+#[tokio::test(start_paused = true)]
+async fn a_renewal_that_lands_after_close_does_not_reopen_the_window() {
+    let transport = FakeTransport::slow(
+        vec![
+            response(
+                200,
+                &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                    .to_string(),
+            ),
+            response(
+                200,
+                &json!({"session": {"token": "tok-2", "expiresAt": 8_200}}).to_string(),
+            ),
+            response(200, &json!({"success": true}).to_string()),
+        ],
+        50,
+    );
+    let client = BootstrapClient::new(Arc::new(HttpClient::new(
+        Arc::clone(&transport) as Arc<dyn Transport>,
+        "https://sync.example",
+        identity(),
+    )));
+    client.open(1_000).await;
+
+    // The renewal is in flight when the close runs, and answers after it.
+    let lead = 4_600 - BOOTSTRAP_RENEW_LEAD_SECONDS;
+    let (renewed, ()) = tokio::join!(client.renew_if_due(lead), client.close());
+
+    assert!(!renewed);
+    assert_eq!(transport.calls_to("/sync/bootstrap/close").len(), 1);
+    assert_eq!(client.state(), SessionState::SteadyState);
+    assert_eq!(client.header(lead), None);
+}
+
 #[tokio::test]
 async fn a_refreshing_token_provider_is_only_asked_once_per_socket_4003() {
     // A guard on §9.10.1 step 2's "single-flighted": the socket client does
