@@ -8,6 +8,7 @@ import type {
   SyncStatus,
   VectorClock,
   RecordChangesResponse,
+  RecordPackEntryMeta,
   RecordPullBlobMissing,
   RecordPullItemResponse,
   RecordPullPurgedTombstone,
@@ -252,7 +253,7 @@ const happensAfter = (incoming: VectorClock, existing: VectorClock): boolean => 
   return strictlyGreater
 }
 
-const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
+export const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   RECORD_SYNC_ITEM_TYPE_SET.has(type as RecordSyncItemType)
 
@@ -384,7 +385,7 @@ const readEncryptedPayload = async (
 }
 
 /** The stored columns a `/sync/pull` item is made of, already narrowed. */
-interface PullItemColumns {
+export interface PullItemColumns {
   id: string
   type: RecordSyncItemType
   operation: string
@@ -396,6 +397,25 @@ interface PullItemColumns {
 }
 
 /**
+ * A `/sync/pull` item without `id`, `type` and `blob`: the meta of a `record`
+ * pack entry (protocol 08 §8.4.2). The pull builds its items from this too, so
+ * a packed entry and the pull item for the same row cannot drift apart.
+ * Throws on a corrupt stored clock, as the pull does.
+ */
+export const recordMetaFromColumns = (columns: PullItemColumns): RecordPackEntryMeta => {
+  const parsedClock = parseStoredClock(columns.id, columns.clock)
+  return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
+    operation: columns.operation as RecordPullItemResponse['operation'],
+    cryptoVersion: columns.cryptoVersion,
+    signature: columns.signature,
+    signerDeviceId: columns.signerDeviceId,
+    ...(columns.deletedAt ? { deletedAt: columns.deletedAt } : {}),
+    ...(parsedClock ? { clock: parsedClock } : {})
+  }
+}
+
+/**
  * The one constructor of a `/sync/pull` item. The pull feeds it a D1 row and
  * the R2 object; a push feeds it the values it just committed, so a socket
  * item (#2300) is byte-identical to what `/sync/pull` returns for that row.
@@ -403,21 +423,12 @@ interface PullItemColumns {
 const pullItemFromColumns = (
   columns: PullItemColumns,
   payload: EncryptedItemPayload
-): RecordPullItemResponse => {
-  const parsedClock = parseStoredClock(columns.id, columns.clock)
-  return {
-    id: columns.id,
-    type: columns.type,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
-    operation: columns.operation as RecordPullItemResponse['operation'],
-    cryptoVersion: columns.cryptoVersion,
-    signature: columns.signature,
-    signerDeviceId: columns.signerDeviceId,
-    ...(columns.deletedAt ? { deletedAt: columns.deletedAt } : {}),
-    ...(parsedClock ? { clock: parsedClock } : {}),
-    blob: payload
-  }
-}
+): RecordPullItemResponse => ({
+  id: columns.id,
+  type: columns.type,
+  ...recordMetaFromColumns(columns),
+  blob: payload
+})
 
 /**
  * What one sync_items row contributes to a POST /sync/pull response (#2302).
@@ -1234,7 +1245,11 @@ export const getManifest = async (
       type: row.item_type as RecordSyncItemType,
       version: row.version,
       modifiedAt: row.updated_at,
-      size: row.size_bytes
+      size: row.size_bytes,
+      // The reader's record reconcile keys on this, not `version`, which two
+      // concurrent pushes can both commit (protocol 08 §8.10). Manifest only:
+      // pull and socket items never carry it.
+      serverCursor: row.server_cursor
     }))
 
   // nextCursor comes from the last row KEPT, unsupported types included — the

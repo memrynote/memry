@@ -4,15 +4,15 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-s
 import { AppError } from '../lib/errors'
 import {
   ENQUEUE_RETRY_DELAYS_MS,
-  PACKED_KINDS,
   PACK_TARGET_BYTES,
   compactOneRange,
+  compactVault,
   enqueuePackCompaction,
   insertPackIndexRow,
   packObjectKey,
   selectCandidates
 } from './pack-compaction'
-import { extractEntry, parsePack } from './pack-format'
+import { extractEntry, packSha256, parsePack } from './pack-format'
 
 /**
  * Producer-side backpressure (#1997). Queues answers a burst with "Too Many
@@ -77,6 +77,12 @@ const seedUser = (): void => {
        VALUES (?, ?, 'otp', 1, 1)`
     )
     .run(USER, 'pack@example.com')
+  harness.raw
+    .prepare(
+      `INSERT INTO devices (id, user_id, name, platform, app_version, auth_public_key, created_at, updated_at)
+       VALUES ('device-1', ?, 'Pack desktop', 'desktop', '1.0.0', 'key', 1, 1)`
+    )
+    .run(USER)
 }
 
 interface RecordSeedOptions {
@@ -85,9 +91,16 @@ interface RecordSeedOptions {
   id?: string
   bytes?: Uint8Array
   deleted?: boolean
+  blobKey?: string
+  signerDeviceId?: string | null
+  clock?: string
 }
 
-const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8Array } => {
+const hexOf = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex')
+
+const seedRecord = async (
+  options: RecordSeedOptions
+): Promise<{ blobKey: string; bytes: Uint8Array }> => {
   const type = options.type ?? 'task'
   const itemId = options.id ?? `item-${options.cursor}`
   // Mirror the push path's payload shape: JSON text of base64 fields. The pack
@@ -95,12 +108,14 @@ const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8
   const bytes =
     options.bytes ??
     new TextEncoder().encode(JSON.stringify({ encryptedData: 'payload-' + options.cursor }))
-  const contentHash = 'hash' + options.cursor
-  const blobKey = `${USER}/vaults/${VAULT}/items-v3/${type}/${itemId}/${contentHash}`
+  // The push stores exactly the bytes it hashed into content_hash.
+  const contentHash = hexOf(await packSha256(bytes))
+  const blobKey =
+    options.blobKey ?? `${USER}/vaults/${VAULT}/items-v3/${type}/${itemId}/${contentHash}`
   harness.raw
     .prepare(
       `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 'update', ?, NULL, 'sig', NULL, 1, 1, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?, ?, 'sig', ?, 1, 1, ?)`
     )
     .run(
       `row-${options.cursor}`,
@@ -111,11 +126,14 @@ const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8
       blobKey,
       bytes.byteLength,
       contentHash,
+      options.deleted ? 'delete' : 'update',
       options.cursor,
+      options.signerDeviceId === undefined ? 'device-1' : options.signerDeviceId,
+      options.clock ?? JSON.stringify({ 'device-1': options.cursor }),
       options.deleted ? nowSec() : null
     )
   // The source object must exist exactly as a push would have left it.
-  void storage.put(blobKey, bytes.slice().buffer)
+  await storage.put(blobKey, bytes.slice().buffer)
   return { blobKey, bytes }
 }
 
@@ -174,19 +192,19 @@ afterEach(() => {
 
 describe('selection', () => {
   it('selects records in cursor order and excludes nothing un-packed', async () => {
-    for (let cursor = 3; cursor <= 6; cursor++) seedRecord({ cursor })
+    for (let cursor = 3; cursor <= 6; cursor++) await seedRecord({ cursor })
     const selection = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
     expect(selection.candidates.map((c) => c.sortKey)).toEqual([3, 4, 5, 6])
   })
 
   it('excludes already-packed rows via the composite watermark', async () => {
-    for (let cursor = 1; cursor <= 5; cursor++) seedRecord({ cursor })
+    for (let cursor = 1; cursor <= 5; cursor++) await seedRecord({ cursor })
     await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
     const after = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
     expect(after.candidates).toHaveLength(0)
 
     // New pushes land above the watermark and become eligible only there.
-    seedRecord({ cursor: 6 })
+    await seedRecord({ cursor: 6 })
     const next = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
     expect(next.candidates.map((c) => c.sortKey)).toEqual([6])
   })
@@ -194,8 +212,8 @@ describe('selection', () => {
   it('skips oversized items but still advances the watermark past them', async () => {
     // 9MB: above MAX_PACKED_ITEM_BYTES (8MB) but allocated without
     // crypto.getRandomValues' 64KiB cap.
-    seedRecord({ cursor: 1, bytes: new Uint8Array(9 * 1024 * 1024).fill(7) })
-    seedRecord({ cursor: 2 })
+    await seedRecord({ cursor: 1, bytes: new Uint8Array(9 * 1024 * 1024).fill(7) })
+    await seedRecord({ cursor: 2 })
 
     const first = await compactOneRange(
       harness.db,
@@ -284,7 +302,7 @@ describe('selection', () => {
 
 describe('pack build', () => {
   it('writes an immutable verifiable pack and the D1 range row', async () => {
-    const seeds = [seedRecord({ cursor: 1 }), seedRecord({ cursor: 2 })]
+    const seeds = [await seedRecord({ cursor: 1 }), await seedRecord({ cursor: 2 })]
     const result = await compactOneRange(
       harness.db,
       storage,
@@ -318,7 +336,7 @@ describe('pack build', () => {
   })
 
   it('is idempotent on rerun: no duplicate rows, no rewrite, stable bytes', async () => {
-    seedRecord({ cursor: 1 })
+    await seedRecord({ cursor: 1 })
     const first = await compactOneRange(
       harness.db,
       storage,
@@ -341,20 +359,86 @@ describe('pack build', () => {
     ).toBe(1)
   })
 
-  it('builds packs for the snapshot axis only', () => {
-    // Records are deliberately excluded. A packed record entry is just the
-    // encrypted payload blob; its Ed25519 signature, signer device id, vector
-    // clock and operation live in the sync_items D1 row and reach a client
-    // only through POST /sync/pull. A client cannot verify a packed record, so
-    // building them would mint immutable R2 objects nothing can ever read.
-    // Re-enabling requires carrying that metadata in the entry meta (free-form
-    // JSON, so additive) plus a verifying client apply path.
-    expect(PACKED_KINDS).toEqual(['crdt_snapshot'])
+  // #5227: record entries carry the pull item's meta (protocol 08 §8.4.2), so
+  // the vault sweep packs records next to snapshots. Updates wait for #5228.
+  it('builds record and snapshot packs for a vault, and no update packs', async () => {
+    await seedRecord({ cursor: 1 })
+    seedSnapshot('note-a', 1000)
+
+    const results = await compactVault(harness.db, storage, { userId: USER, vaultId: VAULT })
+
+    expect(results.every((result) => result.built)).toBe(true)
+    const kinds = harness.raw
+      .prepare('SELECT item_kind FROM pack_index ORDER BY item_kind')
+      .all() as Array<{ item_kind: string }>
+    expect(kinds.map((row) => row.item_kind)).toEqual(['crdt_snapshot', 'record'])
+  })
+
+  // #5227: content-addressed keys make a replaced payload 404, but a pre-#1199
+  // row keeps a stable key. Bytes that are not the selected row's version must
+  // never sit beside that row's signature and clock.
+  it('skips a record whose payload no longer hashes to the selected row', async () => {
+    const stale = await seedRecord({
+      cursor: 1,
+      blobKey: `${USER}/vaults/${VAULT}/items/task/item-1`
+    })
+    const kept = await seedRecord({ cursor: 2 })
+    await storage.put(stale.blobKey, new Uint8Array(stale.bytes.byteLength).fill(1).buffer)
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+
+    expect(result.holes).toEqual(['task:item-1'])
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes)
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-2'])
+    expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept.bytes)
+  })
+
+  // #5227: protocol 08 §8.4.2 — no payload, no entry; and an entry POST
+  // /sync/pull would not serve, or no reader accepts, stays item-granular.
+  it('leaves out rows that cannot be a record entry and still moves past them', async () => {
+    await seedRecord({ cursor: 1 })
+    harness.raw
+      .prepare(
+        `UPDATE sync_items SET blob_key = '', content_hash = '', signature = '', size_bytes = 0
+         WHERE server_cursor = 1`
+      )
+      .run()
+    await seedRecord({ cursor: 2, type: 'not_a_record_type' })
+    await seedRecord({ cursor: 3, signerDeviceId: null })
+    await seedRecord({ cursor: 4, clock: '{corrupt' })
+    const wideClock = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`device-${i}`, i]))
+    await seedRecord({ cursor: 5, clock: JSON.stringify(wideClock) })
+    await seedRecord({ cursor: 6, deleted: true })
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+
+    const parsed = await parsePack(await packOf(result.packKey))
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-6'])
+    expect(parsed.entries[0].meta).toEqual({
+      operation: 'delete',
+      cryptoVersion: 1,
+      signature: 'sig',
+      signerDeviceId: 'device-1',
+      deletedAt: expect.any(Number),
+      clock: { 'device-1': 6 }
+    })
+    expect(watermarkOf('record')?.last_sort_value).toBe(6)
   })
 
   it('tolerates holes where source blobs vanished mid-flight', async () => {
-    const kept = seedRecord({ cursor: 1 })
-    const dangling = seedRecord({ cursor: 2 })
+    const kept = await seedRecord({ cursor: 1 })
+    const dangling = await seedRecord({ cursor: 2 })
     // Simulate replaced-and-cleaned-up blob: row exists, object gone.
     await storage.delete(dangling.blobKey)
 
@@ -375,8 +459,8 @@ describe('pack build', () => {
   })
 
   it('tolerates a vanished blob in a NON-FINAL slot of the range', async () => {
-    const dangling = seedRecord({ cursor: 1 })
-    const kept = seedRecord({ cursor: 2 })
+    const dangling = await seedRecord({ cursor: 1 })
+    const kept = await seedRecord({ cursor: 2 })
     // The hole is slot 0, not the trailing slot: the writer must be advanced
     // past it explicitly. Leaving it unclaimed makes the NEXT entry violate
     // the plan-order invariant, and that throw escapes before the watermark
@@ -408,8 +492,8 @@ describe('pack build', () => {
     // watermark moves, so the queue drops the message and the cron re-selects
     // the identical range forever — the same permanent stall a non-final hole
     // used to cause. Slot 0 again, so the writer must also be advanced past it.
-    seedRecord({ cursor: 1, bytes: new Uint8Array(0) })
-    const kept = seedRecord({ cursor: 2 })
+    await seedRecord({ cursor: 1, bytes: new Uint8Array(0) })
+    const kept = await seedRecord({ cursor: 2 })
 
     const result = await compactOneRange(
       harness.db,
@@ -480,10 +564,10 @@ describe('pack build', () => {
   })
 
   it('leaves out snapshots of notes whose only record rows are tombstones', async () => {
-    seedRecord({ cursor: 1, type: 'note', id: 'note-deleted', deleted: true })
-    seedRecord({ cursor: 2, type: 'journal', id: 'note-retyped', deleted: true })
-    seedRecord({ cursor: 3, type: 'note', id: 'note-retyped' })
-    seedRecord({ cursor: 4, type: 'note', id: 'note-live' })
+    await seedRecord({ cursor: 1, type: 'note', id: 'note-deleted', deleted: true })
+    await seedRecord({ cursor: 2, type: 'journal', id: 'note-retyped', deleted: true })
+    await seedRecord({ cursor: 3, type: 'note', id: 'note-retyped' })
+    await seedRecord({ cursor: 4, type: 'note', id: 'note-live' })
     seedSnapshot('note-deleted', 1000)
     seedSnapshot('note-retyped', 1001)
     seedSnapshot('note-live', 1002)
@@ -509,7 +593,7 @@ describe('pack build', () => {
   })
 
   it('advances watermarks per kind without cross-kind interference', async () => {
-    seedRecord({ cursor: 10 })
+    await seedRecord({ cursor: 10 })
     seedSnapshot('note-z', 5000)
     await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
     await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'crdt_snapshot')
@@ -527,8 +611,8 @@ describe('pack build', () => {
   it('makes a raw duplicate range insert a no-op with a stable row id', async () => {
     // compactOneRange's pre-read gate normally shields the INSERT from ever
     // seeing a duplicate; drive the conflict path directly instead.
-    seedRecord({ cursor: 1 })
-    seedRecord({ cursor: 2 })
+    await seedRecord({ cursor: 1 })
+    await seedRecord({ cursor: 2 })
     const built = await compactOneRange(
       harness.db,
       storage,
@@ -568,7 +652,7 @@ describe('pack build', () => {
     // window selection can produce.
     const MB = 1024 * 1024
     for (let cursor = 1; cursor <= 3; cursor++) {
-      seedRecord({ cursor, bytes: new Uint8Array(8 * MB).fill(cursor) })
+      await seedRecord({ cursor, bytes: new Uint8Array(8 * MB).fill(cursor) })
     }
 
     const RealUint8Array = globalThis.Uint8Array
