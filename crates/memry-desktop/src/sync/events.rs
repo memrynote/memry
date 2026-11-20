@@ -8,6 +8,8 @@ use memry_core::sync::driver::{
 };
 use memry_core::sync::policy::ServerClock;
 
+use super::error_category::SyncErrorCategory;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncEvent {
     /// A pulled record changed this vault, told after its page committed. A skipped record
@@ -38,6 +40,20 @@ pub enum SyncEvent {
     },
     /// A row held corrupt was refetched and applied (`item-recovery.ts:78`).
     Recovered { item_type: String, item_id: String },
+    /// A download of the note's attachment landed and is recorded, so an open note resolves
+    /// its attachment again (`sync-attachment-handlers.ts:703`).
+    AttachmentMaterialized { note_id: String },
+    /// An attachment of the note failed to download (`disk_path` is where it was going,
+    /// `sync-attachment-handlers.ts:743`) or will not upload (`disk_path` is the file: dropped,
+    /// or stuck after its last attempt). Electron sends both as `ATTACHMENT_UPLOAD_FAILED`.
+    AttachmentFailed {
+        note_id: String,
+        disk_path: String,
+        error: String,
+        /// `FileTooLarge` when the server refused the file as over the plan, so the renderer
+        /// says `sync.fileTooLarge`; `None` gets the generic message.
+        category: Option<SyncErrorCategory>,
+    },
 }
 
 /// What a pulled record did to the local row.

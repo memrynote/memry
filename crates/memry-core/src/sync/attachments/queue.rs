@@ -13,6 +13,7 @@ use std::future::Future;
 use std::io;
 use std::path::{Component, Path};
 use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -160,13 +161,14 @@ struct State {
 /// in any trailing window.
 struct Pacer {
     starts: VecDeque<Instant>,
-    multiplier: usize,
 }
 
 struct Inner {
     download: DownloadFn,
     state: Mutex<State>,
     pacer: tokio::sync::Mutex<Pacer>,
+    /// The bootstrap factor; read at each start, so a change applies to the next download.
+    multiplier: AtomicUsize,
 }
 
 /// The global download manager of one vault.
@@ -183,8 +185,8 @@ impl DownloadQueue {
                 state: Mutex::default(),
                 pacer: tokio::sync::Mutex::new(Pacer {
                     starts: VecDeque::new(),
-                    multiplier: 1,
                 }),
+                multiplier: AtomicUsize::new(1),
             }),
         }
     }
@@ -242,8 +244,10 @@ impl DownloadQueue {
 
     /// Bootstrap elevation: raise or restore the pacer ceiling. A factor below
     /// 1 counts as 1, so pacing never drops below the base.
-    pub async fn set_pace_multiplier(&self, multiplier: usize) {
-        self.inner.pacer.lock().await.multiplier = multiplier.max(1);
+    pub fn set_pace_multiplier(&self, multiplier: usize) {
+        self.inner
+            .multiplier
+            .store(multiplier.max(1), Ordering::SeqCst);
     }
 
     /// Retires the queue (vault switch, stop): drops every queued download and
@@ -368,7 +372,7 @@ async fn pace(inner: &Inner) {
         {
             pacer.starts.pop_front();
         }
-        if pacer.starts.len() < PACER_MAX_REQUESTS * pacer.multiplier {
+        if pacer.starts.len() < PACER_MAX_REQUESTS * inner.multiplier.load(Ordering::SeqCst) {
             pacer.starts.push_back(now);
             return;
         }

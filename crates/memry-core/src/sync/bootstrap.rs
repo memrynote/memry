@@ -53,6 +53,13 @@ pub const BOOTSTRAP_RENEW_LEAD_SECONDS: i64 = 300;
 /// §10.10, `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS`. Six hours, **not**
 /// renewable: this is where Q10.2's mid-run fallback happens.
 pub const MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS: i64 = 21_600;
+/// The client's pacing factor while a session is open. The open response carries no factor
+/// (§10.7), so Electron always falls through to `DEFAULT_ELEVATION_FACTOR = 5`
+/// (`bootstrap-session.ts:113-117`).
+pub const BOOTSTRAP_PACE_FACTOR: usize = 5;
+
+/// Hears the pacing factor each time the window opens or ends (`onBootstrapElevationChange`).
+pub type ElevationListener = Arc<dyn Fn(usize) + Send + Sync>;
 
 /// A live session's token and the instant it stops being honoured.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +139,7 @@ struct Inner {
     opened_once: bool,
     /// Set the moment the window ends, for whatever reason.
     finished: bool,
+    listeners: Vec<ElevationListener>,
 }
 
 impl BootstrapClient {
@@ -160,6 +168,17 @@ impl BootstrapClient {
     /// The token held right now, if the window is still open.
     pub fn session(&self) -> Option<BootstrapSession> {
         self.lock().session.clone()
+    }
+
+    /// `getBootstrapElevationFactor`: [`BOOTSTRAP_PACE_FACTOR`] while a session is held, else 1.
+    pub fn pace_factor(&self) -> usize {
+        pace_factor(&self.lock())
+    }
+
+    /// `onBootstrapElevationChange`: `listener` hears the factor on every open, renewal failure,
+    /// local expiry and close from now on.
+    pub fn on_elevation_change(&self, listener: ElevationListener) {
+        self.lock().listeners.push(listener);
     }
 
     /// Opens the window. **Cannot fail** (§10.5), and cannot be called twice
@@ -210,6 +229,7 @@ impl BootstrapClient {
         };
 
         self.lock().session = Some(session.clone());
+        self.notify();
         BootstrapOpen {
             session: Some(session),
             tail_cursor,
@@ -265,14 +285,16 @@ impl BootstrapClient {
     pub fn header(&self, now_s: i64) -> Option<(&'static str, String)> {
         let mut inner = self.lock();
         let session = inner.session.as_ref()?;
-        if session.expired(now_s) {
-            // A dead token elevates nothing and is not worth a round trip to
-            // discover; dropping it locally is §10.5's fallback taken early.
-            inner.session = None;
-            inner.finished = true;
-            return None;
+        if !session.expired(now_s) {
+            return Some((BOOTSTRAP_TOKEN_HEADER, session.token.clone()));
         }
-        Some((BOOTSTRAP_TOKEN_HEADER, session.token.clone()))
+        // A dead token elevates nothing and is not worth a round trip to
+        // discover; dropping it locally is §10.5's fallback taken early.
+        inner.session = None;
+        inner.finished = true;
+        drop(inner);
+        self.notify();
+        None
     }
 
     /// Adds the header when the window is open. The one call site a caller
@@ -291,21 +313,66 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
-            return;
+        if let Some(request) = self.end() {
+            let _ = self.http.send_json::<Json>(request).await;
         }
+    }
+
+    /// [`Self::close`] for a run that is being dropped: pacing reverts at once and the server close
+    /// runs on its own, so teardown never waits for it (`void closeBootstrapSession('vault_switch')`,
+    /// `full-sync-runner.ts:281`). Without it the user's concurrent-session slot stays taken until
+    /// the token expires (#1837).
+    pub(crate) fn close_detached(&self) {
+        let Some(request) = self.end() else {
+            return;
+        };
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!(
+                "memry-core: no runtime to close the dropped bootstrap session; its slot frees when the token expires"
+            );
+            return;
+        };
+        let http = Arc::clone(&self.http);
+        runtime.spawn(async move {
+            if let Err(error) = http.send_json::<Json>(request).await {
+                eprintln!("memry-core: closing the dropped bootstrap session failed; its slot frees when the token expires: {error}");
+            }
+        });
+    }
+
+    /// Ends the window here so pacing reverts at once (`closeLocalOnly`), and returns the server
+    /// close for the session it held. The close carries the token, which the Worker needs to find
+    /// the session's ledger row (`bootstrap-session.ts:200-211`).
+    fn end(&self) -> Option<ApiRequest> {
+        let session = self.lock().session.take()?;
         self.lock().finished = true;
-        let request = self
-            .request("POST", "/sync/bootstrap/close")
-            .retry(RetryPolicy::never())
-            .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
+        self.notify();
+        Some(
+            self.request("POST", "/sync/bootstrap/close")
+                .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
+                .retry(RetryPolicy::never())
+                .json(&json!({})),
+        )
     }
 
     fn fall_back(&self) {
-        let mut inner = self.lock();
-        inner.session = None;
-        inner.finished = true;
+        {
+            let mut inner = self.lock();
+            inner.session = None;
+            inner.finished = true;
+        }
+        self.notify();
+    }
+
+    /// Tells every listener the factor now, outside the lock, so a listener may read the client.
+    fn notify(&self) {
+        let (factor, listeners) = {
+            let inner = self.lock();
+            (pace_factor(&inner), inner.listeners.clone())
+        };
+        for listener in listeners {
+            listener(factor);
+        }
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {
@@ -320,6 +387,14 @@ impl BootstrapClient {
         self.inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+fn pace_factor(inner: &Inner) -> usize {
+    if inner.session.is_some() {
+        BOOTSTRAP_PACE_FACTOR
+    } else {
+        1
     }
 }
 

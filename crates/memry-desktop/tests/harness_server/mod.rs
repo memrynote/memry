@@ -24,9 +24,20 @@ pub struct Server {
 
 impl Server {
     pub fn start() -> Self {
+        Self::start_with(&[])
+    }
+
+    /// A Worker that grants bootstrap sessions (chapter 10); [`Server::start`]'s answers 501.
+    #[allow(dead_code)] // One binary elevates.
+    pub fn start_elevating() -> Self {
+        Self::start_with(&[("HARNESS_BOOTSTRAP_KEY", "harness-bootstrap-key")])
+    }
+
+    fn start_with(envs: &[(&str, &str)]) -> Self {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/sync-harness");
         let mut child = Command::new(dir.join("node_modules/.bin/tsx"))
             .arg("scripts/serve.ts")
+            .envs(envs.iter().copied())
             .current_dir(&dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -90,6 +101,13 @@ impl Server {
     pub fn entitle(&mut self, email: &str) {
         let reply = self.command(&format!("entitle {email}"));
         assert_eq!(reply["harnessEntitled"], true, "{reply}");
+    }
+
+    /// The user's plan allows files up to `bytes`; the Worker refuses larger ones with a 413.
+    #[allow(dead_code)] // One binary limits.
+    pub fn file_limit(&mut self, bytes: u64) {
+        let reply = self.command(&format!("file-limit {bytes}"));
+        assert_eq!(reply["harnessFileLimit"], true, "{reply}");
     }
 
     /// Changes an account vault's id on the server, as a server that chose a hostile id would.

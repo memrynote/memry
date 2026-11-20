@@ -13,6 +13,8 @@ mod placement;
 mod runners;
 pub mod vault_files;
 
+pub(crate) use placement::place_linked_downloads;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,11 +27,14 @@ use memry_core::sync::attachments::queue::{DownloadFn, DownloadQueue, VaultFiles
 use memry_core::sync::attachments::revival;
 use memry_core::sync::attachments::store::download_failures;
 use memry_core::sync::attachments::transfer::AttachmentTransfer;
+use memry_core::sync::bootstrap::ElevationListener;
 use memry_core::sync::driver::{ApplyObserver, AttachmentDownload};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::state::SyncState;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
+
+use crate::sync::events::OnSyncEvent;
 
 /// Whether background downloads run (`sync.attachmentAutoDownload`); on-demand downloads always
 /// do.
@@ -45,6 +50,8 @@ struct Inner {
     db: Db,
     vault: Arc<dyn VaultFiles>,
     auto_download: AutoDownload,
+    /// Tells the renderer what a transfer did.
+    on_event: OnSyncEvent,
     runtime: tokio::runtime::Handle,
     /// The last pass pulled to the feed head (`lastRunCaughtUp`); a pause or going offline
     /// clears it.
@@ -83,6 +90,7 @@ impl AttachmentSync {
         db: Db,
         vault: Arc<dyn VaultFiles>,
         auto_download: AutoDownload,
+        on_event: OnSyncEvent,
         reachability: &dyn Reachability,
         runtime: tokio::runtime::Handle,
     ) -> Self {
@@ -90,6 +98,7 @@ impl AttachmentSync {
             db,
             vault,
             auto_download,
+            on_event,
             runtime,
             caught_up: AtomicBool::new(false),
             paused: AtomicBool::new(false),
@@ -139,6 +148,17 @@ impl AttachmentSync {
             .runtime
             .spawn(runners::drive(Arc::downgrade(&self.inner), live.clone()));
         *lock(&self.inner.running) = Some(Running { live, task });
+    }
+
+    /// Paces the running drivers' downloads by the bootstrap factor
+    /// (`sync-attachment-handlers.ts:165-166`); a later start begins at 1 until told again.
+    pub fn pace_listener(&self) -> ElevationListener {
+        let inner = Arc::downgrade(&self.inner);
+        Arc::new(move |factor| {
+            if let Some(live) = inner.upgrade().and_then(|inner| inner.live()) {
+                live.queue.set_pace_multiplier(factor);
+            }
+        })
     }
 
     /// Ends the drivers and clears the download queue; its waiters record nothing.

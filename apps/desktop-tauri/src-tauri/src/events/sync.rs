@@ -1,6 +1,7 @@
 //! The sync events of `ipc-events.ts:8-32` the renderer listens to. Ids and small hints only:
 //! a listener reads anything bigger through its command.
 
+use memry_desktop::sync::error_category::SyncErrorCategory;
 use memry_desktop::sync::events::{ItemOperation, SyncEvent};
 use memry_desktop::sync::status::SyncStatus;
 use serde::{Deserialize, Serialize};
@@ -80,6 +81,26 @@ pub fn broadcast_sync_event(app: &AppHandle<Wry>, event: &SyncEvent) {
                 item_type: item_type.clone(),
             },
         ),
+        SyncEvent::AttachmentMaterialized { note_id } => broadcast(
+            app,
+            SyncAttachmentMaterializedEvent {
+                note_id: note_id.clone(),
+            },
+        ),
+        SyncEvent::AttachmentFailed {
+            note_id,
+            disk_path,
+            error,
+            category,
+        } => broadcast(
+            app,
+            SyncAttachmentUploadFailedEvent {
+                note_id: note_id.clone(),
+                disk_path: disk_path.clone(),
+                error: error.clone(),
+                error_category: *category,
+            },
+        ),
     }
 }
 
@@ -115,6 +136,26 @@ pub struct SyncItemSyncedEvent {
     pub operation: SyncDirection,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub item_operation: Option<SyncItemOperation>,
+}
+
+/// `sync:attachment-materialized`: a download of the note's attachment landed.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncAttachmentMaterializedEvent {
+    pub note_id: String,
+}
+
+/// `sync:attachment-upload-failed`: an attachment of the note failed to download, or will not
+/// upload. `errorCategory` is sent only for a file over the plan's limit (`file_too_large`).
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncAttachmentUploadFailedEvent {
+    pub note_id: String,
+    pub disk_path: String,
+    pub error: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[specta(optional, type = SyncErrorCategory)]
+    pub error_category: Option<SyncErrorCategory>,
 }
 
 /// `sync:queue-cleared`: a push emptied the queue.

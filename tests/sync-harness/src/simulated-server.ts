@@ -21,7 +21,8 @@ export class SimulatedServer {
   private mf: Miniflare | null = null
   private keys: ServerKeys | null = null
 
-  async start(): Promise<void> {
+  /** `bindings` adds Worker bindings, such as a bootstrap session key, to the defaults. */
+  async start(bindings: Record<string, string> = {}): Promise<void> {
     const workerPath = await buildWorker()
 
     this.keys = await this.generateJwtKeys()
@@ -68,7 +69,8 @@ export class SimulatedServer {
         MIN_APP_VERSION: '0.0.0',
         ALLOWED_ORIGIN: 'http://localhost:3000',
         GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET
+        GOOGLE_CLIENT_SECRET,
+        ...bindings
       }
     })
 

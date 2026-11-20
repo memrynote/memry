@@ -13,8 +13,17 @@ use crate::crypto::keys;
 use crate::protocol::account::DeviceSigner;
 use crate::protocol::attachments::SignerResolver;
 use crate::sync::attachments::transfer::{AttachmentTransfer, SanitizeName};
+use crate::sync::bootstrap::ElevationListener;
 
 impl SyncDriver {
+    /// `onBootstrapElevationChange` for the attachment download pacer
+    /// (`sync-attachment-handlers.ts:165-166`): `listener` hears the factor now, and again each
+    /// time this driver's bootstrap window opens or ends.
+    pub fn on_bootstrap_elevation(&self, listener: ElevationListener) {
+        listener(self.first.bootstrap.pace_factor());
+        self.first.bootstrap.on_elevation_change(listener);
+    }
+
     /// A transfer for `session`, the session this driver was opened with.
     /// Its requests go through the session's client, not the driver's paused
     /// one: Electron keeps attachment transfers running while sync is paused.

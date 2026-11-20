@@ -9,6 +9,9 @@
 //!
 //! Neither replaces a file, and neither rewrites the body. A failure is logged and leaves the
 //! file where it landed.
+//!
+//! A download can land before the body that links it: [`place_linked_downloads`] places it
+//! once the write-back wrote that body (`placeLinkedDownloads`, `crdt-writeback.ts:724`).
 
 use std::io::{self, Read};
 use std::path::Path;
@@ -38,16 +41,7 @@ pub(super) fn settle(
     let Some(body) = body_of(conn, vault, owner)? else {
         return Ok(rel);
     };
-    let placed = match linked_path(conn, vault, owner, &rel, &body)? {
-        Some(to) => match move_to(vault.root(), &rel, &to) {
-            Ok(()) => to,
-            Err(error) => {
-                tracing::warn!(owner_id = owner, %error, "a downloaded attachment stays where it landed");
-                rel.clone()
-            }
-        },
-        None => rel.clone(),
-    };
+    let placed = place(conn, vault, owner, &rel, &body)?.unwrap_or_else(|| rel.clone());
     let settled = match placed.rsplit_once('/') {
         Some((folder, name)) if placed == rel && folder == format!("attachments/{owner}") => {
             let name = reconcile_downloaded_name(vault.root(), owner, name, &body);
@@ -59,6 +53,53 @@ pub(super) fn settle(
         files::move_record(conn, owner, &rel, &settled, now_ms)?;
     }
     Ok(settled)
+}
+
+/// `placeLinkedDownloads`: every recorded file of `owner` in `attachments/<owner>/` that its
+/// body links elsewhere moves there ([`linked_path`]), and its record with it.
+pub(crate) fn place_linked_downloads(
+    conn: &Connection,
+    vault: &dyn VaultFiles,
+    owner: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    // The records first: most notes have none, and the body is a disk read on the DB writer.
+    let folder = format!("attachments/{owner}/");
+    let mut landed = files::records(conn, owner)?;
+    landed.retain(|row| row.path.starts_with(&folder));
+    if landed.is_empty() {
+        return Ok(());
+    }
+    let Some(body) = body_of(conn, vault, owner)? else {
+        return Ok(());
+    };
+    for row in landed {
+        if let Some(to) = place(conn, vault, owner, &row.path, &body)? {
+            files::move_record(conn, owner, &row.path, &to, now_ms)?;
+        }
+    }
+    Ok(())
+}
+
+/// Moves the file `rel` to its [`linked_path`], answering where it went. A failed move is logged
+/// and leaves the file.
+fn place(
+    conn: &Connection,
+    vault: &dyn VaultFiles,
+    owner: &str,
+    rel: &str,
+    body: &str,
+) -> Result<Option<String>, StorageError> {
+    let Some(to) = linked_path(conn, vault, owner, rel, body)? else {
+        return Ok(None);
+    };
+    Ok(match move_to(vault.root(), rel, &to) {
+        Ok(()) => Some(to),
+        Err(error) => {
+            tracing::warn!(owner_id = owner, %error, "a downloaded attachment stays where it landed");
+            None
+        }
+    })
 }
 
 /// The markdown of the live note `owner`, `None` when it has no `.md` file to read.
