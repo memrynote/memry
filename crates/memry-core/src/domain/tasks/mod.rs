@@ -78,7 +78,9 @@ pub mod bulk;
 pub mod create;
 pub mod fields;
 pub mod lifecycle;
+pub mod list;
 pub mod model;
+pub mod stats;
 pub mod structure;
 pub mod update;
 
