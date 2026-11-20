@@ -71,6 +71,8 @@
     "vectors:embedding-input:check": "tsx scripts/embedding-input-oracle/generate.ts --check",
     "vectors:html-text": "tsx scripts/html-text-oracle/generate.ts",
     "vectors:html-text:check": "tsx scripts/html-text-oracle/generate.ts --check",
+    "vectors:agent-mcp": "tsx scripts/generate-agent-mcp-vectors.ts",
+    "vectors:agent-mcp:check": "tsx scripts/generate-agent-mcp-vectors.ts --check",
     "vectors:export": "tsx scripts/export-oracle/generate.ts",
     "vectors:export:check": "tsx scripts/export-oracle/generate.ts --check",
     "vectors:task-superseded": "tsx scripts/task-superseded-oracle/generate.ts",

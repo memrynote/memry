@@ -21,6 +21,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::agent_payload::seal_object;
+use crate::domain::agent_queue::{self, Queue};
 use crate::domain::agent_records::{AgentError, opened};
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, insert_local, next_clock, object};
@@ -85,22 +86,48 @@ pub struct ConversationPatch<'a> {
     pub pinned: Option<bool>,
 }
 
-/// Creates a conversation with an empty trust list, unpinned, and queues it.
+/// Creates a conversation with an empty trust list, unpinned, queued under
+/// [`Queue::Outbox`].
 pub fn create(
     conn: &Connection,
     key: &AtRestKey,
     new: &NewConversation<'_>,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Conversation, AgentError> {
-    let id = mint_id();
+    let conversation = Conversation {
+        id: mint_id(),
+        vault_id: new.vault_id.to_owned(),
+        title: new.title.to_owned(),
+        backend: new.backend.to_owned(),
+        backend_model: new.backend_model.map(str::to_owned),
+        trust_list: Vec::new(),
+        pinned: false,
+        created_at: now_ms,
+        updated_at: now_ms,
+    };
+    import(conn, key, &conversation, queue, device_id, now_ms)?;
+    Ok(conversation)
+}
+
+/// Stores a conversation as given, with its id and times: [`create`], and a
+/// conversation the agent kept in memory while the vault key was not readable.
+pub fn import(
+    conn: &Connection,
+    key: &AtRestKey,
+    conversation: &Conversation,
+    queue: Queue,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), AgentError> {
     let mut payload = object(json!({
-        "vaultId": new.vault_id,
-        "title": new.title,
-        "backend": new.backend,
-        "backendModel": new.backend_model,
-        "trustList": [],
-        "pinned": false,
+        "vaultId": conversation.vault_id,
+        "title": conversation.title,
+        "backend": conversation.backend,
+        "backendModel": conversation.backend_model,
+        "trustList": conversation.trust_list,
+        "pinned": conversation.pinned,
         "clock": next_clock(&Object::new(), device_id)?,
         "fieldClocks": next_field_clocks(
             &Object::new(),
@@ -108,28 +135,31 @@ pub fn create(
             &SYNCABLE_FIELDS,
             device_id,
         )?,
-        "createdAt": now_ms,
-        "updatedAt": now_ms,
+        "createdAt": conversation.created_at,
+        "updatedAt": conversation.updated_at,
         "deletedAt": null,
     }));
-    let conversation = from_payload(&id, &payload);
     seal_object(ITEM_TYPE, &mut payload, key)?;
-    outbox::commit(
+    let id = &conversation.id;
+    agent_queue::commit(
         conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
+        queue,
+        &outbox::Change::upsert(ITEM_TYPE, id),
         now_ms,
-        |tx| insert_local(tx, ITEM_TYPE, &id, payload, now_ms),
+        |tx| insert_local(tx, ITEM_TYPE, id, payload, now_ms),
     )?;
-    Ok(conversation)
+    Ok(())
 }
 
 /// Changes the patched fields of a live conversation, ticks its clock and
-/// each changed field's clock, and queues it. An empty patch writes nothing.
+/// each changed field's clock, queued under [`Queue::Outbox`]. An empty patch
+/// writes nothing.
 pub fn update_fields(
     conn: &Connection,
     key: &AtRestKey,
     id: &str,
     patch: &ConversationPatch<'_>,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Conversation, AgentError> {
@@ -160,7 +190,8 @@ pub fn update_fields(
         .filter(|field| changed.contains_key(*field))
         .collect();
     seal_object(ITEM_TYPE, &mut changed, key)?;
-    outbox::commit(conn, &outbox::Change::upsert(ITEM_TYPE, id), now_ms, |tx| {
+    let change = outbox::Change::upsert(ITEM_TYPE, id);
+    agent_queue::commit(conn, queue, &change, now_ms, |tx| {
         let stored = live(tx, ITEM_TYPE, id, "agent conversation")?;
         let mut changes: Vec<(&'static str, Change)> = SYNCABLE_FIELDS
             .into_iter()
@@ -184,19 +215,21 @@ pub fn update_fields(
     })
 }
 
-/// Deletes a conversation and queues the delete, stating `deletedAt` as
-/// Electron's soft delete does. `false` when there was none. Its messages are
-/// their own records.
+/// Deletes a conversation, stating `deletedAt` as Electron's soft delete
+/// does, and queues the delete under [`Queue::Outbox`]. `false` when there
+/// was none. Its messages are their own records.
 pub fn soft_delete(
     conn: &Connection,
     id: &str,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     if !is_live(conn, id)? {
         return Ok(false);
     }
-    outbox::commit(conn, &outbox::Change::delete(ITEM_TYPE, id), now_ms, |tx| {
+    let change = outbox::Change::delete(ITEM_TYPE, id);
+    agent_queue::commit(conn, queue, &change, now_ms, |tx| {
         let stored = live(tx, ITEM_TYPE, id, "agent conversation")?;
         let changes = vec![
             ("deletedAt", Change::set(now_ms)),
@@ -286,3 +319,6 @@ fn from_payload(id: &str, payload: &Object) -> Conversation {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod apply_tests;
