@@ -21,6 +21,7 @@ impl Registry {
         let mut registry = Self::new();
         for importer in [
             Arc::new(super::markdown::MarkdownImporter) as Arc<dyn Importer>,
+            Arc::new(super::bear::BearImporter),
             Arc::new(super::csv::CsvImporter),
             Arc::new(super::google_keep::GoogleKeepImporter),
         ] {
