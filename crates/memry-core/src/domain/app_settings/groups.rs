@@ -66,7 +66,34 @@ pub(super) const GROUPS: &[Group] = &[
     local("keyboard", defaults::keyboard),
     local("sync", defaults::sync),
     local("backup", defaults::backup),
-    local("calendar", defaults::calendar),
+    Group {
+        name: "calendar",
+        defaults: defaults::calendar,
+        syncable: syncable::CALENDAR,
+        maps: &[],
+    },
+    // One group per calendar provider (`calendar.<providerId>`), so a known
+    // provider is one with a group. This Mac's events never leave the Mac, so
+    // its group stays local.
+    Group {
+        name: "calendar.google",
+        defaults: defaults::calendar_google,
+        syncable: syncable::CALENDAR_GOOGLE,
+        maps: &[],
+    },
+    Group {
+        name: "calendar.caldav",
+        defaults: defaults::calendar_writable_provider,
+        syncable: syncable::CALENDAR_PROVIDER,
+        maps: &[],
+    },
+    Group {
+        name: "calendar.ics",
+        defaults: defaults::calendar_provider,
+        syncable: syncable::CALENDAR_PROVIDER,
+        maps: &[],
+    },
+    local("calendar.apple-eventkit", defaults::calendar_provider),
     Group {
         name: "features",
         defaults: defaults::features,
@@ -111,6 +138,36 @@ pub(super) const GROUPS: &[Group] = &[
 
 pub(super) fn find(name: &str) -> Option<&'static Group> {
     GROUPS.iter().find(|group| group.name == name)
+}
+
+/// The calendar leaves' types, from desktop's `SyncedSettingsSchema` (`settings-sync.ts`).
+/// Desktop parses a settings payload whole, so a leaf it refuses would hold back every synced
+/// setting on that device. Pinned to the schema by the vector's `calendarLeaves`.
+pub(super) fn shape(group: &str, field: &str) -> Option<fn(&Value) -> bool> {
+    let provider = group.starts_with("calendar.");
+    let check: fn(&Value) -> bool = match (group, field) {
+        ("calendar", "weekStartDay") => |v| matches!(v.as_str(), Some("sunday" | "monday")),
+        ("calendar", "showNotesOnCalendar") => Value::is_boolean,
+        ("calendar", "defaultWriteTarget") => |v| {
+            v.is_null()
+                || v.as_object().is_some_and(|target| {
+                    ["provider", "remoteCalendarId"]
+                        .iter()
+                        .all(|key| target.get(*key).is_some_and(Value::is_string))
+                })
+        },
+        (_, "defaultTargetCalendarId") if provider => |v| v.is_null() || v.is_string(),
+        (_, "agentReadEventsConsent") if provider => |v| v.is_null() || v.is_boolean(),
+        (
+            _,
+            "onboardingCompleted"
+            | "promoteConfirmDismissed"
+            | "pushEventsToGoogle"
+            | "pushEventsToProvider",
+        ) if provider => Value::is_boolean,
+        _ => return None,
+    };
+    Some(check)
 }
 
 /// `(min, max)` of a numeric field. Pinned to the TypeScript constants by the

@@ -297,11 +297,13 @@ pub fn builder() -> Builder<Wry> {
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_ai,
+            crate::commands::settings::settings_get_calendar_provider,
             crate::commands::settings::settings_get_group,
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
             crate::commands::settings::settings_set_ai::<Wry>,
+            crate::commands::settings::settings_set_calendar_provider,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
@@ -370,6 +372,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::templates::templates_get,
             crate::commands::templates::templates_list,
             crate::commands::templates::templates_update,
+            // terminal command
+            crate::commands::terminal_command::settings_get_terminal_command_status,
+            crate::commands::terminal_command::settings_install_terminal_command,
+            crate::commands::terminal_command::settings_set_terminal_command_default_vault,
+            crate::commands::terminal_command::settings_uninstall_terminal_command,
             // unsplash
             crate::commands::unsplash::unsplash_search,
             // updater

@@ -111,6 +111,8 @@ mod block_refs;
 mod byte_preservation;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]
@@ -192,6 +194,8 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_google_keep.rs"]
+mod importer_google_keep;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
