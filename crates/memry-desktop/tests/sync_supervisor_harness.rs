@@ -261,12 +261,11 @@ impl Device {
                 let mut statement = conn
                     .prepare("SELECT name FROM projects ORDER BY id")
                     .map_err(failed)?;
-                let names = statement
+                statement
                     .query_map([], |row| row.get(0))
                     .map_err(failed)?
                     .collect::<Result<Vec<String>, _>>()
-                    .map_err(failed);
-                names
+                    .map_err(failed)
             })
             .unwrap()
     }
@@ -989,9 +988,10 @@ async fn a_failed_metadata_pass_does_not_push_a_demoted_tag_mint() {
     }
 }
 
-/// Polls `done` every 50 ms, at most 600 times.
+/// Polls `done` every 50 ms, for at most two minutes: a first sync that fails waits out the
+/// pull's whole 5xx retry ladder (14 s) in real time, beside the other tests' Workers.
 async fn until(what: &str, mut done: impl FnMut() -> bool) {
-    for _ in 0..600 {
+    for _ in 0..2_400 {
         if done() {
             return;
         }
