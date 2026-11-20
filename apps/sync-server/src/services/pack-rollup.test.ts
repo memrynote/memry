@@ -489,13 +489,13 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
       true
     )
     failing.mockRestore()
-    expect(listed('crdt_snapshot')).toEqual([])
-    expect(replacedRows()).toBe(old.length)
+    expect(listed('crdt_snapshot')).toHaveLength(old.length - 1)
+    expect(replacedRows()).toBe(1)
 
     advance(PACK_PURGE_RETRY_DELAY_SECONDS)
-    await compactVault(harness.db, storage, SCOPE) // the delayed message
+    await compactVault(harness.db, storage, SCOPE) // the delayed message, which also rolls up
     expect(await holding(old, 'note-4')).toEqual([])
-    expect(replacedRows()).toBe(0)
+    expect(await storage.get(old[3])).toBeNull()
   })
 
   // VERIFY-5267 F1: the deletion ran after the builds, so a build that threw

@@ -11,6 +11,7 @@ import {
   ALWAYS,
   advanceWatermark,
   allLive,
+  packDocuments,
   packIndexInsert,
   packObjectKey,
   watermarkUnchanged,
@@ -28,6 +29,7 @@ import {
   listingBatch,
   recordUnlisted
 } from './pack-replaced-objects'
+import { rewritePurgedPacks } from './pack-purge-rewrite'
 import { selectCandidates } from './pack-selection'
 import { updateEntrySource, updatesLive, type EntrySource } from './pack-update-selection'
 
@@ -347,10 +349,12 @@ export const compactOneRange = async (
     }
   }
 
-  // Invariant: the watermark never passes a row the shed will drop on a later
-  // tick. The shed empties a tombstone in place at its cursor, so a hole for it
-  // would never be revisited; abandon the range and let the next run read the
-  // row as it then is (REVIEW-5253, VERIFY-5253).
+  // Invariant: the watermark never passes a row the shed would empty under the
+  // current retention. The shed empties a tombstone in place at its cursor, so
+  // a hole for it would never be revisited; abandon the range and let the next
+  // run read the row as it then is (REVIEW-5253, VERIFY-5253). A row whose
+  // retention grows meanwhile is not emptied: the shed rechecks expiry in the
+  // write (cleanup.ts).
   if (await recordRowShedInPlace(db, scope, missingRecords)) {
     logger.info('record row shed during a build; range abandoned', {
       userId: scope.userId,
@@ -372,9 +376,10 @@ export const compactOneRange = async (
   // is no second full-size allocation anywhere in this flow.
   await storage.put(packKey, built.bytes)
 
-  // A note delete purges its body rows and drops every body pack of the vault
-  // (#2986, protocol 07 §7.15). One that commits after this run selected would
-  // leave the deleted body in this pack, so the row and the watermark commit
+  // A note delete purges its body rows and rewrites each body pack that
+  // holds the note (#2986, protocol 07 §7.15, 08 §8.13). One that commits after this run
+  // selected would not find this pack and would leave the deleted body in it,
+  // so the row (with the documents it holds) and the watermark commit
   // together and only while every packed body row still exists with the packed
   // version. Otherwise the next run reselects.
   const current =
@@ -401,7 +406,7 @@ export const compactOneRange = async (
   // or a concurrent build of the range won. A listed row always has its object.
   const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
   // The watermark and its coverage anchor move only with this row (§8.10).
-  const results = await listingBatch<{ listed: number }>(db, storage, scope, { packId, packKey }, [
+  const results = await listingBatch<{ listed: number }>(db, scope, { packId, packKey }, [
     ...(replacing?.statements ?? []),
     packIndexInsert(
       db,
@@ -414,7 +419,8 @@ export const compactOneRange = async (
         maxSortValue,
         itemCount: built.entries.length,
         byteSize: built.payloadBytes,
-        coverage
+        coverage,
+        documents: packDocuments(kind, built.entries)
       },
       replacing?.recorded ?? guard
     ),
@@ -489,11 +495,19 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // The replaced-object deletion runs first and again after the builds, so a build
-  // that throws cannot keep a purged body past its deadline (protocol 08
-  // §8.13): this message may be the purge's delayed retry.
-  await deleteReplacedPackObjects(db, storage, scope)
+  // A purge's pending rewrites run first: the deletion pass removes an object
+  // whose rewrite is still pending once its grace period passed (protocol 08
+  // §8.13). The deletion runs next and again after the builds, so a build that
+  // throws cannot keep a purged body past its deadline: this message may be
+  // the purge's delayed retry.
   let failure: { error: unknown } | null = null
+  let rewritesPending = true
+  try {
+    rewritesPending = (await rewritePurgedPacks(db, storage, scope)).pending
+  } catch (error) {
+    failure = { error }
+  }
+  await deleteReplacedPackObjects(db, storage, scope)
   try {
     // Rollup first: at the listing cap it is what makes room for the build
     // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
@@ -503,7 +517,8 @@ export const compactVault = async (
     // whose build listed a pack rolls up once more, so the message ends with the
     // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
     // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
-    // two replaced-object deletions 2 x 3 = 6: ~897.
+    // two replaced-object deletions 2 x 3 = 6, four purge rewrites 4 x 4 + 1 =
+    // 17: ~914.
     for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
       const result = await compactOneRange(db, storage, scope, kind)
       results.push(result)
@@ -524,7 +539,7 @@ export const compactVault = async (
   } catch (error) {
     passFailure = { error }
   }
-  if (pending) {
+  if (pending || rewritesPending) {
     logger.error('replaced pack objects still due after the compaction message; redelivered', {
       userId: scope.userId,
       vaultId: scope.vaultId,

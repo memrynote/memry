@@ -243,8 +243,9 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     expect(sinceOldCursor.updates).toHaveLength(1)
   })
 
-  // #2986: an older revision of the snapshot can sit in any snapshot pack.
-  it('drops the vault snapshot packs and resets their watermark', async () => {
+  // #2986: an older revision of the snapshot can sit in any snapshot pack, and a
+  // pack without `documents` (protocol 08 §8.13) says nothing about which.
+  it('drops the vault snapshot packs written before migration 0024 and resets their watermark', async () => {
     const app = buildApp()
     await createDay(app)
     await writeSnapshot(DAY_ID, bytes(9, 9, 9))

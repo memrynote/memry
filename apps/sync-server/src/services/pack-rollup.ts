@@ -4,15 +4,14 @@ import { createLogger } from '../lib/logger'
 import {
   extractEntry,
   openPack,
-  parsePack,
   type PackEntryPlan,
-  type PackEntryPlanMeta,
   type PackKindName,
   type PackedEntry
 } from './pack-format'
 import {
   ALWAYS,
   allLive,
+  packDocuments,
   packIndexInsert,
   packObjectKey,
   type Coverage,
@@ -21,6 +20,7 @@ import {
 } from './pack-index-write'
 import { recordsLive } from './pack-record-selection'
 import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import { liveIndexes, planOf, readPackObject } from './pack-repack'
 import { PACK_TARGET_BYTES, packCountBound } from './pack-sizing'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
@@ -101,7 +101,11 @@ export const planRollup = (
 }
 
 /** Live-entry join per kind: the same rows a build would pack today. */
-const liveJoin = (kind: PackKindName, scope: VaultScope, entries: readonly PackedEntry[]): Guard =>
+export const liveJoin = (
+  kind: PackKindName,
+  scope: VaultScope,
+  entries: readonly PackedEntry[]
+): Guard =>
   kind === 'record'
     ? recordsLive(scope, entries)
     : kind === 'crdt_snapshot'
@@ -141,16 +145,8 @@ const readInput = async (
   kind: PackKindName,
   pack: ListedPack
 ): Promise<Input | string> => {
-  try {
-    const object = await storage.get(pack.pack_key)
-    if (!object) return 'object missing'
-    const bytes = new Uint8Array(await object.arrayBuffer())
-    const parsed = await parsePack(bytes)
-    if (parsed.entries.some((entry) => entry.kind !== kind)) return 'entry of another kind'
-    return { pack, bytes, entries: parsed.entries }
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
-  }
+  const read = await readPackObject(storage, kind, pack.pack_key)
+  return typeof read === 'string' ? read : { pack, ...read }
 }
 
 const inputOf = (read: ReadonlyMap<string, Input>, pack: ListedPack): Input => {
@@ -182,35 +178,6 @@ const readInputs = async (
   }
   return failed
 }
-
-const liveIndexes = async (
-  db: D1Database,
-  scope: VaultScope,
-  kind: PackKindName,
-  entries: readonly PackedEntry[]
-): Promise<Set<number>> => {
-  const live = liveJoin(kind, scope, entries)
-  const rows = await db
-    .prepare(`SELECT e.key AS i ${live.sql}`)
-    .bind(...live.bind)
-    .all<{ i: number }>()
-  return new Set((rows.results ?? []).map((row) => row.i))
-}
-
-/** The plan that writes a packed entry into a new pack, its meta carried verbatim. */
-const planOf = (kind: PackKindName, entry: PackedEntry): PackEntryPlan => ({
-  kind,
-  id: entry.id,
-  sourceKey: entry.sourceKey,
-  sortKey: entry.sortKey,
-  sizeBytes: entry.length,
-  ...(entry.meta
-    ? {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the meta a build wrote into this index block, carried over verbatim
-        meta: entry.meta as PackEntryPlanMeta
-      }
-    : {})
-})
 
 export interface CollidingPack {
   pack: ListedPack
@@ -244,7 +211,7 @@ export const readCollidingPack = async (
   if (!pack) return null
   const input = await readInput(storage, kind, pack)
   if (typeof input === 'string') return input
-  const live = await liveIndexes(db, scope, kind, input.entries)
+  const live = await liveIndexes(db, liveJoin(kind, scope, input.entries))
   const kept = input.entries.filter((_, index) => live.has(index))
   return {
     pack,
@@ -351,9 +318,11 @@ export const rollupKind = async (
   let entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
   let live = await liveIndexes(
     db,
-    scope,
-    kind,
-    entries.map(({ entry }) => entry)
+    liveJoin(
+      kind,
+      scope,
+      entries.map(({ entry }) => entry)
+    )
   )
   // A covered run whose entries all died still carries its range: merge it into
   // a neighbour instead of opening a coverage gap (protocol 08 §8.10).
@@ -381,9 +350,11 @@ export const rollupKind = async (
       entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
       live = await liveIndexes(
         db,
-        scope,
-        kind,
-        entries.map(({ entry }) => entry)
+        liveJoin(
+          kind,
+          scope,
+          entries.map(({ entry }) => entry)
+        )
       )
     }
   }
@@ -557,7 +528,8 @@ const swapListing = async (
           maxSortValue: swap.maxSortValue,
           itemCount: swap.kept.length,
           byteSize: swap.payloadBytes,
-          coverage: swap.coverage
+          coverage: swap.coverage,
+          documents: packDocuments(kind, swap.kept)
         },
         recorded
       ),
@@ -573,7 +545,6 @@ const swapListing = async (
   )
   const results = await listingBatch<{ swapped: number; listed: number }>(
     db,
-    storage,
     scope,
     swap.kept.length > 0 ? { packId: swap.packId, packKey: swap.packKey } : null,
     statements
