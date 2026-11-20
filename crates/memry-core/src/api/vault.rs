@@ -405,6 +405,15 @@ impl Vault {
     pub fn home_pages(&self, store: Arc<dyn SecureStore>) -> Result<HomePages, AuthError> {
         HomePages::over(self.db.clone(), &store)
     }
+
+    /// This vault's custom icons, read without a device identity, for desktop's note export.
+    /// Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn custom_icon_list(
+        &self,
+    ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
+        self.db.read_blocking(crate::domain::custom_icons::list)
+    }
 }
 
 #[uniffi::export]
