@@ -179,6 +179,22 @@ impl ServerDoc {
         self
     }
 
+    /// A snapshot of the first `at` edits pushed with no update rows, so at
+    /// `sequenceNum` 0, then the later edits pushed as updates 1, 2, ...
+    pub fn snapshot_zero_then_updates(mut self, at: i64) -> Self {
+        self = self.snapshot_at(at);
+        if let Some(snapshot) = self.snapshot.as_mut() {
+            snapshot.sequence_num = 0;
+        }
+        let id = self.id.clone();
+        self.updates = self.raw[at as usize..]
+            .iter()
+            .enumerate()
+            .map(|(i, update)| (i as i64 + 1, seal(&id, update)))
+            .collect();
+        self
+    }
+
     /// Purges the updates through `floor`.
     pub fn purged_through(mut self, floor: i64) -> Self {
         self.updates.retain(|seq, _| *seq > floor);

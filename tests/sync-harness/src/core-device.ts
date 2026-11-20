@@ -62,7 +62,16 @@ export interface KillPoint {
   path: string
   /** Die at the n-th request whose path starts with `path`, counted from the run's start. */
   n: number
+  /** Count only paths that also contain this, such as `/packs/crdt_update/`. */
+  contains?: string
+  /**
+   * Hold the request until the device's pack spill holds this many packs, then
+   * die: the run is killed after it saved the packs downloaded beside it.
+   */
+  afterSpilled?: number
 }
+
+const SPILL_WAIT_MS = 60_000
 
 export interface CoreRun {
   killed: boolean
@@ -70,6 +79,8 @@ export interface CoreRun {
   requests: string[]
   /** The JSON marks the run printed. */
   marks: Array<Record<string, unknown>>
+  /** Packs held in the device's pack spill when the run ended. */
+  spilled: number
 }
 
 export class CoreDevice {
@@ -137,7 +148,15 @@ export class CoreDevice {
       .split('\n')
       .filter((line) => line.startsWith('{'))
       .map((line) => JSON.parse(line) as Record<string, unknown>)
-    return { killed, requests, marks }
+    return { killed, requests, marks, spilled: this.spilledPacks() }
+  }
+
+  /** Whole packs under a `pack-spill` directory (`pack_bootstrap/spill.rs` renames each into place). */
+  private spilledPacks(): number {
+    return fs
+      .readdirSync(this.home, { recursive: true, encoding: 'utf8' })
+      .filter((file) => file.split(path.sep).includes('pack-spill') && file.endsWith('.mpak'))
+      .length
   }
 
   async oracleState(): Promise<CoreOracleState> {
@@ -195,8 +214,22 @@ export class CoreDevice {
     if (run) {
       run.requests.push(url.pathname)
       const killAt = run.killAt
-      if (killAt && url.pathname.startsWith(killAt.path) && --killAt.n === 0) {
+      if (
+        killAt &&
+        url.pathname.startsWith(killAt.path) &&
+        (!killAt.contains || url.pathname.includes(killAt.contains)) &&
+        --killAt.n === 0
+      ) {
         run.killAt = null
+        if (killAt.afterSpilled !== undefined) {
+          const deadline = Date.now() + SPILL_WAIT_MS
+          while (this.spilledPacks() < killAt.afterSpilled) {
+            if (Date.now() > deadline) {
+              throw new Error(`the spill never held ${killAt.afterSpilled} packs`)
+            }
+            await new Promise((resolve) => setTimeout(resolve, 20))
+          }
+        }
         run.kill()
         req.socket.destroy()
         return

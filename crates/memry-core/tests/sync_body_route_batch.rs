@@ -54,6 +54,30 @@ async fn a_packed_snapshot_at_sequence_zero_settles_without_a_route_request() {
     assert!(!is_owed(&db, "zerorouted01"));
 }
 
+/// Zero loss for the `sequenceNum` 0 rule: a packed snapshot at watermark 0
+/// with updates 1 and 2 on the server that no pack holds. The device ends
+/// with every edit and both update rows, pulled through the batch route.
+#[tokio::test]
+async fn a_packed_snapshot_at_sequence_zero_still_pulls_the_updates_after_it() {
+    let (db, dir) = body_pack_server::scratch("snapshot-zero-later");
+    let doc = ServerDoc::new("zerolater001", 5).snapshot_zero_then_updates(3);
+    let packs = vec![BodyPack::new("s1", snapshot_items(&[&doc]))];
+    let mut server = Server::new(vec![doc], packs);
+    server.records = true;
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(routes.count(BATCH), 1, "{:?}", routes.calls());
+    let server = routes.server.lock().unwrap();
+    assert_eq!(server.doc("zerolater001").expected_updates(), vec![1, 2]);
+    holds_exactly(&db, server.doc("zerolater001"), 5);
+    assert!(!is_owed(&db, "zerolater001"));
+}
+
 /// The owed documents that need no baseline come from the batch answer
 /// itself: a document no pack holds and that has no server snapshot, one
 /// with updates past its packs, and one with no body at all. One batch

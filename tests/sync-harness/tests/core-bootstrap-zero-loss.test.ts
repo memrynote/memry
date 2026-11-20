@@ -126,47 +126,9 @@ const packKinds = async (): Promise<Record<string, number>> => {
   return Object.fromEntries(results.map((row) => [row.item_kind, row.n]))
 }
 
-/** Every listed pack, so a rebuild that keeps the counts still reads as a change. */
-const packListing = async (): Promise<string> => {
-  const db = await server.getD1()
-  const { results } = await db
-    .prepare('SELECT * FROM pack_index ORDER BY item_kind, min_cursor, max_cursor')
-    .all()
-  return JSON.stringify(results)
-}
-
-/**
- * The backfill queue's consumer builds after the cron returns, in the
- * background: a tick is done when the listing holds still for QUIET_MS.
- */
-const QUIET_MS = 2_000
-const TICK_DEADLINE_MS = 60_000
-
-const waitForQuietListing = async (): Promise<string> => {
-  const deadline = Date.now() + TICK_DEADLINE_MS
-  let listing = await packListing()
-  let quietSince = Date.now()
-  while (Date.now() - quietSince < QUIET_MS) {
-    if (Date.now() > deadline) throw new Error('the pack backfill never settled')
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    const next = await packListing()
-    if (next !== listing) {
-      listing = next
-      quietSince = Date.now()
-    }
-  }
-  return listing
-}
-
-/** Runs the cron, whose backfill messages build on the queue, until a tick packs nothing more. */
+/** Runs the cron until its backfill has nothing left to pack (`settlePackBackfill`). */
 const settlePacks = async (): Promise<Record<string, number>> => {
-  let listing = await packListing()
-  for (let tick = 0; tick < 10; tick++) {
-    await server.triggerScheduled()
-    const next = await waitForQuietListing()
-    if (next === listing) break
-    listing = next
-  }
+  await server.settlePackBackfill()
   return packKinds()
 }
 
@@ -381,18 +343,23 @@ if (!coreRuns) {
     const packDownloads = (requests: string[], kind: string): string[] =>
       requests.filter((p) => p.startsWith('/__r2/') && p.includes(`/packs/${kind}/`))
 
+    const bodyPacks = (run: CoreRun): string[] => [
+      ...packDownloads(run.requests, 'crdt_snapshot'),
+      ...packDownloads(run.requests, 'crdt_update')
+    ]
+
     it('a clean bootstrap from packs holds every record and body', async () => {
       const [run] = await bootstrapUnderOracle('clean', [])
       for (const kind of ['record', 'crdt_snapshot', 'crdt_update']) {
         expect(packDownloads(run.requests, kind)).toHaveLength(1)
       }
-      // 26: the first sync (11, three pack downloads among them), the close,
-      // and the route pass: device list, one batch probe, then a pull for each
-      // document with writes the packs do not hold (the 4 late notes and the 2
-      // notes edited after the packs, a snapshot GET for each without a cursor)
-      // and for the note with no body. Since #5283 the purge rewrites only the
-      // packs holding the deleted note, so those young rows stay out of packs.
-      expect(run.requests.length).toBeLessThanOrEqual(26)
+      // 14: the first sync (11, three pack downloads among them), the close,
+      // and the route pass: device list and one batch probe. Since #5293 the
+      // probe answer is the first update page of every owed document, so the 4
+      // late notes, the 2 notes edited after the packs and the note with no
+      // body take no per-document request. Since #5283 the purge rewrites only
+      // the packs holding the deleted note, so those young rows stay out of packs.
+      expect(run.requests.length).toBeLessThanOrEqual(14)
       const snapshotGets = run.requests.filter((p) => p.startsWith('/sync/crdt/snapshot/'))
       expect(new Set(snapshotGets).size).toBe(snapshotGets.length)
     })
@@ -409,10 +376,6 @@ if (!coreRuns) {
       expect(runs.slice(0, 3).map((run) => run.killed)).toEqual([true, true, true])
       // The body packs were held when the third run died: the resume reads
       // them from the spill and downloads none again.
-      const bodyPacks = (run: CoreRun) => [
-        ...packDownloads(run.requests, 'crdt_snapshot'),
-        ...packDownloads(run.requests, 'crdt_update')
-      ]
       expect(bodyPacks(runs[2])).toHaveLength(2)
       expect(bodyPacks(runs[3])).toEqual([])
     })
@@ -423,9 +386,21 @@ if (!coreRuns) {
       const runs = await bootstrapUnderOracle('killed-body-download', [{ path: '/__r2/', n: 2 }])
       expect(runs[0].killed).toBe(true)
       expect(packDownloads(runs[0].requests, 'record')).toHaveLength(1)
-      for (const kind of ['crdt_snapshot', 'crdt_update']) {
-        expect(packDownloads(runs[1].requests, kind).length).toBeLessThanOrEqual(1)
-      }
+      // Each body pack is downloaded once in all: a pack the killed run spilled
+      // is read from the spill, and the resume downloads only the others.
+      expect(runs[0].spilled + bodyPacks(runs[1]).length).toBe(2)
+    })
+
+    it('a bootstrap killed after it saved one body pack downloads only the other', async () => {
+      // The update pack's download is held until the snapshot pack, downloaded
+      // beside it, is in the spill; then the run dies.
+      const runs = await bootstrapUnderOracle('killed-after-save', [
+        { path: '/__r2/', contains: '/packs/crdt_update/', n: 1, afterSpilled: 1 }
+      ])
+      expect(runs[0].killed).toBe(true)
+      expect(runs[0].spilled).toBe(1)
+      expect(packDownloads(runs[1].requests, 'crdt_snapshot')).toEqual([])
+      expect(packDownloads(runs[1].requests, 'crdt_update')).toHaveLength(1)
     })
 
     it('a bootstrap killed after the body settle and in the route pass resumes to the whole vault', async () => {
