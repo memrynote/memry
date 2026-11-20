@@ -22,8 +22,7 @@ use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PACK_SEED_CHUNK, PackedUpdate};
-use memry_core::sync::first_sync_store::read_meta;
-use memry_core::sync::pack_bootstrap::{META_PACKS_COMPLETED, PackBootstrap};
+use memry_core::sync::pack_bootstrap::{BodyPackReport, PackBootstrap};
 use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use serde_json::json;
 
@@ -70,7 +69,22 @@ fn bodies(db: &Db, script: Vec<String>, pack: Option<Vec<u8>>) -> (Arc<HttpClien
     (http, pull)
 }
 
-async fn seed_packs(db: &Db) -> memry_core::sync::pack_bootstrap::PackBootstrapReport {
+/// The body pack phase over one `crdt_snapshot` pack, confirmed by one body
+/// manifest page. `download` is false on a resume, whose pack is spilled.
+async fn seed_packs(db: &Db, dir: &Path, download: bool) -> BodyPackReport {
+    db.call(|conn| {
+        for index in 0..PACK_ENTRIES {
+            conn.execute(
+                "INSERT OR IGNORE INTO sync_items (item_type, item_id, payload_state, updated_at)
+                 VALUES ('note', ?1, 'metadata-only', 1)",
+                [doc_id(index)],
+            )
+            .expect("a live record");
+        }
+        Ok(())
+    })
+    .await
+    .expect("the records");
     let entries: Vec<(String, Option<serde_json::Value>, Vec<u8>)> = (0..PACK_ENTRIES)
         .map(|index| {
             let meta = json!({ "sequenceNum": 5, "revision": format!("rev-{index}") });
@@ -94,9 +108,32 @@ async fn seed_packs(db: &Db) -> memry_core::sync::pack_bootstrap::PackBootstrapR
         "serverTime": 1
     })
     .to_string();
-    let (http, pull) = bodies(db, vec![listing], Some(mpak(&entries)));
+    let documents: Vec<_> = (0..PACK_ENTRIES)
+        .map(|index| {
+            json!({ "noteId": doc_id(index), "floor": 0, "maxSequenceNum": 0,
+                    "snapshot": { "sequenceNum": 5, "revision": format!("rev-{index}") } })
+        })
+        .collect();
+    let manifest = json!({ "documents": documents, "nextCursor": null }).to_string();
+    let mut responses = vec![response(200, &listing)];
+    if download {
+        responses.push(bytes_response(mpak(&entries)));
+    }
+    responses.push(response(200, &manifest));
+    let http = Arc::new(HttpClient::new(
+        FakeTransport::new(responses),
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    ));
+    let pull = Arc::new(BodyPull::new(
+        Arc::clone(&http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PassThrough),
+    ));
     PackBootstrap::new(http, db.clone(), pull)
-        .run(1_000)
+        .with_spill_dir(dir.join("spill"))
+        .run_bodies(1_000, &|_, _| {})
         .await
         .expect("the pack bootstrap")
 }
@@ -170,7 +207,7 @@ async fn child_applies_bodies_until_killed() {
     .await
     .expect("install the trace");
     if pack {
-        seed_packs(&db).await;
+        seed_packs(&db, Path::new(&dir), true).await;
     } else {
         let _ = bodies(&db, update_script(0), None)
             .1
@@ -180,7 +217,7 @@ async fn child_applies_bodies_until_killed() {
     unreachable!("the child aborts inside the second chunk");
 }
 
-fn kill_child(label: &str, mode: &str) -> Db {
+fn kill_child(label: &str, mode: &str) -> (Db, PathBuf) {
     let dir = scratch(label);
     let status = Command::new(std::env::current_exe().expect("this test binary"))
         .args([
@@ -208,12 +245,13 @@ fn kill_child(label: &str, mode: &str) -> Db {
             "the child must abort, got {status}"
         );
     }
-    open_data(&dir.join("data.db")).expect("reopen data.db")
+    let db = open_data(&dir.join("data.db")).expect("reopen data.db");
+    (db, dir)
 }
 
 #[tokio::test]
 async fn a_pack_seed_killed_mid_chunk_resumes_with_every_baseline_once() {
-    let db = kill_child("pack", "pack");
+    let (db, dir) = kill_child("pack", "pack");
     let chunk = PACK_SEED_CHUNK as i64;
     assert_eq!(
         count(&db, "SELECT COUNT(*) FROM yjs_snapshots"),
@@ -235,17 +273,25 @@ async fn a_pack_seed_killed_mid_chunk_resumes_with_every_baseline_once() {
         ),
         chunk
     );
-    let completed = db
-        .call_blocking(|conn| read_meta(conn, META_PACKS_COMPLETED))
-        .expect("meta");
-    assert_eq!(completed, None, "a pack killed part way is not completed");
-
-    let report = seed_packs(&db).await;
-    assert_eq!(report.packs_applied, 1);
-    assert_eq!(report.entries_applied, PACK_ENTRIES - PACK_SEED_CHUNK);
     assert_eq!(
-        report.entries_skipped, PACK_SEED_CHUNK,
+        std::fs::read_dir(dir.join("spill"))
+            .expect("the spill")
+            .count(),
+        1,
+        "the downloaded pack stays held for the resume"
+    );
+
+    // The script has no pack bytes: the resume reads the spilled pack.
+    let report = seed_packs(&db, &dir, false).await;
+    assert_eq!(report.packs_held, 1);
+    assert_eq!(
+        report.snapshots_applied,
+        PACK_ENTRIES - PACK_SEED_CHUNK,
         "the first chunk is not seeded twice"
+    );
+    assert!(
+        !dir.join("spill").exists(),
+        "the spill goes when the phase ends"
     );
 
     let total = PACK_ENTRIES as i64;
@@ -265,7 +311,7 @@ async fn a_pack_seed_killed_mid_chunk_resumes_with_every_baseline_once() {
 
 #[tokio::test]
 async fn a_body_pull_killed_mid_page_resumes_with_every_update_once() {
-    let db = kill_child("page", "page");
+    let (db, _) = kill_child("page", "page");
     assert_eq!(
         count(&db, "SELECT COUNT(*) FROM yjs_updates"),
         PER_PAGE,

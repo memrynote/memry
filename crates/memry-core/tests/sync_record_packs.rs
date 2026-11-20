@@ -469,12 +469,13 @@ fn sorted(mut ids: Vec<String>) -> Vec<String> {
 }
 
 /// The request ceiling of a covered, unchanged vault of `N` records with `P`
-/// listed packs of every kind: two listing walks of `ceil(P / 50)` pages
-/// (records, then snapshots; each walk pages every kind), `P` downloads, one
-/// feed page from the coverage boundary and one manifest. Nothing in it
-/// counts items.
-fn ceiling(packs: usize) -> usize {
-    2 * packs.div_ceil(50) + packs + 2
+/// listed packs of every kind, `R` of them record packs: one listing walk of
+/// `ceil(P / 50)` pages (it pages every kind), `R` downloads, one feed page
+/// from the coverage boundary and one manifest. Nothing in it counts items.
+/// No spill directory is set, so the body pack phase lists nothing
+/// (`sync_body_packs.rs` counts the walk it adds).
+fn ceiling(packs: usize, record_packs: usize) -> usize {
+    packs.div_ceil(50) + record_packs + 2
 }
 
 #[tokio::test]
@@ -485,7 +486,7 @@ async fn the_request_count_follows_the_packs_and_not_the_items() {
         let report = run(&db, &routes, &[]).await;
         assert_eq!(
             routes.calls().len(),
-            ceiling(1),
+            ceiling(1, 1),
             "N = {count}: {:?}",
             routes.calls()
         );
@@ -503,17 +504,17 @@ async fn the_request_count_follows_the_packs_and_not_the_items() {
     let db = scratch_db("ceiling-three");
     let routes = Routes::new(covered_vault(300, 100));
     run(&db, &routes, &[]).await;
-    assert_eq!(routes.calls().len(), ceiling(3));
+    assert_eq!(routes.calls().len(), ceiling(3, 3));
 
     // Snapshot packs share the listing, so 3 record and 60 snapshot packs
-    // are two pages per walk.
+    // are two pages, and no snapshot pack is downloaded.
     let db = scratch_db("ceiling-paged");
     let mut server = covered_vault(300, 100);
     server.snapshots = 60;
     let routes = Routes::new(server);
     let report = run(&db, &routes, &[]).await;
-    assert_eq!(routes.count("/sync/packs"), 4, "{:?}", routes.calls());
-    assert_eq!(routes.calls().len(), ceiling(63));
+    assert_eq!(routes.count("/sync/packs"), 2, "{:?}", routes.calls());
+    assert_eq!(routes.calls().len(), ceiling(63, 3));
     assert_eq!(report.record_packs.entries_applied, 300);
 }
 
