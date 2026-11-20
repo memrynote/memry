@@ -6,6 +6,8 @@
 //! open (the group defaults). It does not emit events or telemetry; the shell does that from
 //! the returned [`SettingsChange`].
 
+pub mod calendar;
+
 use std::sync::Arc;
 
 use memry_core::api::auth::ensure_device_identity;
@@ -281,8 +283,11 @@ impl SettingsService {
     /// On vault open: seeds the vault's settings from the `config.json` preferences once, while
     /// every portable value is still the default, and gives a vault with no preferences the
     /// app-level language the user picked on the first-run screens. Refreshes the startup cache.
+    /// Promotes the calendar leaves an earlier build left in the local groups
+    /// ([`calendar::promote_stranded`]).
     pub fn on_open(&self, vault: &OpenVault) -> Result<(), SettingsError> {
         let settings = self.settings(vault)?;
+        calendar::promote_stranded(&settings);
         let general_now = object(settings.get_group("general")?.value);
         let editor_now = object(settings.get_group("editor")?.value);
         let general_defaults = object(group_defaults("general").unwrap_or_default());

@@ -140,6 +140,44 @@ pub async fn settings_set_group(
     announce(&app, &change.group, change.fields)
 }
 
+/// A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+/// this build does not know (`settings:getCalendarProviderSettings`).
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_get_calendar_provider(
+    app: AppHandle<Wry>,
+    provider: String,
+) -> Result<Option<Value>, CommandError> {
+    let (service, vault) = (service(&app), current(&app));
+    blocking("settings_get_calendar_provider", move || {
+        let read = service
+            .read_calendar_provider(vault.as_ref(), &provider)
+            .map_err(map_error)?;
+        Ok(read.map(|read| Value::Object(read.value)))
+    })
+    .await
+}
+
+/// Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+/// provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+/// `settings_invalid_value`, and nothing is written.
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_set_calendar_provider(
+    app: AppHandle<Wry>,
+    provider: String,
+    updates: Value,
+) -> Result<(), CommandError> {
+    let (service, vault) = (service(&app), open_vault(&app)?);
+    let change = blocking("settings_set_calendar_provider", move || {
+        service
+            .write_calendar_provider(Some(&vault), &provider, patch_of(updates)?)
+            .map_err(map_error)
+    })
+    .await?;
+    announce(&app, &change.group, change.fields)
+}
+
 /// One value by `<group>.<field>` or `<group>.<field>.<entry>`.
 #[tauri::command]
 #[specta::specta]

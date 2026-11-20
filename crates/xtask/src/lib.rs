@@ -4,3 +4,4 @@
 
 pub mod bulk_notes;
 pub mod seed;
+pub mod seed_template;

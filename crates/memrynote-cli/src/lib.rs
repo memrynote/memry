@@ -12,6 +12,7 @@ mod migrate_installer;
 pub mod output;
 pub mod parse;
 mod registry;
+pub mod shim;
 mod vault;
 
 use std::ffi::OsString;
