@@ -355,7 +355,7 @@ impl AccountService {
 
     /// `bindVaultForSync` (and `adoptVaultLocally` for a merge): the server vault id first, so a
     /// refused rebind (bound to another server vault) records no binding, then the binding.
-    fn bind_for_sync(
+    pub(super) fn bind_for_sync(
         &self,
         open: &OpenVault,
         registry: &VaultRegistry,
