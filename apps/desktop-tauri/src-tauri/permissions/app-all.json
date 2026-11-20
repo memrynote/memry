@@ -37,6 +37,7 @@
           "auth_retry_oauth",
           "auth_verify_otp",
           "badge_set",
+          "calendar_eventkit_request_access",
           "clipboard_write_image",
           "crdt_apply_update",
           "crdt_close_doc",
