@@ -141,12 +141,10 @@ async fn seed_packs(db: &Db, dir: &Path, download: bool) -> BodyPackReport {
 /// The document's update pages from `since` on, after the snapshot GET a
 /// cursor of `0` sends first.
 fn update_script(since: i64) -> Vec<String> {
-    let mut script = Vec::new();
+    // The batch probe: an old server's answer, which serves no page.
+    let mut script = vec![json!({ "notes": {} }).to_string()];
     if since == 0 {
         script.push(json!({ "snapshot": null }).to_string());
-    } else {
-        // The probe of a document that holds a cursor: an old server's answer.
-        script.push(json!({ "notes": {} }).to_string());
     }
     let mut from = since;
     while from < PAGES * PER_PAGE {

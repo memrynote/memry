@@ -102,6 +102,13 @@ impl Transport for FakeTransport {
     }
 }
 
+/// The batch probe refused (the route's own, tighter rate limit). The probe
+/// sends no retry, and each document then takes its own routes (§7.8): the
+/// path a script of snapshot and updates answers drives.
+pub fn probe_refused() -> Result<HttpResponse, TransportError> {
+    response(503, "{}")
+}
+
 pub fn response(status: u16, body: &str) -> Result<HttpResponse, TransportError> {
     Ok(HttpResponse {
         status,

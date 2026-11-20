@@ -5,9 +5,9 @@
 //! pulling several at once changes nothing about a kill: a resumed run
 //! re-reads every cursor and continues each document where it stopped.
 //!
-//! A resumed run probes the documents that hold a cursor first, a hundred per
-//! request, and counts every one the probe shows current as done before any
-//! worker starts. Without that, each relaunch restarted the count at 0 and
+//! The window is probed first, a hundred documents per request, and every one
+//! the probe shows current counts as done before any worker starts; the
+//! others start from the probe's page. Without that, each relaunch restarted the count at 0 and
 //! spent a probe and an updates page on every finished document.
 
 use std::collections::{HashMap, VecDeque};
@@ -195,11 +195,7 @@ async fn pull_parallel(
     let mut report = BodyPullReport::default();
     let mut probed = HashMap::new();
     for chunk in window.chunks(PROBE_CHUNK) {
-        probed.extend(
-            bodies
-                .probe_snapshot_meta(chunk, &mut report.requests)
-                .await?,
-        );
+        probed.extend(bodies.probe(chunk, &mut report.requests).await?);
     }
     let total = window.len() as u64;
     let (current, pending): (Vec<String>, Vec<String>) = window
@@ -248,7 +244,10 @@ async fn pull_parallel(
 struct BodyQueue {
     state: Mutex<QueueState>,
     total: u64,
-    probed: HashMap<String, Probed>,
+    /// Probe pages until a worker takes its document's (#5293): with the
+    /// server's 8 MiB batch byte budget, at most 8 MiB of updates per probe
+    /// chunk, and each leaves the map when its document is pulled.
+    probed: Mutex<HashMap<String, Probed>>,
     progress: Arc<dyn ProgressSink>,
 }
 
@@ -284,7 +283,7 @@ impl BodyQueue {
                 pauses: 0,
             }),
             total,
-            probed,
+            probed: Mutex::new(probed),
             progress,
         }
     }
@@ -293,6 +292,15 @@ impl BodyQueue {
         self.state
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// The document's probe answer, moved out: a retry after a 429 pulls
+    /// without it, through the ordinary §7.8 path.
+    fn take_probed(&self, doc_id: &str) -> Option<Probed> {
+        self.probed
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(doc_id)
     }
 
     /// The next document, after any pause another worker's 429 set.
@@ -351,7 +359,7 @@ async fn body_worker(
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
     while let Some(doc_id) = queue.next().await {
-        match bodies.pull_with(&doc_id, queue.probed.get(&doc_id)).await {
+        match bodies.pull_with(&doc_id, queue.take_probed(&doc_id)).await {
             Ok(part) => {
                 // The bodies pass owed this document before the pull; only a
                 // merged pull settles it (`body_debt`'s invariant).

@@ -327,7 +327,8 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     gapped.retain(|item| item.4.as_ref().unwrap()["sequenceNum"] != 3);
     let mut server = Server::new(vec![gap], vec![BodyPack::new("u1", gapped)]);
     server.records = true;
-    server.hang = Some("/sync/crdt/updates?note_id=gapdoc000001".to_owned());
+    // The route pass's batch probe, whose answer would serve the gap.
+    server.hang = Some("/sync/crdt/updates/batch".to_owned());
     let routes = Routes::new(server);
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
     assert_eq!(update_seqs(&db, "gapdoc000001"), [1, 2]);
@@ -358,6 +359,36 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
         !dir.join("pack-spill").exists(),
         "a resume past the phase removes its spill"
     );
+}
+
+/// A kill on the second updates page of a document with more updates than one
+/// page: the batch probe's answer was the first page, so the first per-document
+/// GET is the second page. The resume ends with the server's updates exactly.
+#[tokio::test]
+async fn a_kill_on_the_second_updates_page_resumes_with_every_update() {
+    let (db, dir) = body_pack_server::scratch("kill-second-page");
+    let long = ServerDoc::new("longdoc00001", 150);
+    let mut server = Server::new(vec![long], vec![]);
+    server.records = true;
+    server.hang = Some("/sync/crdt/updates?note_id=longdoc00001".to_owned());
+    let routes = Routes::new(server);
+    killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
+    assert_eq!(routes.count("/sync/crdt/updates/batch"), 1);
+    assert_eq!(
+        update_seqs(&db, "longdoc00001"),
+        (1..=100).collect::<Vec<i64>>(),
+        "the first page, from the batch answer, is stored before the kill"
+    );
+
+    routes.server.lock().unwrap().hang = None;
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the resumed first sync");
+
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("longdoc00001"), 150);
+    assert!(!is_owed(&db, "longdoc00001"));
 }
 
 /// The request ceiling of a fresh device whose documents the packs bring to
@@ -429,7 +460,7 @@ async fn a_lost_pack_leaves_its_documents_owed(label: &str, lose: impl FnOnce(&m
     ];
     let mut server = Server::new(vec![lost, kept], packs);
     server.records = true;
-    server.hang = Some("note_id=lostdoc00001".to_owned());
+    server.hang = Some("/sync/crdt/updates/batch".to_owned());
     lose(&mut server);
     let routes = Routes::new(server);
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;

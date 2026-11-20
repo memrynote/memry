@@ -372,6 +372,7 @@ async fn a_pulled_baseline_snapshot_reaches_the_open_document_as_remote() {
         "signerDeviceId": "device-b", "revision": "r1",
     });
     let transport = FakeTransport::new(vec![
+        crate::http_fakes::probe_refused(),
         response(200, &snapshot.to_string()),
         response(200, &json!({ "updates": [], "hasMore": false }).to_string()),
     ]);

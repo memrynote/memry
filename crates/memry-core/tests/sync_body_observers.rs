@@ -138,6 +138,7 @@ async fn a_failed_later_page_still_tells_the_observers_of_the_update_already_sto
         memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("keypair");
     let update = BASE64.encode(packed(NOTE, &body_update("Page one"), &secret_key));
     let mut script = vec![
+        http_fakes::probe_refused(),
         response(200, &json!({"snapshot": null}).to_string()),
         response(
             200,
