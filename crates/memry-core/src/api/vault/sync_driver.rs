@@ -8,7 +8,7 @@ use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
 use crate::api::vault::Vault;
 use crate::seams::reachability::Reachability;
-use crate::sync::driver::{DriverConfig, DriverParts, SyncDriver};
+use crate::sync::driver::{ApplyObserver, DriverConfig, DriverParts, SyncDriver};
 use crate::sync::engine::PassSeed;
 use crate::sync::{account_binding, server_vault};
 
@@ -65,7 +65,8 @@ impl Vault {
     }
 
     /// A [`SyncDriver`] over this vault and `session`. `seeds` run after the
-    /// driver's own tag and lock seeds. Its passes share the vault's one pass
+    /// driver's own tag and lock seeds; `observers` hear every page it applies,
+    /// the re-pull its open runs included. Its passes share the vault's one pass
     /// gate with every other driver and [`crate::api::sync::VaultSync`] of it.
     /// Refused while no server vault is bound.
     #[doc(hidden)]
@@ -75,6 +76,7 @@ impl Vault {
         reachability: Arc<dyn Reachability>,
         config: DriverConfig,
         seeds: Vec<Arc<dyn PassSeed>>,
+        observers: Vec<Arc<dyn ApplyObserver>>,
     ) -> Result<SyncDriver, SyncError> {
         SyncDriver::open(DriverParts {
             db: self.db.clone(),
@@ -84,6 +86,7 @@ impl Vault {
             config,
             seeds,
             pass_gate: crate::api::sync::pass_gate(&self.id),
+            observers,
         })
         .await
     }

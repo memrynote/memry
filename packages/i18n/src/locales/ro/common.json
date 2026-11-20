@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nu există încă seifuri",
       "openVault": "Deschide seiful",
+      "createVault": "Creează seiful",
+      "openFolderAsVault": "Deschide un dosar ca seif",
       "settings": "Setări",
       "remove": "Elimină „",
       "removeVaultTitle": "Eliminați „{name}” din listă?",
