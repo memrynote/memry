@@ -6,6 +6,7 @@ import { generateVaultKey, initCrypto } from '../src/crypto.js'
 import { harnessDigest as digest, harnessDigests as digestsOf } from '../src/harness-digest.js'
 import type { DeviceIdentity } from '../src/types.js'
 import {
+  checkBootstrapCreated,
   checkSemantic,
   checkStructural,
   fetchServerTruth,
@@ -292,7 +293,11 @@ describe('Sync Harness — zero-loss oracle (#5225)', () => {
       accessToken: readerId.accessToken,
       fetch: fetchFn
     })
-    expect(clockless.records[settingsId]).toEqual({ type: 'settings', clock: null })
+    expect(clockless.records[settingsId]).toEqual({
+      type: 'settings',
+      clock: null,
+      signerDeviceId: readerId.deviceId
+    })
     const local = reader.oracleState()
     expect(checkStructural(clockless, local).findings).toEqual([])
 
@@ -303,5 +308,31 @@ describe('Sync Harness — zero-loss oracle (#5225)', () => {
     const retyped = structuredClone(local)
     retyped.records[settingsId].type = 'task'
     expectRed(checkStructural(clockless, retyped).findings, 'type_mismatch', settingsId)
+  })
+
+  // #5261: a fresh device pushed a create for each note it had been given under
+  // another case of its path. Runs after the settings test: it adds records too.
+  it('goes red on a record the bootstrapping device created, not on a re-push', async () => {
+    const read = () =>
+      fetchServerTruth({
+        baseUrl: 'http://localhost',
+        accessToken: readerId.accessToken,
+        fetch: fetchFn
+      })
+    const beforeWrites = await read()
+    const created = crypto.randomUUID()
+    await reader.createItem('note', created, { title: 'duplicate' })
+    await reader.updateItem(task, { title: 're-pushed' })
+    const pushed = await reader.push([reader.getItem(created)!, reader.getItem(task)!])
+    if (pushed.rejected.length > 0) throw new Error('reader push rejected')
+    const afterWrites = await read()
+
+    expect(afterWrites.records[task].signerDeviceId).toBe(readerId.deviceId)
+    expect(checkBootstrapCreated(beforeWrites, beforeWrites, readerId.deviceId)).toEqual([])
+    expectRed(
+      checkBootstrapCreated(beforeWrites, afterWrites, readerId.deviceId),
+      'bootstrap_created',
+      created
+    )
   })
 })

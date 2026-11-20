@@ -25,7 +25,7 @@ import { parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
-import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
+import { syncNoteToCache, syncFileToCache, findCanonicalNoteForFile } from './note-sync'
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
@@ -35,7 +35,7 @@ import {
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { getNoteMetadataByPath, listPropertyDefinitions } from '@memry/storage-data'
+import { listPropertyDefinitions } from '@memry/storage-data'
 import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
@@ -199,7 +199,7 @@ async function indexFile(
  * Index a markdown file with full frontmatter support.
  */
 async function indexMarkdownFile(
-  _vaultPath: string,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   db: ReturnType<typeof getIndexDatabase>
@@ -226,12 +226,7 @@ async function indexMarkdownFile(
     logger.warn(`Unparseable frontmatter, indexing body only: ${relativePath}`)
   }
 
-  let canonical: ReturnType<typeof getNoteMetadataByPath>
-  try {
-    canonical = getNoteMetadataByPath(getDatabase(), relativePath)
-  } catch {
-    // data DB not ready — fall back to a fresh id
-  }
+  const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
   const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
 
   // Use syncNoteToCache for unified cache operations
@@ -287,6 +282,7 @@ async function indexMarkdownFile(
  */
 export async function indexBinaryFile(
   db: ReturnType<typeof getIndexDatabase>,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   fileType: 'pdf' | 'image' | 'audio' | 'video'
@@ -294,7 +290,7 @@ export async function indexBinaryFile(
   // Get file stats for metadata
   const stats = await stat(absolutePath)
 
-  const id = findCanonicalNoteByPath(relativePath)?.id ?? generateNoteId()
+  const id = findCanonicalNoteForFile(vaultPath, relativePath)?.id ?? generateNoteId()
 
   // Get MIME type
   const ext = getExtension(absolutePath)
@@ -322,14 +318,14 @@ export async function indexBinaryFile(
  * Index a non-markdown file (PDF, images, audio, video).
  */
 async function indexNonMarkdownFile(
-  _vaultPath: string,
+  vaultPath: string,
   relativePath: string,
   absolutePath: string,
   fileType: 'pdf' | 'image' | 'audio' | 'video',
   db: ReturnType<typeof getIndexDatabase>
 ): Promise<'indexed' | IndexFailure> {
   try {
-    await indexBinaryFile(db, relativePath, absolutePath, fileType)
+    await indexBinaryFile(db, vaultPath, relativePath, absolutePath, fileType)
     logger.debug(`Successfully indexed: ${relativePath} (${fileType})`)
     return 'indexed'
   } catch (error) {

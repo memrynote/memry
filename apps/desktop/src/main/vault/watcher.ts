@@ -28,8 +28,9 @@ import {
   syncNoteStatToCache,
   syncFileToCache,
   deleteNoteFromCache,
-  findCanonicalNoteByPath,
-  findCanonicalNotePath
+  findCanonicalNoteForFile,
+  findCanonicalNotePath,
+  type CanonicalNoteRef
 } from './note-sync'
 import {
   getAllNoteRefRows,
@@ -213,8 +214,10 @@ async function isModifiedSince(absolutePath: string, indexedAt: string): Promise
  * `moveIndexedNotesWithFolder` writes. Handled as adds while the index caught
  * up, the echoes re-listed and re-read every file of a large folder.
  */
-function isAppMoveEcho(relativePath: string): boolean {
-  return isAppFolderChange(relativePath) && findCanonicalNoteByPath(relativePath) !== null
+function isAppMoveEcho(vaultPath: string, relativePath: string): boolean {
+  return (
+    isAppFolderChange(relativePath) && findCanonicalNoteForFile(vaultPath, relativePath) !== null
+  )
 }
 
 /** Cache timestamps come back as an ISO string or a Date, depending on driver. */
@@ -592,7 +595,7 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(relativePath)) {
+      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
         return
       }
 
@@ -611,7 +614,11 @@ export class VaultWatcher {
       // it runs behind the canonical write, so "no cache row" does not mean
       // "the vault has never seen this path". The canonical row is the one with
       // a unique path, and if it is already there this add has to adopt its id.
-      const claimed = findCanonicalNoteByPath(relativePath)
+      const claimed = findCanonicalNoteForFile(this.vaultPath, relativePath)
+      if (claimed !== null && claimed.path !== relativePath) {
+        await this.adoptCaseVariantRow(absolutePath, relativePath, fileType, claimed, db)
+        return
+      }
 
       if (fileType === 'markdown') {
         await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
@@ -642,6 +649,63 @@ export class VaultWatcher {
       // A file moved into a locked folder, a locked note renamed or a locked
       // file recreated from outside comes in writable.
       await protectLockedFile(absolutePath)
+    }
+  }
+
+  /**
+   * The file is a note or attachment the vault already has under another
+   * case of its path, as sync applies it into a folder the disk spells
+   * differently. The row moves to the disk's spelling, which every later
+   * event and the open-time heal use, and keeps its id. Nothing is pushed:
+   * the add path would push a create and seed a second CRDT body from the
+   * file. A body that differs from the indexed one is an edit of this note.
+   */
+  private async adoptCaseVariantRow(
+    absolutePath: string,
+    relativePath: string,
+    fileType: NonNullable<ReturnType<typeof getFileType>>,
+    claimed: CanonicalNoteRef,
+    db: ReturnType<typeof getIndexDatabase>
+  ): Promise<void> {
+    const stats = await fs.stat(absolutePath).catch(() => null)
+    if (!stats) return
+    const cached = getNoteCacheById(db, claimed.id)
+    if (fileType === 'markdown') {
+      syncNoteStatToCache(
+        db,
+        {
+          id: claimed.id,
+          path: relativePath,
+          title: claimed.title,
+          createdAt: claimed.createdAt,
+          modifiedAt: stats.mtime.toISOString(),
+          fileSize: stats.size,
+          localOnly: cached?.localOnly ?? false,
+          emoji: cached?.emoji ?? null
+        },
+        { isNew: false }
+      )
+    } else {
+      syncFileToCache(db, {
+        id: claimed.id,
+        path: relativePath,
+        title: claimed.title,
+        fileType,
+        mimeType: getMimeType(getExtension(absolutePath)),
+        fileSize: stats.size,
+        createdAt: new Date(claimed.createdAt),
+        modifiedAt: stats.mtime
+      })
+    }
+    await flushProjectionEvents()
+    processRename(claimed.id, claimed.path, relativePath, { sync: false })
+    logger.info('Matched a file to its note under another case of its path', {
+      id: claimed.id
+    })
+
+    const rekeyed = getNoteCacheByPath(db, relativePath)
+    if (fileType === 'markdown' && rekeyed) {
+      await this.handleMarkdownFileChange(relativePath, rekeyed, db)
     }
   }
 
@@ -992,7 +1056,7 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(relativePath)) {
+      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
         return
       }
 

@@ -21,6 +21,9 @@ import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
+import { sql } from 'drizzle-orm'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { diskCaseOf } from './disk-case'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -99,20 +102,47 @@ export function learnCanonicalPropertyType(
   return type
 }
 
+export interface CanonicalNoteRef {
+  id: string
+  /** The row's spelling, which differs from the file's only in case. */
+  path: string
+  title: string
+  createdAt: string
+  emoji: string | null
+}
+
 /**
- * The identity the vault already holds for `path`, if it holds one.
+ * The identity the vault already holds for the file at `relativePath`, given
+ * in the disk's spelling, if it holds one.
  *
  * `note_metadata.path` is unique, so a second row for the same path is not a
  * duplicate to be resolved later — it is an INSERT that throws. An ingest that
  * finds a path already claimed has to adopt that row's id rather than mint a
  * fresh one: the id is what the note's CRDT doc, sync item and open tabs are
  * keyed by, so renumbering it orphans all three.
+ *
+ * On a case-insensitive disk the row can spell the path in another case: sync
+ * applies a note at `SuperNotes/a.md`, and the file lands in the `Supernotes/`
+ * folder the disk already has. Each such file was listed again under a fresh
+ * id and pushed as a create (#5261).
  */
-export function findCanonicalNoteByPath(path: string): { id: string; createdAt: string } | null {
+export function findCanonicalNoteForFile(
+  vaultPath: string,
+  relativePath: string
+): CanonicalNoteRef | null {
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
-  const existing = getNoteMetadataByPath(dataDb, path)
-  return existing ? { id: existing.id, createdAt: existing.createdAt } : null
+  const row =
+    getNoteMetadataByPath(dataDb, relativePath) ??
+    dataDb
+      .select()
+      .from(noteMetadata)
+      .where(sql`${noteMetadata.path} = ${relativePath} COLLATE NOCASE`)
+      .all()
+      .find((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+  return row
+    ? { id: row.id, path: row.path, title: row.title, createdAt: row.createdAt, emoji: row.emoji }
+    : null
 }
 
 /** The path the canonical row gives note `id`, or null when it has no row. */

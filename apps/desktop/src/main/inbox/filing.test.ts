@@ -466,6 +466,7 @@ describe('Inbox Filing Operations', () => {
       // Binary is eagerly indexed as an image to obtain its note id...
       expect(mockIndexBinaryFile).toHaveBeenCalledWith(
         {},
+        '/mock-vault',
         'projects/Screenshot.png',
         '/mock-vault/projects/Screenshot.png',
         'image'
