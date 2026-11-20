@@ -707,6 +707,12 @@ export const commands = {
 	/**  `sync:auth-logout`. */
 	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
 	/**
+	 *  `sync:repair-device-keys`: a listed device restarts sync and answers whether its gate lets it
+	 *  run (`reasonSyncDidNotStart`, `device-registration.ts:400-413`); otherwise the device signed
+	 *  out keeping its master key and queue.
+	 */
+	syncRepairDeviceKeys: () => __TAURI_INVOKE<RepairDeviceKeysResult>("sync_repair_device_keys"),
+	/**
 	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
 	 *  `success: false` with the state unchanged, as Electron answers.
 	 */
@@ -3251,6 +3257,9 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `RepairDeviceKeysResult` (`ipc-sync-ops.ts`). */
+export type RepairDeviceKeysResult = { status: "repaired" } | { status: "sync-not-started"; reason: SyncNotStartedReason } | { status: "sign-in-required" };
+
 /**  `ResolveVaultBindingResult`. */
 export type ResolveVaultBindingResult = {
 	success: boolean,
@@ -3743,6 +3752,9 @@ export type SyncLinkingRequestedEvent = {
 	newDeviceName: string,
 	newDevicePlatform: string,
 };
+
+/**  `SyncNotStartedReason` in `ipc-sync-ops.ts`. */
+export type SyncNotStartedReason = "vault-binding" | "vault-foreign" | "entitlement" | "unavailable";
 
 /**
  *  Why Sync Now sent and received nothing. `busy` is in the contract and never produced here:

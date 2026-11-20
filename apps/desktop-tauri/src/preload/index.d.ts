@@ -99,12 +99,9 @@ import type {
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
 import type {
-  RepairDeviceKeysResult,
-  ResolveVaultBindingResult,
   SyncControlSurface,
   SyncErrorCategory,
   TriggerSyncResult,
-  VaultBindingChoice,
   VaultBindingState,
   LargeNotesResult,
   NoteSyncState,
@@ -1537,9 +1534,6 @@ interface SyncOpsClientAPI {
   getLargeNotes: () => Promise<LargeNotesResult>
   getNoteSyncState: (noteId: string) => Promise<NoteSyncState | null>
   getUnsentNotes: () => Promise<UnsentNotesResult>
-  getVaultBinding: () => Promise<VaultBindingState>
-  resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
-  repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
 }
 
 // Crypto API
