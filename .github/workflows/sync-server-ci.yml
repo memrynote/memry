@@ -9,6 +9,11 @@ on:
       - 'packages/shared/**'
       - 'packages/sync-core/**'
       - 'tests/sync-harness/**'
+      # The harness runs the core device (`memry`) against the Worker (#5232).
+      - 'crates/memry-core/**'
+      - 'crates/memry-cli/**'
+      - 'crates/Cargo.*'
+      - 'crates/rust-toolchain.toml'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
       # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
@@ -29,6 +34,11 @@ on:
       - 'packages/shared/**'
       - 'packages/sync-core/**'
       - 'tests/sync-harness/**'
+      # The harness runs the core device (`memry`) against the Worker (#5232).
+      - 'crates/memry-core/**'
+      - 'crates/memry-cli/**'
+      - 'crates/Cargo.*'
+      - 'crates/rust-toolchain.toml'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
       # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
@@ -61,7 +71,8 @@ jobs:
   sync-server:
     name: Typecheck, test, and Worker bundle
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 40: the job builds the core device (memry-cli) for the harness.
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -92,6 +103,26 @@ jobs:
 
       - name: Build sync-harness worker
         run: pnpm --filter @memry/sync-harness build:worker
+
+      # The core device the harness drives (`crates/memry-cli`, #5232). Same
+      # toolchain pin and cache key shape as rust-ci.yml.
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      - name: Runner image
+        id: image
+        run: echo "os=${ImageOS:?ImageOS is unset, so the cargo cache key cannot name the image}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          key: harness-${{ steps.image.outputs.os }}
+
+      - name: Build the core device
+        run: pnpm --filter @memry/sync-harness build:core
 
       - name: Run sync protocol harness
         run: pnpm --filter @memry/sync-harness test

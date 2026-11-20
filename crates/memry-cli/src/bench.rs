@@ -14,7 +14,12 @@
 //!
 //! Every line on stdout is one JSON mark with a wall-clock `atMs`, so the
 //! harness can line the marks up with the requests its proxy recorded.
+//!
+//! `bench oracle-state` prints what this device holds in the shape the
+//! zero-loss oracle reads (`tests/sync-harness/src/zero-loss-oracle`), so the
+//! sync harness can run the oracle on a core bootstrap (#5232).
 
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -27,9 +32,42 @@ use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::sync::body_pull::BodyPull;
 use memry_core::sync::{body_debt, body_step};
+use rusqlite::{Connection, OptionalExtension as _};
 use serde_json::{Value as Json, json};
 
+use crate::cli::{Args, Command, UsageError, required, usage, value};
+use crate::commands::{format_hex, open_body};
 use crate::session::{Cli, CliError};
+
+/// `bench <subcommand> …`, after the word `bench`.
+pub fn parse(args: &mut Args) -> Result<Command, UsageError> {
+    match args.next().as_deref() {
+        Some("bootstrap") => {
+            let vault = required(args, "--vault", "bench bootstrap")?;
+            let (mut pass_interval_secs, mut resume) = (0, false);
+            while let Some(flag) = args.next() {
+                match flag.as_str() {
+                    "--resume" => resume = true,
+                    "--pass-interval" => {
+                        pass_interval_secs = value(args, "--pass-interval")?
+                            .parse()
+                            .or_else(|_| usage("--pass-interval takes whole seconds"))?;
+                    }
+                    other => return usage(format!("unexpected argument `{other}`")),
+                }
+            }
+            Ok(Command::BenchBootstrap {
+                vault,
+                pass_interval_secs,
+                resume,
+            })
+        }
+        Some("oracle-state") => Ok(Command::BenchOracleState {
+            vault: required(args, "--vault", "bench oracle-state")?,
+        }),
+        _ => usage("bench needs a subcommand: bootstrap or oracle-state"),
+    }
+}
 
 /// Body passes in a row that may settle nothing before the run gives up and
 /// reports the bodies as not reached. A `429` ends a pass early, so a few idle
@@ -72,11 +110,16 @@ impl SyncProgressListener for Progress {
     }
 }
 
-pub async fn bootstrap(cli: &Cli, vault: &str, pass_interval: Duration) -> Result<(), CliError> {
+pub async fn bootstrap(
+    cli: &Cli,
+    vault: &str,
+    pass_interval: Duration,
+    resume: bool,
+) -> Result<(), CliError> {
     // A fresh device: this profile's copy of the vault goes, the account and
-    // device registration stay.
+    // device registration stay. `--resume` keeps the copy a killed run left.
     let dir = cli.vault_dir(vault);
-    if dir.exists() {
+    if dir.exists() && !resume {
         std::fs::remove_dir_all(&dir)?;
     }
     drop(cli.open_vault(vault)?);
@@ -166,6 +209,144 @@ async fn body_coverage(db: &Db) -> Result<(u64, u64), StorageError> {
     .await
 }
 
+/// The oracle's `LocalVaultState`, plus what its semantic check digests: each
+/// live record's stored payload, each body's merged state vector and full
+/// state update, and the documents still owed a body.
+pub async fn oracle_state(cli: &Cli, vault: &str) -> Result<(), CliError> {
+    let db = cli.open_vault(vault)?;
+    let (records, payloads) = db.call(|conn| read_records(conn)).await?;
+    let mut bodies = db.call(|conn| read_bodies(conn)).await?;
+    let mut state_vectors = BTreeMap::new();
+    let mut body_states = BTreeMap::new();
+    for doc_id in bodies.keys() {
+        let body = open_body(&db, doc_id)?;
+        state_vectors.insert(doc_id.clone(), format_hex(&body.state_vector()?));
+        body_states.insert(doc_id.clone(), format_hex(&body.encode_state()?));
+    }
+    let owed = db.call(|conn| body_debt::owed(conn)).await?;
+    for doc_id in &owed {
+        bodies.entry(doc_id.clone()).or_insert_with(empty_body);
+    }
+    println!(
+        "{}",
+        json!({
+            "records": records,
+            "bodies": bodies,
+            "payloads": payloads,
+            "stateVectors": state_vectors,
+            "bodyStates": body_states,
+            "owed": owed,
+        })
+    );
+    Ok(())
+}
+
+type Records = (BTreeMap<String, Json>, BTreeMap<String, Json>);
+
+/// Every record that is not corrupt: a corrupt row holds nothing the shell
+/// can show, so the oracle counts it as missing.
+fn read_records(conn: &Connection) -> Result<Records, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT item_id, item_type, clock, deleted_at IS NOT NULL, payload FROM sync_items \
+             WHERE corrupt_reason IS NULL",
+        )
+        .map_err(storage)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, bool>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })
+        .map_err(storage)?;
+    let (mut records, mut payloads) = (BTreeMap::new(), BTreeMap::new());
+    for row in rows {
+        let (id, item_type, clock, deleted, payload) = row.map_err(storage)?;
+        let clock = clock
+            .and_then(|text| serde_json::from_str::<Json>(&text).ok())
+            .unwrap_or_else(|| json!({}));
+        if let (false, Some(payload)) = (deleted, payload) {
+            payloads.insert(id.clone(), Json::String(payload));
+        }
+        records.insert(
+            id,
+            json!({ "type": item_type, "clock": clock, "deleted": deleted }),
+        );
+    }
+    Ok((records, payloads))
+}
+
+/// Every document with body state or a body cursor: the baseline's revision,
+/// the highest server sequence the device holds (its cursor, or the
+/// baseline's), and whether it holds no Yjs state at all.
+fn read_bodies(conn: &Connection) -> Result<BTreeMap<String, Json>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT doc_id FROM yjs_snapshots UNION SELECT doc_id FROM yjs_updates \
+             UNION SELECT substr(scope, 6) FROM sync_cursors WHERE scope LIKE 'crdt:%'",
+        )
+        .map_err(storage)?;
+    let ids = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(storage)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(storage)?;
+    let mut bodies = BTreeMap::new();
+    for doc_id in ids {
+        let snapshot: Option<(Option<String>, i64)> = conn
+            .query_row(
+                "SELECT server_revision, last_seq FROM yjs_snapshots WHERE doc_id = ?1",
+                [&doc_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(storage)?;
+        let cursor: Option<String> = conn
+            .query_row(
+                "SELECT cursor FROM sync_cursors WHERE scope = 'crdt:' || ?1",
+                [&doc_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(storage)?
+            .flatten();
+        let updates: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM yjs_updates WHERE doc_id = ?1",
+                [&doc_id],
+                |row| row.get(0),
+            )
+            .map_err(storage)?;
+        let cursor = cursor
+            .and_then(|text| text.parse::<i64>().ok())
+            .unwrap_or(0);
+        let baseline = snapshot.as_ref().map_or(0, |(_, last_seq)| *last_seq);
+        bodies.insert(
+            doc_id,
+            json!({
+                "snapshotRevision": snapshot.and_then(|(revision, _)| revision),
+                "appliedThrough": cursor.max(baseline),
+                "empty": baseline == 0 && updates == 0 && cursor == 0,
+            }),
+        );
+    }
+    Ok(bodies)
+}
+
+fn empty_body() -> Json {
+    json!({ "snapshotRevision": null, "appliedThrough": 0, "empty": true })
+}
+
+fn storage(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: format!("reading the oracle state: {error}"),
+    }
+}
+
 fn sync_failed(error: SyncError) -> CliError {
     CliError::Refused(format!("the first sync failed: {error}"))
 }
@@ -184,19 +365,35 @@ mod tests {
 
     #[test]
     fn pass_interval_defaults_to_back_to_back_and_takes_whole_seconds() {
-        let command = |vault: &str, secs| Command::BenchBootstrap {
+        let command = |vault: &str, secs, resume| Command::BenchBootstrap {
             vault: vault.to_string(),
             pass_interval_secs: secs,
+            resume,
         };
-        assert_eq!(bench("bench bootstrap --vault v-1"), Ok(command("v-1", 0)));
+        assert_eq!(
+            bench("bench bootstrap --vault v-1"),
+            Ok(command("v-1", 0, false))
+        );
         assert_eq!(
             bench("bench bootstrap --vault v-1 --pass-interval 30"),
-            Ok(command("v-1", 30))
+            Ok(command("v-1", 30, false))
+        );
+        assert_eq!(
+            bench("bench bootstrap --vault v-1 --resume --pass-interval 30"),
+            Ok(command("v-1", 30, true))
+        );
+        assert_eq!(
+            bench("bench oracle-state --vault v-1"),
+            Ok(Command::BenchOracleState {
+                vault: "v-1".to_string()
+            })
         );
         for line in [
             "bench bootstrap --vault v-1 --pass-interval",
             "bench bootstrap --vault v-1 --pass-interval 1.5",
             "bench bootstrap --vault v-1 --pass-interval -3",
+            "bench bootstrap --vault v-1 --resume --resume-later",
+            "bench oracle-state",
         ] {
             assert!(bench(line).is_err(), "`{line}` should not parse");
         }

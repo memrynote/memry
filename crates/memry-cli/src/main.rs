@@ -82,6 +82,11 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         Command::BenchBootstrap {
             vault,
             pass_interval_secs,
-        } => bench::bootstrap(&cli, &vault, Duration::from_secs(pass_interval_secs)).await,
+            resume,
+        } => {
+            let pass_interval = Duration::from_secs(pass_interval_secs);
+            bench::bootstrap(&cli, &vault, pass_interval, resume).await
+        }
+        Command::BenchOracleState { vault } => bench::oracle_state(&cli, &vault).await,
     }
 }

@@ -19,6 +19,8 @@ use body_pack_server::{
     update_items, update_seqs,
 };
 use memry_core::storage::Db;
+use memry_core::sync::first_sync::META_FIRST_SYNC_BODY_PACKS;
+use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::BodyPackReport;
 use sha2::{Digest as _, Sha256};
 
@@ -329,6 +331,10 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
     assert_eq!(update_seqs(&db, "gapdoc000001"), [1, 2]);
     assert!(is_owed(&db, "gapdoc000001"));
+    let marker = db
+        .call_blocking(|conn| read_meta(conn, META_FIRST_SYNC_BODY_PACKS))
+        .unwrap();
+    assert_eq!(marker.as_deref(), Some("1"), "the body pack phase finished");
     // As a kill between the settle and the spill's removal leaves it.
     std::fs::create_dir_all(dir.join("pack-spill")).unwrap();
     std::fs::write(dir.join("pack-spill").join("left.mpak"), b"held").unwrap();

@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
 // Canonical schema = the ordered D1 migrations wrangler applies on deploy.
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../apps/sync-server/migrations')
+const BACKFILL_QUEUE = 'memry-pack-backfill-dev'
 
 export interface ServerKeys {
   publicKeyPem: string
@@ -20,7 +21,8 @@ export class SimulatedServer {
   private mf: Miniflare | null = null
   private keys: ServerKeys | null = null
 
-  async start(): Promise<void> {
+  /** `bindings` add to or override the Worker's, such as R2 presign credentials. */
+  async start(options: { bindings?: Record<string, string> } = {}): Promise<void> {
     const workerPath = await buildWorker()
 
     this.keys = await this.generateJwtKeys()
@@ -39,6 +41,12 @@ export class SimulatedServer {
 
       d1Databases: { DB: 'test-db' },
       r2Buckets: { STORAGE: 'test-bucket' },
+
+      // The cron's pack backfill (#5278) enqueues here and this Worker's queue
+      // handler consumes, as in wrangler.toml. Push nudges (PACK_QUEUE) stay
+      // unbound, so packs are built only when a test runs the cron.
+      queueProducers: { PACK_BACKFILL_QUEUE: { queueName: BACKFILL_QUEUE } },
+      queueConsumers: { [BACKFILL_QUEUE]: { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 3 } },
 
       durableObjects: {
         USER_SYNC_STATE: 'UserSyncState',
@@ -62,7 +70,8 @@ export class SimulatedServer {
         // bundle version on macOS, "0.0" on Linux CI. A 0.1.0 floor refused
         // every Linux E2E socket with 426 and the realtime path went untested.
         MIN_APP_VERSION: '0.0.0',
-        ALLOWED_ORIGIN: 'http://localhost:3000'
+        ALLOWED_ORIGIN: 'http://localhost:3000',
+        ...options.bindings
       }
     })
 
@@ -92,12 +101,9 @@ export class SimulatedServer {
   }
 
   /**
-   * Run the Worker's scheduled handler.
-   *
-   * The pack pipeline (#1839) reaches vaults two ways: the queue consumer and
-   * the cron backfill. The backfill is the one a harness can drive without a
-   * Queues binding, so this is how an E2E gets real packs built by the real
-   * Worker against the real D1 ledger.
+   * Run the Worker's scheduled handler. Since #5278 its pack backfill only
+   * enqueues: the bound backfill queue's consumer builds the packs after this
+   * returns, so a caller that needs them waits for `pack_index` to settle.
    */
   async triggerScheduled(cron = '0 */6 * * *'): Promise<void> {
     if (!this.mf) throw new Error('Server not started')
@@ -108,6 +114,11 @@ export class SimulatedServer {
   async getD1(): Promise<D1Database> {
     if (!this.mf) throw new Error('Server not started')
     return this.mf.getD1Database('DB')
+  }
+
+  async getR2Bucket(): Promise<R2Bucket> {
+    if (!this.mf) throw new Error('Server not started')
+    return this.mf.getR2Bucket('STORAGE')
   }
 
   async getDirectUrl(): Promise<URL> {
