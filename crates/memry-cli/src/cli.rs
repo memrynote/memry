@@ -48,9 +48,12 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
-  bench bootstrap --vault <id> [--pass-interval <s>]
-                                         dev only: wipe this profile's copy of the vault, run the
-                                         first sync and body passes, print timing marks
+  bench bootstrap --vault <id> [--pass-interval <s>] [--resume]
+                                         dev only: wipe this profile's copy of the vault (kept with
+                                         --resume), run the first sync and body passes, print
+                                         timing marks
+  bench oracle-state --vault <id>        dev only: print the local records and bodies as JSON,
+                                         for the zero-loss oracle
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -132,9 +135,15 @@ pub enum Command {
         vault: Option<String>,
     },
     /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
+    /// `resume` keeps the local copy, to finish a killed bootstrap (#5232).
     BenchBootstrap {
         vault: String,
         pass_interval_secs: u64,
+        resume: bool,
+    },
+    /// Dev only (#5232): the local state the zero-loss oracle reads.
+    BenchOracleState {
+        vault: String,
     },
 }
 
@@ -164,7 +173,7 @@ impl fmt::Display for UsageError {
 
 impl std::error::Error for UsageError {}
 
-fn usage<T>(message: impl Into<String>) -> Result<T, UsageError> {
+pub(crate) fn usage<T>(message: impl Into<String>) -> Result<T, UsageError> {
     Err(UsageError {
         message: message.into(),
     })
@@ -243,7 +252,7 @@ pub fn parse(args: Vec<String>) -> Result<Parsed, UsageError> {
     })))
 }
 
-type Args = std::iter::Peekable<std::vec::IntoIter<String>>;
+pub(crate) type Args = std::iter::Peekable<std::vec::IntoIter<String>>;
 
 fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
     match name {
@@ -266,15 +275,7 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
         }),
         "notes" => parse_notes(args),
         "journal" => parse_journal(args),
-        "bench" => match args.next().as_deref() {
-            Some("bootstrap") => Ok(Command::BenchBootstrap {
-                vault: required(args, "--vault", "bench bootstrap")?,
-                pass_interval_secs: optional(args, "--pass-interval")?
-                    .map_or(Ok(0), |secs| secs.parse())
-                    .or_else(|_| usage("--pass-interval takes whole seconds"))?,
-            }),
-            _ => usage("bench needs a subcommand: bootstrap"),
-        },
+        "bench" => crate::bench::parse(args),
         other => usage(format!("unknown command `{other}`")),
     }
 }
@@ -368,14 +369,14 @@ fn parse_journal(args: &mut Args) -> Result<Command, UsageError> {
     }
 }
 
-fn value(args: &mut Args, flag: &str) -> Result<String, UsageError> {
+pub(crate) fn value(args: &mut Args, flag: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(value) if !value.starts_with('-') => Ok(value),
         _ => usage(format!("{flag} needs a value")),
     }
 }
 
-fn required(args: &mut Args, flag: &str, command: &str) -> Result<String, UsageError> {
+pub(crate) fn required(args: &mut Args, flag: &str, command: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(found) if found == flag => value(args, flag),
         Some(found) => usage(format!("{command} takes {flag}, not `{found}`")),
@@ -585,6 +586,7 @@ mod tests {
             "journal tags",
             "journal property",
             "bench bootstrap --vault",
+            "bench oracle-state --vault",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }

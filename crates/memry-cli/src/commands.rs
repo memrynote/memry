@@ -324,7 +324,10 @@ pub struct NoteRow {
 /// The document id of a note body is the note record's id (chapter 07 §7.1),
 /// and the body is whatever the update log already holds: this command reads,
 /// and never fetches.
-fn open_body(db: &Db, note: &str) -> Result<Arc<memry_core::crdt::registry::Document>, CliError> {
+pub(crate) fn open_body(
+    db: &Db,
+    note: &str,
+) -> Result<Arc<memry_core::crdt::registry::Document>, CliError> {
     let doc_id = note.to_string();
     let plan = db.call_blocking(move |conn| {
         update_log::load_plan(conn, &doc_id).map_err(|error| StorageError::Failed {

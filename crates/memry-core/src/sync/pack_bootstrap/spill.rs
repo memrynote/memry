@@ -52,21 +52,36 @@ pub(super) async fn read_held(path: &Path) -> Result<Option<Vec<PackEntry>>, Sto
     .await
 }
 
+/// What became of one downloaded pack.
+pub(super) enum Spilled {
+    /// Verified and spilled, with its index.
+    Held(Vec<PackEntry>),
+    /// The bytes are not a valid pack: the pack is absent (§8.12).
+    Unusable(String),
+    /// The spill could not be written.
+    NotWritten(std::io::Error),
+}
+
+/// Verifies a downloaded pack and spills it, on the blocking pool: verifying
+/// hashes every payload, up to 24 MiB a pack.
+///
 /// Written beside its final name and renamed into place, so a file under the
 /// final name is always a whole pack. A failed write leaves no `.part`.
-pub(super) async fn write(
-    path: &Path,
-    bytes: Vec<u8>,
-) -> Result<std::io::Result<()>, StorageError> {
+pub(super) async fn verify_and_write(path: &Path, bytes: Vec<u8>) -> Result<Spilled, StorageError> {
     let path = path.to_owned();
     blocking("spilling a pack", move || {
+        let entries = match parse_pack(&bytes) {
+            Ok(parsed) => parsed.entries,
+            Err(error) => return Spilled::Unusable(error.to_string()),
+        };
         let partial = path.with_extension("part");
-        let written =
-            std::fs::write(&partial, bytes).and_then(|()| std::fs::rename(&partial, &path));
-        if written.is_err() {
-            let _ = std::fs::remove_file(&partial);
+        match std::fs::write(&partial, bytes).and_then(|()| std::fs::rename(&partial, &path)) {
+            Ok(()) => Spilled::Held(entries),
+            Err(error) => {
+                let _ = std::fs::remove_file(&partial);
+                Spilled::NotWritten(error)
+            }
         }
-        written
     })
     .await
 }
