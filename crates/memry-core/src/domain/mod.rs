@@ -99,6 +99,7 @@ pub mod tag_views;
 pub mod tags;
 pub mod task_activity;
 pub mod task_filter;
+pub mod task_links;
 pub mod task_merge;
 pub mod task_parse;
 pub mod task_records;

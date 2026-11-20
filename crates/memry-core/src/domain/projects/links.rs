@@ -397,7 +397,10 @@ fn names_item(entry: &Value, markdown: bool, item_type: LinkItemType, item_id: &
 }
 
 /// The stored `links` array; absent, `null` and a non-array all read empty.
-fn stored_links(conn: &Connection, project_id: &str) -> Result<Vec<Value>, StorageError> {
+pub(super) fn stored_links(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<Value>, StorageError> {
     let Some(raw) = sync_items::load(conn, ITEM_TYPE, project_id)?.and_then(|row| row.payload)
     else {
         return Ok(Vec::new());
@@ -435,7 +438,7 @@ fn read_link(entry: &Value, project_id: &str) -> Option<ProjectLink> {
 
 /// A live note whose `file_type` is markdown — desktop's `isMarkdownNote`,
 /// keyed off the row and never the caller's `item_type`.
-fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+pub(super) fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let file_type: Option<String> = conn
         .query_row(
             "SELECT file_type FROM notes WHERE id = ?1 AND deleted_at IS NULL",
