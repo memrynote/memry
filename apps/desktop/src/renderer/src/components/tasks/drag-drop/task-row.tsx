@@ -21,6 +21,7 @@ import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-bu
 import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
 import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
 
 interface TaskRowProps {
   task: Task
@@ -326,7 +327,7 @@ const TaskRowComponent = ({
                   : 'text-foreground/90'
             )}
           >
-            {task.title}
+            <TaskTitleText title={task.title} />
           </span>
         </TaskPathTitle>
 

@@ -1,9 +1,9 @@
 /**
- * Opening a `[[link]]` clicked inside a portal window. The window is a nested
- * editor with no page around it, so it opens the target as a tab the way the
- * host note's own links do.
+ * Opening a `[[link]]` clicked outside a note page: inside a portal window (a
+ * nested editor with no page around it) or in a task title. It opens the target
+ * as a tab the way a note's own links do.
  *
- * @module note/content-area/portal/use-portal-link-open
+ * @module hooks/use-open-wiki-target
  */
 
 import { useCallback } from 'react'
@@ -13,11 +13,11 @@ import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { journalDayTab } from '@/lib/memry-links'
 import { createLogger } from '@/lib/logger'
-import type { WikiLinkOpenTarget } from '../types'
+import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 
-const log = createLogger('PortalLinkOpen')
+const log = createLogger('OpenWikiTarget')
 
-export function usePortalLinkOpen(): (target: string, open?: WikiLinkOpenTarget) => void {
+export function useOpenWikiTarget(): (target: string, open?: WikiLinkOpenTarget) => void {
   const { t } = useT('common')
   const { openSidebarItem } = useSidebarNavigation()
 
@@ -50,8 +50,8 @@ export function usePortalLinkOpen(): (target: string, open?: WikiLinkOpenTarget)
             options
           )
         } catch (err) {
-          log.error('Failed to open a link from a portal', err)
-          toast.error(t('portalBlock.actionFailed'))
+          log.error('Failed to open a wiki link', err)
+          toast.error(t('wikiLink.openFailed'))
         }
       })()
     },

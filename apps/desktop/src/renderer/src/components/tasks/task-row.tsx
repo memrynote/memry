@@ -9,6 +9,7 @@ import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskTitleText } from '@/components/tasks/task-title-text'
 import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
 import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
@@ -223,7 +224,7 @@ export const TaskRow = ({
                 : 'text-foreground/90'
             )}
           >
-            {task.title}
+            <TaskTitleText title={task.title} />
           </span>
         </TaskPathTitle>
       )}

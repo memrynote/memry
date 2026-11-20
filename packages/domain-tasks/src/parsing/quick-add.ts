@@ -31,6 +31,14 @@ export interface ParsedQuickAdd {
   noteTitles: string[]
 }
 
+export interface QuickAddOptions {
+  /**
+   * Leave `[[…]]` runs in the title. A task typed in a note keeps its links as
+   * text, since the note line is what renders and indexes them (#5294).
+   */
+  keepNoteLinks?: boolean
+}
+
 /** A stretch of the input that carries syntax rather than title text. */
 export type QuickAddSpanKind = 'priority' | 'project' | 'tag' | 'noteLink' | 'datePhrase' | 'repeat'
 
@@ -302,7 +310,8 @@ const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
 export const parseQuickAdd = (
   input: string,
   projects: readonly QuickAddProject[],
-  now: Date
+  now: Date,
+  options: QuickAddOptions = {}
 ): ParsedQuickAdd => {
   const spans: QuickAddSpan[] = []
   let dueDate: Date | null = null
@@ -312,8 +321,10 @@ export const parseQuickAdd = (
 
   // Note links first: they own their whole run, sigils inside included.
   const noteLinks = findNoteLinks(input)
-  for (const link of noteLinks) {
-    spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+  if (!options.keepNoteLinks) {
+    for (const link of noteLinks) {
+      spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+    }
   }
 
   // Natural-language due date: @tomorrow, @next wednesday
