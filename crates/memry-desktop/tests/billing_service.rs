@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
-use memry_desktop::account::{AccountService, device};
+use memry_desktop::account::{AccountService, KeyRepair, device};
 use memry_desktop::billing::dto::{
     BillingStatusResult, CheckoutCadence, CheckoutPlan, PlanChangePeriod, PlanChangePlan,
     PlanChangePreviewResult, PlanChangeTarget, PortalFailureReason, StartCheckoutInput,
@@ -542,7 +542,27 @@ async fn an_answer_landing_after_sign_out_is_not_kept() {
 
     f.script.answer(200, json!({}));
     f.account.sign_out(&f.session).await.unwrap();
-    f.billing.forget();
+    late.notify_one();
+    asked.await.unwrap().unwrap();
+
+    assert_eq!(f.entitlement(), Value::Null);
+    assert_eq!(f.billing.max_file_size(), None);
+}
+
+/// The repair's `integrity` sign-out (no listed device key) ends the account's term as the
+/// user's sign-out does: A's status landing after it is not kept for the next sign-in.
+#[tokio::test]
+async fn an_answer_landing_after_a_repair_sign_out_is_not_kept() {
+    let f = fixture(true);
+    let late = f.script.held_answer(200, status("plus", "active"));
+    let billing = f.billing.clone();
+    let asked = tokio::spawn(async move { billing.status().await });
+    settle().await;
+    assert_eq!(f.script.count(STATUS), 1, "the status is in flight");
+
+    f.script.answer(200, json!({ "devices": [] }));
+    let repaired = f.account.repair_device_keys(&f.session).await.unwrap();
+    assert_eq!(repaired, KeyRepair::SignInRequired);
     late.notify_one();
     asked.await.unwrap().unwrap();
 

@@ -22,6 +22,7 @@ impl Registry {
         for importer in [
             Arc::new(super::markdown::MarkdownImporter) as Arc<dyn Importer>,
             Arc::new(super::csv::CsvImporter),
+            Arc::new(super::google_keep::GoogleKeepImporter),
         ] {
             registry
                 .register(importer)
