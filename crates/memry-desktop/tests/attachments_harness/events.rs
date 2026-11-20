@@ -12,14 +12,14 @@ use std::sync::{Arc, Mutex};
 use memry_core::sync::attachments::queue::absolute;
 use memry_core::sync::attachments::store::upload_queue;
 use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
-use memry_desktop::sync::events::SyncEvent;
+use memry_desktop::sync::events::{OnSyncEvent, SyncEvent};
 
 use super::service::{create_note, recorded, start, sync_told, until, wanted};
 use super::{Device, MIB, REL, Server, content};
 
 type Told = Arc<Mutex<Vec<SyncEvent>>>;
 
-fn listener() -> (Told, Arc<dyn Fn(&SyncEvent) + Send + Sync>) {
+fn listener() -> (Told, OnSyncEvent) {
     let told: Told = Arc::default();
     let sink = Arc::clone(&told);
     (

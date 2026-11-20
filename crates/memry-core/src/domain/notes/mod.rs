@@ -207,15 +207,11 @@ pub fn delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<()>, StorageError> {
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, note_id),
-        now_ms,
-        |tx| {
-            record_deleted_note(tx, note_id, now_ms)?;
-            tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
-        },
-    )
+    let change = outbox::Change::delete(ITEM_TYPE, note_id);
+    outbox::commit(conn, &change, now_ms, |tx| {
+        record_deleted_note(tx, note_id, now_ms)?;
+        tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
+    })
 }
 
 /// [`create`] without the transaction, so template application can create the
