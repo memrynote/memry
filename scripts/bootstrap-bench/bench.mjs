@@ -334,21 +334,14 @@ async function runTauri(proxy) {
     MEMRY_ENV: 'staging',
     MEMRY_DEVICE: deviceId,
     TAURI_WEBDRIVER_PORT: values['cdp-port'],
-    SYNC_SERVER_URL: proxy.url
+    SYNC_SERVER_URL: proxy.url,
+    // An optimised core: the dev profile leaves memry-core unoptimised, which no user runs, and
+    // the e2e feature (WebDriver, the control file) refuses a release build.
+    CARGO_PROFILE_DEV_OPT_LEVEL: '3'
   }
   const child = spawn(
     'pnpm',
-    // A release core: the dev profile leaves memry-core unoptimised, which users never run.
-    [
-      'exec',
-      'tauri',
-      'dev',
-      '--release',
-      '--features',
-      'e2e',
-      '--config',
-      'src-tauri/tauri.e2e.conf.json'
-    ],
+    ['exec', 'tauri', 'dev', '--features', 'e2e', '--config', 'src-tauri/tauri.e2e.conf.json'],
     { cwd: appDir, env, detached: true, stdio: ['pipe', devLog, devLog] }
   )
   console.log(
