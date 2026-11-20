@@ -107,6 +107,7 @@ export interface CanonicalNoteRef {
   path: string
   title: string
   createdAt: string
+  modifiedAt: string
   emoji: string | null
   localOnly: boolean
 }
@@ -145,6 +146,7 @@ export function findCanonicalNoteForFile(
         path: row.path,
         title: row.title,
         createdAt: row.createdAt,
+        modifiedAt: row.modifiedAt,
         emoji: row.emoji,
         localOnly: row.localOnly
       }

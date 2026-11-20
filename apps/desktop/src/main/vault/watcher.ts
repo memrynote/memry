@@ -680,6 +680,10 @@ export class VaultWatcher {
    * event and the open-time heal use, and keeps its id. Nothing is pushed:
    * the add path would push a create and seed a second CRDT body from the
    * file. A body that differs from the indexed one is an edit of this note.
+   *
+   * The row keeps its modifiedAt: the file's mtime is sync's own write, and
+   * a pulled note stamped with it reads as edited since its sync. A doc the
+   * store never held then takes the file over the server body (#5276).
    */
   private async adoptCaseVariantRow(
     absolutePath: string,
@@ -698,7 +702,7 @@ export class VaultWatcher {
           path: relativePath,
           title: claimed.title,
           createdAt: claimed.createdAt,
-          modifiedAt: stats.mtime.toISOString(),
+          modifiedAt: claimed.modifiedAt,
           fileSize: stats.size,
           // The canonical row owns both; the index row can lag behind it.
           localOnly: claimed.localOnly,
@@ -715,7 +719,7 @@ export class VaultWatcher {
         mimeType: getMimeType(getExtension(absolutePath)),
         fileSize: stats.size,
         createdAt: new Date(claimed.createdAt),
-        modifiedAt: stats.mtime
+        modifiedAt: new Date(claimed.modifiedAt)
       })
     }
     await flushProjectionEvents()

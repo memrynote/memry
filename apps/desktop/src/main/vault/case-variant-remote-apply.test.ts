@@ -64,8 +64,14 @@ vi.mock('../tasks/reconcile-markdown-tasks', () => ({
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('../database/client', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getDatabase: vi.fn()
+}))
 
 import { getDatabase, getIndexDatabase } from '../database'
+import { getDatabase as getClientDatabase } from '../database/client'
+import { oweUnsyncedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { getStatus } from './index'
 import { enqueueLocalSyncCreate } from '../sync/local-mutations'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
@@ -113,6 +119,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     data = createTestDataDb()
     index = createTestIndexDb()
     vi.mocked(getDatabase).mockReturnValue(asClientDb(data.db))
+    vi.mocked(getClientDatabase).mockReturnValue(asClientDb(data.db))
     vi.mocked(getIndexDatabase).mockReturnValue(index.db)
     vi.mocked(getStatus).mockReturnValue({
       isOpen: true,
@@ -158,7 +165,8 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       emoji: options.emoji ?? null,
       localOnly: options.localOnly ?? false,
       createdAt: '2026-01-10T00:00:00.000Z',
-      modifiedAt: '2026-01-12T00:00:00.000Z'
+      modifiedAt: '2026-01-12T00:00:00.000Z',
+      syncedAt: '2026-01-12T00:00:00.000Z'
     }
     // Through the repository, as sync and the indexer write rows.
     upsertNoteMetadata(asClientDb(data.db), fields)
@@ -275,6 +283,36 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     )
     expect(noteCreates()).toEqual([])
     expect(metadataRows()).toEqual(expected)
+  }, 20_000)
+
+  // The file's mtime is sync's own write. Stamped onto the row, a note that was
+  // only pulled reads as edited since its sync, and the first pull into a doc
+  // the store never held takes the file over the server body (#5276).
+  it('the watcher leaves an applied note synced, so the pull merges its server body', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    seed('remote-file', 'SuperNotes/p.png', 'png-bytes')
+    await settleOn(() =>
+      expect(metadataRows()).toEqual([
+        { id: 'remote-file', path: 'Supernotes/p.png' },
+        { id: 'remote-note', path: 'Supernotes/a.md' }
+      ])
+    )
+
+    const modified = data.db
+      .select({ id: noteMetadata.id, modifiedAt: noteMetadata.modifiedAt })
+      .from(noteMetadata)
+      .all()
+      .filter((row) => !row.id.startsWith('Sentinel'))
+    expect(modified).toEqual(
+      expect.arrayContaining([
+        { id: 'remote-note', modifiedAt: '2026-01-12T00:00:00.000Z' },
+        { id: 'remote-file', modifiedAt: '2026-01-12T00:00:00.000Z' }
+      ])
+    )
+    oweUnsyncedFileBody('remote-note')
+    expect(owesFileBody('remote-note')).toBe(false)
   }, 20_000)
 
   it('the watcher keeps the emoji of an applied attachment', async () => {
