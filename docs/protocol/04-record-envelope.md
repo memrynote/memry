@@ -365,13 +365,13 @@ is the safer construction.
 (`packages/contracts/src/crypto.ts:192`). **No writer sets it**: neither
 `apps/desktop/src/main/sync/encrypt.ts:74-79` nor
 `packages/sync-client/src/push/record-encrypt.ts:77-82` nor the server's
-reconstruction (`apps/sync-server/src/services/sync.ts:149-152`) ever does.
+reconstruction (`apps/sync-server/src/services/sync.ts:159-162`) ever does.
 
 **Normative — a writer MUST NOT set `metadata.fieldClocks`.** Because the
 allowlist governs only the top level (§4.7.3), setting it would not be rejected;
 it would silently change the signed bytes for that item, and the server, which
 reconstructs `metadata` from `clock` and `stateVector` only
-(`apps/sync-server/src/services/sync.ts:149-152`), would then compute different
+(`apps/sync-server/src/services/sync.ts:159-162`), would then compute different
 bytes and answer `403 SYNC_INVALID_SIGNATURE`. **A reader therefore never sees
 it.** Field clocks travel in the payload (chapter 13), not in the envelope.
 
@@ -470,16 +470,16 @@ described, not the one it would guess.
    makes `operation` required
    (`packages/contracts/src/sync-api.ts:364`) and the server uses
    `item.operation` directly
-   (`apps/sync-server/src/services/sync.ts:143`). A reader MUST apply the
+   (`apps/sync-server/src/services/sync.ts:153`). A reader MUST apply the
    `'update'` default so that an item written by a path that omitted it still
    verifies.
 2. **The server signs with a hardcoded `CRYPTO_VERSION`, not the version the
-   item declared** (`apps/sync-server/src/services/sync.ts:144`). See §4.10.
+   item declared** (`apps/sync-server/src/services/sync.ts:154`). See §4.10.
 
 ## 4.10 Server-side validation, in order — and Q04.5
 
 **Normative.** Before any signature check
-(`apps/sync-server/src/services/sync.ts:91-126`):
+(`apps/sync-server/src/services/sync.ts:91-136`):
 
 | Check                          | Rule                                       | Failure                                                      |
 | ------------------------------ | ------------------------------------------ | ------------------------------------------------------------ |
@@ -489,7 +489,7 @@ described, not the one it would guess.
 | `signature` decoded length     | exactly 64                                 | `400 CRYPTO_INVALID_PAYLOAD` (`:119-126`)                    |
 
 Then, per item
-(`apps/sync-server/src/services/sync.ts:129-168`):
+(`apps/sync-server/src/services/sync.ts:139-178`):
 
 | Condition                                                                       | Answer                                |
 | ------------------------------------------------------------------------------- | ------------------------------------- |
@@ -500,7 +500,7 @@ Then, per item
 
 **Q04.5 — the server rewrites `cryptoVersion` to `1`.** It reconstructs the
 signature payload with `cryptoVersion: CRYPTO_VERSION`
-(`apps/sync-server/src/services/sync.ts:144`) rather than with the value the
+(`apps/sync-server/src/services/sync.ts:154`) rather than with the value the
 item declared. **Normative: this is correct and intended today**, because
 `cryptoVersion` is not a wire field on `PushItem` at all
 (`packages/contracts/src/sync-api.ts:225-238`) — there is nothing for the client

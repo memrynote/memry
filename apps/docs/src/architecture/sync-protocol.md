@@ -2237,7 +2237,7 @@ client (`apps/ios/Memry/App/ShellState.swift:173-179`), so the phone picks up an
 changes on its next sync pass. A mobile client that opens the socket MUST close it when the app
 backgrounds (chapter 09 §9.1). Otherwise a close the OS delivers while suspending the process arms
 the reconnect backoff and spends the handshake budget, which is 15 per 60 seconds keyed by user and
-shared across all their devices (`apps/sync-server/src/routes/sync.ts:305-309`).
+shared across all their devices (`apps/sync-server/src/routes/sync.ts:306-310`).
 
 ### Certificate pinning on the socket
 

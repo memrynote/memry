@@ -249,8 +249,10 @@ current, and writes one new pack under a new key. It drops:
 - an update entry whose row was pruned or purged.
 
 A deleted document's body rows stay in packs until the purge removes them and drops those packs.
-An input pack it cannot download or verify is logged by id, left out, and the run planned again
-without it.
+An input pack it cannot download or verify is logged by id, left out, and the rollup planned again
+over every listed pack of the kind without it, downloading at most 64 packs in all. A run never
+spans an unreadable pack, so a kind split by unreadable packs into more runs than its bound stays
+above it until they read again.
 
 One D1 batch then records the old objects in `pack_replaced_objects`, deletes the old
 `pack_index` rows and inserts the new one. The batch applies only while every old row is still
@@ -260,13 +262,14 @@ the union of its inputs'; body packs carry no coverage yet.
 
 **Grace period.** An old object stays readable for 600 seconds after its row leaves the listing,
 twice the presigned URL lifetime, so a client that listed it before the rollup still downloads it.
-`deleteReplacedPackObjects` deletes it after that, at the end of every compaction message for that
-vault and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
+`deleteReplacedPackObjects` deletes it after that, at the start and the end of every compaction
+message for that vault, so a failing build cannot block it, and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
 lose it, and the orphan sweep leaves every key in that table alone. A body purge skips the grace:
-it makes the replaced objects of each kind it drops due in the batch that drops the listing and
-deletes them at once, because they may hold the purged body. A failed delete stays due, and the
-compaction message the purge enqueues 660 seconds later retries it, inside the 900-second
-deadline.
+it makes the replaced objects of each kind it drops due in the batch that drops the listing, records
+the listed packs it drops as due in the same batch, and deletes them all at once, because they may
+hold the purged body. A failed delete stays due, and only then does the purge enqueue a compaction
+message 660 seconds later to retry it, inside the 900-second deadline. The 6-hourly cleanup purges
+at most five vaults per tick, about 41 subrequests.
 
 **Where it runs.** Every compaction message rolls up each kind once before building, which is what
 makes room in a vault at the 999-pack cap, and once more after a build that listed a pack, so the

@@ -228,9 +228,9 @@ and a client that breaks any of them reintroduces divergence.**
 
 - **P1 — one row per item; any push with one component ahead is accepted.**
   `ON CONFLICT … DO UPDATE SET … clock = excluded.clock`
-  (`apps/sync-server/src/services/sync.ts:668-686`), `version = existing.version
+  (`apps/sync-server/src/services/sync.ts:678-696`), `version = existing.version
   - 1` (`:575`), and `detectReplay`
-    (`apps/sync-server/src/services/sync.ts:179-190`), which rejects only when **no**
+    (`apps/sync-server/src/services/sync.ts:189-200`), which rejects only when **no**
     incoming component exceeds the stored one. A concurrent push overwrites the
     row, so the earlier concurrent payload stops existing.
 - **P2 — a queued push is rebuilt from the live row at dequeue.**
@@ -256,7 +256,7 @@ and a client that breaks any of them reintroduces divergence.**
   `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
   This is what settles the two devices whose P3 re-pushes collide: the first is
   accepted, the second is refused as a replay
-  (`apps/sync-server/src/services/sync.ts:179-190`) and marked done anyway
+  (`apps/sync-server/src/services/sync.ts:189-200`) and marked done anyway
   (`apps/desktop/src/main/sync/engine/push-coordinator.ts:299-305`), and the
   refused device then pulls the accepted row under the same clock and takes it.
   **The one exception is an identical payload** (#2294): an equal clock MAY be
@@ -744,7 +744,7 @@ pruning rule.** There is no pruning in
 `packages/sync-client/src/vector-clock.ts`, none in
 `packages/sync-client/src/field-merge.ts`, and none on the server: the push path
 stores `clock = excluded.clock` verbatim
-(`apps/sync-server/src/services/sync.ts:668-686`).
+(`apps/sync-server/src/services/sync.ts:678-696`).
 
 The growth is bounded by the device cap, not by time: at most 50 active devices
 per account (chapter 02 §2.3.3), so at most 50 keys per document clock and 50 per
@@ -842,7 +842,7 @@ Desktop enqueues a local update after the apply's transaction
 `apps/desktop/src/main/sync/item-handlers/tag-definition-handler.ts:152`). The
 enqueue ticks this device into the document clock, which is what lets the
 re-push pass the server's replay check
-(`apps/sync-server/src/services/sync.ts:229-240`): the apply stored the remote's
+(`apps/sync-server/src/services/sync.ts:239-250`): the apply stored the remote's
 clock, and a push at that clock is refused. A task's heal names no changed
 field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`).
 

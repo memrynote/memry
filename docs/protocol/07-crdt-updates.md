@@ -26,7 +26,7 @@ the document id from the date when a record exists.**
 
 **The CRDT wire carries no item type at all.** The server does not distinguish
 notes from journals: `NoteIdSchema` is `/^[a-zA-Z0-9_-]+$/` capped at 128
-characters (`apps/sync-server/src/routes/sync.ts:571-574`), which `j2026-08-13`
+characters (`apps/sync-server/src/routes/sync.ts:750-753`), which `j2026-08-13`
 satisfies, and every CRDT route treats `note_id` as an opaque string.
 
 Supporting evidence: journals are `note_metadata` rows on the note clock path
@@ -83,21 +83,21 @@ change. Both are pinned by
 
 ## 7.2 Routes
 
-**Normative** (`apps/sync-server/src/routes/sync.ts:1139-1144`), all under
+**Normative** (`apps/sync-server/src/routes/sync.ts:1441-1447`), all under
 `/sync/crdt`:
 
 | Method | Path                          | Purpose                                                    | Line    |
 | ------ | ----------------------------- | ---------------------------------------------------------- | ------- |
-| POST   | `/sync/crdt/updates`          | append updates for one document                            | `:1139` |
-| GET    | `/sync/crdt/updates`          | pull updates for one document: `note_id`, `since`, `limit` | `:1140` |
-| POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 documents                       | `:1141` |
-| GET    | `/sync/crdt/manifest`         | body metadata for up to 1,000 documents: `cursor`, `limit` | `:1434` |
-| POST   | `/sync/crdt/snapshot`         | write one snapshot                                         | `:1142` |
-| POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                                   | `:1143` |
-| GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                          | `:1144` |
+| POST   | `/sync/crdt/updates`          | append updates for one document                            | `:1441` |
+| GET    | `/sync/crdt/updates`          | pull updates for one document: `note_id`, `since`, `limit` | `:1442` |
+| POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 documents                       | `:1443` |
+| GET    | `/sync/crdt/manifest`         | body metadata for up to 1,000 documents: `cursor`, `limit` | `:1444` |
+| POST   | `/sync/crdt/snapshot`         | write one snapshot                                         | `:1445` |
+| POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                                   | `:1446` |
+| GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                          | `:1447` |
 
 Every route sits behind the paid gate and the sync-types middleware
-(`apps/sync-server/src/routes/sync.ts:142-143`).
+(`apps/sync-server/src/routes/sync.ts:260-261`).
 
 ## 7.3 Limits
 
@@ -105,30 +105,30 @@ Every route sits behind the paid gate and the sync-types middleware
 
 | Limit                                | Value                                                         | Source                                             |
 | ------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------- |
-| `MAX_UPDATE_BYTES`                   | 5 MiB **decoded, per individual update**                      | `apps/sync-server/src/routes/sync.ts:145`          |
-| updates per push                     | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2`      | `apps/sync-server/src/routes/sync.ts:642`          |
-| documents per batch pull             | 1 to 100, **duplicate ids rejected**                          | `apps/sync-server/src/routes/sync.ts:623-636`      |
-| updates per document in a batch pull | `limit`, 1 to 100, default 100                                | `apps/sync-server/src/routes/sync.ts:637`          |
-| updates per single-document pull     | `min(limit, 500)`                                             | `apps/sync-server/src/routes/sync.ts:781`          |
-| snapshots per batch push             | 1 to 50, **duplicate ids rejected**                           | `apps/sync-server/src/routes/sync.ts:660-673`      |
+| `MAX_UPDATE_BYTES`                   | 5 MiB **decoded, per individual update**                      | `apps/sync-server/src/routes/sync.ts:263`          |
+| updates per push                     | 100, each base64 string capped at `MAX_UPDATE_BYTES * 2`      | `apps/sync-server/src/routes/sync.ts:832`          |
+| documents per batch pull             | 1 to 100, **duplicate ids rejected**                          | `apps/sync-server/src/routes/sync.ts:821-826`      |
+| updates per document in a batch pull | `limit`, 1 to 100, default 100                                | `apps/sync-server/src/routes/sync.ts:827`          |
+| updates per single-document pull     | `min(limit, 500)`                                             | `apps/sync-server/src/routes/sync.ts:990`          |
+| snapshots per batch push             | 1 to 50, **duplicate ids rejected**                           | `apps/sync-server/src/routes/sync.ts:873-878`      |
 | client batch size                    | `CRDT_BATCH_MAX_NOTES = 100`, `CRDT_UPDATES_PAGE_LIMIT = 100` | `packages/sync-client/src/pull/crdt-pull.ts:26-27` |
 | `/sync/*` request body ceiling       | 8 MiB                                                         | `apps/sync-server/src/index.ts:56-62`              |
 
 The 50-document snapshot batch size is chosen because a snapshot is up to 5 MB
 decoded, roughly 6.7 MB of base64, and a full batch is the largest request the
 Worker body limit and subrequest budget comfortably take
-(`apps/sync-server/src/routes/sync.ts:650-654`).
+(`apps/sync-server/src/routes/sync.ts:852-855`).
 
 **`snapshot` is deliberately unbounded in the batch schema**
-(`apps/sync-server/src/routes/sync.ts:656-658`): an oversized payload is a
+(`apps/sync-server/src/routes/sync.ts:857-859`): an oversized payload is a
 **per-note failure reported in `results`**, not a 400 that throws away the 49
 good notes riding with it.
 
 ### 7.3.1 Why the two update caps differ — Q07.5
 
 The single-document pull caps at `min(limit, 500)`
-(`apps/sync-server/src/routes/sync.ts:781`); the batch form caps at 100 per
-document (`apps/sync-server/src/routes/sync.ts:637`).
+(`apps/sync-server/src/routes/sync.ts:990`); the batch form caps at 100 per
+document (`apps/sync-server/src/routes/sync.ts:827`).
 
 **Normative: they are scoped differently and both are correct.** The batch form
 multiplies its per-document limit by up to 100 documents against one 8 MiB body
@@ -227,7 +227,7 @@ promise of that many entries.
 `{ noteId, snapshot, coversThrough?, baseRevision? }`, the snapshot being the
 base64 packed envelope and the other two the optional claim of §7.7.1 (#2299).
 Response `{ sequenceNum, revision }`
-(`apps/sync-server/src/routes/sync.ts:951`), the `revision` being the token the
+(`apps/sync-server/src/routes/sync.ts:1209`), the `revision` being the token the
 upsert just wrote (§7.13.4).
 
 **`POST /sync/crdt/snapshot/batch`** — request
@@ -244,7 +244,7 @@ or `{ noteId, accepted: false, reason }`
 envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
 `MAX_UPDATE_BYTES` in its base64 form because base64 inflates by four thirds
 and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
-(`apps/sync-server/src/routes/sync.ts:748`).
+(`apps/sync-server/src/routes/sync.ts:957`).
 
 **The update store is idempotent per document** (#2296). The server stores the
 SHA-256 of each update's bytes and ignores a second insert of the same bytes for
@@ -591,14 +591,14 @@ before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3
 (`packages/sync-client/src/pull/crdt-pull.ts:70-76`).
 
 **CRDT rate limits are per device, not per account**, because body sync is
-device-local work (`apps/sync-server/src/routes/sync.ts:582-620`):
+device-local work (`apps/sync-server/src/routes/sync.ts:761-811`):
 
 | Bucket            | Limit                     |
 | ----------------- | ------------------------- |
-| `crdt_push`       | 300 per 60 s (`:583-585`) |
-| `crdt_pull`       | 600 per 60 s (`:605-607`) |
-| `crdt_batch_pull` | 30 per 60 s (`:616-618`)  |
-| `crdt_manifest`   | 30 per 60 s (`:795-801`)  |
+| `crdt_push`       | 300 per 60 s (`:762-764`) |
+| `crdt_pull`       | 600 per 60 s (`:784-786`) |
+| `crdt_batch_pull` | 30 per 60 s (`:795-797`)  |
+| `crdt_manifest`   | 30 per 60 s (`:806-808`)  |
 
 A bootstrap session raises `crdt_pull` and `crdt_batch_pull` five times and
 `crdt_manifest` three times (`BOOTSTRAP_ELEVATION_MULTIPLIERS`,
@@ -697,9 +697,9 @@ using it for anything else changes the baseline rule of §7.8.
 
 **Normative.** On a snapshot push the server does **store, then prune, then
 broadcast** — never broadcast between store and prune
-(`apps/sync-server/src/routes/sync.ts:872-881`, `:896`, `:919-929`).
+(`apps/sync-server/src/routes/sync.ts:1119-1129`, `:1150`, `:1176-1194`).
 
-The reason is on record (`apps/sync-server/src/routes/sync.ts:914-918`): a peer
+The reason is on record (`apps/sync-server/src/routes/sync.ts:1168-1172`): a peer
 must never be told to pull while the pre-snapshot updates are still being
 removed. Delivery is best-effort, because the write already succeeded and a
 failed broadcast must not become an error the client retries.
@@ -707,7 +707,7 @@ failed broadcast must not become an error the client retries.
 **A snapshot push MUST broadcast.** A snapshot can be the only carrier of edits
 no peer has seen (the fallback for an update too large for the incremental
 route, §7.10.1), and a silently stored snapshot stays invisible on every other
-device until its next pull (`apps/sync-server/src/routes/sync.ts:905-913`).
+device until its next pull (`apps/sync-server/src/routes/sync.ts:1159-1167`).
 
 ## 7.13 The client snapshot obligation — Q07.2
 
@@ -777,7 +777,7 @@ table only through
 stored snapshot row is server-originated.**
 
 A client that pushes a snapshot learns the revision it wrote from the push
-response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:951`
+response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:1209`
 for the single note, the accepted batch outcome at
 `apps/sync-server/src/services/crdt-snapshot-write.ts:43`), and it is the same token the
 upsert bound, per push rather than per batch
@@ -828,7 +828,7 @@ and recorded).**
 **Normative (server, #2986).** When the server accepts a `delete` of a `note` or
 `journal` record, it purges that document's body after the commit
 (`purgeDeletedDocumentBodies`,
-`apps/sync-server/src/services/document-body-purge.ts:51-145`, called from push
+`apps/sync-server/src/services/document-body-purge.ts:84-188`, called from push
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
@@ -836,7 +836,9 @@ document it records the highest sequence number in `crdt_sequence_floors`
 drops every `crdt_update` pack of the vault and resets that kind's pack
 watermark (chapter 08 §8.4.3). Then, when it deleted a snapshot, it drops every
 `crdt_snapshot` pack of the vault and resets that kind's pack watermark, and
-it deletes the snapshot and pack objects.
+it deletes the snapshot objects. Every pack it drops is recorded in
+`pack_replaced_objects` as due in the batch that drops it, and deleted by the
+replaced-object pass (chapter 08 §8.12).
 Every statement re-checks that a `note` or `journal` record for the id is
 deleted and none is live, so a re-create that commits first keeps its body. A
 purge failure never fails the push. The 6-hourly cleanup
@@ -862,9 +864,9 @@ those bodies item by item.
 A compaction run that selected the old snapshot before the purge commits its
 `pack_index` row and watermark in one batch, and only while every packed
 snapshot row still exists with the packed `blob_key`
-(`apps/sync-server/src/services/pack-compaction.ts:549`). Otherwise it deletes
+(`apps/sync-server/src/services/pack-compaction.ts:569-574`). Otherwise it deletes
 the pack object and leaves the watermark, so the next run reselects
-(`apps/sync-server/src/services/pack-compaction.ts:595`). A run that commits
+(`apps/sync-server/src/services/pack-compaction.ts:615`). A run that commits
 first is dropped by the purge's later pack drop.
 
 Before #2986 the server kept the rows. Clients MUST NOT rely on either
