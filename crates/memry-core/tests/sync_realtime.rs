@@ -656,6 +656,15 @@ async fn a_first_sync_that_outlives_the_session_drops_the_header_mid_run() {
     // At the lead the renewal goes out, and it fails terminally.
     assert!(!client.renew_if_due(lead).await);
     assert_eq!(transport.call_count(), 2);
+    // The server reads the session to renew from the header alone.
+    let renewal = transport.calls_to("/sync/bootstrap/renew");
+    assert_eq!(
+        renewal[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("tok-1")
+    );
 
     // The header is gone and the run continues at steady-state pacing. No
     // second session is opened (rule 3), and nothing is reported as a
@@ -686,6 +695,91 @@ async fn an_expired_token_is_dropped_without_a_round_trip() {
     assert_eq!(client.header(2_000), None);
     assert_eq!(transport.call_count(), 1);
     assert_eq!(client.state(), SessionState::SteadyState);
+}
+
+#[tokio::test]
+async fn close_sends_the_session_token_so_the_server_frees_the_slot() {
+    // #5281: the Worker deletes the session named by `X-Memry-Bootstrap-Token`
+    // and answers 401 without it, leaving the slot held until expiry.
+    let (transport, client) = bootstrap(vec![
+        response(
+            200,
+            &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                .to_string(),
+        ),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    client.open(1_000).await;
+
+    client.close().await;
+
+    let close = transport.calls_to("/sync/bootstrap/close");
+    assert_eq!(close.len(), 1);
+    assert_eq!(
+        close[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("tok-1")
+    );
+    assert_eq!(client.state(), SessionState::SteadyState);
+    assert_eq!(client.header(1_000), None);
+
+    // §10.2: idempotent, and a closed client has no token left to send.
+    client.close().await;
+    assert_eq!(transport.call_count(), 2);
+}
+
+#[tokio::test]
+async fn a_failed_close_is_not_an_error_and_still_ends_the_window() {
+    let (transport, client) = bootstrap(vec![
+        response(
+            200,
+            &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                .to_string(),
+        ),
+        error_response(401, "BOOTSTRAP_SESSION_INVALID", "no token"),
+    ]);
+    client.open(1_000).await;
+
+    client.close().await;
+
+    assert_eq!(transport.calls_to("/sync/bootstrap/close").len(), 1);
+    assert_eq!(client.state(), SessionState::SteadyState);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_renewal_that_lands_after_close_does_not_reopen_the_window() {
+    let transport = FakeTransport::slow(
+        vec![
+            response(
+                200,
+                &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                    .to_string(),
+            ),
+            response(
+                200,
+                &json!({"session": {"token": "tok-2", "expiresAt": 8_200}}).to_string(),
+            ),
+            response(200, &json!({"success": true}).to_string()),
+        ],
+        50,
+    );
+    let client = BootstrapClient::new(Arc::new(HttpClient::new(
+        Arc::clone(&transport) as Arc<dyn Transport>,
+        "https://sync.example",
+        identity(),
+    )));
+    client.open(1_000).await;
+
+    // The renewal is in flight when the close runs, and answers after it.
+    let lead = 4_600 - BOOTSTRAP_RENEW_LEAD_SECONDS;
+    let (renewed, ()) = tokio::join!(client.renew_if_due(lead), client.close());
+
+    assert!(!renewed);
+    assert_eq!(transport.calls_to("/sync/bootstrap/close").len(), 1);
+    assert_eq!(client.state(), SessionState::SteadyState);
+    assert_eq!(client.header(lead), None);
 }
 
 #[tokio::test]

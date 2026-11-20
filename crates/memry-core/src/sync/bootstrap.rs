@@ -230,8 +230,6 @@ impl BootstrapClient {
             return true;
         }
 
-        // The token names the session to extend; without it the server
-        // answers 401 and the window closes at the lead (§10.2).
         let request = self
             .request("POST", "/sync/bootstrap/renew")
             .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
@@ -241,10 +239,19 @@ impl BootstrapClient {
         match self.http.send_json::<Json>(request).await {
             Ok(body) => match read_session(&body, now_s) {
                 Some(renewed) => {
-                    self.lock().session = Some(renewed);
+                    let mut inner = self.lock();
+                    // A close that ran while this renewal was in flight ended
+                    // the window; writing the token back would reopen it.
+                    if inner.finished {
+                        return false;
+                    }
+                    inner.session = Some(renewed);
                     true
                 }
                 None => {
+                    eprintln!(
+                        "memry-core: bootstrap renewal response carried no session, continuing at steady-state pacing"
+                    );
                     self.fall_back();
                     false
                 }
@@ -253,7 +260,10 @@ impl BootstrapClient {
             // BOOTSTRAP_SESSION_EXPIRED` — the six-hour absolute lifetime
             // spent mid-run — is the expected one and is not distinguished,
             // because the reaction is identical for all of them.
-            Err(_) => {
+            Err(error) => {
+                eprintln!(
+                    "memry-core: bootstrap renewal failed, continuing at steady-state pacing: {error}"
+                );
                 self.fall_back();
                 false
             }
@@ -292,19 +302,28 @@ impl BootstrapClient {
     /// Best effort and deliberately unexamined: §10.8 records that elevation
     /// is stateless, so a closed session's token keeps elevating from its own
     /// device until its `exp` regardless. Closing is a courtesy to the
-    /// concurrency cap, not a security boundary. The token header is what
-    /// names the ledger row to free; without it the server answers 401.
+    /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        let Some(session) = self.lock().session.take() else {
-            return;
+        let session = {
+            let mut inner = self.lock();
+            let Some(session) = inner.session.take() else {
+                return;
+            };
+            inner.finished = true;
+            session
         };
-        self.lock().finished = true;
+        // The server finds the session to delete through this header alone.
         let request = self
             .request("POST", "/sync/bootstrap/close")
             .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
+        if let Err(error) = self.http.send_json::<Json>(request).await {
+            eprintln!(
+                "memry-core: bootstrap session close failed, its slot frees at expiry {}: {error}",
+                session.expires_at
+            );
+        }
     }
 
     fn fall_back(&self) {
