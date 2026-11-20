@@ -134,6 +134,13 @@ struct Asked {
     applied: u64,
 }
 
+/// A request about to be sent: its number, and the account term it was asked under.
+#[derive(Clone, Copy)]
+struct Ticket {
+    term: u64,
+    number: u64,
+}
+
 pub struct BillingService {
     account: Arc<AccountService>,
     asked: Mutex<Asked>,
@@ -179,69 +186,70 @@ impl BillingService {
         self.account.access_token_if_signed_in().await.is_none()
     }
 
-    /// The number of a request about to be sent, for [`Self::remember`].
-    fn ask(&self) -> u64 {
+    /// The ticket of a request about to be sent, for [`Self::remember`]; `None` signed out or
+    /// while a sign-out runs. Taken before the signed-in check, so a sign-out between the two
+    /// still ends its term.
+    fn ask(&self) -> Option<Ticket> {
+        let term = self.account.term()?;
         let mut asked = lock(&self.asked);
         asked.issued += 1;
-        asked.issued
+        Some(Ticket {
+            term,
+            number: asked.issued,
+        })
     }
 
-    /// Caches the answer to request `asked` and tells the open vault's gate whether it is paid.
-    /// `None` when a newer answer was applied first, or the account signed out since: the
-    /// answer is dropped.
-    fn remember(&self, asked: u64, snapshot: &BillingSnapshot) -> Option<bool> {
+    /// Caches the answer to `asked` and tells the open vault's gate whether it is paid. `None`
+    /// when a newer answer was applied first, or any sign-out ended the account's term since
+    /// (the teardown empties `sync`, the cache with it): the answer is dropped.
+    fn remember(&self, asked: Ticket, snapshot: &BillingSnapshot) -> Option<bool> {
         let mut order = lock(&self.asked);
-        if asked <= order.applied {
+        if asked.number <= order.applied {
             tracing::debug!(
                 scope = "Billing",
                 "dropped a billing answer older than the last one"
             );
             return None;
         }
-        order.applied = asked;
-        let now = now_ms();
-        let paid = is_paid(snapshot, now.div_euclid(1000));
-        if let Err(error) = self.cache.set_from_snapshot(snapshot, now) {
-            tracing::warn!(
+        let applied = self.account.write_in_term(asked.term, || {
+            order.applied = asked.number;
+            let now = now_ms();
+            let paid = is_paid(snapshot, now.div_euclid(1000));
+            if let Err(error) = self.cache.set_from_snapshot(snapshot, now) {
+                tracing::warn!(
+                    scope = "Billing",
+                    "could not cache the plan verdict: {error}"
+                );
+            }
+            if let Some(gate) = lock(&self.gate).upgrade() {
+                gate.set_entitlement(if paid {
+                    Entitlement::Entitled
+                } else {
+                    Entitlement::Unentitled
+                });
+            }
+            paid
+        });
+        if applied.is_none() {
+            tracing::debug!(
                 scope = "Billing",
-                "could not cache the plan verdict: {error}"
+                "dropped a billing answer of an account that signed out"
             );
         }
-        if let Some(gate) = lock(&self.gate).upgrade() {
-            gate.set_entitlement(if paid {
-                Entitlement::Entitled
-            } else {
-                Entitlement::Unentitled
-            });
-        }
-        Some(paid)
+        applied
     }
 
-    /// Sign-out: every answer still in flight is the account's that left, so none is applied,
-    /// and the verdict goes. Cleared here too because an answer may have landed after the
-    /// teardown emptied `sync`.
-    pub fn forget(&self) {
-        let mut order = lock(&self.asked);
-        order.applied = order.issued;
-        if let Err(error) = self.cache.clear() {
-            tracing::warn!(
-                scope = "Billing",
-                "could not drop the plan verdict: {error}"
-            );
-        }
-    }
-
-    fn status_answer(&self, asked: u64, snapshot: BillingSnapshot) -> BillingStatusResult {
+    fn status_answer(&self, asked: Ticket, snapshot: BillingSnapshot) -> BillingStatusResult {
         self.remember(asked, &snapshot);
         BillingStatusResult::Status(snapshot.into())
     }
 
     /// `GET /auth/billing` (`getBillingStatus`).
     pub async fn status(&self) -> Result<BillingStatusResult, ApiError> {
-        if self.signed_out().await {
-            return Ok(signed_out("Sign in to view billing"));
-        }
         let asked = self.ask();
+        let (Some(asked), false) = (asked, self.signed_out().await) else {
+            return Ok(signed_out("Sign in to view billing"));
+        };
         let snapshot = self.account.session().billing_snapshot().await?;
         Ok(self.status_answer(asked, snapshot))
     }
@@ -252,10 +260,10 @@ impl BillingService {
         &self,
         transaction_id: Option<String>,
     ) -> Result<BillingStatusResult, ApiError> {
-        if self.signed_out().await {
-            return Ok(signed_out("Sign in to refresh billing"));
-        }
         let asked = self.ask();
+        let (Some(asked), false) = (asked, self.signed_out().await) else {
+            return Ok(signed_out("Sign in to refresh billing"));
+        };
         let snapshot = self
             .account
             .session()
@@ -361,10 +369,10 @@ impl BillingService {
         &self,
         target: PlanChangeTarget,
     ) -> Result<BillingStatusResult, ApiError> {
-        if self.signed_out().await {
-            return Ok(signed_out("Sign in to change your plan"));
-        }
         let asked = self.ask();
+        let (Some(asked), false) = (asked, self.signed_out().await) else {
+            return Ok(signed_out("Sign in to change your plan"));
+        };
         let snapshot = self.account.session().change_plan(target.into()).await?;
         Ok(self.status_answer(asked, snapshot))
     }
@@ -381,10 +389,10 @@ impl BillingService {
             if attempt > 0 {
                 tokio::time::sleep(RECONCILE_SPACING).await;
             }
-            if self.signed_out().await {
-                continue;
-            }
             let asked = self.ask();
+            let (Some(asked), false) = (asked, self.signed_out().await) else {
+                continue;
+            };
             match self
                 .account
                 .session()
@@ -436,7 +444,8 @@ impl BillingService {
         {
             return Entitlement::Unentitled;
         }
-        if self.signed_out().await {
+        let asked = self.ask();
+        let (Some(asked), false) = (asked, self.signed_out().await) else {
             tracing::warn!(
                 scope = "Billing",
                 "billing status unavailable; the cached plan holds for this launch"
@@ -452,8 +461,7 @@ impl BillingService {
                 );
             }
             return verdict(cached.as_ref());
-        }
-        let asked = self.ask();
+        };
         match self.account.session().billing_snapshot().await {
             Ok(snapshot) => match self.remember(asked, &snapshot) {
                 Some(true) => Entitlement::Entitled,
@@ -479,8 +487,13 @@ impl BillingService {
     /// [`Self::remember`] tells it in order with every later answer until the next gate
     /// replaces it.
     pub fn attach_gate(self: &Arc<Self>, gate: &Arc<SyncStartGate>) {
-        *lock(&self.gate) = Arc::downgrade(gate);
-        gate.set_entitlement(verdict(self.cache.get().as_ref()));
+        {
+            // Under the ordering lock, as in `remember`: an answer applied between the cache read
+            // and the gate write would otherwise be overwritten by the older verdict.
+            let _order = lock(&self.asked);
+            *lock(&self.gate) = Arc::downgrade(gate);
+            gate.set_entitlement(verdict(self.cache.get().as_ref()));
+        }
         let service = Arc::clone(self);
         self.runtime.spawn(async move {
             service.resolve_for_sync_start().await;
