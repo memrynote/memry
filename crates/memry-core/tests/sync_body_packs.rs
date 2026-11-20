@@ -255,7 +255,7 @@ async fn a_kill_in_a_download_or_on_the_manifest_resumes_without_downloading_a_h
 }
 
 #[tokio::test]
-async fn an_apply_that_fails_part_way_resumes_with_every_update_once() {
+async fn an_apply_that_fails_part_way_runs_again_with_every_update_once() {
     let (db, dir) = body_pack_server::scratch("abort");
     let (docs, packs) = three_shapes();
     seed_records(&db, &SHAPES.map(|(id, _)| id), &[]);
@@ -275,7 +275,10 @@ async fn an_apply_that_fails_part_way_resumes_with_every_update_once() {
         .run_bodies(NOW_MS / 1_000, &|_, _| {})
         .await;
     assert!(failed.is_err(), "a storage failure fails the phase");
-    assert!(dir.join("pack-spill").exists(), "the packs stay held");
+    assert!(
+        !dir.join("pack-spill").exists(),
+        "the spill goes on every exit"
+    );
 
     db.call_blocking(|conn| {
         conn.execute_batch("DROP TRIGGER refuse").expect("drop");
@@ -284,7 +287,11 @@ async fn an_apply_that_fails_part_way_resumes_with_every_update_once() {
     .expect("drop the trigger");
     let report = run_bodies(&db, &routes, &dir).await;
 
-    assert_eq!(routes.count("/packs/"), 2, "no pack downloaded twice");
+    assert_eq!(
+        routes.count("/packs/"),
+        4,
+        "each pack again after the error"
+    );
     holds_the_three_shapes(&db, &routes);
     assert_eq!((report.settled, report.owed), (3, 0));
 }
@@ -329,6 +336,9 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
     assert_eq!(update_seqs(&db, "gapdoc000001"), [1, 2]);
     assert!(is_owed(&db, "gapdoc000001"));
+    // As a kill between the settle and the spill's removal leaves it.
+    std::fs::create_dir_all(dir.join("pack-spill")).unwrap();
+    std::fs::write(dir.join("pack-spill").join("left.mpak"), b"held").unwrap();
 
     routes.server.lock().unwrap().hang = None;
     first_sync(&db, &routes, &dir)
@@ -343,6 +353,10 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
         routes.count("/packs/u1"),
         1,
         "the held pack is not fetched again"
+    );
+    assert!(
+        !dir.join("pack-spill").exists(),
+        "a resume past the phase removes its spill"
     );
 }
 
@@ -396,4 +410,157 @@ async fn the_request_count_follows_the_packs_and_not_the_documents() {
             holds_exactly(&db, server.doc(&format!("d{at:011}")), 2);
         }
     }
+}
+
+/// A pack that cannot be used (§8.12) is absent. `lostdoc` loses what it
+/// needed from the pack `lose` takes away and is owed when the body pack
+/// phase ends; `keptdoc` is served by another pack and settled. The route
+/// pull, killed then resumed, ends `lostdoc` at the server's updates exactly.
+async fn a_lost_pack_leaves_its_documents_owed(label: &str, lose: impl FnOnce(&mut Server)) {
+    let (db, dir) = body_pack_server::scratch(label);
+    let lost = ServerDoc::new("lostdoc00001", 4).snapshot_at(2);
+    let kept = ServerDoc::new("keptdoc00001", 3)
+        .snapshot_at(3)
+        .purged_through(3);
+    let packs = vec![
+        BodyPack::new("s1", snapshot_items(&[&lost])),
+        BodyPack::new("s2", snapshot_items(&[&kept])),
+        BodyPack::new("u1", update_items(&[&lost])),
+    ];
+    let mut server = Server::new(vec![lost, kept], packs);
+    server.records = true;
+    server.hang = Some("note_id=lostdoc00001".to_owned());
+    lose(&mut server);
+    let routes = Routes::new(server);
+    killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
+    assert!(is_owed(&db, "lostdoc00001"), "{label}");
+    assert!(!is_owed(&db, "keptdoc00001"), "{label}");
+
+    routes.server.lock().unwrap().hang = None;
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the resumed first sync");
+
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("lostdoc00001"), 4);
+    holds_exactly(&db, server.doc("keptdoc00001"), 3);
+    assert!(!is_owed(&db, "lostdoc00001"), "{label}");
+}
+
+#[tokio::test]
+async fn a_corrupt_snapshot_pack_leaves_its_documents_owed() {
+    a_lost_pack_leaves_its_documents_owed("corrupt", |server| {
+        server.corrupt.insert("s1".to_owned());
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn an_update_pack_gone_between_listing_and_download_leaves_its_documents_owed() {
+    a_lost_pack_leaves_its_documents_owed("gone", |server| {
+        server.gone.insert("u1".to_owned());
+    })
+    .await;
+}
+
+/// The record phase lists, then the body phase's listing answers 404: no
+/// body pack is used, and the window pull brings every document to the
+/// server's updates exactly.
+#[tokio::test]
+async fn a_listing_404_in_the_body_phase_leaves_the_bodies_to_the_routes() {
+    let (db, dir) = body_pack_server::scratch("listing-404");
+    let (docs, packs) = three_shapes();
+    let mut server = Server::new(docs, packs);
+    server.records = true;
+    server.listing_missing_from = Some(1);
+    let routes = Routes::new(server);
+
+    let report = first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert!(!report.body_packs.ran, "{:?}", report.body_packs);
+    assert!(!report.body_packs.fallback_reasons.is_empty());
+    assert_eq!(routes.count("/packs/s1") + routes.count("/packs/u1"), 0);
+    holds_the_three_shapes(&db, &routes);
+    assert!(SHAPES.iter().all(|(id, _)| !is_owed(&db, id)));
+}
+
+/// A packed snapshot at the server's revision but another `sequenceNum`
+/// would set the cursor wrong, so it is not confirmed.
+#[tokio::test]
+async fn a_snapshot_at_the_revision_but_another_sequence_number_is_not_applied() {
+    let (db, dir) = body_pack_server::scratch("snapshot-seq");
+    let doc = ServerDoc::new("seqdoc000001", 3).snapshot_at(2);
+    let mut item = snapshot_item_as(&doc, &doc.snapshot.as_ref().unwrap().revision);
+    item.4.as_mut().unwrap()["sequenceNum"] = 1.into();
+    seed_records(&db, &["seqdoc000001"], &[]);
+    let routes = Routes::new(Server::new(
+        vec![doc],
+        vec![BodyPack::new("s1", vec![item])],
+    ));
+
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    assert!(report.ran && report.manifest);
+    assert_eq!(report.snapshots_applied, 0);
+    assert!(!has_snapshot(&db, "seqdoc000001"));
+    assert!(is_owed(&db, "seqdoc000001"));
+}
+
+/// REVIEW-5273: a pack is a cache (§8.0). A spill that cannot be written
+/// (ENOSPC; here a file squatting the spill path) falls back to the routes
+/// instead of failing the first sync.
+#[tokio::test]
+async fn an_unwritable_spill_falls_back_instead_of_failing_the_first_sync() {
+    let (db, dir) = body_pack_server::scratch("unwritable-spill");
+    std::fs::write(dir.join("pack-spill"), b"not a directory").unwrap();
+    let a = ServerDoc::new("probedoc0001", 4).snapshot_at(2);
+    let b = ServerDoc::new("probedoc0002", 3);
+    let packs = vec![
+        BodyPack::new("s1", snapshot_items(&[&a])),
+        BodyPack::new("u1", update_items(&[&a, &b])),
+    ];
+    let mut server = Server::new(vec![a, b], packs);
+    server.records = true;
+    let routes = Routes::new(server);
+
+    let report = first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert!(!report.body_packs.ran);
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("probedoc0001"), 4);
+    holds_exactly(&db, server.doc("probedoc0002"), 3);
+}
+
+/// REVIEW-5273: a run killed after spilling, resumed when the listing has no
+/// body pack (a purge dropped them, §8.4.3), writes marker 0 and never runs
+/// the phase again, so the spill must not outlive it.
+#[tokio::test]
+async fn a_resume_that_finds_no_body_pack_removes_the_old_spill() {
+    let (db, dir) = body_pack_server::scratch("leftover-spill");
+    let (docs, packs) = three_shapes();
+    seed_records(&db, &SHAPES.map(|(id, _)| id), &[]);
+    let mut server = Server::new(docs, packs);
+    server.hang = Some("/sync/crdt/manifest".to_owned());
+    let routes = Routes::new(server);
+    killed_while(&routes, run_bodies(&db, &routes, &dir), || {
+        spilled(&dir, "s1") && spilled(&dir, "u1")
+    })
+    .await;
+
+    {
+        let mut server = routes.server.lock().unwrap();
+        server.hang = None;
+        server.packs.clear();
+    }
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    assert!(!report.ran);
+    assert!(!dir.join("pack-spill").exists(), "the old spill is removed");
 }

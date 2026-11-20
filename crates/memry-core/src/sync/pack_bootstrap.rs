@@ -26,6 +26,7 @@ mod bodies;
 pub mod body_plan;
 mod listing;
 mod records;
+mod spill;
 
 pub use bodies::{BODY_CHUNK_BYTES, BODY_CHUNK_ENTRIES, BodyPackReport};
 pub(crate) use listing::query_encode;

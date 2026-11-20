@@ -23,6 +23,7 @@ use memry_core::crdt::{DocumentRegistry, extract_text};
 use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpack};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::pack::PACK_HEADER_SIZE;
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
@@ -331,6 +332,13 @@ pub struct Server {
     /// A URL substring whose request never answers: the process is killed
     /// while it waits.
     pub hang: Option<String>,
+    /// Packs served with one payload byte flipped.
+    pub corrupt: HashSet<String>,
+    /// Packs listed but answering 404 on download.
+    pub gone: HashSet<String>,
+    /// `GET /sync/packs` answers 404 from this call on (0 is the first).
+    pub listing_missing_from: Option<usize>,
+    listings: usize,
 }
 
 impl Server {
@@ -343,6 +351,10 @@ impl Server {
             manifest_page: 1000,
             manifest_misses: HashSet::new(),
             hang: None,
+            corrupt: HashSet::new(),
+            gone: HashSet::new(),
+            listing_missing_from: None,
+            listings: 0,
         }
     }
 
@@ -458,7 +470,7 @@ impl Server {
         json!({"updates": updates, "hasMore": above.len() > limit, "floor": doc.floor})
     }
 
-    fn answer(&self, request: &HttpRequest) -> Option<Result<HttpResponse, TransportError>> {
+    fn answer(&mut self, request: &HttpRequest) -> Option<Result<HttpResponse, TransportError>> {
         let url = request.url.as_str();
         if self.hang.as_ref().is_some_and(|hang| url.contains(hang)) {
             return None;
@@ -467,10 +479,24 @@ impl Server {
             if id == "r0" {
                 return Some(bytes_response(self.record_pack()));
             }
+            if self.gone.contains(id) {
+                return Some(response(404, ""));
+            }
             let pack = self.packs.iter().find(|pack| pack.id == id)?;
-            return Some(bytes_response(pack_bytes(&pack.items)));
+            let mut bytes = pack_bytes(&pack.items);
+            if self.corrupt.contains(id) {
+                bytes[PACK_HEADER_SIZE] ^= 0xff;
+            }
+            return Some(bytes_response(bytes));
         }
         if url.contains("/sync/packs") {
+            self.listings += 1;
+            if self
+                .listing_missing_from
+                .is_some_and(|from| self.listings > from)
+            {
+                return Some(response(404, "{}"));
+            }
             let offset = query(url, "cursor").map_or(0, |offset| offset.parse().unwrap());
             return Some(response(200, &self.listing(offset).to_string()));
         }

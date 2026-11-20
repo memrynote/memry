@@ -26,22 +26,21 @@
 //! [`BODY_CHUNK_ENTRIES`] entries or [`BODY_CHUNK_BYTES`] of payload.
 
 use std::collections::{HashMap, HashSet};
-use std::io::{Read as _, Seek as _, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use serde_json::Value as Json;
-use sha2::{Digest as _, Sha256};
 use tokio::task::JoinSet;
 
 use crate::api::errors::StorageError;
-use crate::protocol::pack::{PACK_HEADER_SIZE, PackEntry, PackKind, parse_pack};
+use crate::protocol::pack::{PackEntry, PackKind, parse_pack};
 
 use super::super::body_pull::{BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
 use super::listing::{PackSummary, list};
 use super::records::{RECORD_DOWNLOAD_WIDTH, download};
+use super::spill::{self, Loc};
 use super::{PackBootstrap, now};
 
 /// Entries per apply transaction.
@@ -71,15 +70,6 @@ pub struct BodyPackReport {
     pub owed: usize,
     pub requests: usize,
     pub fallback_reasons: Vec<String>,
-}
-
-/// Where an entry's payload sits in a spilled pack.
-#[derive(Debug, Clone, Copy)]
-struct Loc {
-    pack: usize,
-    offset: u64,
-    length: u64,
-    sha256: [u8; 32],
 }
 
 struct HeldSnapshot {
@@ -175,9 +165,14 @@ fn read_meta(kind: PackKind, meta: Option<&Json>) -> Option<(i64, Meta)> {
 }
 
 impl PackBootstrap {
-    /// Holds, checks, applies and settles. A listing failure, no body pack, or
-    /// no spill directory answers `ran: false`: the item-granular bodies pass
-    /// then decides every document, as before packs.
+    /// Holds, checks, applies and settles. A listing failure, no body pack, a
+    /// spill that cannot be written, or no spill directory answers
+    /// `ran: false`: the item-granular bodies pass then decides every
+    /// document, as before packs. Only a SQLite failure is an error.
+    ///
+    /// The spill is removed on every return, an error included: the phase
+    /// runs again only after a kill, and then it finds the spill of the
+    /// killed run and downloads no held pack again.
     pub async fn run_bodies(
         &self,
         now_s: i64,
@@ -187,12 +182,32 @@ impl PackBootstrap {
         let Some(dir) = &self.spill_dir else {
             return Ok(report);
         };
+        let result = self
+            .bodies_through(dir, now_s, &mut report, on_progress)
+            .await;
+        report.fallback_reasons.extend(spill::remove(dir).await);
+        result.map(|()| report)
+    }
+
+    /// Removes a spill a killed run left, for a resume that does not run the
+    /// phase again. Answers why it could not.
+    pub async fn remove_spill(&self) -> Option<String> {
+        spill::remove(self.spill_dir.as_deref()?).await
+    }
+
+    async fn bodies_through(
+        &self,
+        dir: &Path,
+        now_s: i64,
+        report: &mut BodyPackReport,
+        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
+    ) -> Result<(), BodyPullError> {
         let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
             Err(reason) => {
                 report.requests += 1;
                 report.fallback_reasons.push(reason);
-                return Ok(report);
+                return Ok(());
             }
         };
         report.requests += listing.pages;
@@ -202,11 +217,13 @@ impl PackBootstrap {
             .filter(|pack| matches!(pack.kind, PackKind::CrdtSnapshot | PackKind::CrdtUpdate))
             .collect();
         if packs.is_empty() {
-            return Ok(report);
+            return Ok(());
         }
-        let held = self.hold(dir, packs, &mut report, on_progress).await?;
+        let Some(held) = self.hold(dir, packs, report, on_progress).await? else {
+            return Ok(());
+        };
         if held.files.is_empty() {
-            return Ok(report);
+            return Ok(());
         }
 
         let checks = match self.bodies.read_body_manifest(&mut report.requests).await? {
@@ -224,8 +241,8 @@ impl PackBootstrap {
                     .await?
             }
         };
-        self.apply_snapshots(&held, &checks, &mut report).await?;
-        self.apply_updates(&held, &checks, &mut report).await?;
+        self.apply_snapshots(&held, &checks, report).await?;
+        self.apply_updates(&held, &checks, report).await?;
 
         let manifest = report.manifest.then_some(checks);
         let (settled, owed) = self
@@ -235,33 +252,33 @@ impl PackBootstrap {
         report.settled = settled;
         report.owed = owed;
         report.ran = true;
-        if let Err(error) = std::fs::remove_dir_all(dir) {
-            report
-                .fallback_reasons
-                .push(format!("the pack spill was not removed: {error}"));
-        }
-        Ok(report)
+        Ok(())
     }
 
     /// Downloads and spills every pack not already held, and indexes them
-    /// all. A pack that fails to download or verify is absent (§8.12).
+    /// all. A pack that fails to download or verify is absent (§8.12). `None`
+    /// when the spill cannot be written: no pack is used.
     async fn hold(
         &self,
         dir: &Path,
         packs: Vec<PackSummary>,
         report: &mut BodyPackReport,
         on_progress: &(dyn Fn(u64, u64) + Send + Sync),
-    ) -> Result<Held, BodyPullError> {
-        std::fs::create_dir_all(dir).map_err(io_failed)?;
+    ) -> Result<Option<Held>, BodyPullError> {
+        if let Err(error) = spill::create(dir).await? {
+            report
+                .fallback_reasons
+                .push(format!("the pack spill cannot be created: {error}"));
+            return Ok(None);
+        }
         let total = packs.len() as u64;
         let mut held = Held::default();
         let mut queue = Vec::new();
         for pack in packs {
-            let path = dir.join(spill_name(&pack.id));
-            match std::fs::read(&path).ok().map(|bytes| parse_pack(&bytes)) {
-                Some(Ok(parsed)) => held.index(path, parsed.entries, report),
-                // A torn or foreign file is downloaded again.
-                _ => queue.push((pack, path)),
+            let path = dir.join(spill::name(&pack.id));
+            match spill::read_held(&path).await? {
+                Some(entries) => held.index(path, entries, report),
+                None => queue.push((pack, path)),
             }
         }
         on_progress(held.files.len() as u64, total);
@@ -315,7 +332,12 @@ impl PackBootstrap {
             });
             match parsed {
                 Ok((bytes, entries)) => {
-                    spill(&path, &bytes).map_err(io_failed)?;
+                    if let Err(error) = spill::write(&path, bytes).await? {
+                        report
+                            .fallback_reasons
+                            .push(format!("pack {} cannot be spilled: {error}", pack.id));
+                        return Ok(None);
+                    }
                     held.index(path, entries, report);
                 }
                 Err(reason) => report
@@ -325,7 +347,7 @@ impl PackBootstrap {
             on_progress(held.files.len() as u64, total);
         }
         report.packs_held = held.files.len();
-        Ok(held)
+        Ok(Some(held))
     }
 
     async fn apply_snapshots(
@@ -337,9 +359,14 @@ impl PackBootstrap {
         let mut todo: Vec<(&str, &HeldSnapshot)> = Vec::new();
         for (doc_id, entries) in &held.snapshots {
             let confirmed = match checks.get(doc_id).map(|check| &check.snapshot) {
-                Some(ServerSnapshot::Some { revision, .. }) => {
-                    entries.iter().find(|entry| entry.revision == *revision)
-                }
+                // The cursor is set from the entry's number, so it must be
+                // the checked one too.
+                Some(ServerSnapshot::Some {
+                    sequence_num,
+                    revision,
+                }) => entries.iter().find(|entry| {
+                    entry.revision == *revision && entry.sequence_num == *sequence_num
+                }),
                 _ => None,
             };
             report.entries_unconfirmed += entries.len() - usize::from(confirmed.is_some());
@@ -349,7 +376,9 @@ impl PackBootstrap {
         }
         todo.sort_by_key(|(_, entry)| (entry.loc.pack, entry.loc.offset));
         for chunk in chunks(&todo, |(_, entry)| entry.loc.length) {
-            let payloads = read_payloads(held, chunk.iter().map(|(_, e)| e.loc).collect()).await?;
+            let payloads =
+                spill::read_payloads(&held.files, chunk.iter().map(|(_, e)| e.loc).collect())
+                    .await?;
             let mut seeds = Vec::with_capacity(chunk.len());
             for ((doc_id, entry), payload) in chunk.iter().zip(&payloads) {
                 match payload {
@@ -419,7 +448,9 @@ impl PackBootstrap {
                 .iter()
                 .filter(|(doc_id, _)| !stopped.contains(*doc_id))
                 .collect();
-            let payloads = read_payloads(held, chunk.iter().map(|(_, e)| e.loc).collect()).await?;
+            let payloads =
+                spill::read_payloads(&held.files, chunk.iter().map(|(_, e)| e.loc).collect())
+                    .await?;
             let mut seeds = Vec::with_capacity(chunk.len());
             for ((doc_id, entry), payload) in chunk.iter().zip(&payloads) {
                 if stopped.contains(*doc_id) {
@@ -490,58 +521,6 @@ fn chunks<T>(items: &[T], length: impl Fn(&T) -> u64) -> Vec<&[T]> {
     out
 }
 
-/// Reads each payload off its spilled pack on the blocking pool, in the
-/// order given, and checks it against its index digest. `None` for a payload
-/// that cannot be read or no longer matches.
-async fn read_payloads(held: &Held, locs: Vec<Loc>) -> Result<Vec<Option<Vec<u8>>>, StorageError> {
-    let files: Vec<PathBuf> = held.files.clone();
-    tokio::task::spawn_blocking(move || {
-        let mut open: Option<(usize, std::fs::File)> = None;
-        locs.into_iter()
-            .map(|loc| {
-                if open.as_ref().is_none_or(|(pack, _)| *pack != loc.pack) {
-                    open = std::fs::File::open(&files[loc.pack])
-                        .ok()
-                        .map(|file| (loc.pack, file));
-                }
-                let (_, file) = open.as_mut()?;
-                let mut payload = vec![0; usize::try_from(loc.length).ok()?];
-                file.seek(SeekFrom::Start(PACK_HEADER_SIZE as u64 + loc.offset))
-                    .ok()?;
-                file.read_exact(&mut payload).ok()?;
-                (Sha256::digest(&payload).as_slice() == loc.sha256).then_some(payload)
-            })
-            .collect()
-    })
-    .await
-    .map_err(|error| StorageError::Failed {
-        what: format!("the pack payload reads did not finish: {error}"),
-    })
-}
-
-/// A file name from the pack id, which is server input and never a path.
-fn spill_name(pack_id: &str) -> String {
-    let digest = Sha256::digest(pack_id.as_bytes());
-    let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
-    format!("{hex}.mpak")
-}
-
-/// Written beside its final name and renamed into place, so a file under the
-/// final name is always a whole pack.
-fn spill(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let partial = path.with_extension("part");
-    std::fs::write(&partial, bytes)?;
-    std::fs::rename(&partial, path)
-}
-
-fn io_failed(error: std::io::Error) -> BodyPullError {
-    BodyPullError::Storage {
-        source: StorageError::Failed {
-            what: format!("the pack spill: {error}"),
-        },
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -573,12 +552,5 @@ mod tests {
         assert!(read_meta(PackKind::CrdtUpdate, Some(&zero)).is_none());
         assert!(read_meta(PackKind::CrdtUpdate, None).is_none());
         assert!(read_meta(PackKind::Record, Some(&update)).is_none());
-    }
-
-    #[test]
-    fn a_spill_name_is_a_safe_file_name() {
-        let name = spill_name("../../etc/passwd");
-        assert!(name.ends_with(".mpak") && !name.contains('/'));
-        assert_eq!(name.len(), 64 + 5);
     }
 }

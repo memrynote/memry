@@ -65,6 +65,14 @@ impl FirstSync {
             .call(|conn| read_meta(conn, META_FIRST_SYNC_BODY_PACKS))
             .await?
         {
+            // A run killed in the phase left its spill; the phase does not
+            // run again to remove it.
+            if let Some(packs) = &self.packs {
+                report
+                    .body_packs
+                    .fallback_reasons
+                    .extend(packs.remove_spill().await);
+            }
             return Ok(text == "1");
         }
         let Some(packs) = &self.packs else {
