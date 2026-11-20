@@ -12,6 +12,7 @@
 //! `agent-message-handler.ts:187-210`.
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
+use memry_core::domain::agent_queue::Queue;
 
 use memry_core::api::errors::StorageError;
 use memry_core::crypto::agent_envelope::AtRestKey;
@@ -66,7 +67,7 @@ fn append(conn: &Connection, key: &AtRestKey, id: &str, who: &str) -> Result<(),
         tool_call_id: None,
         status: "completed",
     };
-    agent_message::append(conn, key, &new, who, NOW + 10)
+    agent_message::append(conn, key, &new, Queue::Outbox, who, NOW + 10)
         .map(drop)
         .map_err(failed)
 }

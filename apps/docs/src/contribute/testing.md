@@ -37,6 +37,13 @@ the generated vault stays current on the day a developer runs it. The seed set s
 real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
 other instead of standing alone.
 
+The Tauri app seeds from a frozen export of these scripts. `pnpm seed`, `pnpm seed:rich`,
+`pnpm seed:1` and `pnpm seed:2` run `cargo xtask seed demo|rich|small [--variant 1|2] [--vault <dir>]`,
+which replays `crates/xtask/seed-data/<profile>/` through the sandbox replay
+(`memry_desktop::sandbox::replay`), with its dates moved to the run day. The replay writes only a
+missing or empty folder, or a vault an earlier seed wrote. After you change `seed-data/`, run
+`pnpm --filter @memry/desktop seed:export-templates` and commit `crates/xtask/seed-data/`.
+
 No literal dates. `seedJournalDate` in `scripts/seed-data/date.ts` shifts a narrative date by the
 offset between `JOURNAL_ANCHOR` and the run day, so entries and date properties dated before the
 anchor land in the past and the ones after it land in the future. It covers journal filenames, the

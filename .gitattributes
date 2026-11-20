@@ -44,3 +44,7 @@ crates/memry-desktop/tests/fixtures/sandbox/** -text -whitespace linguist-genera
 # Electron's canvas files as the Rust core must write them, compared byte for byte with
 # include_str!: a Windows checkout would convert them to CRLF.
 crates/memry-core/src/domain/canvas/file_format/* text eol=lf
+
+# The seed templates (Step 40), exported by apps/desktop/scripts/export-seed-templates.ts and
+# replayed byte for byte by `cargo xtask seed`. Re-exported, never hand-edited.
+crates/xtask/seed-data/** -text -whitespace linguist-generated

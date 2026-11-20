@@ -2,6 +2,7 @@
 //! reads, and Electron's apply rules (`agent-message-handler.ts`) through the
 //! real pull apply step.
 
+use crate::domain::agent_queue::Queue;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use zeroize::Zeroizing;
@@ -101,6 +102,7 @@ fn a_terminal_message_is_stored_sealed_and_reads_back_in_order() {
             conn,
             &key,
             &new("m2", &text("second"), &json!([]), "completed"),
+            Queue::Outbox,
             DEVICE,
             NOW + 1,
         )
@@ -109,6 +111,7 @@ fn a_terminal_message_is_stored_sealed_and_reads_back_in_order() {
             conn,
             &key,
             &new("m1", &text("first"), &attachments, "error"),
+            Queue::Outbox,
             DEVICE,
             NOW,
         )
@@ -155,6 +158,7 @@ fn a_streaming_message_or_a_missing_key_is_refused() {
             conn,
             &key(),
             &new("m1", &content, &json!([]), "streaming"),
+            Queue::Outbox,
             DEVICE,
             NOW,
         );
@@ -166,6 +170,7 @@ fn a_streaming_message_or_a_missing_key_is_refused() {
             conn,
             &AtRestKey::default(),
             &new("m1", &content, &json!([]), "completed"),
+            Queue::Outbox,
             DEVICE,
             NOW,
         );
@@ -306,6 +311,7 @@ fn a_concurrent_remote_delete_applies() {
             conn,
             &key,
             &new("m1", &content, &json!([]), "completed"),
+            Queue::Outbox,
             DEVICE,
             NOW,
         )

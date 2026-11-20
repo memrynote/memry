@@ -4,6 +4,7 @@
 //! the way to the push.
 
 use crate::desktop_relay::{Device, NOW, Relay, TYPES, failed, id_of, wire};
+use memry_core::domain::agent_queue::Queue;
 
 use memry_core::api::runtime;
 use memry_core::domain::agent_conversation::{self, ConversationPatch};
@@ -69,9 +70,17 @@ fn edit(device: &Device, item_type: &'static str) {
                         pinned: Some(true),
                         ..ConversationPatch::default()
                     };
-                    agent_conversation::update_fields(conn, &key, &id, &patch, who, at)
-                        .map(drop)
-                        .map_err(failed)?;
+                    agent_conversation::update_fields(
+                        conn,
+                        &key,
+                        &id,
+                        &patch,
+                        Queue::Outbox,
+                        who,
+                        at,
+                    )
+                    .map(drop)
+                    .map_err(failed)?;
                 }
                 "agent_message" => {
                     assert!(agent_message::delete(conn, &id, who, at)?);

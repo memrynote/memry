@@ -201,6 +201,7 @@ impl SyncWiring {
             Arc::clone(&self.reachability),
             Vec::new(),
             Arc::new(move || account.sync_facts()),
+            self.account.at_rest_keys(),
         );
         let backend = match &self.tier {
             Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
