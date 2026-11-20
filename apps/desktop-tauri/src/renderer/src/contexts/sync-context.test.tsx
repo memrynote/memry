@@ -22,6 +22,7 @@ let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
 let vaultRecoveryNeededListeners: EventCallback[] = []
 let vaultStatusListeners: EventCallback[] = []
+let statusListening: (() => void) | undefined
 let i18n: I18nInstance
 
 const toastMock = vi.hoisted(() => ({
@@ -74,15 +75,6 @@ const mockAccount = vi.hoisted(() => ({
   resolveVaultBinding: vi.fn()
 }))
 
-vi.mock('@/services/sync-service', () => ({
-  onSyncedRecords: (_types: unknown, cb: SyncedRecordsCallback) => {
-    syncedRecordsListeners.push(cb)
-    return () => {
-      syncedRecordsListeners = syncedRecordsListeners.filter((l) => l !== cb)
-    }
-  }
-}))
-
 vi.mock('@/services/sync-account-service', () => {
   const subscribe =
     (name: string) =>
@@ -107,17 +99,57 @@ vi.mock('@/services/sync-account-service', () => {
 const listenersOf = (name: string): EventCallback[] =>
   (accountEvents.get(name) ?? []) as unknown as EventCallback[]
 
-const mockSyncOps = {
-  getStatus: vi.fn().mockResolvedValue({
-    status: 'idle',
-    lastSyncAt: null,
-    pendingCount: 0,
-    error: undefined
-  }),
-  triggerSync: vi.fn().mockResolvedValue({ success: true }),
-  pause: vi.fn().mockResolvedValue({ success: true, wasPaused: false }),
-  resume: vi.fn().mockResolvedValue({ success: true, pendingCount: 0 })
-}
+const mockSyncOps = vi.hoisted(() => ({
+  getStatus: vi.fn(),
+  triggerSync: vi.fn(),
+  pause: vi.fn(),
+  resume: vi.fn()
+}))
+
+// Each subscribe reads its listener list when the provider calls it, after the lists exist.
+vi.mock('@/services/sync-service', () => {
+  const subscribe =
+    <T,>(list: () => T[], set: (next: T[]) => void) =>
+    (cb: T): (() => void) => {
+      set([...list(), cb])
+      return () => set(list().filter((l) => l !== cb))
+    }
+  return {
+    syncService: mockSyncOps,
+    onSyncStatusChanged: (cb: EventCallback, onListening?: () => void): (() => void) => {
+      statusListening = onListening
+      return subscribe(
+        () => syncStatusListeners,
+        (next) => (syncStatusListeners = next)
+      )(cb)
+    },
+    onSyncedRecords: (_types: unknown, cb: SyncedRecordsCallback): (() => void) =>
+      subscribe(
+        () => syncedRecordsListeners,
+        (next) => (syncedRecordsListeners = next)
+      )(cb),
+    onInitialSyncProgress: subscribe(
+      () => initialSyncProgressListeners,
+      (next) => (initialSyncProgressListeners = next)
+    ),
+    onQueueCleared: subscribe(
+      () => queueClearedListeners,
+      (next) => (queueClearedListeners = next)
+    ),
+    onClockSkewWarning: subscribe(
+      () => clockSkewWarningListeners,
+      (next) => (clockSkewWarningListeners = next)
+    ),
+    onSecurityWarning: subscribe(
+      () => securityWarningListeners,
+      (next) => (securityWarningListeners = next)
+    ),
+    onCertificatePinFailed: subscribe(
+      () => certificatePinFailedListeners,
+      (next) => (certificatePinFailedListeners = next)
+    )
+  }
+})
 
 beforeEach(async () => {
   i18n = await createRendererI18n({ locale: 'en' })
@@ -137,6 +169,7 @@ beforeEach(async () => {
   accountEvents.clear()
 
   syncStatusListeners = []
+  statusListening = undefined
   uploadProgressListeners = []
   downloadProgressListeners = []
   attachmentUploadFailedListeners = []
@@ -155,13 +188,6 @@ beforeEach(async () => {
   } as never)
 
   const api = (window as unknown as { api: Record<string, unknown> }).api
-  api.syncOps = mockSyncOps
-  api.onSyncStatusChanged = vi.fn((cb: EventCallback) => {
-    syncStatusListeners.push(cb)
-    return () => {
-      syncStatusListeners = syncStatusListeners.filter((l) => l !== cb)
-    }
-  })
   api.onUploadProgress = vi.fn((cb: EventCallback) => {
     uploadProgressListeners.push(cb)
     return () => {
@@ -178,36 +204,6 @@ beforeEach(async () => {
     attachmentUploadFailedListeners.push(cb)
     return () => {
       attachmentUploadFailedListeners = attachmentUploadFailedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onQueueCleared = vi.fn((cb: VoidCallback) => {
-    queueClearedListeners.push(cb)
-    return () => {
-      queueClearedListeners = queueClearedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onClockSkewWarning = vi.fn((cb: VoidCallback) => {
-    clockSkewWarningListeners.push(cb)
-    return () => {
-      clockSkewWarningListeners = clockSkewWarningListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onInitialSyncProgress = vi.fn((cb: EventCallback) => {
-    initialSyncProgressListeners.push(cb)
-    return () => {
-      initialSyncProgressListeners = initialSyncProgressListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onSecurityWarning = vi.fn((cb: EventCallback) => {
-    securityWarningListeners.push(cb)
-    return () => {
-      securityWarningListeners = securityWarningListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onCertificatePinFailed = vi.fn((cb: VoidCallback) => {
-    certificatePinFailedListeners.push(cb)
-    return () => {
-      certificatePinFailedListeners = certificatePinFailedListeners.filter((l) => l !== cb)
     }
   })
   api.onVaultRecoveryNeeded = vi.fn((cb: EventCallback) => {
@@ -248,6 +244,21 @@ describe('SyncProvider', () => {
     it('#then fetches initial sync status', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+    })
+
+    // #4270: a Tauri listener goes live only when main answers `listen`; a status sent between
+    // the first read and then reaches nobody, so the provider reads again once it listens.
+    it('#then reads the status again once the status listener is live', async () => {
+      mockSyncOps.getStatus
+        .mockResolvedValueOnce({ status: 'syncing', pendingCount: 2 })
+        .mockResolvedValue({ status: 'idle', pendingCount: 0 })
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('syncing'))
+
+      act(() => statusListening?.())
+
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+      expect(result.current.state.pendingCount).toBe(0)
     })
   })
 
@@ -825,18 +836,22 @@ describe('SyncProvider', () => {
       )
     })
 
-    it('#then uses errors namespace messages for certificate pin pause toasts', async () => {
+    // The shared transport reports every failed handshake; sonner replaces a toast with the same id.
+    it('#then shows one certificate pin toast for repeated pin failures', async () => {
       renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(certificatePinFailedListeners.length).toBeGreaterThan(0))
 
       act(() => {
-        for (const cb of certificatePinFailedListeners) cb()
+        for (let i = 0; i < 3; i += 1) for (const cb of certificatePinFailedListeners) cb()
       })
 
-      expect(toastMock.error).toHaveBeenCalledWith(
-        'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
-        { duration: 15000 }
-      )
+      expect(toastMock.error).toHaveBeenCalledTimes(3)
+      for (const call of toastMock.error.mock.calls) {
+        expect(call).toEqual([
+          'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
+          { id: 'sync-certificate-pin-failed', duration: 15000 }
+        ])
+      }
     })
   })
 
