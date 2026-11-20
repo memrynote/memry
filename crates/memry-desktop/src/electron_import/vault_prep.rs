@@ -20,7 +20,7 @@ use serde::Serialize;
 
 use super::journal_replay::{BulkApplyJournal, EntrySkip, Replay, replay};
 use super::vault_evidence::electron_vault_uuid;
-use super::ystore_import::{YStoreFold, fold_vault_store};
+use super::ystore_import::{ImportClaim, YStoreFold, fold_vault_store};
 use super::{
     ElectronConfig, ElectronProfile, ImportError, Scratch, YStoreReader, read_vault_evidence,
 };
@@ -342,7 +342,8 @@ pub struct PreparedVault {
 }
 
 /// Digests the vault, replays the journal into it, then folds its Yjs store. `path` is the
-/// planned vault's config path, `id` its [`Disposition::Import`] id.
+/// planned vault's config path, `id` its [`Disposition::Import`] id, `import_claim` the legacy
+/// store's reader an earlier import recorded.
 pub fn prepare_vault(
     profile: &ElectronProfile,
     config: Option<&ElectronConfig>,
@@ -350,11 +351,12 @@ pub fn prepare_vault(
     id: &VaultId,
     journal: Option<&BulkApplyJournal>,
     scratch: &Scratch,
+    import_claim: ImportClaim,
 ) -> Result<PreparedVault, ImportError> {
     let dir = PathBuf::from(path);
     let tree_before = VaultTree::read(&dir)?;
     let replay = journal.map(|j| replay(j, &dir)).unwrap_or_default();
-    let fold = fold_vault_store(profile, path, &id.vault_id, config, scratch)?;
+    let fold = fold_vault_store(profile, path, &id.vault_id, config, scratch, import_claim)?;
     Ok(PreparedVault {
         dir,
         id: id.clone(),

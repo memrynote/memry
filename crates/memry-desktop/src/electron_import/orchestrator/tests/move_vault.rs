@@ -1,7 +1,10 @@
 //! `move_vault`, "Move this vault now" on a folder the open refuses as `NotMoved` (Kaan, 20 Nov,
 //! #5140): it imports the folder through the deferred import, after which the folder opens.
 
+use yrs::{ReadTxn as _, Transact as _, XmlFragment as _};
+
 use super::*;
+use crate::electron_import::tests::synthetic;
 
 const STRAY_UUID: &str = "4a5b6c7d-0000-4000-8000-0000000000cc";
 
@@ -126,4 +129,164 @@ fn a_move_cut_off_anywhere_finishes_on_the_next_try() {
         assert_eq!(stray_entry(&w), Some(VaultStatus::Imported), "{point}");
         assert!(w.core_data("Stray").is_file(), "{point}");
     }
+}
+
+/// One real note in Electron's legacy global `crdt-store/`, which no vault has claimed.
+fn legacy_store(w: &World) {
+    store_with_note(&w.profile.join("crdt-store"));
+}
+
+/// A y-leveldb store at `dir` holding one real note.
+fn store_with_note(dir: &Path) {
+    let doc = yrs::Doc::new();
+    let text = doc.get_or_insert_xml_fragment("prosemirror");
+    {
+        let mut txn = doc.transact_mut();
+        text.push_back(&mut txn, yrs::XmlTextPrelim::new("legacy note body"));
+    }
+    let update = doc
+        .transact()
+        .encode_state_as_update_v1(&yrs::StateVector::default());
+    let mut db = rusty_leveldb::DB::open(dir, rusty_leveldb::Options::default()).unwrap();
+    db.put(&synthetic::update_key("legacynote01", 0), &update)
+        .unwrap();
+    db.flush().unwrap();
+}
+
+fn fold(w: &World, name: &str) -> (Value, Value) {
+    let report: Value = serde_json::from_str(&w.report()).unwrap();
+    let path = w
+        .vault(name)
+        .replace(&*w.root.path().to_string_lossy(), "<root>");
+    let section = report["vaults"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["path"] == path.as_str())
+        .unwrap();
+    let fold = &section["prep"]["fold"];
+    (fold["docs"].clone(), fold["legacy"].clone())
+}
+
+/// VERIFY-5140A finding 1: Work, the one vault of the profile, read the unclaimed legacy store at
+/// first launch. Moving a folder the config does not name must not fold that note a second
+/// time. Red without the recorded reader and without the listed-vault rule (both `read`).
+#[test]
+fn a_moved_folder_never_reads_the_legacy_store_another_vault_read() {
+    let w = World::new(&[("Work", None)]);
+    w.electron_vault("Work", Some("4a5b6c7d-0000-4000-8000-000000000001"));
+    legacy_store(&w);
+    w.run().unwrap();
+    assert_eq!(fold(&w, "Work"), (json!(1), json!("read")));
+    assert_eq!(
+        w.marker().unwrap().legacy_store_read_by,
+        Some(w.vault("Work"))
+    );
+    w.electron_vault("Stray", Some(STRAY_UUID));
+
+    move_vault(&w.ctx(None), Path::new(&w.vault("Stray"))).unwrap();
+
+    assert_eq!(fold(&w, "Stray"), (json!(0), json!("claimedByOther")));
+    assert_eq!(fold(&w, "Work"), (json!(1), json!("read")));
+}
+
+/// A folder the config does not name never takes the unclaimed store, even when no vault read
+/// it: Electron gave it to none of its vaults at that path.
+#[test]
+fn a_moved_folder_leaves_an_unclaimed_legacy_store_unread() {
+    let w = World::new(&[("Work", None)]);
+    w.electron_vault("Work", Some("4a5b6c7d-0000-4000-8000-000000000001"));
+    w.run().unwrap();
+    legacy_store(&w);
+    w.electron_vault("Stray", Some(STRAY_UUID));
+
+    move_vault(&w.ctx(None), Path::new(&w.vault("Stray"))).unwrap();
+
+    assert_eq!(fold(&w, "Stray"), (json!(0), json!("leftUnread")));
+    assert_eq!(w.marker().unwrap().legacy_store_read_by, None);
+}
+
+/// A deferred vault the config names takes the unclaimed store once: its reader is recorded
+/// before the import, so an import cut off after it reads the store again for the same vault.
+#[test]
+fn a_deferred_vault_records_its_legacy_read_before_importing() {
+    let w = World::new(&[
+        ("Work", None),
+        ("Away", Some("4a5b6c7d-0000-4000-8000-0000000000bb")),
+    ]);
+    w.electron_vault("Work", Some("4a5b6c7d-0000-4000-8000-000000000001"));
+    store_with_note(
+        &w.profile
+            .join("crdt-stores")
+            .join("4a5b6c7d-0000-4000-8000-000000000001"),
+    );
+    legacy_store(&w);
+    w.run().unwrap();
+    assert_eq!(fold(&w, "Work").1, json!("leftUnread"));
+    let away = PathBuf::from(w.vault("Away"));
+    w.electron_vault("Away", None);
+    vault_db::crash::arm("install:data-renamed");
+
+    let crashed = catch_unwind(AssertUnwindSafe(|| migrate_vault(&w.ctx(None), &away)));
+
+    assert!(crashed.is_err());
+    assert_eq!(
+        w.marker().unwrap().legacy_store_read_by,
+        Some(w.vault("Away"))
+    );
+    migrate_vault(&w.ctx(None), &away).unwrap();
+    assert_eq!(fold(&w, "Away"), (json!(1), json!("read")));
+}
+
+/// VERIFY-5140A finding 2: Away, missing at first launch, came back at `Away2` and was moved
+/// there; the drive then remounts at Away's first path. Its core is intact and it opens. Red
+/// without `moved_here`: refused for good as `SharedStore`.
+#[test]
+fn a_vault_moved_at_another_path_opens_back_at_its_first_path() {
+    let uuid = "4a5b6c7d-0000-4000-8000-0000000000bb";
+    let w = World::new(&[("Work", None), ("Away", Some(uuid))]);
+    w.electron_vault("Work", Some("4a5b6c7d-0000-4000-8000-000000000001"));
+    w.run().unwrap();
+    w.electron_vault("Away2", Some(uuid));
+    move_vault(&w.ctx(None), Path::new(&w.vault("Away2"))).unwrap();
+    fs::rename(w.vault("Away2"), w.vault("Away")).unwrap();
+    let away = PathBuf::from(w.vault("Away"));
+    let core = fs::read(w.core_data("Away")).unwrap();
+
+    migrate_vault(&w.ctx(None), &away).unwrap();
+    move_vault(&w.ctx(None), &away).unwrap();
+
+    let marker = w.marker().unwrap();
+    let entry = marker
+        .vaults
+        .iter()
+        .find(|v| v.path == w.vault("Away"))
+        .unwrap();
+    assert_eq!(entry.status, VaultStatus::SameFolder);
+    assert_eq!(entry.shared_with, [w.vault("Away2")]);
+    assert_eq!(
+        fs::read(w.core_data("Away")).unwrap(),
+        core,
+        "the core is untouched"
+    );
+}
+
+/// The shared-store guard still holds for a second folder: a copy of the moved vault, its core
+/// included, next to the original.
+#[test]
+fn a_copy_of_a_moved_vault_beside_it_stays_refused() {
+    let uuid = "4a5b6c7d-0000-4000-8000-0000000000bb";
+    let w = World::new(&[("Work", None), ("Away", Some(uuid))]);
+    w.electron_vault("Work", Some("4a5b6c7d-0000-4000-8000-000000000001"));
+    w.run().unwrap();
+    w.electron_vault("Away2", Some(uuid));
+    move_vault(&w.ctx(None), Path::new(&w.vault("Away2"))).unwrap();
+    w.electron_vault("Away", Some(uuid));
+    let core = w.core_data("Away");
+    fs::create_dir_all(core.parent().unwrap()).unwrap();
+    fs::copy(w.core_data("Away2"), &core).unwrap();
+
+    let error = migrate_vault(&w.ctx(None), Path::new(&w.vault("Away"))).unwrap_err();
+
+    assert!(matches!(error, RunError::SharedStore { .. }), "{error}");
 }

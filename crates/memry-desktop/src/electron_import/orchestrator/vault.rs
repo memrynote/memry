@@ -24,6 +24,7 @@ use crate::electron_import::vault_db::{
 use crate::electron_import::vault_prep::{
     DeferReason, Disposition, PlannedVault, PreparedVault, VaultId, VaultPlan, prepare_vault,
 };
+use crate::electron_import::ystore_import::ImportClaim;
 use crate::electron_import::{
     ElectronConfig, ElectronProfile, ImportError, ProfileLock, Scratch, YStoreReader,
 };
@@ -38,6 +39,8 @@ pub(super) struct VaultPhase<'a> {
     /// file into the first vault it opens).
     pub pending_notes: &'a [String],
     pub scratch: &'a Scratch,
+    /// The marker's `legacyStoreReadBy`: `None` at first launch, whose plan picks the reader.
+    pub legacy_read_by: Option<&'a str>,
     pub lock: &'a ProfileLock,
     pub now_ms: i64,
 }
@@ -138,6 +141,11 @@ pub(super) fn stage(
         id,
         phase.journal,
         phase.scratch,
+        match phase.legacy_read_by {
+            None => ImportClaim::Unrecorded,
+            Some(reader) if reader == path => ImportClaim::This,
+            Some(_) => ImportClaim::Other,
+        },
     )
     .map_err(fail)?;
     let mut section = VaultSection::new(path, VaultStatus::Prepared);

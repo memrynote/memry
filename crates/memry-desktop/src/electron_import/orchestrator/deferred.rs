@@ -1,9 +1,12 @@
 //! [`migrate_vault`]: the import of a vault the first-launch run deferred, when the session
 //! first opens it.
 
+use std::fs;
 use std::path::Path;
 use std::sync::PoisonError;
 use std::time::Instant;
+
+use memry_core::storage::import::{DATA_FILE, read_marker};
 
 use super::marker::{Marker, MarkerVault};
 use super::vault::{self, VaultPhase, settled_section, store_name};
@@ -14,6 +17,7 @@ use super::{
 use crate::electron_import::report::{VaultSection, VaultStatus};
 use crate::electron_import::vault_db::CORE_DIR;
 use crate::electron_import::vault_prep::{DeferReason, Disposition, folder_id, plan_folder};
+use crate::electron_import::ystore_import::takes_unclaimed_legacy;
 use crate::electron_import::{ElectronConfig, ImportError, Scratch};
 
 /// Imports a vault the first-launch run deferred, before the session opens it. Reads only the
@@ -44,7 +48,10 @@ pub fn migrate_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunErr
         }
         Lookup::Pending(entry) => entry,
     };
-    if entry.reason.as_deref() == Some(vault::defer_reason(DeferReason::SharedStore)) {
+    // An imported core is judged again: the vault may be back from the path it was moved at.
+    if entry.reason.as_deref() == Some(vault::defer_reason(DeferReason::SharedStore))
+        && !imported_core(&entry.path)?
+    {
         return Err(shared_store(&entry.path, &entry.shared_with));
     }
     let started = Instant::now();
@@ -136,6 +143,41 @@ fn lookup(marker: &Marker, vault: &Path) -> Lookup {
     }
 }
 
+/// Whether `path` holds a core an import installed (it carries the import marker).
+fn imported_core(path: &str) -> Result<bool, RunError> {
+    let data = Path::new(path)
+        .join(".memry")
+        .join(CORE_DIR)
+        .join(DATA_FILE);
+    if !fs::symlink_metadata(&data).is_ok_and(|m| m.is_file()) {
+        return Ok(false);
+    }
+    Ok(read_marker(&data).map_err(ImportError::from)?.is_some())
+}
+
+/// The imported entry among `others` (the entries of `path`'s store) that is `path` itself
+/// under another path: a vault moved at a remount and now back at its first path, its core
+/// intact. Its other path is gone or names the same folder. A second folder that shares the
+/// store is no such entry, and stays refused.
+fn moved_here(marker: &Marker, path: &str, others: &[String]) -> Result<Option<String>, RunError> {
+    if !imported_core(path)? {
+        return Ok(None);
+    }
+    let here = folder_id(Path::new(path));
+    Ok(marker
+        .vaults
+        .iter()
+        .filter(|v| others.contains(&v.path))
+        .filter(|v| {
+            matches!(
+                v.status,
+                VaultStatus::Imported | VaultStatus::AlreadyImported | VaultStatus::Kept
+            )
+        })
+        .find(|v| folder_id(Path::new(&v.path)).is_none_or(|there| Some(there) == here))
+        .map(|v| v.path.clone()))
+}
+
 fn shared_store(path: &str, others: &[String]) -> RunError {
     RunError::SharedStore {
         paths: std::iter::once(path.to_owned())
@@ -168,6 +210,7 @@ fn deferred_import(
         journal: None,
         pending_notes: &[],
         scratch: &scratch,
+        legacy_read_by: None,
         lock: &lock,
         now_ms: (ctx.now_ms)(),
     };
@@ -180,6 +223,11 @@ fn deferred_import(
                 .filter(|v| v.path != path && v.store.as_deref() == Some(store.as_str()))
                 .map(|v| v.path.clone())
                 .collect();
+            if let Some(first) = moved_here(marker, path, &others)? {
+                let mut section = VaultSection::new(path, VaultStatus::SameFolder);
+                section.shared_with = vec![first];
+                return settle(ctx, marker, run, section);
+            }
             if !others.is_empty() {
                 if let Some(entry) = marker.vault_mut(path) {
                     entry.reason = Some(vault::defer_reason(DeferReason::SharedStore).into());
@@ -195,6 +243,17 @@ fn deferred_import(
                 &ctx.tauri_data_dir,
                 ctx.free_space,
             )?;
+            // Recorded before the fold reads it: a crash or a rerun then gives it to no other vault.
+            if marker.legacy_store_read_by.is_none()
+                && takes_unclaimed_legacy(&profile, path, &id.vault_id, config.as_ref(), &scratch)?
+            {
+                marker.legacy_store_read_by = Some(path.to_owned());
+                marker.write(&ctx.tauri_data_dir)?;
+            }
+            let phase = VaultPhase {
+                legacy_read_by: marker.legacy_store_read_by.as_deref(),
+                ..phase
+            };
             // The journal replay is the first launch's: its entries name the vaults present then.
             vault::import(run, &phase, planned, id)?
         }

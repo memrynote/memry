@@ -354,6 +354,7 @@ fn phases(
         journal: journal.as_ref(),
         pending_notes: &pending_notes,
         scratch: &scratch,
+        legacy_read_by: None,
         lock: &lock,
         now_ms: (ctx.now_ms)(),
     };
@@ -381,6 +382,7 @@ fn phases(
         completed_at: (ctx.now_ms)(),
         electron_profile: profile.dir.to_string_lossy().into_owned(),
         vaults: marked,
+        legacy_store_read_by: legacy_reader(run),
         extra: serde_json::Map::new(),
     }
     .write(&ctx.tauri_data_dir)?;
@@ -389,6 +391,20 @@ fn phases(
     }
     emit(ctx, MigrationEventName::Completed, started, *counts, None);
     Ok(())
+}
+
+/// The vault whose fold read the unclaimed legacy store, as its prep report records it. The
+/// plan gives the store to one vault at most, so the first such section is the only one.
+fn legacy_reader(run: &Run<'_>) -> Option<String> {
+    run.report
+        .vaults
+        .iter()
+        .find(|s| {
+            s.prep
+                .as_ref()
+                .is_some_and(|p| p["fold"]["legacy"] == "read")
+        })
+        .map(|s| s.path.clone())
 }
 
 fn stage_all(

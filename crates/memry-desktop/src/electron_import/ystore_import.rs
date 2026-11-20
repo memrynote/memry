@@ -96,6 +96,19 @@ pub struct SkippedDoc {
     pub reason: SkipReason,
 }
 
+/// The legacy store's reader this import recorded itself (the import marker's
+/// `legacyStoreReadBy`), on top of Electron's `legacyStoreClaimedBy`: Electron's data stays
+/// read-only, so its config never learns which vault the import gave the store to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportClaim {
+    /// No vault of this profile read it yet.
+    Unrecorded,
+    /// Recorded for the vault being imported.
+    This,
+    /// Recorded for another vault.
+    Other,
+}
+
 /// What became of the legacy global store for this vault.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LegacyStore {
@@ -150,17 +163,21 @@ pub fn fold_vault_store(
     vault_uuid: &str,
     config: Option<&ElectronConfig>,
     scratch: &Scratch,
+    import_claim: ImportClaim,
 ) -> Result<YStoreFold, ImportError> {
     let own = YStoreReader::open(profile, vault_uuid, config, scratch)?;
     let claimed_by = config.and_then(ElectronConfig::legacy_store_claimed_by);
-    let legacy_present =
-        std::fs::symlink_metadata(profile.legacy_crdt_store_dir()).is_ok_and(|m| m.is_dir());
+    let legacy_present = legacy_present(profile);
     let (store, legacy) = match (own, legacy_present, claimed_by) {
         (own, false, _) => (own, LegacyStore::Absent),
         (own, true, Some(claim)) if claim != vault_uuid => (own, LegacyStore::ClaimedByOther),
+        (own, true, None) if import_claim == ImportClaim::Other => {
+            (own, LegacyStore::ClaimedByOther)
+        }
         (Some(own), true, _) => (Some(own), LegacyStore::LeftUnread),
         (None, true, None)
-            if !inherits_unclaimed_legacy(profile, vault_path, vault_uuid, config, scratch) =>
+            if import_claim == ImportClaim::Unrecorded
+                && !inherits_unclaimed_legacy(profile, vault_path, vault_uuid, config, scratch) =>
         {
             (None, LegacyStore::LeftUnread)
         }
@@ -199,14 +216,44 @@ pub fn fold_vault_store(
     Ok(fold)
 }
 
+fn legacy_present(profile: &ElectronProfile) -> bool {
+    std::fs::symlink_metadata(profile.legacy_crdt_store_dir()).is_ok_and(|m| m.is_dir())
+}
+
+/// Whether [`fold_vault_store`] with [`ImportClaim::Unrecorded`] reads the legacy store as this
+/// vault's, and so whether the import must record the claim before importing it. `false` when
+/// Electron's own claim settles it.
+pub fn takes_unclaimed_legacy(
+    profile: &ElectronProfile,
+    vault_path: &str,
+    vault_uuid: &str,
+    config: Option<&ElectronConfig>,
+    scratch: &Scratch,
+) -> Result<bool, ImportError> {
+    if !legacy_present(profile)
+        || config
+            .and_then(ElectronConfig::legacy_store_claimed_by)
+            .is_some()
+    {
+        return Ok(false);
+    }
+    Ok(
+        YStoreReader::open(profile, vault_uuid, config, scratch)?.is_none()
+            && inherits_unclaimed_legacy(profile, vault_path, vault_uuid, config, scratch),
+    )
+}
+
 /// Whether this vault, which has no store, is the one vault the unclaimed legacy store goes to:
 /// `currentVault` when it has no store, else the first vault in config order without one,
 /// compared by exact path string, as Electron compares them. A vault whose folder (followed
 /// through a symlink) is gone is passed over: Electron cannot open it. Every vault's import
 /// applies this rule to the same list, the vault being imported included, so at most one
-/// passes. A profile of one vault (or no config) gives the store to the vault being imported;
-/// `currentVault` counts as a vault here even when `vaults[]` does not list it, as the plan
-/// imports it.
+/// passes. A profile of one vault gives the store to that vault; `currentVault` counts as a
+/// vault here even when `vaults[]` does not list it, as the plan imports it. A folder the config
+/// does not name (a vault moved from another path, a copied-in folder) never takes it, and with
+/// no config no folder does: Electron's ownership of the store follows the vaults it opened.
+/// (Folders the config does name but that an earlier import passed over are held off by the
+/// recorded [`ImportClaim`].)
 /// Each other vault is named by [`electron_vault_uuid`] (its singleton, then its config
 /// `vaultUuid`), the order the caller names the vault being imported by.
 fn inherits_unclaimed_legacy(
@@ -217,7 +264,7 @@ fn inherits_unclaimed_legacy(
     scratch: &Scratch,
 ) -> bool {
     let Some(config) = config else {
-        return true;
+        return false;
     };
     let (vaults, unreadable) = config.vaults();
     let distinct: HashSet<&str> = config
@@ -226,7 +273,7 @@ fn inherits_unclaimed_legacy(
         .chain(vaults.iter().map(|v| v.path.as_str()))
         .collect();
     if distinct.len() + unreadable <= 1 {
-        return true;
+        return distinct.contains(vault_path);
     }
     let is_dir = |path: &Path| std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());
     let has_store = |path: &str| {

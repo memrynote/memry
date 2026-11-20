@@ -2,7 +2,7 @@
 //! never repeats, and `migrate_vault` reads it alone to learn what became of a vault.
 //!
 //! A format this and later builds read: `{version: 1, completedAt, electronProfile, vaults:
-//! [{path, vaultUuid, status, ...}]}`. Every field is additive and a field this build does not
+//! [{path, vaultUuid, status, ...}], legacyStoreReadBy?}`. Every field is additive and a field this build does not
 //! know is written back unchanged.
 
 use std::fs;
@@ -26,6 +26,11 @@ pub struct Marker {
     pub completed_at: i64,
     pub electron_profile: String,
     pub vaults: Vec<MarkerVault>,
+    /// The path of the vault whose import read the unclaimed legacy `crdt-store/`, which Electron
+    /// gives to one vault per profile. Written before a deferred import reads it, so a crash or a
+    /// rerun never folds it into a second vault. Electron's own `legacyStoreClaimedBy` wins.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_store_read_by: Option<String>,
     #[serde(flatten)]
     pub extra: Map<String, Value>,
 }

@@ -321,6 +321,7 @@ fn prepare_digests_the_vault_before_the_replay_and_expects_only_its_writes() {
         &ids,
         Some(&journal),
         &s.scratch,
+        ImportClaim::Unrecorded,
     )
     .unwrap();
 
@@ -485,8 +486,16 @@ fn the_folders_of_a_failed_write_are_expected_and_nothing_else_there() {
         ElectronConfig::parse(json!({"vaults": [{"path": path}]}).to_string().as_bytes()).unwrap();
     let plan = plan_vaults(&s.profile, Some(&config), &s.scratch);
     let ids = ids(&plan, &path);
-    let mut vault =
-        prepare_vault(&s.profile, Some(&config), &path, &ids, None, &s.scratch).unwrap();
+    let mut vault = prepare_vault(
+        &s.profile,
+        Some(&config),
+        &path,
+        &ids,
+        None,
+        &s.scratch,
+        ImportClaim::Unrecorded,
+    )
+    .unwrap();
     vault
         .replay
         .skipped
