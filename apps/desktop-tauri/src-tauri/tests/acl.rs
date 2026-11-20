@@ -142,6 +142,7 @@ fn only_main_sticky_and_e2e_builds_get_capabilities_with_app_commands() {
             "sticky"
         ])
     );
+    assert_eq!(permissions()["boot"], set(&BOOT));
     assert_eq!(permissions()["sticky"], set(&STICKY));
 
     let e2e = read_json("tauri.e2e.conf.json");
@@ -193,6 +194,17 @@ fn call(window: &WebviewWindow<MockRuntime>, command: &str) -> Result<(), String
 /// App commands the tables expect a window without `app-all` to be refused.
 const APP_SAMPLE: [&str; 4] = ["app_info", "log_write", "account_get_info", "crdt_open_doc"];
 
+/// The `boot` permission: what every window that loads `index.html` calls while it starts.
+const BOOT: [&str; 7] = [
+    "app_info",
+    "app_set_zoom_factor",
+    "locale_get",
+    "log_write",
+    "settings_get_group",
+    "shell_open_link",
+    "telemetry_track",
+];
+
 /// The `sticky` permission: what the sticky renderer calls besides `boot`.
 const STICKY: [&str; 10] = [
     "flush_done",
@@ -229,11 +241,7 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
     };
     let none_of_them = [names(&APP_SAMPLE), names(&["e2e_app_info"])].concat();
     // The sticky reaches exactly `boot` + `sticky` of the app commands and is refused the rest.
-    let sticky: BTreeSet<String> = permissions["boot"]
-        .iter()
-        .cloned()
-        .chain(names(&STICKY))
-        .collect();
+    let sticky: BTreeSet<String> = names(&BOOT).into_iter().chain(names(&STICKY)).collect();
     let sticky_reaches: Vec<String> = sticky.iter().cloned().collect();
     let sticky_refused: Vec<String> = app_all
         .iter()
