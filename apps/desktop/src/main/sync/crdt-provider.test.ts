@@ -228,6 +228,11 @@ vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
+// No case twins here: the twin rule reads canonical rows these mocks do not hold.
+vi.mock('../vault/note-sync', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  refusesCaseTwinFile: () => false
+}))
 
 vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
 vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))

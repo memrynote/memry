@@ -29,6 +29,7 @@
     "moveFailed": "ノートを移動できませんでした",
     "applyTemplateFailed": "テンプレートを適用できませんでした",
     "appendBlocksFailed": "ブロックをそのノートに移動できませんでした",
+    "appendIntoCaseTwin": "このノートは、名前の大文字と小文字だけが異なるノートとファイルを共有しています。どちらかの名前を変更してから、もう一度ブロックを移動してください。",
     "exportPdfFailed": "PDF をエクスポートできませんでした",
     "exportHtmlFailed": "HTML をエクスポートできませんでした",
     "restoreVersionFailed": "バージョンを復元できませんでした",

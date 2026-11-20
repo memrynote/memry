@@ -34,7 +34,7 @@ import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache } from './note-sync'
+import { refusesCaseTwinFile, syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
 import { readVaultFile } from '../lib/paths'
@@ -71,6 +71,11 @@ export async function appendBlocksToNote(
   if (!target) throw new Error(`Target note not found: ${targetNoteId}`)
   const source = getNoteCacheById(db, sourceNoteId)
   if (!source) throw new Error(`Source note not found: ${sourceNoteId}`)
+
+  // The file may hold a case twin's body (#5297); the block stays in the source.
+  if (refusesCaseTwinFile(getVaultRoot(), target.path, targetNoteId)) {
+    throw new Error('errors:note.appendIntoCaseTwin')
+  }
 
   const absolutePath = toAbsolutePath(target.path)
   const original = await readVaultFile(getVaultRoot(), target.path)

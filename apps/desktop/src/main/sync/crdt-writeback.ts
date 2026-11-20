@@ -37,7 +37,7 @@ import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
 import { createSnapshot, maybeCreateSignificantSnapshot } from '../vault/notes-versions'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
-import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { syncNoteToCache, deleteNoteFromCache, refusesCaseTwinFile } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
 import { placeLinkedDownloads } from './attachment-files'
 import { flushProjectionEvents } from '../projections'
@@ -659,10 +659,12 @@ async function performWriteback(
   // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
   // the middle of one. The full-state row is owed again so the marker has a
   // flush to resolve it. Not for a doc the take refuses (the two fail-closed
-  // returns above) or a note with no index row the take can read: each flush
-  // would queue the next one.
+  // returns above, and a file shared with a case twin, which the take never
+  // reads: `refusesCaseTwinFile`, #5297) or a note with no index row the take
+  // can read: each flush would queue the next one.
   if (owesFileBody(noteId)) {
-    if (indexed) getCrdtProvider().recordOwedFullState(noteId)
+    if (indexed && !refusesCaseTwinFile(getVaultRoot(), cached.path, noteId))
+      getCrdtProvider().recordOwedFullState(noteId)
     log.debug('Write-back skipped: the note owes its file body', { noteId })
     return
   }
@@ -843,6 +845,7 @@ async function writebackExisting(
       // A locked note's outside edit is never taken in: its locked text goes
       // back on disk and the edit is kept as a version (#2606).
       if (await restoreLockedNoteFile(noteId, existingRaw)) return
+      if (refusesCaseTwinFile(getVaultRoot(), relativePath, noteId)) return
       const ingested = await feedExternalEditToCrdt(
         noteId,
         parsed.content,

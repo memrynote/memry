@@ -29,6 +29,7 @@
     "moveFailed": "Not taşınamadı",
     "applyTemplateFailed": "Şablon uygulanamadı",
     "appendBlocksFailed": "Blok bu nota taşınamadı",
+    "appendIntoCaseTwin": "Bu not, adı yalnızca büyük/küçük harf bakımından farklı olan bir notla aynı dosyayı paylaşıyor. Birini yeniden adlandırın, ardından bloğu tekrar taşıyın.",
     "exportPdfFailed": "PDF olarak dışa aktarılamadı",
     "exportHtmlFailed": "HTML olarak dışa aktarılamadı",
     "restoreVersionFailed": "Sürüm geri yüklenemedi",

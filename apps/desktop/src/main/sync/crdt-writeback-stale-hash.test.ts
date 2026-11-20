@@ -101,7 +101,8 @@ vi.mock('../vault/note-sync', async () => {
         q.updateNoteCache(db, input.id, { contentHash: h.contentHash(input.fileContent) })
       }
     },
-    deleteNoteFromCache: vi.fn()
+    deleteNoteFromCache: vi.fn(),
+    refusesCaseTwinFile: () => false
   }
 })
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))

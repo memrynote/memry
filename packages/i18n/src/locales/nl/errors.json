@@ -29,6 +29,7 @@
     "moveFailed": "Kan de notitie niet verplaatsen",
     "applyTemplateFailed": "Kan het sjabloon niet toepassen",
     "appendBlocksFailed": "Kan het blok niet naar die notitie verplaatsen",
+    "appendIntoCaseTwin": "Die notitie deelt haar bestand met een notitie waarvan de naam alleen in hoofdletters en kleine letters verschilt. Wijzig de naam van een van beide en verplaats het blok daarna opnieuw.",
     "exportPdfFailed": "Kan niet naar PDF exporteren",
     "exportHtmlFailed": "Kan niet naar HTML exporteren",
     "restoreVersionFailed": "Kan de versie niet herstellen",

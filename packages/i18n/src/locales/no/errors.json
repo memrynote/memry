@@ -29,6 +29,7 @@
     "moveFailed": "Kunne ikke flytte notatet",
     "applyTemplateFailed": "Kunne ikke bruke malen",
     "appendBlocksFailed": "Kunne ikke flytte blokken til det notatet",
+    "appendIntoCaseTwin": "Det notatet deler fil med et notat der navnet bare skiller seg ut med store og små bokstaver. Gi nytt navn til ett av dem, og flytt deretter blokken på nytt.",
     "exportPdfFailed": "Kunne ikke eksportere PDF",
     "exportHtmlFailed": "Kunne ikke eksportere HTML",
     "restoreVersionFailed": "Kunne ikke gjenopprette versjonen",

@@ -29,6 +29,7 @@
     "moveFailed": "העברת הפתק נכשלה",
     "applyTemplateFailed": "החלת התבנית נכשלה",
     "appendBlocksFailed": "העברת הבלוק לפתק הזה נכשלה",
+    "appendIntoCaseTwin": "הפתק הזה חולק את הקובץ שלו עם פתק ששמו שונה רק באותיות רישיות וקטנות. שנה את השם של אחד מהם, ואז העבר את הבלוק שוב.",
     "exportPdfFailed": "ייצוא ה-PDF נכשל",
     "exportHtmlFailed": "ייצוא ה-HTML נכשל",
     "restoreVersionFailed": "שחזור הגרסה נכשל",

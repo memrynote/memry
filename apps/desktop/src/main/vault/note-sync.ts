@@ -24,6 +24,7 @@ import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/
 import { getDatabase, type IndexDb } from '../database'
 import { diskCaseOf, volumeIgnoresCase } from './disk-case'
 import { getPendingDelete } from './rename-tracker'
+import { createLogger } from '../lib/logger'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -112,8 +113,9 @@ export interface CanonicalNoteRef {
   modifiedAt: string
   fileSize: number | null
   /**
-   * Other rows fold to this file's path (#5263): their bytes may be the ones
-   * on disk, so the file's size says nothing about this row.
+   * Other rows fold to this file's path (#5263), the row at its exact path
+   * included: their bytes may be the ones on disk, so the file's size and
+   * body say nothing about this row (#5297).
    */
   sharesFile: boolean
   emoji: string | null
@@ -142,8 +144,10 @@ export function findCanonicalNoteForFile(
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
   const exact = getNoteMetadataByPath(dataDb, relativePath)
-  const candidates =
-    exact || !volumeIgnoresCase(vaultPath) ? [] : listNoteMetadataByFoldedPath(dataDb, relativePath)
+  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
+  const candidates = volumeIgnoresCase(vaultPath)
+    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
+    : []
   // The fold finds candidates; the disk proves which of them name this file. On
   // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
   const onThisFile = candidates.filter(
@@ -178,6 +182,29 @@ export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: s
     posix.basename(claimed.path).normalize('NFC') ===
       posix.basename(relativePath).normalize('NFC') && getPendingDelete(claimed.id) === undefined
   )
+}
+
+const log = createLogger('NoteSync')
+
+/**
+ * Whether the file at `relativePath` is shared by case twins: distinct rows
+ * whose paths fold to it on a case-insensitive disk (#5263). The file holds
+ * one twin's body, so its bytes never enter note `noteId`'s doc. Taking them
+ * pushed one note's body into the other on every device (#5297). Every
+ * reader that feeds a note's file into its doc asks this first, and leaves
+ * the file to the twin repair.
+ */
+export function refusesCaseTwinFile(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  // Callers name the file by the row's spelling; the rows are matched to
+  // the disk's. A file that is not there holds no body to take.
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  if (onDisk === null || !findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile) return false
+  log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
+  return true
 }
 
 /** The path the canonical row gives note `id`, or null when it has no row. */
