@@ -13,7 +13,8 @@
 //! - a rename never replaces another document at the target; Electron's `renameSync` does.
 //! - path allocation counts any entry at a candidate path as taken, a dangling link included,
 //!   and compares names case- and normalization-insensitively on every platform; Electron's
-//!   `existsSync` does so only where the file system does.
+//!   `existsSync` does so only where the file system does. A name the file system folds
+//!   further than that comparison (APFS and NTFS case folding) is numbered past as well.
 
 use std::collections::HashSet;
 use std::fs;
@@ -117,9 +118,10 @@ pub fn portable_canvas_folder(folder: Option<&str>) -> Result<Option<String>, Ca
 
 /// A vault-relative path for a canvas titled `title` in `folder`, numbered past every path on
 /// disk and in `taken` (paths claimed earlier in one batch), compared case- and
-/// normalization-insensitively. `current`, the canvas's own path, never collides, so a
-/// case-only title change keeps its file (`allocateCanvasPath`). The folder of the result is
-/// the one to store ([`folder_of_canvas_path`]): `CON` lands in `CON canvas`.
+/// normalization-insensitively, and past a path the file system itself finds there. `current`,
+/// the canvas's own path, never collides, so a case-only title change keeps its file
+/// (`allocateCanvasPath`). The folder of the result is the one to store
+/// ([`folder_of_canvas_path`]): `CON` lands in `CON canvas`.
 pub fn allocate_canvas_path(
     vault: &Path,
     title: Option<&str>,
@@ -140,7 +142,7 @@ pub fn allocate_canvas_path(
     let mut candidate = in_folder(&base);
     let mut counter = 1;
     while own.as_deref() != Some(canvas_path_key(&candidate).as_str())
-        && claimed.contains(&canvas_path_key(&candidate))
+        && (claimed.contains(&canvas_path_key(&candidate)) || is_taken(vault, &candidate))
     {
         counter += 1;
         candidate = in_folder(&format!("{base} {counter}"));
@@ -149,8 +151,8 @@ pub fn allocate_canvas_path(
 }
 
 /// The [`canvas_path_key`] of every entry in the vault folder `dir`, a dangling link included.
-/// Listed rather than probed per candidate: Linux tells `plan` from `Plan`, and Linux and
-/// Windows tell NFC `Café` from NFD, so a probe would hand out a second name that a
+/// The listing catches what a probe cannot: Linux tells `plan` from `Plan`, and Linux and
+/// Windows tell NFC `Café` from NFD, so a probe alone would hand out a second name that a
 /// case- and normalization-insensitive device (macOS) folds into the first document.
 fn entries_on_disk(vault: &Path, dir: &str) -> Vec<String> {
     // A folder not created yet holds nothing; a write still refuses a file that is there
@@ -165,6 +167,13 @@ fn entries_on_disk(vault: &Path, dir: &str) -> Vec<String> {
         .flatten()
         .map(|entry| canvas_path_key(&format!("{dir}/{}", entry.file_name().to_string_lossy())))
         .collect()
+}
+
+/// Whether the file system finds an entry at `relative`, a dangling link included. The backstop
+/// of the listing: APFS and NTFS fold names further than [`canvas_path_key`] does (`ſ` onto
+/// `S`, `ΤΈΛΟΣ` onto `Τέλος`), and only the volume knows.
+fn is_taken(vault: &Path, relative: &str) -> bool {
+    resolve_canvas_file(vault, relative).is_ok_and(|path| fs::symlink_metadata(path).is_ok())
 }
 
 /// `portableCanvasBase`: a file name every platform takes. Trailing dots and spaces go (Win32
@@ -204,8 +213,9 @@ pub fn read_canvas_file(vault: &Path, relative: &str) -> Result<Option<CanvasDoc
     let Ok(path) = resolve_canvas_file(vault, relative) else {
         return Err(ReadError::Unreadable(OpenError::Outside));
     };
-    // Windows refuses to open a folder (ERROR_ACCESS_DENIED) where unix answers EISDIR.
-    if fs::metadata(&path).is_ok_and(|meta| meta.is_dir()) {
+    // Windows refuses to open a folder (ERROR_ACCESS_DENIED) where unix answers EISDIR. The
+    // link itself is checked, so a link out of the vault to a folder is still `Outside`.
+    if fs::symlink_metadata(&path).is_ok_and(|meta| meta.is_dir()) {
         return Ok(None);
     }
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
