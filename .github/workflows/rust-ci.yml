@@ -157,7 +157,16 @@ jobs:
     # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
     # nextest suite alone is 11 of build and 24 of run (run 43766971845). A timed-out run saves no
     # cache, so the next run starts cold again. Warm, the Apple Silicon leg takes about 57 minutes.
-    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 90 || 65 }}
+    # windows-11-arm is cold on every run (no cache restores there) and compiles BoringSSL (btls-sys,
+    # for `services/web_fetch`) from scratch in each of the job's first cargo steps, about 6 minutes
+    # apiece. Run 44756156023 reached the Electron profile step after 46 minutes, run 44749865321
+    # (before the dependency) after 22: the job needs about 70 minutes.
+    # The ubuntu-22.04 `checks` leg runs cold too (no cargo cache restores). On a slow runner it took
+    # 59 to 62 minutes before the dependency (runs 44796943385, 44794576070, 44793743432). BoringSSL
+    # builds six times in it, about a minute each, so the slow-runner run that the merge queue ejected
+    # (44796950078) was on course for 63 to 67 minutes of 65.
+    # The windows-2022 leg stays at 65: its slowest run with BoringSSL took 59 minutes (44769358824).
+    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks')) && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
@@ -529,6 +538,20 @@ jobs:
 
       # Step 29b (#3546): the calendar range read of one month (550 items) stays within 50 ms p95
       # through the command, times the same factor as the budgets above.
+      # The cold release build is a step of its own, outside the run step's hang limit: as one step it
+      # took 12.1 and 13.6 minutes on this leg (runs 44806511703 and 44806862681) of its 15.
+      - name: Calendar range budget (memry-tauri, release), build
+        if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
+        timeout-minutes: 20
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+          # A release build defaults to MEMRY_ENV=production, whose build.rs needs SYNC_SERVER_URL.
+          MEMRY_ENV: development
+          MEMRY_PERF_ENFORCE: '1'
+          MEMRY_PERF_FACTOR: '3'
+        run: cargo test -p memry-tauri --release --test calendar --no-run
+
       - name: Calendar range budget (memry-tauri, release)
         if: matrix.part != 'tests' && matrix.part != 'models' && matrix.os == 'ubuntu-22.04'
         timeout-minutes: 15
