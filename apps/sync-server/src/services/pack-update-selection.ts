@@ -16,17 +16,6 @@ import type { PackEntryPlan } from './pack-format'
 
 type VaultScope = { userId: string; vaultId: string }
 
-const NOTE_RECORD_ROWS = `SELECT 1 FROM sync_items r
-  WHERE r.user_id = s.user_id AND r.vault_id = s.vault_id
-    AND r.item_type IN ('note', 'journal') AND r.item_id = s.note_id`
-
-/**
- * True for a body row (aliased `s`) whose document has a deleted note or
- * journal record and no live one. Shared by both body kinds.
- */
-export const BODY_ROW_DEAD = `(EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
-  AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL))`
-
 /**
  * Update rows above the watermark, ascending `server_cursor`. Within one
  * document that is ascending `sequence_num` (protocol 07 §7.17). The cursor is
@@ -41,7 +30,7 @@ export const updateSelectionQuery = (
 ): { sql: string; bind: unknown[] } => ({
   sql: `SELECT server_cursor AS sort_key, note_id AS tiebreak, '' AS blob_key,
           length(update_data) AS size_bytes, sequence_num, signer_device_id, created_at,
-          created_at AS row_time, ${BODY_ROW_DEAD} AS dead
+          created_at AS row_time
         FROM crdt_updates s
         WHERE user_id = ? AND vault_id = ? AND server_cursor > ?
         ORDER BY server_cursor ASC
@@ -118,8 +107,9 @@ export const updateEntrySource = (
 }
 
 /**
- * The packed update entries whose row still exists and whose document is not
- * dead: a `FROM` clause for `allLive` and the rollup. A purge (protocol 07
+ * The packed update entries whose row still exists: a `FROM` clause for
+ * `allLive` and the rollup. A deleted document's rows count while they exist
+ * (protocol 08 §8.12). A purge (protocol 07
  * §7.15) or a prune (#2299) that committed after selection deleted the rows.
  * Cursors ride as one JSON bind, clear of D1's bind limit.
  */
@@ -128,7 +118,6 @@ export const updatesLive = (
   entries: ReadonlyArray<{ sortKey: number }>
 ): { sql: string; bind: unknown[] } => ({
   sql: `FROM json_each(?) e JOIN crdt_updates s
-          ON s.user_id = ? AND s.vault_id = ? AND s.server_cursor = e.value
-          WHERE NOT ${BODY_ROW_DEAD}`,
+          ON s.user_id = ? AND s.vault_id = ? AND s.server_cursor = e.value`,
   bind: [JSON.stringify(entries.map((entry) => entry.sortKey)), scope.userId, scope.vaultId]
 })

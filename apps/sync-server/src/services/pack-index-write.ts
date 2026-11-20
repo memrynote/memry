@@ -148,7 +148,29 @@ export const advanceWatermark = async (
   scope: VaultScope,
   kind: PackKindName,
   sortValue: number,
-  tiebreak: string
+  tiebreak: string,
+  guard: Guard = ALWAYS
 ): Promise<void> => {
-  await watermarkUpsert(db, scope, kind, sortValue, tiebreak).run()
+  await watermarkUpsert(db, scope, kind, sortValue, tiebreak, guard).run()
 }
+
+/**
+ * True while the kind's watermark is the one a build selected under, or still
+ * absent. `IS` compares a NULL `covered_through` too.
+ */
+export const watermarkUnchanged = (
+  scope: VaultScope,
+  kind: PackKindName,
+  read: { last_sort_value: number; last_sort_tiebreak: string; covered_through: number | null }
+): Guard => ({
+  sql: `NOT EXISTS (SELECT 1 FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = ?
+    AND NOT (last_sort_value = ? AND last_sort_tiebreak = ? AND covered_through IS ?))`,
+  bind: [
+    scope.userId,
+    scope.vaultId,
+    kind,
+    read.last_sort_value,
+    read.last_sort_tiebreak,
+    read.covered_through
+  ]
+})

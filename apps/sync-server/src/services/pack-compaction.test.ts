@@ -2,13 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { AppError } from '../lib/errors'
-import {
-  ENQUEUE_RETRY_DELAYS_MS,
-  compactOneRange,
-  compactVault,
-  enqueuePackCompaction,
-  selectCandidates
-} from './pack-compaction'
+import { compactOneRange, compactVault, selectCandidates } from './pack-compaction'
+import { ENQUEUE_RETRY_DELAYS_MS, enqueuePackCompaction } from './pack-queue'
 import { insertPackIndexRow } from './pack-index-write'
 import { PACK_TARGET_BYTES } from './pack-sizing'
 import { extractEntry, packSha256, parsePack } from './pack-format'
@@ -570,7 +565,9 @@ describe('pack build', () => {
     expect(extractEntry(bytes, parsed.entries[1])).toEqual(snapB)
   })
 
-  it('leaves out snapshots of notes whose only record rows are tombstones', async () => {
+  // A deleted note's body rows pack while they exist; the purge removes the rows
+  // and drops the packs (protocol 08 §8.10, REVIEW-5267).
+  it('packs the snapshots of deleted notes while their rows exist', async () => {
     await seedRecord({ cursor: 1, type: 'note', id: 'note-deleted', deleted: true })
     await seedRecord({ cursor: 2, type: 'journal', id: 'note-retyped', deleted: true })
     await seedRecord({ cursor: 3, type: 'note', id: 'note-retyped' })
@@ -589,6 +586,7 @@ describe('pack build', () => {
 
     const parsed = await parsePack(await packOf(result.packKey))
     expect(parsed.entries.map((e) => e.id)).toEqual([
+      'note-deleted',
       'note-retyped',
       'note-live',
       'note-record-pending'

@@ -1,5 +1,5 @@
 import type { SyncSubscription } from './lib/sync-types'
-import type { PackCompactionMessageBody } from './services/pack-compaction'
+import type { PackCompactionMessageBody } from './services/pack-queue'
 import type { SyncEntitlement } from './services/entitlements'
 import type { ClientIdentity } from './lib/client-identity'
 

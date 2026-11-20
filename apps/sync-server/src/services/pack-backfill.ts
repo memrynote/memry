@@ -3,7 +3,8 @@ import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 import { createLogger } from '../lib/logger'
 import { PACKED_KINDS, compactOneRange } from './pack-compaction'
 import type { PackKindName } from './pack-format'
-import { ROLLUP_SUBREQUESTS, deleteReplacedPackObjects, rollupKind } from './pack-rollup'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { ROLLUP_SUBREQUESTS, rollupKind } from './pack-rollup'
 import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
 const logger = createLogger('PackBackfill')

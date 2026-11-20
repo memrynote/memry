@@ -1,5 +1,6 @@
 import { deleteBlobs } from './blob'
 import { createLogger } from '../lib/logger'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
 
 const logger = createLogger('DocumentBodyPurge')
 
@@ -16,8 +17,23 @@ const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault
 
 const BODY_ROWS = 'user_id = ? AND vault_id = ? AND note_id = ?'
 
-// Six statements per document, one db.batch per chunk.
+// Seven statements per document, one db.batch per chunk.
 const PURGE_CHUNK = 20
+
+/**
+ * Makes the vault's replaced objects of one pack kind due at once (protocol 08
+ * §8.12, §8.13). A rollup's replaced inputs may hold the purged body, and the
+ * grace period would keep them up to 600 s past the purge, outside the 900 s
+ * deadline once a drain is late. The grace only shields a reader of the
+ * listing before the rollup, and the purge deletes every listed object of the
+ * same kind at once, so that reader already meets 404s and falls back to the
+ * item routes.
+ */
+const replacedDue = (kind: 'crdt_update' | 'crdt_snapshot'): string =>
+  `UPDATE pack_replaced_objects SET removed_at = 0
+   WHERE user_id = ? AND vault_id = ? AND instr(pack_key, '/packs/${kind}/') > 0`
+
+const RETURNING_REPLACED = 'RETURNING pack_key AS replaced_key'
 
 /**
  * Removes the server body of deleted notes and journals (#2986, protocol 07
@@ -54,13 +70,14 @@ export const purgeDeletedDocumentBodies = async (
   userId: string,
   vaultId: string,
   noteIds: readonly string[]
-): Promise<void> => {
+): Promise<boolean> => {
   const ids = [...new Set(noteIds)]
-  if (ids.length === 0) return
+  if (ids.length === 0) return false
 
   const now = Math.floor(Date.now() / 1000)
   const snapshotKeys: string[] = []
   const updatePackKeys: string[] = []
+  const replacedKeys: string[] = []
   for (let i = 0; i < ids.length; i += PURGE_CHUNK) {
     const statements = ids.slice(i, i + PURGE_CHUNK).flatMap((noteId) => {
       const body = [userId, vaultId, noteId]
@@ -100,6 +117,9 @@ export const purgeDeletedDocumentBodies = async (
           )
           .bind(userId, vaultId, ...body, ...body, ...dead),
         db
+          .prepare(`${replacedDue('crdt_update')} AND ${hasBody} ${RETURNING_REPLACED}`)
+          .bind(userId, vaultId, ...body, ...body, ...dead),
+        db
           .prepare(
             `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
                AND ${hasBody}`
@@ -113,35 +133,46 @@ export const purgeDeletedDocumentBodies = async (
           .bind(...body, ...dead)
       ]
     })
-    const results = await db.batch<{ blob_key?: string; pack_key?: string }>(statements)
+    const results = await db.batch<{ blob_key?: string; pack_key?: string; replaced_key?: string }>(
+      statements
+    )
     for (const result of results) {
       for (const row of result.results ?? []) {
         if (row.blob_key) snapshotKeys.push(row.blob_key)
         if (row.pack_key) updatePackKeys.push(row.pack_key)
+        if (row.replaced_key) replacedKeys.push(row.replaced_key)
       }
     }
   }
 
-  if (snapshotKeys.length === 0) {
-    await deleteObjects(storage, userId, vaultId, updatePackKeys)
-    return
-  }
-
-  const [packs] = await db.batch<{ pack_key: string }>([
-    db
-      .prepare(
-        `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'
+  const packKeys = [...updatePackKeys]
+  if (snapshotKeys.length > 0) {
+    // The replaced objects are made due in the batch that drops the listing,
+    // so a rollup that swapped in between has its inputs caught here, and one
+    // that swaps after finds its inputs unlisted and loses.
+    const [packs, , replaced] = await db.batch<{ pack_key?: string; replaced_key?: string }>([
+      db
+        .prepare(
+          `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'
          RETURNING pack_key`
-      )
-      .bind(userId, vaultId),
-    db
-      .prepare(
-        `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'`
-      )
-      .bind(userId, vaultId)
-  ])
-  const packKeys = (packs.results ?? []).map((row) => row.pack_key)
-  await deleteObjects(storage, userId, vaultId, [...snapshotKeys, ...packKeys, ...updatePackKeys])
+        )
+        .bind(userId, vaultId),
+      db
+        .prepare(
+          `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'`
+        )
+        .bind(userId, vaultId),
+      db.prepare(`${replacedDue('crdt_snapshot')} ${RETURNING_REPLACED}`).bind(userId, vaultId)
+    ])
+    for (const row of packs.results ?? []) if (row.pack_key) packKeys.push(row.pack_key)
+    for (const row of replaced.results ?? [])
+      if (row.replaced_key) replacedKeys.push(row.replaced_key)
+  }
+  await deleteObjects(storage, userId, vaultId, [...snapshotKeys, ...packKeys])
+  // A failed delete keeps the rows due; the caller's delayed compaction
+  // message (PACK_PURGE_RETRY_DELAY_SECONDS) runs the deletion again.
+  if (replacedKeys.length > 0) await deleteReplacedPackObjects(db, storage, { userId, vaultId })
+  return packKeys.length > 0 || replacedKeys.length > 0
 }
 
 const deleteObjects = async (

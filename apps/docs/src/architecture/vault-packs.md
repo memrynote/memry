@@ -245,8 +245,12 @@ entries, 24 MB and 64 packs. It downloads and verifies them, keeps every entry t
 current, and writes one new pack under a new key. It drops:
 
 - a record entry whose row moved to a higher cursor or was shed to a marker,
-- a snapshot entry whose row now has another blob key, was purged, or belongs to a deleted note,
-- an update entry whose row is gone or whose document is deleted.
+- a snapshot entry whose row now has another blob key or was purged,
+- an update entry whose row was pruned or purged.
+
+A deleted document's body rows stay in packs until the purge removes them and drops those packs.
+An input pack it cannot download or verify is logged by id, left out, and the run planned again
+without it.
 
 One D1 batch then records the old objects in `pack_replaced_objects`, deletes the old
 `pack_index` rows and inserts the new one. The batch applies only while every old row is still
@@ -258,12 +262,19 @@ the union of its inputs'; body packs carry no coverage yet.
 twice the presigned URL lifetime, so a client that listed it before the rollup still downloads it.
 `deleteReplacedPackObjects` deletes it after that, at the end of every compaction message for that
 vault and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
-lose it, and the orphan sweep leaves every key in that table alone.
+lose it, and the orphan sweep leaves every key in that table alone. A body purge skips the grace:
+it makes the replaced objects of each kind it drops due in the batch that drops the listing and
+deletes them at once, because they may hold the purged body. A failed delete stays due, and the
+compaction message the purge enqueues 660 seconds later retries it, inside the 900-second
+deadline.
 
 **Where it runs.** Every compaction message rolls up each kind once before building, which is what
-makes room in a vault at the 999-pack cap. Every backfill tick first rolls up the four kinds with
+makes room in a vault at the 999-pack cap, and once more after a build that listed a pack, so the
+message ends at or under the bound. Builds take the watermark with a compare-and-swap, so a cron
+build and a queue build of one window never both list. Every backfill tick first rolls up the four kinds with
 the most packs above their bound, then builds with the rest of its budget, so a vault that stopped
-pushing still drains.
+pushing still drains. A tick has no budget to roll up after its builds, so a kind it built for may
+list one pack above its bound until the next tick or message.
 
 **Observability.** Each rollup logs `pack rollup` with `packsBefore`, `packsAfter`, `bound`,
 `inputs`, `entriesIn`, `entriesKept` and `deadRatio`. For one vault, this D1 query gives packs and

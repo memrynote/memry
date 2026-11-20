@@ -4,7 +4,6 @@ import {
   type CrdtUpdatePackEntryMeta
 } from '@memry/contracts/sync-api'
 
-import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import {
   openPack,
@@ -18,6 +17,7 @@ import {
   allLive,
   packIndexInsert,
   packObjectKey,
+  watermarkUnchanged,
   watermarkUpsert,
   type Coverage,
   type VaultScope
@@ -32,7 +32,8 @@ import {
   type RecordRow
 } from './pack-record-selection'
 import { loadSnapshotMeta, snapshotSelectionQuery, snapshotsLive } from './pack-snapshot-selection'
-import { deleteReplacedPackObjects, rollupKind } from './pack-rollup'
+import { rollupKind } from './pack-rollup'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
 import { PACK_TARGET_BYTES, packFillReady } from './pack-sizing'
 import {
   updateEntrySource,
@@ -100,7 +101,7 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // pack reads its entry meta in the selection query itself, so it costs
 // ~262. An update pack makes no R2 GET: its bytes come from D1 in ⌈24MB/4MB⌉
 // reads, ~11. compactVault builds one pack per kind per queue message
-// (max_batch_size 1), ~542 together, and a large vault drains across
+// (max_batch_size 1), ~542 together with ~350 of rollups (compactVault), and a large vault drains across
 // invocations: each push nudges one more pack per kind, and the cron backfill
 // continues from the watermark.
 // A full retry doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
@@ -131,7 +132,7 @@ export const PACK_FETCH_CONCURRENCY = 16
  */
 export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record', 'crdt_update']
 
-interface WatermarkRow {
+export interface WatermarkRow {
   last_sort_value: number
   last_sort_tiebreak: string
   /** cover_through of the kind's newest pack: the next pack's cover_from. NULL: cache only. */
@@ -156,6 +157,8 @@ export interface PackSelection {
   ready: boolean
   /** The next pack's coverage when it lists, or null for a cache-only pack. */
   coverage: Coverage
+  /** The watermark this selection read: every write it commits is guarded on it (watermarkUnchanged). */
+  watermark: WatermarkRow
 }
 
 /**
@@ -218,7 +221,6 @@ export const selectCandidates = async (
         blob_key: string
         size_bytes: number
         row_time: number | null
-        dead?: number
       } & Partial<RecordRow> &
         Partial<UpdateRow>
     >()
@@ -227,7 +229,6 @@ export const selectCandidates = async (
   let bytes = 0
   let bytesFull = false
   for (const row of rowList(rows)) {
-    if (row.dead) continue
     if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
     const record =
       kind === 'record'
@@ -260,8 +261,8 @@ export const selectCandidates = async (
   const last = candidates[candidates.length - 1]
   // A record range chains from the previous pack's cover_through, so rows a
   // window omitted fall inside the next range and record ranges tile (protocol
-  // 08 §8.10). Body packs stay cache-only: the build leaves out rows of deleted
-  // documents, which §8.10 counts as needed, and snapshots select on created_at.
+  // 08 §8.10). Body packs stay cache-only until step 07: snapshots still select
+  // on created_at, not server_cursor.
   const coverage: Coverage =
     last && kind === 'record' && watermark.covered_through !== null
       ? { from: watermark.covered_through, through: last.sortKey }
@@ -275,6 +276,7 @@ export const selectCandidates = async (
     return {
       ready,
       coverage,
+      watermark,
       candidates,
       nextSortValue: scanned.length > 0 ? maxScannedSortKey(scanned) : watermark.last_sort_value,
       nextTiebreak:
@@ -286,6 +288,7 @@ export const selectCandidates = async (
   return {
     ready,
     coverage,
+    watermark,
     candidates,
     nextSortValue: last.sortKey,
     nextTiebreak: last.tiebreak
@@ -356,9 +359,21 @@ export const compactOneRange = async (
     holes: []
   }
   if (!selection.ready) return noop
+  // Compare-and-swap: a cron build and a queue build of one scope may select
+  // the same window. Only the first to commit moves the watermark; the other
+  // lists nothing and deletes its own object, so ranges never overlap and
+  // covered_through never moves back (REVIEW-5267 P10).
+  const unchanged = watermarkUnchanged(scope, kind, selection.watermark)
   if (selection.candidates.length === 0) {
     // Still persist watermark advancement so oversized-only windows progress.
-    await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
+    await advanceWatermark(
+      db,
+      scope,
+      kind,
+      selection.nextSortValue,
+      selection.nextTiebreak,
+      unchanged
+    )
     return noop
   }
 
@@ -376,7 +391,14 @@ export const compactOneRange = async (
     .bind(scope.userId, scope.vaultId, kind, minSortValue)
     .first<{ pack_key: string }>()
   if (existing) {
-    await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
+    await advanceWatermark(
+      db,
+      scope,
+      kind,
+      selection.nextSortValue,
+      selection.nextTiebreak,
+      unchanged
+    )
     return { ...noop, built: false, packKey: existing.pack_key }
   }
 
@@ -521,7 +543,14 @@ export const compactOneRange = async (
   }
 
   if (writtenCount === 0) {
-    await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
+    await advanceWatermark(
+      db,
+      scope,
+      kind,
+      selection.nextSortValue,
+      selection.nextTiebreak,
+      unchanged
+    )
     return { ...noop, holes }
   }
 
@@ -535,8 +564,8 @@ export const compactOneRange = async (
   // A note delete purges its body rows and drops every body pack of the vault
   // (#2986, protocol 07 §7.15). One that commits after this run selected would
   // leave the deleted body in this pack, so the row and the watermark commit
-  // together and only while every packed body row is still current and not
-  // dead. Otherwise the next run reselects.
+  // together and only while every packed body row still exists with the packed
+  // version. Otherwise the next run reselects.
   const current =
     kind === 'crdt_snapshot'
       ? allLive(snapshotsLive(scope, built.entries), built.entries.length)
@@ -546,7 +575,10 @@ export const compactOneRange = async (
   // The listing cap is rechecked in the insert, against the rows before it:
   // another kind's build or a concurrent run may have taken the last slot.
   const room = roomGuard(scope)
-  const guard = { sql: `(${current.sql}) AND (${room.sql})`, bind: [...current.bind, ...room.bind] }
+  const guard = {
+    sql: `(${current.sql}) AND (${room.sql}) AND (${unchanged.sql})`,
+    bind: [...current.bind, ...room.bind, ...unchanged.bind]
+  }
   // The one object-delete rule (VERIFY-5260): the object goes only when this
   // build's own row is absent after the batch, whether the guard refused it
   // or a concurrent build of the range won. A listed row always has its object.
@@ -582,7 +614,7 @@ export const compactOneRange = async (
   if (!check.results?.[0]?.listed) {
     await storage.delete(packKey)
     logger.warn(
-      'pack not listed (body purge or prune, listing cap, or a concurrent build); discarded',
+      'pack not listed (body purge or prune, listing cap, or a build that moved the watermark); discarded',
       {
         userId: scope.userId,
         vaultId: scope.vaultId,
@@ -640,75 +672,37 @@ export const compactVault = async (
   const results: PackBuildResult[] = []
   // Rollup first: at the listing cap it is what makes room for the build
   // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
-  for (const kind of PACKED_KINDS) await rollupKind(db, storage, scope, kind)
+  for (const kind of PACKED_KINDS) await rollupLogged(db, storage, scope, kind)
   // A push nudge never builds `crdt_update`: only the backfill tick does, under
-  // the minimum fill (pack-sizing.ts), so pushes cannot list tiny packs.
+  // the minimum fill (pack-sizing.ts), so pushes cannot list tiny packs. A kind
+  // whose build listed a pack rolls up once more, so the message ends with the
+  // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
+  // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
+  // the replaced-object deletion 3: ~894.
   for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
-    results.push(await compactOneRange(db, storage, scope, kind))
+    const result = await compactOneRange(db, storage, scope, kind)
+    results.push(result)
+    if (result.built) await rollupLogged(db, storage, scope, kind)
   }
   await deleteReplacedPackObjects(db, storage, scope)
   return results
 }
 
-// ---------------------------------------------------------------------------
-// Producer helper
-// ---------------------------------------------------------------------------
-
-export interface PackCompactionMessageBody {
-  userId: string
-  vaultId: string
-}
-
-// Backoff caps for a rate-limited send (#1997). Two short retries, upper-bounded
-// at 200ms total: the nudge rides waitUntil after the response is already sent,
-// so it may spend a little time, but never enough to matter to the invocation.
-export const ENQUEUE_RETRY_DELAYS_MS = [50, 150]
-
-// Queues signals per-queue backpressure as "Too Many Requests". Matched on the
-// message because the binding throws a plain Error with no status field.
-const isQueueRateLimited = (error: unknown): boolean =>
-  error instanceof Error && /too many requests|rate limit(ed)?|\b429\b/i.test(error.message)
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-
-/**
- * Enqueue a compaction nudge after a successful push/snapshot commit.
- * Best-effort coalescing: one message per request (not per item); Queues
- * delivers at-least-once and the core is fully idempotent, so duplicates are
- * harmless and a lost message only delays packing until the next nudge or
- * the cron backfill. Absent binding (local dev without queues) degrades to a
- * no-op — compaction is an optimization, never a correctness requirement.
- */
-export const enqueuePackCompaction = async (
-  env: { PACK_QUEUE?: Queue<PackCompactionMessageBody> },
-  scope: VaultScope
+/** A rollup failure leaves the listing as it was; the build still runs. */
+const rollupLogged = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  kind: PackKindName
 ): Promise<void> => {
-  if (!env.PACK_QUEUE) return
-  const body = { userId: scope.userId, vaultId: scope.vaultId }
-
-  for (let attempt = 0; attempt <= ENQUEUE_RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      await env.PACK_QUEUE.send(body)
-      return
-    } catch (error) {
-      // Anything that is not backpressure is a real fault: surface it unchanged
-      // so it keeps reading as an unhandled defect.
-      if (!isQueueRateLimited(error)) throw error
-      if (attempt === ENQUEUE_RETRY_DELAYS_MS.length) {
-        // Retries exhausted. The intent is NOT lost and needs no pending-row of
-        // its own: pack_watermarks already leave this vault's rows above its
-        // watermark, so findBacklogVaults picks it up on the 6-hourly backfill
-        // cron. Typed 429 so waitUntilCaptured records expected backpressure
-        // instead of an unhandled 500.
-        throw new AppError(
-          ErrorCodes.PACK_ENQUEUE_RATE_LIMITED,
-          'Pack compaction enqueue rate-limited; deferred to the backfill cron',
-          429
-        )
-      }
-      // Full jitter — isolates that hit the limit together must not retry in
-      // lockstep and rebuild the very burst that triggered it.
-      await sleep(Math.random() * ENQUEUE_RETRY_DELAYS_MS[attempt])
-    }
+  try {
+    await rollupKind(db, storage, scope, kind)
+  } catch (error) {
+    logger.error('pack rollup failed', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind,
+      error: error instanceof Error ? error.message : String(error)
+    })
   }
 }

@@ -1,16 +1,23 @@
 import {
+  PACK_PURGE_DEADLINE_SECONDS,
   PACK_REPLACED_GRACE_SECONDS,
   PACK_LIST_MAX_PACKS_PER_VAULT
 } from '@memry/contracts/sync-api'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
-import { PACK_ORPHAN_MIN_AGE_MS, cleanupOrphanedPackObjects } from './cleanup'
+import {
+  PACK_ORPHAN_MIN_AGE_MS,
+  cleanupDeletedDocumentBodies,
+  cleanupOrphanedPackObjects
+} from './cleanup'
+import { purgeDeletedDocumentBodies } from './document-body-purge'
 import { runPackBackfill } from './pack-backfill'
 import { compactOneRange, compactVault } from './pack-compaction'
 import { packSha256, parsePack, type PackKindName } from './pack-format'
 import { listPacks } from './pack-list'
-import { deleteReplacedPackObjects, rollupKind } from './pack-rollup'
+import { PACK_PURGE_RETRY_DELAY_SECONDS, deleteReplacedPackObjects } from './pack-replaced-objects'
+import { rollupKind } from './pack-rollup'
 import { PACK_SETTLE_SECONDS, packCountBound } from './pack-sizing'
 
 /**
@@ -137,6 +144,18 @@ const entryIds = async (key: string): Promise<string[]> => {
   return (await parsePack(new Uint8Array(await object.arrayBuffer()))).entries.map((e) => e.id)
 }
 
+const packedIds = async (kind: PackKindName): Promise<string[]> =>
+  (await Promise.all(listed(kind).map((row) => entryIds(row.pack_key)))).flat()
+
+/** Pack objects among `keys` that still hold an entry `id`. */
+const holding = async (keys: readonly string[], id: string): Promise<string[]> => {
+  const found: string[] = []
+  for (const key of keys) {
+    if ((await storage.get(key)) && (await entryIds(key)).includes(id)) found.push(key)
+  }
+  return found
+}
+
 const replacedRows = (): number =>
   (harness.raw.prepare('SELECT COUNT(*) AS n FROM pack_replaced_objects').get() as { n: number }).n
 
@@ -188,24 +207,57 @@ describe('rollup contents (#5229)', () => {
     ])
   })
 
-  it('drops snapshots that were rewritten, purged, or belong to a deleted note', async () => {
+  it('drops rewritten and purged snapshots, and keeps a deleted note while its row exists', async () => {
     await buildSmallPacks('crdt_snapshot', 8)
     await writeSnapshot('note-2', 2, settled()) // rewritten under a new blob key
     harness.raw.prepare("DELETE FROM crdt_snapshots WHERE note_id = 'note-3'").run() // purged
-    deleteNoteRecord('note-4', 50) // deleted, not purged yet
+    deleteNoteRecord('note-4', 50) // deleted, not purged yet: its body row still counts
 
     const result = await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')
 
-    expect(result).toMatchObject({ replaced: 8, kept: 5, dropped: 3 })
+    expect(result).toMatchObject({ replaced: 8, kept: 6, dropped: 2 })
     const [merged] = listed('crdt_snapshot')
     expect(merged.cover_from).toBeNull() // body packs stay cache-only
     expect(await entryIds(merged.pack_key)).toEqual([
       'note-1',
+      'note-4',
       'note-5',
       'note-6',
       'note-7',
       'note-8'
     ])
+  })
+
+  // REVIEW-5267 P1: the rollup dropped a deleted note's body, and a re-create
+  // before the purge left it in no pack for good (protocol 08 §8.12).
+  it('a note deleted and re-created before the purge keeps its body packed', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    deleteNoteRecord('note-4', 50)
+    expect(await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')).not.toBeNull()
+    harness.raw
+      .prepare(
+        "UPDATE sync_items SET deleted_at = NULL, operation = 'create', server_cursor = 60 WHERE item_id = 'note-4'"
+      )
+      .run()
+    await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4']) // keeps a live id
+
+    advance(PACK_SETTLE_SECONDS + 1)
+    await compactVault(harness.db, storage, SCOPE)
+    await runPackBackfill(harness.db, storage)
+
+    expect(await packedIds('crdt_snapshot')).toContain('note-4')
+  })
+
+  // REVIEW-5267 P9: one unreadable input failed the whole rollup every tick.
+  it('excludes an unreadable input pack and still brings the kind under its bound', async () => {
+    await buildSmallPacks('record', 20)
+    const broken = listed('record')[5]
+    await storage.delete(broken.pack_key)
+
+    for (let tick = 0; tick < 5; tick++) await runPackBackfill(harness.db, storage)
+
+    expect(listed('record').length).toBeLessThanOrEqual(boundOf('record'))
+    expect(listed('record').map((row) => row.id)).toContain(broken.id) // a reader sees a gap
   })
 
   it('leaves a kind at or under its bound alone', async () => {
@@ -301,7 +353,103 @@ describe('index swap and the replaced-object grace (#5229)', () => {
   })
 })
 
+describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
+  // REVIEW-5267 P2: replaced inputs waited for the next drain, past the 900 s deadline.
+  it('leaves no pack object holding the purged body, replaced ones included', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    expect(await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')).not.toBeNull()
+    deleteNoteRecord('note-4', 50)
+
+    expect(await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])).toBe(
+      true
+    )
+
+    expect(await holding(old, 'note-4')).toEqual([])
+    expect(replacedRows()).toBe(0)
+  })
+
+  it('a failed delete stays due and the delayed purge message deletes it inside the deadline', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')
+    deleteNoteRecord('note-4', 50)
+    const remove = storage.delete.bind(storage)
+    const failing = vi
+      .spyOn(storage, 'delete')
+      .mockImplementation(async (keys) =>
+        [keys].flat().some((key) => old.includes(key))
+          ? Promise.reject(new Error('r2 down'))
+          : remove(keys)
+      )
+    const send = vi.fn()
+
+    await cleanupDeletedDocumentBodies(harness.db, storage, {
+      PACK_QUEUE: { send } as unknown as Queue
+    })
+
+    expect(send).toHaveBeenCalledWith(SCOPE, { delaySeconds: PACK_PURGE_RETRY_DELAY_SECONDS })
+    expect(PACK_PURGE_RETRY_DELAY_SECONDS).toBeLessThan(PACK_PURGE_DEADLINE_SECONDS)
+    expect(await holding(old, 'note-4')).not.toEqual([])
+
+    failing.mockRestore()
+    advance(PACK_PURGE_RETRY_DELAY_SECONDS)
+    await compactVault(harness.db, storage, SCOPE) // the delayed message
+    expect(await holding(old, 'note-4')).toEqual([])
+  })
+})
+
+describe('build compare-and-swap (#5229)', () => {
+  // REVIEW-5267 P10: a cron build and a queue build of one window both listed,
+  // and the later one moved covered_through back.
+  it('a build that lost the watermark to a concurrent build lists nothing', async () => {
+    await buildSmallPacks('record', 2)
+    for (let i = 3; i <= 6; i++) await writeRecord(i, `task-${i}`, settled())
+    const get = storage.get.bind(storage)
+    let concurrent: boolean | null = null
+    vi.spyOn(storage, 'get').mockImplementation(async (key, options) => {
+      const object = await get(key, options as R2GetOptions)
+      if (concurrent === null && key.includes('/task/task-3/')) {
+        concurrent = false
+        await writeRecord(50, 'task-3', settled()) // a push moves task-3 up
+        concurrent = (await compactOneRange(harness.db, storage, SCOPE, 'record')).built
+      }
+      return object
+    })
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(false)
+    expect(concurrent).toBe(true)
+
+    expect(listed('record').map((row) => [row.cover_from, row.cover_through])).toEqual([
+      [0, 1],
+      [1, 2],
+      [2, 50]
+    ])
+    const keys = [
+      ...(await storage.list({ prefix: `${USER}/vaults/${VAULT}/packs/record/` })).objects
+    ]
+    expect(keys.map((object) => object.key).toSorted()).toEqual(
+      listed('record')
+        .map((row) => row.pack_key)
+        .toSorted()
+    )
+  })
+})
+
 describe('pack bound (#5229, protocol 08 §8.14)', () => {
+  // REVIEW-5267 P5: rollup ran before the build, so a vault ended at bound + 1.
+  it('a push every 25 hours for 300 days never ends a message above the bound', async () => {
+    for (let i = 1; i <= 300; i++) {
+      advance(25 * 3600)
+      await writeRecord(i)
+      await writeSnapshot(`note-${i}`, 1)
+      await compactVault(harness.db, storage, SCOPE)
+      for (const kind of ['record', 'crdt_snapshot'] as const) {
+        expect(listed(kind).length).toBeLessThanOrEqual(boundOf(kind))
+      }
+    }
+  }, 120_000)
+
   it('300 small pushes end within the bound after the settle interval', async () => {
     for (let i = 1; i <= 300; i++) {
       advance(60)

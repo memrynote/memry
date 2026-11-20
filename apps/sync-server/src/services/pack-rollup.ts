@@ -1,5 +1,4 @@
 import { PACK_MAX_ENTRIES } from '@memry/contracts/pack-format'
-import { PACK_REPLACED_GRACE_SECONDS } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../lib/logger'
 import {
@@ -44,8 +43,6 @@ const logger = createLogger('PackRollup')
 export const ROLLUP_MAX_INPUTS = 64
 export const ROLLUP_SUBREQUESTS = ROLLUP_MAX_INPUTS + 8
 const ROLLUP_FETCH_CONCURRENCY = 8
-// Replaced objects one deletion pass removes: one R2 bulk delete takes 1000.
-const REPLACED_DELETE_BATCH = 500
 
 export interface ListedPack {
   id: string
@@ -72,9 +69,14 @@ const chains = (previous: ListedPack, next: ListedPack): boolean =>
 /**
  * The longest run of at least two adjacent packs (ascending `min_cursor`) that
  * chain and fit one pack by their listed counts. Longest, so tiny packs merge
- * before a full pack is rewritten. Empty when no two neighbours fit.
+ * before a full pack is rewritten. Empty when no two neighbours fit. An
+ * `excluded` pack (one that could not be read) ends a run: merging across it
+ * would list two packs over its range.
  */
-export const planRollup = (packs: readonly ListedPack[]): ListedPack[] => {
+export const planRollup = (
+  packs: readonly ListedPack[],
+  excluded: ReadonlySet<string> = new Set()
+): ListedPack[] => {
   let best: ListedPack[] = []
   for (let start = 0; start < packs.length; start++) {
     const run: ListedPack[] = []
@@ -83,6 +85,7 @@ export const planRollup = (packs: readonly ListedPack[]): ListedPack[] => {
     for (let i = start; i < packs.length && run.length < ROLLUP_MAX_INPUTS; i++) {
       const pack = packs[i]
       const previous = run[run.length - 1]
+      if (excluded.has(pack.id)) break
       if (previous && !chains(previous, pack)) break
       if (entries + pack.item_count > PACK_MAX_ENTRIES) break
       if (bytes + pack.byte_size > PACK_TARGET_BYTES) break
@@ -130,36 +133,53 @@ const kindStats = async (
   return row ?? { packs: 0, entries: 0, bytes: 0 }
 }
 
-/** Read and verify one listed pack, or null when it cannot be rolled up. */
+/** Read and verify one listed pack, or the reason it cannot be rolled up. */
 const readInput = async (
   storage: R2Bucket,
   kind: PackKindName,
   pack: ListedPack
-): Promise<Input | null> => {
-  const object = await storage.get(pack.pack_key)
-  if (!object) return null
-  const bytes = new Uint8Array(await object.arrayBuffer())
-  const parsed = await parsePack(bytes)
-  if (parsed.entries.some((entry) => entry.kind !== kind)) return null
-  return { pack, bytes, entries: parsed.entries }
+): Promise<Input | string> => {
+  try {
+    const object = await storage.get(pack.pack_key)
+    if (!object) return 'object missing'
+    const bytes = new Uint8Array(await object.arrayBuffer())
+    const parsed = await parsePack(bytes)
+    if (parsed.entries.some((entry) => entry.kind !== kind)) return 'entry of another kind'
+    return { pack, bytes, entries: parsed.entries }
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
 }
 
+const inputOf = (read: ReadonlyMap<string, Input>, pack: ListedPack): Input => {
+  const input = read.get(pack.id)
+  if (!input) throw new Error(`rollup input ${pack.id} was never read`)
+  return input
+}
+
+/**
+ * Read `packs` into `read`, ROLLUP_FETCH_CONCURRENCY at a time, skipping those
+ * already read. Returns the first pack that failed with its reason, or null.
+ * Each pack is fetched at most once per rollup, so a re-plan costs no GET
+ * beyond the first run's.
+ */
 const readInputs = async (
   storage: R2Bucket,
   kind: PackKindName,
-  packs: readonly ListedPack[]
-): Promise<Input[] | null> => {
-  const inputs: Input[] = []
-  for (let i = 0; i < packs.length; i += ROLLUP_FETCH_CONCURRENCY) {
-    const window = await Promise.all(
-      packs.slice(i, i + ROLLUP_FETCH_CONCURRENCY).map((pack) => readInput(storage, kind, pack))
-    )
-    for (const input of window) {
-      if (!input) return null
-      inputs.push(input)
+  packs: readonly ListedPack[],
+  read: Map<string, Input>
+): Promise<{ pack: ListedPack; reason: string } | null> => {
+  const missing = packs.filter((pack) => !read.has(pack.id))
+  for (let i = 0; i < missing.length; i += ROLLUP_FETCH_CONCURRENCY) {
+    const window = missing.slice(i, i + ROLLUP_FETCH_CONCURRENCY)
+    const results = await Promise.all(window.map((pack) => readInput(storage, kind, pack)))
+    for (let j = 0; j < window.length; j++) {
+      const result = results[j]
+      if (typeof result === 'string') return { pack: window[j], reason: result }
+      read.set(window[j].id, result)
     }
   }
-  return inputs
+  return null
 }
 
 const liveIndexes = async (
@@ -214,32 +234,33 @@ export const rollupKind = async (
     .all<ListedPack>()
   const packs = listed.results ?? []
   let run = planRollup(packs)
-  if (run.length === 0) {
-    logger.warn('pack kind above its bound with no mergeable run', {
+  // An unreadable input is excluded and the run re-planned inside itself, so
+  // one bad pack neither wedges its kind above the bound nor costs more GETs
+  // than the first run (REVIEW-5267 P9). It stays listed: a reader treats its
+  // 404 as a gap (§8.12), and the next rollup reads it again.
+  const read = new Map<string, Input>()
+  const excluded = new Set<string>()
+  for (;;) {
+    if (run.length === 0) {
+      logger.warn('pack kind above its bound with no mergeable run', {
+        ...scopeLog(scope, kind),
+        ...stats,
+        bound,
+        excluded: [...excluded]
+      })
+      return null
+    }
+    const failed = await readInputs(storage, kind, run, read)
+    if (!failed) break
+    logger.error('rollup input pack unreadable; excluded and re-planned', {
       ...scopeLog(scope, kind),
-      ...stats,
-      bound
+      packId: failed.pack.id,
+      reason: failed.reason
     })
-    return null
+    excluded.add(failed.pack.id)
+    run = planRollup(run, excluded)
   }
-
-  let inputs: Input[] | null
-  try {
-    inputs = await readInputs(storage, kind, run)
-  } catch (error) {
-    logger.error('rollup input pack failed verification; rollup skipped', {
-      ...scopeLog(scope, kind),
-      error: error instanceof Error ? error.message : String(error)
-    })
-    return null
-  }
-  if (!inputs) {
-    logger.error('rollup input pack object missing or of another kind; rollup skipped', {
-      ...scopeLog(scope, kind),
-      inputs: run.length
-    })
-    return null
-  }
+  let inputs = run.map((pack) => inputOf(read, pack))
 
   let entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
   let live = await liveIndexes(
@@ -260,10 +281,17 @@ export const rollupKind = async (
           ? { pack: packs[before], after: false }
           : null
     if (neighbour) {
-      const extra = await readInputs(storage, kind, [neighbour.pack])
-      if (!extra) return null
+      const failed = await readInputs(storage, kind, [neighbour.pack], read)
+      if (failed) {
+        logger.error('rollup neighbour pack unreadable; rollup skipped', {
+          ...scopeLog(scope, kind),
+          packId: failed.pack.id,
+          reason: failed.reason
+        })
+        return null
+      }
       run = neighbour.after ? [...run, neighbour.pack] : [neighbour.pack, ...run]
-      inputs = neighbour.after ? [...inputs, ...extra] : [...extra, ...inputs]
+      inputs = run.map((pack) => inputOf(read, pack))
       entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
       live = await liveIndexes(
         db,
@@ -445,48 +473,4 @@ const swapListing = async (
   const results = await db.batch<{ swapped: number; listed: number }>(statements)
   const check = results[results.length - 1].results?.[0]
   return Boolean(check?.swapped) && (swap.kept.length === 0 || Boolean(check?.listed))
-}
-
-/**
- * Delete replaced pack objects whose grace period has passed (protocol 08
- * §8.12), oldest first. An object some row still lists is never deleted (the
- * one object-delete rule); its stale record is dropped. A failed R2 delete
- * keeps the records, so the next pass retries.
- */
-export const deleteReplacedPackObjects = async (
-  db: D1Database,
-  storage: R2Bucket,
-  scope?: VaultScope
-): Promise<number> => {
-  const due = Math.floor(Date.now() / 1000) - PACK_REPLACED_GRACE_SECONDS
-  const where = scope ? 'AND r.user_id = ? AND r.vault_id = ?' : ''
-  const rows = await db
-    .prepare(
-      `SELECT r.pack_key, EXISTS (SELECT 1 FROM pack_index p
-           WHERE p.user_id = r.user_id AND p.vault_id = r.vault_id AND p.pack_key = r.pack_key) AS listed
-       FROM pack_replaced_objects r
-       WHERE r.removed_at <= ? ${where}
-       ORDER BY r.removed_at ASC
-       LIMIT ?`
-    )
-    .bind(due, ...(scope ? [scope.userId, scope.vaultId] : []), REPLACED_DELETE_BATCH)
-    .all<{ pack_key: string; listed: number }>()
-  const found = rows.results ?? []
-  if (found.length === 0) return 0
-  const doomed = found.filter((row) => !row.listed).map((row) => row.pack_key)
-  try {
-    if (doomed.length > 0) await storage.delete(doomed)
-  } catch (error) {
-    logger.error('replaced pack objects not deleted; retried next pass', {
-      objects: doomed.length,
-      error: error instanceof Error ? error.message : String(error)
-    })
-    return 0
-  }
-  await db
-    .prepare('DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))')
-    .bind(JSON.stringify(found.map((row) => row.pack_key)))
-    .run()
-  if (doomed.length > 0) logger.info('replaced pack objects deleted', { count: doomed.length })
-  return doomed.length
 }

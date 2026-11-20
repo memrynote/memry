@@ -68,7 +68,9 @@ import {
   type SnapshotBatchOutcome,
   type SnapshotClaim
 } from '../services/crdt'
-import { enqueuePackCompaction } from '../services/pack-compaction'
+import { DOCUMENT_ITEM_TYPES } from '../services/document-body-purge'
+import { enqueuePackCompaction } from '../services/pack-queue'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from '../services/pack-replaced-objects'
 import { listPacks } from '../services/pack-list'
 import { resolveR2PresignConfig } from '../services/r2-presign'
 import type { AppContext } from '../types'
@@ -578,6 +580,22 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       source: 'PackQueue',
       action: 'pack_enqueue_failed'
     })
+    // An accepted note or journal delete ran the body purge (protocol 08
+    // §8.13); this delayed message retries its replaced-object deletion.
+    if (
+      items.some(
+        (item, index) =>
+          item.operation === 'delete' &&
+          DOCUMENT_ITEM_TYPES.has(item.type) &&
+          result.outcomes[index]?.accepted
+      )
+    ) {
+      waitUntilCaptured(
+        c,
+        enqueuePackCompaction(c.env, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS),
+        { source: 'PackQueue', action: 'pack_enqueue_failed' }
+      )
+    }
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
     // Only sockets that opted in ever see these (protocol 09 §9.13, #2300).

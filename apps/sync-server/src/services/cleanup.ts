@@ -1,6 +1,8 @@
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
+import { enqueuePackCompaction, type PackCompactionMessageBody } from './pack-queue'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from './pack-replaced-objects'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
@@ -305,7 +307,8 @@ const DELETED_BODY_LIMIT = 100
  */
 export const cleanupDeletedDocumentBodies = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const rows = await db
     .prepare(
@@ -335,7 +338,9 @@ export const cleanupDeletedDocumentBodies = async (
   let purged = 0
   for (const { userId, vaultId, noteIds } of byVault.values()) {
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
+      if (await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)) {
+        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+      }
       purged += noteIds.length
     } catch (error) {
       logger.warn('Deleted document body purge failed, retried next tick', {
