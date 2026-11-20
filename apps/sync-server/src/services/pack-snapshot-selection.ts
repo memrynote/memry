@@ -36,6 +36,24 @@ export const snapshotSelectionQuery = (
 })
 
 /**
+ * The last `note_id` of the snapshot rows written in `second`: the watermark
+ * tiebreak that leaves a whole tie group behind (pack-compaction.ts).
+ */
+export const snapshotTieEnd = async (
+  db: D1Database,
+  scope: VaultScope,
+  second: number
+): Promise<string | null> =>
+  (
+    await db
+      .prepare(
+        'SELECT MAX(note_id) AS t FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND created_at = ?'
+      )
+      .bind(scope.userId, scope.vaultId, second)
+      .first<{ t: string | null }>()
+  )?.t ?? null
+
+/**
  * The packed entries whose snapshot row still exists with the packed blob: a
  * `FROM` clause for `allLive` and the rollup. A deleted document's row counts
  * while it exists (protocol 08 §8.12).

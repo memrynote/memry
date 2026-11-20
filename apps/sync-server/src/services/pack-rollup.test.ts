@@ -159,6 +159,15 @@ const holding = async (keys: readonly string[], id: string): Promise<string[]> =
 const replacedRows = (): number =>
   (harness.raw.prepare('SELECT COUNT(*) AS n FROM pack_replaced_objects').get() as { n: number }).n
 
+/** Objects a build or rollup wrote and did not list, due at once. */
+const unlistedRows = (): string[] =>
+  harness.raw
+    .prepare(
+      "SELECT pack_key FROM pack_replaced_objects WHERE replaced_by = 'unlisted' AND removed_at = 0"
+    )
+    .pluck()
+    .all() as string[]
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   harness = createSqliteD1()
@@ -389,8 +398,35 @@ describe('index swap and the replaced-object grace (#5229)', () => {
     expect(await rollupKind(harness.db, storage, SCOPE, 'record')).toBeNull()
 
     expect(listed('record')).toEqual(old)
-    expect(replacedRows()).toBe(0)
+    expect(unlistedRows()).toEqual([merged])
     expect(await storage.get(merged)).toBeNull()
+    for (const row of old) expect(await storage.get(row.pack_key)).not.toBeNull()
+  })
+
+  // VERIFY-5267 r3 info: a lost swap whose delete failed left an unrecorded
+  // object, holding a purged body until the 1 h orphan sweep.
+  it('records the object of a lost swap, so a failed delete is retried by the next pass', async () => {
+    await buildSmallPacks('record', 8)
+    const old = listed('record')
+    const put = storage.put.bind(storage)
+    let merged = ''
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/record/') && !merged) {
+        merged = key
+        await writeRecord(20, 'task-5')
+      }
+      return put(key, value, options)
+    })
+    const remove = vi.spyOn(storage, 'delete').mockRejectedValue(new Error('r2 down'))
+
+    expect(await rollupKind(harness.db, storage, SCOPE, 'record')).toBeNull()
+    expect(await storage.get(merged)).not.toBeNull()
+    expect(unlistedRows()).toEqual([merged])
+
+    remove.mockRestore()
+    expect((await deleteReplacedPackObjects(harness.db, storage, SCOPE)).deleted).toBe(1)
+    expect(await storage.get(merged)).toBeNull()
+    expect(replacedRows()).toBe(0)
     for (const row of old) expect(await storage.get(row.pack_key)).not.toBeNull()
   })
 
@@ -408,7 +444,7 @@ describe('index swap and the replaced-object grace (#5229)', () => {
     expect(await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')).toBeNull()
 
     expect(listed('crdt_snapshot')).toHaveLength(7)
-    expect(replacedRows()).toBe(0)
+    expect(unlistedRows()).toHaveLength(1)
   })
 })
 
@@ -560,6 +596,31 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     await expect(compactVault(harness.db, storage, SCOPE)).rejects.toThrow('r2 put 500 BUILD')
   })
 
+  // VERIFY-5267 r4 info: a final pass that threw replaced the build error.
+  it('a build error is kept as the cause when the final deletion pass throws', async () => {
+    await writeRecord(1, 'task-1', settled())
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/record/')) throw new Error('r2 put 500 BUILD')
+      return put(key, value, options)
+    })
+    const prepare = harness.db.prepare.bind(harness.db)
+    let passes = 0
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+      if (sql.includes('FROM pack_replaced_objects r') && ++passes === 2) throw new Error('d1 down')
+      return prepare(sql)
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const thrown = await compactVault(harness.db, storage, SCOPE).then(
+      () => null,
+      (error: unknown) => error
+    )
+
+    expect((thrown as Error).message).toBe('replaced pack objects still due')
+    expect(((thrown as Error).cause as Error).message).toBe('r2 put 500 BUILD')
+  })
+
   // VERIFY-5267 F5: every delete enqueued a delayed message, and one tick
   // purged up to 100 vaults, about 700 subrequests.
   it('the cleanup sweep purges at most five vaults per tick and asks no retry when none is due', async () => {
@@ -638,6 +699,36 @@ describe('build compare-and-swap (#5229)', () => {
     const keys = [
       ...(await storage.list({ prefix: `${USER}/vaults/${VAULT}/packs/record/` })).objects
     ]
+    expect(keys.map((object) => object.key).toSorted()).toEqual(
+      listed('record')
+        .map((row) => row.pack_key)
+        .toSorted()
+    )
+  })
+
+  it('records the object of a build that lost the watermark when its delete fails', async () => {
+    await buildSmallPacks('record', 2)
+    for (let i = 3; i <= 6; i++) await writeRecord(i, `task-${i}`, settled())
+    const get = storage.get.bind(storage)
+    let raced = false
+    vi.spyOn(storage, 'get').mockImplementation(async (key, options) => {
+      const object = await get(key, options as R2GetOptions)
+      if (!raced && key.includes('/task/task-3/')) {
+        raced = true
+        await writeRecord(50, 'task-3', settled())
+        await compactOneRange(harness.db, storage, SCOPE, 'record')
+      }
+      return object
+    })
+    const remove = vi.spyOn(storage, 'delete').mockRejectedValue(new Error('r2 down'))
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(false)
+    const [lost] = unlistedRows()
+    expect(await storage.get(lost)).not.toBeNull()
+
+    remove.mockRestore()
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+    const keys = (await storage.list({ prefix: `${USER}/vaults/${VAULT}/packs/record/` })).objects
     expect(keys.map((object) => object.key).toSorted()).toEqual(
       listed('record')
         .map((row) => row.pack_key)
