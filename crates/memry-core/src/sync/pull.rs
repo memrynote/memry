@@ -47,7 +47,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
-use crate::protocol::types::{ArrivingItemType, Declaration};
+use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
@@ -85,6 +85,8 @@ pub trait RecordCipher: Send + Sync {
 pub use super::pull_report::{PullError, PullReport};
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
+
+mod shared_apply;
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
@@ -333,104 +335,6 @@ impl PullLoop {
         report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
 
         Ok(report)
-    }
-
-    /// Fetches, decodes and applies a named set of ids, **without touching
-    /// the record cursor**.
-    ///
-    /// The first sync's metadata pass (T122) drives this: its work list is
-    /// the `payload_state = 'metadata-only'` rows the refs pass recorded, not
-    /// a position in the feed, so there is no cursor to move and §5.14's page
-    /// breaker — which is about a page of the feed — does not apply. Every
-    /// other rule does: per-item validation, the §5.13 apply order, and one
-    /// corrupt item never poisoning its chunk mates.
-    pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
-        let mut dropped_pages = 0;
-        let decoder = self.decoder();
-        let mut decoding = Vec::with_capacity(ids.len().div_ceil(MAX_PULL_IDS));
-        for chunk in ids.chunks(MAX_PULL_IDS) {
-            let mut body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get_mut("items").and_then(Json::as_array_mut) else {
-                dropped_pages += 1;
-                continue;
-            };
-            decoding.push(decoder.spawn(std::mem::take(items)));
-        }
-        let (mut report, failed) = self.apply_decoded(decoding).await?;
-        report.dropped_pages = dropped_pages;
-        for (item, reason) in failed {
-            report.corrupt += 1;
-            self.record_corrupt(&item, &reason).await?;
-        }
-        Ok(report)
-    }
-
-    /// Whether this loop's declaration subscribes `item_type` (§5.3). A record
-    /// pack is not filtered by the subscription, so its reader skips an
-    /// undeclared entry as `POST /sync/pull` would never have served it
-    /// (chapter 08 §8.4.2).
-    pub(crate) fn declares(&self, item_type: &str) -> bool {
-        self.declaration.classify(item_type) != ArrivingItemType::Undeclared
-    }
-
-    /// Applies pull items rebuilt from record pack entries (chapter 08
-    /// §8.4.2) through the same decode and apply as [`Self::fetch_ids`], in one
-    /// transaction. An item that fails to decode or verify is **not** recorded
-    /// corrupt: it is answered back, and the caller leaves it item-granular.
-    pub(crate) async fn apply_pack_items(
-        &self,
-        items: Vec<Json>,
-    ) -> Result<(PullReport, Vec<Json>), PullError> {
-        let decoding = vec![self.decoder().spawn(items)];
-        let (report, failed) = self.apply_decoded(decoding).await?;
-        Ok((report, failed.into_iter().map(|(item, _)| item).collect()))
-    }
-
-    /// The one apply a pulled item and a packed one share: per-item decode,
-    /// §5.13's order, then every item in one transaction. Answers the items
-    /// that did not decode, each with its reason.
-    async fn apply_decoded(
-        &self,
-        decoding: Vec<Decoding>,
-    ) -> Result<(PullReport, Vec<(Json, String)>), PullError> {
-        let mut report = PullReport::default();
-        let mut pending: Vec<Pending> = Vec::new();
-        let mut failed = Vec::new();
-        for chunk in decoding {
-            for (item, decoded) in chunk.finish().await? {
-                match decoded {
-                    Ok(decoded) => pending.push(decoded),
-                    Err(reason) => failed.push((item, reason)),
-                }
-            }
-        }
-
-        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let now = now_ms();
-        let clock_device = self.clock_device.clone();
-        let outcomes = self
-            .db
-            .call(move |conn| {
-                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-                let totals = apply_items(
-                    &txn,
-                    pending,
-                    Vec::new(),
-                    false,
-                    now,
-                    clock_device.as_deref(),
-                )?;
-                txn.commit().map_err(sqlite_failed)?;
-                Ok(totals)
-            })
-            .await?;
-        report.applied += outcomes.applied;
-        report.deleted += outcomes.deleted;
-        report.skipped += outcomes.skipped;
-        report.corrupt += outcomes.corrupt;
-        report.expired += outcomes.expired;
-        report.purged_documents.extend(outcomes.purged_documents);
-        Ok((report, failed))
     }
 
     fn decoder(&self) -> Arc<Decoder> {
