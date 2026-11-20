@@ -313,16 +313,25 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
+        if !self.close_local() {
             return;
         }
-        self.lock().finished = true;
-        self.notify();
         let request = self
             .request("POST", "/sync/bootstrap/close")
             .retry(RetryPolicy::never())
             .json(&json!({}));
         let _ = self.http.send_json::<Json>(request).await;
+    }
+
+    /// Ends the window here, with no round trip, so pacing reverts at once (`closeLocalOnly`).
+    /// Returns whether a session was held.
+    pub(crate) fn close_local(&self) -> bool {
+        if self.lock().session.take().is_none() {
+            return false;
+        }
+        self.lock().finished = true;
+        self.notify();
+        true
     }
 
     fn fall_back(&self) {

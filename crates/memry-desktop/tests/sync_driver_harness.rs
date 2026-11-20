@@ -11,6 +11,8 @@
 //! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 //! | a desktop first sync pulls every body                  | > 500 bodies, one older than 30 days; progress phases |
+//! | an elevated first sync paces ×5 until it closes        | ch. 10, `onBootstrapElevationChange` |
+//! | a failed or cancelled elevated first sync reverts to 1 | `closeBootstrapSession('failed')`     |
 //! | the manifest check pulls a lost row, pushes a lost create | ch. 05 §5.15, at most every 30 min |
 //! | a reconnect a day after the last pull reads the feed again | Electron `reconnectSync`, the driver's pass |
 //! | a task whose project a peer deleted is deleted and pushed | orphan repair, the driver's pass      |
@@ -596,6 +598,76 @@ async fn an_elevated_first_sync_paces_downloads_five_times_until_it_closes() {
         .expect("not paused");
 
     assert!(first.first_sync.elevated, "the Worker granted no session");
+    assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+}
+
+/// A first sync that fails after the Worker elevated it closes the window, so pacing is back at 1
+/// before the next run (`full-sync-runner.ts:528`, `closeBootstrapSession('failed')`).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_elevated_first_sync_reverts_the_pace_to_one() {
+    let server = Server::start_elevating();
+    let pulls = Arc::new(FailPulls {
+        inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+        fail: AtomicBool::new(true),
+        body_gets: AtomicUsize::new(0),
+    });
+    let b = Device::over(&server, 1, pulls).await;
+    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    b.driver
+        .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
+
+    let first = b.driver.first_sync(Arc::new(SilentInitialSync)).await;
+
+    assert!(first.is_err(), "the refs pass failed");
+    assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+}
+
+/// The app transport, never answering `/sync/changes`, and telling `reached` once one is sent.
+struct HangPulls {
+    inner: Arc<dyn Transport>,
+    reached: tokio::sync::Notify,
+}
+
+#[async_trait::async_trait]
+impl Transport for HangPulls {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        if request.url.contains("/sync/changes") {
+            self.reached.notify_one();
+            std::future::pending::<()>().await;
+        }
+        self.inner.send(request).await
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.inner.open_socket(request, listener)
+    }
+}
+
+/// An elevated first sync dropped mid-run (an aborted pass, a vault switch) reverts the pace to 1
+/// at once, as Electron's `closeBootstrapSession('vault_switch')` does (`full-sync-runner.ts:281`).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancelled_elevated_first_sync_reverts_the_pace_to_one() {
+    let server = Server::start_elevating();
+    let pulls = Arc::new(HangPulls {
+        inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+        reached: tokio::sync::Notify::new(),
+    });
+    let b = Device::over(&server, 1, pulls.clone()).await;
+    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    b.driver
+        .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
+
+    tokio::select! {
+        _ = b.driver.first_sync(Arc::new(SilentInitialSync)) => panic!("the refs pass hangs"),
+        () = pulls.reached.notified() => {}
+    }
+
     assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
 }
 

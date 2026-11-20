@@ -279,6 +279,24 @@ impl FirstSync {
     /// list: metadata is the rows refs recorded, bodies are the documents
     /// metadata typed and dated.
     pub async fn run(&self, now_ms: i64) -> Result<FirstSyncReport, FirstSyncError> {
+        // Electron closes the window when the run completes and when it fails
+        // (`full-sync-runner.ts:528`), so pacing reverts at once. A dropped run never reaches the
+        // close, so the guard ends the window locally.
+        let _window = self.bootstrap.as_deref().map(EndsWindow);
+        let report = self.passes(now_ms).await;
+        if let Some(bootstrap) = &self.bootstrap {
+            bootstrap.close().await;
+        }
+        let report = report?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Done,
+            completed: 1,
+            total: 1,
+        });
+        Ok(report)
+    }
+
+    async fn passes(&self, now_ms: i64) -> Result<FirstSyncReport, FirstSyncError> {
         let mut report = FirstSyncReport::default();
 
         // §10.5: this cannot fail in any way a caller must handle.
@@ -329,14 +347,6 @@ impl FirstSync {
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
             .await?;
-        if let Some(bootstrap) = &self.bootstrap {
-            bootstrap.close().await;
-        }
-        self.progress.progress(FirstSyncProgress {
-            phase: FirstSyncPhase::Done,
-            completed: 1,
-            total: 1,
-        });
         Ok(report)
     }
 
@@ -549,6 +559,15 @@ impl FirstSync {
         request: crate::protocol::http::ApiRequest,
     ) -> Result<Json, PullError> {
         Ok(self.pull.http().send_json(request).await?)
+    }
+}
+
+/// Ends the bootstrap window when a run is dropped (`closeLocalOnly`). A no-op after `close`.
+struct EndsWindow<'a>(&'a BootstrapClient);
+
+impl Drop for EndsWindow<'_> {
+    fn drop(&mut self) {
+        self.0.close_local();
     }
 }
 
