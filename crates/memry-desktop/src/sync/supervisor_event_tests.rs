@@ -9,14 +9,18 @@ use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress};
 use memry_core::sync::driver::{AppliedOutcome, AppliedRecord, CorruptItem, SecurityWarning};
 use tokio::time::sleep;
 
-use super::super::events::{ItemOperation, SyncEvent};
+use super::super::events::{ItemOperation, PulledItem, SyncEvent};
 use super::super::result::SyncNowBlockedReason;
 use super::super::status::SyncStatusValue;
 use super::rig::{Rig, lock, settle};
 
 fn record(item_id: &str, outcome: AppliedOutcome) -> AppliedRecord {
+    typed("task", item_id, outcome)
+}
+
+fn typed(item_type: &str, item_id: &str, outcome: AppliedOutcome) -> AppliedRecord {
     AppliedRecord {
-        item_type: "task".into(),
+        item_type: item_type.into(),
         item_id: item_id.into(),
         outcome,
         conflicts: Vec::new(),
@@ -55,7 +59,7 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
     });
     observers[0].item_recovered(&record("t5", AppliedOutcome::Updated));
 
-    let pulled = |id: &str, operation| SyncEvent::Pulled {
+    let pulled = |id: &str, operation| PulledItem {
         item_type: "task".into(),
         item_id: id.into(),
         operation,
@@ -63,9 +67,11 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
     assert_eq!(
         *lock(&rig.sync_events),
         [
-            pulled("t1", ItemOperation::Create),
-            pulled("t3", ItemOperation::Update),
-            pulled("t4", ItemOperation::Delete),
+            SyncEvent::Pulled(vec![
+                pulled("t1", ItemOperation::Create),
+                pulled("t3", ItemOperation::Update),
+                pulled("t4", ItemOperation::Delete),
+            ]),
             SyncEvent::SecurityWarning(warning),
             SyncEvent::Corrupt {
                 item_type: "note".into(),
@@ -78,6 +84,62 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
             },
         ]
     );
+}
+
+/// One page is one event, whatever its size: K records reach the renderer as one broadcast.
+/// A record applied twice in one page is told once, with its last operation. Notes and
+/// journals are the vault tier's to tell (`shell/note_events.rs`, `journal_events.rs`).
+#[tokio::test(start_paused = true)]
+async fn a_page_is_told_once_deduped_last_operation_wins_without_documents() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    let observers = lock(&rig.backend.driver.observers).clone();
+
+    observers[0].records_applied(&[
+        record("t1", AppliedOutcome::Created),
+        typed("project", "p1", AppliedOutcome::Updated),
+        typed("note", "n1", AppliedOutcome::Updated),
+        typed("journal", "j1", AppliedOutcome::Created),
+        record("t1", AppliedOutcome::Deleted),
+        typed("task", "p1", AppliedOutcome::Created),
+        record("t2", AppliedOutcome::Skipped),
+    ]);
+
+    let item = |item_type: &str, id: &str, operation| PulledItem {
+        item_type: item_type.into(),
+        item_id: id.into(),
+        operation,
+    };
+    assert_eq!(
+        *lock(&rig.sync_events),
+        [SyncEvent::Pulled(vec![
+            item("task", "t1", ItemOperation::Delete),
+            item("project", "p1", ItemOperation::Update),
+            item("task", "p1", ItemOperation::Create),
+        ])]
+    );
+}
+
+/// A page that changed nothing the renderer shows tells nothing.
+#[tokio::test(start_paused = true)]
+async fn a_page_of_skipped_or_document_records_tells_nothing() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    let observers = lock(&rig.backend.driver.observers).clone();
+
+    observers[0].records_applied(&[
+        record("t1", AppliedOutcome::Skipped),
+        record("t2", AppliedOutcome::Skipped),
+    ]);
+    observers[0].records_applied(&[typed("note", "n1", AppliedOutcome::Created)]);
+    observers[0].records_applied(&[]);
+
+    let told = lock(&rig.sync_events).clone();
+    assert!(told.is_empty(), "{told:?}");
 }
 
 #[tokio::test(start_paused = true)]

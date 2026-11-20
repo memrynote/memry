@@ -9,7 +9,7 @@
 //! | a write floor above the build parks the outbox         | §11.8 `minWriteVersion`: `version_incompatible`, pulls go on |
 //! | wait_for_pull and outbox_count follow real passes      | L4b test hooks: a pull counted, `synced_settings` 1 then 0 |
 //! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
-//! | real passes tell item-synced and queue-cleared         | L7 events through the real driver      |
+//! | real passes tell queue-cleared and no note on the feed | L7 events through the real driver      |
 //! | a fresh device's supervisor runs the first sync        | #4893: progress, every body, then passes |
 //! | a fresh device's seeded Inbox takes the user's Inbox   | #3538: the refs pass demotes the seed  |
 //! | a failed metadata pass does not push the seeded Inbox  | #3538: a demoted seed is not seeded    |
@@ -53,7 +53,7 @@ use memry_desktop::notes::property_definitions::{DefinitionsSeed, PropertyDefini
 use memry_desktop::seams::transport::app_transport;
 use memry_desktop::sync::backend::{SyncBackend, SyncPasses, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
-use memry_desktop::sync::events::{ItemOperation, OnSyncEvent, SyncEvent};
+use memry_desktop::sync::events::{OnSyncEvent, SyncEvent};
 use memry_desktop::sync::gate::AuthFacts;
 use memry_desktop::sync::gate::{SyncStartGate, VaultBinding};
 use memry_desktop::sync::realtime::{RealtimeSocket, SocketEnd};
@@ -615,7 +615,7 @@ async fn ten_hints_during_a_held_pass_give_exactly_one_trailing_pass() {
 }
 
 /// The supervisor's events through a real driver: A's push that empties its outbox tells
-/// queue-cleared, and B's pull of the note tells item-synced once, as a create.
+/// queue-cleared, and B's pull of the note reaches B's vault but tells the sync feed no note.
 #[tokio::test(flavor = "multi_thread")]
 async fn real_passes_tell_item_synced_and_queue_cleared() {
     let server = Server::start();
@@ -657,35 +657,24 @@ async fn real_passes_tell_item_synced_and_queue_cleared() {
     );
 
     let supervisor_b = b.supervisor_over(&gate, Arc::new(b.backend()), recorder(&events_b));
-    let pulled = || -> Vec<SyncEvent> {
-        events_b
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(
-                |event| matches!(event, SyncEvent::Pulled { item_type, .. } if item_type == "note"),
-            )
-            .cloned()
-            .collect()
-    };
+    until("B pulled the note", || b.notes() == 1).await;
     // B is fresh: its first sync's refs pass records the note metadata-only before the
-    // metadata pass applies it and tells `Pulled`.
-    until("B pulled the note", || !pulled().is_empty()).await;
+    // metadata pass applies it, so the feed is read once that pass is over.
     until("B's first sync ended", || {
         supervisor_b.status().last_sync_at.is_some()
     })
     .await;
-    let pulled = pulled();
-    assert!(
-        matches!(
-            pulled.as_slice(),
-            [SyncEvent::Pulled {
-                operation: ItemOperation::Create,
-                ..
-            }]
-        ),
-        "{pulled:?}"
-    );
+    // The note reached B; its event is the vault tier's, so the sync feed tells no note.
+    let notes_told: Vec<SyncEvent> = events_b
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|event| {
+            matches!(event, SyncEvent::Pulled(items) if items.iter().any(|item| item.item_type == "note"))
+        })
+        .cloned()
+        .collect();
+    assert!(notes_told.is_empty(), "{notes_told:?}");
     supervisor_a.stop().await;
     supervisor_b.stop().await;
 }
