@@ -251,8 +251,10 @@ current, and writes one new pack under a new key. It drops:
 A deleted document's body rows stay in packs until the purge removes them and drops those packs.
 An input pack it cannot download or verify is logged by id, left out, and the rollup planned again
 over every listed pack of the kind without it, downloading at most 64 packs in all. A run never
-spans an unreadable pack, so a kind split by unreadable packs into more runs than its bound stays
-above it until they read again.
+spans an unreadable pack, so the bound counts each one: a kind lists at most its bound, plus its
+unreadable listed packs, plus the transient one. An unreadable pack stays listed, readers treat it
+as absent and take its range item by item, and every tick logs it at error level with its id and
+kind (`rollup input pack unreadable`).
 
 One D1 batch then records the old objects in `pack_replaced_objects`, deletes the old
 `pack_index` rows and inserts the new one. The batch applies only while every old row is still

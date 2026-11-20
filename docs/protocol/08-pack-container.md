@@ -790,9 +790,8 @@ coverage ranges chain, and writes one pack that replaces them:
   out and the run is planned again over every listed pack of the kind without
   it (`apps/sync-server/src/services/pack-rollup.ts:269`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:246`). A run never spans an excluded pack, so a
-  kind whose unreadable packs split it into more runs than its bound stays
-  above the bound until those packs read again. Its coverage
+  among packs already read (`:246`). A run never spans an excluded pack, so
+  the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
   chain. Body inputs separated by a gap chain only when the gap no longer
@@ -953,3 +952,14 @@ again after a build that listed a pack, so it ends with that kind at or under
 the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:690`).
 A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
+
+**Unreadable packs.** A listed pack whose object cannot be read or verified
+cannot be merged (§8.12), so a kind lists at most the bound, plus the number
+of its listed packs that cannot be read or verified, plus the transient `+ 1`
+above. Each such pack stays listed. Dropping its row would end a record
+coverage range there (§8.10). A reader treats it as absent and takes its range
+item by item, which loses no data. Each rollup that meets it logs it at error
+level with the pack id and kind
+(`apps/sync-server/src/services/pack-rollup.ts:262-266`), and the backfill tick
+rolls the kind up every tick while it is above the bound, so an operator sees
+it once per tick.

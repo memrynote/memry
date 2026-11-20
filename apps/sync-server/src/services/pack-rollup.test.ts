@@ -260,6 +260,34 @@ describe('rollup contents (#5229)', () => {
     expect(listed('record').map((row) => row.id)).toContain(broken.id) // a reader sees a gap
   })
 
+  // VERIFY-5267 V7: unreadable packs split the kind into runs, so the bound
+  // counts each one (protocol 08 §8.14).
+  it('lists at most the bound plus its unreadable packs, and logs each one every tick', async () => {
+    await buildSmallPacks('record', 40)
+    const broken = [10, 20, 30].map((i) => listed('record')[i])
+    for (const pack of broken) await storage.delete(pack.pack_key)
+
+    for (let tick = 0; tick < 4; tick++) await runPackBackfill(harness.db, storage)
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await runPackBackfill(harness.db, storage)
+
+    expect(listed('record')).toHaveLength(7) // four merged runs and the three unreadable packs
+    expect(listed('record').length).toBeLessThanOrEqual(boundOf('record') + broken.length)
+    expect(listed('record').map((row) => row.id)).toEqual(
+      expect.arrayContaining(broken.map((p) => p.id))
+    )
+    const logged = errors.mock.calls
+      .map(
+        ([line]) => JSON.parse(String(line)) as { message: string; packId?: string; kind?: string }
+      )
+      .filter((entry) => entry.message.startsWith('rollup input pack unreadable'))
+    expect(logged).toHaveLength(broken.length)
+    expect(logged.map((entry) => entry.packId)).toEqual(
+      expect.arrayContaining(broken.map((p) => p.id))
+    )
+    expect(logged.every((entry) => entry.kind === 'record')).toBe(true)
+  })
+
   // VERIFY-5267 F4: the re-plan stayed inside the failed run, so bad packs in
   // the longest run hid a mergeable run elsewhere, every tick.
   it('re-plans over every listed pack when the longest run has no mergeable pair left', async () => {
