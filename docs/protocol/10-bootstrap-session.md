@@ -32,12 +32,23 @@ sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:38-41`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
 (`apps/sync-server/src/routes/bootstrap.ts:47-48`).
 
+Renew and close name their session only through the `X-Memry-Bootstrap-Token`
+header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:179-196`,
+`:198-207`).
+
 ## 10.3 The header
 
 **Normative.** `X-Memry-Bootstrap-Token`
 (`packages/contracts/src/bootstrap-api.ts:20`), carrying the `token` from the
 open response **verbatim**, added to elevated requests only
 (`packages/contracts/src/bootstrap-api.ts:23-24`).
+
+**Normative.** `POST /sync/bootstrap/renew` and `POST /sync/bootstrap/close`
+MUST carry the session's token in `X-Memry-Bootstrap-Token`
+(`apps/sync-server/src/routes/bootstrap.ts:186`, `:203`). A request without it
+is answered `401 BOOTSTRAP_SESSION_INVALID`
+(`apps/sync-server/src/routes/bootstrap.ts:69-78`), and a close without it
+leaves the session holding its concurrency slot until the token expires.
 
 **Old servers ignore it and old clients never send it**
 (`packages/contracts/src/bootstrap-api.ts:10-12`), which is what makes the whole
@@ -81,8 +92,8 @@ the feed tail from the start chapter 08 §8.10 gives, and the closing checks.
 That is never slower than a bootstrap without packs, and it waits on nothing
 the client cannot bound. A client MAY wait only for a bounded time it can show
 is shorter than the item-by-item path, and no client does today. The server
-logs one line per open with each kind's coverage, its uncovered row count and
-the reason (`cache_only`, `never_packed`, `unanchored`, `tail`).
+logs one line per open with each kind's coverage, its uncovered row count
+(counted up to `COVERAGE_COUNT_CAP` = 256) and the reason (`cache_only`, `never_packed`, `unanchored`, `tail`).
 
 ## 10.5 Errors, and the fallback rule
 
@@ -93,7 +104,7 @@ the reason (`cache_only`, `never_packed`, `unanchored`, `tail`).
 | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already pulled this vault and is past the resume window (§10.9)                                    |
 | `BOOTSTRAP_SESSION_LIMIT`     | 429    | the per-user concurrent cap                                                                                    |
-| `BOOTSTRAP_SESSION_INVALID`   | 401    | expired, forged or revoked token                                                                               |
+| `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:69-78`)          |
 | `BOOTSTRAP_IDENTITY_MISMATCH` | 403    | a valid token presented by another authenticated context; renewal and close require the session's own identity |
 | `BOOTSTRAP_SESSION_EXPIRED`   | 403    | the absolute maximum lifetime is spent                                                                         |
 | `BOOTSTRAP_UNAVAILABLE`       | 501    | the deployment has no HMAC key configured (`apps/sync-server/src/routes/bootstrap.ts:56-67`)                   |
@@ -272,7 +283,7 @@ longer. A client MUST NOT reset, restart, or report failure at this point.
 
 **Normative.** The secret is optional per deployment. Without it every bootstrap
 route answers `501 BOOTSTRAP_UNAVAILABLE`
-(`apps/sync-server/src/routes/bootstrap.ts:53-64`), and the elevation seam
+(`apps/sync-server/src/routes/bootstrap.ts:56-67`), and the elevation seam
 returns null everywhere, so an unconfigured deployment behaves exactly as it did
 before the feature existed
 (`apps/sync-server/src/services/bootstrap-session.ts:19-22`).
