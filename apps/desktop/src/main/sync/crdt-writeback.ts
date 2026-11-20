@@ -30,7 +30,8 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
-  type NoteFrontmatter
+  type NoteFrontmatter,
+  type ParsedNote
 } from '../vault/frontmatter'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
@@ -764,6 +765,58 @@ function keepVersionBeforeWriteback(
   }
 }
 
+/**
+ * Takes in a file that changed outside the app before a write-back writes
+ * over it (`writebackExisting` explains why). Resolves true when the
+ * write-back must stop: a locked note's file was restored, or the doc was fed
+ * (or refused) the edit, so the next pass writes from a doc that holds it.
+ */
+async function ingestOutsideEditFirst(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
+  existingRaw: string,
+  parsed: ParsedNote
+): Promise<boolean> {
+  if (!cached.contentHash || !isOutsideEdit(indexDb, noteId, cached, existingRaw)) return false
+  // A locked note's outside edit is never taken in: its locked text goes
+  // back on disk and the edit is kept as a version (#2606).
+  if (await restoreLockedNoteFile(noteId, existingRaw)) return true
+  const ingested = await feedExternalEditToCrdt(
+    noteId,
+    parsed.content,
+    writingFrontmatterOf(parsed.frontmatter)
+  )
+  // The index row moves to the new bytes only once the doc holds them.
+  // Moved first, the next pass would write a doc that never saw them.
+  if (ingested) {
+    syncNoteToCache(
+      indexDb,
+      {
+        id: noteId,
+        path: cached.path,
+        fileContent: existingRaw,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content,
+        title: cached.title,
+        createdAt: cached.createdAt,
+        modifiedAt: cached.modifiedAt,
+        localOnly: cached.localOnly ?? false,
+        emoji: cached.emoji ?? null
+      },
+      { isNew: false }
+    )
+    void flushProjectionEvents()
+  }
+  log.warn(
+    ingested
+      ? 'Write-back deferred: ingested the file that changed outside the app'
+      : 'Write-back skipped: the file changed outside the app',
+    { noteId, path: cached.path }
+  )
+  return true
+}
+
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -839,42 +892,7 @@ async function writebackExisting(
       })
       return
     }
-    if (cached.contentHash && parsed && isOutsideEdit(indexDb, noteId, cached, existingRaw)) {
-      // A locked note's outside edit is never taken in: its locked text goes
-      // back on disk and the edit is kept as a version (#2606).
-      if (await restoreLockedNoteFile(noteId, existingRaw)) return
-      const ingested = await feedExternalEditToCrdt(
-        noteId,
-        parsed.content,
-        writingFrontmatterOf(parsed.frontmatter)
-      )
-      // The index row moves to the new bytes only once the doc holds them.
-      // Moved first, the next pass would write a doc that never saw them.
-      if (ingested) {
-        syncNoteToCache(
-          indexDb,
-          {
-            id: noteId,
-            path: relativePath,
-            fileContent: existingRaw,
-            frontmatter: parsed.frontmatter,
-            parsedContent: parsed.content,
-            title: cached.title,
-            createdAt: cached.createdAt,
-            modifiedAt: cached.modifiedAt,
-            localOnly: cached.localOnly ?? false,
-            emoji: cached.emoji ?? null
-          },
-          { isNew: false }
-        )
-        void flushProjectionEvents()
-      }
-      log.warn(
-        ingested
-          ? 'Write-back deferred: ingested the file that changed outside the app'
-          : 'Write-back skipped: the file changed outside the app',
-        { noteId, path: relativePath }
-      )
+    if (parsed && (await ingestOutsideEditFirst(indexDb, noteId, cached, existingRaw, parsed))) {
       return
     }
   }
@@ -966,6 +984,15 @@ async function writebackJournal(
   if (existingRaw !== null && fileContent === existingRaw) {
     recordUnchangedFile(indexDb, noteId, cached, existingRaw)
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
+    return
+  }
+
+  // A journal file edited outside the app is taken in the same way as a note's.
+  if (
+    existingRaw !== null &&
+    parsed &&
+    (await ingestOutsideEditFirst(indexDb, noteId, cached, existingRaw, parsed))
+  ) {
     return
   }
 

@@ -103,7 +103,9 @@ describe('appendBlocksToNote', () => {
     expect(target.content).toContain('Existing target body\n\nMoved block')
   })
 
-  it('marks the write ignored before it lands and feeds the CRDT after', async () => {
+  // Doc first (D-DOC-FIRST): a crash before the file write leaves the doc
+  // ahead of the file, which the write-back then writes.
+  it('marks the write ignored before it lands after feeding the doc', async () => {
     seedNote('src', 'notes/source.md', 'Source body')
     seedNote('dst', 'notes/target.md', 'Target body')
 
@@ -111,10 +113,10 @@ describe('appendBlocksToNote', () => {
 
     expect(calls).toEqual([
       'markWritebackIgnored',
+      'feedExternalEditToCrdt',
       'atomicWrite',
       'syncNoteToCache',
-      'emitNoteEvent',
-      'feedExternalEditToCrdt'
+      'emitNoteEvent'
     ])
   })
 

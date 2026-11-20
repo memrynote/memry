@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { broadcast, enqueueCreate, initCrdt, syncCache, flush } = vi.hoisted(() => ({
+const { broadcast, enqueueCreate, initCrdt, syncCache, flush, disk } = vi.hoisted(() => ({
+  disk: { previousFile: null as string | null, baseline: undefined as string | undefined },
   broadcast: vi.fn(),
   enqueueCreate: vi.fn(),
   initCrdt: vi.fn().mockResolvedValue(undefined),
@@ -24,7 +25,8 @@ vi.mock('../vault/journal', () => ({
       modifiedAt: '2026-08-12T00:00:00.000Z'
     },
     fileContent: content,
-    frontmatter: { date }
+    frontmatter: { date },
+    previousFile: disk.previousFile
   })),
   getJournalRelativePath: (date: string) => `journal/${date}.md`
 }))
@@ -33,6 +35,10 @@ vi.mock('../projections', () => ({ flushProjectionEvents: flush }))
 vi.mock('./runtime-effects', () => ({
   enqueueJournalCreate: enqueueCreate,
   initializeJournalCrdt: initCrdt
+}))
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById: () => (disk.baseline ? { contentHash: disk.baseline } : undefined),
+  updateNoteCache: vi.fn()
 }))
 vi.mock('@memry/domain-notes', () => ({ getCanonicalJournalByDate: () => undefined }))
 // create-entry.ts imports both of these from './store'.
@@ -43,6 +49,7 @@ vi.mock('./store', () => ({
 
 import { generateJournalId } from '@memry/contracts/journal-api'
 import { createJournalEntry, resolveJournalEntryId } from './create-entry'
+import { generateContentHash } from '../vault/frontmatter'
 
 const DATE = '2026-08-12'
 
@@ -55,6 +62,34 @@ describe('resolveJournalEntryId', () => {
 describe('createJournalEntry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    disk.previousFile = null
+    disk.baseline = undefined
+  })
+
+  // A create can land on a day file that already exists (an ipc create over
+  // it, a NotePlan import, a journal-day merge). Its new body is not in the
+  // doc, so the baseline stays and the write-back feeds the file at open.
+  it('keeps the baseline when it writes a new body over an existing day file', async () => {
+    disk.previousFile = 'old body'
+    disk.baseline = generateContentHash('old body')
+
+    await createJournalEntry({ date: DATE, content: 'hello' })
+
+    expect(syncCache).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ contentHash: generateContentHash('old body') }),
+      expect.anything()
+    )
+  })
+
+  it('records the written bytes for a new day file', async () => {
+    await createJournalEntry({ date: DATE, content: 'hello' })
+
+    expect(syncCache).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ contentHash: generateContentHash('hello') }),
+      expect.anything()
+    )
   })
 
   it('writes the entry and runs the full create pipeline', async () => {

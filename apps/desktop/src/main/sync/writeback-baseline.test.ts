@@ -5,8 +5,8 @@ import { generateContentHash } from '../vault/frontmatter'
 import {
   baselineAfterWrite,
   baselineBeforeFeed,
-  feedThenRecordBaseline,
   isOutsideEdit,
+  landBodyEdit,
   writeWithBaseline
 } from './writeback-baseline'
 
@@ -83,37 +83,73 @@ describe('the clear rule of the pending hash', () => {
   })
 })
 
-/** A Memry writer that feeds its bytes to the doc after writing them (#5304). */
-describe("a writer's bytes become the baseline only once the doc holds them", () => {
+/**
+ * Memry's own body edit lands in the doc first, then in the file through
+ * `writeWithBaseline` (D-DOC-FIRST, #5304). A doc that does not take the edit
+ * still gets the file written, with the baseline kept, so the write-back reads
+ * the file as an outside edit and feeds it at open.
+ */
+describe("Memry's own body edit (landBodyEdit)", () => {
   let index: TestDatabaseResult
+  let disk: string
   beforeEach(() => {
     index = createTestIndexDb()
     insertNoteCache(index.db, { ...row, contentHash: generateContentHash(A) })
+    disk = A
   })
   afterEach(() => index.close())
   const cached = () => getNoteCacheById(index.db, 'n1')!
+  const write = async (): Promise<void> => {
+    disk = B
+  }
 
-  it('publishes the baseline it finds before the feed', () => {
+  it('publishes the baseline it finds for bytes the doc does not hold', () => {
     expect(baselineBeforeFeed(index.db, 'n1', B)).toBe(generateContentHash(A))
   })
 
-  it('records the bytes once the doc took them', async () => {
-    await feedThenRecordBaseline(index.db, 'n1', B, async () => true)
+  it('writes the file and records it once the doc took the edit', async () => {
+    const order: string[] = []
+    const published = await landBodyEdit(index.db, 'n1', B, {
+      feed: async () => (order.push('feed'), true),
+      write: async () => (order.push('write'), write())
+    })
+    expect(order).toEqual(['feed', 'write'])
+    expect(disk).toBe(B)
+    expect(published).toBe(generateContentHash(B))
     expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(false)
   })
 
-  it('keeps the baseline when the doc did not take them', async () => {
-    await feedThenRecordBaseline(index.db, 'n1', B, async () => false)
+  it('writes the file and keeps the baseline when the doc declines', async () => {
+    const published = await landBodyEdit(index.db, 'n1', B, { feed: async () => false, write })
+    expect(disk).toBe(B)
+    expect(published).toBe(generateContentHash(A))
     expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(true)
   })
 
-  it('leaves a baseline a write-back moved during the feed', async () => {
-    const C = '# Log\n\nThird.\n'
-    await feedThenRecordBaseline(index.db, 'n1', B, async () => {
-      updateNoteCache(index.db, 'n1', { contentHash: generateContentHash(C) })
-      return true
+  it('writes the file and keeps the baseline when the feed throws', async () => {
+    const published = await landBodyEdit(index.db, 'n1', B, {
+      feed: async () => {
+        throw new Error('store failed')
+      },
+      write
     })
-    expect(cached().contentHash).toBe(generateContentHash(C))
+    expect(disk).toBe(B)
+    expect(published).toBe(generateContentHash(A))
+    expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(true)
+  })
+
+  // A crash between the file write and the record: the pending hash names the
+  // bytes, so recovery reads them as Memry's own.
+  it('leaves its bytes its own when the process stops after the write', async () => {
+    await landBodyEdit(index.db, 'n1', B, {
+      feed: async () => true,
+      write: async () => {
+        disk = B
+        throw new Error('crash after the file write')
+      }
+    }).catch(() => {})
+    expect(cached().contentHash).toBe(generateContentHash(A))
+    expect(isOutsideEdit(index.db, 'n1', cached(), disk)).toBe(false)
   })
 })
 

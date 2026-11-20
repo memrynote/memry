@@ -5,15 +5,12 @@ import * as path from 'path'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type * as PathsModule from '../lib/paths'
-import type * as FeedModule from './crdt-external-feed'
 import { createTestIndexDb } from '@tests/utils/test-db'
 
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
   /** Set to make the next file write land and then stop the process before it returns. */
   crashAfterWrite: false,
-  /** Set to stop the process after a writer's file write, before its feed reaches the doc. */
-  crashBeforeFeed: false,
   indexDb: null as unknown,
   store: new Map<string, Uint8Array[]>(),
   contentHash: (_raw: string): string => ''
@@ -75,8 +72,7 @@ vi.mock('../vault/notes-io', async () => await import('../vault/notes'))
 vi.mock('../vault/notes', () => ({
   getVaultRoot: () => VAULT_ROOT,
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
-  maybeCreateSignificantSnapshot: () => null,
-  emitNoteEvent: vi.fn()
+  maybeCreateSignificantSnapshot: () => null
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof PathsModule>()),
@@ -100,29 +96,12 @@ vi.mock('../vault/note-sync', async () => {
   const q = await import('@main/database/queries/notes')
   return {
     // The projector's update of a row the real index holds (note-derived-state-projector.ts).
-    syncNoteToCache: (
-      db: never,
-      input: { id: string; fileContent: string; contentHash?: string }
-    ) => {
+    syncNoteToCache: (db: never, input: { id: string; fileContent: string }) => {
       if (q.getNoteCacheById(db, input.id)) {
-        q.updateNoteCache(db, input.id, {
-          contentHash: input.contentHash ?? h.contentHash(input.fileContent)
-        })
+        q.updateNoteCache(db, input.id, { contentHash: h.contentHash(input.fileContent) })
       }
-      return { wordCount: 0 }
     },
     deleteNoteFromCache: vi.fn()
-  }
-})
-vi.mock('./crdt-external-feed', async (importOriginal) => {
-  const actual = await importOriginal<typeof FeedModule>()
-  return {
-    ...actual,
-    feedExternalEditToCrdt: (...args: Parameters<typeof actual.feedExternalEditToCrdt>) => {
-      if (!h.crashBeforeFeed) return actual.feedExternalEditToCrdt(...args)
-      h.crashBeforeFeed = false
-      return Promise.reject(new Error('crashed before the feed'))
-    }
   }
 })
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))
@@ -144,7 +123,6 @@ import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { syncNoteToCache } from '../vault/note-sync'
-import { appendBlocksToNote } from '../vault/append-blocks'
 import { insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache } from '@memry/db-schema/schema/notes-cache'
 
@@ -368,49 +346,5 @@ describe('the write-back never reads bytes Memry wrote or read as an outside edi
     expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath })).not.toContain(
       'Draft paragraph.'
     )
-  })
-})
-
-describe("Memry's own writers feed the doc before the baseline names their bytes (#5304)", () => {
-  beforeAll(() => {
-    h.contentHash = generateContentHash
-  })
-
-  it('keeps blocks appended to an open note when the process stops before the feed', async () => {
-    // #given an open note whose file and baseline hold its doc's body
-    const id = 'append-target'
-    const notePath = 'Append/Inbox.md'
-    const file = `/vault/${notePath}`
-    const author = new Y.Doc()
-    await markdownToYFragment(
-      '# Inbox\n\nFirst line.',
-      author.getXmlFragment(CRDT_FRAGMENT_NAME),
-      notePath
-    )
-    const indexed = (await yDocToMarkdown(author, CRDT_FRAGMENT_NAME, { notePath }))!
-    h.store.set(id, [Y.encodeStateAsUpdate(author)])
-    seedRow(rowFor(id, notePath, indexed))
-    seedRow(rowFor('append-source', 'Append/Source.md', ''))
-    h.files.set(file, indexed)
-    const provider = getCrdtProvider()
-    await provider.initPersistence()
-    const doc = await provider.open(id, 1)
-
-    // #when "Move to" appends a block and the process stops after the file
-    // write, before the feed reaches the doc
-    h.crashBeforeFeed = true
-    await expect(
-      appendBlocksToNote({ sourceNoteId: 'append-source', targetNoteId: id, markdown: 'Moved.' })
-    ).rejects.toThrow('crashed before the feed')
-    expect(h.files.get(file)).toContain('Moved.')
-    resetWritebackState()
-
-    // #and a remote edit then writes the note back
-    provider.applyRemoteUpdate(id, editOf(doc, 'First line.', ' Remote.'))
-    await settleWriteback(id)
-
-    // #then the appended block is in the file and in the doc
-    expect(h.files.get(file)).toContain('Moved.')
-    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toContain('Moved.')
   })
 })

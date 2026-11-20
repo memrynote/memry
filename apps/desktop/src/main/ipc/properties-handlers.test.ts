@@ -71,6 +71,11 @@ vi.mock('../notes/runtime-effects', () => ({
   syncNoteUpdate: mocks.syncNoteUpdate
 }))
 
+vi.mock('@main/database/queries/notes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getNoteCacheById: mocks.getNoteCacheById
+}))
+
 vi.mock('../vault/journal-cache-sync', () => ({
   syncJournalCache: mocks.syncJournalCache
 }))

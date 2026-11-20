@@ -16,20 +16,21 @@ import { createLogger } from '../lib/logger'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   readJournalEntry,
-  writeJournalEntryWithContent,
+  composeJournalEntryWrite,
   getJournalRelativePath,
   serializeJournalEntry
 } from '../vault/journal'
 import { maybeCreateSignificantSnapshot } from '../vault/notes'
 import { syncJournalCache } from '../vault/journal-cache-sync'
-import { baselineAfterWrite, baselineBeforeFeed } from '../sync/writeback-baseline'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { createJournalEntry, resolveJournalEntryId } from './create-entry'
-import { enqueueJournalUpdate, feedJournalBodyToCrdt } from './runtime-effects'
+import { enqueueJournalUpdate } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
 
 const logger = createLogger('Journal:Update')
@@ -85,7 +86,7 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     }
   }
 
-  const { entry, fileContent, frontmatter, previousFile } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile, write } = await composeJournalEntryWrite(
     input.date,
     newContent,
     newTags,
@@ -94,17 +95,26 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
   )
   const cacheId = canonical?.id ?? cached?.id ?? entry.id
 
+  // A new body goes to the doc before the file (`landBodyEdit`): an open
+  // editor is bound to the entry's doc, and the watcher ignores this write, so
+  // the next write-back would otherwise put the doc's older body back over it.
+  // A metadata edit keeps the body the doc holds.
+  const content = input.content
+  const contentHash =
+    content !== undefined
+      ? await landBodyEdit(db, cacheId, fileContent, {
+          feed: () => feedExternalEditToCrdt(cacheId, content),
+          write
+        })
+      : (await write(), baselineAfterWrite(db, cacheId, previousFile, fileContent))
+
   syncJournalCache(
     db,
     {
       id: cacheId,
       path: journalPath,
       fileContent,
-      // A new body reaches the baseline once it is fed below.
-      contentHash:
-        input.content !== undefined
-          ? baselineBeforeFeed(db, cacheId, fileContent)
-          : baselineAfterWrite(db, cacheId, previousFile, fileContent),
+      contentHash,
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,
@@ -114,11 +124,6 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     { isNew: !cached }
   )
   enqueueJournalUpdate(cacheId, entry.date)
-
-  // An open editor is bound to the entry's doc (see feedJournalBodyToCrdt).
-  if (input.content !== undefined) {
-    await feedJournalBodyToCrdt(db, cacheId, input.content, fileContent)
-  }
 
   // The renderer caches whatever this returns (and whatever the event carries)
   // as the open entry, so both carry the cache id rather than `j<date>`.

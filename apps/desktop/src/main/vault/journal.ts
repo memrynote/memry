@@ -314,6 +314,29 @@ export async function writeJournalEntryWithContent(
   existingEntry?: JournalEntry | null,
   properties?: Record<string, unknown>
 ): Promise<JournalWriteResult> {
+  const { write, ...result } = await composeJournalEntryWrite(
+    date,
+    content,
+    tags,
+    existingEntry,
+    properties
+  )
+  await write()
+  return result
+}
+
+/**
+ * Composes a journal entry's file without writing it. `write` puts it on disk
+ * through the vault-lock guard, so a caller can feed the doc first
+ * (`landBodyEdit`).
+ */
+export async function composeJournalEntryWrite(
+  date: string,
+  content: string,
+  tags?: string[],
+  existingEntry?: JournalEntry | null,
+  properties?: Record<string, unknown>
+): Promise<JournalWriteResult & { write: () => Promise<void> }> {
   const store = getContentStore()
   await ensureDirectory(getJournalDir())
   const relativePath = store.getJournalRelativePath(date)
@@ -321,16 +344,18 @@ export async function writeJournalEntryWithContent(
   const existing =
     existingEntry ?? (previousFile ? toJournalEntry(parseJournalEntry(previousFile, date)) : null)
   const result = composeJournalEntry(date, content, tags, existing, properties, previousFile)
-  const absolutePath = store.resolve(relativePath)
-  const lockedPath = await beforeGuardedWrite(absolutePath)
-  let written: string | null = null
-  try {
-    await store.write(relativePath, result.fileContent)
-    written = result.fileContent
-  } finally {
-    await afterGuardedWrite(absolutePath, lockedPath, written)
+  const write = async (): Promise<void> => {
+    const absolutePath = store.resolve(relativePath)
+    const lockedPath = await beforeGuardedWrite(absolutePath)
+    let written: string | null = null
+    try {
+      await store.write(relativePath, result.fileContent)
+      written = result.fileContent
+    } finally {
+      await afterGuardedWrite(absolutePath, lockedPath, written)
+    }
   }
-  return result
+  return { ...result, write }
 }
 
 /**

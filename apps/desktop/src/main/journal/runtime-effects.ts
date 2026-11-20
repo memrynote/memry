@@ -1,8 +1,5 @@
 import { createLogger } from '../lib/logger'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { feedThenRecordBaseline } from '../sync/writeback-baseline'
-import type { getIndexDatabase } from '../database'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -35,26 +32,5 @@ export async function initializeJournalCrdt(
     await getCrdtProvider().initForNote(noteId, { date }, tags)
   } catch (err) {
     log.error('initializeJournalCrdt failed', { noteId, error: err })
-  }
-}
-
-/**
- * Same as the notes update (#2646): the watcher ignores this write, so an open
- * editor bound to the entry's doc would keep the old body and write it back.
- * The baseline moves to `fileContent` once the doc holds it (#5304). The file
- * is already written, so a failed feed must not fail the save.
- */
-export async function feedJournalBodyToCrdt(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  content: string,
-  fileContent: string
-): Promise<void> {
-  try {
-    await feedThenRecordBaseline(indexDb, noteId, fileContent, () =>
-      feedExternalEditToCrdt(noteId, content)
-    )
-  } catch (err) {
-    log.error('Could not feed the saved body to the journal CRDT doc', { noteId, error: err })
   }
 }
