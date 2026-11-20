@@ -95,10 +95,11 @@ vi.mock('../vault/journal', () => ({ getJournalPath: vi.fn() }))
 vi.mock('../vault/note-sync', async () => {
   const q = await import('@main/database/queries/notes')
   return {
-    // The projector's upsert of the row the real index holds (note-derived-state-projector.ts).
+    // The projector's update of a row the real index holds (note-derived-state-projector.ts).
     syncNoteToCache: (db: never, input: { id: string; fileContent: string }) => {
-      const row = q.getNoteCacheById(db, input.id)
-      if (row) q.insertNoteCache(db, { ...row, contentHash: h.contentHash(input.fileContent) })
+      if (q.getNoteCacheById(db, input.id)) {
+        q.updateNoteCache(db, input.id, { contentHash: h.contentHash(input.fileContent) })
+      }
     },
     deleteNoteFromCache: vi.fn()
   }
