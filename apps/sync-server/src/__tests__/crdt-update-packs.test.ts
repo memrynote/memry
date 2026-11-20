@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
+import { runBackfillTick } from './pack-queue-memory'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { storeUpdatesWithCursor } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
-import { runPackBackfill } from '../services/pack-backfill'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { extractEntry, parsePack, type PackedEntry } from '../services/pack-format'
 import { PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from '../services/pack-sizing'
@@ -432,10 +432,7 @@ describe('crdt_update packs (#5228)', () => {
   it('the cron backfill builds no update pack below the minimum fill', async () => {
     await writeUpdates('note-a', bytes(1, 1))
 
-    expect(await runPackBackfill(harness.db, storage)).toMatchObject({
-      packsBuilt: 0,
-      scopesVisited: 0
-    })
+    expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
     expect(updatePackCount()).toBe(0)
   })
 
@@ -443,7 +440,7 @@ describe('crdt_update packs (#5228)', () => {
     await writeUpdates('note-a', bytes(1, 1))
     passFillWait()
 
-    expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
+    await runBackfillTick(harness.db, storage)
     expect(updatePackCount()).toBe(1)
   })
 
@@ -452,7 +449,7 @@ describe('crdt_update packs (#5228)', () => {
       await writeUpdates(`note-${i}`, ...Array.from({ length: 64 }, (_, j) => bytes(i % 256, j)))
     }
 
-    expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
+    await runBackfillTick(harness.db, storage)
     expect(updatePackCount()).toBe(1)
   })
 
@@ -539,7 +536,7 @@ describe('the listing cap (REVIEW-5260 P2, VERIFY-5260, protocol 08 §8.14)', ()
     await writeUpdates('note-a', bytes(1, 1))
     passFillWait()
 
-    await runPackBackfill(harness.db, storage)
+    await runBackfillTick(harness.db, storage)
 
     expect(updatePackCount()).toBe(1)
   })

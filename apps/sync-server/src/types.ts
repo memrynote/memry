@@ -74,8 +74,8 @@ export type Bindings = {
   // exactly as before. Never commit real values.
   BOOTSTRAP_SESSION_HMAC_KEY?: string
   // Pack compaction queue (#1839). Optional so local dev without Queues keeps
-  // working: an absent binding makes enqueuePackCompaction a no-op and the
-  // cron backfill still drains packs over time.
+  // working: an absent binding makes enqueuePackCompaction a no-op, and the
+  // cron backfill, which only enqueues, packs nothing.
   PACK_QUEUE?: Queue<PackCompactionMessageBody>
   // Socket items budget in bytes (#2300). Unset = 64 KiB; "0" turns every
   // changes_available frame back to hint-only. It can lower the cap, never raise it.

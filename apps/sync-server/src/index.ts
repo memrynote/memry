@@ -267,10 +267,10 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
     ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)],
     ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)],
-    // Pack backfill (#1839) rides the 6-hourly trigger: a bounded number of
-    // packs per tick (see pack-backfill.ts for the pacing model), resumed via
-    // watermarks until every vault's historical items are packed.
-    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE)]
+    // Pack backfill (#1839) rides the 6-hourly trigger: it enqueues bounded
+    // per-vault backfill messages and the queue consumer builds (#5278, see
+    // pack-backfill.ts), resumed via watermarks until every vault is packed.
+    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE, env.PACK_QUEUE)]
   ]
 
   if (event.cron === DAILY_CRON) {

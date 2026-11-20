@@ -6,13 +6,13 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
+import { runBackfillTick } from '../__tests__/pack-queue-memory'
 import {
   PACK_ORPHAN_MIN_AGE_MS,
   cleanupDeletedDocumentBodies,
   cleanupOrphanedPackObjects
 } from './cleanup'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
-import { runPackBackfill } from './pack-backfill'
 import { compactOneRange, compactVault } from './pack-compaction'
 import { packSha256, parsePack, type PackKindName } from './pack-format'
 import { listPacks } from './pack-list'
@@ -243,7 +243,7 @@ describe('rollup contents (#5229)', () => {
 
     advance(PACK_SETTLE_SECONDS + 1)
     await compactVault(harness.db, storage, SCOPE)
-    await runPackBackfill(harness.db, storage)
+    await runBackfillTick(harness.db, storage)
 
     expect(await packedIds('crdt_snapshot')).toContain('note-4')
   })
@@ -254,7 +254,7 @@ describe('rollup contents (#5229)', () => {
     const broken = listed('record')[5]
     await storage.delete(broken.pack_key)
 
-    for (let tick = 0; tick < 5; tick++) await runPackBackfill(harness.db, storage)
+    for (let tick = 0; tick < 5; tick++) await runBackfillTick(harness.db, storage)
 
     expect(listed('record').length).toBeLessThanOrEqual(boundOf('record'))
     expect(listed('record').map((row) => row.id)).toContain(broken.id) // a reader sees a gap
@@ -267,9 +267,9 @@ describe('rollup contents (#5229)', () => {
     const broken = [10, 20, 30].map((i) => listed('record')[i])
     for (const pack of broken) await storage.delete(pack.pack_key)
 
-    for (let tick = 0; tick < 4; tick++) await runPackBackfill(harness.db, storage)
+    for (let tick = 0; tick < 4; tick++) await runBackfillTick(harness.db, storage)
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    await runPackBackfill(harness.db, storage)
+    await runBackfillTick(harness.db, storage)
 
     expect(listed('record')).toHaveLength(7) // four merged runs and the three unreadable packs
     expect(listed('record').length).toBeLessThanOrEqual(boundOf('record') + broken.length)
@@ -295,7 +295,7 @@ describe('rollup contents (#5229)', () => {
     const bad = [5, 10, 15, 20, 25, 30, 35]
     for (const i of bad) await storage.delete(rows[i].pack_key)
 
-    for (let tick = 0; tick < 30; tick++) await runPackBackfill(harness.db, storage)
+    for (let tick = 0; tick < 30; tick++) await runBackfillTick(harness.db, storage)
 
     expect(listed('record')).toHaveLength(15) // eight merged runs and the seven unreadable packs
     expect(listed('record').length).toBeLessThanOrEqual(boundOf('record') + 2 * bad.length + 1)
@@ -692,7 +692,7 @@ describe('pack bound (#5229, protocol 08 §8.14)', () => {
 
     // The cron tick alone: a capped vault gets no push nudge.
     for (let tick = 0; tick < 20 && listed('record').length > boundOf('record'); tick++) {
-      await runPackBackfill(harness.db, storage)
+      await runBackfillTick(harness.db, storage)
     }
 
     const rows = listed('record')

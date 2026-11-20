@@ -172,8 +172,8 @@ const ORPHAN_CHUNK_BATCH = 90
 
 // Rows shed per tick, and users whose objects are deleted per tick. Each user
 // costs one bulk R2 delete and every 50 rows one db.batch, so a tick spends at
-// most ~25 subrequests: the scheduled invocation shares its 1000-subrequest
-// ceiling with pack_backfill, which budgets 900 for itself (pack-backfill.ts).
+// most ~25 subrequests of the scheduled invocation. pack_backfill builds
+// nothing in-line, it enqueues to the pack queue (pack-backfill.ts).
 const TOMBSTONE_SHED_LIMIT = 200
 const TOMBSTONE_SHED_USERS_PER_TICK = 20
 // Rows per shed transaction: two statements each, one db.batch per chunk.
