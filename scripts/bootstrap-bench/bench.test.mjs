@@ -11,7 +11,14 @@ import zlib from 'node:zlib'
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { busyMs, endpointOf, formatReport, limiterOf, maxInFlight, summarize } from './metrics.mjs'
 import { assertAllowedUpstream, startProxy } from './proxy.mjs'
-import { bodyDebt, findBootstrapDb, feedHeadMs, iosMarks, tauriStartMs } from './rust-shell.mjs'
+import {
+  bodyDebt,
+  existingDbs,
+  findBootstrapDb,
+  feedHeadMs,
+  iosMarks,
+  tauriStartMs
+} from './rust-shell.mjs'
 
 const request = (fields) => ({
   method: 'GET',
@@ -379,26 +386,45 @@ describe('rust-core shells', () => {
     fs.mkdirSync(path.dirname(file), { recursive: true })
     const db = new DatabaseSync(file)
     db.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+    db.exec('CREATE TABLE yjs_snapshots (doc_id TEXT PRIMARY KEY)')
     for (const key of keys) db.prepare('INSERT INTO meta VALUES (?, ?)').run(key, '0:0')
     db.close()
   }
 
-  it('reads the body debt of the vault that is bootstrapping', () => {
+  it('reads the body debt of the vault this run created, bound to a server vault or not', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-db-'))
     try {
-      vaultDb(path.join(dir, 'other/.memry/data.db'), ['sync.cursor'])
-      const bootstrapping = path.join(dir, 'vaults/v1/data.db')
+      // The developer's own vault, there before the run and still written to.
+      vaultDb(path.join(dir, 'mine/.memry/core/data.db'), ['sync.server_vault_id'])
+      const known = existingDbs([dir])
+      assert.equal(findBootstrapDb([dir], known), null)
+      // main's core writes no `sync.server_vault_id` (iOS on main).
+      const bootstrapping = path.join(dir, 'vault/v1/data.db')
       vaultDb(bootstrapping, [
-        'sync.server_vault_id',
+        'first_sync.window_start',
         'sync.body_owed:a',
         'sync.body_owed:b',
         'sync.body_owed;not-a-debt',
         'sync.body_owe:x'
       ])
-      assert.equal(findBootstrapDb([dir], 0), bootstrapping)
-      assert.deepEqual(bodyDebt(bootstrapping), { bound: true, completed: false, owed: 2 })
-      // A vault left by an earlier run is older than this run's start.
-      assert.equal(findBootstrapDb([dir], Date.now() + 60_000), null)
+      // An app database that is not a vault.
+      const appDb = path.join(dir, 'profile/data.db')
+      fs.mkdirSync(path.dirname(appDb), { recursive: true })
+      new DatabaseSync(appDb).close()
+      assert.equal(findBootstrapDb([dir], known), bootstrapping)
+      assert.deepEqual(bodyDebt(bootstrapping), { completed: false, owed: 2 })
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses to guess between two new vaults', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-db-'))
+    try {
+      const known = existingDbs([dir])
+      vaultDb(path.join(dir, 'a/data.db'), [])
+      vaultDb(path.join(dir, 'b/data.db'), [])
+      assert.throws(() => findBootstrapDb([dir], known), /2 new vault databases/)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
@@ -408,8 +434,8 @@ describe('rust-core shells', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-db-'))
     try {
       const file = path.join(dir, 'data.db')
-      vaultDb(file, ['sync.server_vault_id', 'first_sync.completed'])
-      assert.deepEqual(bodyDebt(file), { bound: true, completed: true, owed: 0 })
+      vaultDb(file, ['first_sync.completed'])
+      assert.deepEqual(bodyDebt(file), { completed: true, owed: 0 })
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }

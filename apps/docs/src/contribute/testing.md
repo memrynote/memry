@@ -114,11 +114,12 @@ pnpm bench:bootstrap core --vault sandboxmobile --runs 2 [--pass-interval <secon
 # Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
 pnpm bench:bootstrap electron --vault sandboxmobile
 
-# Tauri: the e2e build of a feat/tauri-v2 worktree, with a temp profile and WebDriver on 9333.
+# Tauri: the e2e build of a feat/tauri-v2 worktree, with a temp profile and WebDriver on 9334
+# (--cdp-port; 9333 is pnpm staging:tauri:debug's port).
 pnpm bench:bootstrap tauri --vault sandboxmobile --tauri-dir <feat/tauri-v2 worktree>
 
 # iOS: reinstalls a Debug simulator build, resets the simulator's keychain, launches it with
-# --sync-environment=local, which is http://localhost:8787, so the proxy listens there.
+# --sync-environment=local, which is http://127.0.0.1:8787, so the proxy listens there.
 pnpm bench:bootstrap ios --vault sandboxmobile --port 8787 --udid <simulator> --app <Memry.app>
 ```
 
@@ -145,8 +146,10 @@ shell's own log line (Tauri `bootstrap window opened` in main.log, iOS `a first 
 unified log). Records is iOS's `the first sync is pulling bodies`; Tauri has no such line, so its
 records mark is the proxy's feed head: the end of the last `POST /sync/pull` after the first
 `GET /sync/changes` page with `hasMore: false` (an iOS run reports the same proxy point beside its
-log mark as a check). Bodies is read from the vault's
-`data.db`, opened read-only once a second: the first sync completed and no `sync.body_owed:*` row
+log mark as a check). Bodies is read from the run's vault
+`data.db`: the one vault database (it has `meta` and `yjs_snapshots`) that was not under the
+Tauri profile, `~/Documents/Memry` or the iOS app container before the run; a second new one
+stops the run. It is opened read-only once a second: the first sync completed and no `sync.body_owed:*` row
 is left. The report's `Writes refused` line also counts the whole session's refused push items by
 type and operation, so a shell that pushes after the window closed still shows.
 

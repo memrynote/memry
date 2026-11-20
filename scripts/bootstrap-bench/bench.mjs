@@ -20,7 +20,14 @@ import { parseKeychainDump } from '../../apps/desktop/scripts/purge-e2e-keychain
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { formatReport, summarize } from './metrics.mjs'
 import { startProxy, throughProxy } from './proxy.mjs'
-import { bodyDebt, findBootstrapDb, feedHeadMs, iosMarks, tauriStartMs } from './rust-shell.mjs'
+import {
+  bodyDebt,
+  existingDbs,
+  findBootstrapDb,
+  feedHeadMs,
+  iosMarks,
+  tauriStartMs
+} from './rust-shell.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const OUT_DIR = path.join(ROOT, '.perf/bootstrap-bench')
@@ -258,7 +265,7 @@ const DEBT_POLL_MS = 1_000
  * `startMs()` returns the start mark or null; `dbRoots` are the folders the
  * vault can land in.
  */
-async function waitForBodies({ startMs, dbRoots, done }) {
+async function waitForBodies({ startMs, dbRoots, knownDbs, done }) {
   let interrupted = false
   const interrupt = () => (interrupted = true)
   process.once('SIGINT', interrupt)
@@ -282,7 +289,7 @@ async function waitForBodies({ startMs, dbRoots, done }) {
         runDeadline = Date.now() + Number(values['timeout-min']) * 60_000
         console.log('Bootstrap started; measuring.')
       }
-      db ??= findBootstrapDb(dbRoots, start)
+      db ??= findBootstrapDb(dbRoots, knownDbs)
       if (db) {
         try {
           debt = bodyDebt(db)
@@ -311,25 +318,14 @@ async function runTauri(proxy) {
   // The e2e build reads its launch overrides from this file (memry-desktop
   // src/e2e/control.rs); `pnpm staging:tauri:debug` writes the same one.
   const controlPath = path.join(os.tmpdir(), 'memry-e2e', `control-${values['cdp-port']}.json`)
+  // The run's own vault is the data.db that is not there yet.
+  const knownDbs = existingDbs([profile, vaultsDir])
   let previousControl = null
   try {
     previousControl = fs.readFileSync(controlPath)
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
   }
-  fs.mkdirSync(path.dirname(controlPath), { recursive: true, mode: 0o700 })
-  fs.writeFileSync(
-    controlPath,
-    JSON.stringify({
-      appDataDir: path.join(profile, 'data'),
-      logDir,
-      device: deviceId,
-      testVaultPath: null,
-      syncServerUrl: proxy.url,
-      extraEnv: {}
-    }),
-    { mode: 0o600 }
-  )
   fs.mkdirSync(logDir, { recursive: true })
   const devLog = fs.openSync(path.join(profile, 'dev.log'), 'a')
   const env = {
@@ -345,27 +341,42 @@ async function runTauri(proxy) {
     // the e2e feature (WebDriver, the control file) refuses a release build.
     CARGO_PROFILE_DEV_OPT_LEVEL: '3'
   }
-  const child = spawn(
-    'pnpm',
-    ['exec', 'tauri', 'dev', '--features', 'e2e', '--config', 'src-tauri/tauri.e2e.conf.json'],
-    { cwd: appDir, env, detached: true, stdio: ['pipe', devLog, devLog] }
-  )
-  console.log(
-    `Tauri started (device ${deviceId}, WebDriver ${values['cdp-port']}). Sign in to staging and ` +
-      `download "${values.vault}" from the account vault picker. Timing starts at the download.`
-  )
-  const readLog = followLog(path.join(logDir, 'main.log'), fs, ['bootstrap window'])
+  let child = null
   let waited
   try {
+    fs.mkdirSync(path.dirname(controlPath), { recursive: true, mode: 0o700 })
+    fs.writeFileSync(
+      controlPath,
+      JSON.stringify({
+        appDataDir: path.join(profile, 'data'),
+        logDir,
+        device: deviceId,
+        testVaultPath: null,
+        syncServerUrl: proxy.url,
+        extraEnv: {}
+      }),
+      { mode: 0o600 }
+    )
+    child = spawn(
+      'pnpm',
+      ['exec', 'tauri', 'dev', '--features', 'e2e', '--config', 'src-tauri/tauri.e2e.conf.json'],
+      { cwd: appDir, env, detached: true, stdio: ['pipe', devLog, devLog] }
+    )
+    console.log(
+      `Tauri started (device ${deviceId}, WebDriver ${values['cdp-port']}). Sign in to staging and ` +
+        `download "${values.vault}" from the account vault picker. Timing starts at the download.`
+    )
+    const readLog = followLog(path.join(logDir, 'main.log'), fs, ['bootstrap window'])
     waited = await waitForBodies({
       startMs: () => tauriStartMs(readLog()),
       dbRoots: [profile, vaultsDir],
+      knownDbs,
       // Tauri runs no first sync; its passes pull the feed, then owed bodies.
       done: (debt, start) => debt.owed === 0 && feedHeadMs(proxy.requests, start) !== null
     })
   } finally {
     try {
-      if (child.pid) process.kill(-child.pid, 'SIGTERM')
+      if (child?.pid) process.kill(-child.pid, 'SIGTERM')
     } catch {
       // already gone
     }
@@ -455,6 +466,7 @@ async function runIos(proxy) {
     waited = await waitForBodies({
       startMs: () => iosMarks(lines).startMs,
       dbRoots: [container],
+      knownDbs: existingDbs([container]),
       done: (debt) => debt.completed && debt.owed === 0
     })
   } finally {

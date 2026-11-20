@@ -20,22 +20,18 @@ const OWED_FROM = 'sync.body_owed:'
 const OWED_TO = 'sync.body_owed;'
 
 /**
- * `{ bound, completed, owed }` of one data.db, opened read-only: whether the
- * vault is bound to a server vault (`sync.server_vault_id`), whether its
+ * `{ completed, owed }` of one vault data.db, opened read-only: whether its
  * first sync completed, and how many documents still owe a body.
  */
 export function bodyDebt(dbPath) {
   const db = new DatabaseSync(dbPath, { readOnly: true })
   try {
-    const has = (key) => db.prepare('SELECT 1 FROM meta WHERE key = ?').get(key) !== undefined
+    const completed =
+      db.prepare('SELECT 1 FROM meta WHERE key = ?').get('first_sync.completed') !== undefined
     const { owed } = db
       .prepare('SELECT COUNT(*) AS owed FROM meta WHERE key >= ? AND key < ?')
       .get(OWED_FROM, OWED_TO)
-    return {
-      bound: has('sync.server_vault_id'),
-      completed: has('first_sync.completed'),
-      owed: Number(owed)
-    }
+    return { completed, owed: Number(owed) }
   } finally {
     db.close()
   }
@@ -52,22 +48,49 @@ function dataDbsUnder(root, depth) {
   return found
 }
 
-/**
- * The data.db under `roots`, changed at or after `sinceMs`, of a vault bound to
- * a server vault, or null. `sinceMs` skips the vaults of earlier runs.
- */
-export function findBootstrapDb(roots, sinceMs, depth = 6) {
-  const fresh = roots
-    .flatMap((root) => dataDbsUnder(root, depth))
-    .filter((db) => fs.statSync(db).mtimeMs >= sinceMs)
-  for (const db of fresh) {
-    try {
-      if (bodyDebt(db).bound) return db
-    } catch {
-      // Not a vault database yet (created, not migrated): look again next poll.
-    }
+const DB_DEPTH = 6
+
+/** Every data.db under `roots`; taken before the run, so the run's own vault is the new one. */
+export function existingDbs(roots) {
+  return new Set(roots.flatMap((root) => dataDbsUnder(root, DB_DEPTH)))
+}
+
+function isVaultDb(dbPath) {
+  const db = new DatabaseSync(dbPath, { readOnly: true })
+  try {
+    const tables = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('meta', 'yjs_snapshots')"
+      )
+      .all()
+    return tables.length === 2
+  } finally {
+    db.close()
   }
-  return null
+}
+
+/**
+ * The vault data.db under `roots` that is not in `known`, or null while there
+ * is none. A database that is not a vault (an app database, or a vault not
+ * migrated yet) does not count. More than one new vault throws: the run cannot
+ * tell which one it is measuring.
+ */
+export function findBootstrapDb(roots, known) {
+  const fresh = roots
+    .flatMap((root) => dataDbsUnder(root, DB_DEPTH))
+    .filter((db) => !known.has(db))
+    .filter((db) => {
+      try {
+        return isVaultDb(db)
+      } catch {
+        // Being created: look again next poll.
+        return false
+      }
+    })
+  if (fresh.length > 1) {
+    throw new Error(`${fresh.length} new vault databases (${fresh.join(', ')}); expected one`)
+  }
+  return fresh[0] ?? null
 }
 
 /**
