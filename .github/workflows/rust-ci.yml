@@ -255,9 +255,9 @@ jobs:
 
       # The repo's cache cap is 10 GB and the `checks` entries are 2.5-3.3 GB each, so each OS has one
       # entry and only its `checks` leg saves it: every other partition restores it and writes nothing.
-      # macOS legs (`all`) restore and never save: 2.5 GB more than the cap leaves. It saves on push,
-      # dispatch, the daily warm run and PRs into main. A tiered PR (base not main) and a merge-queue
-      # run restore what those saved and write nothing.
+      # macOS legs (`all`) restore and never save: their 2.5 GB would not fit the cap beside the rest.
+      # A checks leg saves on push, dispatch, the daily warm run and PRs into main. A tiered PR (base
+      # not main) and a merge-queue run restore what those saved and write nothing.
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
