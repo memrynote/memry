@@ -20,7 +20,8 @@ export class SimulatedServer {
   private mf: Miniflare | null = null
   private keys: ServerKeys | null = null
 
-  async start(): Promise<void> {
+  /** `bindings` add to or override the Worker's, such as R2 presign credentials. */
+  async start(options: { bindings?: Record<string, string> } = {}): Promise<void> {
     const workerPath = await buildWorker()
 
     this.keys = await this.generateJwtKeys()
@@ -62,7 +63,8 @@ export class SimulatedServer {
         // bundle version on macOS, "0.0" on Linux CI. A 0.1.0 floor refused
         // every Linux E2E socket with 426 and the realtime path went untested.
         MIN_APP_VERSION: '0.0.0',
-        ALLOWED_ORIGIN: 'http://localhost:3000'
+        ALLOWED_ORIGIN: 'http://localhost:3000',
+        ...options.bindings
       }
     })
 
@@ -108,6 +110,11 @@ export class SimulatedServer {
   async getD1(): Promise<D1Database> {
     if (!this.mf) throw new Error('Server not started')
     return this.mf.getD1Database('DB')
+  }
+
+  async getR2Bucket(): Promise<R2Bucket> {
+    if (!this.mf) throw new Error('Server not started')
+    return this.mf.getR2Bucket('STORAGE')
   }
 
   async getDirectUrl(): Promise<URL> {

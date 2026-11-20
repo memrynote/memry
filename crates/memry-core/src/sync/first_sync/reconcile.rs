@@ -5,10 +5,14 @@
 //! the pack bytes) decides every item:
 //!
 //! 1. A listed item is held when the device holds it live at exactly the
-//!    manifest's `serverCursor`: the cursor of a pack entry it applied
-//!    (`sortKey`). Anything else is pulled by id. An item with no
-//!    `serverCursor` matches nothing, and a manifest with none at all means
-//!    record packs only seeded, so every item is pulled (fail closed).
+//!    manifest's `serverCursor`. The cursor a row holds is the cursor of the
+//!    write it applied: a pack entry's `sortKey`, or a feed ref's
+//!    `serverCursor`. A by-id pull leaves none (`POST /sync/pull` names no
+//!    cursor, and an item in `blobMissing` is no write), so that row matches
+//!    nothing. Anything else is pulled by id. Each manifest item is checked
+//!    on its own: one with no `serverCursor` (a mixed rollout) matches
+//!    nothing, and a manifest with none at all means record packs only
+//!    seeded, so every item is pulled (fail closed).
 //! 2. A live row taken from a pack that the manifest does not list was
 //!    deleted on the server. It is pulled by id, so a tombstone the server
 //!    still holds arrives with its clock; one the server answers nothing for

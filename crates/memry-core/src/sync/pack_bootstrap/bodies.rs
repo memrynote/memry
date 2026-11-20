@@ -33,14 +33,14 @@ use serde_json::Value as Json;
 use tokio::task::JoinSet;
 
 use crate::api::errors::StorageError;
-use crate::protocol::pack::{PackEntry, PackKind, parse_pack};
+use crate::protocol::pack::{PackEntry, PackKind};
 
 use super::super::body_pull::{BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
 use super::listing::{PackSummary, list};
 use super::records::{RECORD_DOWNLOAD_WIDTH, download};
-use super::spill::{self, Loc};
+use super::spill::{self, Loc, Spilled};
 use super::{PackBootstrap, now};
 
 /// Entries per apply transaction.
@@ -327,22 +327,19 @@ impl PackBootstrap {
             let (pack, path, bytes) = joined.map_err(|error| StorageError::Failed {
                 what: format!("a body pack download did not finish: {error}"),
             })?;
-            let parsed = bytes.and_then(|bytes| {
-                parse_pack(&bytes)
-                    .map(|parsed| (bytes, parsed.entries))
-                    .map_err(|error| error.to_string())
-            });
-            match parsed {
-                Ok((bytes, entries)) => {
-                    if let Err(error) = spill::write(&path, bytes).await? {
-                        report
-                            .fallback_reasons
-                            .push(format!("pack {} cannot be spilled: {error}", pack.id));
-                        return Ok(None);
-                    }
-                    held.index(path, entries, report);
+            let spilled = match bytes {
+                Ok(bytes) => spill::verify_and_write(&path, bytes).await?,
+                Err(reason) => Spilled::Unusable(reason),
+            };
+            match spilled {
+                Spilled::Held(entries) => held.index(path, entries, report),
+                Spilled::NotWritten(error) => {
+                    report
+                        .fallback_reasons
+                        .push(format!("pack {} cannot be spilled: {error}", pack.id));
+                    return Ok(None);
                 }
-                Err(reason) => report
+                Spilled::Unusable(reason) => report
                     .fallback_reasons
                     .push(format!("pack {}: {reason}", pack.id)),
             }
