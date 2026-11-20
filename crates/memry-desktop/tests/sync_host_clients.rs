@@ -56,6 +56,7 @@ const ALLOWED: &[(&str, &str)] = &[
         "apps/desktop-tauri/src-tauri/src/commands/unsplash.rs",
         "api.unsplash.com",
     ),
+    ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
     (
         "crates/memry-desktop/src/ai/catalog.rs",
         "the inline AI provider the person picked (OpenAI, Anthropic, Google, OpenRouter) or their local Ollama",

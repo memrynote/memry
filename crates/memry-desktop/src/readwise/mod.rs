@@ -5,6 +5,9 @@
 //! `tests/readwise_vectors.rs` holds every function here to the vectors the TypeScript writes
 //! (`packages/contracts/test-vectors/readwise/`).
 //!
+//! The I/O seams beside them: the HTTP client (`client`), the Reader request budget
+//! (`limiter`) and the token in the keychain (`token`).
+//!
 //! Strings are Rust strings where TypeScript has UTF-16: offsets are bytes, the hash and every
 //! ordering of text run over UTF-16 code units as in JS. A Readwise payload with a lone
 //! surrogate cannot reach here (`serde_json` refuses it), so no JS string the planners see is
@@ -33,14 +36,17 @@
 //!   zero-width space after every `[` that a `[` or `\[` follows; any other line keeps
 //!   TypeScript's bytes (`text::escape_line`).
 
+pub mod client;
 pub mod highlights;
 pub mod images;
 pub mod journal;
+pub mod limiter;
 pub mod plan_append;
 pub mod plan_note;
 pub mod reader;
 pub mod section;
 pub mod text;
+pub mod token;
 pub mod types;
 
 use std::cell::Cell;
