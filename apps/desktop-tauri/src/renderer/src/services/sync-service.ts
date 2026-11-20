@@ -1,5 +1,5 @@
 import { events, type SyncedItem } from '../../../generated/bindings'
-import { subscribeToEvent } from './tauri-event'
+import { subscribeToEvent, subscribeToEvents } from './tauri-event'
 
 /** How long a subscriber gathers pulled pages before it hears them, from the first one. */
 const COALESCE_MS = 150
@@ -44,4 +44,21 @@ export function onSyncedRecords(
     stop()
     if (timer !== null) clearTimeout(timer)
   }
+}
+
+/**
+ * A domain's own event and the records of `types` sync pulled, as one subscription. Electron's
+ * item handlers sent the domain's events when they applied a pulled record; here main sends
+ * only the pulled page, so the domain's subscription hears it through `onSynced`.
+ * `onListening` runs once both reach this page.
+ */
+export function withSyncedRecords(
+  subscribeLocal: (onListening: () => void) => () => void,
+  types: readonly string[],
+  onSynced: (items: SyncedItem[]) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvents([subscribeLocal, (live) => onSyncedRecords(types, onSynced, live)], () =>
+    onListening?.()
+  )
 }
