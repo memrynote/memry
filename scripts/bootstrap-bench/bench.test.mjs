@@ -313,18 +313,26 @@ describe('proxy guards', () => {
         ['POST', '/sync/crdt/updates'],
         ['POST', '/sync/crdt/snapshot'],
         ['POST', '/sync/crdt/snapshot/batch'],
-        ['PUT', '/sync/crdt/snapshot/note-1']
+        ['PUT', '/sync/crdt/snapshot/note-1'],
+        ['POST', '/sync/vaults'],
+        ['PUT', '/sync/vaults/x/icon'],
+        ['DELETE', '/sync/vaults/x'],
+        ['POST', '/sync/attachments/upload/initiate'],
+        ['POST', '/sync/attachments/dereference']
       ]
       for (const [method, route] of writes) assert.equal(await send(method, route), 403, route)
       const reads = [
         ['POST', '/sync/pull'],
+        ['POST', '/sync/records/pull'],
         ['POST', '/sync/crdt/updates/batch'],
         ['GET', '/sync/crdt/updates?noteId=n'],
         ['GET', '/sync/crdt/snapshot/note-1'],
+        ['POST', '/sync/bootstrap'],
+        ['POST', '/sync/bootstrap/renew'],
+        ['POST', '/sync/bootstrap/close'],
+        ['POST', '/sync/attachments/presign-batch'],
         ['POST', '/auth/otp/verify'],
-        ['POST', '/auth/devices'],
-        ['POST', '/bootstrap'],
-        ['POST', '/bootstrap/close']
+        ['POST', '/auth/devices']
       ]
       for (const [method, route] of reads) assert.equal(await send(method, route), 200, route)
       assert.deepEqual(

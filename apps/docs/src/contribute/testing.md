@@ -117,9 +117,11 @@ pnpm bench:bootstrap electron --vault sandboxmobile
 
 The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
 every request per endpoint, including the R2 pack downloads it routes through itself. The proxy
-only reads: it answers `POST /sync/push`, `POST /sync/crdt/updates` and every `POST` or `PUT` under
-`/sync/crdt/snapshot` with 403 itself and counts each refusal. Auth, device registration and
-bootstrap sessions pass through.
+only reads: under `/sync/` it forwards `GET`, `HEAD` and the read and session `POST`s (`/sync/pull`,
+`/sync/records/pull`, `/sync/crdt/updates/batch`, `/sync/bootstrap` with `renew` and `close`, and
+`/sync/attachments/presign-batch`). It answers every other request there with 403 itself and counts
+each refusal. Auth and device registration live outside `/sync/` and pass through. A refused write
+takes no time, so Electron's `t_bodies` leaves out the push it runs after the pull.
 
 Each run starts by measuring the line with one 25 MB GET from Cloudflare's speed test through the
 proxy. A core run then wipes the bench profile's copy of the vault and runs the shells' first sync,

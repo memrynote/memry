@@ -8,8 +8,8 @@
 // Attachment downloads use presigned URLs the proxy does not rewrite; they
 // are out of the benchmark's scope.
 //
-// The benchmark only reads the vault: the proxy answers the write routes
-// with 403 itself and never forwards them.
+// The benchmark only reads the vault: the proxy answers every write under
+// /sync/ with 403 itself and never forwards it.
 //
 // What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
 // its own pooled TLS connections upstream. Electron's net.fetch opens at most
@@ -35,15 +35,18 @@ const HOP_HEADERS = new Set([
 // Exact hostnames. Production and every other host are refused.
 const ALLOWED_UPSTREAMS = new Set(['sync-staging.memrynote.com', '127.0.0.1', 'localhost'])
 
-// Routes that change the vault on the server. `POST /sync/pull` and
-// `POST /sync/crdt/updates/batch` are reads and stay open, as do auth, device
-// registration and bootstrap sessions.
-const WRITE_ROUTES = [
-  ['POST', /^\/sync(\/records)?\/push$/],
-  ['POST', /^\/sync\/crdt\/updates$/],
-  ['POST', /^\/sync\/crdt\/snapshot(\/.*)?$/],
-  ['PUT', /^\/sync\/crdt\/snapshot(\/.*)?$/]
-]
+// Under /sync/ the proxy forwards only GET, HEAD and these POSTs, which read
+// or hold a bootstrap session; every other request there is refused. Auth and
+// device registration live outside /sync/ and pass.
+const READ_POSTS = new Set([
+  '/sync/pull',
+  '/sync/records/pull',
+  '/sync/crdt/updates/batch',
+  '/sync/bootstrap',
+  '/sync/bootstrap/renew',
+  '/sync/bootstrap/close',
+  '/sync/attachments/presign-batch'
+])
 
 export function assertAllowedUpstream(upstream) {
   const { hostname } = new URL(upstream)
@@ -53,7 +56,8 @@ export function assertAllowedUpstream(upstream) {
 }
 
 export function isWriteRoute(method, pathname) {
-  return WRITE_ROUTES.some(([verb, pattern]) => verb === method && pattern.test(pathname))
+  if (!pathname.startsWith('/sync/') || method === 'GET' || method === 'HEAD') return false
+  return !(method === 'POST' && READ_POSTS.has(pathname))
 }
 
 const agents = {
