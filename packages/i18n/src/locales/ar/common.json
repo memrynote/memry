@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "تعذّر فتح هذا الرابط"
+  },
   "portalBlock": {
     "copyFailed": "تعذّر نسخ البوابة",
     "hiddenCount": "{count} مخفية",

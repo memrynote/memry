@@ -205,6 +205,12 @@ The quick-add markers work in a task's title in a note too. Type them and they a
 
 Only markers you add count. Text that was already in the title — `Fix #123 crash`, a line brought in from another app — stays title text when you edit something else on the line. A marker that names nothing, such as `+nosuchproject`, stays in the title as typed.
 
+### Note links in the title
+
+A task written in a note keeps its note links. Type `[[` or `@` followed by a note's name in the title, and a note picker opens. Press <kbd>Enter</kbd> or <kbd>Tab</kbd> to pick a note, and the title gets `[[Note title]]`. An `@` that reads as a date, such as `@tomorrow`, still sets the due date and opens no picker.
+
+The row in the note, the Tasks list and the detail drawer show each `[[…]]` as a link. Click a link to open its note. Click anywhere else on the title to edit it.
+
 ### From the keyboard
 
 Click the row's empty space, or press <kbd>Esc</kbd> in the title, to select the task. Its keys then open each property's picker:

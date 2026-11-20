@@ -1575,9 +1575,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           }
 
           // The plugin fields were lifted off the line already, so quick-add
-          // parses the description alone.
+          // parses the description alone. Its `[[…]]` links stay in the title:
+          // the line is what renders and indexes them (#5294).
           const parsed = title
-            ? parseQuickAdd(title, projects)
+            ? parseQuickAdd(title, projects, new Date(), { keepNoteLinks: true })
             : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
           // A checklist line of nothing but quick-add tokens ("- [ ] #errand")
           // parses to an empty title, which `tasks:create` rejects. Leave it as
@@ -1871,7 +1872,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           }
 
           const parsed = title
-            ? parseQuickAdd(title, projects)
+            ? parseQuickAdd(title, projects, new Date(), { keepNoteLinks: true })
             : { title: '', priority: 'none', projectId: null, dueDate: null }
           // The draft scan only checks the raw block title, so a token-only draft
           // reaches here with nothing left to name the task. Not retried for

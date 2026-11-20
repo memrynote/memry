@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "Tämän linkin avaaminen epäonnistui"
+  },
   "portalBlock": {
     "copyFailed": "Portaalia ei voitu kopioida",
     "hiddenCount": "{count} piilotettu",

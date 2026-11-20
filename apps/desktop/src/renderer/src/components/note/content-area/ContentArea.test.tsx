@@ -2165,6 +2165,49 @@ describe('ContentArea', () => {
     )
   })
 
+  // A task is created from the line's text, and quick-add lifts its tokens off
+  // that text. A `[[…]]` is not one of them in a note: dropping it from the
+  // created title raced the follow-up rename and lost the link (#5294).
+  it('keeps note links in the title of a converted checkbox', async () => {
+    contentAreaMocks.blocks.get('standalone').content = [
+      { type: 'text', text: 'Check up on [[Note A]] at [[Note B]] #urgent', styles: {} }
+    ]
+    contentAreaMocks.analyzeTaskIntents.mockReturnValueOnce({
+      ...emptyIntents(new Set()),
+      standaloneCandidate: { blockId: 'standalone' }
+    })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Check up on [[Note A]] at [[Note B]]',
+          tags: ['urgent']
+        })
+      )
+    )
+  })
+
+  it('keeps note links in the title of a draft task', async () => {
+    contentAreaMocks.analyzeTaskIntents.mockImplementation((_blocks, dismissed: Set<string>) => ({
+      ...emptyIntents(new Set()),
+      draftTaskBlock: dismissed.has('draft')
+        ? null
+        : { blockId: 'draft', title: 'Call [[Anna]] !high' }
+    }))
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await waitFor(() =>
+      expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Call [[Anna]]', priority: 3 })
+      )
+    )
+  })
+
   // y-prosemirror renders the Y.Doc into the view while it mounts, before
   // BlockNoteView subscribes `onChange`, so the content a note opens with never
   // produces a change. An Obsidian Tasks line in a file written outside Memry
