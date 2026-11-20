@@ -494,7 +494,7 @@ Otherwise pull incrementals from `since = cursor`.
 document that holds a cursor through the batch route with `limit: 1`
 (`crates/memry-core/src/sync/body_pull/probe.rs:56-63`) and sends that
 document no further request when the answer proves the pull would fetch
-nothing (`crates/memry-core/src/sync/body_pull.rs:283-285`). It is proven only
+nothing (`crates/memry-core/src/sync/body_pull.rs:284-286`). It is proven only
 when all of these hold (`crates/memry-core/src/sync/body_pull/probe.rs:67-90`):
 the response carries a `snapshotMeta` object, so the server is new enough to
 advertise its snapshots; the document is a key of `notes`, with no update and
@@ -523,7 +523,13 @@ cursor only if the snapshot's sequence number is ahead (`:195-197`).
 
 - an update whose `sequenceNum <= cursor` is **skipped as a replay** (`:226`);
 - each accepted update is decrypted, persisted, and the watermark advanced and
-  written **per update, not per page** (`:246-248`);
+  written **per update, not per page** (`:246-248`). What the rule protects is
+  that the watermark never leads a stored update. The Rust core writes a page's
+  accepted updates and the watermark of the last one in **one** transaction
+  (`crates/memry-core/src/sync/body_pull/log_writes.rs:34-53`), so a kill
+  mid-page leaves the watermark at the previous page and the page is pulled
+  again; a replayed row is ignored (`INSERT OR IGNORE`,
+  `crates/memry-core/src/crdt/update_log.rs:136`);
 - **on an unresolvable signer the document's pull stops at that update** and the
   watermark is not advanced past it, so a later pass retries (`:227-237`).
 

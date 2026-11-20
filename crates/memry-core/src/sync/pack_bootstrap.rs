@@ -24,7 +24,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use rusqlite::params;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
@@ -32,7 +31,7 @@ use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_
 use crate::protocol::pack::{PackKind, extract_entry, parse_pack};
 use crate::storage::Db;
 
-use super::body_pull::{BodyPull, BodyPullError, PackSeed};
+use super::body_pull::{BodyPull, BodyPullError, PACK_SEED_CHUNK, PackEntrySeed, PackSeed};
 use super::first_sync_store::{read_meta, write_meta};
 
 /// The resume watermark: the highest pack `maxCursor` covered by an unbroken
@@ -234,6 +233,7 @@ impl PackBootstrap {
             Err(error) => return Ok(Err(error.to_string())),
         };
 
+        let mut usable = Vec::new();
         for entry in &pack.entries {
             let meta = (entry.kind == PackKind::CrdtSnapshot)
                 .then(|| snapshot_meta(entry.meta.as_ref()))
@@ -242,49 +242,37 @@ impl PackBootstrap {
                 report.entries_skipped += 1;
                 continue;
             };
-            if self.tombstoned(&entry.id).await? {
-                // §7.15: a deleted document's body is never resurrected.
-                report.entries_skipped += 1;
-                continue;
-            }
             let Ok(packed) = extract_entry(&bytes, entry) else {
                 report.entries_failed += 1;
                 continue;
             };
-            let seeded = match self
-                .bodies
-                .seed_from_pack(&entry.id, packed, sequence_num, &revision)
-                .await
-            {
-                Ok(seed) => seed,
+            usable.push((entry.id.as_str(), packed, sequence_num, revision));
+        }
+        for chunk in usable.chunks(PACK_SEED_CHUNK) {
+            let seeds: Vec<PackEntrySeed<'_>> = chunk
+                .iter()
+                .map(|(doc_id, packed, sequence_num, revision)| PackEntrySeed {
+                    doc_id,
+                    packed,
+                    sequence_num: *sequence_num,
+                    revision,
+                })
+                .collect();
+            let seeded = match self.bodies.seed_pack_chunk(&seeds).await {
+                Ok(seeded) => seeded,
                 Err(BodyPullError::Storage { source }) => return Err(source),
-                // `seed_from_pack` sends no request; nothing else reaches here.
+                // `seed_pack_chunk` sends no request; nothing else reaches here.
                 Err(error) => return Ok(Err(error.to_string())),
             };
-            match seeded {
-                PackSeed::Applied => report.entries_applied += 1,
-                PackSeed::Stale => report.entries_skipped += 1,
-                PackSeed::Unverified => report.entries_failed += 1,
+            for seed in seeded {
+                match seed {
+                    PackSeed::Applied => report.entries_applied += 1,
+                    PackSeed::Stale | PackSeed::Deleted => report.entries_skipped += 1,
+                    PackSeed::Unverified => report.entries_failed += 1,
+                }
             }
         }
         Ok(Ok(()))
-    }
-
-    async fn tombstoned(&self, doc_id: &str) -> Result<bool, StorageError> {
-        let id = doc_id.to_owned();
-        self.db
-            .call(move |conn| {
-                conn.query_row(
-                    "SELECT EXISTS(SELECT 1 FROM sync_items
-                     WHERE item_id = ?1 AND deleted_at IS NOT NULL)",
-                    params![id],
-                    |row| row.get::<_, bool>(0),
-                )
-                .map_err(|error| StorageError::Failed {
-                    what: error.to_string(),
-                })
-            })
-            .await
     }
 
     /// Walks `GET /sync/packs` newest first. `Err` means "no packs here":
