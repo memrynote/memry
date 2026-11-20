@@ -43,10 +43,7 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         if total.requests >= BODY_REQUEST_BUDGET {
             break;
         }
-        let probed = match body_pull
-            .probe_snapshot_meta(chunk, &mut total.requests)
-            .await
-        {
+        let probed = match body_pull.probe(chunk, &mut total.requests).await {
             Ok(probed) => probed,
             Err(BodyPullError::Storage { source }) => return Err(source),
             Err(BodyPullError::Api { .. }) => Default::default(),

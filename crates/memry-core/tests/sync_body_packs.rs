@@ -326,7 +326,8 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     gapped.retain(|item| item.4.as_ref().unwrap()["sequenceNum"] != 3);
     let mut server = Server::new(vec![gap], vec![BodyPack::new("u1", gapped)]);
     server.records = true;
-    server.hang = Some("/sync/crdt/updates?note_id=gapdoc000001".to_owned());
+    // The route pass's batch probe, whose answer would serve the gap.
+    server.hang = Some("/sync/crdt/updates/batch".to_owned());
     let routes = Routes::new(server);
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
     assert_eq!(update_seqs(&db, "gapdoc000001"), [1, 2]);
@@ -428,7 +429,7 @@ async fn a_lost_pack_leaves_its_documents_owed(label: &str, lose: impl FnOnce(&m
     ];
     let mut server = Server::new(vec![lost, kept], packs);
     server.records = true;
-    server.hang = Some("note_id=lostdoc00001".to_owned());
+    server.hang = Some("/sync/crdt/updates/batch".to_owned());
     lose(&mut server);
     let routes = Routes::new(server);
     killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;

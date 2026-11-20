@@ -46,12 +46,13 @@
 //! The single-document route carries no `snapshotMeta`, though, so a
 //! document above cursor `0` could never meet §7.8's second clause: once a
 //! peer's snapshot pruned the log past this device's cursor, the document
-//! went silent for good. Documents that hold a cursor are therefore probed
-//! first through the batch route (desktop's `CRDT batch chunk probed`), one
-//! request per hundred documents, for the meta. A probe that shows nothing
-//! above the cursor and no baseline due settles the document with no further
-//! request, as desktop's probe phase does, so a resumed first sync does not
-//! pull its finished documents again.
+//! went silent for good. Every document is therefore probed first through the
+//! batch route (desktop's `CRDT batch chunk probed`), one request per hundred
+//! documents, for the meta and the first page (#5293). A probe that shows
+//! nothing above the cursor and no baseline due settles the document with no
+//! further request, as desktop's probe phase does, so a resumed first sync
+//! does not pull its finished documents again. With no baseline due, the
+//! probe's page is the document's first page.
 
 use std::sync::Arc;
 
@@ -255,7 +256,7 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let probed = self.probe_snapshot_meta(chunk, &mut total.requests).await?;
+            let probed = self.probe(chunk, &mut total.requests).await?;
             for doc_id in chunk {
                 total.absorb(self.pull_with(doc_id, probed.get(doc_id)).await?);
             }
@@ -266,9 +267,7 @@ impl BodyPull {
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
         let mut probes = 0;
-        let probed = self
-            .probe_snapshot_meta(&[doc_id.to_owned()], &mut probes)
-            .await?;
+        let probed = self.probe(&[doc_id.to_owned()], &mut probes).await?;
         let mut report = self.pull_with(doc_id, probed.get(doc_id)).await?;
         report.requests += probes;
         Ok(report)
@@ -286,40 +285,67 @@ impl BodyPull {
         if probed.is_some_and(|probed| probed.current) {
             return Ok(report);
         }
-        let probed = probed.and_then(|probed| probed.meta.as_ref());
+        let meta = probed.and_then(|probed| probed.meta.as_ref());
+        let answer = probed.and_then(|probed| probed.answer.as_ref());
         let mut cursor = self.read_cursor(doc_id).await?;
+        let mut first_page = None;
 
-        // §7.8, first clause: a cursor of 0 always takes the snapshot first.
-        // There is no incremental that could have told us about it, because
-        // everything at or below the watermark is answered with silence.
-        if cursor == 0 {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
-                cursor = self.read_cursor(doc_id).await?;
-            } else if !report.stopped.is_empty() {
-                // A baseline that exists and could not be used: paging on
-                // from 0 would store the updates above the watermark and move
-                // the cursor past the state below it for good.
-                return Ok(report);
+        if let Some(answer) = answer {
+            // §7.8 from the batch answer: a baseline when the server's
+            // snapshot is not the one held, whatever the cursor (a cursor of
+            // 0 holds none, unless a snapshot at `sequenceNum` 0 was taken).
+            // No server snapshot (§7.11) takes none.
+            let due = match meta {
+                Some(meta) => self.baseline_due(doc_id, meta).await?,
+                None => false,
+            };
+            if due {
+                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    return Ok(report);
+                }
+            } else if answer.since == cursor {
+                // #5293: the answer is this document's first page already.
+                first_page = Some(answer.page.clone());
             }
-        }
-        // §7.8, second clause, from the probe: a server before #2299 sends no
-        // `snapshotMeta` on the single-document route, so without it a
-        // snapshot that pruned the log above this cursor would leave the
-        // document silent forever.
-        if cursor > 0
-            && let Some(meta) = probed
-            && self.baseline_due(doc_id, meta).await?
-        {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
-                cursor = self.read_cursor(doc_id).await?;
-            } else if !report.stopped.is_empty() {
-                return Ok(report);
+        } else {
+            // §7.8, first clause: a cursor of 0 always takes the snapshot
+            // first. There is no incremental that could have told us about
+            // it, because everything at or below the watermark is answered
+            // with silence.
+            if cursor == 0 {
+                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    // A baseline that exists and could not be used: paging on
+                    // from 0 would store the updates above the watermark and
+                    // move the cursor past the state below it for good.
+                    return Ok(report);
+                }
+            }
+            // §7.8, second clause, from a probe whose meta is all it gave: a
+            // server before #2299 sends no `snapshotMeta` on the
+            // single-document route, so without it a snapshot that pruned the
+            // log above this cursor would leave the document silent forever.
+            if cursor > 0
+                && let Some(meta) = meta
+                && self.baseline_due(doc_id, meta).await?
+            {
+                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    return Ok(report);
+                }
             }
         }
 
         let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
-            let page = self.fetch_page(doc_id, cursor, &mut report).await?;
+            let page = match first_page.take() {
+                Some(page) => page,
+                None => self.fetch_page(doc_id, cursor, &mut report).await?,
+            };
 
             // §7.8, second clause, widened by #2299: the server advertises a
             // snapshot whose revision differs from the stored one.

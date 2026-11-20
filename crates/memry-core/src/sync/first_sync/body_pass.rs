@@ -5,9 +5,9 @@
 //! pulling several at once changes nothing about a kill: a resumed run
 //! re-reads every cursor and continues each document where it stopped.
 //!
-//! A resumed run probes the documents that hold a cursor first, a hundred per
-//! request, and counts every one the probe shows current as done before any
-//! worker starts. Without that, each relaunch restarted the count at 0 and
+//! The window is probed first, a hundred documents per request, and every one
+//! the probe shows current counts as done before any worker starts; the
+//! others start from the probe's page. Without that, each relaunch restarted the count at 0 and
 //! spent a probe and an updates page on every finished document.
 
 use std::collections::{HashMap, VecDeque};
@@ -184,11 +184,7 @@ async fn pull_parallel(
     let mut report = BodyPullReport::default();
     let mut probed = HashMap::new();
     for chunk in window.chunks(PROBE_CHUNK) {
-        probed.extend(
-            bodies
-                .probe_snapshot_meta(chunk, &mut report.requests)
-                .await?,
-        );
+        probed.extend(bodies.probe(chunk, &mut report.requests).await?);
     }
     let total = window.len() as u64;
     let (current, pending): (Vec<String>, Vec<String>) = window

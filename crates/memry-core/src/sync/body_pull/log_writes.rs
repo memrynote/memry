@@ -80,7 +80,7 @@ impl BodyPull {
                     &snapshot,
                     sequence_num,
                     revision.as_deref(),
-                    cursor,
+                    Some(cursor),
                     now,
                 )?;
                 txn.commit().map_err(sqlite_failed)
@@ -191,7 +191,8 @@ impl BodyPull {
 /// Whether a packed snapshot still has anything to give this document.
 pub(super) enum Freshness {
     Fresh {
-        cursor: i64,
+        /// `None` when the document holds no cursor yet.
+        cursor: Option<i64>,
     },
     /// The cursor already reaches the snapshot, or the stored revision is
     /// this one (§7.5, equality only).
@@ -211,10 +212,11 @@ pub(super) fn pack_freshness(
     if record_gone(conn, doc_id)? {
         return Ok(Freshness::Deleted);
     }
-    let cursor = store::read_cursor(conn, &crdt_cursor_scope(doc_id))?
-        .and_then(|text| text.parse().ok())
-        .unwrap_or(0);
-    if cursor >= sequence_num {
+    // No cursor is no baseline: a snapshot at `sequenceNum` 0 (pushed before
+    // any update row) is still the whole body.
+    let cursor: Option<i64> =
+        store::read_cursor(conn, &crdt_cursor_scope(doc_id))?.and_then(|text| text.parse().ok());
+    if cursor.is_some_and(|cursor| cursor >= sequence_num) {
         return Ok(Freshness::Stale);
     }
     let stored: Option<String> = conn
@@ -250,12 +252,12 @@ fn put_baseline(
     snapshot: &[u8],
     sequence_num: i64,
     revision: Option<&str>,
-    cursor: i64,
+    cursor: Option<i64>,
     now: i64,
 ) -> Result<(), StorageError> {
     update_log::put_server_snapshot(conn, doc_id, snapshot, sequence_num, revision, now)
         .map_err(crdt_failed)?;
-    if sequence_num > cursor {
+    if cursor.is_none_or(|cursor| sequence_num > cursor) {
         let scope = crdt_cursor_scope(doc_id);
         store::write_cursor(conn, &scope, Some(&sequence_num.to_string()), now)?;
     }

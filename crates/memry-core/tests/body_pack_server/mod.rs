@@ -166,6 +166,19 @@ impl ServerDoc {
         self
     }
 
+    /// What a snapshot push with no update rows leaves on the server: the
+    /// snapshot of every edit at `sequenceNum` 0, and no update row
+    /// (`crdt-snapshot-write.ts`, the watermark of no rows is 0).
+    pub fn snapshot_only(mut self) -> Self {
+        let all = self.raw.len() as i64;
+        self = self.snapshot_at(all);
+        if let Some(snapshot) = self.snapshot.as_mut() {
+            snapshot.sequence_num = 0;
+        }
+        self.updates.clear();
+        self
+    }
+
     /// Purges the updates through `floor`.
     pub fn purged_through(mut self, floor: i64) -> Self {
         self.updates.retain(|seq, _| *seq > floor);
