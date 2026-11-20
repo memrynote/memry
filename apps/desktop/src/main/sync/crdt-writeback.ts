@@ -7,6 +7,7 @@ import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState, sweepExpired } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
+import { isOutsideEdit, writeWithBaseline } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
 import { readyWritebackConverter } from './converter-worker-bridge'
@@ -798,9 +799,9 @@ async function writebackExisting(
 
   // The file changed under this doc, and the change has not been ingested yet.
   //
-  // `contentHash` is what the index last read off disk, so a mismatch means an
-  // edit made somewhere else — Obsidian, a script, a file another device wrote —
-  // that this doc has never seen. Writing here replaces those bytes with a body
+  // The baseline (`writeback-baseline.ts`) is the bytes this doc holds, so a
+  // mismatch means an edit made somewhere else — Obsidian, a script, a file
+  // another device wrote — that this doc has never seen. Writing here replaces those bytes with a body
   // that predates them, and nothing keeps a copy: the edit is simply gone. It is
   // reachable from an ordinary sequence, too — edit the file while its note is
   // not the one on screen, then open that note, and the doc loaded from
@@ -837,8 +838,7 @@ async function writebackExisting(
       })
       return
     }
-    const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
-    if (onDisk !== null && onDisk !== cached.contentHash && parsed) {
+    if (cached.contentHash && parsed && isOutsideEdit(indexDb, noteId, cached, existingRaw)) {
       // A locked note's outside edit is never taken in: its locked text goes
       // back on disk and the edit is kept as a version (#2606).
       if (await restoreLockedNoteFile(noteId, existingRaw)) return
@@ -884,7 +884,9 @@ async function writebackExisting(
   rememberIgnoredWrite(absolutePath)
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  await writeWithBaseline(indexDb, noteId, fileContent, () =>
+    runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // An attachment rename that arrived in this body (#1714): the file is still
@@ -971,7 +973,9 @@ async function writebackJournal(
   rememberIgnoredWrite(absolutePath)
   // A locked note's doc only ever takes another device's edits (local updates
   // are refused at crdt:apply-update), so its write-back is allowed (#2606).
-  await runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  await writeWithBaseline(indexDb, noteId, fileContent, () =>
+    runWithLockedWritesAllowed(() => atomicWrite(absolutePath, fileContent))
+  )
   lastWrittenHash.set(noteId, generateContentHash(fileContent))
 
   // Journals hold file/image blocks like any other note — see the note path.

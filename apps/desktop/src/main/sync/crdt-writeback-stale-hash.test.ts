@@ -8,6 +8,8 @@ import type * as PathsModule from '../lib/paths'
 
 const h = vi.hoisted(() => ({
   files: new Map<string, string>(),
+  /** Set to make the next file write land and then stop the process before it returns. */
+  crashAfterWrite: false,
   row: null as null | Record<string, unknown>,
   store: new Map<string, Uint8Array[]>(),
   contentHash: (_raw: string): string => ''
@@ -86,6 +88,10 @@ vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {
     h.files.set(absolute, content)
+    if (h.crashAfterWrite) {
+      h.crashAfterWrite = false
+      throw new Error('crashed after the write landed')
+    }
   },
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn()
@@ -111,7 +117,7 @@ vi.mock('./local-mutations', () => ({
 }))
 
 import { getCrdtProvider } from './crdt-provider'
-import { hasPendingWriteback } from './crdt-writeback'
+import { hasPendingWriteback, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 
@@ -133,9 +139,33 @@ function findText(fragment: Y.XmlFragment, needle: string): Y.XmlText {
   throw new Error(`no text holding ${needle}`)
 }
 
-async function settleWriteback(): Promise<void> {
+async function settleWriteback(noteId = NOTE): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 50))
-  await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+  await vi.waitFor(() => expect(hasPendingWriteback(noteId)).toBe(false), { timeout: 5000 })
+}
+
+function rowFor(id: string, notePath: string, indexedRaw: string): Record<string, unknown> {
+  return {
+    id,
+    path: notePath,
+    title: path.basename(notePath, '.md'),
+    fileType: 'markdown',
+    localOnly: false,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    modifiedAt: '2026-01-01T00:00:00.000Z',
+    contentHash: generateContentHash(indexedRaw),
+    pendingWriteHash: null
+  }
+}
+
+/** An edit from another device or the editor, made on a copy of `doc`. */
+function editOf(doc: Y.Doc, find: string, insert: string): Uint8Array {
+  const copy = new Y.Doc()
+  Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc))
+  const seen = Y.encodeStateVector(copy)
+  const text = findText(copy.getXmlFragment(CRDT_FRAGMENT_NAME), find)
+  text.insert(text.length, insert)
+  return Y.encodeStateAsUpdate(copy, seen)
 }
 
 describe('write-back after the file changed while the app was closed (#2539)', () => {
@@ -189,5 +219,69 @@ describe('write-back after the file changed while the app was closed (#2539)', (
     expect(h.files.get(FILE)).toBe(
       `${FRONTMATTER}# Morning\n\nMake coffee.\n\nStretch for ten minutes. Then shower.`
     )
+  })
+})
+
+describe('the write-back never reads bytes Memry wrote or read as an outside edit (#5296)', () => {
+  beforeAll(() => {
+    h.contentHash = generateContentHash
+  })
+
+  it('keeps the first keystroke into a note seeded from a file edited while the app was closed', async () => {
+    // #given the index measured the file, then it was edited outside while the
+    // app was closed, and the store holds no doc for it (probe I4)
+    const id = 'seeded-after-outside-edit'
+    const notePath = 'Seeded/Plan.md'
+    const indexed = '# Plan\n\nWrite the draft.'
+    const edited = '# Plan\n\nWrite the draft. Edited outside.'
+    h.row = rowFor(id, notePath, indexed)
+    h.files.set(`/vault/${notePath}`, edited)
+    fs.mkdirSync(path.join(VAULT_ROOT, 'Seeded'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, notePath), edited)
+    const provider = getCrdtProvider()
+    await provider.initPersistence()
+
+    // #when the note opens, which seeds its doc from the file, and the user types
+    const doc = await provider.open(id, 1)
+    provider.applyIpcUpdate(id, editOf(doc, 'Edited outside.', ' Typed.'), 1)
+    await settleWriteback(id)
+
+    // #then the keystroke reaches the file and stays in the doc
+    expect(h.files.get(`/vault/${notePath}`)).toContain('Edited outside. Typed.')
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toContain('Typed.')
+  })
+
+  it('keeps a remote edit that follows a crash between the file write and its hash', async () => {
+    // #given a note whose last write-back landed on disk and crashed before
+    // the index recorded it (probe I2a)
+    const id = 'crashed-mid-writeback'
+    const notePath = 'Crash/Log.md'
+    const author = new Y.Doc()
+    await markdownToYFragment(
+      '# Log\n\nFirst line.',
+      author.getXmlFragment(CRDT_FRAGMENT_NAME),
+      notePath
+    )
+    const indexed = (await yDocToMarkdown(author, CRDT_FRAGMENT_NAME, { notePath }))!
+    h.store.set(id, [Y.encodeStateAsUpdate(author)])
+    h.row = rowFor(id, notePath, indexed)
+    h.files.set(`/vault/${notePath}`, indexed)
+    const provider = getCrdtProvider()
+    await provider.initPersistence()
+    const doc = await provider.open(id, 1)
+
+    h.crashAfterWrite = true
+    provider.applyRemoteUpdate(id, editOf(doc, 'First line.', ' Second.'))
+    await settleWriteback(id)
+    expect(h.files.get(`/vault/${notePath}`)).toContain('First line. Second.')
+    resetWritebackState()
+
+    // #when the next remote edit writes back
+    provider.applyRemoteUpdate(id, editOf(doc, 'First line. Second.', ' Third.'))
+    await settleWriteback(id)
+
+    // #then the file and the doc keep it: Memry's own bytes were not fed back
+    expect(h.files.get(`/vault/${notePath}`)).toContain('First line. Second. Third.')
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toContain('Third.')
   })
 })

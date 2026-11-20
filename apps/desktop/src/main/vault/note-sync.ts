@@ -166,12 +166,13 @@ export function findCanonicalNoteForFile(
  * shape (#5261): only the folder segments differ, and no unlink of the row's
  * path is pending. Sync wrote the row's spelling into a folder the disk spells
  * otherwise, and nothing was renamed. A file name that changed case is the
- * user's rename, which syncs.
+ * user's rename, which syncs. File names compare in NFC: APFS keeps the form a
+ * name was written in, so the disk can hold the row's name decomposed.
  */
 export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: string): boolean {
   return (
-    posix.basename(claimed.path) === posix.basename(relativePath) &&
-    getPendingDelete(claimed.id) === undefined
+    posix.basename(claimed.path).normalize('NFC') ===
+      posix.basename(relativePath).normalize('NFC') && getPendingDelete(claimed.id) === undefined
   )
 }
 
@@ -198,6 +199,11 @@ export interface NoteSyncInput {
   path: string
   /** Full file content including frontmatter */
   fileContent: string
+  /**
+   * The write-back's baseline to record instead of the hash of `fileContent`,
+   * for a reader that does not feed the doc (sync/writeback-baseline.ts).
+   */
+  contentHash?: string
   /** Raw user frontmatter keys (used for tags/aliases/properties extraction) */
   frontmatter: NoteFrontmatter
   /** Markdown body content (without frontmatter) */
@@ -279,7 +285,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
   const wordCount = calculateWordCount(parsedContent)
   const characterCount = parsedContent.length
   const snippet = createSnippet(parsedContent)
-  const contentHash = generateContentHash(fileContent)
+  const contentHash = input.contentHash ?? generateContentHash(fileContent)
   const date = extractDateFromPath(path)
   const emoji = input.emoji ?? null
   const rawCover = frontmatter[COVER_FRONTMATTER_KEY]

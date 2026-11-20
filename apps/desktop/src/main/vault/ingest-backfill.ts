@@ -39,6 +39,7 @@ import { createSnippet, extractProperties, extractTags, parseNote } from './fron
 import { openVaultFile } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
 import { syncLargeFileBodyToCache, syncNoteToCache } from './note-sync'
+import { baselineAfterRead } from '../sync/writeback-baseline'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 
 const logger = createLogger('IngestBackfill')
@@ -177,6 +178,7 @@ async function backfillNote(
       id: cached.id,
       path: entry.relativePath,
       fileContent: content,
+      contentHash: baselineAfterRead(cached, content),
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: cached.title,

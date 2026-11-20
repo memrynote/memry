@@ -38,11 +38,14 @@ function trimPathSlashes(value: string): string {
 /**
  * A note path as a case-insensitive file system compares it. APFS and NTFS
  * fold Unicode case, and APFS also ignores normalization, so `Ärzte/a.md` and
- * `ärzte/a.md` name one file there. Folding only finds candidates: the caller
- * proves each one against the disk.
+ * `ärzte/a.md` name one file there. Lowercasing alone misses folds the disks
+ * make: NTFS upcases `ı` to `I`, so `ılık.md` and `Ilık.md` are one file, and
+ * APFS folds `ß` to `ss` and `ς` to `σ`. Uppercasing first maps each of those
+ * to one key. Folding only finds candidates, so a key wider than one disk's
+ * fold is harmless: the caller proves each candidate against the disk.
  */
 export function foldNotePath(value: string): string {
-  return value.normalize('NFC').toLowerCase()
+  return value.normalize('NFC').toUpperCase().toLowerCase()
 }
 
 /**
