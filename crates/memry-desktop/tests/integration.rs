@@ -115,6 +115,8 @@ mod calendar_eventkit;
 mod calendar_feeds;
 #[path = "calendar_ics_fetch.rs"]
 mod calendar_ics_fetch;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
