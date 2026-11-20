@@ -253,6 +253,8 @@ mod domain_tag_categories;
 mod domain_task_activity;
 #[path = "domain_task_settings.rs"]
 mod domain_task_settings;
+#[path = "domain_task_superseded.rs"]
+mod domain_task_superseded;
 #[path = "domain_task_views.rs"]
 mod domain_task_views;
 #[path = "domain_tasks.rs"]
@@ -517,6 +519,9 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[cfg(feature = "markdown")]
+#[path = "sync_task_conflicts.rs"]
+mod sync_task_conflicts;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
