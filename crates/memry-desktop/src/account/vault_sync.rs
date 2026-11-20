@@ -23,6 +23,8 @@ use super::{AccountError, AccountService};
 use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
+use crate::sync::attachments::AttachmentSync;
+use crate::sync::attachments::vault_files::DesktopVaultFiles;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend};
 use crate::sync::events::OnSyncEvent;
 use crate::sync::gate::SyncStartGate;
@@ -178,6 +180,7 @@ impl SyncWiring {
         self.bindings.track(&gate);
         (self.on_gate)(&gate);
         let account = Arc::clone(&self.account);
+        let attachments = self.attachments(open);
         let backend = VaultSyncBackend::new(
             Arc::clone(&open.vault),
             account.shared_session(),
@@ -185,7 +188,8 @@ impl SyncWiring {
             Arc::clone(&self.reachability),
             Vec::new(),
             Arc::new(move || account.sync_facts()),
-        );
+        )
+        .with_attachments(attachments);
         let supervisor = SyncSupervisor::start(
             &self.runtime,
             SupervisorParts {
@@ -204,6 +208,38 @@ impl SyncWiring {
         self.runtime
             .spawn(Arc::clone(self).bind(HeldOpen::new(open), Arc::downgrade(&gate)));
         supervisor
+    }
+
+    /// The vault's attachment drivers. Background downloads follow
+    /// `sync.attachmentAutoDownload`, read at each request; an unreadable setting keeps its
+    /// default, on.
+    fn attachments(&self, open: &OpenVault) -> AttachmentSync {
+        let (vault, store) = (Arc::clone(&open.vault), Arc::clone(&self.store));
+        let auto_download = Arc::new(move || {
+            let value = vault
+                .app_settings(Arc::clone(&store))
+                .map_err(|error| error.to_string())
+                .and_then(|settings| {
+                    settings
+                        .get_path("sync.attachmentAutoDownload")
+                        .map_err(|error| error.to_string())
+                });
+            match value {
+                Ok(Some(serde_json::Value::Bool(on))) => on,
+                Ok(_) => true,
+                Err(error) => {
+                    tracing::warn!(%error, "could not read sync.attachmentAutoDownload; downloading");
+                    true
+                }
+            }
+        });
+        AttachmentSync::new(
+            open.vault.db_handle(),
+            Arc::new(DesktopVaultFiles::new(open.path.clone())),
+            auto_download,
+            self.reachability.as_ref(),
+            self.runtime.clone(),
+        )
     }
 
     /// Decides the vault's binding, tells its gate, and retries `Unknown` while the gate lives.

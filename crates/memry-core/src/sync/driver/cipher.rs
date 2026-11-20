@@ -18,6 +18,7 @@ use zeroize::Zeroizing;
 
 use crate::api::errors::ApiError;
 use crate::protocol::account::{AccountCipher, DeviceDirectory, device_directory};
+use crate::protocol::attachments::SignerResolver;
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::HttpClient;
 use crate::sync::body_pull::{CrdtCipher, PackedUpdate};
@@ -188,6 +189,16 @@ impl SignerKeys for DirectoryCipher {
     fn known_devices(&self) -> Option<HashSet<String>> {
         let signers = &self.current().signers;
         (!signers.is_empty()).then(|| signers.clone())
+    }
+}
+
+/// A manifest's signer (§14.4.1). A signer missing from the directory marks
+/// it stale, so the next pass refetches it and a later retry resolves.
+impl SignerResolver for DirectoryCipher {
+    fn public_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        let current = self.current();
+        self.check(&current, Some(device_id));
+        current.directory.signing_key(device_id).map(<[u8]>::to_vec)
     }
 }
 
