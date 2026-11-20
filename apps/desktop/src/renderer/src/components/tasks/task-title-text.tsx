@@ -48,7 +48,9 @@ function TitleLink({ target, alias }: { target: string; alias?: string }): React
       className="wiki-link"
       onClick={open}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') open(e)
+        // Space too: left to bubble, it would activate the title button around
+        // the link and start editing the title instead.
+        if (e.key === 'Enter' || e.key === ' ') open(e)
       }}
     >
       {wikiLinkLabel(target, alias)}

@@ -6,15 +6,18 @@
  * input: `[[Roa` or `@Roa` offers notes, and picking one writes `[[Roadmap]]`
  * into the title, the form the note line already stores and indexes.
  *
- * `@` also starts a quick-add date (`@tomorrow`), so a query that reads as a
- * date keeps the date grammar and opens no picker.
+ * `@` also starts a quick-add date (`@tomorrow`, `@fri 3pm`), so a query that
+ * reads as a date keeps the date grammar and opens no picker. An `@` query also
+ * ends at its first space unless a note title starts with it, so `@home` stays
+ * plain text once the sentence moves on.
  */
 
-import { useCallback, useMemo, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useCallback, useId, useMemo, useState, type KeyboardEvent, type RefObject } from 'react'
 import { AutocompleteDropdown } from '@/components/tasks/quick-add/autocomplete-dropdown'
 import { useNoteSuggestions } from '@/components/capture-bar/capture-bar-suggestions'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { predictDateCompletion } from '@/lib/date-phrase-completion'
+import { findDatePhrase } from '@/lib/quick-add-parser'
 
 /** How many notes the picker shows at once, as in the capture bar. */
 const NOTE_PICKER_LIMIT = 10
@@ -25,8 +28,14 @@ export interface NoteTrigger {
   query: string
 }
 
-/** The picker trigger that ends at the caret, given the text before it. */
-export function findNoteTrigger(beforeCaret: string): NoteTrigger | null {
+/**
+ * The picker trigger that ends at the caret, given the text before it and the
+ * titles of the notes the picker can offer.
+ */
+export function findNoteTrigger(
+  beforeCaret: string,
+  noteTitles: readonly string[]
+): NoteTrigger | null {
   const link = beforeCaret.lastIndexOf('[[')
   if (link >= 0 && !beforeCaret.slice(link + 2).includes(']]')) {
     return { start: link, query: beforeCaret.slice(link + 2) }
@@ -35,12 +44,29 @@ export function findNoteTrigger(beforeCaret: string): NoteTrigger | null {
   if (!at) return null
   const query = at[1]
   if (query.startsWith(' ') || predictDateCompletion(query) !== null) return null
+  // A date the quick-add grammar would read (`@fri 3pm`) stays a date.
+  if (findDatePhrase(`@${query}`)?.end === query.length + 1) return null
+  if (/\s/.test(query)) {
+    const typed = query.toLowerCase()
+    if (!noteTitles.some((title) => title.toLowerCase().startsWith(typed))) return null
+  }
   return { start: beforeCaret.length - query.length - 1, query }
 }
 
 export interface TitleNotePicker {
   /** The dropdown, or null while closed. Render it inside a `relative` box. */
   picker: React.ReactNode
+  /**
+   * Combobox attributes for the input. `aria-expanded` also tells the global
+   * Escape handler (use-hint-activation) to leave the field focused, so Esc
+   * closes the list instead of blurring and committing a half-typed `@Ro`.
+   */
+  inputProps: {
+    role: 'combobox'
+    'aria-expanded': boolean
+    'aria-controls': string | undefined
+    'aria-autocomplete': 'list'
+  }
   /** Runs before the input's own key handler; true when the picker took the key. */
   handleKeyDown: (e: KeyboardEvent<HTMLInputElement>) => boolean
   /** Call on every change, click and key-up so the trigger follows the caret. */
@@ -57,9 +83,14 @@ export function useTitleNotePicker(
   const [dismissedAt, setDismissedAt] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
 
+  const listId = useId()
+
   const end = Math.min(caret ?? value.length, value.length)
-  const trigger = useMemo(() => findNoteTrigger(value.slice(0, end)), [value, end])
-  const notes = useNoteSuggestions(trigger !== null)
+  const [notesWanted, setNotesWanted] = useState(false)
+  const notes = useNoteSuggestions(notesWanted)
+  const titles = useMemo(() => notes.map((note) => note.title), [notes])
+  const trigger = useMemo(() => findNoteTrigger(value.slice(0, end), titles), [value, end, titles])
+  if (trigger !== null && !notesWanted) setNotesWanted(true)
 
   const options = useMemo(() => {
     if (!trigger) return []
@@ -118,6 +149,7 @@ export function useTitleNotePicker(
 
   const picker = isOpen ? (
     <AutocompleteDropdown
+      id={listId}
       type="note"
       options={options}
       selectedIndex={index}
@@ -126,5 +158,12 @@ export function useTitleNotePicker(
     />
   ) : null
 
-  return { picker, handleKeyDown, trackCaret }
+  const inputProps = {
+    role: 'combobox',
+    'aria-expanded': isOpen,
+    'aria-controls': isOpen ? listId : undefined,
+    'aria-autocomplete': 'list'
+  } as const
+
+  return { picker, inputProps, handleKeyDown, trackCaret }
 }

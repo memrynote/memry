@@ -1,4 +1,7 @@
 {
+  "wikiLink": {
+    "openFailed": "无法打开此链接"
+  },
   "portalBlock": {
     "copyFailed": "无法复制传送门",
     "hiddenCount": "已隐藏 {count} 个",

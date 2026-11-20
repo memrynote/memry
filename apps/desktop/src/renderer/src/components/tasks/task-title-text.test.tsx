@@ -70,8 +70,26 @@ describe('task title note links', () => {
 
     fireEvent.click(person)
     fireEvent.keyDown(customer, { key: 'Enter' })
+    // Space activates a link too, and stays out of the title button around it.
+    fireEvent.keyDown(person, { key: ' ' })
 
-    expect(openWikiTarget.mock.calls).toEqual([['Person D'], ['Customer E']])
+    expect(openWikiTarget.mock.calls).toEqual([['Person D'], ['Customer E'], ['Person D']])
     expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('names the row by the title as shown, not its `[[…]]` source', () => {
+    render(
+      <TaskRow
+        task={task}
+        project={project}
+        projects={[project]}
+        isCompleted={false}
+        onToggleComplete={vi.fn()}
+      />
+    )
+
+    expect(
+      screen.getByLabelText('Task: Check up on Person D at the customer next Tuesday')
+    ).toBeTruthy()
   })
 })
