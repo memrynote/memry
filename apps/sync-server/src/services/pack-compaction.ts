@@ -670,21 +670,28 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // Rollup first: at the listing cap it is what makes room for the build
-  // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
-  for (const kind of PACKED_KINDS) await rollupLogged(db, storage, scope, kind)
-  // A push nudge never builds `crdt_update`: only the backfill tick does, under
-  // the minimum fill (pack-sizing.ts), so pushes cannot list tiny packs. A kind
-  // whose build listed a pack rolls up once more, so the message ends with the
-  // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
-  // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
-  // the replaced-object deletion 3: ~894.
-  for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
-    const result = await compactOneRange(db, storage, scope, kind)
-    results.push(result)
-    if (result.built) await rollupLogged(db, storage, scope, kind)
-  }
+  // The replaced-object deletion runs first and again in `finally`, so a build
+  // that throws cannot keep a purged body past its deadline (protocol 08
+  // §8.13): this message may be the purge's delayed retry.
   await deleteReplacedPackObjects(db, storage, scope)
+  try {
+    // Rollup first: at the listing cap it is what makes room for the build
+    // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
+    for (const kind of PACKED_KINDS) await rollupLogged(db, storage, scope, kind)
+    // A push nudge never builds `crdt_update`: only the backfill tick does, under
+    // the minimum fill (pack-sizing.ts), so pushes cannot list tiny packs. A kind
+    // whose build listed a pack rolls up once more, so the message ends with the
+    // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
+    // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
+    // two replaced-object deletions 2 x 3 = 6: ~897.
+    for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
+      const result = await compactOneRange(db, storage, scope, kind)
+      results.push(result)
+      if (result.built) await rollupLogged(db, storage, scope, kind)
+    }
+  } finally {
+    await deleteReplacedPackObjects(db, storage, scope)
+  }
   return results
 }
 

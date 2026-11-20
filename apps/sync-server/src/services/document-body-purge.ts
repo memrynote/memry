@@ -17,7 +17,7 @@ const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault
 
 const BODY_ROWS = 'user_id = ? AND vault_id = ? AND note_id = ?'
 
-// Seven statements per document, one db.batch per chunk.
+// Eight statements per document, one db.batch per chunk.
 const PURGE_CHUNK = 20
 
 /**
@@ -34,6 +34,19 @@ const replacedDue = (kind: 'crdt_update' | 'crdt_snapshot'): string =>
    WHERE user_id = ? AND vault_id = ? AND instr(pack_key, '/packs/${kind}/') > 0`
 
 const RETURNING_REPLACED = 'RETURNING pack_key AS replaced_key'
+
+/**
+ * Records the listed packs of one kind that `condition` drops as replaced
+ * objects due at once (VERIFY-5267 F3). Runs in the batch before their
+ * `pack_index` delete, so the objects are deleted by the replaced-object pass
+ * and a failed R2 delete is retried by it, never left as an unrecorded object
+ * holding the purged body.
+ */
+const recordDropped = (kind: 'crdt_update' | 'crdt_snapshot', condition: string): string =>
+  `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+   SELECT pack_key, user_id, vault_id, 'purge', 0 FROM pack_index
+   WHERE user_id = ? AND vault_id = ? AND item_kind = '${kind}' AND ${condition}
+   ON CONFLICT (pack_key) DO NOTHING`
 
 /**
  * Removes the server body of deleted notes and journals (#2986, protocol 07
@@ -56,11 +69,15 @@ const RETURNING_REPLACED = 'RETURNING pack_key AS replaced_key'
  * still holds them (REVIEW-5260). Every `crdt_snapshot` pack goes after the rows when a
  * snapshot was deleted, because an older revision of this note may sit in any
  * pack built before its current row. Packs are a derived cache, so this costs
- * bootstrap speed until the rebuild, never data.
+ * bootstrap speed until the rebuild, never data. Every dropped pack and every
+ * replaced object of its kind is made due in `pack_replaced_objects` and
+ * deleted by the replaced-object pass before this returns.
  *
- * Idempotent: a re-run finds no rows and changes nothing. Object deletes are
- * best-effort; a failure leaves unreachable objects, never a row without its
- * object. A compaction run that selected the old body rows before this purge
+ * Idempotent: a re-run finds no rows and changes nothing. Snapshot object
+ * deletes are best-effort; a failure leaves unreachable objects, never a row
+ * without its object. Returns true when pack objects that may hold the body are
+ * still due after the deletion pass (a failed R2 delete or a full batch): the
+ * caller then enqueues the delayed retry message. A compaction run that selected the old body rows before this purge
  * publishes nothing: its pack commit is guarded on those rows
  * (`pack-compaction.ts`).
  */
@@ -76,8 +93,7 @@ export const purgeDeletedDocumentBodies = async (
 
   const now = Math.floor(Date.now() / 1000)
   const snapshotKeys: string[] = []
-  const updatePackKeys: string[] = []
-  const replacedKeys: string[] = []
+  let due = false
   for (let i = 0; i < ids.length; i += PURGE_CHUNK) {
     const statements = ids.slice(i, i + PURGE_CHUNK).flatMap((noteId) => {
       const body = [userId, vaultId, noteId]
@@ -110,10 +126,12 @@ export const purgeDeletedDocumentBodies = async (
           .bind(...body, ...body, now, userId, ...dead),
         // Before the row delete, which the condition reads.
         db
+          .prepare(recordDropped('crdt_update', hasBody))
+          .bind(userId, vaultId, ...body, ...body, ...dead),
+        db
           .prepare(
             `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
-               AND ${hasBody}
-             RETURNING pack_key`
+               AND ${hasBody}`
           )
           .bind(userId, vaultId, ...body, ...body, ...dead),
         db
@@ -133,28 +151,24 @@ export const purgeDeletedDocumentBodies = async (
           .bind(...body, ...dead)
       ]
     })
-    const results = await db.batch<{ blob_key?: string; pack_key?: string; replaced_key?: string }>(
-      statements
-    )
+    const results = await db.batch<{ blob_key?: string; replaced_key?: string }>(statements)
     for (const result of results) {
       for (const row of result.results ?? []) {
         if (row.blob_key) snapshotKeys.push(row.blob_key)
-        if (row.pack_key) updatePackKeys.push(row.pack_key)
-        if (row.replaced_key) replacedKeys.push(row.replaced_key)
+        if (row.replaced_key) due = true
       }
     }
   }
 
-  const packKeys = [...updatePackKeys]
   if (snapshotKeys.length > 0) {
     // The replaced objects are made due in the batch that drops the listing,
     // so a rollup that swapped in between has its inputs caught here, and one
     // that swaps after finds its inputs unlisted and loses.
-    const [packs, , replaced] = await db.batch<{ pack_key?: string; replaced_key?: string }>([
+    const [, , , replaced] = await db.batch<{ replaced_key?: string }>([
+      db.prepare(recordDropped('crdt_snapshot', '1')).bind(userId, vaultId),
       db
         .prepare(
-          `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'
-         RETURNING pack_key`
+          `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot'`
         )
         .bind(userId, vaultId),
       db
@@ -164,15 +178,13 @@ export const purgeDeletedDocumentBodies = async (
         .bind(userId, vaultId),
       db.prepare(`${replacedDue('crdt_snapshot')} ${RETURNING_REPLACED}`).bind(userId, vaultId)
     ])
-    for (const row of packs.results ?? []) if (row.pack_key) packKeys.push(row.pack_key)
-    for (const row of replaced.results ?? [])
-      if (row.replaced_key) replacedKeys.push(row.replaced_key)
+    if ((replaced.results ?? []).length > 0) due = true
   }
-  await deleteObjects(storage, userId, vaultId, [...snapshotKeys, ...packKeys])
-  // A failed delete keeps the rows due; the caller's delayed compaction
-  // message (PACK_PURGE_RETRY_DELAY_SECONDS) runs the deletion again.
-  if (replacedKeys.length > 0) await deleteReplacedPackObjects(db, storage, { userId, vaultId })
-  return packKeys.length > 0 || replacedKeys.length > 0
+  await deleteObjects(storage, userId, vaultId, snapshotKeys)
+  if (!due) return false
+  // A delete this pass leaves keeps its rows due; the caller's delayed
+  // compaction message (PACK_PURGE_RETRY_DELAY_SECONDS) runs the deletion again.
+  return (await deleteReplacedPackObjects(db, storage, { userId, vaultId })).pending
 }
 
 const deleteObjects = async (

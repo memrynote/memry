@@ -296,9 +296,16 @@ export const cleanupExpiredTombstones = async (
   return shed
 }
 
-// Deleted documents purged per tick. Each vault costs one or two db.batch
-// calls and one bulk R2 delete.
+// Deleted documents read per tick, and vaults purged per tick (VERIFY-5267
+// F5). A vault costs one db.batch per 20 documents, one snapshot db.batch, one
+// bulk R2 delete of snapshot objects, the replaced-object pass (a select, a
+// bulk R2 delete, a D1 delete) and at most one enqueue: 6 plus its chunks. A
+// tick spends at most 1 select + 5 x 6 + (100 / 20 + 5) chunks = 41
+// subrequests, inside the ~100 that pack_backfill's 900 leaves the scheduled
+// invocation. Rows are read vault by vault, so the vaults past the cap are the
+// next tick's.
 const DELETED_BODY_LIMIT = 100
+const DELETED_BODY_VAULTS_PER_TICK = 5
 
 /**
  * Purges the server body of deleted notes and journals that still have one
@@ -323,6 +330,7 @@ export const cleanupDeletedDocumentBodies = async (
                 WHERE s.user_id = si.user_id AND s.vault_id = si.vault_id AND s.note_id = si.item_id)
            OR EXISTS (SELECT 1 FROM crdt_updates u
                 WHERE u.user_id = si.user_id AND u.vault_id = si.vault_id AND u.note_id = si.item_id))
+       ORDER BY si.user_id, si.vault_id
        LIMIT ${DELETED_BODY_LIMIT}`
     )
     .all<{ user_id: string; vault_id: string; item_id: string }>()
@@ -332,7 +340,8 @@ export const cleanupDeletedDocumentBodies = async (
     const key = `${row.user_id}\u0000${row.vault_id}`
     const group = byVault.get(key)
     if (group) group.noteIds.push(row.item_id)
-    else byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
+    else if (byVault.size < DELETED_BODY_VAULTS_PER_TICK)
+      byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
   }
 
   let purged = 0

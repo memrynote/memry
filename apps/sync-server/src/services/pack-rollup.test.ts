@@ -260,6 +260,24 @@ describe('rollup contents (#5229)', () => {
     expect(listed('record').map((row) => row.id)).toContain(broken.id) // a reader sees a gap
   })
 
+  // VERIFY-5267 F4: the re-plan stayed inside the failed run, so bad packs in
+  // the longest run hid a mergeable run elsewhere, every tick.
+  it('re-plans over every listed pack when the longest run has no mergeable pair left', async () => {
+    await buildSmallPacks('record', 30)
+    const rows = listed('record')
+    // Ten packs from before coverage (cache-only) chain apart from the twenty covered ones.
+    harness.raw
+      .prepare(
+        `UPDATE pack_index SET cover_from = NULL, cover_through = NULL
+         WHERE id IN (SELECT value FROM json_each(?))`
+      )
+      .run(JSON.stringify(rows.slice(0, 10).map((row) => row.id)))
+    for (let i = 11; i < 30; i += 2) await storage.delete(rows[i].pack_key)
+
+    expect(await rollupKind(harness.db, storage, SCOPE, 'record')).toMatchObject({ replaced: 10 })
+    expect(listed('record')).toHaveLength(21)
+  })
+
   it('leaves a kind at or under its bound alone', async () => {
     await buildSmallPacks('record', 6)
     expect(listed('record')).toHaveLength(boundOf('record'))
@@ -284,7 +302,7 @@ describe('index swap and the replaced-object grace (#5229)', () => {
 
     // The reader downloads what it listed, inside the grace, and holds every entry.
     advance(PACK_REPLACED_GRACE_SECONDS - 1)
-    expect(await deleteReplacedPackObjects(harness.db, storage)).toBe(0)
+    expect((await deleteReplacedPackObjects(harness.db, storage)).deleted).toBe(0)
     const read = (await Promise.all(before.map((pack) => entryIds(pack.packKey)))).flat()
     expect(read.toSorted()).toEqual(
       Array.from({ length: 8 }, (_, i) => `task:task-${i + 1}`).toSorted()
@@ -292,7 +310,7 @@ describe('index swap and the replaced-object grace (#5229)', () => {
 
     // Past the grace a later pass, in any Worker, deletes them; the merged pack stays.
     advance(2)
-    expect(await deleteReplacedPackObjects(harness.db, storage)).toBe(8)
+    expect((await deleteReplacedPackObjects(harness.db, storage)).deleted).toBe(8)
     expect(replacedRows()).toBe(0)
     for (const pack of before) expect(await storage.get(pack.packKey)).toBeNull()
     expect(await entryIds(after[0].packKey)).toHaveLength(8)
@@ -311,7 +329,7 @@ describe('index swap and the replaced-object grace (#5229)', () => {
     await cleanupOrphanedPackObjects(harness.db, storage)
     for (const key of old) expect(await storage.get(key)).not.toBeNull()
 
-    expect(await deleteReplacedPackObjects(harness.db, storage)).toBe(8)
+    expect((await deleteReplacedPackObjects(harness.db, storage)).deleted).toBe(8)
   })
 
   it('loses to a push that moves a kept entry mid-rollup, and deletes only its own object', async () => {
@@ -353,6 +371,18 @@ describe('index swap and the replaced-object grace (#5229)', () => {
   })
 })
 
+/** R2 deletes that include any of `keys` fail until the spy is restored. */
+const failDeletesOf = (keys: readonly string[]) => {
+  const remove = storage.delete.bind(storage)
+  return vi
+    .spyOn(storage, 'delete')
+    .mockImplementation(async (deleted) =>
+      [deleted].flat().some((key) => keys.includes(key))
+        ? Promise.reject(new Error('r2 down'))
+        : remove(deleted)
+    )
+}
+
 describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
   // REVIEW-5267 P2: replaced inputs waited for the next drain, past the 900 s deadline.
   it('leaves no pack object holding the purged body, replaced ones included', async () => {
@@ -361,12 +391,84 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     expect(await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')).not.toBeNull()
     deleteNoteRecord('note-4', 50)
 
+    // Nothing is left to retry, so no delayed message is asked for.
     expect(await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])).toBe(
-      true
+      false
     )
 
     expect(await holding(old, 'note-4')).toEqual([])
     expect(replacedRows()).toBe(0)
+  })
+
+  // VERIFY-5267 F3: a listed pack the purge dropped had its R2 delete fail and
+  // was never retried.
+  it('a dropped listed pack whose delete failed is retried and gone inside the deadline', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    deleteNoteRecord('note-4', 50)
+    const failing = failDeletesOf(old)
+
+    expect(await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])).toBe(
+      true
+    )
+    failing.mockRestore()
+    expect(listed('crdt_snapshot')).toEqual([])
+    expect(replacedRows()).toBe(old.length)
+
+    advance(PACK_PURGE_RETRY_DELAY_SECONDS)
+    await compactVault(harness.db, storage, SCOPE) // the delayed message
+    expect(await holding(old, 'note-4')).toEqual([])
+    expect(replacedRows()).toBe(0)
+  })
+
+  // VERIFY-5267 F1: the deletion ran after the builds, so a build that threw
+  // skipped it on every retry of the message.
+  it('the delayed message deletes due objects even when its build throws', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')
+    deleteNoteRecord('note-4', 50)
+    const failing = failDeletesOf(old)
+    await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])
+    failing.mockRestore()
+    expect(await holding(old, 'note-4')).not.toEqual([])
+
+    advance(PACK_PURGE_RETRY_DELAY_SECONDS)
+    await writeSnapshot('note-9', 1, settled())
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/crdt_snapshot/')) throw new Error('r2 put 500')
+      return put(key, value, options)
+    })
+    await expect(compactVault(harness.db, storage, SCOPE)).rejects.toThrow('r2 put 500')
+
+    expect(await holding(old, 'note-4')).toEqual([])
+  })
+
+  // VERIFY-5267 F5: every delete enqueued a delayed message, and one tick
+  // purged up to 100 vaults, about 700 subrequests.
+  it('the cleanup sweep purges at most five vaults per tick and asks no retry when none is due', async () => {
+    for (let v = 0; v < 7; v++) {
+      const vault = `vault-${v}`
+      harness.raw
+        .prepare(
+          `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+           VALUES (?, ?, ?, 'n', ?, 1, 1, 'device-1', 1, 'r')`
+        )
+        .run(`s-${v}`, USER, vault, `${USER}/vaults/${vault}/crdt/n/snapshot-1`)
+      harness.raw
+        .prepare(
+          `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
+           VALUES (?, ?, ?, 'note', 'n', 'tomb', 1, 'h', 2, 1, 'delete', 1, 'device-1', 'sig', '{}', 1, 1, 1)`
+        )
+        .run(`row-${v}`, USER, vault)
+    }
+    const send = vi.fn()
+    const queue = { PACK_QUEUE: { send } as unknown as Queue }
+
+    expect(await cleanupDeletedDocumentBodies(harness.db, storage, queue)).toBe(5)
+    expect(await cleanupDeletedDocumentBodies(harness.db, storage, queue)).toBe(2)
+    expect(send).not.toHaveBeenCalled()
   })
 
   it('a failed delete stays due and the delayed purge message deletes it inside the deadline', async () => {
@@ -374,14 +476,7 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     const old = listed('crdt_snapshot').map((row) => row.pack_key)
     await rollupKind(harness.db, storage, SCOPE, 'crdt_snapshot')
     deleteNoteRecord('note-4', 50)
-    const remove = storage.delete.bind(storage)
-    const failing = vi
-      .spyOn(storage, 'delete')
-      .mockImplementation(async (keys) =>
-        [keys].flat().some((key) => old.includes(key))
-          ? Promise.reject(new Error('r2 down'))
-          : remove(keys)
-      )
+    const failing = failDeletesOf(old)
     const send = vi.fn()
 
     await cleanupDeletedDocumentBodies(harness.db, storage, {

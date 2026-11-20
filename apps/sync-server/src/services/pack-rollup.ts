@@ -158,28 +158,27 @@ const inputOf = (read: ReadonlyMap<string, Input>, pack: ListedPack): Input => {
 }
 
 /**
- * Read `packs` into `read`, ROLLUP_FETCH_CONCURRENCY at a time, skipping those
- * already read. Returns the first pack that failed with its reason, or null.
- * Each pack is fetched at most once per rollup, so a re-plan costs no GET
- * beyond the first run's.
+ * Read the packs of `packs` not yet in `read`, ROLLUP_FETCH_CONCURRENCY at a
+ * time. Returns every pack that failed with its reason.
  */
 const readInputs = async (
   storage: R2Bucket,
   kind: PackKindName,
   packs: readonly ListedPack[],
   read: Map<string, Input>
-): Promise<{ pack: ListedPack; reason: string } | null> => {
+): Promise<Array<{ pack: ListedPack; reason: string }>> => {
+  const failed: Array<{ pack: ListedPack; reason: string }> = []
   const missing = packs.filter((pack) => !read.has(pack.id))
   for (let i = 0; i < missing.length; i += ROLLUP_FETCH_CONCURRENCY) {
     const window = missing.slice(i, i + ROLLUP_FETCH_CONCURRENCY)
     const results = await Promise.all(window.map((pack) => readInput(storage, kind, pack)))
     for (let j = 0; j < window.length; j++) {
       const result = results[j]
-      if (typeof result === 'string') return { pack: window[j], reason: result }
-      read.set(window[j].id, result)
+      if (typeof result === 'string') failed.push({ pack: window[j], reason: result })
+      else read.set(window[j].id, result)
     }
   }
-  return null
+  return failed
 }
 
 const liveIndexes = async (
@@ -234,13 +233,19 @@ export const rollupKind = async (
     .all<ListedPack>()
   const packs = listed.results ?? []
   let run = planRollup(packs)
-  // An unreadable input is excluded and the run re-planned inside itself, so
-  // one bad pack neither wedges its kind above the bound nor costs more GETs
-  // than the first run (REVIEW-5267 P9). It stays listed: a reader treats its
-  // 404 as a gap (§8.12), and the next rollup reads it again.
+  // An unreadable input is excluded and the rollup re-planned over every listed
+  // pack, so bad packs do not wedge the kind above its bound (VERIFY-5267 F4).
+  // GETs stay within ROLLUP_MAX_INPUTS per rollup: once a re-plan would pass
+  // it, only packs already read are planned. A bad pack stays listed: a reader
+  // treats its 404 as a gap (§8.12), and the next rollup reads it again.
   const read = new Map<string, Input>()
   const excluded = new Set<string>()
+  let fetched = 0
+  const unreadIn = (list: readonly ListedPack[]) => list.filter((pack) => !read.has(pack.id))
   for (;;) {
+    if (fetched + unreadIn(run).length > ROLLUP_MAX_INPUTS) {
+      run = planRollup(packs, new Set([...excluded, ...unreadIn(packs).map((pack) => pack.id)]))
+    }
     if (run.length === 0) {
       logger.warn('pack kind above its bound with no mergeable run', {
         ...scopeLog(scope, kind),
@@ -250,15 +255,18 @@ export const rollupKind = async (
       })
       return null
     }
+    fetched += unreadIn(run).length
     const failed = await readInputs(storage, kind, run, read)
-    if (!failed) break
-    logger.error('rollup input pack unreadable; excluded and re-planned', {
-      ...scopeLog(scope, kind),
-      packId: failed.pack.id,
-      reason: failed.reason
-    })
-    excluded.add(failed.pack.id)
-    run = planRollup(run, excluded)
+    if (failed.length === 0) break
+    for (const { pack, reason } of failed) {
+      logger.error('rollup input pack unreadable; excluded and re-planned', {
+        ...scopeLog(scope, kind),
+        packId: pack.id,
+        reason
+      })
+      excluded.add(pack.id)
+    }
+    run = planRollup(packs, excluded)
   }
   let inputs = run.map((pack) => inputOf(read, pack))
 
@@ -281,7 +289,7 @@ export const rollupKind = async (
           ? { pack: packs[before], after: false }
           : null
     if (neighbour) {
-      const failed = await readInputs(storage, kind, [neighbour.pack], read)
+      const [failed] = await readInputs(storage, kind, [neighbour.pack], read)
       if (failed) {
         logger.error('rollup neighbour pack unreadable; rollup skipped', {
           ...scopeLog(scope, kind),
