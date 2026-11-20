@@ -70,7 +70,7 @@ impl Session {
     }
 
     fn provision_in(&self, folder: &Path, server_vault_id: &str) -> Result<(), SessionError> {
-        let core = super::open::prepare_core_dir(folder)?;
+        let core = super::open::prepare_core_dir(folder, self.vault_migrator().as_ref())?;
         let vault = Vault::open_with(
             core.to_string_lossy().into_owned(),
             OpenOptions {

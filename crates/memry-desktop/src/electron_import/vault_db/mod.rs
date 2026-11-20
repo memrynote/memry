@@ -68,11 +68,7 @@ pub struct VaultImportInput<'a> {
 }
 
 /// One Yjs document Step 37 read from the Electron store and folded to a single state.
-pub struct FoldedDoc {
-    pub doc_id: String,
-    pub state: Vec<u8>,
-    pub watermark: Option<u64>,
-}
+pub use super::ystore_import::FoldedDoc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportProgress {
@@ -93,7 +89,9 @@ pub enum StageOutcome {
 /// A verified staged pair waiting for [`StagedVault::install`] or [`StagedVault::discard`].
 pub struct StagedVault {
     paths: Paths,
-    report: VaultStageReport,
+    /// Boxed: inline, `StageOutcome` is 216 bytes on Windows (`PathBuf` is 32 bytes there), past
+    /// clippy's `large_enum_variant` limit.
+    report: Box<VaultStageReport>,
 }
 
 impl StagedVault {
@@ -184,7 +182,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault { paths, report })),
+        Ok(report) => Ok(StageOutcome::Staged(StagedVault {
+            paths,
+            report: Box::new(report),
+        })),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");
@@ -346,6 +347,6 @@ fn remove_staging(paths: &Paths) -> Result<(), ImportError> {
 
 #[cfg(test)]
 #[path = "../../../tests/support/electron_db.rs"]
-mod electron_db;
+pub(crate) mod electron_db;
 #[cfg(test)]
 mod tests;

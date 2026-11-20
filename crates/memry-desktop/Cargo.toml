@@ -194,6 +194,10 @@ name = "electron_vault_import"
 path = "tests/electron_vault_import.rs"
 
 [[test]]
+name = "electron_first_launch"
+path = "tests/electron_first_launch.rs"
+
+[[test]]
 name = "activity_log_memory"
 path = "tests/activity_log_memory.rs"
 

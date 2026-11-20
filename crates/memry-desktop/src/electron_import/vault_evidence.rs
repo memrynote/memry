@@ -10,10 +10,12 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
+use rusqlite::types::ValueRef;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde_json::Value;
 
 use super::ImportError;
+use super::vault_db::tables::LEDGER_TABLE;
 
 /// `vault.crypto.verifier.v1` (`crypto/vault-key-state.ts:17`).
 const VERIFIER_KEY: &str = "vault.crypto.verifier.v1";
@@ -35,6 +37,9 @@ pub struct VaultEvidence {
     /// moves that key into the legacy entry, never into a provider's slot, so the user enters
     /// it again after choosing a cloud provider (#3554 comment from #4483).
     pub inline_ai_reenter: bool,
+    /// The newest `__drizzle_migrations.created_at`: the schema Electron last migrated the
+    /// database to. `None` without a ledger.
+    pub ledger: Option<i64>,
 }
 
 fn sqlite(error: rusqlite::Error) -> ImportError {
@@ -95,7 +100,7 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
         text("SELECT value FROM settings WHERE key = ?1", Some(key))
     };
     let vault_id = if has_column(db, "vault_metadata", "vault_uuid")? {
-        text("SELECT vault_uuid FROM vault_metadata LIMIT 1", None)?
+        singleton_vault_uuid(db)?
     } else {
         None
     };
@@ -122,13 +127,68 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
                     .and_then(Value::as_str)
                     .is_some_and(|key| !key.trim().is_empty())
         });
+    let ledger = if has_column(db, LEDGER_TABLE, "created_at")? {
+        db.query_row(
+            &format!("SELECT max(CAST(created_at AS INTEGER)) FROM \"{LEDGER_TABLE}\""),
+            [],
+            |r| r.get::<_, Option<i64>>(0),
+        )
+        .map_err(sqlite)?
+    } else {
+        None
+    };
     Ok(VaultEvidence {
         vault_id,
         key_verifier: setting(VERIFIER_KEY)?,
         device_id,
         device_public_key,
         inline_ai_reenter,
+        ledger,
     })
+}
+
+/// The uuid Electron names a vault by, for its core id and its CRDT store alike: the
+/// `vault_metadata` singleton's (`resolveVaultCrdtStore` -> `getOrCreateVaultUuid`,
+/// `crdt-store-path.ts:51-57`), else the config entry's `vaultUuid`, a best-effort copy that an
+/// adoption whose device registration failed leaves stale (`vault-adoption.ts:35-60`). A blank
+/// value names nothing; any other is kept as written. Every reader of a vault's uuid in the
+/// import resolves it here, so no two of them can name one vault differently.
+pub fn electron_vault_uuid(singleton: Option<&str>, config: Option<&str>) -> Option<String> {
+    [singleton, config]
+        .into_iter()
+        .flatten()
+        .find(|uuid| !uuid.trim().is_empty())
+        .map(str::to_owned)
+}
+
+/// The uuid of the `vault_metadata` row Electron reads, `id = 'singleton'`
+/// (`agent/storage/vault-id.ts:7`, `sync/vault-adoption.ts:24-28`); other rows are never read.
+/// A value that is not UTF-8 text fails with the row named: it is the vault's identity, so no
+/// guess stands in for it.
+fn singleton_vault_uuid(db: &Connection) -> Result<Option<String>, ImportError> {
+    let value = db
+        .query_row(
+            "SELECT vault_uuid FROM vault_metadata WHERE id = 'singleton'",
+            [],
+            |r| {
+                Ok(match r.get_ref(0)? {
+                    ValueRef::Null => None,
+                    ValueRef::Text(bytes) => Some(String::from_utf8(bytes.to_vec()).ok()),
+                    _ => Some(None),
+                })
+            },
+        )
+        .optional()
+        .map_err(sqlite)?
+        .flatten();
+    match value {
+        None => Ok(None),
+        Some(Some(uuid)) => Ok(Some(uuid)),
+        Some(None) => Err(ImportError::Sqlite(
+            "vault data.db: vault_metadata row 'singleton' has a vault_uuid that is not UTF-8 text"
+                .to_owned(),
+        )),
+    }
 }
 
 #[cfg(test)]
