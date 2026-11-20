@@ -292,3 +292,46 @@ async fn a_baseline_due_but_gone_at_the_get_does_not_apply_the_probe_page() {
 
     assert_eq!(update_seqs(&db, "recreated001"), vec![6, 7]);
 }
+
+/// Re-created between the probe and the GET, with the new generation's
+/// snapshot at `sequenceNum` 0: a claimed push after a purge starts its
+/// watermark from 0, below the deleted generation's rows (#5323).
+fn recreate_with_zero_snapshot(server: &mut Server) {
+    let at = server
+        .docs
+        .iter()
+        .position(|doc| doc.id == "recreated002")
+        .unwrap();
+    let mut doc = ServerDoc::new("recreated002", 7)
+        .snapshot_at(7)
+        .purged_through(5);
+    if let Some(snapshot) = doc.snapshot.as_mut() {
+        snapshot.sequence_num = 0;
+        snapshot.revision = "rev-new-generation".to_owned();
+    }
+    server.docs[at] = doc;
+}
+
+/// VERIFY-5311 q7, D-REUSE-REVISION: the baseline taken is not the revision
+/// the probe saw, so the probe page (the deleted generation's rows 1..5) is
+/// not applied, whatever sequence the new snapshot sits at.
+#[tokio::test]
+async fn a_baseline_of_another_revision_does_not_apply_the_probe_page() {
+    let (db, dir) = body_pack_server::scratch("baseline-other-revision");
+    let mut server = Server::new(
+        vec![ServerDoc::new("recreated002", 5).snapshot_at(2)],
+        vec![],
+    );
+    server.records = true;
+    server
+        .before
+        .push((SNAPSHOT_GET.to_owned(), recreate_with_zero_snapshot));
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(update_seqs(&db, "recreated002"), vec![6, 7]);
+}

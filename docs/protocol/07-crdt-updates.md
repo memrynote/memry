@@ -554,21 +554,22 @@ with no snapshot to take instead contradicts §7.11.
 
 **The probe's answer is the first page** (#5293). A trusted answer decides §7.8 for that
 document: a baseline when the advertised `revision` is not the one stored,
-whatever the cursor, and none when no server snapshot is advertised. Then,
-with or without a baseline, the answer's page is applied as the first page
-and paging continues on `hasMore`
-(`crates/memry-core/src/sync/body_pull.rs:300-332`,
-`crates/memry-core/src/sync/body_pull.rs:365-368`). The server pages
-`sequenceNum > since` in order
-(`apps/sync-server/src/services/crdt.ts:270`), so after a baseline the page's
-rows above the new cursor are the start of the cursor's own page, and the
-rows at or below it are skipped as replays (§7.9). A page asked from above
-the cursor is never used, and neither is the page of a document whose due
-baseline the snapshot GET no longer finds: that document was purged since
-the probe, and its page may hold the deleted incarnation's rows. A snapshot
-rewritten between the probe and the GET still takes the probe page: rows
-pushed after the probe arrive with the next feed pull, and the page's older
-meta costs a second snapshot GET. The page moves to the worker that pulls the
+whatever the cursor, and none when no server snapshot is advertised.
+
+**Reuse is bound to the revision.** The answer's page belongs to the
+snapshot the probe saw. It is applied as the first page, with paging going on
+`hasMore`, only when no baseline was due, or when the baseline taken holds
+the probe's own `revision`
+(`crates/memry-core/src/sync/body_pull.rs:300-337`,
+`crates/memry-core/src/sync/body_pull.rs:370-373`). Any other outcome of the
+snapshot GET fetches the page afresh: no snapshot, a rewritten one, or a
+re-created document's. A snapshot's `sequenceNum` cannot tell the
+generations apart, because a claimed push after a purge can land below the
+deleted generation's rows (#5323). The server pages `sequenceNum > since` in
+order (`apps/sync-server/src/services/crdt.ts:270`). After a baseline of the
+probe's revision, the page's rows above the new cursor are therefore the
+start of the cursor's own page, and the rows at or below it are skipped as
+replays (§7.9). A page asked from above the cursor is never used. The page moves to the worker that pulls the
 document and is dropped once applied. Without a trusted answer, the document
 pages through the single-document route as before. A resumed first sync counts
 the settled documents as done before its first body request
