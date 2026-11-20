@@ -48,8 +48,9 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
-  bench bootstrap --vault <id>           dev only: wipe this profile's copy of the vault, run the
-                                         shells' first sync and body passes, print timing marks
+  bench bootstrap --vault <id> [--pass-interval <s>]
+                                         dev only: wipe this profile's copy of the vault, run the
+                                         first sync and body passes, print timing marks
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -133,6 +134,7 @@ pub enum Command {
     /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
     BenchBootstrap {
         vault: String,
+        pass_interval_secs: u64,
     },
 }
 
@@ -267,6 +269,9 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
         "bench" => match args.next().as_deref() {
             Some("bootstrap") => Ok(Command::BenchBootstrap {
                 vault: required(args, "--vault", "bench bootstrap")?,
+                pass_interval_secs: optional(args, "--pass-interval")?
+                    .map_or(Ok(0), |secs| secs.parse())
+                    .or_else(|_| usage("--pass-interval takes whole seconds"))?,
             }),
             _ => usage("bench needs a subcommand: bootstrap"),
         },
@@ -436,12 +441,6 @@ mod tests {
             }
         );
         assert_eq!(invocation("push").command, Command::Push { vault: None });
-        assert_eq!(
-            invocation("bench bootstrap --vault v-1").command,
-            Command::BenchBootstrap {
-                vault: "v-1".to_string()
-            }
-        );
         assert_eq!(
             invocation("push --vault v-1").command,
             Command::Push {

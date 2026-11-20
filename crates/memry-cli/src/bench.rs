@@ -6,6 +6,12 @@
 //! runs ([`body_step::run`]) until no live document is owed a body. It never
 //! pushes, so the vault on the server is only read.
 //!
+//! Cadence: by default the body passes run back to back, the engine's best
+//! case. iOS runs a pass per `sync_now` trigger (foreground, screen loads,
+//! realtime notices), so its passes are spaced by those events; `--pass-interval`
+//! spaces the passes the same way. Every wait is marked `sleep`, so the
+//! harness counts it as client pacing and not as idle network.
+//!
 //! Every line on stdout is one JSON mark with a wall-clock `atMs`, so the
 //! harness can line the marks up with the requests its proxy recorded.
 
@@ -66,7 +72,7 @@ impl SyncProgressListener for Progress {
     }
 }
 
-pub async fn bootstrap(cli: &Cli, vault: &str) -> Result<(), CliError> {
+pub async fn bootstrap(cli: &Cli, vault: &str, pass_interval: Duration) -> Result<(), CliError> {
     // A fresh device: this profile's copy of the vault goes, the account and
     // device registration stay.
     let dir = cli.vault_dir(vault);
@@ -112,11 +118,16 @@ pub async fn bootstrap(cli: &Cli, vault: &str) -> Result<(), CliError> {
             "bodyPass",
             json!({ "owedBefore": owed, "documents": pass.documents, "requests": pass.requests }),
         );
-        if pass.documents == 0 {
+        let wait = if pass.documents == 0 {
             idle += 1;
-            tokio::time::sleep(IDLE_PASS_WAIT).await;
+            IDLE_PASS_WAIT.max(pass_interval)
         } else {
             idle = 0;
+            pass_interval
+        };
+        if !wait.is_zero() {
+            mark("sleep", json!({ "ms": wait.as_millis() as u64 }));
+            tokio::time::sleep(wait).await;
         }
     }
 
@@ -157,4 +168,37 @@ async fn body_coverage(db: &Db) -> Result<(u64, u64), StorageError> {
 
 fn sync_failed(error: SyncError) -> CliError {
     CliError::Refused(format!("the first sync failed: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::cli::{Command, Parsed, parse};
+
+    fn bench(line: &str) -> Result<Command, String> {
+        let args = line.split_whitespace().map(String::from).collect();
+        match parse(args).map_err(|error| error.message)? {
+            Parsed::Run(invocation) => Ok(invocation.command),
+            Parsed::Help => Err("help".to_string()),
+        }
+    }
+
+    #[test]
+    fn pass_interval_defaults_to_back_to_back_and_takes_whole_seconds() {
+        let command = |vault: &str, secs| Command::BenchBootstrap {
+            vault: vault.to_string(),
+            pass_interval_secs: secs,
+        };
+        assert_eq!(bench("bench bootstrap --vault v-1"), Ok(command("v-1", 0)));
+        assert_eq!(
+            bench("bench bootstrap --vault v-1 --pass-interval 30"),
+            Ok(command("v-1", 30))
+        );
+        for line in [
+            "bench bootstrap --vault v-1 --pass-interval",
+            "bench bootstrap --vault v-1 --pass-interval 1.5",
+            "bench bootstrap --vault v-1 --pass-interval -3",
+        ] {
+            assert!(bench(line).is_err(), "`{line}` should not parse");
+        }
+    }
 }

@@ -15,6 +15,8 @@ mod push;
 mod session;
 mod transport;
 
+use std::time::Duration;
+
 use cli::{Command, Invocation, Parsed};
 use memry_core::api::runtime;
 use session::{Cli, CliError};
@@ -77,6 +79,9 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             value_json,
             vault,
         } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
-        Command::BenchBootstrap { vault } => bench::bootstrap(&cli, &vault).await,
+        Command::BenchBootstrap {
+            vault,
+            pass_interval_secs,
+        } => bench::bootstrap(&cli, &vault, Duration::from_secs(pass_interval_secs)).await,
     }
 }

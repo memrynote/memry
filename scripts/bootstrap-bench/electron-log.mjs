@@ -32,7 +32,9 @@ export function electronMarks(events) {
   return {
     marks: {
       startMs,
-      recordsMs: first('Pull timing', startMs) ?? first('fullSync: pull complete', startMs),
+      // Logged once every record is applied and before the run's last body
+      // batch; `Pull timing` waits for that batch, so it lands near t_bodies.
+      recordsMs: first('Pull records applied', startMs),
       bodiesMs: first('Bootstrap window closed', startMs)
     },
     staleLockReleases: count('Sync lock held past stale threshold'),
@@ -49,6 +51,7 @@ export function electronMarks(events) {
 
 const KEPT_PREFIXES = [
   'Bootstrap window',
+  'Pull records applied',
   'Pull timing',
   'fullSync:',
   'Pull page processed',

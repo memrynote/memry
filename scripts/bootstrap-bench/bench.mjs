@@ -2,7 +2,7 @@
 // Fresh-device bootstrap benchmark (#5223). One command per shell, the same
 // metrics for each: see apps/docs/src/contribute/testing.md, Bootstrap Benchmark.
 //
-//   pnpm bench:bootstrap core --vault sandboxmobile [--runs 2]
+//   pnpm bench:bootstrap core --vault sandboxmobile [--runs 2] [--pass-interval <s>]
 //   pnpm bench:bootstrap core --login --email <address> --phrase-file <path>
 //   pnpm bench:bootstrap electron --vault sandboxmobile
 
@@ -17,13 +17,15 @@ import { fileURLToPath } from 'node:url'
 import { parseKeychainDump } from '../../apps/desktop/scripts/purge-e2e-keychain.mjs'
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { formatReport, summarize } from './metrics.mjs'
-import { startProxy } from './proxy.mjs'
+import { startProxy, throughProxy } from './proxy.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const OUT_DIR = path.join(ROOT, '.perf/bootstrap-bench')
 const STAGING = 'https://sync-staging.memrynote.com'
 const SIGN_IN_DEADLINE_MS = 20 * 60_000
 const LOG_POLL_MS = 500
+// 25 MB from Cloudflare's speed test, the edge the Worker and R2 sit behind.
+const LINE_PROBE = 'https://speed.cloudflare.com/__down?bytes=25000000'
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -32,9 +34,9 @@ const { positionals, values } = parseArgs({
     runs: { type: 'string', default: '1' },
     server: { type: 'string', default: STAGING },
     port: { type: 'string', default: '8791' },
-    'line-mbps': { type: 'string', default: '50' },
     'timeout-min': { type: 'string', default: '40' },
     'cdp-port': { type: 'string', default: '9334' },
+    'pass-interval': { type: 'string', default: '0' },
     login: { type: 'boolean', default: false },
     email: { type: 'string' },
     'phrase-file': { type: 'string' }
@@ -100,8 +102,17 @@ async function runCore(proxy) {
   proxy.requests.length = 0
 
   const marks = {}
+  const sleeps = []
   const shell = { bodyPasses: 0 }
-  const child = spawn(binary, ['--server', proxy.url, 'bench', 'bootstrap', '--vault', vaultId], {
+  const args = [
+    'bench',
+    'bootstrap',
+    '--vault',
+    vaultId,
+    '--pass-interval',
+    values['pass-interval']
+  ]
+  const child = spawn(binary, ['--server', proxy.url, ...args], {
     env: { ...process.env, HOME: CLI_HOME },
     stdio: ['ignore', 'pipe', 'inherit']
   })
@@ -110,9 +121,17 @@ async function runCore(proxy) {
     buffer += chunk
     let newline
     while ((newline = buffer.indexOf('\n')) >= 0) {
-      const event = JSON.parse(buffer.slice(0, newline))
+      const line = buffer.slice(0, newline)
       buffer = buffer.slice(newline + 1)
+      let event
+      try {
+        event = JSON.parse(line)
+      } catch {
+        console.error(`bench:bootstrap: skipped a stdout line that is not a mark: ${line}`)
+        continue
+      }
       if (event.mark === 'start') marks.startMs = event.atMs
+      if (event.mark === 'sleep') sleeps.push([event.atMs, event.ms])
       if (event.mark === 'records') marks.recordsMs = event.atMs
       if (event.mark === 'bodies') marks.bodiesMs = event.atMs
       if (event.mark === 'bodyPass') shell.bodyPasses += 1
@@ -121,7 +140,7 @@ async function runCore(proxy) {
   })
   const code = await new Promise((resolve) => child.on('exit', resolve))
   if (code !== 0) fail(`memry bench bootstrap exited ${code}`)
-  return { marks, shell, staleLockReleases: 0 }
+  return { marks, sleeps, shell, staleLockReleases: 0 }
 }
 
 // ------------------------------------------------------------- electron (dev)
@@ -225,18 +244,32 @@ async function runElectron(proxy) {
 
 // ---------------------------------------------------------------------- main
 
+/** Mbit/s of one large GET through the proxy, so the limiter judges the real line. */
+async function measureLine(proxy) {
+  const startedMs = Date.now()
+  const response = await fetch(throughProxy(proxy.url, LINE_PROBE))
+  const bytes = (await response.arrayBuffer()).byteLength
+  const elapsedMs = Date.now() - startedMs
+  proxy.requests.length = 0
+  if (!response.ok || bytes === 0) fail(`line probe answered ${response.status}`)
+  const mbps = (bytes * 8) / 1e6 / (elapsedMs / 1000)
+  console.log(`Line: ${mbps.toFixed(1)} Mbit/s (${(bytes / 1e6).toFixed(1)} MB in ${elapsedMs} ms)`)
+  return mbps
+}
+
 async function main() {
   const shellName = positionals[0]
   if (!['core', 'electron'].includes(shellName))
     fail('usage: bench.mjs <core|electron> --vault <name>')
   if (!values.login && !values.vault) fail('--vault <name or id> is required')
-  if (/sync\.memrynote\.com/.test(values.server)) fail('production is out of bounds')
 
   const runs = values.login ? 1 : Number(values.runs)
   for (let run = 1; run <= runs; run++) {
     const proxy = await startProxy({ upstream: values.server, port: Number(values.port) })
     let result
+    let lineMbps
     try {
+      if (!values.login) lineMbps = await measureLine(proxy)
       result = shellName === 'core' ? await runCore(proxy) : await runElectron(proxy)
     } finally {
       await proxy.close()
@@ -245,8 +278,9 @@ async function main() {
     const metrics = summarize({
       requests: proxy.requests,
       marks: result.marks,
+      sleeps: result.sleeps ?? null,
       staleLockReleases: result.staleLockReleases,
-      lineMbps: Number(values['line-mbps'])
+      lineMbps
     })
     const label = `${shellName} · ${values.vault} · run ${run}/${runs}`
     const record = {

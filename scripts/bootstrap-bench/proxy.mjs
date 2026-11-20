@@ -5,11 +5,17 @@
 // presigned R2 URLs on another host: the proxy rewrites the `url` of every
 // pack it lists to `/__r2/<url>` and forwards those too, so R2 requests and
 // bytes land in the same log. The WebSocket upgrade is passed through.
+// Attachment downloads use presigned URLs the proxy does not rewrite; they
+// are out of the benchmark's scope.
 //
-// What it costs: the shell speaks HTTP/1.1 to localhost and the proxy keeps
-// its own pooled TLS connections upstream. Both add little next to a 65 ms
-// Worker round trip, but a shell that relied on HTTP/2 multiplexing is capped
-// at the proxy's sockets instead.
+// The benchmark only reads the vault: the proxy answers the write routes
+// with 403 itself and never forwards them.
+//
+// What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
+// its own pooled TLS connections upstream. Electron's net.fetch opens at most
+// 6 sockets to one HTTP/1.1 host, so through the proxy it has at most 6
+// requests in flight, where staging's h2 would multiplex more. The report's
+// per-endpoint max in flight shows when a shell sat at that cap.
 
 import http from 'node:http'
 import https from 'node:https'
@@ -25,6 +31,30 @@ const HOP_HEADERS = new Set([
   'upgrade',
   'host'
 ])
+
+// Exact hostnames. Production and every other host are refused.
+const ALLOWED_UPSTREAMS = new Set(['sync-staging.memrynote.com', '127.0.0.1', 'localhost'])
+
+// Routes that change the vault on the server. `POST /sync/pull` and
+// `POST /sync/crdt/updates/batch` are reads and stay open, as do auth, device
+// registration and bootstrap sessions.
+const WRITE_ROUTES = [
+  ['POST', /^\/sync(\/records)?\/push$/],
+  ['POST', /^\/sync\/crdt\/updates$/],
+  ['POST', /^\/sync\/crdt\/snapshot(\/.*)?$/],
+  ['PUT', /^\/sync\/crdt\/snapshot(\/.*)?$/]
+]
+
+export function assertAllowedUpstream(upstream) {
+  const { hostname } = new URL(upstream)
+  if (!ALLOWED_UPSTREAMS.has(hostname)) {
+    throw new Error(`${hostname} is out of bounds: the benchmark runs only against staging`)
+  }
+}
+
+export function isWriteRoute(method, pathname) {
+  return WRITE_ROUTES.some(([verb, pattern]) => verb === method && pattern.test(pathname))
+}
 
 const agents = {
   'http:': new http.Agent({ keepAlive: true, maxSockets: 64 }),
@@ -43,17 +73,24 @@ function rewritePackUrls(body, base) {
   const json = JSON.parse(body.toString('utf8'))
   for (const pack of json.packs ?? []) {
     if (typeof pack.url === 'string') {
-      pack.url = `${base}${R2_PREFIX}${Buffer.from(pack.url).toString('base64url')}`
+      pack.url = throughProxy(base, pack.url)
     }
   }
   return Buffer.from(JSON.stringify(json))
 }
 
+/** The proxy URL that fetches `url` through the proxy's R2 route. */
+export function throughProxy(proxyUrl, url) {
+  return `${proxyUrl}${R2_PREFIX}${Buffer.from(url).toString('base64url')}`
+}
+
 /**
  * Starts the proxy. `requests` fills with one entry per finished request:
- * `{ startMs, endMs, method, path, host: 'worker' | 'r2', status, reqBytes, resBytes }`.
+ * `{ startMs, endMs, method, path, host: 'worker' | 'r2', status, reqBytes, resBytes }`,
+ * plus `refused: true` on a write the proxy answered itself.
  */
 export async function startProxy({ upstream, port = 0 }) {
+  assertAllowedUpstream(upstream)
   const upstreamUrl = new URL(upstream)
   const requests = []
 
@@ -78,6 +115,17 @@ export async function startProxy({ upstream, port = 0 }) {
       resBytes: 0
     }
     req.on('data', (chunk) => (entry.reqBytes += chunk.length))
+
+    if (!isR2 && isWriteRoute(req.method, target.pathname)) {
+      req.resume()
+      req.on('end', () => {
+        Object.assign(entry, { status: 403, refused: true, endMs: Date.now() })
+        requests.push(entry)
+        res.writeHead(403, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ error: 'BENCH_READ_ONLY', message: 'the benchmark only reads' }))
+      })
+      return
+    }
 
     const client = target.protocol === 'http:' ? http : https
     const agent = agents[target.protocol]
