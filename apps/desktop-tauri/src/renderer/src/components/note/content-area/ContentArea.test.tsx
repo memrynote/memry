@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { useLayoutEffect, useState, useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -288,7 +288,6 @@ vi.mock('@blocknote/xl-ai', () => ({
 }))
 
 vi.mock('@blocknote/xl-ai/locales', () => ({ en: {} }))
-vi.mock('@blocknote/core/locales', () => ({ en: {} }))
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ resolvedTheme: 'dark' })
@@ -1217,6 +1216,8 @@ describe('ContentArea', () => {
       showText?: (markdown: string) => void
     } = {}
     const onMarkdownChange = vi.fn()
+    // The note's file text the window saves as the editor's markdown changes.
+    const windowSaves = vi.fn()
     function Window() {
       const [text, setText] = useState(markdown)
       const review = useCriticMarkupReview({ markdown: text, onMarkdownChange })
@@ -1227,6 +1228,7 @@ describe('ContentArea', () => {
       return (
         <ContentArea
           noteId="note-1"
+          onMarkdownChange={windowSaves}
           review={{
             plainMarkdown: review.plainMarkdown,
             marks: review.marks,
@@ -1244,7 +1246,9 @@ describe('ContentArea', () => {
     const liveText = (text: string, local: boolean) =>
       act(() => vi.mocked(useEditorSync).mock.lastCall![0].onLiveMarkdownChange!(text, local))
     const windowMarks = () => shown.review!.marks.map(({ id, start, end }) => [id, start, end])
-    return { shown, liveText, windowMarks }
+    const editorSaves = (text: string) =>
+      act(() => vi.mocked(useEditorSync).mock.lastCall![0].onMarkdownChange!(text))
+    return { shown, liveText, windowMarks, editorSaves, windowSaves }
   }
 
   const docMarks = (doc: Y.Doc) =>
@@ -1280,6 +1284,95 @@ describe('ContentArea', () => {
     expect(writes).toEqual([])
   })
 
+  it('saves the comment where the window moved it after typing', async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const { liveText, editorSaves, windowSaves } = bindReviewWindow(
+      doc,
+      serializeCriticMarkup(plain, [comment])
+    )
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+
+    liveText(`Intro. ${plain}`, true)
+    editorSaves(`Intro. ${plain}`)
+
+    expect(windowSaves).toHaveBeenLastCalledWith(
+      serializeCriticMarkup(`Intro. ${plain}`, [{ ...comment, start: 16, end: 20 }])
+    )
+  })
+
+  it("keeps the window's offsets of a comment when another device edits its body", async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const { shown, liveText, windowMarks } = bindReviewWindow(
+      doc,
+      serializeCriticMarkup(plain, [comment])
+    )
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+    liveText(`Intro. ${plain}`, true)
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+
+    // The other device's write carries the doc's offsets, which the window never moved.
+    act(() =>
+      doc.transact(
+        () => writeCriticMarkupMarksToYDoc(doc, [{ ...comment, body: 'edited there' }]),
+        'remote'
+      )
+    )
+
+    await waitFor(() => expect(shown.review!.marks[0]?.body).toBe('edited there'))
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+  })
+
+  it("takes the device's offsets when the window's no longer cover the quote", async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const { shown, liveText, windowMarks } = bindReviewWindow(
+      doc,
+      serializeCriticMarkup(plain, [comment])
+    )
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+
+    // The other device typed before the comment, then edited it: its write carries its offsets.
+    liveText(`Intro. ${plain}`, false)
+    act(() =>
+      doc.transact(
+        () =>
+          writeCriticMarkupMarksToYDoc(doc, [
+            { ...comment, start: 16, end: 20, body: 'edited there' }
+          ]),
+        'remote'
+      )
+    )
+
+    await waitFor(() => expect(shown.review!.marks[0]?.body).toBe('edited there'))
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+  })
+
   it('leaves a comment another device resolved out after typing here, with one copy of each other', async () => {
     const here = new Y.Doc()
     const plain = 'alpha and gamma.'
@@ -1310,6 +1403,46 @@ describe('ContentArea', () => {
     expect(docMarks(here).map(([id]) => id)).toEqual(['c-2'])
     expect(docMarks(there).map(([id]) => id)).toEqual(['c-2'])
     await waitFor(() => expect(shown.review!.marks.map((mark) => mark.id)).toEqual(['c-2']))
+  })
+
+  it("keeps another device's comment edit when this window edits a comment after typing", async () => {
+    for (const [hereId, thereId] of [
+      [1, 2],
+      [2, 1]
+    ]) {
+      const here = new Y.Doc()
+      here.clientID = hereId
+      const plain = 'alpha and gamma.'
+      const marks: CriticMarkupMark[] = [
+        { id: 'c-1', kind: 'comment', visibleText: 'alpha', start: 0, end: 5, body: 'one' },
+        { id: 'c-2', kind: 'comment', visibleText: 'gamma', start: 10, end: 15, body: 'two' }
+      ]
+      const { shown, liveText } = bindReviewWindow(here, serializeCriticMarkup(plain, marks))
+      await waitFor(() => expect(docMarks(here).map(([id]) => id)).toEqual(['c-1', 'c-2']))
+      const there = new Y.Doc()
+      there.clientID = thereId
+      Y.applyUpdate(there, Y.encodeStateAsUpdate(here))
+
+      // Offline: this window types before both comments (its offsets move) and
+      // edits c-2; the other device edits c-1.
+      liveText(`Intro. ${plain}`, true)
+      act(() => shown.review!.updateComment('c-2', { body: 'two, edited here' }))
+      there.transact(() =>
+        writeCriticMarkupMarksToYDoc(
+          there,
+          readCriticMarkupMarksFromYDoc(there).map((mark) =>
+            mark.id === 'c-1' ? { ...mark, body: 'one, edited there' } : mark
+          )
+        )
+      )
+      act(() => Y.applyUpdate(here, Y.encodeStateAsUpdate(there, Y.encodeStateVector(here))))
+
+      expect(readCriticMarkupMarksFromYDoc(here).map((mark) => mark.body)).toEqual([
+        'one, edited there',
+        'two, edited here'
+      ])
+      cleanup()
+    }
   })
 
   // A save from another editor of the note (a canvas card, a project overview:
@@ -2174,18 +2307,22 @@ describe('ContentArea', () => {
     expect(await slashController.getItems('mermaid')).toEqual([])
   })
 
-  it('offers the view row under /view, and not in a table cell', async () => {
+  it('offers the view rows under /view, and not in a table cell', async () => {
     // #given
     render(<ContentArea noteId="note-1" />)
     const slashController = contentAreaMocks.suggestionControllers.find(
       (controller) => controller.triggerCharacter === '/'
     )
 
-    // #when / #then an alias finds it too
+    // #when / #then an alias finds both: a view over a source, and a new one with its own folder
     expect(await slashController.getItems('database')).toEqual([
       expect.objectContaining({
         title: 'View',
         subtext: 'A live list of notes from a folder, a tag or the whole vault'
+      }),
+      expect.objectContaining({
+        title: 'New view',
+        subtext: 'A new folder beside this note, listed here'
       })
     ])
 

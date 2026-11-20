@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Nie ma jeszcze sejfów",
       "openVault": "Otwórz sejf",
+      "createVault": "Utwórz sejf",
+      "openFolderAsVault": "Otwórz folder jako sejf",
       "settings": "Ustawienia",
       "remove": "Usuń „",
       "removeVaultTitle": "Usunąć „{name}” z listy?",

@@ -50,12 +50,21 @@ case-insensitive, so this is cosmetic, but a client that string-matches its own
 constants must match the right spelling.
 
 **Normative.** A vault-scoped request with no `X-Memry-Vault-Id` never creates
-a vault. It resolves to `default` when the account has no vaults or already
-holds `default`, to the only vault when it has one, and to
-`400 VALIDATION_ERROR` when it has several
-(`apps/sync-server/src/middleware/paid-sync.ts:36`). The vault id a device
+a second vault; on an account with none it creates `default`. It resolves to
+`default` when the account has no vaults or already holds `default`, to the
+only vault when it has one, and to `400 VALIDATION_ERROR` when it has several
+(`apps/sync-server/src/middleware/paid-sync.ts:36`), and the resolved vault is
+inserted when the account does not hold it yet
+(`apps/sync-server/src/services/entitlements.ts:198-247`). The vault id a device
 registered with plays no part: iOS registers with none, which the server stores
 as `default` (`apps/sync-server/src/middleware/paid-sync.ts:64`).
+
+**Normative.** The core sends `X-Memry-Vault-Id` on every `/sync/*` route
+below `paidSyncMiddleware` (`apps/sync-server/src/routes/sync.ts:224`),
+`/sync/status` included (`crates/memry-core/src/sync/policy.rs:355`,
+`crates/memry-core/src/sync/engine.rs:474`). A header-less status poll that
+reaches the server before the vault's registration would create `default` next
+to the bound vault.
 
 ## 5.3 Type negotiation
 
@@ -1057,7 +1066,7 @@ the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`
 `purged.rs:244`), the local refusals over the item's `sync_items` row
 (`purged.rs:295`), then the signed-tombstone apply. Every id a
 `purgedTombstones` entry names is kept out of the page's untyped deletes
-(`crates/memry-core/src/sync/pull.rs:404`). A run that started from cursor 0
+(`crates/memry-core/src/sync/pull.rs:409`). A run that started from cursor 0
 applies none until a page that is not refused lands at the head. The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
 is read from cursor 0 and cleared in the transaction that lands the head

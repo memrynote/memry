@@ -13,6 +13,7 @@ import {
   onJournalExternalChange
 } from '@/services/journal-service'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { previewWikiLinkTarget } from '@/lib/wiki-link-preview'
 
 interface HoverPosition {
@@ -165,16 +166,20 @@ export function useWikiLinkHover(
     const clearCache = (): void => {
       cacheRef.current.clear()
     }
-    const unsubscribes = [
-      onNoteCreated(clearCache),
-      onNoteRenamed(clearCache),
-      onNoteDeleted(clearCache),
-      onNoteUpdated(clearCache),
-      onJournalEntryCreated(clearCache),
-      onJournalEntryDeleted(clearCache),
-      onJournalExternalChange(clearCache)
-    ]
-    return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
+    // A hover before these listeners went live may have cached an answer a change then outdated,
+    // whose event went to nobody (#4270): the cache is dropped once they listen.
+    return subscribeToEvents(
+      [
+        (live) => onNoteCreated(clearCache, live),
+        (live) => onNoteRenamed(clearCache, live),
+        (live) => onNoteDeleted(clearCache, live),
+        (live) => onNoteUpdated(clearCache, live),
+        (live) => onJournalEntryCreated(clearCache, live),
+        (live) => onJournalEntryDeleted(clearCache, live),
+        (live) => onJournalExternalChange(clearCache, live)
+      ],
+      clearCache
+    )
   }, [])
 
   const handleCardMouseEnter = useCallback(() => {

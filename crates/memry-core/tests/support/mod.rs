@@ -128,6 +128,9 @@ pub fn vector_file(name: &str) -> Json {
         "block-edit" => {
             include_str!("../../../../packages/contracts/test-vectors/block-edit.json")
         }
+        "chunk-holds" => {
+            include_str!("../../../../packages/contracts/test-vectors/chunk-holds.json")
+        }
         "attachment-manifest" => {
             include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")
         }

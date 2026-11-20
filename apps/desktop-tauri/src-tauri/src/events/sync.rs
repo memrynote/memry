@@ -1,8 +1,88 @@
 //! The sync events of `ipc-events.ts:8-32` the renderer listens to. Ids and small hints only:
 //! a listener reads anything bigger through its command.
 
+use memry_desktop::sync::events::{ItemOperation, SyncEvent};
 use memry_desktop::sync::status::SyncStatus;
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Runtime};
+
+use super::broadcast;
+
+/// Sends the typed event of one supervisor event.
+pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
+    match event {
+        SyncEvent::Pulled(items) => broadcast(
+            app,
+            SyncItemSyncedEvent {
+                operation: SyncDirection::Pull,
+                items: items
+                    .iter()
+                    .map(|item| SyncedItem {
+                        item_id: item.item_id.clone(),
+                        item_type: item.item_type.clone(),
+                        item_operation: match item.operation {
+                            ItemOperation::Create => SyncItemOperation::Create,
+                            ItemOperation::Update => SyncItemOperation::Update,
+                            ItemOperation::Delete => SyncItemOperation::Delete,
+                        },
+                    })
+                    .collect(),
+            },
+        ),
+        SyncEvent::QueueCleared {
+            item_count,
+            duration_ms,
+        } => broadcast(
+            app,
+            SyncQueueClearedEvent {
+                item_count: *item_count,
+                duration: *duration_ms,
+            },
+        ),
+        SyncEvent::ClockSkew {
+            local_s,
+            server_s,
+            skew_s,
+        } => broadcast(
+            app,
+            SyncClockSkewWarningEvent {
+                local_time: *local_s,
+                server_time: *server_s,
+                skew_seconds: *skew_s,
+            },
+        ),
+        SyncEvent::SecurityWarning(warning) => broadcast(
+            app,
+            SyncSecurityWarningEvent {
+                item_id: warning.item_id.clone(),
+                item_type: warning.item_type.clone(),
+                signer_device_id: warning.signer_device_id.clone(),
+                reason: SecurityWarningReason::SignatureVerificationFailed,
+                attempt_count: warning.attempt_count,
+                permanent: warning.permanent,
+            },
+        ),
+        SyncEvent::Corrupt {
+            item_type,
+            item_id,
+            reason,
+        } => broadcast(
+            app,
+            SyncItemCorruptEvent {
+                item_id: item_id.clone(),
+                item_type: item_type.clone(),
+                error: reason.clone(),
+            },
+        ),
+        SyncEvent::Recovered { item_type, item_id } => broadcast(
+            app,
+            SyncItemRecoveredEvent {
+                item_id: item_id.clone(),
+                item_type: item_type.clone(),
+            },
+        ),
+    }
+}
 
 /// `sync:status-changed`, the shape of `SyncStatusChangedEvent` (and of `sync_get_status`).
 /// At most one per 100 ms, the latest winning (the supervisor's throttle).
@@ -26,16 +106,23 @@ pub enum SyncItemOperation {
     Delete,
 }
 
-/// `sync:item-synced`: one item went up or came down.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+/// One record of a [`SyncItemSyncedEvent`].
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncItemSyncedEvent {
+pub struct SyncedItem {
     pub item_id: String,
     #[serde(rename = "type")]
     pub item_type: String,
+    pub item_operation: SyncItemOperation,
+}
+
+/// `sync:item-synced`, once per committed pull page: every record the page changed, each once
+/// with its last operation. Notes and journals come from the vault tier's events instead.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncItemSyncedEvent {
     pub operation: SyncDirection,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub item_operation: Option<SyncItemOperation>,
+    pub items: Vec<SyncedItem>,
 }
 
 /// `sync:queue-cleared`: a push emptied the queue.

@@ -151,21 +151,34 @@ test.describe('Note open byte stability', () => {
     const baseline = await indexedBaseline(page, title, absPath)
     expect(baseline.bytes).not.toContain('tags:')
 
-    // #when it is opened and the editor shows it
-    await openInEditor(page, title)
-    await expect(page.locator(NOTE_EDITOR).first()).toContainText('Tagged')
-
-    // #then a hash tag is never promoted, so the open changes nothing in the document. Electron
-    // asserted that no write-back pass ran; on WebKitGTK the editor's open sends the document an
-    // update and one pass runs, which finds the file already holding the body. The claim that
-    // survives every engine is the one asserted below: the file is never rewritten.
-    expect((await writebackDebug(app, baseline.id))?.lastError ?? null).toBeNull()
-
-    // #and the note really does carry the tag, through the index (#1454), so this is not a lost
-    // feature. The index projects it on its own schedule, so it is polled.
+    // #and the index already carries the tag (#1454), so this is not a lost feature. The editor
+    // promotes `#tag` text to a chip only for tags the note has, so the tag is in place before
+    // the open: the open then always runs the promotion, a change to the document.
     await expect
       .poll(async () => (await getNote(page, baseline.id))?.tags ?? [])
       .toContain('hashtag')
+
+    // #when it is opened, the tag shows as a chip, and the pass that change schedules has run
+    const chip = page.locator(`${NOTE_EDITOR} .inline-hash-tag[data-hash-tag="hashtag"]`)
+    await openInEditor(page, title)
+    await expect(chip).toBeVisible()
+    await passOverDocument(app, baseline.id)
+
+    // #then the chip serialized to the bytes it was promoted from: the pass left the file alone
+    expect(readWithMtime(absPath)).toEqual({ bytes: baseline.bytes, mtimeMs: baseline.mtimeMs })
+    expect((await writebackDebug(app, baseline.id))?.lastError ?? null).toBeNull()
+
+    // #when it is opened again, cold, with the chip already in the document
+    const scheduledBefore = (await writebackDebug(app, baseline.id))?.scheduledCount ?? 0
+    await page.reload()
+    await vaultOpen(page)
+    await openInEditor(page, title)
+    await expect(chip).toBeVisible()
+    await passOverDocument(app, baseline.id)
+
+    // #then the second open sent the document nothing: the only schedule is the spec's own pass,
+    // which ran past the debounce, so an update from the open would have been counted
+    expect((await writebackDebug(app, baseline.id))?.scheduledCount).toBe(scheduledBefore + 1)
 
     // #and after closing it and quitting, the whole file is byte-identical and never rewritten:
     // the tag stays where the user put it

@@ -218,6 +218,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "attachment_sync",
         sql: include_str!("migrations/data/0034_attachment_sync.sql"),
     },
+    Migration {
+        version: 35,
+        name: "recents",
+        sql: include_str!("migrations/data/0035_recents.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -411,6 +416,8 @@ mod numbering_tests;
 mod saved_filter_inbox_tests;
 #[cfg(test)]
 mod sequence_tests;
+#[cfg(test)]
+mod step_forward_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

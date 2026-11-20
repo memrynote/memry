@@ -9,6 +9,7 @@
  * the view shows.
  */
 
+import { folderViewService } from '@/services/folder-view-service'
 import type { CanvasEntityRef } from '@memry/contracts/canvas-api'
 import type { NoteWithProperties, ViewScope } from '@memry/contracts/folder-view-api'
 import { isFilterEmpty } from '@/lib/filter-evaluator'
@@ -50,7 +51,7 @@ export async function listBulkFolders(): Promise<string[]> {
 async function listScopeRows(scope: ViewScope): Promise<NoteWithProperties[]> {
   const rows: NoteWithProperties[] = []
   for (;;) {
-    const page = await window.api.folderView.listWithProperties({
+    const page = await folderViewService.listWithProperties({
       scope,
       limit: PAGE_SIZE,
       offset: rows.length
@@ -72,7 +73,7 @@ async function listScopeRows(scope: ViewScope): Promise<NoteWithProperties[]> {
 export async function loadBulkScopeOptions(scope: ViewScope): Promise<BulkScopeOption[]> {
   const [rows, { views }] = await Promise.all([
     listScopeRows(scope),
-    window.api.folderView.getViews(scope)
+    folderViewService.getViews(scope)
   ])
   const sorted = [...rows].toSorted((a, b) => a.title.localeCompare(b.title))
   const options: BulkScopeOption[] = [{ viewName: null, refs: refsFromViewRows(sorted) }]

@@ -77,12 +77,14 @@ one-class change reviewable.
 | `note-blocks.json`                       |                                   32 | `../scripts/vectors/note-blocks.ts`                                                            | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses                  |
 | `block-edit.json`                        |                                   12 | `../scripts/vectors/block-edit.ts`                                                             | `../src/__tests__/block-edit.test.ts` + the Rust writer harness                      |
 | `attachment-manifest.json`               |                                    4 | `../scripts/vectors/attachment-manifest.ts`                                                    | `../src/__tests__/attachment-manifest.test.ts` + the Rust harness                    |
+| `chunk-holds.json`                       |                                   14 | `../scripts/vectors/chunk-holds.ts` (Electron's `canvas/assets/chunk-holds.ts`)                | Rust `attachment_holds.rs`                                                           |
 | `delete-attestation.json`                |                                   19 | `../scripts/vectors/delete-attestation.ts`                                                     | `../src/__tests__/delete-attestation.test.ts` + the Rust harness                     |
 | `portal-resolve.json`                    |                                   29 | `../scripts/vectors/portal-resolve.ts`                                                         | `../src/__tests__/portal-resolve.test.ts` + the Rust harness                         |
 | `note-fold-text.json`                    |                                   75 | `apps/desktop/scripts/note-fold-oracle/`                                                       | Rust `note_fold_text_vectors.rs`                                                     |
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `html-text.json`                         |                                   35 | `apps/desktop/scripts/html-text-oracle/`                                                       | Rust `services::file_text::html` tests                                               |
+| `export.json`                            |                                   72 | `apps/desktop/scripts/export-oracle/`                                                          | Rust `memry-desktop/tests/export_vectors.rs`                                         |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
 | `audio-features.json`                    |                           33 + 9 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
 | `embeddings-audio.json`                  |                  7 files, 17 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
@@ -103,7 +105,7 @@ one-class change reviewable.
 | `markdown-convert/layer-text.json`       |                                13074 | same                                                                                           | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`    |                                 3243 | same                                                                                           | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`     |                                 5116 | same                                                                                           | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
-| `markdown-convert/layer-critic.json`     |                                 2944 | same                                                                                           | same + Rust `markdown_layer_critic_vectors.rs`                                       |
+| `markdown-convert/layer-critic.json`     |                                 3011 | same                                                                                           | same + Rust `markdown_layer_critic_vectors.rs`                                       |
 | `markdown-convert/seed-corpus.json`      |                                  250 | same                                                                                           | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
 | `markdown-convert/grammar-corpus.json`   |                                  454 | same                                                                                           | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
 | `markdown-convert/seed-doc.json`         |                                  751 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
@@ -114,7 +116,8 @@ one-class change reviewable.
 | `importers/markdown/expected.json`       |                                    6 | `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`                            | Rust `importer_vectors.rs`                                                           |
 | `importers/csv/expected.json`            |                                    2 | same                                                                                           | same                                                                                 |
 | `importers/messages.json`                |                                    1 | same                                                                                           | same                                                                                 |
-| **Total**                                | **32355 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| `importers/obsidian-tasks.json`          |                                  139 | `apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts`                | Rust `obsidian_task_import.rs`                                                       |
+| **Total**                                | **32494 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `importers/`: frozen at cutover
 
@@ -127,6 +130,12 @@ replays the same inputs through the Rust importers and compares the records as J
 once the Electron importers are deleted, the files stay as committed and the Rust importers are
 held to them; a deliberate change edits the Rust and the expected file in the same change and
 says why. A difference is a bug in the Rust.
+
+`obsidian-tasks.json` records `buildObsidianTaskImport` (`packages/shared/src/obsidian-task-import.ts`)
+for 84 lines in UTC with each done date in two fixed-offset zones, 19 done dates around midnight
+transitions in five real zones (`chrono::Local` replays them with `TZ` set, unix only), and the 36 lines of the Obsidian Tasks plugin's fixtures
+(`packages/shared/src/obsidian-tasks-fixtures`) through `parseObsidianTaskLine` and the import.
+The same freeze applies.
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 

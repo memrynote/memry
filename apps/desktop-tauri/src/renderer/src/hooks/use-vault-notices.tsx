@@ -102,6 +102,8 @@ export function useVaultNotices(): void {
         id: toastId(notice.kind),
         duration: Infinity,
         closeButton: true,
+        // The text is long: the action wraps under it instead of squeezing it into a narrow column.
+        classNames: { toast: 'flex-wrap', content: 'grow basis-[calc(100%-2rem)]' },
         // Sonner also calls this for a toast taken down here, once its notice cleared.
         onDismiss: () => {
           if (current.has(notice.kind)) closed.add(notice.kind)

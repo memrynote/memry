@@ -44,6 +44,7 @@ import { buildJournal } from './vectors/journal'
 import { buildMarkdownRoundtrip } from './vectors/markdown-roundtrip'
 import { buildMarkdownSeed } from './vectors/markdown-seed'
 import { buildAttachmentManifest } from './vectors/attachment-manifest'
+import { buildChunkHolds } from './vectors/chunk-holds'
 import { buildBlockEdit } from './vectors/block-edit'
 import { buildCalendar } from './vectors/calendar'
 import { buildCalendarIcal } from './vectors/calendar-ical'
@@ -165,6 +166,7 @@ const CLASSES: readonly VectorClass[] = [
     name: 'attachment-manifest',
     files: [{ path: 'attachment-manifest.json', build: buildAttachmentManifest }]
   },
+  { name: 'chunk-holds', files: [{ path: 'chunk-holds.json', build: buildChunkHolds }] },
   {
     name: 'delete-attestation',
     files: [{ path: 'delete-attestation.json', build: buildDeleteAttestation }]

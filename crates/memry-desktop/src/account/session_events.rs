@@ -5,6 +5,10 @@
 //! Revocation follows Electron, not the core's iOS rule: nothing is deleted. Sync stops, the
 //! session moves to `Revoked` with every secret kept, and the queue stays, so the dialog's export
 //! offer still has the master key and the unsent edits. Sign-out clears them.
+//!
+//! Departure: a revocation heard while a refresh is in flight (`Refreshing`) does not move the
+//! session (§C.1 draws no edge there), and revoked is never persisted, so after a restart sync
+//! attaches again and the server's refusal shows the dialog again.
 
 use std::sync::Arc;
 
