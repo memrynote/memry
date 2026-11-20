@@ -528,18 +528,22 @@ export const compactOneRange = async (
   // (#2986, protocol 07 §7.15). One that commits after this run selected would
   // leave the deleted body in this pack, so the row and the watermark commit
   // together and only while every packed body row is still current and not
-  // dead. Otherwise the object is deleted and the next run reselects.
+  // dead. Otherwise the next run reselects.
   const current =
     kind === 'crdt_snapshot'
       ? snapshotsCurrent(scope, built.entries)
       : kind === 'crdt_update'
         ? updatesCurrent(scope, built.entries)
         : ALWAYS
-  // The listing cap is rechecked in the commit batch: another kind's build or
-  // a concurrent run may have taken the last slot since the precheck.
+  // The listing cap is rechecked in the insert, against the rows before it:
+  // another kind's build or a concurrent run may have taken the last slot.
   const room = roomGuard(scope)
   const guard = { sql: `(${current.sql}) AND (${room.sql})`, bind: [...current.bind, ...room.bind] }
-  const [, , check] = await db.batch<{ ok: number; room: number }>([
+  // The one object-delete rule (VERIFY-5260): the object goes only when this
+  // build's own row is absent after the batch, whether the guard refused it
+  // or a concurrent build of the range won. A listed row always has its object.
+  const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
+  const [, , check] = await db.batch<{ listed: number }>([
     packIndexInsert(
       db,
       scope,
@@ -552,20 +556,19 @@ export const compactOneRange = async (
       guard,
       packId
     ),
-    watermarkUpsert(db, scope, kind, selection.nextSortValue, selection.nextTiebreak, guard),
-    db
-      .prepare(`SELECT ${current.sql} AS ok, ${room.sql} AS room`)
-      .bind(...current.bind, ...room.bind)
+    watermarkUpsert(db, scope, kind, selection.nextSortValue, selection.nextTiebreak, listed),
+    db.prepare(`SELECT ${listed.sql} AS listed`).bind(...listed.bind)
   ])
-  const outcome = check.results?.[0]
-  if (!outcome?.ok || !outcome.room) {
+  if (!check.results?.[0]?.listed) {
     await storage.delete(packKey)
-    const log = { userId: scope.userId, vaultId: scope.vaultId, kind }
-    if (!outcome?.room) {
-      logger.warn('vault reached the maximum number of packs; pack discarded', log)
-    } else {
-      logger.info('pack superseded by a body purge or prune; discarded', log)
-    }
+    logger.warn(
+      'pack not listed (body purge or prune, listing cap, or a concurrent build); discarded',
+      {
+        userId: scope.userId,
+        vaultId: scope.vaultId,
+        kind
+      }
+    )
     return { ...noop, holes }
   }
 

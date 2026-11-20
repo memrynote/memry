@@ -1,3 +1,5 @@
+import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
+
 import { createLogger } from '../lib/logger'
 import { PACKED_KINDS, compactOneRange } from './pack-compaction'
 import type { PackKindName } from './pack-format'
@@ -49,9 +51,10 @@ interface BacklogVaultRow {
  * cursor never packs, so it is no backlog), and snapshots use the additive
  * created_at index from 0007. A full
  * index scan every 6 hours is acceptable for an admin-paced maintenance job;
- * LIMIT keeps the result bounded regardless of account count. An update
- * backlog counts only once it meets the minimum fill (pack-update-selection.ts),
- * so the tick spends no budget on a vault whose build would be a noop.
+ * LIMIT keeps the result bounded regardless of account count. A vault at the
+ * listing cap is left out, and an update backlog counts only once it meets the
+ * minimum fill (pack-update-selection.ts), so the tick spends no budget on a
+ * vault whose build would be a noop.
  */
 const findBacklogVaults = async (
   db: D1Database,
@@ -65,10 +68,16 @@ const findBacklogVaults = async (
         ? 'crdt_updates si'
         : 'crdt_snapshots si'
   const sortColumn = kind === 'crdt_snapshot' ? 'si.created_at' : 'si.server_cursor'
+  // A vault at the listing cap (§8.14) builds nothing, so it is no backlog:
+  // left in, it sorts first every tick and spends the budget of every vault.
+  const room = {
+    sql: '(SELECT COUNT(*) FROM pack_index p WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?',
+    bind: [PACK_LIST_MAX_PACKS_PER_VAULT]
+  }
   const fill =
     kind === 'crdt_update'
       ? {
-          sql: 'HAVING COUNT(*) >= ? OR MIN(si.created_at) <= ?',
+          sql: ' AND (COUNT(*) >= ? OR MIN(si.created_at) <= ?)',
           bind: [UPDATE_PACK_MIN_ROWS, Math.floor(Date.now() / 1000) - UPDATE_PACK_MAX_WAIT_SECONDS]
         }
       : { sql: '', bind: [] }
@@ -80,11 +89,11 @@ const findBacklogVaults = async (
          ON w.user_id = si.user_id AND w.vault_id = si.vault_id AND w.item_kind = ?
        WHERE ${sortColumn} IS NOT NULL AND (w.user_id IS NULL OR ${sortColumn} > w.last_sort_value)
        GROUP BY si.user_id, si.vault_id
-       ${fill.sql}
+       HAVING ${room.sql}${fill.sql}
        ORDER BY oldest_pending ASC
        LIMIT ?`
     )
-    .bind(kind, ...fill.bind, limit)
+    .bind(kind, ...room.bind, ...fill.bind, limit)
     .all<BacklogVaultRow>()
   return result.results ?? []
 }

@@ -497,8 +497,8 @@ describe('crdt_update packs (#5228)', () => {
   })
 })
 
-describe('the listing cap (REVIEW-5260 P2, protocol 08 §8.14)', () => {
-  const listPack = (id: string, sortValue: number) =>
+describe('the listing cap (REVIEW-5260 P2, VERIFY-5260, protocol 08 §8.14)', () => {
+  const listPack = (id: string, sortValue: number, vaultId = VAULT_ID) =>
     harness.raw
       .prepare(
         `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
@@ -507,16 +507,45 @@ describe('the listing cap (REVIEW-5260 P2, protocol 08 §8.14)', () => {
       .run(
         id,
         USER_ID,
-        VAULT_ID,
-        `${USER_ID}/vaults/${VAULT_ID}/packs/x/${id}`,
+        vaultId,
+        `${USER_ID}/vaults/${vaultId}/packs/x/${id}`,
         sortValue,
         sortValue,
         now()
       )
-  const listPacks = (n: number) => {
-    for (let i = 0; i < n; i++) listPack(`seed-${i}`, i)
+  const listPacks = (n: number, vaultId = VAULT_ID) => {
+    for (let i = 0; i < n; i++) listPack(`${vaultId}-${i}`, i, vaultId)
   }
   const watermarks = () => count('SELECT COUNT(*) AS n FROM pack_watermarks')
+
+  // VERIFY-5260 V1: the post-batch cap check counted the build's own row, so
+  // the last slot deleted the object of a listed pack.
+  it('the last free slot lists the pack with its object and moves the watermark', async () => {
+    listPacks(PACK_LIST_MAX_PACKS_PER_VAULT - 1)
+    await writeUpdates('note-a', bytes(1, 1))
+    passFillWait()
+
+    const result = await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
+
+    expect(result.built).toBe(true)
+    expect(count('SELECT COUNT(*) AS n FROM pack_index')).toBe(PACK_LIST_MAX_PACKS_PER_VAULT)
+    expect(await storage.get(result.packKey!)).not.toBeNull()
+    expect(watermarks()).toBe(1)
+  })
+
+  // VERIFY-5260 V2: capped vaults sorted first every tick and spent the budget.
+  it('vaults at the cap do not starve the backfill of every other vault', async () => {
+    for (const vaultId of ['capped-1', 'capped-2', 'capped-3']) {
+      listPacks(PACK_LIST_MAX_PACKS_PER_VAULT, vaultId)
+      await storeUpdatesWithCursor(harness.db, USER_ID, vaultId, 'note-x', DEVICE_ID, [bytes(3, 1)])
+    }
+    await writeUpdates('note-a', bytes(1, 1))
+    passFillWait()
+
+    await runPackBackfill(harness.db, storage)
+
+    expect(updatePackCount()).toBe(1)
+  })
 
   it('a vault listing the maximum builds no pack of any kind and moves no watermark', async () => {
     listPacks(PACK_LIST_MAX_PACKS_PER_VAULT)
@@ -666,6 +695,33 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
       .all() as Array<{ pack_key: string }>
     expect(listed).toHaveLength(1)
     expect(await storage.get(listed[0].pack_key)).not.toBeNull()
+  })
+
+  // VERIFY-5260 V4: a row written before per-build keys keeps its
+  // `<min>_<max>.pack` key; the gate, the listing and the purge all take it as is.
+  it('a pack under the old range-only key is gated, listed and purged', async () => {
+    const app = buildApp()
+    await pushJournal(app, { [DEVICE_ID]: 1 })
+    const { cursor } = await writeUpdates('j2026-05-01', bytes(1, 1), bytes(1, 2))
+    const oldKey = `${USER_ID}/vaults/${VAULT_ID}/packs/crdt_update/${cursor! - 1}_${cursor}.pack`
+    await storage.put(oldKey, new Uint8Array([1]))
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+         VALUES ('old', ?, ?, ?, 'crdt_update', ?, ?, 2, 1, ?)`
+      )
+      .run(USER_ID, VAULT_ID, oldKey, cursor! - 1, cursor, now())
+    passFillWait()
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).packKey).toBe(oldKey)
+    expect(updatePackCount()).toBe(1)
+    const page = await request<PackListResponse>(app, '/sync/packs')
+    expect(page.packs.map((pack) => pack.packKey)).toContain(oldKey)
+
+    await pushJournal(app, { [DEVICE_ID]: 2 }, true)
+
+    expect(updatePackCount()).toBe(0)
+    expect(await storage.get(oldKey)).toBeNull()
   })
 
   it('leaves update packs alone when the purge deletes no update row', async () => {

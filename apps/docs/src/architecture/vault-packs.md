@@ -289,8 +289,10 @@ any of it yet.
   objects within 15 minutes, with a sweep that retries failed object deletes.
 - **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
   a released reader's 1,000-pack walk never truncates. Compaction checks the cap before a build
-  and again in the batch that inserts the row; a build that would pass it deletes its object and
-  leaves the watermark.
+  and again in the batch that inserts the row, against the rows before it. A build deletes its
+  object only when its own `pack_index` row is absent after that batch (a guard refused it or a
+  concurrent build won), so a listed row always has its object. The cron backfill skips capped
+  vaults.
 
 ## Client Bootstrap Flow
 
