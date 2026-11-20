@@ -14,6 +14,7 @@
 //! | 4003 refreshes before reconnecting    | §9.10.1                           |
 //! | a 501 open falls back silently        | chapter 10 §10.5, §10.12          |
 //! | a failed renewal drops the header     | §10.11 (Q10.2), mid-run           |
+//! | a renewal keeps the window elevated   | §10.11 rule 1                     |
 
 mod http_fakes;
 
@@ -572,6 +573,42 @@ async fn a_501_open_falls_back_silently_and_is_not_retried() {
     let again = client.open(2_000).await;
     assert!(!again.elevated());
     assert_eq!(transport.call_count(), 1);
+}
+
+#[tokio::test]
+async fn a_successful_renewal_keeps_the_window_elevated_under_the_new_token() {
+    // #5287 tests the renewal that fails. A client that dropped the session on
+    // a 200 would fall back to steady-state pacing in the middle of a healthy
+    // first sync, and nothing else would notice.
+    let (transport, client) = bootstrap(vec![
+        response(
+            200,
+            &json!({"session": {"token": "tok-1", "expiresAt": 4_600}, "tailCursor": 0})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"session": {"token": "tok-2", "expiresAt": 8_200, "ttlSeconds": 3_600}})
+                .to_string(),
+        ),
+    ]);
+    assert!(client.open(1_000).await.elevated());
+
+    let lead = 4_600 - BOOTSTRAP_RENEW_LEAD_SECONDS;
+    assert!(client.renew_if_due(lead).await);
+    assert_eq!(transport.calls_to("/sync/bootstrap/renew").len(), 1);
+
+    // The response's token and expiry replace the old ones: at 4_600 the first
+    // token is dead and the second is still in force.
+    assert_eq!(client.state(), SessionState::Elevated);
+    assert_eq!(
+        client.header(4_600),
+        Some((BOOTSTRAP_TOKEN_HEADER, "tok-2".to_owned()))
+    );
+
+    // Not due again until the new lead, so no second round trip.
+    assert!(client.renew_if_due(4_600).await);
+    assert_eq!(transport.call_count(), 2);
 }
 
 #[tokio::test]
