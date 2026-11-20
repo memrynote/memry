@@ -1040,17 +1040,32 @@ vault listed fewer than 999 packs before it, and the watermark moves only
 when that row exists (or past a snapshot tie it cannot roll in, §8.10). The build deletes its object only when its own row,
 looked up by its id, is absent after the batch, so a listed row always has
 its object (`roomGuard`, `apps/sync-server/src/services/pack-list.ts:41-61`).
-The cron backfill skips a vault at the cap for builds (`findBacklogVaults`,
-`apps/sync-server/src/services/pack-backfill.ts`) and rolls it up first, so
-a capped vault drains without a push.
+The cron backfill enqueues no build for a vault at the cap (`findBacklogVaults`,
+`apps/sync-server/src/services/pack-backfill.ts`) but enqueues each of its kinds
+above the bound, and a backfill message rolls up before it builds, so a capped
+vault drains without a push.
 
 **Every kind waits for a minimum fill.** A build cuts a pack only once the
 kind holds 256 unpacked rows, its rows reach `PACK_TARGET_BYTES`, or its oldest
 unpacked row is 24 h old (`PACK_MIN_FILL_ROWS`, `PACK_SETTLE_SECONDS`,
 `apps/sync-server/src/services/pack-sizing.ts:24-37`); younger rows stay on
-the tail. A push nudge builds no `crdt_update` pack; only the cron backfill
+the tail. A push nudge builds no `crdt_update` pack; only a backfill message
 does. Without the fill every push listed one tiny pack and an active vault
 passed the cap in days.
+
+**Backfill rate.** The 6-hourly cron builds nothing itself. It enqueues one
+backfill message per vault and kind whose backlog meets the fill or whose
+listed packs exceed the bound, at most 25 per source (the kinds above the
+bound, and each kind's backlog), so 100 per tick, on a backfill queue of its
+own, so a push nudge or a purge's delayed retry never waits behind it
+(`runPackBackfill`, `apps/sync-server/src/services/pack-backfill.ts`). Each
+message runs in its own invocation, rolls the kind up and builds it within a
+budget of 900 subrequests (3 builds or 12 rollups), and enqueues the next
+message 10 s later, at most 64 messages per chain. Only a build that cannot
+list now ends the chain: below the fill (an empty scan included), at the
+listing cap, or held on a range collision. A vault's backlog therefore drains
+minutes after a tick, and a chain that stops at its bound resumes on the next
+tick from the watermark.
 
 **The pack bound.** A server keeps each kind at most
 `2 * (ceil(entries / 4096) + ceil(bytes / PACK_TARGET_BYTES)) + 2` listed
@@ -1062,9 +1077,10 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:526`).
-A cron tick builds after its rollups and has no budget for another, so a kind
-it built for may list `bound + 1` until the next tick or message rolls it up.
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:753`).
+A backfill message that spends its budget on its last build has none left to
+roll up, so a kind may list `bound + 1` until the chain's next message, the
+next tick or a compaction message rolls it up.
 
 **Unreadable packs.** A listed pack whose object cannot be read or verified
 cannot be merged (§8.12), and each one can split a run of mergeable packs in
@@ -1074,7 +1090,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:330-334`), and the backfill tick
-rolls the kind up every tick while it is above the bound, so an operator sees
-it once per tick. Within the bound no rollup reads it; detecting it there is
+(`apps/sync-server/src/services/pack-rollup.ts:340-344`), and the backfill tick
+enqueues the kind every tick while it is above the bound, so an operator sees
+it at least once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.

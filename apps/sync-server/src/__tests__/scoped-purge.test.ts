@@ -8,6 +8,7 @@ import { errorHandler } from '../lib/errors'
 import { storeUpdatesWithCursor } from '../services/crdt'
 import { cleanupDeletedDocumentBodies } from '../services/cleanup'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
+import { runBackfillMessage } from '../services/pack-backfill'
 import { ALWAYS } from '../services/pack-index-write'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
@@ -455,6 +456,29 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
     await compactVault(harness.db, storage, SCOPE)
     expect(await objectsHolding(DAY_UPDATE)).toEqual([])
     expect(bodyPacks()).toHaveLength(5)
+  })
+
+  // REVIEW-5283 finding 4: a backfill message ran its deletion pass before any
+  // rewrite, so between the grace and the delayed retry it reset a kind that
+  // the rewrite could still fix.
+  it('a backfill message between the grace and the delayed retry rewrites instead of resetting the kind', async () => {
+    const app = buildApp()
+    await rounds(app, 5)
+    await push(app, deleteSpec(DAY))
+    expect(await objectsHolding(DAY_UPDATE)).toHaveLength(1)
+
+    vi.setSystemTime(Date.now() + (PACK_REPLACED_GRACE_SECONDS + 20) * 1000)
+    await runBackfillMessage(harness.db, storage, undefined, SCOPE, { kind: 'crdt_update', hop: 0 })
+
+    expect(await objectsHolding(DAY_UPDATE)).toEqual([])
+    expect(bodyPacks().filter((pack) => pack.item_kind === 'crdt_update')).toHaveLength(5)
+    expect(await listedIds(app, 'crdt_update')).toEqual([
+      'note-0',
+      'note-1',
+      'note-2',
+      'note-3',
+      'note-4'
+    ])
   })
 
   it('a deletion pass that reaches a rewrite still pending resets its kind instead of leaving a gap', async () => {

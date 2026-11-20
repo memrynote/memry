@@ -23,13 +23,8 @@ import { roomForPack, roomGuard } from './pack-list'
 import { isSelectedRecordVersion, recordRowShedInPlace } from './pack-record-selection'
 import { loadSnapshotMeta, snapshotsLive, snapshotTieEnd } from './pack-snapshot-selection'
 import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
-import {
-  deleteReplacedPackObjects,
-  deleteUnlisted,
-  listingBatch,
-  recordUnlisted
-} from './pack-replaced-objects'
-import { rewritePurgedPacks } from './pack-purge-rewrite'
+import { withReplacedObjectPasses } from './pack-message-passes'
+import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
 import { selectCandidates } from './pack-selection'
 import { updateEntrySource, updatesLive, type EntrySource } from './pack-update-selection'
 
@@ -106,7 +101,24 @@ export interface PackBuildResult {
   maxSortValue: number
   /** Entries skipped because their source blob vanished mid-flight. */
   holes: string[]
+  reason: PackBuildOutcome
 }
+
+/**
+ * Why a build listed a pack or not. `not_ready` (below the minimum fill, an
+ * empty scan included), `cap` and `held` leave the kind where it is until
+ * something else changes; `skipped` moved the watermark without a pack, and
+ * `abandoned` and `unlisted` lost to a concurrent write, so another build can
+ * still list one.
+ */
+export type PackBuildOutcome =
+  | 'built'
+  | 'not_ready'
+  | 'cap'
+  | 'held'
+  | 'skipped'
+  | 'abandoned'
+  | 'unlisted'
 
 /**
  * Compact ONE range for one scope+kind end-to-end. Idempotent: a committed
@@ -134,11 +146,12 @@ export const compactOneRange = async (
       byteSize: 0,
       minSortValue: 0,
       maxSortValue: 0,
-      holes: []
+      holes: [],
+      reason: 'cap'
     }
   }
   const selection = await selectCandidates(db, scope, kind)
-  const noop: PackBuildResult = {
+  const noop: Omit<PackBuildResult, 'reason'> = {
     built: false,
     packKey: null,
     itemCount: 0,
@@ -147,7 +160,7 @@ export const compactOneRange = async (
     maxSortValue: selection.nextSortValue,
     holes: []
   }
-  if (!selection.ready) return noop
+  if (!selection.ready) return { ...noop, reason: 'not_ready' }
   // Compare-and-swap: a cron build and a queue build of one scope may select
   // the same window. Only the first to commit moves the watermark; the other
   // lists nothing and deletes its own object, so ranges never overlap and
@@ -163,7 +176,7 @@ export const compactOneRange = async (
       selection.nextTiebreak,
       unchanged
     )
-    return noop
+    return { ...noop, reason: 'skipped' }
   }
 
   const minSortValue = selection.candidates[0].sortKey
@@ -195,7 +208,7 @@ export const compactOneRange = async (
         'pack range collides with a listed pack it cannot roll in; watermark held',
         context
       )
-      return noop
+      return { ...noop, reason: 'held' }
     }
     logger.warn(
       'snapshot tie collides with a listed pack it cannot roll in; left item by item',
@@ -210,7 +223,7 @@ export const compactOneRange = async (
       tieEnd ?? selection.candidates[selection.candidates.length - 1].tiebreak,
       unchanged
     )
-    return noop
+    return { ...noop, reason: 'skipped' }
   }
   const last = candidates[candidates.length - 1]
   const maxSortValue = last.sortKey
@@ -361,12 +374,12 @@ export const compactOneRange = async (
       vaultId: scope.vaultId,
       kind
     })
-    return { ...noop, holes }
+    return { ...noop, holes, reason: 'abandoned' }
   }
 
   if (writtenCount === 0) {
     await advanceWatermark(db, scope, kind, last.sortKey, last.tiebreak, unchanged)
-    return { ...noop, holes }
+    return { ...noop, holes, reason: 'skipped' }
   }
 
   const built = await pack.finish()
@@ -446,7 +459,7 @@ export const compactOneRange = async (
         kind
       }
     )
-    return { ...noop, holes }
+    return { ...noop, holes, reason: 'unlisted' }
   }
 
   logger.info('pack built', {
@@ -465,7 +478,8 @@ export const compactOneRange = async (
     byteSize: built.payloadBytes,
     minSortValue,
     maxSortValue,
-    holes
+    holes,
+    reason: 'built'
   }
 }
 
@@ -495,24 +509,13 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // A purge's pending rewrites run first: a deletion pass that meets an object
-  // whose rewrite is still pending past its grace resets the kind (protocol 08
-  // §8.13). The deletion runs next and again after the builds, so a build that
-  // throws cannot keep a purged body past its deadline: this message may be
-  // the purge's delayed retry.
-  let failure: { error: unknown } | null = null
-  let rewritesPending = true
-  try {
-    rewritesPending = (await rewritePurgedPacks(db, storage, scope)).pending
-  } catch (error) {
-    failure = { error }
-  }
-  await deleteReplacedPackObjects(db, storage, scope)
-  try {
+  // The purge rewrite pass, then deletion passes before and after the builds
+  // (withReplacedObjectPasses).
+  await withReplacedObjectPasses(db, storage, scope, 'compaction message', async () => {
     // Rollup first: at the listing cap it is what makes room for the build
     // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
     for (const kind of PACKED_KINDS) await rollupLogged(db, storage, scope, kind)
-    // A push nudge never builds `crdt_update`: only the backfill tick does, under
+    // A push nudge never builds `crdt_update`: only a backfill message does, under
     // the minimum fill (pack-sizing.ts), so pushes cannot list tiny packs. A kind
     // whose build listed a pack rolls up once more, so the message ends with the
     // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
@@ -525,37 +528,9 @@ export const compactVault = async (
       results.push(result)
       if (result.built) await rollupLogged(db, storage, scope, kind)
     }
-  } catch (error) {
-    failure = { error }
-  }
-  // Objects still due fail the message, so Queues redelivers it (max_retries 3,
-  // no retry delay) inside the purge deadline instead of acking it. Builds this
-  // message committed stay committed: a redelivery finds their watermarks moved
-  // and lists nothing twice. A build error is logged and kept as the cause,
-  // also when the pass itself throws (VERIFY-5267).
-  let passFailure: { error: unknown } | null = null
-  let pending = true
-  try {
-    pending = (await deleteReplacedPackObjects(db, storage, scope)).pending
-  } catch (error) {
-    passFailure = { error }
-  }
-  if (pending || rewritesPending) {
-    logger.error('replaced pack objects still due after the compaction message; redelivered', {
-      userId: scope.userId,
-      vaultId: scope.vaultId,
-      ...(passFailure ? { passError: errorMessage(passFailure.error) } : {}),
-      ...(failure ? { buildError: errorMessage(failure.error) } : {})
-    })
-    const cause = failure ?? passFailure
-    throw new Error('replaced pack objects still due', cause ? { cause: cause.error } : {})
-  }
-  if (failure) throw failure.error
+  })
   return results
 }
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
 
 /** A rollup failure leaves the listing as it was; the build still runs. */
 const rollupLogged = async (
