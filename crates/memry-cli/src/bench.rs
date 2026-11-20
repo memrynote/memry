@@ -156,7 +156,7 @@ pub async fn bootstrap(
             mark("bodiesNotReached", json!({ "owed": owed }));
             break;
         }
-        let pass = body_step::run(&db, &body_pull).await?;
+        let pass = body_step::run(&db, &body_pull).await?.pulled;
         mark(
             "bodyPass",
             json!({ "owedBefore": owed, "documents": pass.documents, "requests": pass.requests }),

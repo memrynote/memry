@@ -343,8 +343,8 @@ impl SyncDriver {
         }
         self.settle_misses().await;
         let started = super::pull::now_ms();
-        let pass = self.engine.run_pass(trigger).await;
-        self.pull_bodies(&pass).await;
+        let mut pass = self.engine.run_pass(trigger).await;
+        pass.bodies_left = self.pull_bodies(&pass).await;
         self.record_history(&pass, started).await;
         self.settle_misses().await;
         self.check_manifest(&pass).await;

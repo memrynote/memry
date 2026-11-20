@@ -275,7 +275,15 @@ impl Loop {
             None => TriggerSyncResult::blocked(Blocked::Paused, None),
             Some(report) => {
                 self.took_in(report, started, pending);
-                self.record(report)
+                let result = self.record(report);
+                // Bodies the budget left due: the next pass takes them now, not at the tick.
+                if report.bodies_left && result.success {
+                    self.trailing = Some(
+                        self.trailing
+                            .map_or(Trigger::Tick, |queued| queued.stronger(Trigger::Tick)),
+                    );
+                }
+                result
             }
         }
     }

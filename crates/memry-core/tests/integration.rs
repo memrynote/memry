@@ -484,6 +484,8 @@ mod sync_body_observers;
 mod sync_body_packs;
 #[path = "sync_body_route_batch.rs"]
 mod sync_body_route_batch;
+#[path = "sync_body_step_budget.rs"]
+mod sync_body_step_budget;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
 #[path = "sync_empty_body_pull.rs"]

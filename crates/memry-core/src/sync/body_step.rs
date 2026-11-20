@@ -30,8 +30,17 @@ use super::{body_debt, body_heal};
 /// so a single large one cannot starve.
 pub const BODY_REQUEST_BUDGET: usize = 200;
 
+/// What one pass's body step did.
+#[derive(Debug, Default)]
+pub struct BodyStep {
+    pub pulled: BodyPullReport,
+    /// The budget ran out with documents still due, so the next pass has body work at once.
+    /// A `429` or a dead network is not this: those wait for their own retry.
+    pub more_due: bool,
+}
+
 /// Pulls the documents due this pass and settles or re-owes each one.
-pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, StorageError> {
+pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyStep, StorageError> {
     let due = db
         .call(|conn| {
             body_heal::owe_unread_documents(conn)?;
@@ -39,8 +48,10 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         })
         .await?;
     let mut total = BodyPullReport::default();
+    let mut more_due = false;
     'step: for chunk in due.chunks(PROBE_CHUNK) {
         if total.requests >= BODY_REQUEST_BUDGET {
+            more_due = true;
             break;
         }
         let mut probed = match body_pull.probe(chunk, &mut total.requests).await {
@@ -50,6 +61,7 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         };
         for doc_id in chunk {
             if total.requests >= BODY_REQUEST_BUDGET {
+                more_due = true;
                 break 'step;
             }
             if !pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await? {
@@ -57,7 +69,10 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
             }
         }
     }
-    Ok(total)
+    Ok(BodyStep {
+        pulled: total,
+        more_due,
+    })
 }
 
 /// One owed document: settled, re-owed, or backed off. `false` ends the step.
