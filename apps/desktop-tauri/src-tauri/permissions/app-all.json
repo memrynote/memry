@@ -250,6 +250,7 @@
           "sync_pick_vault_folder",
           "sync_remove_device",
           "sync_rename_device",
+          "sync_repair_device_keys",
           "sync_resolve_vault_binding",
           "sync_resume",
           "sync_setup_first_device",
