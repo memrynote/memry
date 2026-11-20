@@ -59,7 +59,7 @@ describe('CrdtSyncCoordinator', () => {
     expect(coordinator.pendingPullCount).toBe(0)
   })
 
-  it('applies single-note incrementals, skips unknown signers, and seeds empty local docs', async () => {
+  it('applies single-note incrementals, skips unknown signers, and never seeds over server updates', async () => {
     const applyRemoteUpdate = vi.fn()
     const open = vi.fn().mockResolvedValue({})
     const closeIfInactive = vi.fn().mockResolvedValue(true)
@@ -122,7 +122,8 @@ describe('CrdtSyncCoordinator', () => {
     // The update's server time (epoch seconds) rides along as the edit time the
     // write-back stamps (#2515).
     expect(applyRemoteUpdate).toHaveBeenCalledWith('note-1', new Uint8Array([7, 7, 7]), 2000)
-    expect(seedFromMarkdownPublic).toHaveBeenCalledWith('note-1')
+    // The server holds updates for this note, so an empty doc is not seeded (#5286).
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
   })
 
   it('does not close single-note incrementals that were already open', async () => {
