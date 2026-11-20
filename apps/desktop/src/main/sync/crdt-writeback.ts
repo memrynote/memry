@@ -659,10 +659,12 @@ async function performWriteback(
   // doc (`CrdtProvider.takeFileAfterMerge`), never by a pass that may run in
   // the middle of one. The full-state row is owed again so the marker has a
   // flush to resolve it. Not for a doc the take refuses (the two fail-closed
-  // returns above) or a note with no index row the take can read: each flush
-  // would queue the next one.
+  // returns above, and a file shared with a case twin, which the take never
+  // reads: `refusesCaseTwinFile`, #5297) or a note with no index row the take
+  // can read: each flush would queue the next one.
   if (owesFileBody(noteId)) {
-    if (indexed) getCrdtProvider().recordOwedFullState(noteId)
+    if (indexed && !refusesCaseTwinFile(getVaultRoot(), cached.path, noteId))
+      getCrdtProvider().recordOwedFullState(noteId)
     log.debug('Write-back skipped: the note owes its file body', { noteId })
     return
   }

@@ -61,18 +61,18 @@ function caseVariantCopies<T extends { path: string }>(
 
 /**
  * Whether a case-variant note row is a copy of the note the disk spells, and
- * not a distinct case twin. A copy has no server item, or the index read the
- * same body for it as for the kept note: the old watcher indexed one file
- * twice. A twin keeps its row, so the twin rule (`refusesCaseTwinFile`) still
- * sees both rows, and neither takes the other's body (#5297).
+ * not a distinct case twin: the index read the same body for it as for the
+ * kept note, as when the old watcher indexed one file twice. Whether it ever
+ * synced says nothing about its body. A twin keeps its row, so the twin rule
+ * (`refusesCaseTwinFile`) still sees both rows, and neither takes the other's
+ * body (#5297).
  */
 function isNoteCopy(
-  note: { id: string; syncedAt: string | null },
+  noteId: string,
   keptId: string,
   indexDb: ReturnType<typeof getIndexDatabase>
 ): boolean {
-  if (note.syncedAt === null) return true
-  const hash = getNoteCacheById(indexDb, note.id)?.contentHash
+  const hash = getNoteCacheById(indexDb, noteId)?.contentHash
   return !!hash && hash === getNoteCacheById(indexDb, keptId)?.contentHash
 }
 
@@ -93,14 +93,11 @@ export async function healCaseVariantRows(
   const indexDb = getIndexDatabase()
   const caseVariants = caseVariantCopies(
     vaultPath,
-    dataDb
-      .select({ id: noteMetadata.id, path: noteMetadata.path, syncedAt: noteMetadata.syncedAt })
-      .from(noteMetadata)
-      .all()
+    dataDb.select({ id: noteMetadata.id, path: noteMetadata.path }).from(noteMetadata).all()
   )
   const noteCopies: Array<{ id: string; path: string }> = []
   for (const { copy: note, kept } of caseVariants) {
-    if (!isNoteCopy(note, kept.id, indexDb)) {
+    if (!isNoteCopy(note.id, kept.id, indexDb)) {
       logger.warn('Kept a case twin that shares its file with another note', { id: note.id })
       continue
     }

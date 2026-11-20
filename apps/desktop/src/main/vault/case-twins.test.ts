@@ -94,6 +94,8 @@ import {
 } from '../database/client'
 import { getStatus } from './index'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { getCrdtProvider } from '../sync/crdt-provider'
+import { recordOwedFileBody } from '../sync/crdt-owed-file-body'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -163,7 +165,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
    * A pulled note as the vault holds it: a synced canonical row, its index
    * row, and its body written by sync at the row's spelling.
    */
-  function seed(id: string, relativePath: string, body: string): void {
+  function seed(id: string, relativePath: string, body: string, synced = true): void {
     const fields = {
       id,
       path: relativePath,
@@ -171,7 +173,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       fileType: 'markdown' as const,
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z',
-      syncedAt: '2026-01-12T00:00:00.000Z',
+      syncedAt: synced ? '2026-01-12T00:00:00.000Z' : null,
       fileSize: Buffer.byteLength(body)
     }
     upsertNoteMetadata(asClientDb(data.db), fields)
@@ -247,6 +249,31 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       rows: ['lower', 'upper'],
       crossed: []
     })
+  }, 30_000)
+
+  // A twin that never synced has its own body all the same: the one on disk.
+  it('one vault open keeps a never-synced twin whose body is on disk', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'SUPERNOTES/a.md', UPPER, false)
+    await openVault()
+    await writeBack('lower', LOWER)
+
+    expect({ rows: rowIds(), crossed: crossed() }).toEqual({
+      rows: ['lower', 'upper'],
+      crossed: []
+    })
+  }, 30_000)
+
+  // The take refuses a twin's file, so the marker stays, and a full-state row
+  // queued on each pass would only queue the next one.
+  it('a twin that owes its file is not queued again for a take that refuses it', async () => {
+    await twins()
+    recordOwedFileBody('lower')
+
+    await writeBack('lower', LOWER)
+
+    expect(getCrdtProvider().recordOwedFullState).not.toHaveBeenCalled()
   }, 30_000)
 
   it('a second vault open keeps both twins apart', async () => {
