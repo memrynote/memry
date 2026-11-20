@@ -11,7 +11,7 @@ This directory owns the Tauri v2 desktop app (`@memry/desktop-tauri`), the app t
 
 ## Dual renderer rule
 
-Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/startup/`, `services/vault-service.ts`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
+Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/launch-marks.ts`, `lib/startup/`, `services/vault-service.ts`, `hooks/use-account-vaults.ts`, `components/vault-switcher.tsx`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
 
 ## Commands
 
@@ -32,6 +32,16 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 `memry_desktop::sync::supervisor::SyncSupervisor` runs the open vault's sync: one task on the Tauri tokio runtime, one per open vault (`Session::attach_sync`, rebuilt on a vault switch, stopped by `stop-sync-runtime`). Desktop never uses `memry_core::api::runtime`, `BackgroundExec`, `LifecycleObserver` or `RuntimeHost`; those are the iOS runtime. `memry-desktop`'s `no_core_runtime_in_desktop` test fails on a use of them.
 
+## Capture server
+
+`memry_desktop::services::capture` serves the browser extension over HTTP on `127.0.0.1` only, on the first free port from 7849 to 7856. It is Electron's `apps/desktop/src/main/capture/server.ts`, and its routes, status codes, error codes, headers, port range and 25 MiB body cap are a shipped contract: the extension (`apps/extension/src/lib/capture-client.ts`) updates on its own schedule. `src-tauri/src/shell/capture.rs` starts it in the `Schedulers` stage, stops it in the `stop-capture-server` shutdown step, shows the pairing consent dialog, and routes the `pair` deep link to `Pairing::open_window` after Step 11's confirm dialog.
+
+- The server is app-scoped: it survives vault switches and answers `503 vault-closed` while no vault is open. `/capture` hands the row to the inbox owner (`memry_core::api::inbox::Inbox`); the server stores only the screenshot and PDF files.
+- `pairing.rs` owns the token (keychain service `com.memrynote.memry.capture`, account `pairing-token`, unsuffixed under `MEMRY_DEVICE` as in Electron) and the allowlist (`captureAllowedOrigins` in `memry-config.json`, written through `AppConfig::update`, which keeps every other key). Step 37 imports both from Electron unchanged.
+- Stricter than Electron, on purpose: the `Host` header must be `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding); a window opened by consent or `already-paired` admits only that origin; a keychain read that fails mints no token and answers `500`. Do not relax them.
+- The serve loop is its own (`capture/mod.rs` `accept`), with Node's timeouts (headers 60 s, whole request 300 s, then `408`), at most 32 connections, and every connection closed when the server is dropped. A refused body is discarded frame by frame, never collected.
+- `crates/memry-desktop/tests/capture_server.rs`, `capture_pairing.rs` and `capture_requests.rs` drive the real socket with raw bytes, including the extension's own request shapes. A change to a route, header or code updates them and `apps/extension` in the same PR.
+
 ## Dev tools
 
 - `tauri dev` builds the `memry-ml-worker` sidecar first (`pnpm dev:worker`, `scripts/dev-worker.mjs`) and fetches pdfium. The worker links ONNX Runtime, which needs `ORT_LIB_LOCATION` on every target but macOS arm64 (commands in `crates/.cargo/config.toml`). Without it the script builds the worker without its `embed` feature and says so: PDFs work, and the embedding model shows as failed. Set `ORT_LIB_LOCATION` to run embeddings in dev. The worker also builds Tesseract from pinned sources with cmake and a C++ compiler (crates/AGENTS.md, PDF worker); the first build downloads the sources (`scripts/fetch-tesseract-sources.mjs`). Without cmake on `PATH` the script builds the worker without its `ocr` feature and says so: images and scanned pages fail with the reason.
@@ -39,6 +49,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature (Rust CI fails when a crate turns it on) and inspector code sits behind `cfg(debug_assertions)`.
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.
 - React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.
+- `pnpm seed1k` (`cargo xtask seed bench [--vault <dir>] [--count 1000] [--seed 42]`, from `crates/`) wipes `~/MemryBenchVault` and writes the benchmark vault in Rust (`crates/xtask`). The same count and seed give the TypeScript generator's bytes; `crates/xtask/tests/bulk_notes_golden.rs` holds the hashes it recorded. The demo, rich and small seeds still run on Electron until Step 40f.
 
 ## Startup
 

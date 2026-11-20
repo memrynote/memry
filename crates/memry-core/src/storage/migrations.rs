@@ -214,6 +214,16 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
     },
     Migration {
+        version: 34,
+        name: "attachment_sync",
+        sql: include_str!("migrations/data/0034_attachment_sync.sql"),
+    },
+    Migration {
+        version: 35,
+        name: "recents",
+        sql: include_str!("migrations/data/0035_recents.sql"),
+    },
+    Migration {
         version: 38,
         name: "readwise",
         sql: include_str!("migrations/data/0038_readwise.sql"),
@@ -395,6 +405,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 #[cfg(test)]
 mod agent_records_tests;
 #[cfg(test)]
+mod attachment_sync_tests;
+#[cfg(test)]
 mod desktop_record_types_tests;
 #[cfg(test)]
 mod file_text_tests;
@@ -411,6 +423,8 @@ mod readwise_tests;
 mod saved_filter_inbox_tests;
 #[cfg(test)]
 mod sequence_tests;
+#[cfg(test)]
+mod step_forward_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

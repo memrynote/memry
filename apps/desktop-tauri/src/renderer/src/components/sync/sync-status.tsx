@@ -14,6 +14,7 @@ import { useT } from '@memry/i18n/renderer'
 import { useSyncOptional } from '@/contexts/sync-context'
 import { useAuth } from '@/contexts/auth-context'
 import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
+import { syncAccountService } from '@/services/sync-account-service'
 
 const log = createLogger('SyncStatus')
 
@@ -194,10 +195,13 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
     if (repairing) return
     setRepairing(true)
     try {
-      const result = await window.api.syncOps.repairDeviceKeys()
+      const result = await syncAccountService.repairDeviceKeys()
       if (result.status === 'repaired') return
       if (result.status === 'sync-not-started') {
-        toast.info(tPhaseF(`phaseF.componentsSyncSyncStatus.syncNotStarted.${result.reason}`), {
+        // Tauri raises device-keys-missing when the master key cannot be read, which nothing
+        // retries: the shared `unavailable` copy ("It will retry") is Electron's.
+        const reason = result.reason === 'unavailable' ? 'unavailable-restart' : result.reason
+        toast.info(tPhaseF(`phaseF.componentsSyncSyncStatus.syncNotStarted.${reason}`), {
           duration: 10000
         })
         return

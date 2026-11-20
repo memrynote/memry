@@ -1,0 +1,21 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Developer tasks for the desktop app: `cargo xtask seed bench` (Step 40, #3557)."
+
+[dependencies]
+# The vault file tier writes the seeded files; the core gives the frontmatter types.
+memry-core = { path = "../memry-core", default-features = false, features = ["markdown"] }
+memry-desktop = { path = "../memry-desktop" }
+serde_json = { workspace = true }
+# The seed dates follow the local day, as `seed-data/date.ts` does; already built for memry-desktop.
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+
+[dev-dependencies]
+sha2 = { workspace = true }
+hex = { workspace = true }
+tempfile = "3"

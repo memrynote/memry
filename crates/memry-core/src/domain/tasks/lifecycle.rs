@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 
-use super::super::calendar::LocalDateTime;
+use super::super::calendar::{CivilDate, LocalDateTime};
 use super::super::notes::iso;
 use super::super::recurrence::complete_repeating_task;
 use super::super::repeat_config::{RepeatConfig, with_completed_count};
@@ -97,12 +97,7 @@ pub fn complete(
         });
     }
 
-    let repeat_wire = task.value("repeatConfig");
-    let due = task
-        .str("dueDate")
-        .and_then(LocalDateTime::parse)
-        .map(LocalDateTime::date);
-    let series = RepeatConfig::from_wire(&repeat_wire).zip(due);
+    let series = series_of(&task);
 
     let at = json!(iso(now_ms)?);
     let done = done_status(&task, &statuses);
@@ -124,46 +119,70 @@ pub fn complete(
         )?;
     }
 
-    let mut next_occurrence = None;
-    if let Some((config, due)) = &series {
-        let completion = complete_repeating_task(*due, config, task.str("repeatFrom"), local_now);
-        if let Some(next_due) = completion.next_due_date {
-            let id = new_task_id();
-            let due_date = next_due.key();
-            let mut fields = copied(&task, &OCCURRENCE_FIELDS);
-            let status = statuses
-                .default_todo()
-                .map(|status| json!(status.id))
-                .unwrap_or_else(|| task.value("statusId"));
-            if !status.is_null() {
-                fields.insert("statusId".to_owned(), status);
-            }
-            fields.insert("dueDate".to_owned(), json!(due_date));
-            // The start keeps its distance to the due date: start Wednesday,
-            // due Sunday stays Wednesday to Sunday every week.
-            if let Some(start) = task.str("startDate").and_then(LocalDateTime::parse) {
-                let shift = next_due.days_since_epoch() - due.days_since_epoch();
-                fields.insert(
-                    "startDate".to_owned(),
-                    json!(start.date().add_days(shift).key()),
-                );
-            }
-            fields.insert(
-                "repeatConfig".to_owned(),
-                with_completed_count(&repeat_wire, completion.completed_count),
-            );
-            let position = next_position(batch.conn(), task.project_id(), task.parent_id())?;
-            fields.insert("position".to_owned(), json!(position));
-            batch.create(&id, seeded(fields, device_id, now_ms)?)?;
-            next_occurrence = Some(NextOccurrence { id, due_date });
-        }
-    }
+    let next_occurrence = match &series {
+        Some(series) => spawn_next(&mut batch, &task, &statuses, series, local_now)?,
+        None => None,
+    };
 
     Ok(Completion {
         write: batch.commit()?,
         repeating: series.is_some(),
         next_occurrence,
     })
+}
+
+/// A repeating task's series: a readable `repeatConfig` and a due date.
+pub(super) fn series_of(task: &StoredTask) -> Option<(RepeatConfig, CivilDate)> {
+    let due = task
+        .str("dueDate")
+        .and_then(LocalDateTime::parse)
+        .map(LocalDateTime::date);
+    RepeatConfig::from_wire(&task.value("repeatConfig")).zip(due)
+}
+
+/// Creates the occurrence after `task` in `batch`, or nothing when the series
+/// has ended. `task` is the occurrence as it was before it closed
+/// (`rollRepeatingSeries` reads `before`), and `statuses` its project's.
+pub(super) fn spawn_next(
+    batch: &mut Batch<'_>,
+    task: &StoredTask,
+    statuses: &ProjectStatuses,
+    (config, due): &(RepeatConfig, CivilDate),
+    local_now: LocalDateTime,
+) -> Result<Option<NextOccurrence>, StorageError> {
+    let completion = complete_repeating_task(*due, config, task.str("repeatFrom"), local_now);
+    let Some(next_due) = completion.next_due_date else {
+        return Ok(None);
+    };
+    let id = new_task_id();
+    let due_date = next_due.key();
+    let mut fields = copied(task, &OCCURRENCE_FIELDS);
+    let status = statuses
+        .default_todo()
+        .map(|status| json!(status.id))
+        .unwrap_or_else(|| task.value("statusId"));
+    if !status.is_null() {
+        fields.insert("statusId".to_owned(), status);
+    }
+    fields.insert("dueDate".to_owned(), json!(due_date));
+    // The start keeps its distance to the due date: start Wednesday,
+    // due Sunday stays Wednesday to Sunday every week.
+    if let Some(start) = task.str("startDate").and_then(LocalDateTime::parse) {
+        let shift = next_due.days_since_epoch() - due.days_since_epoch();
+        fields.insert(
+            "startDate".to_owned(),
+            json!(start.date().add_days(shift).key()),
+        );
+    }
+    fields.insert(
+        "repeatConfig".to_owned(),
+        with_completed_count(&task.value("repeatConfig"), completion.completed_count),
+    );
+    let position = next_position(batch.conn(), task.project_id(), task.parent_id())?;
+    fields.insert("position".to_owned(), json!(position));
+    let seeded = seeded(fields, batch.device_id(), batch.now_ms())?;
+    batch.create(&id, seeded)?;
+    Ok(Some(NextOccurrence { id, due_date }))
 }
 
 /// Reopens a task (`uncompleteTaskWithUndo`): the project's default todo

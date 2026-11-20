@@ -45,8 +45,8 @@ chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 # The IANA zones Readwise highlight dates are written in (`readwise::text::format_day`), as
 # Electron's `Intl.DateTimeFormat` reads them.
 chrono-tz = "0.10.4"
-# The system zone a Readwise run writes highlight days in (`Intl.DateTimeFormat().resolvedOptions()`);
-# already in the lock through `chrono`'s `clock`.
+# The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
+# chrono's `clock` feature already builds it, so the lockfile gains no crate.
 iana-time-zone = "0.1.65"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
@@ -102,6 +102,11 @@ uuid = { workspace = true }
 tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] }
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
+# The capture server's own serve loop (`services/capture/mod.rs`): header and request timeouts
+# and a connection cap, which `axum::serve` lacks. Already in the lockfile through axum.
+hyper = { version = "1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+http-body-util = "0.1"
 tokio-util = { version = "0.7.19", features = ["io"] }
 # The sign-in loopback compares `state` in constant time; already in the lockfile.
 subtle = "2.6.1"
@@ -119,6 +124,8 @@ image = { workspace = true }
 memry-media = { path = "../memry-media" }
 # The OCR language packs are gzip; native Tesseract reads them unpacked (`services::ocr_languages`).
 flate2 = { workspace = true }
+# Note export (Step 34, #3551): markdown rendered as `marked` renders it, without the CLI and highlighting defaults.
+comrak = { version = "=0.57.0", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -189,8 +196,20 @@ doc = false
 # (tests/integration.rs), and a target of its own for each file that needs one.
 
 [[test]]
+name = "export_vectors"
+path = "tests/export_vectors.rs"
+
+[[test]]
+name = "export_untrusted"
+path = "tests/export_untrusted.rs"
+
+[[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[test]]
+name = "obsidian_task_local_zone"
+path = "tests/obsidian_task_local_zone.rs"
 
 [[test]]
 name = "activity_log_memory"
@@ -229,12 +248,20 @@ name = "sync_harness"
 path = "tests/sync_harness.rs"
 
 [[test]]
+name = "attachments_harness"
+path = "tests/attachments_harness.rs"
+
+[[test]]
 name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
 
 [[test]]
 name = "sync_supervisor_harness"
 path = "tests/sync_supervisor_harness.rs"
+
+[[test]]
+name = "attachment_holds_harness"
+path = "tests/attachment_holds_harness.rs"
 
 [[test]]
 name = "keyring_live"
@@ -271,6 +298,10 @@ path = "tests/redact_vectors.rs"
 [[test]]
 name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
+
+[[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
 
 [[test]]
 name = "telemetry_vectors"
