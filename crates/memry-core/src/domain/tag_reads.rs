@@ -265,6 +265,17 @@ pub fn of_notes<'a>(
         .collect())
 }
 
+/// Every filed note and journal day with its tags, as a tag's notes list them.
+pub fn filed_notes(
+    data: &Connection,
+    files: &HashMap<String, FileTags>,
+) -> Result<Vec<TaggedNote>, StorageError> {
+    Ok(filed(data, files, None)?
+        .into_iter()
+        .map(|(note, _)| note)
+        .collect())
+}
+
 /// Every tag a filed journal day, or a note whose bytes on disk the index measured, carries, one
 /// spelling per tag, each file's as [`of_note`] lists them; `only` the files with those ids. The
 /// files go in Electron's open walk order as far as it has one: `findVaultFiles` takes each

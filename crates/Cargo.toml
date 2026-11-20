@@ -9,6 +9,7 @@ members = [
     "memry-ml-worker",
     "memry-test-kit",
     "uniffi-bindgen-swift",
+    "xtask",
     "../apps/desktop-tauri/src-tauri",
 ]
 # cargo-fuzz targets: nightly only, built on their own (`memry-core/fuzz`).

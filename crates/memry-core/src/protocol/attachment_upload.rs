@@ -176,14 +176,16 @@ pub struct UploadStatus {
 ///
 /// The chunk hashes go up front because the client finishes encrypting
 /// **before** initiating, so it knows them; a deployment that presigns answers
-/// with one PUT url per chunk and the bytes go direct to R2.
+/// with one PUT url per chunk and the bytes go direct to R2. It takes the
+/// manifest entries rather than the frames, so a streamed upload can initiate
+/// without holding every frame (#3535).
 pub async fn initiate(
     client: &HttpClient,
     vault_id: &str,
     attachment_id: &str,
     filename: &str,
     plaintext_len: u64,
-    chunks: &[FramedChunk],
+    chunks: &[AttachmentChunkRef],
 ) -> Result<UploadSession, AttachmentError> {
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -216,10 +218,13 @@ pub async fn initiate(
                     filename,
                     total_size: plaintext_len.max(1),
                     chunk_count: chunks.len(),
-                    encrypted_size: encrypted_size(chunks),
+                    encrypted_size: chunks
+                        .iter()
+                        .map(|chunk| chunk.size + (CHUNK_NONCE_LEN + CHUNK_TAG_LEN) as u64)
+                        .sum(),
                     chunk_hashes: chunks
                         .iter()
-                        .map(|chunk| chunk.reference.encrypted_hash.clone())
+                        .map(|chunk| chunk.encrypted_hash.clone())
                         .collect(),
                 })
                 .retry(RetryPolicy::polled()),

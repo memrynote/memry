@@ -53,6 +53,7 @@ use memry_core::domain::note_stats::word_count;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::convert::apply::CriticMarks;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
+use memry_core::markdown::shared::checklist_plain::mark_added_checklist_lines_plain;
 use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
 
@@ -96,6 +97,9 @@ pub struct NewNoteFile {
     pub emoji: Option<Option<String>>,
     /// The template to make the note from; a tag's template when `None`.
     pub template: Option<String>,
+    /// The body's checkbox lines stay checklists (`plainChecklists`, Step 32h1): each gets the
+    /// plain marker, so the editor does not turn it into a task.
+    pub plain_checklists: bool,
 }
 
 impl NewNoteFile {
@@ -125,7 +129,9 @@ impl NewNoteFile {
     /// none was given, its tags first, its property values under the given ones (each in its
     /// first place), and its icon when none was asked for. Then an exact repeat of a tag goes
     /// (`new Set`) and the reserved keys leave the properties (`writePropertiesToRoot`), for the
-    /// record as for the file. A template whose properties do not read refuses the note.
+    /// record as for the file. A template whose properties do not read refuses the note. With
+    /// `plain_checklists` the body's checkbox lines are then marked plain, as `createNote`
+    /// marks the body it chose.
     fn merged(mut self, template: Option<TemplateView>) -> Result<Self, NotesError> {
         if let Some(template) = template {
             if self.content.is_empty() {
@@ -136,6 +142,9 @@ impl NewNoteFile {
             self.properties = properties;
             self.tags = template.tags.into_iter().chain(self.tags).collect();
             self.emoji.get_or_insert(template.icon);
+        }
+        if self.plain_checklists {
+            self.content = mark_added_checklist_lines_plain(&self.content, "");
         }
         let mut seen = std::collections::HashSet::new();
         self.tags.retain(|tag| seen.insert(tag.clone()));

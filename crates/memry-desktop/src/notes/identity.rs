@@ -86,7 +86,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 use crate::vault::notices::{Listed, VaultNotices};
 
-mod file;
+pub(crate) mod file;
 mod large;
 mod moving;
 mod new_files;

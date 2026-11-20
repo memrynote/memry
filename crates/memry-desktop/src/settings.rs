@@ -146,6 +146,27 @@ impl SettingsService {
         Ok(change)
     }
 
+    /// Writes one value by `<group>.<field>` or `<group>.<field>.<entry>` (the synced-settings
+    /// wire path) as a one-field patch of its group: same validation and mirroring.
+    pub fn write_path(
+        &self,
+        vault: Option<&OpenVault>,
+        path: &str,
+        value: Value,
+    ) -> Result<SettingsChange, SettingsError> {
+        let mut parts = path.splitn(3, '.');
+        let (Some(group), Some(field)) = (parts.next(), parts.next()) else {
+            return Err(SettingsError::Invalid(format!(
+                "settings path `{path}` names no field"
+            )));
+        };
+        let value = match parts.next() {
+            None => value,
+            Some(entry) => Value::Object(Map::from_iter([(entry.to_owned(), value)])),
+        };
+        self.write_group(vault, group, Map::from_iter([(field.to_owned(), value)]))
+    }
+
     fn mirror(
         &self,
         vault: &OpenVault,
