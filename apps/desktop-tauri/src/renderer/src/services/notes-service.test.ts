@@ -73,9 +73,17 @@ const events = vi.hoisted(() => {
     noteMovedEvent: event('moved'),
     noteTagsChangedEvent: event('tags'),
     folderConfigUpdatedEvent: event('folderConfig'),
-    noteEventsDroppedEvent: event('dropped')
+    noteEventsDroppedEvent: event('dropped'),
+    syncItemSyncedEvent: {
+      listen: async (handler: (event: { payload: unknown }) => void) => {
+        pulled.add(handler)
+        return () => pulled.delete(handler)
+      }
+    }
   }
 })
+// Every live listener of pulled pages; `listeners` keeps one per event name.
+const pulled = vi.hoisted(() => new Set<(event: { payload: unknown }) => void>())
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
 const invokeBinary = vi.hoisted(() => vi.fn())
@@ -1292,6 +1300,28 @@ describe('notes-service', () => {
     expect(updated).toHaveBeenCalledWith({ path: 'Work/Plans' })
     stop()
     await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(false))
+  })
+
+  it('tells the tag and folder listeners about pulled tag definitions and folder configs', async () => {
+    vi.useFakeTimers()
+    try {
+      const tags = vi.fn()
+      const folders = vi.fn()
+      const stops = [onTagsChanged(tags), onFolderConfigUpdated(folders)]
+      await vi.advanceTimersByTimeAsync(0)
+      const items = [
+        { itemId: 'work', type: 'tag_definition', itemOperation: 'update' },
+        { itemId: 'Work/Plans', type: 'folder_config', itemOperation: 'delete' }
+      ]
+      for (const handler of pulled) handler({ payload: { operation: 'pull', items } })
+      await vi.advanceTimersByTimeAsync(150)
+
+      expect(tags).toHaveBeenCalledTimes(1)
+      expect(folders).toHaveBeenCalledWith({ path: 'Work/Plans' })
+      for (const stop of stops) stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   describe('position operations', () => {

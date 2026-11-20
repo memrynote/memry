@@ -76,6 +76,7 @@ import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { createLogger } from '../lib/logger'
 import { NotPortedError } from '../lib/not-ported'
+import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
@@ -839,15 +840,30 @@ export function onNoteMoved(
   return subscribeToEvent(events.noteMovedEvent, callback, onListening)
 }
 
-/** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
+/**
+ * Something the tag list shows changed (`commands/tags.rs`), or sync pulled a tag definition;
+ * the payload is empty.
+ */
 export function onTagsChanged(callback: () => void, onListening?: () => void): () => void {
-  return subscribeToEvent(events.noteTagsChangedEvent, () => callback(), onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.noteTagsChangedEvent, () => callback(), live),
+    ['tag_definition'],
+    () => callback(),
+    onListening
+  )
 }
 
-/** Sync changed a folder's settings or removed the folder (`shell/folder_sync.rs`). */
+/** Sync changed a folder's settings or removed the folder; a folder config's id is its path. */
 export function onFolderConfigUpdated(
   callback: (event: FolderConfigUpdatedEvent) => void,
   onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.folderConfigUpdatedEvent, callback, onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.folderConfigUpdatedEvent, callback, live),
+    ['folder_config'],
+    (items) => {
+      for (const item of items) callback({ path: item.itemId })
+    },
+    onListening
+  )
 }

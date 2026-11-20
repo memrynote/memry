@@ -134,6 +134,9 @@ struct Owed {
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
     report: bool,
+    /// Every note's tags are owed definitions (the open's sweep), until a mint for them all
+    /// succeeded: a pass that failed, or whose mint did, leaves it to the next.
+    sweep: bool,
     due: Option<Instant>,
     failures: u32,
     /// The notes an app write asked measured that were left to a pass: `landed` is told when
@@ -275,6 +278,7 @@ impl Indexer {
         let mut owed = Owed {
             links: Some(LinkChanges::default()),
             report: true,
+            sweep: true,
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
@@ -358,6 +362,7 @@ impl Indexer {
                 if !std::mem::replace(&mut owed.report, true) {
                     report(OpenBuild::Owed);
                 }
+                owed.sweep = true;
                 owed.indexed = true;
                 owed.end_walk();
             }
@@ -397,8 +402,6 @@ impl Indexer {
         owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
-        // The open's pass mints for every note, a later one for the files it read.
-        let sweep = report.is_some();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let mut progress = |step| {
             if let Some(report) = report
@@ -422,10 +425,14 @@ impl Indexer {
                 announce,
             )
         });
+        // The sweep mints for every note, a later pass for the files it read.
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
-            self.define_tags((!sweep).then(|| pass.written.clone()), defined);
+            let only = (!owed.sweep).then(|| pass.written.clone());
+            if self.define_tags(only, defined) {
+                owed.sweep = false;
+            }
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
@@ -480,8 +487,9 @@ impl Indexer {
         });
         if let Ok(pass) = &outcome
             && pass.reindexed
+            && self.define_tags(None, defined)
         {
-            self.define_tags(None, defined);
+            owed.sweep = false;
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
