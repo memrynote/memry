@@ -11,16 +11,21 @@
 //! | the re-drive purges a dead failure and lands a live one           | `redriveAttachmentDownloads`     |
 //! | the release waits for a pass that caught up                       | `deletedAssetReleaseRunner`      |
 //! | the release gate closes on a pause, offline, or a short pass      | `isCaughtUpWithServer`           |
+//! | a pause through the driver keeps the release closed               | `isCaughtUpWithServer`           |
 //! | offline upload rounds count nothing, the reconnect uploads        | `attachmentUploadRedriver`       |
+//! | a revoked device re-drives no upload and counts no attempt        | `attachmentUploadRedriver`       |
+//! | a device with no token re-drives no upload, counts no attempt     | `attachmentUploadRedriver`       |
 //! | a transfer that cannot start leaves no live queue                 | `getOrCreateDownloadQueue`       |
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use memry_core::api::errors::SyncError;
+use memry_core::api::auth::AuthState;
+use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::domain::notes;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
+use memry_core::seams::secure_store::SecureStoreKey;
 use memry_core::sync::attachments::queue::absolute;
 use memry_core::sync::attachments::release::record_deleted_note;
 use memry_core::sync::attachments::revival;
@@ -32,8 +37,9 @@ use memry_core::sync::pull::PullReport;
 use memry_core::sync::state::{PassTrigger, SyncState};
 use memry_desktop::sync::attachments::AttachmentSync;
 use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
+use memry_desktop::sync::backend::{SyncBackend, VaultSyncBackend};
 
-use super::{Device, MIB, REL, Server, content, routes};
+use super::{Device, MIB, REL, Server, VAULT_ID, content, routes};
 
 /// A network the test switches; the drivers hear each change. Online at first.
 #[derive(Default)]
@@ -534,6 +540,152 @@ async fn offline_upload_rounds_count_nothing_and_the_reconnect_uploads() {
         (!upload_queue::has_pending(conn, "note-1", &queued).unwrap()).then_some(())
     })
     .await;
+}
+
+/// A note deleted long before the 30-day grace started, whose release of `id` is due now.
+async fn delete_long_ago(device: &Device, note: &'static str, id: String) {
+    create_note(device, note).await;
+    let clock = device.clock_id.clone();
+    device
+        .db
+        .call(move |conn| {
+            notes::add_attachment_reference(conn, note, &id, &clock, 2)?;
+            record_deleted_note(conn, note, 1_000)?;
+            conn.execute("UPDATE notes SET deleted_at = 1000 WHERE id = ?1", [note])
+                .map(drop)
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pause_through_the_driver_keeps_the_release_closed() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let other = "attachments/note-2/other.bin";
+    a.write(REL, &content(MIB, 71));
+    let first = a.upload(REL, &[]).await.unwrap();
+    a.write(other, &content(MIB, 73));
+    let second = a.upload(other, &[]).await.unwrap();
+    delete_long_ago(&a, "gone-1", first).await;
+    a.core.bind_server_vault(VAULT_ID).unwrap();
+    let network = Arc::new(Network::default());
+    let sync = sync_on(&a, &on(), &network);
+    let backend = VaultSyncBackend::new(
+        Arc::clone(&a.core),
+        Arc::clone(&a.session),
+        Arc::clone(&a.store),
+        network.clone(),
+        Vec::new(),
+        Arc::new(|| (true, true)),
+    )
+    .with_attachments(sync.clone());
+    // The driver `open` returns is the one that tells the attachment drivers of every pause.
+    let driver = backend.open(Vec::new()).await.unwrap();
+
+    driver.run_pass(PassTrigger::Explicit).await;
+    assert!(
+        sync.caught_up_with_server(),
+        "a real pass reached the feed head"
+    );
+    until(&a, "the first release settles once caught up", |conn| {
+        releases::due(conn, i64::MAX)
+            .unwrap()
+            .is_empty()
+            .then_some(())
+    })
+    .await;
+
+    driver.pause();
+    delete_long_ago(&a, "gone-2", second).await;
+    a.wire.clear();
+    // A paused driver skips its pass; one already in flight lands at the feed head after it.
+    assert!(driver.run_pass(PassTrigger::Explicit).await.is_none());
+    sync.heard(Some(&pulled()));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    assert!(
+        routes(&a.wire.sent())
+            .iter()
+            .all(|route| !route.contains("dereference")),
+        "nothing is freed while paused: {:?}",
+        routes(&a.wire.sent())
+    );
+    assert!(
+        !a.db
+            .call(|conn| releases::due(conn, i64::MAX))
+            .await
+            .unwrap()
+            .is_empty(),
+        "the second release stays queued"
+    );
+}
+
+/// A queued upload of `REL` for a note, the one row a skipped re-drive round must leave alone.
+async fn queued_upload(device: &Device) {
+    device.write(REL, &content(MIB, 61));
+    create_note(device, "note-1").await;
+    let queued = absolute(&DesktopVaultFiles::new(device.vault.clone()), REL);
+    device
+        .db
+        .call(move |conn| upload_queue::enqueue(conn, "note-1", &queued, 2))
+        .await
+        .unwrap();
+}
+
+/// After the start round (which runs the upload re-drive first): the row is queued, no attempt
+/// counted, and nothing went out.
+async fn assert_upload_round_skipped(device: &Device) {
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let rows = device
+        .db
+        .call(|conn| upload_queue::list_pending(conn, 10))
+        .await
+        .unwrap();
+    assert_eq!(rows.len(), 1, "the row stays queued");
+    assert_eq!(rows[0].attempts, 0, "a skipped round counts no attempt");
+    assert!(device.wire.sent().is_empty(), "nothing goes out");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_revoked_device_redrives_no_upload_and_counts_no_attempt() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    queued_upload(&a).await;
+    let sync = sync_of(&a, &on());
+    let transfer = a.transfer().await;
+    // A restored session, then revoked: `note_device_revoked` keeps the token, as desktop does.
+    // `mark_revoked` clears it, and the round would then skip for want of a token.
+    a.store
+        .set(SecureStoreKey::RefreshToken, b"refresh".to_vec())
+        .unwrap();
+    assert_eq!(a.session.restore().unwrap(), AuthState::Registered);
+    assert_eq!(a.session.note_device_revoked().unwrap(), AuthState::Revoked);
+    assert!(a.session.valid_access_token().await.unwrap().is_some());
+    a.wire.clear();
+
+    sync.start(transfer, &a.clock_id, Arc::clone(&a.session));
+
+    assert_upload_round_skipped(&a).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_device_with_no_token_redrives_no_upload_and_counts_no_attempt() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    queued_upload(&a).await;
+    let sync = sync_of(&a, &on());
+    let transfer = a.transfer().await;
+    a.store.delete(SecureStoreKey::AccessToken).unwrap();
+    assert_eq!(a.session.valid_access_token().await.unwrap(), None);
+    a.wire.clear();
+
+    sync.start(transfer, &a.clock_id, Arc::clone(&a.session));
+
+    assert_upload_round_skipped(&a).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

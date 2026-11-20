@@ -39,7 +39,7 @@ use memry_core::domain::notes;
 use memry_core::protocol::account::{DeviceDirectory, DeviceSigner, device_directory};
 use memry_core::protocol::attachments::{AttachmentError, SignerResolver};
 use memry_core::protocol::auth::DevicePlatform;
-use memry_core::seams::secure_store::SecureStoreKey;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
@@ -146,7 +146,8 @@ struct Device {
     _dir: tempfile::TempDir,
     vault: PathBuf,
     db: Db,
-    _core: Vault,
+    core: Arc<Vault>,
+    store: Arc<dyn SecureStore>,
     clock_id: String,
     secret: Vec<u8>,
     registered: String,
@@ -166,6 +167,9 @@ impl Device {
             .unwrap();
         let token = boot["accessToken"].as_str().unwrap().as_bytes().to_vec();
         store.set(SecureStoreKey::AccessToken, token).unwrap();
+        store
+            .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+            .unwrap();
         let dir = tempfile::tempdir().unwrap();
         let vault = dir.path().join("vault");
         let data = vault.join(".memry").join("core");
@@ -175,7 +179,7 @@ impl Device {
         let transport: Arc<dyn Transport> = wire.clone();
         let session = AuthSession::new(
             transport,
-            store,
+            Arc::clone(&store),
             server.url.clone(),
             "desktop".into(),
             DeviceDescriptor {
@@ -193,7 +197,8 @@ impl Device {
             _dir: dir,
             vault,
             db: core.db_handle(),
-            _core: core,
+            core: Arc::new(core),
+            store,
             clock_id: keys::local_device_id_hex(&secret[32..]).unwrap(),
             secret,
             registered: boot["deviceId"].as_str().unwrap().to_owned(),
