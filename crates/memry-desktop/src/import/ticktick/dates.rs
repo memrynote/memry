@@ -60,10 +60,8 @@ pub(super) fn parse_instant(text: &str, local: &TimeZone) -> Option<f64> {
 fn offset_zone(name: &str) -> Option<TimeZone> {
     let (sign, rest) = if let Some(rest) = name.strip_prefix('+') {
         (1, rest)
-    } else if let Some(rest) = name.strip_prefix(['-', '\u{2212}']) {
-        (-1, rest)
     } else {
-        return None;
+        (-1, name.strip_prefix(['-', '\u{2212}'])?)
     };
     let rest = rest.as_bytes();
     let (hours, minutes) = match rest {
