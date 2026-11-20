@@ -14,6 +14,7 @@ pub mod lock_events;
 pub mod loopback;
 pub mod navigation_guard;
 pub mod note_events;
+pub mod pdf;
 pub mod permissions;
 pub mod services;
 pub mod vault_boot;

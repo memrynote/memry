@@ -321,6 +321,11 @@ export const commands = {
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
 	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
 	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
+	/**
+	 *  `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
+	 *  where the save dialog says. Like the HTML export it takes no path from the webview.
+	 */
+	notesExportPdf: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_pdf", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -1684,8 +1689,8 @@ export type ExportFailure = "cancelled" | "not_found" | "failed";
  *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
  *  webview never names the file to write, so the command always asks the user through the save
  *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
- *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
- *  [`export_html_to`], reachable in process only.
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless exports are
+ *  [`export_html_to`] and [`export_pdf_to`], reachable in process only.
  */
 export type ExportNoteInput = {
 	noteId: string,

@@ -50,6 +50,7 @@ const commands = vi.hoisted(() => ({
   notesUploadAttachmentAbort: vi.fn(),
   notesDownloadAttachmentFromUrl: vi.fn(),
   notesExportHtml: vi.fn(),
+  notesExportPdf: vi.fn(),
   notesGetVersions: vi.fn(),
   notesGetVersion: vi.fn(),
   notesRestoreVersion: vi.fn(),
@@ -1201,11 +1202,27 @@ describe('notes-service', () => {
     })
   })
 
-  it('forwards the export helpers', async () => {
-    api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
+  it('exports PDF through Rust and keeps why nothing was written', async () => {
+    commands.notesExportPdf.mockResolvedValueOnce({ success: true, path: '/out/Plan.pdf' })
+    await expect(
+      notesService.exportPdf({ noteId: 'note-1', includeMetadata: true, pageSize: 'Legal' })
+    ).resolves.toEqual({ success: true, path: '/out/Plan.pdf' })
+    expect(commands.notesExportPdf).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      includeMetadata: true,
+      pageSize: 'Legal'
+    })
 
-    await notesService.exportPdf({ noteId: 'note-1', includeMetadata: true })
-    expect(api.notes.exportPdf).toHaveBeenCalledWith({ noteId: 'note-1', includeMetadata: true })
+    commands.notesExportPdf.mockResolvedValueOnce({
+      success: false,
+      code: 'failed',
+      error: 'the print engine wrote no PDF'
+    })
+    await expect(notesService.exportPdf({ noteId: 'note-1' })).resolves.toEqual({
+      success: false,
+      code: 'failed',
+      error: 'the print engine wrote no PDF'
+    })
   })
 
   it('hands the note and tag-list events from Rust on in the renderer shape', async () => {
