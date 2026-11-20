@@ -25,17 +25,26 @@ import { parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
-import { syncNoteToCache, syncFileToCache, findCanonicalNoteForFile } from './note-sync'
+import {
+  syncNoteToCache,
+  syncFileToCache,
+  syncNoteStatToCache,
+  moveFileInCache,
+  findCanonicalNoteForFile,
+  isRemoteApplySpelling
+} from './note-sync'
+import { processRename } from './rename-tracker'
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
+  getNoteCacheById,
   getNoteCacheByPath,
   countNotes,
   countJournalEntries,
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { listPropertyDefinitions } from '@memry/storage-data'
+import { listPropertyDefinitions, updateNoteMetadata } from '@memry/storage-data'
 import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
@@ -176,6 +185,10 @@ async function indexFile(
   try {
     const db = getIndexDatabase()
 
+    if (!getNoteCacheByPath(db, relativePath)) {
+      await rekeyCaseVariantRow(db, vaultPath, relativePath, fileType)
+    }
+
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
     if (existingByPath && !forcePaths.has(relativePath)) {
@@ -193,6 +206,67 @@ async function indexFile(
     logger.error(`Error indexing file ${relativePath}:`, error)
     return { reason: 'index-failed', message: errorText(error) }
   }
+}
+
+/**
+ * A file the index lists under no path, whose canonical row spells its path in
+ * another case: sync applied it into a folder the disk spells differently
+ * (#5261). The row moves to the disk's spelling and keeps its id and dates,
+ * and the file then takes the exact-path code like any other. The file's mtime
+ * is sync's own write: stamped on the row, a pulled note reads as edited since
+ * its sync, and a pull takes the file over the server body (#5276).
+ *
+ * A row the index does not hold moves in the data DB only, so the walk indexes
+ * it as an exact-path row the index does not know.
+ *
+ * A file name that changed case is the user's rename made while the app was
+ * closed: it takes the exact-path code, which restamps the title and syncs it.
+ * A folder renamed by case offline looks the same as a folder sync spelled
+ * differently, and is re-keyed without a sync.
+ */
+async function rekeyCaseVariantRow(
+  db: ReturnType<typeof getIndexDatabase>,
+  vaultPath: string,
+  relativePath: string,
+  fileType: NonNullable<ReturnType<typeof getFileType>>
+): Promise<void> {
+  const claimed = findCanonicalNoteForFile(vaultPath, relativePath)
+  if (!claimed || claimed.path === relativePath || !isRemoteApplySpelling(claimed, relativePath))
+    return
+  const indexed = getNoteCacheById(db, claimed.id)
+  if (!indexed) {
+    updateNoteMetadata(getDatabase(), claimed.id, { path: relativePath })
+    return
+  }
+  const row = {
+    id: claimed.id,
+    path: relativePath,
+    title: claimed.title,
+    fileSize: indexed.fileSize ?? 0
+  }
+  if (fileType === 'markdown') {
+    syncNoteStatToCache(
+      db,
+      {
+        ...row,
+        createdAt: claimed.createdAt,
+        modifiedAt: claimed.modifiedAt,
+        localOnly: claimed.localOnly,
+        emoji: claimed.emoji
+      },
+      { isNew: false }
+    )
+  } else {
+    moveFileInCache(db, {
+      ...row,
+      fileType,
+      mimeType: getMimeType(getExtension(relativePath)),
+      createdAt: new Date(claimed.createdAt),
+      modifiedAt: new Date(claimed.modifiedAt)
+    })
+  }
+  await flushProjectionEvents()
+  processRename(claimed.id, claimed.path, relativePath, { sync: false })
 }
 
 /**

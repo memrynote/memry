@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import * as Y from 'yjs'
 import { eq } from 'drizzle-orm'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -55,21 +56,42 @@ vi.mock('../sync/local-mutations', () => ({
   removePendingNoteSyncItems: vi.fn()
 }))
 vi.mock('../sync/crdt-provider', () => ({
-  getCrdtProvider: vi.fn(() => ({ initForNote: vi.fn(async () => {}), updateMeta: vi.fn() }))
+  ORIGIN_LOCAL: 'local',
+  getCrdtProvider: vi.fn(() => ({
+    initForNote: vi.fn(async () => {}),
+    updateMeta: vi.fn(),
+    getDoc: () => undefined,
+    recordOwedFullState: vi.fn(),
+    hasPersistence: () => true
+  }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
-vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn(async () => false) }))
+vi.mock('../sync/crdt-external-feed', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  feedExternalEditToCrdt: vi.fn(async () => false)
+}))
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
 }))
 vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
+vi.mock('../database/client', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getDatabase: vi.fn(),
+  getIndexDatabase: vi.fn()
+}))
 
 import { getDatabase, getIndexDatabase } from '../database'
+import {
+  getDatabase as getClientDatabase,
+  getIndexDatabase as getClientIndexDatabase
+} from '../database/client'
+import { oweUnsyncedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { getStatus } from './index'
-import { enqueueLocalSyncCreate } from '../sync/local-mutations'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../sync/local-mutations'
+import { feedExternalEditToCrdt, takeOwedFile } from '../sync/crdt-external-feed'
+import { markdownToYFragment } from '../sync/blocknote-converter'
+import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -113,6 +135,8 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     data = createTestDataDb()
     index = createTestIndexDb()
     vi.mocked(getDatabase).mockReturnValue(asClientDb(data.db))
+    vi.mocked(getClientDatabase).mockReturnValue(asClientDb(data.db))
+    vi.mocked(getClientIndexDatabase).mockReturnValue(index.db)
     vi.mocked(getIndexDatabase).mockReturnValue(index.db)
     vi.mocked(getStatus).mockReturnValue({
       isOpen: true,
@@ -147,7 +171,13 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     id: string,
     relativePath: string,
     body: string,
-    options: { indexed?: boolean; remote?: boolean; emoji?: string; localOnly?: boolean } = {}
+    options: {
+      indexed?: boolean
+      remote?: boolean
+      emoji?: string
+      localOnly?: boolean
+      fileSize?: number
+    } = {}
   ): void {
     const isMarkdown = relativePath.endsWith('.md')
     const fields = {
@@ -158,7 +188,9 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       emoji: options.emoji ?? null,
       localOnly: options.localOnly ?? false,
       createdAt: '2026-01-10T00:00:00.000Z',
-      modifiedAt: '2026-01-12T00:00:00.000Z'
+      modifiedAt: '2026-01-12T00:00:00.000Z',
+      syncedAt: '2026-01-12T00:00:00.000Z',
+      fileSize: options.fileSize ?? Buffer.byteLength(body)
     }
     // Through the repository, as sync and the indexer write rows.
     upsertNoteMetadata(asClientDb(data.db), fields)
@@ -219,6 +251,44 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     await flushProjectionEvents()
   }
 
+  /**
+   * Two devices pull the note's server body into a store that never held its
+   * doc, as a fresh download does, while a peer edits the note. Each decides
+   * whether the doc owes the vault file, as `crdt-sync-coordinator` does, and
+   * takes it as `CrdtProvider.takeFileAfterMerge` does. Answers how many copies
+   * of the body the server ends with and whether the peer's edit survives.
+   */
+  async function pullOnTwoDevices(noteId: string, relativePath: string) {
+    const raw = fs.readFileSync(path.join(vault.path, relativePath), 'utf8')
+    const server = new Y.Doc()
+    await markdownToYFragment(raw, server.getXmlFragment('prosemirror'), relativePath)
+    const base = Y.encodeStateAsUpdate(server)
+    const pushOf = async (edit: (doc: Y.Doc) => Promise<void>) => {
+      const doc = new Y.Doc()
+      Y.applyUpdate(doc, base)
+      const before = Y.encodeStateVector(doc)
+      await edit(doc)
+      return Y.encodeStateAsUpdate(doc, before)
+    }
+    const devicePull = async (doc: Y.Doc) => {
+      oweUnsyncedFileBody(noteId)
+      if (owesFileBody(noteId))
+        await takeOwedFile(noteId, doc, { path: relativePath, raw, title: 'a' })
+    }
+    const peerEdit = async (doc: Y.Doc) => {
+      const texts = [...doc.getXmlFragment('prosemirror').createTreeWalker(() => true)]
+      const text = texts.find((node) => node instanceof Y.XmlText && node.toString() === 'body')
+      ;(text as Y.XmlText).insert(4, ' peer')
+    }
+    const pushes = [await pushOf(peerEdit), await pushOf(devicePull), await pushOf(devicePull)]
+
+    const merged = new Y.Doc()
+    Y.applyUpdate(merged, base)
+    for (const push of pushes) Y.applyUpdate(merged, push)
+    const body = merged.getXmlFragment('prosemirror').toJSON()
+    return { copies: body.split('body').length - 1, peerEdit: body.includes('body peer') }
+  }
+
   let sentinelCount = 0
 
   /**
@@ -275,6 +345,66 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     )
     expect(noteCreates()).toEqual([])
     expect(metadataRows()).toEqual(expected)
+  }, 20_000)
+
+  // The file's mtime is sync's own write. Stamped onto the row, a note that was
+  // only pulled reads as edited since its sync, and the first pull into a doc
+  // the store never held takes the file over the server body (#5276).
+  it('the watcher leaves an applied note synced, so the pull merges its server body', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    seed('remote-file', 'SuperNotes/p.png', 'png-bytes')
+    await settleOn(() =>
+      expect(metadataRows()).toEqual([
+        { id: 'remote-file', path: 'Supernotes/p.png' },
+        { id: 'remote-note', path: 'Supernotes/a.md' }
+      ])
+    )
+    expect(await pullOnTwoDevices('remote-note', 'Supernotes/a.md')).toEqual({
+      copies: 1,
+      peerEdit: true
+    })
+
+    const modified = data.db
+      .select({ id: noteMetadata.id, modifiedAt: noteMetadata.modifiedAt })
+      .from(noteMetadata)
+      .all()
+      .filter((row) => !row.id.startsWith('Sentinel'))
+    expect(modified).toEqual(
+      expect.arrayContaining([
+        { id: 'remote-note', modifiedAt: '2026-01-12T00:00:00.000Z' },
+        { id: 'remote-file', modifiedAt: '2026-01-12T00:00:00.000Z' }
+      ])
+    )
+  }, 20_000)
+
+  it('the watcher pushes an applied attachment replaced before it was adopted', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('replaced', 'SuperNotes/p.png', 'png-bytes')
+    seed('downloading', 'SuperNotes/q.png', 'png-bytes', { fileSize: 0 })
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/p.png'), 'other-png-bytes')
+    await settleOn(() =>
+      expect(metadataRows()).toEqual([
+        { id: 'downloading', path: 'Supernotes/q.png' },
+        { id: 'replaced', path: 'Supernotes/p.png' }
+      ])
+    )
+    await passSentinel()
+
+    const unsynced = data.db
+      .select({ id: noteMetadata.id, path: noteMetadata.path, modifiedAt: noteMetadata.modifiedAt })
+      .from(noteMetadata)
+      .all()
+      .filter((row) => !isSentinel(row) && row.modifiedAt > '2026-01-12T00:00:00.000Z')
+    const updates = vi
+      .mocked(enqueueLocalSyncUpdate)
+      .mock.calls.filter(([, id]) => id === 'replaced' || id === 'downloading')
+    expect({ unsynced: unsynced.map((row) => row.id), updates }).toEqual({
+      unsynced: ['replaced'],
+      updates: [['note', 'replaced']]
+    })
   }, 20_000)
 
   it('the watcher keeps the emoji of an applied attachment', async () => {
@@ -370,10 +500,47 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(row?.title).toBe('Apple')
   }, 20_000)
 
+  // The same rename made while the app is closed: vault open sees only the
+  // new spelling, and the changed file name marks it as the user's rename,
+  // not a folder spelling written by sync.
+  it('vault open takes an offline case-only file rename as a local edit', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n', { remote: false })
+    fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/Apple.md'))
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+
+    const row = data.db
+      .select({
+        path: noteMetadata.path,
+        title: noteMetadata.title,
+        modifiedAt: noteMetadata.modifiedAt
+      })
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, 'n1'))
+      .get()
+    expect(row?.path).toBe('Docs/Apple.md')
+    expect(row?.title).toBe('Apple')
+    expect(row?.modifiedAt).not.toBe('2026-01-12T00:00:00.000Z')
+  })
+
   // Two remote notes whose paths differ only in case share one file here, so
   // the second write replaces the first body on disk (#5263). The file still
   // belongs to the row the disk spells: neither row is re-keyed onto the
   // other, and nothing is pushed.
+  it('the watcher pushes no applied attachment that shares its file with a case twin', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('twin-small', 'SuperNotes/p.png', 'png')
+    seed('twin-large', 'SUPERNOTES/p.png', 'larger-png-bytes')
+    await passSentinel()
+
+    const updates = vi
+      .mocked(enqueueLocalSyncUpdate)
+      .mock.calls.filter(([, id]) => id.startsWith('twin-'))
+    expect(updates).toEqual([])
+  }, 20_000)
+
   it('keeps both rows of two remote notes that share one file', async () => {
     await watch()
     seed('remote-lower', 'Supernotes/a.md', '# a\n\nlower\n')
@@ -411,8 +578,87 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(noteCreates()).toEqual([])
   })
 
+  // A restart before the watcher adopts the applied rows: the open-time walk
+  // moves them to the disk's spelling, and sync's file mtime is no local edit
+  // there either. The pull wrote their index rows under its own spelling.
+  it('vault open leaves an applied note synced, so the pull merges its server body', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    seed('remote-file', 'SuperNotes/p.png', 'png-bytes')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+
+    expect(await pullOnTwoDevices('remote-note', 'Supernotes/a.md')).toEqual({
+      copies: 1,
+      peerEdit: true
+    })
+    expect(
+      data.db
+        .select({ id: noteMetadata.id, modifiedAt: noteMetadata.modifiedAt })
+        .from(noteMetadata)
+        .all()
+    ).toEqual(
+      expect.arrayContaining([
+        { id: 'remote-note', modifiedAt: '2026-01-12T00:00:00.000Z' },
+        { id: 'remote-file', modifiedAt: '2026-01-12T00:00:00.000Z' }
+      ])
+    )
+  })
+
   // The fold index is a cache of note_metadata: the exact path goes to the
   // table first, so a row the index has not seen is still found.
+  // Quit after the pull wrote the file, edited outside before the next open:
+  // the walk finds a body other than the indexed one, a local edit.
+  /** The doc the store holds for a pulled note: its body as the server has it. */
+  async function storedDoc(markdown: string, relativePath: string): Promise<Y.Doc> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment('prosemirror'), relativePath)
+    return doc
+  }
+
+  // The store holds the pulled doc, so no pull owes the file. A remote update
+  // writes the doc back after the walk, and must take the edit in, not
+  // overwrite it.
+  it('vault open leaves an outside edit for the doc to take, so a write-back keeps it', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), '# a\n\noffline edit\n')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await writebackNow('remote-note', await storedDoc('# a\n\nbody remote\n', 'Supernotes/a.md'))
+
+    expect({
+      file: fs.readFileSync(path.join(vault.path, 'Supernotes/a.md'), 'utf8'),
+      fed: vi.mocked(feedExternalEditToCrdt).mock.calls.map(([id, markdown]) => [id, markdown])
+    }).toEqual({
+      file: '# a\n\noffline edit\n',
+      fed: [['remote-note', expect.stringContaining('offline edit')]]
+    })
+  })
+
+  it('vault open with no outside edit keeps the indexed hash and feeds nothing', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-note', 'SuperNotes/a.md', '# a\n\nbody\n')
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await writebackNow('remote-note', await storedDoc('# a\n\nbody\n', 'Supernotes/a.md'))
+
+    expect({
+      cache: index.db
+        .select({ path: noteCache.path, contentHash: noteCache.contentHash })
+        .from(noteCache)
+        .where(eq(noteCache.id, 'remote-note'))
+        .get(),
+      fed: vi.mocked(feedExternalEditToCrdt).mock.calls.length
+    }).toEqual({
+      cache: { path: 'Supernotes/a.md', contentHash: generateContentHash('# a\n\nbody\n') },
+      fed: 0
+    })
+  })
+
   it('finds a row the fold index missed by its exact path', () => {
     seed('seen', 'Docs/a.md', '# a\n', { remote: false })
     expect(findCanonicalNoteForFile(vault.path, 'Docs/none.md')).toBeNull()
