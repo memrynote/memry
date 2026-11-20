@@ -11,7 +11,7 @@ The desktop app is moving from Electron to Tauri v2 over the Rust core. The new 
 - Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf`.
 - cmake 3.18 or later on `PATH`. The Inbox web client links BoringSSL (`btls-sys`, under `wreq`), which cmake builds, so the app does not build without it. The `memry-ml-worker` sidecar also uses it for the Tesseract OCR engine, built from pinned sources: the first build downloads them once and compiles them for a few minutes.
 - libclang, which bindgen loads to generate the BoringSSL bindings: Xcode's on macOS, `libclang-dev` on Linux, and on Windows the LLVM of the Visual Studio build tools ("C++ Clang tools") or a standalone LLVM (set `LIBCLANG_PATH` when it is not found).
-- Windows: NASM on `PATH` (`winget install NASM.NASM`), for BoringSSL's x86 assembly.
+- Windows x64: NASM on `PATH` (`winget install NASM.NASM`), for BoringSSL's x86 assembly. Windows ARM64 builds BoringSSL without assembly and needs no NASM.
 
 ## Run it
 

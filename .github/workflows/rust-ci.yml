@@ -245,9 +245,10 @@ jobs:
           components: rustfmt, clippy
 
       # BoringSSL (btls-sys, under the Inbox web fetch's wreq client) assembles its x86 code with NASM
-      # when it builds natively on Windows.
+      # when it builds natively on Windows x64. Windows ARM64 builds it without assembly (the btls-sys
+      # patch in crates/Cargo.toml) and needs no NASM.
       - name: Install NASM
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
 
       # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run

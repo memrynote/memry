@@ -10,7 +10,7 @@ use axum::body::{Body, Bytes};
 use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use memry_desktop::services::web_fetch::{
-    BlockingFetcher, CHROME_USER_AGENT, Limits, WebFetch, WebFetchError, decode_text,
+    BlockingFetcher, CHROME_USER_AGENT, Limits, PAGE_TIMEOUT, WebFetch, WebFetchError, decode_text,
     reddit_json_url, reddit_metadata_from_listing, rewrite_url_for_fetch,
 };
 use memry_desktop::web::extract::fetch::{FetchRequest, Fetcher};
@@ -254,6 +254,16 @@ async fn a_refused_page_reports_the_status_without_the_url() {
     let metadata = web.metadata_page(&url).await.unwrap_err();
     assert_eq!(article.to_string(), "Failed to fetch article HTML: 403");
     assert_eq!(metadata.to_string(), "HTTP 403");
+    // Windows answers a connect to a closed loopback port only after its SYN retries (about 2 s),
+    // past `SMALL`'s 300 ms, so the refused connection gets the production page deadline.
+    let web = WebFetch::for_tests(
+        Limits {
+            page_timeout: PAGE_TIMEOUT,
+            ..SMALL
+        },
+        &[("reddit.com", server.addr)],
+    )
+    .unwrap();
     let missing = web
         .article_html("http://127.0.0.1:1/nothing-listens")
         .await
