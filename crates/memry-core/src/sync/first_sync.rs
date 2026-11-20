@@ -143,11 +143,12 @@ pub enum FirstSyncPhase {
 /// FR-028's determinate progress.
 ///
 /// `total` is never below `completed`, so a shell can render a fraction
-/// without guarding against one above 1. §10.11: progress is measured against
-/// the tail cursor and the client's own cursor, neither of which a bootstrap
-/// session affects — so the numbers survive Q10.2's mid-run fallback
-/// unchanged, and the only observable difference is that the run takes
-/// longer.
+/// without guarding against one above 1. §10.11: progress counts the items
+/// each pass has handled, never a server cursor (a per-user sequence over
+/// every vault and edit, `apps/sync-server/migrations/0001_baseline.sql:189-192`).
+/// A bootstrap session changes no count, so the numbers survive Q10.2's
+/// mid-run fallback unchanged, and the only observable difference is that the
+/// run takes longer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FirstSyncProgress {
     pub phase: FirstSyncPhase,
@@ -282,14 +283,9 @@ impl FirstSync {
         let mut report = FirstSyncReport::default();
 
         // §10.5: this cannot fail in any way a caller must handle.
-        let tail_cursor = match &self.bootstrap {
-            Some(bootstrap) => {
-                let opened = bootstrap.open(now_ms / 1_000).await;
-                report.elevated = opened.elevated();
-                opened.tail_cursor
-            }
-            None => 0,
-        };
+        if let Some(bootstrap) = &self.bootstrap {
+            report.elevated = bootstrap.open(now_ms / 1_000).await.elevated();
+        }
 
         report.window_start = self.window_start(now_ms).await?;
 
@@ -305,7 +301,7 @@ impl FirstSync {
             })
             .await?;
 
-        self.refs_pass(tail_cursor, &mut report).await?;
+        self.refs_pass(&mut report).await?;
         self.metadata_pass(&mut report).await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
         // leaves its rows `metadata-only`. A row held corrupt or refused does too,
@@ -346,11 +342,7 @@ impl FirstSync {
     /// pass two's job, and separating them is the whole point of the
     /// windowing: on a large vault the refs pass is twenty calls and gives
     /// the client the complete inventory it needs to order everything else.
-    async fn refs_pass(
-        &self,
-        tail_cursor: i64,
-        report: &mut FirstSyncReport,
-    ) -> Result<(), FirstSyncError> {
+    async fn refs_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
         loop {
             let cursor = self
                 .db
@@ -425,17 +417,19 @@ impl FirstSync {
             report.refs_recorded += recorded;
             report.tombstones += tombstones;
 
-            let seen = next.as_deref().and_then(|c| c.parse::<u64>().ok());
+            // The feed has no item total (chapter 05 `RecordChangesResponse`),
+            // so while it has more the estimate is one more page, as Electron's
+            // `initial-sync-progress.ts:13` does.
+            let listed = (report.refs_recorded + report.tombstones) as u64;
+            let ahead = if page.has_more {
+                u64::from(PULL_PAGE_LIMIT)
+            } else {
+                0
+            };
             self.progress.progress(FirstSyncProgress {
                 phase: FirstSyncPhase::Refs,
-                completed: seen.unwrap_or(report.refs_recorded as u64),
-                // §10.4's `tailCursor` when a session supplied one; otherwise
-                // the tail is not knowable until the feed says `hasMore:
-                // false`, and reporting the cursor against itself is the
-                // honest answer rather than an invented denominator.
-                total: seen
-                    .unwrap_or(report.refs_recorded as u64)
-                    .max(tail_cursor.max(0) as u64),
+                completed: listed,
+                total: listed + ahead,
             });
 
             if !page.has_more {

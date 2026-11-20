@@ -86,7 +86,10 @@
     "home_board_customized",
     "reminder_created",
     "reminder_deleted",
-    "sync_bootstrap"
+    "sync_bootstrap",
+    "migration_started",
+    "migration_completed",
+    "migration_failed"
   ],
   "surfaces": [
     "app",

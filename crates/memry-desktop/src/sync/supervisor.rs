@@ -63,7 +63,7 @@ pub(super) enum Command {
     Trigger(Trigger),
     RequestPush,
     SyncNow(oneshot::Sender<TriggerSyncResult>),
-    SetPaused(bool, oneshot::Sender<Result<(), StorageError>>),
+    SetPaused(bool, oneshot::Sender<Result<bool, StorageError>>),
     Reachable(Reachable),
     Socket {
         generation: u64,
@@ -212,7 +212,8 @@ impl SyncSupervisor {
     }
 
     /// Pauses or resumes sync, persisted in `meta` `sync.paused` before the driver is told.
-    pub async fn set_paused(&self, paused: bool) -> Result<(), StorageError> {
+    /// Answers the pause it replaced, read in the loop's turn so concurrent callers agree.
+    pub async fn set_paused(&self, paused: bool) -> Result<bool, StorageError> {
         let (reply, answer) = oneshot::channel();
         let gone = || StorageError::Failed {
             what: "sync is not running for this vault; the pause was not saved".into(),

@@ -112,6 +112,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "calendar_feed_memory"
+path = "tests/calendar_feed_memory.rs"
+
+[[test]]
 name = "markdown_corpus"
 path = "tests/markdown_corpus.rs"
 

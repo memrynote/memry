@@ -305,6 +305,10 @@ name = "sandbox_template"
 path = "tests/sandbox_template.rs"
 
 [[test]]
+name = "sandbox_replay"
+path = "tests/sandbox_replay.rs"
+
+[[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
 
@@ -319,6 +323,10 @@ path = "tests/readwise_vectors.rs"
 [[test]]
 name = "readwise_untrusted"
 path = "tests/readwise_untrusted.rs"
+
+[[test]]
+name = "readwise_client"
+path = "tests/readwise_client.rs"
 
 [[test]]
 name = "watch_perf"

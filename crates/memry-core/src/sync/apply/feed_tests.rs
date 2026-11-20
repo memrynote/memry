@@ -232,3 +232,94 @@ fn a_concurrent_calendar_source_is_merged_with_the_field_it_decided() {
     })
     .expect("the pages");
 }
+
+fn task(title: &str, clock: Value) -> Value {
+    json!({
+        "title": title, "projectId": "proj-1", "priority": 1,
+        "clock": clock.clone(), "fieldClocks": {"title": clock},
+        "createdAt": ISO, "modifiedAt": ISO,
+    })
+}
+
+fn project(name: &str, clock: Value) -> Value {
+    json!({
+        "name": name, "color": "#fff", "position": 0, "isInbox": false,
+        "clock": clock.clone(), "fieldClocks": {"name": clock},
+        "createdAt": ISO, "modifiedAt": ISO,
+    })
+}
+
+/// The decided fields of the one record of a concurrent page.
+fn merged_conflicts(conn: &Connection, item_type: &str, first: Value, second: Value) -> Vec<Value> {
+    page(conn, vec![record(item_type, "item-1", first)]);
+    let totals = page(conn, vec![record(item_type, "item-1", second)]);
+    let merged = &totals.feed.records[0];
+    assert_eq!(merged.outcome, AppliedOutcome::Merged);
+    merged
+        .conflicts
+        .iter()
+        .map(|c| json!([c.field, c.losing, c.winning, c.merged_clock, c.local_lost]))
+        .collect()
+}
+
+/// Electron's `task-handler.ts` and `project-handler.ts` merge concurrent
+/// rows field by field; a tied field the remote won is this device's loss.
+#[test]
+fn a_concurrent_task_or_project_reports_the_field_this_device_lost() {
+    let dir = temp_dir("feed-task");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "task",
+            task("Mine", json!({"a": 1})),
+            task("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["title", "Mine", "Theirs", {"a": 1, "b": 1}, true])]
+        );
+        Ok(())
+    })
+    .expect("the task pages");
+
+    let dir = temp_dir("feed-project");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "project",
+            project("Mine", json!({"a": 1})),
+            project("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["name", "Mine", "Theirs", {"a": 1, "b": 1}, true])]
+        );
+        Ok(())
+    })
+    .expect("the project pages");
+}
+
+/// §6.3's tie rule keeps a value clocked under `_offline` against a remote
+/// without it: the field is a conflict this device won, so nothing of its own
+/// was lost (Electron skips `mergedValue === localValue`).
+#[test]
+fn a_tie_this_device_won_is_not_its_loss() {
+    let dir = temp_dir("feed-offline");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let conflicts = merged_conflicts(
+            conn,
+            "task",
+            task("Mine", json!({"_offline": 1})),
+            task("Theirs", json!({"b": 1})),
+        );
+        assert_eq!(
+            conflicts,
+            [json!(["title", "Theirs", "Mine", {"_offline": 1, "b": 1}, false])]
+        );
+        Ok(())
+    })
+    .expect("the pages");
+}

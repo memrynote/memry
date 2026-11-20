@@ -645,13 +645,18 @@ export function memryPwInstall(win) {
     }
   }
 
-  /** Focuses what a press on `el` focuses, or blurs the focus when nothing there takes it. */
+  /**
+   * Focuses what a press on `el` focuses, or blurs the focus when nothing there takes it. The
+   * driver's press is synthetic, so this native call is the only thing that moves focus, and in a
+   * window without system focus it fires no event: `moveFocus` fires them (#3967).
+   */
   function focusAt(el) {
     const focusable = el.closest(FOCUSABLE)
     if (focusable) {
-      if (doc.activeElement !== focusable) focusable.focus()
+      if (doc.activeElement !== focusable) moveFocus(focusable, () => focusable.focus(), true)
     } else if (doc.activeElement && doc.activeElement !== doc.body) {
-      doc.activeElement.blur()
+      const active = doc.activeElement
+      moveFocus(active, () => active.blur(), false)
     }
   }
 
