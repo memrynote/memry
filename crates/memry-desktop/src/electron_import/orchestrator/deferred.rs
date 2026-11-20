@@ -13,7 +13,7 @@ use super::{
 };
 use crate::electron_import::report::{VaultSection, VaultStatus};
 use crate::electron_import::vault_db::CORE_DIR;
-use crate::electron_import::vault_prep::{DeferReason, Disposition, folder_id, plan_vaults};
+use crate::electron_import::vault_prep::{DeferReason, Disposition, folder_id, plan_folder};
 use crate::electron_import::{ElectronConfig, ImportError, Scratch};
 
 /// Imports a vault the first-launch run deferred, before the session opens it. Reads only the
@@ -68,6 +68,30 @@ pub fn migrate_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunErr
             Err(error)
         }
     }
+}
+
+/// "Move this vault now" on a folder [`migrate_vault`] refuses as [`RunError::NotMoved`]
+/// (Kaan, 20 Nov, #5140): one the first-launch run never listed, such as a deferred vault back at
+/// another path, a vault added in the previous app afterwards, or a copied-in folder. Adds it to
+/// the marker as deferred, then imports it as [`migrate_vault`] imports any deferred vault, so
+/// the shell opens it once this returns `Ok`. On an error the vault stays refused and its folder
+/// as it was: the import installs nothing until every check passed. The deferred entry stays,
+/// so a run cut off anywhere is finished by the next call or open.
+pub fn move_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunError> {
+    {
+        let _one = IMPORT_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(mut marker) = Marker::read(&ctx.tauri_data_dir)?
+            && matches!(lookup(&marker, vault), Lookup::Unlisted)
+        {
+            let path = vault.to_string_lossy();
+            marker.vaults.push(marker_vault(&VaultSection::new(
+                &path,
+                VaultStatus::Deferred,
+            )));
+            marker.write(&ctx.tauri_data_dir)?;
+        }
+    }
+    migrate_vault(ctx, vault)
 }
 
 enum Lookup {
@@ -130,16 +154,13 @@ fn deferred_import(
     let lock = probe(&profile)?;
     let config = ElectronConfig::read(&profile)?;
     let scratch = Scratch::new(ctx.tauri_data_dir.join(SCRATCH_DIR))?;
-    let plan = plan_vaults(&profile, config.as_ref(), &scratch);
-    let Some(planned) = plan.vaults.iter().find(|v| v.path == path) else {
-        // The previous app's config no longer names it: nothing to import from.
-        return settle(
-            ctx,
-            marker,
-            run,
-            VaultSection::new(path, VaultStatus::NoData),
-        );
-    };
+    // Planned from its folder even when the config no longer names it.
+    let plan = plan_folder(&profile, config.as_ref(), &scratch, path);
+    let planned = plan
+        .vaults
+        .iter()
+        .find(|v| v.path == path)
+        .unwrap_or_else(|| unreachable!());
     let phase = VaultPhase {
         profile: &profile,
         config: config.as_ref(),

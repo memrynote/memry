@@ -137,16 +137,36 @@ pub fn plan_vaults(
     config: Option<&ElectronConfig>,
     scratch: &Scratch,
 ) -> VaultPlan {
-    let Some(config) = config else {
-        return VaultPlan::default();
-    };
-    let (stored, unreadable_entries) = config.vaults();
+    plan(profile, config, scratch, None)
+}
+
+/// [`plan_vaults`] with `folder` planned first, whether or not the config names it: a folder
+/// the user asked to move that the config lists under another path string, or not at all (a
+/// vault back at another path, a copied-in folder). First, so a config entry naming the same
+/// folder is the [`Disposition::SameFolder`] one and `folder` itself is imported.
+pub fn plan_folder(
+    profile: &ElectronProfile,
+    config: Option<&ElectronConfig>,
+    scratch: &Scratch,
+    folder: &str,
+) -> VaultPlan {
+    plan(profile, config, scratch, Some(folder))
+}
+
+fn plan(
+    profile: &ElectronProfile,
+    config: Option<&ElectronConfig>,
+    scratch: &Scratch,
+    folder: Option<&str>,
+) -> VaultPlan {
+    let (stored, unreadable_entries) = config.map(ElectronConfig::vaults).unwrap_or_default();
     let distinct: HashSet<&str> = stored.iter().map(|v| v.path.as_str()).collect();
-    let current = config.current_vault();
+    let current = config.and_then(ElectronConfig::current_vault);
     let sandbox = Sandbox::new(&profile.dir);
     let mut seen = HashSet::new();
-    let mut vaults: Vec<PlannedVault> = current
+    let mut vaults: Vec<PlannedVault> = folder
         .into_iter()
+        .chain(current)
         .chain(stored.iter().map(|v| v.path.as_str()))
         .filter(|path| seen.insert(*path))
         .map(|path| {
@@ -168,7 +188,7 @@ pub fn plan_vaults(
     let mut by_store: BTreeMap<String, SharedStore> = BTreeMap::new();
     for vault in &vaults {
         if let Disposition::Import(id) = &vault.disposition {
-            let dir = YStoreReader::store_dir(profile, &id.vault_id, Some(config));
+            let dir = YStoreReader::store_dir(profile, &id.vault_id, config);
             let store = dir
                 .file_name()
                 .map_or_else(String::new, |n| n.to_string_lossy().into_owned());

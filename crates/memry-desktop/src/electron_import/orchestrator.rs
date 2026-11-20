@@ -28,7 +28,7 @@ pub mod preflight;
 mod secrets;
 mod vault;
 
-pub use self::deferred::migrate_vault;
+pub use self::deferred::{migrate_vault, move_vault};
 pub use self::error::RunError;
 
 use std::path::{Path, PathBuf};

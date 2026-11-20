@@ -569,5 +569,6 @@ fn pending_notes_salvage_a_torn_write() {
 }
 
 mod guards;
+mod move_vault;
 mod open_hook;
 mod resume;
