@@ -15,6 +15,7 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { onSyncedRecords } from '@/services/sync-service'
 import { applyTaskUpdate } from '@/contexts/tasks/apply-task-update'
 import {
   applyFieldsPatch,
@@ -220,10 +221,11 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
     queryKey: taskKeys.tasks(),
     enabled,
     // This list is refreshed purely by events, and a pull on a second machine
-    // is the only writer the user cannot see. One dropped ITEM_SYNCED leaves it
-    // stale forever, because the app-wide default is `refetchOnWindowFocus:
-    // false` and there is no interval. Coming back to the window is the cheapest
-    // reconcile point we have; the query reads local SQLite.
+    // is the only writer the user cannot see. One dropped page of synced
+    // records leaves it stale forever, because the app-wide default is
+    // `refetchOnWindowFocus: false` and there is no interval. Coming back to
+    // the window is the cheapest reconcile point we have; the query reads
+    // local SQLite.
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<UiTask[]> => {
       const tasksResponse = await tasksService.list({
@@ -252,24 +254,22 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
       invalidateProjects()
     }
 
-    const unsubscribeItemSynced =
-      typeof window.api.onItemSynced === 'function'
-        ? window.api.onItemSynced((event) => {
-            if (event.type === 'task') {
-              invalidateTasks()
-              return
-            }
-
-            if (event.type === 'project') {
-              invalidateProjects()
-            }
-          })
-        : () => {}
+    // A page of synced records sent before the listener went live names nobody, so the lists
+    // are read again once it is.
+    const unsubscribeSyncedRecords = onSyncedRecords(
+      ['task', 'project'],
+      (items) => {
+        if (items.some((item) => item.type === 'task')) invalidateTasks()
+        if (items.some((item) => item.type === 'project')) invalidateProjects()
+      },
+      invalidateAll
+    )
 
     // A window that never loses focus never reaches the refetchOnWindowFocus
-    // reconcile above, so a dropped ITEM_SYNCED would still strand the list
-    // until restart. A sync leaving the `syncing` state is the other reconcile
-    // point, and it fires at most once per sync rather than once per item.
+    // reconcile above, so a dropped page of synced records would still strand
+    // the list until restart. A sync leaving the `syncing` state is the other
+    // reconcile point, and it fires at most once per sync rather than once per
+    // page.
     let wasSyncing = false
     const unsubscribeSyncSettled = window.api.onSyncStatusChanged((event) => {
       const syncing = event.status === 'syncing'
@@ -286,7 +286,7 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
       onProjectCreated(invalidateProjects),
       onProjectUpdated(invalidateProjects),
       onProjectDeleted(invalidateProjects),
-      unsubscribeItemSynced
+      unsubscribeSyncedRecords
     ]
 
     return () => {

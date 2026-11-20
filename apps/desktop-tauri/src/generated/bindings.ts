@@ -3724,12 +3724,13 @@ export type SyncItemRecoveredEvent = {
 	type: string,
 };
 
-/**  `sync:item-synced`: one item went up or came down. */
+/**
+ *  `sync:item-synced`, once per committed pull page: every record the page changed, each once
+ *  with its last operation. Notes and journals come from the vault tier's events instead.
+ */
 export type SyncItemSyncedEvent = {
-	itemId: string,
-	type: string,
 	operation: SyncDirection,
-	itemOperation?: SyncItemOperation | null,
+	items: SyncedItem[],
 };
 
 /**  A link this device started was approved (`sync:linking-approved`). */
@@ -3800,6 +3801,13 @@ export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_
 
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
+
+/**  One record of a [`SyncItemSyncedEvent`]. */
+export type SyncedItem = {
+	itemId: string,
+	type: string,
+	itemOperation: SyncItemOperation,
+};
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {

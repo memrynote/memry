@@ -79,7 +79,6 @@ import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type { OnboardingAgentStatus, OnboardingSources } from '@memry/contracts/onboarding-api'
 import type {
   SyncStatusChangedEvent,
-  ItemSyncedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
   UploadProgressEvent,
@@ -1815,7 +1814,6 @@ interface API
   // Search event subscriptions
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
-  onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
   onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
   onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void

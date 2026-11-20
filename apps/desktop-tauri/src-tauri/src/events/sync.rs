@@ -4,28 +4,29 @@
 use memry_desktop::sync::events::{ItemOperation, SyncEvent};
 use memry_desktop::sync::status::SyncStatus;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Runtime};
 
 use super::broadcast;
 
 /// Sends the typed event of one supervisor event.
-pub fn broadcast_sync_event(app: &AppHandle<Wry>, event: &SyncEvent) {
+pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
     match event {
-        SyncEvent::Pulled {
-            item_type,
-            item_id,
-            operation,
-        } => broadcast(
+        SyncEvent::Pulled(items) => broadcast(
             app,
             SyncItemSyncedEvent {
-                item_id: item_id.clone(),
-                item_type: item_type.clone(),
                 operation: SyncDirection::Pull,
-                item_operation: Some(match operation {
-                    ItemOperation::Create => SyncItemOperation::Create,
-                    ItemOperation::Update => SyncItemOperation::Update,
-                    ItemOperation::Delete => SyncItemOperation::Delete,
-                }),
+                items: items
+                    .iter()
+                    .map(|item| SyncedItem {
+                        item_id: item.item_id.clone(),
+                        item_type: item.item_type.clone(),
+                        item_operation: match item.operation {
+                            ItemOperation::Create => SyncItemOperation::Create,
+                            ItemOperation::Update => SyncItemOperation::Update,
+                            ItemOperation::Delete => SyncItemOperation::Delete,
+                        },
+                    })
+                    .collect(),
             },
         ),
         SyncEvent::QueueCleared {
@@ -105,16 +106,23 @@ pub enum SyncItemOperation {
     Delete,
 }
 
-/// `sync:item-synced`: one item went up or came down.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+/// One record of a [`SyncItemSyncedEvent`].
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncItemSyncedEvent {
+pub struct SyncedItem {
     pub item_id: String,
     #[serde(rename = "type")]
     pub item_type: String,
+    pub item_operation: SyncItemOperation,
+}
+
+/// `sync:item-synced`, once per committed pull page: every record the page changed, each once
+/// with its last operation. Notes and journals come from the vault tier's events instead.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncItemSyncedEvent {
     pub operation: SyncDirection,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub item_operation: Option<SyncItemOperation>,
+    pub items: Vec<SyncedItem>,
 }
 
 /// `sync:queue-cleared`: a push emptied the queue.
