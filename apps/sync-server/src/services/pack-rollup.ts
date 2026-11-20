@@ -11,6 +11,7 @@ import {
   type PackedEntry
 } from './pack-format'
 import {
+  ALWAYS,
   allLive,
   packIndexInsert,
   packObjectKey,
@@ -19,6 +20,7 @@ import {
   type VaultScope
 } from './pack-index-write'
 import { recordsLive } from './pack-record-selection'
+import { deleteUnlisted, recordUnlisted } from './pack-replaced-objects'
 import { PACK_TARGET_BYTES, packCountBound } from './pack-sizing'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
@@ -195,6 +197,65 @@ const liveIndexes = async (
   return new Set((rows.results ?? []).map((row) => row.i))
 }
 
+/** The plan that writes a packed entry into a new pack, its meta carried verbatim. */
+const planOf = (kind: PackKindName, entry: PackedEntry): PackEntryPlan => ({
+  kind,
+  id: entry.id,
+  sourceKey: entry.sourceKey,
+  sortKey: entry.sortKey,
+  sizeBytes: entry.length,
+  ...(entry.meta
+    ? {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the meta a build wrote into this index block, carried over verbatim
+        meta: entry.meta as PackEntryPlanMeta
+      }
+    : {})
+})
+
+export interface CollidingPack {
+  pack: ListedPack
+  /** Its entries that are still current, with their bytes. */
+  kept: Array<{ plan: PackEntryPlan; bytes: Uint8Array }>
+  /** True at commit while every kept entry is still current (the §7.15 recheck). */
+  current: Guard
+}
+
+/**
+ * The listed pack whose `min_cursor` a build's first row has (#5229 P6), read,
+ * verified and filtered to its current entries as a rollup input is. The build
+ * rolls it and its new rows into one pack, because the unique key lets only
+ * one row hold that `min_cursor` (protocol 08 §8.10). Null when no row holds
+ * it, and the reason when the pack cannot be read.
+ */
+export const readCollidingPack = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  kind: PackKindName,
+  minCursor: number
+): Promise<CollidingPack | string | null> => {
+  const pack = await db
+    .prepare(
+      `SELECT id, pack_key, min_cursor, max_cursor, item_count, byte_size, cover_from, cover_through
+       FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND min_cursor = ?`
+    )
+    .bind(scope.userId, scope.vaultId, kind, minCursor)
+    .first<ListedPack>()
+  if (!pack) return null
+  const input = await readInput(storage, kind, pack)
+  if (typeof input === 'string') return input
+  const live = await liveIndexes(db, scope, kind, input.entries)
+  const kept = input.entries.filter((_, index) => live.has(index))
+  return {
+    pack,
+    kept: kept.map((entry) => ({
+      plan: planOf(kind, entry),
+      bytes: extractEntry(input.bytes, entry)
+    })),
+    current: kept.length > 0 ? allLive(liveJoin(kind, scope, kept), kept.length) : ALWAYS
+  }
+}
+
 export interface RollupResult {
   replaced: number
   kept: number
@@ -321,19 +382,7 @@ export const rollupKind = async (
 
   let payloadBytes = 0
   if (kept.length > 0) {
-    const plans: PackEntryPlan[] = kept.map(({ entry }) => ({
-      kind,
-      id: entry.id,
-      sourceKey: entry.sourceKey,
-      sortKey: entry.sortKey,
-      sizeBytes: entry.length,
-      ...(entry.meta
-        ? {
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the meta a build wrote into this index block, carried over verbatim
-            meta: entry.meta as PackEntryPlanMeta
-          }
-        : {})
-    }))
+    const plans = kept.map(({ entry }) => planOf(kind, entry))
     const pack = openPack(plans)
     for (let i = 0; i < kept.length; i++) {
       await pack.writeEntry(plans[i], extractEntry(kept[i].input.bytes, kept[i].entry))
@@ -355,7 +404,7 @@ export const rollupKind = async (
   })
   if (!swapped) {
     // The one object-delete rule: this rollup's own row is absent.
-    if (kept.length > 0) await storage.delete(packKey)
+    if (kept.length > 0) await deleteUnlisted(storage, packKey)
     logger.info('rollup lost a race with a purge, a shed, a push or another rollup; discarded', {
       ...scopeLog(scope, kind),
       inputs: run.length
@@ -394,14 +443,65 @@ interface Swap {
 }
 
 /**
- * The index swap (protocol 08 §8.12), one D1 batch:
- *   1. record every input object for deletion after the grace period, only
- *      while every input row is still listed, no other row holds the merged
- *      `min_cursor`, and every kept entry is still current (the §7.15 recheck);
- *   2. delete the input rows when step 1 recorded all of them;
- *   3. insert the merged row under the same condition.
- * Deleting first keeps the listing from holding an input and its replacement
- * at once, and the `min_cursor` unique key from refusing the insert.
+ * Statements that take the listed packs `ids` out of the listing for the pack
+ * `replacedBy` (protocol 08 §8.12): record every object for deletion after the
+ * grace period, only while every row is still listed and `guard` holds, then
+ * delete the rows. Guard the replacement's insert on `recorded`, so the rows go
+ * and the replacement lists together or not at all. Deleting first keeps the
+ * listing from holding an old pack and its replacement at once, and the
+ * `min_cursor` unique key from refusing the insert.
+ */
+export const replacePacks = (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  ids: readonly string[],
+  replacedBy: string,
+  guard: Guard
+): { statements: D1PreparedStatement[]; recorded: Guard } => {
+  const list = JSON.stringify(ids)
+  const inVault = 'user_id = ? AND vault_id = ? AND item_kind = ?'
+  const vaultBind = [scope.userId, scope.vaultId, kind]
+  const recorded = {
+    sql: '(SELECT COUNT(*) FROM pack_replaced_objects WHERE replaced_by = ?) = ?',
+    bind: [replacedBy, ids.length]
+  }
+  return {
+    recorded,
+    statements: [
+      db
+        .prepare(
+          `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+           SELECT pack_key, user_id, vault_id, ?, ? FROM pack_index
+           WHERE ${inVault} AND id IN (SELECT value FROM json_each(?))
+             AND (SELECT COUNT(*) FROM pack_index WHERE ${inVault} AND id IN (SELECT value FROM json_each(?))) = ?
+             AND ${guard.sql}
+           ON CONFLICT (pack_key) DO NOTHING`
+        )
+        .bind(
+          replacedBy,
+          Math.floor(Date.now() / 1000),
+          ...vaultBind,
+          list,
+          ...vaultBind,
+          list,
+          ids.length,
+          ...guard.bind
+        ),
+      db
+        .prepare(
+          `DELETE FROM pack_index WHERE ${inVault} AND id IN (SELECT value FROM json_each(?)) AND ${recorded.sql}`
+        )
+        .bind(...vaultBind, list, ...recorded.bind)
+    ]
+  }
+}
+
+/**
+ * The index swap (protocol 08 §8.12), one D1 batch: replacePacks over the
+ * inputs while no other row holds the merged `min_cursor` and every kept entry
+ * is still current (the §7.15 recheck), then the merged row. An object the
+ * batch did not list is recorded for deletion at once (recordUnlisted).
  */
 const swapListing = async (
   db: D1Database,
@@ -409,49 +509,23 @@ const swapListing = async (
   kind: PackKindName,
   swap: Swap
 ): Promise<boolean> => {
-  const ids = JSON.stringify(swap.run.map((pack) => pack.id))
-  const n = swap.run.length
-  const inVault = 'user_id = ? AND vault_id = ? AND item_kind = ?'
-  const vaultBind = [scope.userId, scope.vaultId, kind]
+  const ids = swap.run.map((pack) => pack.id)
   const current =
     swap.kept.length > 0
       ? allLive(liveJoin(kind, scope, swap.kept), swap.kept.length)
       : { sql: '1', bind: [] }
-  const recorded = {
-    sql: '(SELECT COUNT(*) FROM pack_replaced_objects WHERE replaced_by = ?) = ?',
-    bind: [swap.packId, n]
-  }
-  const statements = [
-    db
-      .prepare(
-        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
-         SELECT pack_key, user_id, vault_id, ?, ? FROM pack_index
-         WHERE ${inVault} AND id IN (SELECT value FROM json_each(?))
-           AND (SELECT COUNT(*) FROM pack_index WHERE ${inVault} AND id IN (SELECT value FROM json_each(?))) = ?
-           AND NOT EXISTS (SELECT 1 FROM pack_index WHERE ${inVault} AND min_cursor = ?
-             AND id NOT IN (SELECT value FROM json_each(?)))
-           AND ${current.sql}
-         ON CONFLICT (pack_key) DO NOTHING`
-      )
-      .bind(
-        swap.packId,
-        Math.floor(Date.now() / 1000),
-        ...vaultBind,
-        ids,
-        ...vaultBind,
-        ids,
-        n,
-        ...vaultBind,
-        swap.minSortValue,
-        ids,
-        ...current.bind
-      ),
-    db
-      .prepare(
-        `DELETE FROM pack_index WHERE ${inVault} AND id IN (SELECT value FROM json_each(?)) AND ${recorded.sql}`
-      )
-      .bind(...vaultBind, ids, ...recorded.bind)
-  ]
+  const { statements, recorded } = replacePacks(db, scope, kind, ids, swap.packId, {
+    sql: `NOT EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ?
+        AND min_cursor = ? AND id NOT IN (SELECT value FROM json_each(?))) AND ${current.sql}`,
+    bind: [
+      scope.userId,
+      scope.vaultId,
+      kind,
+      swap.minSortValue,
+      JSON.stringify(ids),
+      ...current.bind
+    ]
+  })
   if (swap.kept.length > 0) {
     statements.push(
       packIndexInsert(
@@ -468,7 +542,8 @@ const swapListing = async (
           coverage: swap.coverage
         },
         recorded
-      )
+      ),
+      recordUnlisted(db, scope, swap.packId, swap.packKey)
     )
   }
   statements.push(

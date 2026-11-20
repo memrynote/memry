@@ -273,12 +273,9 @@ describe('selection', () => {
     )
     expect(next.candidates.map((c) => c.tiebreak)).toEqual(['note-d'])
 
-    // Rerunning compaction does NOT rebuild note-d: the range-level
-    // idempotency gate (pack_index UNIQUE on min_cursor) sees min_cursor=1000
-    // as already published and refuses further writes for it, advancing the
-    // watermark instead. note-d therefore stays an item-granular-tail blob —
-    // exactly the snapshot under-coverage documented in pack-list.ts
-    // (missed optimization, never lost data).
+    // note-d's pack would share min_cursor 1000 with the listed one, and the
+    // listed one is full, so the two cannot be rolled into one. The watermark
+    // stays below note-d instead of passing it unpacked (#5229 P6).
     const second = await compactOneRange(
       harness.db,
       storage,
@@ -289,7 +286,7 @@ describe('selection', () => {
     expect(second.holes).toEqual([])
     expect(watermarkOf('crdt_snapshot')).toEqual({
       last_sort_value: 1000,
-      last_sort_tiebreak: 'note-d'
+      last_sort_tiebreak: 'note-c'
     })
   })
 })
@@ -698,5 +695,58 @@ describe('pack build', () => {
     } finally {
       globalThis.Uint8Array = RealUint8Array
     }
+  })
+})
+
+describe('min_cursor collision (#5229 P6)', () => {
+  const SCOPE = { userId: USER, vaultId: VAULT }
+  const listedRows = () =>
+    harness.raw.prepare('SELECT pack_key, item_count FROM pack_index').all() as Array<{
+      pack_key: string
+      item_count: number
+    }>
+
+  // A tie group larger than one window: the second window starts in the
+  // second the listed pack starts in. The watermark used to pass its rows.
+  it('rolls the listed pack and its new rows into one pack', async () => {
+    const ids = Array.from({ length: 300 }, (_, i) => `note-${String(i).padStart(3, '0')}`)
+    for (const id of ids) seedSnapshot(id, 1000)
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')).itemCount).toBe(256)
+    const [first] = listedRows()
+
+    const second = await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+
+    expect(second.built).toBe(true)
+    expect(listedRows()).toEqual([{ pack_key: second.packKey, item_count: 300 }])
+    const packed = await parsePack(await packOf(second.packKey))
+    expect(packed.entries.map((entry) => entry.id)).toEqual(ids)
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 1000,
+      last_sort_tiebreak: 'note-299'
+    })
+    // The old object waits out the grace period of a replaced pack.
+    expect(
+      harness.raw.prepare('SELECT pack_key, replaced_by FROM pack_replaced_objects').all()
+    ).toEqual([
+      {
+        pack_key: first.pack_key,
+        replaced_by: harness.raw.prepare('SELECT id FROM pack_index').pluck().get()
+      }
+    ])
+  })
+
+  it('holds the watermark when the listed pack it collides with is unreadable', async () => {
+    await seedRecord({ cursor: 1 })
+    await compactOneRange(harness.db, storage, SCOPE, 'record')
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+         VALUES ('squat', ?, ?, 'gone', 'record', 2, 2, 1, 1, 1)`
+      )
+      .run(USER, VAULT)
+    await seedRecord({ cursor: 2 })
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(false)
+    expect(watermarkOf('record')?.last_sort_value).toBe(1)
   })
 })

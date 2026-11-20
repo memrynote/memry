@@ -116,7 +116,7 @@ actually behaves rather than as it ought to.
 | `crdt_update`   | the document id      | `server_cursor`                 | §8.4.3                       |
 
 (`packages/contracts/src/pack-format.ts:31-36`.) Every pack holds entries of one
-kind, the one its listing row names (`apps/sync-server/src/services/pack-compaction.ts:200`
+kind, the one its listing row names (`apps/sync-server/src/services/pack-compaction.ts:203`
 selects one kind per pack). A reader still checks each entry's own `kind`.
 
 Snapshot entries carry `{sequenceNum, revision}` in `metaBytes`, which is the
@@ -127,7 +127,7 @@ manifest's `snapshot.revision` (§8.4.3), before trusting the bytes** (`packages
 
 **Normative: a server from step 05 (#5228) on produces `crdt_update = 2`.**
 The writer packs the kinds `PACKED_KINDS` names
-(`apps/sync-server/src/services/pack-compaction.ts:133`): `crdt_snapshot`,
+(`apps/sync-server/src/services/pack-compaction.ts:136`): `crdt_snapshot`,
 `record` from step 04 (#5227, #5253) on, and `crdt_update` from step 05 on,
 whose entries follow §8.4.3
 (`apps/sync-server/src/services/pack-update-selection.ts`). An older server
@@ -585,7 +585,18 @@ document while those rows exist, and the purge drops the packs that hold them
   `apps/sync-server/src/services/pack-index-write.ts:161`): of two builds that
   selected one window, only the first to commit lists, and the other deletes
   its own object. A writer that finds its insert would conflict rolls the listed pack
-  and its new rows into one pack instead (§8.12).
+  and its new rows into one pack instead (§8.12), taking only the new rows that
+  fit beside the listed pack's current entries
+  (`apps/sync-server/src/services/pack-compaction.ts:389-402`). When none fit or
+  the listed pack cannot be read, it lists nothing and the watermark holds.
+- **Unlisted objects.** The batch that tries to list a pack records its object
+  in `pack_replaced_objects`, due at once, when its row is absent after the
+  batch (`apps/sync-server/src/services/pack-replaced-objects.ts`,
+  `recordUnlisted`). This covers a build or rollup that lost the watermark or
+  the index swap. The writer then deletes the object, and a failed delete is
+  retried by the deletion pass of §8.12, not left for the orphan sweep. The
+  object was never listed, so no reader holds a URL to it and it waits for no
+  grace period.
 - **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
   `crdt_update` while the vault holds a needed row of that kind with a NULL
   `server_cursor`: such a row is in no range and never in the feed (chapter 07
@@ -604,7 +615,7 @@ document while those rows exist, and the purge drops the packs that hold them
 
 **This closes the same-second under-coverage.** The snapshot writer used a
 `(created_at, note_id)` watermark
-(`apps/sync-server/src/services/pack-compaction.ts:205`); a snapshot written
+(`apps/sync-server/src/services/pack-compaction.ts:208`); a snapshot written
 in the watermark's second with a smaller `note_id`, including every rewrite,
 which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:128`),
 sorted below it and stayed item-granular forever. `server_cursor` is strictly
@@ -788,15 +799,15 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:269`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:330`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:246`). A run never spans an excluded pack, so
+  among packs already read (`:307`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
   chain. Body inputs separated by a gap chain only when the gap no longer
   holds a needed row (§8.10, **Bridging a body gap**). A rollup reads packs, not source blobs, so
-  the 256-item build cap (`apps/sync-server/src/services/pack-compaction.ts:109`)
+  the 256-item build cap (`apps/sync-server/src/services/pack-compaction.ts:112`)
   does not bind it; §8.14 does.
 - **Replace, not modify.** The new pack is a new object under a key no pack
   object of the vault has used (§8.8). One D1 batch deletes the old
@@ -807,7 +818,8 @@ coverage ranges chain, and writes one pack that replaces them:
   listing never holds an old pack and its replacement at once. The batch
   inserts the new row only if every input pack's listing row still exists,
   so a purge or a shed (§8.13) that removed an input after the rollup read it
-  wins, and the rollup's object is deleted unlisted. The new pack also drops
+  wins, and the rollup's object is recorded and deleted unlisted (§8.10,
+  **Unlisted objects**). The new pack also drops
   every record entry whose row is now a marker. The batch carries the
   commit-time recheck of chapter 07 §7.15 for every document it holds.
 - **Grace period.** An object whose row was removed is deleted no earlier than
@@ -828,7 +840,7 @@ coverage ranges chain, and writes one pack that replaces them:
   (`PACK_PURGE_RETRY_DELAY_SECONDS`,
   `apps/sync-server/src/services/pack-replaced-objects.ts`), whose deletion
   pass runs before its builds and again after them, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:676,700`).
+  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:703,731`).
   A message whose last pass leaves objects due fails, so the queue redelivers
   it inside the deadline; builds it committed stay committed.
 - **A 404 between listing and download.** A reader treats a pack that answers
@@ -916,7 +928,7 @@ and at most `PACK_TARGET_BYTES` = 24 MiB of payload
 first; every entry stays under `PACK_MAX_INDEX_ENTRY_BYTES`
 (`packages/contracts/src/pack-format.ts:88`). A build from source blobs is
 also capped at 256 items by its subrequest budget
-(`apps/sync-server/src/services/pack-compaction.ts:109`); a rollup is not
+(`apps/sync-server/src/services/pack-compaction.ts:112`); a rollup is not
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
@@ -951,7 +963,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:691`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:718`).
 A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
 
@@ -963,7 +975,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:262-266`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:323-327`), and the backfill tick
 rolls the kind up every tick while it is above the bound, so an operator sees
 it once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.

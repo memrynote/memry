@@ -60,3 +60,35 @@ export const deleteReplacedPackObjects = async (
   if (doomed.length > 0) logger.info('replaced pack objects deleted', { count: doomed.length })
   return { deleted: doomed.length, pending: found.length === REPLACED_DELETE_BATCH }
 }
+
+/**
+ * Records the object `packId` was written under, due at once, unless its
+ * `pack_index` row exists after the batch (#5229). Runs at the end of the batch
+ * that tried to list it, so an object no row will ever list is deleted by the
+ * next deletion pass even when the delete below fails. It was never listed,
+ * so no reader holds a URL to it and it waits for no grace period.
+ */
+export const recordUnlisted = (
+  db: D1Database,
+  scope: VaultScope,
+  packId: string,
+  packKey: string
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+       SELECT ?, ?, ?, 'unlisted', 0 WHERE NOT EXISTS (SELECT 1 FROM pack_index WHERE id = ?)
+       ON CONFLICT (pack_key) DO NOTHING`
+    )
+    .bind(packKey, scope.userId, scope.vaultId, packId)
+
+/** Deletes an object recordUnlisted recorded; a failure leaves it to the deletion pass. */
+export const deleteUnlisted = async (storage: R2Bucket, packKey: string): Promise<void> => {
+  try {
+    await storage.delete(packKey)
+  } catch (error) {
+    logger.warn('unlisted pack object not deleted; the replaced-object pass retries it', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
