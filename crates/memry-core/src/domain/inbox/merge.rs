@@ -16,6 +16,14 @@
 //! 3. With nothing local, the remote applies as it arrived; the projector
 //!    supplies desktop's insert defaults (`Untitled`, `note`).
 //!
+//! 4. **A peer's first create of an item this device has edited or deleted
+//!    loses.** Only an id every device mints alike can be created twice: a
+//!    reminder firing's item (`reminders::fire::inbox_id`). A first create
+//!    concurrent with a local edit would otherwise overlay the edit, and one
+//!    landing on a tombstone would bring the item back. The edited row keeps
+//!    its payload under the union clock and is re-queued; a deleted one skips.
+//!    Desktop has no such id and no such rule.
+//!
 //! Keys this build does not model ride along either way (§13.2 rule 3): the
 //! overlay starts from the local object and inserts every remote key. The
 //! concurrent branch re-queues the merged row (§6.5.2 P3).
@@ -28,7 +36,7 @@ use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
-use crate::sync::clock::VectorClock;
+use crate::sync::clock::{VectorClock, clock_total};
 use crate::sync::hardening::requeue;
 
 /// The keys a `null` never clears: `data.title ?? existing.title`, and
@@ -41,6 +49,10 @@ pub(crate) fn apply_remote(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let late_create = late_first_create(conn, record)?;
+    if late_create == Some(Moved::Deleted) {
+        return Ok(Inbound::Skipped);
+    }
     match task_merge::document_gate(conn, record)? {
         Gate::Skip => Ok(Inbound::Skipped),
         Gate::Wholesale => {
@@ -62,8 +74,13 @@ pub(crate) fn apply_remote(
             remote,
             merged_clock,
         } => {
+            let payload_json = if late_create == Some(Moved::Edited) {
+                overlay(&remote, &local, Some(&merged_clock))?
+            } else {
+                overlay(&local, &remote, Some(&merged_clock))?
+            };
             let merged = InboundRecord {
-                payload_json: overlay(&local, &remote, Some(&merged_clock))?,
+                payload_json,
                 ..record.clone()
             };
             requeue::store_merged(conn, &merged, now_ms)
@@ -96,6 +113,42 @@ pub fn overlay(
     serde_json::to_string(&Value::Object(merged)).map_err(|error| StorageError::Failed {
         what: format!("merged inbox payload will not serialise: {error}"),
     })
+}
+
+/// How far the local row has moved past its own create.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Moved {
+    Edited,
+    Deleted,
+}
+
+/// Rule 4: `Some` when `record` is a first create (clock total 1) and the
+/// local row has moved past its own create.
+fn late_first_create(
+    conn: &Connection,
+    record: &InboundRecord,
+) -> Result<Option<Moved>, StorageError> {
+    if record.deleted_at.is_some() {
+        return Ok(None);
+    }
+    let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
+        return Ok(None);
+    };
+    if task_merge::stored_clock(remote.object())?.map(|clock| clock_total(&clock)) != Some(1) {
+        return Ok(None);
+    }
+    let Some(row) = sync_items::load(conn, &record.item_type, &record.item_id)? else {
+        return Ok(None);
+    };
+    if row.deleted_at.is_some() {
+        return Ok(Some(Moved::Deleted));
+    }
+    let Some(local) = row.payload.and_then(|raw| StoredPayload::parse(&raw).ok()) else {
+        return Ok(None);
+    };
+    let edited =
+        task_merge::stored_clock(local.object())?.is_some_and(|clock| clock_total(&clock) > 1);
+    Ok(edited.then_some(Moved::Edited))
 }
 
 /// The stored payload of a live local row, if any. A deleted or metadata-only

@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::reminders::{self, DueReminder, Reminder, fire};
+use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::Db;
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
@@ -30,6 +31,9 @@ pub const CLICK_HANDLER: &str = "reminder-clicked";
 /// Wall clock in epoch milliseconds; tests drive their own.
 pub type Clock = Arc<dyn Fn() -> i64 + Send + Sync>;
 
+/// Reads this device's clock id, which a fired reminder's inbox item is clocked with.
+pub type DeviceId = Arc<dyn Fn() -> Result<String, String> + Send + Sync>;
+
 /// What one tick did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TickReport {
@@ -46,9 +50,9 @@ pub trait ReminderSink: Send + Sync {
 
 /// One tick over a vault's data database: the pending count first, so an idle tick is one
 /// query, then every due reminder fired in order. A reminder whose fire fails is logged and
-/// left for the next tick. Nothing here reads the device identity, so a locked keychain does
-/// not stop reminders.
-pub fn tick(db: &Db, now_ms: i64) -> Result<TickReport, StorageError> {
+/// left for the next tick.
+pub fn tick(db: &Db, device_id: &str, now_ms: i64) -> Result<TickReport, StorageError> {
+    let device_id = device_id.to_owned();
     db.call_blocking(move |conn| {
         if fire::pending_count(conn)? == 0 {
             return Ok(TickReport {
@@ -58,7 +62,7 @@ pub fn tick(db: &Db, now_ms: i64) -> Result<TickReport, StorageError> {
         }
         let mut fired = Vec::new();
         for due in fire::due(conn, now_ms)? {
-            match fire::fire(conn, &due, now_ms) {
+            match fire::fire(conn, &due, &device_id, now_ms) {
                 Ok(Some(_)) => fired.push(due),
                 Ok(None) => {}
                 Err(error) => tracing::error!(
@@ -115,8 +119,17 @@ pub fn notice_text(locale: &str, due: &DueReminder) -> (String, String) {
     (format!("\u{1F514} {title}"), body)
 }
 
-/// The open vault's database, held while a tick runs so a close waits for it.
-type Target = Option<Db>;
+/// The open vault's database and device id source, held while a tick runs so a close waits for
+/// it.
+type Target = Option<OpenTarget>;
+
+struct OpenTarget {
+    db: Db,
+    device_id: DeviceId,
+    /// The id once read. A keychain locked at open delays reminders to the first tick after it
+    /// unlocks, rather than stopping them until the next open.
+    read: Option<String>,
+}
 
 /// Runs the tick loop for the open vault: started by every open, stopped by every close and
 /// by the `stop-schedulers` shutdown step.
@@ -152,14 +165,22 @@ impl ReminderScheduler {
     }
 
     /// Starts with every open, once the vault is open (desktop's tick returns early while
-    /// `getStatus().isOpen` is false), and stops with every close.
-    pub fn register(self: &Arc<Self>, session: &Session) {
+    /// `getStatus().isOpen` is false), and stops with every close. `store` holds the device
+    /// identity a fired reminder's inbox item is clocked with.
+    pub fn register(self: &Arc<Self>, session: &Session, store: Arc<dyn SecureStore>) {
         let scheduler = self.clone();
         session.on_open(
             "reminder-scheduler",
             OpenStage::SyncStart,
             Arc::new(move |open| {
-                scheduler.start(open.vault.db_handle());
+                let (vault, store) = (open.vault.clone(), store.clone());
+                let device_id: DeviceId = Arc::new(move || {
+                    vault
+                        .notes_writer(store.clone())
+                        .map(|writer| writer.device_id())
+                        .map_err(|error| error.to_string())
+                });
+                scheduler.start(open.vault.db_handle(), device_id);
                 Ok(())
             }),
         );
@@ -168,9 +189,13 @@ impl ReminderScheduler {
     }
 
     /// Ticks now over `db`, then every period. Replaces a loop already running.
-    pub fn start(&self, db: Db) {
+    pub fn start(&self, db: Db, device_id: DeviceId) {
         self.stop();
-        *lock(&self.target) = Some(db);
+        *lock(&self.target) = Some(OpenTarget {
+            db,
+            device_id,
+            read: None,
+        });
         let (target, sink, clock) = (self.target.clone(), self.sink.clone(), self.clock.clone());
         let period = self.period;
         let task = self.runtime.spawn(async move {
@@ -198,11 +223,24 @@ impl ReminderScheduler {
 }
 
 fn run_tick(target: &Mutex<Target>, sink: &dyn ReminderSink, clock: &Clock) {
-    let held = lock(target);
-    let Some(db) = held.as_ref() else {
+    let mut held = lock(target);
+    let Some(open) = held.as_mut() else {
         return;
     };
-    let outcome = tick(db, clock());
+    if open.read.is_none() {
+        match (open.device_id)() {
+            Ok(id) => open.read = Some(id),
+            Err(error) => {
+                tracing::error!(
+                    scope = "Reminders",
+                    "no device identity, reminders wait for the next tick: {error}"
+                );
+                return;
+            }
+        }
+    }
+    let device_id = open.read.as_deref().unwrap_or_default();
+    let outcome = tick(&open.db, device_id, clock());
     drop(held);
     match outcome {
         Ok(report) => sink.report(&report),

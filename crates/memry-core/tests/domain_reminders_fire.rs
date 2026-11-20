@@ -4,22 +4,15 @@
 //! and `countPendingReminders` in `apps/desktop/src/main/lib/reminders.ts`,
 //! and the no-refire rule of `reminder-handler.ts` (`a4e8920c55`).
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_core::domain::reminders::{self, fire};
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
-use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::instants;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::hardening::manifest::ManifestCheck;
-use memry_core::sync::pull::{PullLoop, RecordCipher};
 use rusqlite::Connection;
 use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use serde_json::{Value, json};
-
-use crate::http_fakes::{FakeTransport, response};
 
 const DEVICE: &str = "device-a";
 
@@ -85,7 +78,7 @@ fn tick(conn: &Connection, now_ms: i64) -> Vec<fire::Fired> {
     fire::due(conn, now_ms)
         .expect("due")
         .iter()
-        .filter_map(|due| fire::fire(conn, due, now_ms).expect("fire"))
+        .filter_map(|due| fire::fire(conn, due, DEVICE, now_ms).expect("fire"))
         .collect()
 }
 
@@ -121,7 +114,7 @@ fn a_reminder_fires_at_its_time_once_and_files_one_inbox_item() {
         let fired = tick(conn, at);
         assert_eq!(fired.len(), 1);
         assert_eq!(fired[0].fired_for_ms, at);
-        assert!(fired[0].inbox_id.starts_with("inbox_rem_"));
+        assert_eq!(fired[0].inbox_id, format!("inbox_rem_rem_a_{at}"));
 
         let item = inbox_payload(conn, &fired[0].inbox_id);
         assert_eq!(item["type"], "reminder");
@@ -139,14 +132,16 @@ fn a_reminder_fires_at_its_time_once_and_files_one_inbox_item() {
                 "reminderNote": "about the draft",
             })
         );
-        // Desktop queues no sync row for the inbox item, and the reminder's
-        // synced status stays `pending`: `triggered` is never written.
+        // The inbox item is clocked and queued like any capture, and the
+        // reminder's synced status stays `pending`: `triggered` is never written.
+        assert_eq!(item["clock"], json!({DEVICE: 1}));
+        assert_eq!(item["createdAt"], "2026-03-20T09:00:00.000Z");
         assert_eq!(
             count(
                 conn,
                 "SELECT count(*) FROM outbox WHERE item_type = 'inbox'"
             ),
-            0
+            1
         );
         assert_eq!(
             reminders::get(conn, "rem_a")?.map(|r| r.status),
@@ -314,7 +309,7 @@ fn a_peers_pending_copy_never_refires_but_a_new_time_does() {
             );
             assert!(tick(conn, at + 60_000).is_empty(), "no second inbox item");
             let due = reminders::due_window(conn, Some(at))?;
-            assert_eq!(fire::fire(conn, &due[0], at + 60_000)?, None);
+            assert_eq!(fire::fire(conn, &due[0], DEVICE, at + 60_000)?, None);
 
             // A reschedule on the peer is new user intent: it fires again.
             apply(
@@ -341,72 +336,6 @@ fn a_peers_pending_copy_never_refires_but_a_new_time_does() {
             Ok(())
         })
         .expect("peer copy");
-}
-
-/// Every envelope a pull would open; the manifest check below pulls nothing.
-struct NoPull;
-
-impl RecordCipher for NoPull {
-    fn open(
-        &self,
-        _envelope: &memry_core::protocol::envelope::RecordEnvelope,
-    ) -> Result<Vec<u8>, memry_core::protocol::envelope::EnvelopeError> {
-        unreachable!("the manifest lists nothing to pull")
-    }
-}
-
-/// Electron's reminder inbox row has no clock, and its manifest check
-/// re-uploads only clocked rows: a fired reminder's inbox item stays on the
-/// device that fired it, or every device would file every other device's.
-#[tokio::test]
-async fn a_fired_reminders_inbox_item_is_never_reuploaded_by_the_manifest_check() {
-    let db = open_at(&scratch("manifest"));
-    let at = ms("2026-03-20T09:00:00Z");
-    let fired = db
-        .call_blocking(move |conn| {
-            seed(conn, "rem_m", "2026-03-20T09:00:00.000Z", json!({}));
-            Ok(tick(conn, at))
-        })
-        .expect("fire");
-    assert_eq!(fired.len(), 1);
-    let inbox_id = fired[0].inbox_id.clone();
-    let clock: Option<String> = db
-        .call_blocking(move |conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT clock FROM sync_items WHERE item_type = 'inbox' AND item_id = ?1",
-                    [&inbox_id],
-                    |row| row.get(0),
-                )
-                .expect("the inbox row"))
-        })
-        .expect("read the clock");
-    assert_eq!(clock, None, "the inbox item is clockless");
-
-    let http = HttpClient::new(
-        FakeTransport::new(vec![response(
-            200,
-            // The reminder came from the server; the inbox item never went there.
-            &json!({"items": [{"type": "reminder", "id": "rem_m"}], "nextCursor": null})
-                .to_string(),
-        )]),
-        "https://sync.example",
-        ClientIdentity::new("desktop", "1.0.0").expect("a valid identity"),
-    );
-    let declared = Declaration::declare(&["inbox", "reminder"]).expect("recognised");
-    let pull =
-        PullLoop::new(Arc::new(http), db.clone(), declared, Arc::new(NoPull)).with_hardening();
-    let outcome = ManifestCheck::default()
-        .run(&pull, at + 60_000)
-        .await
-        .expect("the check")
-        .expect("not throttled");
-
-    assert!(outcome.reuploaded.is_empty(), "{:?}", outcome.reuploaded);
-    let queued = db
-        .call_blocking(|conn| Ok(count(conn, "SELECT count(*) FROM outbox")))
-        .expect("the outbox");
-    assert_eq!(queued, 0);
 }
 
 /// Review probe (REVIEW-5144 #2): fired at T, snoozed to S and fired again,

@@ -12,6 +12,12 @@
 //! snooze is a new instant and fires it again, as desktop's reschedule and
 //! snooze do. Instants are compared as epoch milliseconds, so the same moment
 //! written in another offset (a peer in another timezone) is the same instant.
+//!
+//! The inbox item of a firing is shared by every device (Kaan, 20 Nov, option
+//! c): its id is [`inbox_id`], its content depends only on synced data and the
+//! fire instant, and it is created through the outbox like any capture. Every
+//! core device that fires the same instant writes the same item, so the fleet
+//! converges on one. Desktop files `inbox_rem_<nanoid>` per device instead.
 
 use std::collections::HashSet;
 
@@ -20,7 +26,10 @@ use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox;
-use crate::domain::notes::{insert_local, iso, object};
+use crate::domain::notes::{insert_local, iso, next_clock, object};
+use crate::storage::repositories::schema::Object;
+use crate::storage::repositories::sync_items;
+use crate::sync::outbox;
 
 use super::queries::{due_unless, failed, fire_instant};
 use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED};
@@ -32,7 +41,7 @@ const INBOX_TYPE: &str = "reminder";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fired {
     pub reminder_id: String,
-    /// The inbox item filed for it, `inbox_rem_<nanoid>`.
+    /// Its inbox item, [`inbox_id`].
     pub inbox_id: String,
     pub fired_for_ms: i64,
 }
@@ -48,16 +57,23 @@ pub fn due(conn: &Connection, now_ms: i64) -> Result<Vec<DueReminder>, StorageEr
     })
 }
 
-/// Records `due` as fired for its instant and files its inbox item, in one
-/// transaction. `None` when it was already fired for that instant, so a second
-/// call (a racing tick, a restart) files nothing.
+/// The inbox item of `reminder_id` fired for `fired_for_ms` (UTC epoch
+/// milliseconds): the same on every device, whatever its time zone or clock.
+pub fn inbox_id(reminder_id: &str, fired_for_ms: i64) -> String {
+    format!("inbox_rem_{reminder_id}_{fired_for_ms}")
+}
+
+/// Records `due` as fired for its instant and creates its inbox item, clocked
+/// and queued, in one transaction. `None` when this device already fired that
+/// instant, so a second call (a racing tick, a restart) files nothing.
 ///
-/// The inbox item has no clock and no outbox row, as desktop's insert writes
-/// neither: each device files its own, and the manifest check re-uploads only
-/// clocked rows, so it never reaches another device.
+/// An item that already exists, live or deleted (a peer's create arrived first,
+/// or this device filed it before), is left alone: a firing never overwrites an
+/// edit or brings back a delete.
 pub fn fire(
     conn: &Connection,
     due: &DueReminder,
+    device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Fired>, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
@@ -71,9 +87,17 @@ pub fn fire(
     if recorded == 0 {
         return Ok(None);
     }
-    let inbox_id = format!("inbox_rem_{}", inbox::write::mint_id());
-    let payload = inbox_payload(&tx, due, &inbox_id, now_ms)?;
-    insert_local(&tx, inbox::ITEM_TYPE, &inbox_id, payload, now_ms)?;
+    let inbox_id = inbox_id(&due.reminder.id, due.fire_at_ms);
+    if sync_items::load(&tx, inbox::ITEM_TYPE, &inbox_id)?.is_none() {
+        let mut payload = inbox_payload(&tx, due, &inbox_id)?;
+        payload.insert("clock".to_owned(), next_clock(&Object::new(), device_id)?);
+        insert_local(&tx, inbox::ITEM_TYPE, &inbox_id, payload, now_ms)?;
+        outbox::enqueue(
+            &tx,
+            &outbox::Change::upsert(inbox::ITEM_TYPE, &inbox_id),
+            now_ms,
+        )?;
+    }
     tx.commit().map_err(failed)?;
     Ok(Some(Fired {
         reminder_id: due.reminder.id.clone(),
@@ -133,11 +157,12 @@ fn fired_instants(conn: &Connection) -> Result<HashSet<(String, i64)>, StorageEr
 
 /// `createReminderInboxItem`: the title, content and `ReminderMetadata` desktop
 /// files, with its falsy-to-absent rules (`|| undefined` drops `""` and `0`).
+/// `createdAt` is the fire instant, not this device's wall clock, so every
+/// device writes the same item.
 fn inbox_payload(
     tx: &Connection,
     due: &DueReminder,
     inbox_id: &str,
-    now_ms: i64,
 ) -> Result<Map<String, Value>, StorageError> {
     let reminder = &due.reminder;
     let (anchor_id, highlight_start, highlight_end): (Option<String>, Option<i64>, Option<i64>) =
@@ -195,7 +220,7 @@ fn inbox_payload(
         }
     }
 
-    let at = iso(now_ms)?;
+    let at = iso(due.fire_at_ms)?;
     Ok(object(json!({
         "id": inbox_id,
         "type": INBOX_TYPE,

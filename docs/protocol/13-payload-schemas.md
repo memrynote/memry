@@ -1022,10 +1022,23 @@ key the remote omits keeps the local value; a key it sends as `null` clears it
 `attachmentId` keep the local value on `null` too, so a remote never clears an
 `attachmentId`: an older sender omits the key or sends `null` without knowing
 it, and a capture's file never changes once uploaded
-(`crates/memry-core/src/domain/inbox/merge.rs:36`, `:85-87`; desktop's
+(`crates/memry-core/src/domain/inbox/merge.rs:44`, `:102-104`; desktop's
 `apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:65` reads it as
 `data.attachmentId ?? existing.attachmentId`). A string sets it, including over
 a different known id. `metadata` is `z.unknown()` and replaced whole.
+
+**Core client behaviour, not a wire rule: a reminder firing's item is shared.**
+The core files a fired reminder's inbox item under the id
+`inbox_rem_<reminderId>_<fireInstant>`, where `fireInstant` is the UTC epoch
+milliseconds the reminder fired for, so every core device mints the same id for
+the same firing (`crates/memry-core/src/domain/reminders/fire.rs:62`), and it
+skips the create when a row for that id already exists, live or deleted
+(`:91`). A first create (clock total 1) of an id this device has already edited
+(clock total above 1) or deleted does not overlay or revive it: an edited row
+keeps its payload under the union clock and is re-queued, and a deleted one
+skips the record (`crates/memry-core/src/domain/inbox/merge.rs:127-151`,
+`:53`, `:77-78`). Desktop files `inbox_rem_<nanoid>` on each device and has no
+such rule; its ids never collide, so the rule never applies to them.
 
 ### 13.7.16 `calendar_source` — `:410-428`
 
