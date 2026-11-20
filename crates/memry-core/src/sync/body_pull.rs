@@ -51,8 +51,9 @@
 //! documents, for the meta and the first page (#5293). A probe that shows
 //! nothing above the cursor and no baseline due settles the document with no
 //! further request, as desktop's probe phase does, so a resumed first sync
-//! does not pull its finished documents again. With no baseline due, the
-//! probe's page is the document's first page.
+//! does not pull its finished documents again. The probe's page is the
+//! document's first page, after a baseline too: its rows at or below the
+//! snapshot are replays.
 
 use std::sync::Arc;
 
@@ -311,8 +312,15 @@ impl BodyPull {
                 } else if !report.stopped.is_empty() {
                     return Ok(report);
                 }
-            } else if answer.since == cursor {
-                // #5293: the answer is this document's first page already.
+            }
+            // #5293: the answer is this document's first page already. The
+            // server pages `sequence_num > since` in order
+            // (`apps/sync-server/src/services/crdt.ts` `planUpdatePage`), so
+            // from a `since` at or below the cursor its rows above the cursor
+            // are the start of the cursor's own page, after a baseline too
+            // (#5232); the loop skips the rest as replays (§7.9). A page from
+            // above the cursor would leave a hole, so that one is fetched.
+            if answer.since <= cursor {
                 first_page = Some(answer.page);
             }
         } else {
