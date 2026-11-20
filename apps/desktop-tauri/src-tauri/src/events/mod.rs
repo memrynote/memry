@@ -19,6 +19,7 @@ mod ai;
 mod home_pages;
 mod sync;
 mod tags;
+mod tasks;
 mod voice;
 
 pub use account::*;
@@ -26,6 +27,7 @@ pub use ai::*;
 pub use home_pages::*;
 pub use sync::*;
 pub use tags::*;
+pub use tasks::*;
 pub use voice::*;
 
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
