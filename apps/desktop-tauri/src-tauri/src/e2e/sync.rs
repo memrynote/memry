@@ -1,14 +1,20 @@
-//! Sync test commands: the gate inputs Steps 19 and 20 will own, and the network switch, so a
-//! spec or a live-app check can drive the status badge without an account server.
+//! Sync test commands: the gate inputs Steps 19 and 20 will own, the network switch, so a spec or
+//! a live-app check can drive the status badge without an account server, and the sign-in against
+//! the harness's local test server.
 
 use std::sync::Arc;
 
+use memry_desktop::account::AccountService;
+use memry_desktop::account::e2e_bootstrap::E2eDevice;
 use memry_desktop::account::vault_sync::OpenVaultBinding;
 use memry_desktop::seams::reachability::DesktopReachability;
+use memry_desktop::session::Session;
 use memry_desktop::sync::gate::{Entitlement, VaultBinding};
+use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
+use crate::shell::account_sync;
 
 fn invalid(code: &'static str, message: impl std::fmt::Display) -> CommandError {
     CommandError::new(ErrorKind::Invalid, code, message.to_string())
@@ -62,4 +68,31 @@ pub fn e2e_set_network_online(app: AppHandle<Wry>, online: bool) -> Result<(), C
         reachability.on_power_suspend();
     }
     Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Bootstrapped {
+    device_id: String,
+}
+
+/// Electron's `bootstrapSyncDevice`: signs this device into the harness's account on the local
+/// test server and binds the open vault to the account's vault, then attaches sync. The server is
+/// the control file's `syncServerUrl`.
+#[tauri::command]
+pub async fn e2e_bootstrap_sync_device(
+    app: AppHandle<Wry>,
+    input: E2eDevice,
+) -> Result<Bootstrapped, CommandError> {
+    let session = app.state::<Session>().inner().clone();
+    let open = session
+        .current()
+        .ok_or_else(|| invalid("e2e_no_vault", "no vault is open"))?;
+    let account = app.state::<Arc<AccountService>>().inner().clone();
+    let device_id = account
+        .bootstrap_e2e_device(&open, session.registry(), input)
+        .await
+        .map_err(|e| invalid("e2e_bootstrap_sync_device", e))?;
+    account_sync::attach_if_signed_in(app);
+    Ok(Bootstrapped { device_id })
 }

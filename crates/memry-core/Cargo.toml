@@ -19,6 +19,9 @@ default = []
 # enables it: on device the transport is a foreign trait the Swift side fills in
 # (Constitution I, no Rust networking on device).
 native-transport = []
+# `AuthSession::accept_e2e_setup_token`, the desktop e2e build's sign-in (`e2e_bootstrap_sync_device`).
+# memry-desktop's `e2e` feature turns it on; the iOS build and every release build keep it off.
+e2e = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
 markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]
@@ -44,7 +47,7 @@ flate2 = { workspace = true }
 serde = { workspace = true }
 # `float_roundtrip`: JSON.parse reads every float to the nearest f64; the default parser
 # can land one ULP off (a `---json` frontmatter block, and iOS reading what desktop wrote).
-serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_json = { workspace = true, features = ["float_roundtrip", "raw_value"] }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 hex = { workspace = true }
@@ -109,6 +112,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "calendar_feed_memory"
+path = "tests/calendar_feed_memory.rs"
+
+[[test]]
 name = "markdown_corpus"
 path = "tests/markdown_corpus.rs"
 
@@ -147,3 +154,7 @@ path = "tests/outbox_durability.rs"
 [[test]]
 name = "read_pool_contention"
 path = "tests/read_pool_contention.rs"
+
+[[test]]
+name = "task_completion_spawn_vectors"
+path = "tests/task_completion_spawn_vectors.rs"

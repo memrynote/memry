@@ -3,10 +3,12 @@
 //! One run per vault at a time: a second import into the same vault waits for the first, so
 //! two never interleave their notes. The importer runs on a blocking thread. Its progress
 //! reaches the caller at most [`MAX_EVENTS_PER_SECOND`] times a second, except a phase change
-//! and the final `done` snapshot, which always do. After the importer returns, the run writes
-//! one activity log line, lets the sink finish (the index flush), then sends `done`.
+//! and the final `done` snapshot, which always do. After the importer returns, or panics, the
+//! run writes one activity log line, lets the sink finish (the index flush), then sends `done`.
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Instant;
@@ -25,6 +27,8 @@ const MIN_GAP_MS: u64 = 1000 / MAX_EVENTS_PER_SECOND;
 /// Milliseconds on a monotonic clock. The app's starts at the runner's creation; tests drive
 /// their own.
 pub type Clock = Arc<dyn Fn() -> u64 + Send + Sync>;
+
+type Active = Arc<Mutex<HashMap<String, CancellationToken>>>;
 
 /// Where a run writes.
 pub struct RunTarget {
@@ -47,7 +51,7 @@ pub struct ImportRunner {
     registry: Arc<Registry>,
     clock: Clock,
     /// The token of each run or preview in flight, by `importId`.
-    active: Mutex<HashMap<String, CancellationToken>>,
+    active: Active,
     vaults: Mutex<HashMap<PathBuf, Arc<tokio::sync::Mutex<()>>>>,
 }
 
@@ -63,7 +67,7 @@ impl ImportRunner {
         Self {
             registry,
             clock,
-            active: Mutex::new(HashMap::new()),
+            active: Active::default(),
             vaults: Mutex::new(HashMap::new()),
         }
     }
@@ -74,14 +78,15 @@ impl ImportRunner {
 
     /// `cancelImport`: the importer stops at its next check and the run returns what it did.
     pub fn cancel(&self, import_id: &str) {
-        if let Some(token) = self.active().get(import_id) {
+        if let Some(token) = lock(&self.active).get(import_id) {
             token.cancel();
         }
     }
 
     /// `runImport`. `on_progress` gets the throttled snapshots, the last one `done` with the
-    /// summary, which is also the result. `Err` is a run that failed as a whole; `done` is
-    /// still sent, unless the importer panicked.
+    /// summary, which is also the result. `Err` is a run that failed as a whole, a panicking
+    /// importer included; `done` is still sent. A second run with the `importId` of one in
+    /// flight is refused before it starts.
     pub async fn run(
         &self,
         request: RunRequest,
@@ -92,16 +97,11 @@ impl ImportRunner {
             .registry
             .get(&request.importer_id)
             .ok_or_else(|| ImportError::UnknownImporter(request.importer_id.clone()))?;
-        let token = CancellationToken::new();
-        self.active()
-            .insert(request.import_id.clone(), token.clone());
-        let _registered = Registered {
-            runner: self,
-            import_id: request.import_id.clone(),
-        };
+        let (registered, token) = Registered::new(&self.active, &request.import_id)?;
 
-        // Owned and moved into the blocking task: the vault stays held until the importer is
-        // done, even when the caller stops waiting for it.
+        // Owned and moved into the blocking task with the registration: the vault stays held,
+        // and a cancel keeps reaching the importer, until it is done, even when the caller stops
+        // waiting for it.
         let serialized = self.vault_lock(&target.vault_root).lock_owned().await;
 
         let mut throttle = Throttle::new(Arc::clone(&self.clock));
@@ -117,9 +117,17 @@ impl ImportRunner {
         } = target;
         let importer_id = request.importer_id.clone();
         tokio::task::spawn_blocking(move || {
-            let _serialized = serialized;
+            let (_serialized, _registered) = (serialized, registered);
             let mut ctx = ImportContext::new(request.import_id, token.clone(), emit);
-            let outcome = importer.run(&request.input, &mut ctx, sink.as_ref());
+            // A panic leaves `ctx` with the counts so far and `sink` with what it wrote; both are
+            // only read and flushed after it.
+            let outcome = catch_unwind(AssertUnwindSafe(|| {
+                importer.run(&request.input, &mut ctx, sink.as_ref())
+            }))
+            .unwrap_or_else(|_| {
+                tracing::error!(scope = "import", importer = %importer_id, "importer panicked");
+                Err(ImportError::Crashed)
+            });
             let summary = ctx.summary();
             if let Some(log) = activity {
                 log.record(
@@ -149,19 +157,13 @@ impl ImportRunner {
         if !importer.meta().supports_preview {
             return Err(ImportError::NoPreview(importer_id.to_owned()));
         }
-        let token = CancellationToken::new();
-        self.active().insert(import_id.to_owned(), token.clone());
-        let _registered = Registered {
-            runner: self,
-            import_id: import_id.to_owned(),
-        };
-        tokio::task::spawn_blocking(move || importer.preview(&input, &token))
-            .await
-            .map_err(|_| ImportError::Crashed)?
-    }
-
-    fn active(&self) -> std::sync::MutexGuard<'_, HashMap<String, CancellationToken>> {
-        self.active.lock().unwrap_or_else(PoisonError::into_inner)
+        let (registered, token) = Registered::new(&self.active, import_id)?;
+        tokio::task::spawn_blocking(move || {
+            let _registered = registered;
+            importer.preview(&input, &token)
+        })
+        .await
+        .map_err(|_| ImportError::Crashed)?
     }
 
     fn vault_lock(&self, root: &Path) -> Arc<tokio::sync::Mutex<()>> {
@@ -170,15 +172,36 @@ impl ImportRunner {
     }
 }
 
-/// Drops the run's token from `active` on every exit, as `runImport`'s `finally` does.
-struct Registered<'a> {
-    runner: &'a ImportRunner,
+fn lock(active: &Active) -> std::sync::MutexGuard<'_, HashMap<String, CancellationToken>> {
+    active.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// A run's token in `active`, dropped on every exit as `runImport`'s `finally` does. Electron
+/// let a second run with the same `importId` replace the first's token, so the first could no
+/// longer be cancelled; here the second is refused.
+struct Registered {
+    active: Active,
     import_id: String,
 }
 
-impl Drop for Registered<'_> {
+impl Registered {
+    fn new(active: &Active, import_id: &str) -> Result<(Self, CancellationToken), ImportError> {
+        let token = CancellationToken::new();
+        match lock(active).entry(import_id.to_owned()) {
+            Entry::Occupied(_) => return Err(ImportError::DuplicateImport(import_id.to_owned())),
+            Entry::Vacant(slot) => slot.insert(token.clone()),
+        };
+        let registered = Self {
+            active: Arc::clone(active),
+            import_id: import_id.to_owned(),
+        };
+        Ok((registered, token))
+    }
+}
+
+impl Drop for Registered {
     fn drop(&mut self) {
-        self.runner.active().remove(&self.import_id);
+        lock(&self.active).remove(&self.import_id);
     }
 }
 

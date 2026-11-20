@@ -109,6 +109,8 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -166,6 +168,8 @@ mod folder_prune;
 mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]
@@ -182,6 +186,8 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_google_keep.rs"]
+mod importer_google_keep;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
@@ -340,6 +346,8 @@ mod oauth_loopback;
 mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
+#[path = "owed_take.rs"]
+mod owed_take;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]
@@ -445,6 +453,8 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_engine.rs"]
+mod voice_engine;
 
 #[test]
 fn every_test_file_is_built() {

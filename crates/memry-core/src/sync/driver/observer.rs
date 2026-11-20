@@ -39,13 +39,17 @@ pub enum AppliedOutcome {
 }
 
 /// One field a concurrent merge decided (chapter 06 §6.5), for the
-/// `conflict_resolved` telemetry and the conflict report.
+/// `conflict_resolved` telemetry, the conflict report and a task's
+/// `superseded` row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldConflict {
     pub field: String,
     pub losing: Json,
     pub winning: Json,
     pub merged_clock: Json,
+    /// This device's value lost, so `losing` is the value it held. False when
+    /// it won (§6.3's `_offline` tie rule), and `losing` is the remote's.
+    pub local_lost: bool,
 }
 
 /// One record of a committed page. Ids, the outcome and the conflicts only:
@@ -111,6 +115,12 @@ pub trait ApplyObserver: Send + Sync {
     /// Record pages carry no body change, and `Editor::subscribe` sees only
     /// resident documents, so this is how a non-resident body reaches its file.
     fn bodies_applied(&self, _doc_ids: &[String]) {}
+
+    /// The pass's body step finished and every debt it pulled is settled or
+    /// re-owed, committed. `bodies_applied` fires before a document's debt is
+    /// settled, so work that needs a settled body (an owed file's take) runs
+    /// here.
+    fn bodies_settled(&self) {}
 
     /// A pulled record's signature did not verify, and its quarantine
     /// counted it (desktop's `SecurityWarningEvent`).
@@ -198,6 +208,14 @@ impl Observers {
             guarded(observer, "bodies_applied", size, || {
                 observer.bodies_applied(&doc_ids)
             });
+        })
+        .await;
+    }
+
+    /// Tells every observer that the body step settled, on `spawn_blocking`.
+    pub async fn bodies_settled(&self) {
+        self.each("bodies_settled", |observer| {
+            guarded(observer, "bodies_settled", 0, || observer.bodies_settled());
         })
         .await;
     }

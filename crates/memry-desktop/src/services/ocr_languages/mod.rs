@@ -38,6 +38,9 @@ pub use data::{OcrLanguage, PINS};
 pub const DATA_DIR: &str = "ocr-languages";
 /// `DOWNLOAD_TIMEOUT_MS` (`ocr-languages.ts:40`): the whole request, body included.
 pub const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+/// A `.part` file in the cache this old is the leftover of an unpack that never finished; a
+/// younger one may be an unpack in progress on an OCR thread.
+const STALE_PART: Duration = Duration::from_secs(10 * 60);
 
 /// The exact bytes the server serves for one language.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -208,11 +211,9 @@ impl OcrLanguages {
             }
         }
         let codes: Vec<String> = chosen.iter().map(|lang| lang.code().to_owned()).collect();
-        {
-            let live = self.lock();
-            self.config.set_ocr_languages(&codes)?;
-            (self.on_change)(self.state_of(&live));
-        }
+        // The disk write runs without the lock; the state published after it reads the config.
+        self.config.set_ocr_languages(&codes)?;
+        self.publish(|_| {});
         if let Some((lang, token)) = &*self.download.lock().unwrap_or_else(PoisonError::into_inner)
             && !chosen.contains(lang)
         {
@@ -273,8 +274,11 @@ impl OcrLanguages {
         }
         for name in file_names(&self.cache_dir).await {
             let code = name.split('.').next().unwrap_or_default();
-            if !selected.iter().any(|lang| lang.code() == code) {
-                remove(&self.cache_dir.join(&name)).await;
+            let path = self.cache_dir.join(&name);
+            if !selected.iter().any(|lang| lang.code() == code)
+                || (name.ends_with(".part") && is_stale(&path).await)
+            {
+                remove(&path).await;
             }
         }
         let dropped: Vec<OcrLanguage> = {
@@ -450,6 +454,13 @@ async fn file_names(dir: &Path) -> Vec<String> {
         }
     }
     names
+}
+
+async fn is_stale(path: &Path) -> bool {
+    tokio::fs::metadata(path)
+        .await
+        .and_then(|meta| meta.modified())
+        .is_ok_and(|at| at.elapsed().is_ok_and(|age| age >= STALE_PART))
 }
 
 async fn remove(path: &Path) {

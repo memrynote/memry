@@ -44,6 +44,7 @@ use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
 use crate::api::canvas::Canvases;
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::home_pages::HomePages;
 use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
@@ -404,6 +405,12 @@ impl Vault {
     pub fn template_contents(&self) -> Result<Vec<(String, String)>, StorageError> {
         self.db
             .read_blocking(crate::domain::template_admin::contents)
+    }
+
+    /// Every Home board read and write over this vault (Step 30c). Needs the
+    /// keychain for the same reason [`Vault::tasks`] does.
+    pub fn home_pages(&self, store: Arc<dyn SecureStore>) -> Result<HomePages, AuthError> {
+        HomePages::over(self.db.clone(), &store)
     }
 }
 
