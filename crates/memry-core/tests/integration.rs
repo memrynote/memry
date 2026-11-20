@@ -73,6 +73,8 @@ mod attachment_holds;
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
 mod attachment_plan;
+#[path = "attachment_runners.rs"]
+mod attachment_runners;
 #[path = "attachment_stream.rs"]
 mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
