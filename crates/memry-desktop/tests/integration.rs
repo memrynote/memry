@@ -35,6 +35,8 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_store.rs"]
+mod agent_store;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
