@@ -25,6 +25,7 @@
 use rusqlite::{Connection, TransactionBehavior};
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items;
 
 /// One hand-written, forward-only step.
 pub struct Migration {
@@ -224,6 +225,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "recents",
         sql: include_str!("migrations/data/0035_recents.sql"),
     },
+    Migration {
+        version: 36,
+        name: "canvases",
+        sql: include_str!("migrations/data/0036_canvases.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -288,6 +294,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "note_embedding_hashes",
         sql: include_str!("migrations/index/0011_note_embedding_hashes.sql"),
     },
+    Migration {
+        version: 12,
+        name: "canvas_refs",
+        sql: include_str!("migrations/index/0012_canvas_refs.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
@@ -305,11 +316,16 @@ pub fn user_version(conn: &Connection) -> Result<u32, StorageError> {
 }
 
 /// Migrates `data.db`, as every open of the file does: moves a file an earlier
-/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), then
-/// applies [`DATA_MIGRATIONS`].
+/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), applies
+/// [`DATA_MIGRATIONS`], then projects the stored payloads a projection table
+/// does not reflect yet ([`sync_items::heal_projections`]). That runs after the
+/// last migration, with the projector of this build, so a projector written
+/// for a later schema never runs against an earlier one.
 pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
     legacy_numbering::renumber(conn)?;
-    run(conn, DATA_MIGRATIONS)
+    let version = run(conn, DATA_MIGRATIONS)?;
+    sync_items::heal_projections(conn)?;
+    Ok(version)
 }
 
 /// Applies every migration newer than the database's `user_version`, in order,
@@ -385,6 +401,8 @@ pub fn run_atomic(
 mod agent_records_tests;
 #[cfg(test)]
 mod attachment_sync_tests;
+#[cfg(test)]
+mod canvases_tests;
 #[cfg(test)]
 mod concurrent_open_tests;
 #[cfg(test)]
