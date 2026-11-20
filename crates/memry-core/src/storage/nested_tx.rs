@@ -134,17 +134,15 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// `log_writes.rs` runs only in its own `Db::call`, never inside a page;
-    /// the bulk body apply (#5231 part b) moves it. The other two open with
-    /// `Connection::transaction`, which takes `&mut Connection`, so nothing
-    /// holding a page's shared `&Connection` can reach them.
+    /// These two open with `Connection::transaction`, which takes
+    /// `&mut Connection`, so nothing holding a page's shared `&Connection`
+    /// can reach them.
     ///
     /// The `*_tests.rs` files and the test modules of `connection.rs`,
     /// `guard.rs`, `pool.rs` and `recovery.rs` (desktop, feat/tauri-v2) hold
     /// a lock or leave a transaction open on a second connection on purpose.
-    const RAW_TRANSACTION_ALLOWED: [&str; 12] = [
+    const RAW_TRANSACTION_ALLOWED: [&str; 11] = [
         "nested_tx.rs",
-        "body_pull/log_writes.rs",
         "crdt/update_log.rs",
         "storage/migrations.rs",
         "storage/connection.rs",

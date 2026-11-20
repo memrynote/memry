@@ -159,4 +159,46 @@ mod tests {
         assert_eq!(ids.len(), 601);
         assert_eq!(ids[0], "note00000600");
     }
+
+    fn notes(conn: &Connection, count: usize) {
+        for index in 0..count {
+            conn.execute(
+                "INSERT INTO notes (id, title) VALUES (?1, 't')",
+                params![format!("n{index:04}")],
+            )
+            .expect("a note");
+        }
+    }
+
+    fn owed(conn: &Connection) -> i64 {
+        conn.query_row(
+            "SELECT COUNT(*) FROM meta WHERE key LIKE '%n0%'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("count")
+    }
+
+    /// #5231: the sweep's debts land in one transaction, so a failure part way
+    /// leaves none rather than some, and the next pass owes them all again.
+    #[test]
+    fn the_live_document_debts_land_all_or_none() {
+        let dir = temp_dir("owe-live");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|conn| {
+            notes(conn, 100);
+            conn.execute_batch(
+                "CREATE TEMP TRIGGER refuse BEFORE INSERT ON meta WHEN NEW.key LIKE '%n0050'
+                 BEGIN SELECT RAISE(ABORT, 'refused'); END",
+            )
+            .expect("trigger");
+            assert!(owe_live_documents(conn).is_err());
+            assert_eq!(owed(conn), 0, "a failed sweep owes nothing");
+            conn.execute_batch("DROP TRIGGER refuse").expect("drop");
+            owe_live_documents(conn)?;
+            assert_eq!(owed(conn), 100, "every live note is owed once");
+            Ok(())
+        })
+        .expect("the sweep");
+    }
 }

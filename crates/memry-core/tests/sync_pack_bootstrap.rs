@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use http_fakes::{FakeTransport, response};
+use http_fakes::{FakeTransport, bytes_response, mpak, response};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -27,7 +27,6 @@ use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::{META_PACKS_APPLIED_THROUGH, PackBootstrap};
 use memry_core::sync::store;
 use serde_json::{Value as Json, json};
-use sha2::{Digest as _, Sha256};
 use yrs::{
     Doc, ReadTxn as _, StateVector, Transact as _, XmlElementPrelim, XmlFragment as _,
     XmlTextPrelim,
@@ -100,41 +99,6 @@ fn packed(doc_id: &str, update: &[u8], secret_key: &[u8]) -> Vec<u8> {
     .expect("pack")
 }
 
-/// A chapter 08 container: header, payload, index block, footer.
-fn mpak(entries: &[(&str, Option<Json>, Vec<u8>)]) -> Vec<u8> {
-    let text = |out: &mut Vec<u8>, value: &str| {
-        out.extend((value.len() as u16).to_be_bytes());
-        out.extend(value.as_bytes());
-    };
-    let mut payload = Vec::new();
-    let mut index = Vec::new();
-    for (id, meta, bytes) in entries {
-        index.push(1u8); // crdt_snapshot
-        text(&mut index, id);
-        text(&mut index, &format!("crdt/{id}"));
-        index.extend(1_760_000_000u64.to_be_bytes());
-        text(
-            &mut index,
-            &meta.as_ref().map(Json::to_string).unwrap_or_default(),
-        );
-        index.extend((payload.len() as u64).to_be_bytes());
-        index.extend((bytes.len() as u64).to_be_bytes());
-        index.extend(Sha256::digest(bytes));
-        payload.extend(bytes);
-    }
-    let mut out = b"MPAK".to_vec();
-    out.extend([1u8, 0, 0, 0]);
-    out.extend(&payload);
-    let index_offset = out.len() as u64;
-    out.extend(&index);
-    out.extend(Sha256::digest(&payload));
-    out.extend((entries.len() as u64).to_be_bytes());
-    out.extend(index_offset.to_be_bytes());
-    out.extend(b"MPAK");
-    out.push(1);
-    out
-}
-
 fn listing(max_cursor: i64) -> String {
     json!({
         "packs": [
@@ -149,16 +113,6 @@ fn listing(max_cursor: i64) -> String {
         "serverTime": 1
     })
     .to_string()
-}
-
-fn bytes_response(
-    bytes: Vec<u8>,
-) -> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError> {
-    Ok(memry_core::seams::transport::HttpResponse {
-        status: 200,
-        headers: Default::default(),
-        body: bytes,
-    })
 }
 
 fn text_of(db: &Db, doc_id: &str) -> String {
@@ -501,10 +455,17 @@ async fn a_seeded_or_pulled_body_is_told_to_the_observers_after_it_commits() {
         "snapshotMeta": {NOTE: {"sequenceNum": 7, "revision": "rev-7"}}
     })
     .to_string();
+    // The probe names update 8, so the pull is not current (#5204) and fetches it.
+    let probe_new = json!({
+        "notes": {NOTE: {"updates": [{"sequenceNum": 8, "data": update, "signerDeviceId": "device-a"}],
+                         "hasMore": false}},
+        "snapshotMeta": {NOTE: {"sequenceNum": 7, "revision": "rev-7"}}
+    })
+    .to_string();
     let transport = FakeTransport::new(vec![
         response(200, &listing(40)),
         bytes_response(pack_bytes),
-        response(200, &probe),
+        response(200, &probe_new),
         response(
             200,
             &json!({"updates": [{"sequenceNum": 8, "data": update, "signerDeviceId": "device-a"}],

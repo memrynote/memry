@@ -25,10 +25,11 @@
 //!   and owes the document a re-pull; the chapter is explicit that a
 //!   conforming client takes the stop-at-gap side, because it is the only one
 //!   under which no update can be skipped permanently.
-//! - **Durable before the cursor advances.** The update row and the cursor
-//!   move in **one** transaction, per update rather than per page (§7.9), so a
-//!   process killed mid-document resumes at the last update it actually
-//!   stored and neither re-pulls nor skips.
+//! - **Durable before the cursor advances.** A page's update rows and the
+//!   cursor of its last one move in **one** transaction (§7.9, #5231), so a
+//!   process killed mid-page resumes at the last page it actually stored and
+//!   pulls that page again; `INSERT OR IGNORE` makes the replay a no-op and
+//!   nothing is skipped.
 //!
 //! **`revision` is an opaque token compared only for equality** (§7.5). It is
 //! never parsed, ordered or generated here.
@@ -77,7 +78,7 @@ mod log_writes;
 mod pack_seed;
 mod probe;
 
-pub use pack_seed::PackSeed;
+pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed};
 pub(super) use probe::Probed;
 
 /// §7.3: the client's own page size for a sweep, matching the reference's
@@ -365,9 +366,11 @@ impl BodyPull {
 
             let mut stopped = false;
             let has_more_here = page.has_more;
+            let mut opened_page = Vec::new();
             for (entry, opened) in self.open_page(doc_id, cursor, page.updates).await? {
                 // §7.9: a replay, already applied.
-                if entry.sequence_num <= cursor {
+                let last = opened_page.last().map_or(cursor, |(seq, _)| *seq);
+                if entry.sequence_num <= last {
                     report.replays += 1;
                     continue;
                 }
@@ -380,10 +383,13 @@ impl BodyPull {
                     stopped = true;
                     break;
                 };
-                self.store_update(doc_id, entry.sequence_num, update)
-                    .await?;
-                cursor = entry.sequence_num;
-                report.updates += 1;
+                opened_page.push((entry.sequence_num, update));
+            }
+            // The updates before a gap are stored; the cursor stops there.
+            if let Some(&(last, _)) = opened_page.last() {
+                report.updates += opened_page.len();
+                self.store_updates(doc_id, opened_page).await?;
+                cursor = last;
                 if report.advanced_documents.last().map(String::as_str) != Some(doc_id) {
                     report.advanced_documents.push(doc_id.to_owned());
                 }
