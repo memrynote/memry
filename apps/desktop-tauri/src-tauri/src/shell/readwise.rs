@@ -4,7 +4,7 @@
 //! the schedule goes on and the next run pulls with no claim, as a signed-out install does.
 //! The run status reaches the renderer as `ImportReadwiseStatusChangedEvent`.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::account::AccountService;
@@ -20,11 +20,12 @@ use memry_desktop::readwise::library::Library;
 use memry_desktop::readwise::pull_gate::{PullGate, SyncView};
 use memry_desktop::readwise::run_types::{RunGate, system_time_zone};
 use memry_desktop::readwise::scheduler::{ReadwiseRuns, RunsParts};
+use memry_desktop::readwise::slot::ReadwiseSlot;
 use memry_desktop::readwise::sync_view::SessionSyncView;
 use memry_desktop::readwise::token::ReadwiseToken;
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, GenericSecrets, KeyringStore};
-use memry_desktop::session::{OpenStage, OpenVault, Session};
+use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::vault::activity::ActivityLog;
 use tauri::{AppHandle, Manager, Wry};
 
@@ -35,75 +36,23 @@ use crate::startup::{self, Stage};
 
 const SCOPE: &str = "Readwise:Shell";
 
-/// The open vault's run service, `None` while no vault is open.
-#[derive(Default)]
-pub struct ReadwiseSlot(Mutex<Option<Arc<ReadwiseRuns>>>);
-
-impl ReadwiseSlot {
-    pub fn current(&self) -> Option<Arc<ReadwiseRuns>> {
-        lock(&self.0).clone()
-    }
-
-    /// Stops whatever it held, so a run never outlives its vault.
-    fn clear(&self) {
-        let old = lock(&self.0).take();
-        if let Some(old) = old {
-            old.stop();
-        }
-    }
-
-    /// Holds `runs` and starts them, unless `vault_id` is no longer the open vault: the launch
-    /// build can finish after a vault switch installed the new vault's runs.
-    fn install(&self, session: &Session, vault_id: &str, runs: Arc<ReadwiseRuns>) {
-        let old = {
-            let mut slot = lock(&self.0);
-            if session
-                .current()
-                .is_none_or(|open| open.vault_id != vault_id)
-            {
-                return;
-            }
-            runs.start();
-            slot.replace(runs)
-        };
-        if let Some(old) = old {
-            old.stop();
-        }
-    }
-}
-
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|e| e.into_inner())
-}
-
 pub fn register_stages() {
     startup::register(Stage::Schedulers, "start Readwise runs", start);
 }
 
 /// After the account stage, which manages the reachability this reads.
 fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    app.manage(ReadwiseSlot::default());
+    let slot = Arc::new(ReadwiseSlot::default());
     let session = app.state::<Session>().inner().clone();
-    let opened = app.clone();
-    session.on_open(
-        "readwise",
-        OpenStage::SyncStart,
-        Arc::new(move |open| {
-            install(&opened, open);
-            Ok(())
-        }),
-    );
-    let closed = app.clone();
-    session.on_close(
-        "readwise",
-        Arc::new(move |_| closed.state::<ReadwiseSlot>().clear()),
-    );
-    // The launch vault opened before these hooks existed. Off the setup thread: a build reads
+    let builder = app.clone();
+    slot.attach(&session, Arc::new(move |open| runs_for(&builder, open)));
+    app.manage(Arc::clone(&slot));
+    // The launch vault opened before the hooks existed. Off the setup thread: a build reads
     // the keychain.
     let launch = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        if let Some(open) = launch.state::<Session>().current() {
-            install(&launch, &open);
+        if let Some(open) = session.current() {
+            slot.settle(&session, &open, runs_for(&launch, &open));
         }
     });
     Ok(())
@@ -112,26 +61,24 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 /// A sign-out stops the run in flight; the next tick runs signed out.
 pub fn cancel_run(app: &AppHandle<Wry>) {
     if let Some(runs) = app
-        .try_state::<ReadwiseSlot>()
+        .try_state::<Arc<ReadwiseSlot>>()
         .and_then(|slot| slot.current())
     {
         runs.cancel();
     }
 }
 
-fn install(app: &AppHandle<Wry>, open: &OpenVault) {
+fn runs_for(app: &AppHandle<Wry>, open: &OpenVault) -> Option<Arc<ReadwiseRuns>> {
     match build(app, open) {
         Ok(runs) => {
             let notify = app.clone();
             runs.status()
                 .on_change(move || broadcast(&notify, ImportReadwiseStatusChangedEvent));
-            let session = app.state::<Session>();
-            app.state::<ReadwiseSlot>()
-                .install(&session, &open.vault_id, runs);
+            Some(runs)
         }
         Err(error) => {
             tracing::error!(scope = SCOPE, %error, "Readwise does not run for this vault");
-            app.state::<ReadwiseSlot>().clear();
+            None
         }
     }
 }

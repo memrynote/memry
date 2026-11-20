@@ -62,6 +62,8 @@ mod connect;
 mod gate;
 #[path = "readwise_run_schedule.rs"]
 mod schedule;
+#[path = "readwise_run_slot.rs"]
+mod slot;
 #[path = "readwise_run_sync_view.rs"]
 mod sync_view;
 

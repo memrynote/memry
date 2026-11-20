@@ -12,11 +12,11 @@ use memry_desktop::readwise::connection::{
     sync_now_sentence,
 };
 use memry_desktop::readwise::scheduler::ReadwiseRuns;
+use memry_desktop::readwise::slot::ReadwiseSlot;
 use tauri::{AppHandle, Manager, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
-use crate::shell::readwise::ReadwiseSlot;
 
 fn locale(app: &AppHandle<Wry>) -> &'static str {
     app.try_state::<Arc<LocaleService>>()
@@ -51,7 +51,7 @@ fn failed(command: &'static str, code: &'static str, message: impl Into<String>)
 /// `requireVaultPath`: no open vault, no Readwise.
 fn runs(app: &AppHandle<Wry>, command: &'static str) -> Result<Arc<ReadwiseRuns>, CommandError> {
     let current = app
-        .try_state::<ReadwiseSlot>()
+        .try_state::<Arc<ReadwiseSlot>>()
         .and_then(|slot| slot.current());
     current.ok_or_else(|| {
         let message = i18n::t(locale(app), "errors:ipc.noVaultOpen", &Args::new());
