@@ -143,7 +143,11 @@ async fn a_pulled_rename_and_tags_are_not_pushed_back() {
         a.sync().await;
     }
     for core in [&a.core, &*b.env.core()] {
-        let record = core.note_files().placed(&note).unwrap().expect("a live note");
+        let record = core
+            .note_files()
+            .placed(&note)
+            .unwrap()
+            .expect("a live note");
         assert_eq!(record.title, "Renamed");
         assert_eq!(record.tags, ["remote"]);
     }

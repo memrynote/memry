@@ -96,7 +96,13 @@ fn an_outside_edit_since_the_last_hash_is_kept_and_the_mark_waits() {
     pulled_rename(&f, &id, "Renamed");
     f.write("n.md", "edited outside\n");
     let outcome = f.run(&id);
-    assert_kept(&mut f, &outcome, Keep::FileChanged, "n.md", "edited outside\n");
+    assert_kept(
+        &mut f,
+        &outcome,
+        Keep::FileChanged,
+        "n.md",
+        "edited outside\n",
+    );
     assert!(!f.root.join("Renamed.md").exists());
 
     // The consumer read the file back as it was: the mark is still there.
@@ -155,7 +161,10 @@ fn a_version_is_kept_before_pulled_tags_rewrite_the_block() {
     assert!(
         facts.iter().any(|fact| matches!(
             fact,
-            Applied::Changed { source: ChangeSource::Sync, .. }
+            Applied::Changed {
+                source: ChangeSource::Sync,
+                ..
+            }
         )),
         "{facts:?}"
     );
