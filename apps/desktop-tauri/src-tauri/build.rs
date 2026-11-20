@@ -45,7 +45,21 @@ fn main() {
     // Rehearsal builds bake their feed in (`updater/velopack_backend.rs`, `option_env!`).
     println!("cargo:rerun-if-env-changed={}", build_env::UPDATE_FEED);
 
-    tauri_build::build();
+    // The files of `permissions/` turn on the app-command ACL: a window calls only the app
+    // commands its capability grants (`tests/acl.rs`). `generate_context!` embeds every permission
+    // read here, granted or not, so `permissions/e2e/` (the `e2e_*` names) is read only by an `e2e`
+    // build.
+    println!("cargo:rerun-if-changed=permissions");
+    let permissions = if std::env::var_os("CARGO_FEATURE_E2E").is_some() {
+        "./permissions/**/*.json"
+    } else {
+        "./permissions/*.json"
+    };
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().permissions_path_pattern(permissions)),
+    )
+    .expect("tauri-build");
 }
 
 /// Compiles the sync server URL and the client ids into the binary (`memry_desktop::config`).

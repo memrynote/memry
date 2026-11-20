@@ -12,7 +12,9 @@ let syncStatusListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
 let attachmentUploadFailedListeners: EventCallback[] = []
-let itemSyncedListeners: EventCallback[] = []
+type SyncedRecordsCallback = (items: Array<Record<string, unknown>>) => void
+let syncedRecordsListeners: SyncedRecordsCallback[] = []
+const pulledTask = (itemId: string) => ({ itemId, type: 'task', itemOperation: 'update' })
 let initialSyncProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
 let clockSkewWarningListeners: VoidCallback[] = []
@@ -121,10 +123,11 @@ vi.mock('@/services/sync-service', () => {
         (next) => (syncStatusListeners = next)
       )(cb)
     },
-    onItemSynced: subscribe(
-      () => itemSyncedListeners,
-      (next) => (itemSyncedListeners = next)
-    ),
+    onSyncedRecords: (_types: unknown, cb: SyncedRecordsCallback): (() => void) =>
+      subscribe(
+        () => syncedRecordsListeners,
+        (next) => (syncedRecordsListeners = next)
+      )(cb),
     onInitialSyncProgress: subscribe(
       () => initialSyncProgressListeners,
       (next) => (initialSyncProgressListeners = next)
@@ -170,7 +173,7 @@ beforeEach(async () => {
   uploadProgressListeners = []
   downloadProgressListeners = []
   attachmentUploadFailedListeners = []
-  itemSyncedListeners = []
+  syncedRecordsListeners = []
   initialSyncProgressListeners = []
   queueClearedListeners = []
   clockSkewWarningListeners = []
@@ -664,14 +667,13 @@ describe('SyncProvider', () => {
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 4 })
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
-        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1'), pulledTask('t2')])
         for (const cb of initialSyncProgressListeners) {
           cb({ phase: 'notes', processedItems: 2, totalItems: 5 })
         }
       })
 
-      expect(result.current.state.syncActivity).toEqual({ pushCount: 1, pullCount: 1 })
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 2 })
       expect(result.current.state.initialSyncProgress).toEqual({
         phase: 'notes',
         current: 2,
@@ -690,7 +692,38 @@ describe('SyncProvider', () => {
       expect(result.current.state.pendingCount).toBe(9)
       expect(result.current.state.clockSkewDetected).toBe(true)
       expect(result.current.state.initialSyncProgress).toBeNull()
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 9 })
+      })
       expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
+    })
+
+    // Main sends one event per committed page and the renderer coalesces them for 150 ms, so the
+    // last page's count lands after the status already left `syncing`. It belongs to the finished
+    // cycle and must not show in the next one's "N pulled".
+    it('#then keeps a count that lands after a cycle ended out of the next cycle', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1')])
+        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
+      })
+      act(() => {
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t2'), pulledTask('t3')])
+      })
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
+      })
+
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
+
+      act(() => {
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t4')])
+      })
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 1 })
     })
 
     it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {
@@ -928,27 +961,16 @@ describe('SyncProvider', () => {
         () => ({ lastSyncAt: useSync().state.lastSyncAt, seedAllowed: useHomeSeedGate() }),
         { wrapper }
       )
-      await vi.waitFor(() => expect(itemSyncedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(syncedRecordsListeners.length).toBeGreaterThan(0))
       return rendered
     }
-
-    it('#then a push-only item-synced event keeps the gate closed', async () => {
-      const { result } = await mountGate()
-
-      act(() => {
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
-        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
-      })
-
-      expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
-    })
 
     it('#then items applied mid-pull keep it closed until the pull completes', async () => {
       const { result } = await mountGate()
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
-        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1')])
       })
       expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
 
@@ -961,7 +983,7 @@ describe('SyncProvider', () => {
 
       vi.spyOn(Date, 'now').mockReturnValue(1_790_432_510_000)
       act(() => {
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t2')])
       })
       vi.mocked(Date.now).mockRestore()
       expect(result.current).toEqual({ lastSyncAt: 1_790_432_510_000, seedAllowed: true })

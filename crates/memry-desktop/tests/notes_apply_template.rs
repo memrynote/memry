@@ -103,6 +103,7 @@ fn input(note_id: &str, template_id: &str, mode: TemplateMode) -> ApplyTemplateI
         note_id: note_id.into(),
         template_id: template_id.into(),
         mode,
+        plain_checklists: false,
     }
 }
 

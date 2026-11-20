@@ -13,6 +13,8 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::{after, now_ms, source_notes};
 use crate::domain::calendar::LocalDateTime;
+use crate::domain::tasks::list::{self, ListQuery, TagCount, TaskListItem, TaskPage};
+use crate::domain::tasks::stats::{self, TaskStats};
 use crate::domain::tasks::{self, TaskPatch, TaskUpdate, UpdateRefusal};
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -51,5 +53,54 @@ impl TaskStore {
             }
             Ok(update)
         })
+    }
+
+    /// `tasks:get` ([`list::get`]).
+    pub fn get(&self, id: &str) -> Result<Option<TaskListItem>, StorageError> {
+        self.db.read_blocking(|conn| list::get(conn, id))
+    }
+
+    /// `tasks:list` ([`list::page`]).
+    pub fn list(&self, query: &ListQuery) -> Result<TaskPage, StorageError> {
+        self.db.read_blocking(|conn| list::page(conn, query))
+    }
+
+    /// `tasks:get-subtasks` ([`list::subtasks`]).
+    pub fn subtasks(&self, parent_id: &str) -> Result<Vec<TaskListItem>, StorageError> {
+        self.db
+            .read_blocking(|conn| list::subtasks(conn, parent_id))
+    }
+
+    /// `tasks:get-tags` ([`list::tag_counts`]).
+    pub fn tag_counts(&self) -> Result<Vec<TagCount>, StorageError> {
+        self.db.read_blocking(list::tag_counts)
+    }
+
+    /// `tasks:get-stats`; `local_now` is the device's wall clock.
+    pub fn stats(&self, local_now: LocalDateTime) -> Result<TaskStats, StorageError> {
+        self.db
+            .read_blocking(|conn| stats::stats(conn, local_now.date()))
+    }
+
+    /// `tasks:get-today`.
+    pub fn today(&self, local_now: LocalDateTime) -> Result<Vec<TaskListItem>, StorageError> {
+        self.db
+            .read_blocking(|conn| stats::today(conn, local_now.date()))
+    }
+
+    /// `tasks:get-upcoming`: due within `days` of today.
+    pub fn upcoming(
+        &self,
+        local_now: LocalDateTime,
+        days: i64,
+    ) -> Result<Vec<TaskListItem>, StorageError> {
+        self.db
+            .read_blocking(|conn| stats::upcoming(conn, local_now.date(), days))
+    }
+
+    /// `tasks:get-overdue`.
+    pub fn overdue(&self, local_now: LocalDateTime) -> Result<Vec<TaskListItem>, StorageError> {
+        self.db
+            .read_blocking(|conn| stats::overdue(conn, local_now.date()))
     }
 }

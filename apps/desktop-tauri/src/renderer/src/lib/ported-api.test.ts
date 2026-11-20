@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type * as Bindings from '../../../generated/bindings'
 import { installNotPortedShim } from './not-ported'
 import { installPortedApi, type PortedApiHost } from './ported-api'
+import { settingsService } from '../services/settings-service'
 
 const syncGetStatus = vi.hoisted(() => vi.fn())
 
@@ -28,10 +29,14 @@ describe('installPortedApi', () => {
     installPortedApi(host)
     const api = host.api as { settings: Record<string, () => Promise<unknown>> }
 
+    // A name no step ports: a real Electron name stops being one the port lacks once its step
+    // lands (registerStickyShortcut in #4999, getVoiceModelStatus in #4880).
+    const unported = 'notPortedByAnyStep'
+    expect(unported in settingsService).toBe(false)
     expect(typeof api.settings.getGeneralSettings).toBe('function')
     let pending: Promise<unknown> | undefined
     expect(() => {
-      pending = api.settings.registerStickyShortcut()
+      pending = api.settings[unported]()
     }).not.toThrow()
     await expect(pending).rejects.toMatchObject({
       name: 'NotPortedError'

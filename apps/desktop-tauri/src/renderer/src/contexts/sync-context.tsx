@@ -23,10 +23,10 @@ import {
   onCertificatePinFailed,
   onClockSkewWarning,
   onInitialSyncProgress,
-  onItemSynced,
   onQueueCleared,
   onSecurityWarning,
   onSyncStatusChanged,
+  onSyncedRecords,
   syncService
 } from '@/services/sync-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -116,7 +116,7 @@ type SyncAction =
   | { type: 'PRUNE_STALE'; now: number }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
-  | { type: 'ITEM_SYNCED'; lastSyncAt: number; operation: 'push' | 'pull' }
+  | { type: 'RECORDS_PULLED'; lastSyncAt: number; count: number }
   | { type: 'INITIAL_SYNC_PROGRESS'; phase: InitialSyncPhase; current: number; total: number }
   | { type: 'RESET' }
 
@@ -166,7 +166,10 @@ function pruneProgress(
 export function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED': {
-      const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
+      // Main sends a page's count up to 150 ms after the status leaves `syncing`, so a reset on
+      // leaving would let the last page's count carry into the next cycle. A cycle's counts
+      // start at zero when it starts.
+      const startingSync = state.status !== 'syncing' && action.status === 'syncing'
       // A pull that dies in a rethrowing failure category (offline, rate-limit,
       // auth) never reaches phase:'complete', so the last INITIAL_SYNC_PROGRESS
       // event would outlive its transfer and keep the skeleton and the
@@ -186,7 +189,7 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         errorCategory: action.errorCategory ?? null,
         offlineSince: action.offlineSince ?? null,
         initialSyncProgress: transferEnded ? null : state.initialSyncProgress,
-        syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
+        syncActivity: startingSync ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
     case 'SET_ERROR':
@@ -239,15 +242,15 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
       return { ...state, pendingCount: 0 }
     case 'CLOCK_SKEW_WARNING':
       return { ...state, clockSkewDetected: true }
-    case 'ITEM_SYNCED':
+    case 'RECORDS_PULLED':
       return {
         ...state,
-        // Main sets the first lastSyncAt when a pull completes. A pushed item,
-        // or an item applied mid-pull, must not stand in for it.
+        // Main sets the first lastSyncAt when a pull completes. Records applied
+        // mid-pull must not stand in for it.
         lastSyncAt: state.lastSyncAt === null ? null : action.lastSyncAt,
         syncActivity: {
-          pushCount: state.syncActivity.pushCount + (action.operation === 'push' ? 1 : 0),
-          pullCount: state.syncActivity.pullCount + (action.operation === 'pull' ? 1 : 0)
+          ...state.syncActivity,
+          pullCount: state.syncActivity.pullCount + action.count
         }
       }
     case 'INITIAL_SYNC_PROGRESS':
@@ -498,9 +501,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      onItemSynced((event) => {
+      onSyncedRecords('all', (items) => {
         if (cancelled) return
-        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
+        dispatch({ type: 'RECORDS_PULLED', lastSyncAt: Date.now(), count: items.length })
       })
     )
 

@@ -1,123 +1,25 @@
 //! The palette's `search_*` commands through the IPC a renderer calls, over a real vault and its
 //! SQLite databases (Electron's `ipc/search-handlers.ts` and `search/semantic.ts`, #3540): the
-//! contract shapes, the refused inputs, the counts, the recently opened results, and the query's
-//! semantic leg with a fake text model and raw `vec_notes` rows; the text model's status, load and
-//! reindex (`settings/ai-settings.ts:124-171`) and the progress events they send.
+//! contract shapes, the refused inputs, the counts, the recently opened results, the query's
+//! semantic leg with a fake text model and raw `vec_notes` rows, and the `search_performed` event.
+//! The text model's settings actions are in `search_model.rs`.
 
+#[allow(dead_code, reason = "search_model.rs uses the rest")]
+mod search_support;
 #[allow(dead_code, reason = "only the open and invoke of the harness are used")]
 mod support;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc::{Receiver, channel};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
-use memry_core::storage::vec::EMBEDDING_DIMENSION;
-use memry_desktop::ai::features::{self, AiSettingsPatch};
-use memry_desktop::embedding::download::Abort;
-use memry_desktop::embedding::projector::NoteEmbeddingProjector;
-use memry_desktop::embedding::service::{
-    EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
+use memry_desktop::seams::transport::NativeTransport;
+use memry_desktop::telemetry::Service;
+use memry_desktop::telemetry::service::{Context, Sender};
+use search_support::{
+    Model, garden_near_everything, note_id, note_ids, opened, query, set_ai, until, with_model,
 };
-use memry_desktop::locale::LocaleService;
-use memry_desktop::registry::AppConfig;
-use memry_desktop::session::OpenSource;
-use memry_desktop::settings::SettingsService;
-use memry_tauri::events::AiEmbeddingProgressEvent;
-use memry_tauri::ml_worker::{model_progress, pass_progress};
 use serde_json::{Value, json};
-use support::{MemoryStore, Mocked, WAIT};
-use tauri::test::MockRuntime;
-use tauri::{Listener, Manager};
-use tauri_specta::{Event, collect_commands};
-
-const ALPHA: &str = "# Alpha\n\nThe quarterly roadmap lives here.\n";
-const GARDEN: &str = "# Garden\n\nTomatoes and basil, planted in May.\n";
-
-struct Fixture {
-    mocked: Mocked,
-    _app_dir: tempfile::TempDir,
-}
-
-fn opened() -> Fixture {
-    let commands = tauri_specta::Builder::<MockRuntime>::new()
-        .error_handling(tauri_specta::ErrorHandlingMode::Throw)
-        .commands(collect_commands![
-            memry_tauri::commands::ai::ai_get_model_status::<MockRuntime>,
-            memry_tauri::commands::ai::ai_load_model::<MockRuntime>,
-            memry_tauri::commands::ai::ai_reindex_embeddings::<MockRuntime>,
-            memry_tauri::commands::search::search_query::<MockRuntime>,
-            memry_tauri::commands::search::search_quick::<MockRuntime>,
-            memry_tauri::commands::search::search_get_stats::<MockRuntime>,
-            memry_tauri::commands::search::search_get_reasons::<MockRuntime>,
-            memry_tauri::commands::search::search_add_reason::<MockRuntime>,
-            memry_tauri::commands::search::search_clear_reasons::<MockRuntime>,
-        ]);
-    let mocked = Mocked::open(&[("alpha.md", ALPHA), ("garden.md", GARDEN)], commands);
-    let app_dir = tempfile::tempdir().unwrap();
-    let config = Arc::new(AppConfig::load(app_dir.path().join("memry-config.json")));
-    mocked.webview.app_handle().manage(SettingsService::new(
-        Arc::new(MemoryStore::default()),
-        config,
-    ));
-    let f = Fixture {
-        mocked,
-        _app_dir: app_dir,
-    };
-    // The search rows land after the open walk's `Indexed`, from the note index's pass.
-    until("both notes reached the search index", || {
-        ["roadmap", "tomatoes"]
-            .iter()
-            .all(|word| query(&f, word)["totalCount"] == 1)
-    });
-    f
-}
-
-fn query(f: &Fixture, text: &str) -> Value {
-    f.mocked
-        .invoke("search_query", json!({ "input": { "text": text } }))
-        .unwrap()
-}
-
-/// The ids of the note group's results, best first.
-fn note_ids(response: &Value) -> Vec<String> {
-    response["groups"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|group| group["type"] == "note")
-        .flat_map(|group| group["results"].as_array().unwrap().iter())
-        .map(|item| item["id"].as_str().unwrap().to_owned())
-        .collect()
-}
-
-fn reindex(f: &Fixture) -> Value {
-    f.mocked.invoke("ai_reindex_embeddings", json!({})).unwrap()
-}
-
-fn set_ai(f: &Fixture, enabled: bool) {
-    let settings = f.mocked.webview.state::<SettingsService>();
-    let vault = f.mocked.session().current();
-    let patch = AiSettingsPatch {
-        enabled: Some(enabled),
-        ..AiSettingsPatch::default()
-    };
-    features::write(&settings, vault.as_ref(), &patch).unwrap();
-}
-
-fn note_id(f: &Fixture, word: &str) -> String {
-    let ids = note_ids(&query(f, word));
-    assert_eq!(ids.len(), 1, "{word} names one note");
-    ids[0].clone()
-}
-
-fn until(what: &str, done: impl Fn() -> bool) {
-    let deadline = Instant::now() + WAIT;
-    while !done() {
-        assert!(Instant::now() < deadline, "{what}");
-        std::thread::sleep(Duration::from_millis(10));
-    }
-}
+use tauri::Manager;
 
 #[test]
 fn a_query_answers_the_note_group_in_the_contract_shape() {
@@ -266,79 +168,6 @@ fn with_no_vault_open_reads_answer_empty_and_writes_say_so() {
     assert_eq!(error["code"], "no_vault_open");
 }
 
-/// The unit vector every text embeds to, so a stored copy is the nearest note.
-fn unit() -> Vec<f32> {
-    let mut vector = vec![0.0; EMBEDDING_DIMENSION];
-    vector[0] = 1.0;
-    vector
-}
-
-/// A text model that embeds every text to [`unit`], or fails each embed with `broken`. Its load
-/// fails with `refuse`, and waits for `hold` when one is set.
-#[derive(Default)]
-struct Model {
-    loads: AtomicUsize,
-    embeds: Arc<AtomicUsize>,
-    broken: bool,
-    refuse: Option<&'static str>,
-    hold: Mutex<Option<Receiver<()>>>,
-}
-
-struct Loaded {
-    embeds: Arc<AtomicUsize>,
-    broken: bool,
-}
-
-impl Engine for Loaded {
-    fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, EmbedError> {
-        self.embeds.fetch_add(1, Ordering::SeqCst);
-        if self.broken {
-            Err(EmbedError::Failed("inference failed".to_owned()))
-        } else {
-            Ok(unit())
-        }
-    }
-}
-
-impl ModelLoader for Model {
-    fn load(
-        &self,
-        _: &Abort,
-        _: &(dyn Fn(ModelProgress) + Sync),
-    ) -> Result<Box<dyn Engine>, String> {
-        self.loads.fetch_add(1, Ordering::SeqCst);
-        if let Some(hold) = self.hold.lock().unwrap().take() {
-            hold.recv().unwrap();
-        }
-        if let Some(reason) = self.refuse {
-            return Err(reason.to_owned());
-        }
-        Ok(Box::new(Loaded {
-            embeds: self.embeds.clone(),
-            broken: self.broken,
-        }))
-    }
-}
-
-fn with_model(f: &Fixture, model: Arc<Model>) -> Arc<EmbeddingService> {
-    let app = f.mocked.webview.app_handle();
-    let service = EmbeddingService::new(model, model_progress(app), Timing::default());
-    f.mocked.webview.app_handle().manage(service.clone());
-    service
-}
-
-/// Stores [`unit`] as the garden note's vectors, through the store the embedding lane writes
-/// with, and answers its id.
-fn garden_near_everything(f: &Fixture) -> String {
-    let garden = note_id(f, "tomatoes");
-    let search = f.mocked.session().current().unwrap().search;
-    let note = search.embeddable_note(&garden).unwrap().unwrap();
-    search
-        .store_note_embeddings(&note, Some("hash"), vec![unit()], unit())
-        .unwrap();
-    garden
-}
-
 #[test]
 fn a_cold_model_starts_loading_and_the_next_search_fuses_the_nearest_note() {
     let f = opened();
@@ -401,196 +230,63 @@ fn with_no_model_the_query_answers_from_the_index() {
     assert_eq!(note_ids(&query(&f, "basil")).len(), 1);
 }
 
-/// The app's embedding lane over `model`, on the vault reopened so its runtime runs the lane.
-/// Opened with AI off, so the open's reconcile embeds nothing.
-fn with_lane(f: &Fixture, model: Arc<Model>) {
-    let service = with_model(f, model);
-    let session = f.mocked.session();
-    let settings = f.mocked.webview.state::<SettingsService>().inner().clone();
-    session.register_projector(NoteEmbeddingProjector::new(
-        &session,
-        service,
-        Arc::new(move |vault| features::read(&settings, Some(vault)).is_ok_and(|ai| ai.enabled)),
-        Arc::new(|| false),
-        pass_progress(f.mocked.webview.app_handle()),
-    ));
-    set_ai(f, false);
-    session.close();
-    session.open(&f.mocked.vault, OpenSource::Select).unwrap();
-    until("the reopened vault answered a search", || {
-        query(f, "tomatoes")["totalCount"] == 1
-    });
-}
-
-#[test]
-fn a_reindex_embeds_every_note_and_the_query_finds_them_by_meaning() {
-    let f = opened();
-    let model = Arc::new(Model::default());
-    with_lane(&f, model.clone());
-    let mut notes = vec![note_id(&f, "roadmap"), note_id(&f, "tomatoes")];
-    notes.sort();
-
-    assert_eq!(
-        reindex(&f),
-        json!({ "success": false, "computed": 0, "skipped": 0, "error": "AI is disabled" })
-    );
-    assert_eq!(note_ids(&query(&f, "vegetables")), Vec::<String>::new());
-
-    set_ai(&f, true);
-    assert_eq!(
-        reindex(&f),
-        json!({ "success": true, "computed": 2, "skipped": 0 })
-    );
-    let mut found = note_ids(&query(&f, "vegetables"));
-    found.sort();
-    assert_eq!(found, notes);
-}
-
-#[test]
-fn a_reindex_with_no_embedding_lane_says_the_model_did_not_load() {
-    let f = opened();
-    assert_eq!(
-        reindex(&f),
-        json!({
-            "success": false, "computed": 0, "skipped": 0,
-            "error": "Failed to load embedding model"
-        })
-    );
-    f.mocked.session().close();
-    assert_eq!(reindex(&f)["error"], "No vault is open");
-}
-
-/// Every [`AiEmbeddingProgressEvent`] the app sends from here on.
-fn progress_heard(f: &Fixture) -> Arc<Mutex<Vec<Value>>> {
-    let heard = Arc::new(Mutex::new(Vec::new()));
-    let sink = heard.clone();
-    f.mocked
-        .webview
-        .app_handle()
-        .listen_any(AiEmbeddingProgressEvent::NAME, move |event| {
-            sink.lock()
-                .unwrap()
-                .push(serde_json::from_str(event.payload()).unwrap());
-        });
-    heard
-}
-
-fn model_status(f: &Fixture) -> Value {
-    f.mocked.invoke("ai_get_model_status", json!({})).unwrap()
-}
-
-fn load_model(f: &Fixture) -> Value {
-    f.mocked.invoke("ai_load_model", json!({})).unwrap()
-}
-
-#[test]
-fn the_model_status_counts_the_open_vaults_notes_with_a_vector() {
-    let f = opened();
-    assert_eq!(
-        model_status(&f),
-        json!({
-            "name": "EmbeddingGemma 2", "dimension": 256, "loaded": false, "loading": false,
-            "error": "Failed to load embedding model", "embeddingCount": 0
-        })
-    );
-
-    garden_near_everything(&f);
-    let service = with_model(&f, Arc::new(Model::default()));
-    assert!(service.load());
-    assert_eq!(
-        model_status(&f),
-        json!({
-            "name": "EmbeddingGemma 2", "dimension": 256, "loaded": true, "loading": false,
-            "error": null, "embeddingCount": 1
-        })
-    );
-
-    f.mocked.session().close();
-    assert_eq!(model_status(&f)["embeddingCount"], 0);
-}
-
-#[test]
-fn a_model_load_answers_as_electron_and_tells_the_windows_its_progress() {
-    let f = opened();
-    assert_eq!(
-        load_model(&f),
-        json!({ "success": false, "error": "Failed to load model" })
-    );
-
-    let heard = progress_heard(&f);
-    let model = Arc::new(Model::default());
-    with_model(&f, model.clone());
-    assert_eq!(load_model(&f), json!({ "success": true }));
-    assert_eq!(
-        load_model(&f),
-        json!({ "success": true, "message": "Model already loaded" })
-    );
-    assert_eq!(model.loads.load(Ordering::SeqCst), 1);
-    assert_eq!(
-        *heard.lock().unwrap(),
-        [
-            json!({ "phase": "loading", "progress": 0, "status": "Initializing model..." }),
-            json!({ "phase": "ready", "progress": 100, "status": "Model ready" }),
-        ]
-    );
-}
-
-#[test]
-fn a_failed_load_answers_the_models_reason_and_a_load_in_flight_is_refused() {
-    let f = opened();
-    let (release, hold) = channel();
-    let service = with_model(
-        &f,
-        Arc::new(Model {
-            refuse: Some("offline"),
-            hold: Mutex::new(Some(hold)),
-            ..Model::default()
-        }),
-    );
-    let loading = {
-        let service = service.clone();
-        std::thread::spawn(move || service.load())
+/// A telemetry service that queues every event, managed by the app as the shell's is.
+fn with_telemetry(f: &search_support::Fixture) -> Arc<Service> {
+    let context = Context {
+        install_id: "i".into(),
+        session_id: "s".into(),
+        app_version: "1.0.0".into(),
+        build_channel: "production".into(),
+        platform: "linux".into(),
+        arch: "x64".into(),
+        locale: "en".into(),
+        timezone_offset_minutes: 0,
     };
-    until("the load started", || service.status().loading);
-    f.mocked.webview.state::<Arc<LocaleService>>().switch("de");
-    assert_eq!(
-        load_model(&f),
-        json!({ "success": false, "error": "Das Modell wird bereits geladen" })
-    );
-    release.send(()).unwrap();
-    assert!(!loading.join().unwrap());
-
-    // The back-off of the failed load is cleared: the user's load is attempted at once.
-    assert_eq!(
-        load_model(&f),
-        json!({ "success": false, "error": "offline" })
-    );
+    let sender = Sender::new("http://127.0.0.1:1/x", NativeTransport::loopback());
+    let dir = f.mocked.vault.parent().unwrap().join("telemetry");
+    std::fs::create_dir_all(&dir).unwrap();
+    let telemetry = Arc::new(Service::start(&dir, context, sender, true));
+    f.mocked.webview.app_handle().manage(telemetry.clone());
+    telemetry
 }
 
+/// `search_performed` (`search-handlers.ts:79-99,122-142`): one per search, with its source,
+/// duration and result count, and never the query's text.
 #[test]
-fn a_reindex_tells_the_windows_how_far_the_pass_got() {
+fn each_search_reports_its_source_and_counts_and_never_the_query() {
     let f = opened();
-    with_lane(&f, Arc::new(Model::default()));
-    set_ai(&f, true);
-    let heard = progress_heard(&f);
+    let telemetry = with_telemetry(&f);
+    query(&f, "roadmap");
+    f.mocked
+        .invoke("search_quick", json!({ "text": "tomatoes" }))
+        .unwrap();
 
-    assert_eq!(
-        reindex(&f),
-        json!({ "success": true, "computed": 2, "skipped": 0 })
-    );
-    let passes: Vec<Value> = heard
-        .lock()
-        .unwrap()
-        .iter()
-        .filter(|event| event.get("current").is_some())
-        .cloned()
+    let events: Vec<_> = telemetry
+        .queued()
+        .into_iter()
+        .filter(|event| event.name == "search_performed")
         .collect();
-    assert_eq!(
-        passes,
-        [
-            json!({ "phase": "embedding", "current": 0, "total": 2 }),
-            json!({ "phase": "embedding", "current": 2, "total": 2 }),
-            json!({ "phase": "complete", "current": 2, "total": 2 }),
-        ]
-    );
+    assert_eq!(events.len(), 2);
+    for (event, source) in events.iter().zip(["global", "quick"]) {
+        assert_eq!(
+            (event.surface.as_str(), event.action.as_str()),
+            ("search", "queried")
+        );
+        assert_eq!(event.source.as_deref(), Some(source));
+        assert_eq!(event.result.as_deref(), Some("success"));
+        let metrics = event.metrics.as_ref().expect("metrics");
+        assert_eq!(metrics.result_count, Some(1.0));
+        assert!(metrics.duration_ms.is_some_and(|ms| ms >= 0.0));
+        assert_eq!(
+            event
+                .dimensions
+                .as_ref()
+                .and_then(|d| d.get("result_bucket")),
+            Some(&"one_to_five".to_owned())
+        );
+        let sent = serde_json::to_string(event).unwrap();
+        for word in ["roadmap", "tomatoes"] {
+            assert!(!sent.contains(word), "{source} carries the query: {sent}");
+        }
+    }
 }

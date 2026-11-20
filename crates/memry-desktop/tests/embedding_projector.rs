@@ -169,7 +169,7 @@ fn an_edit_queued_at_close_is_owed_and_embedded_after_reopen() {
     let mut l = lane();
     let edited = l.write("b.md", BETA);
     l.embedded(&edited);
-    l.settled();
+    l.all_embedded();
     let (gate, reached) = l.hold_next();
     let held = l.write("a.md", ALPHA);
     reached
@@ -207,7 +207,7 @@ fn a_reconcile_while_indexing_keeps_every_vector() {
     for id in &ids {
         l.embedded(id);
     }
-    l.settled();
+    l.all_embedded();
 
     l.indexing.store(true, Ordering::SeqCst);
     l.forget_note_files();
@@ -250,7 +250,7 @@ fn a_rebuild_while_indexing_loads_no_model_and_clears_nothing() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
     l.service.stop();
     l.until("the model unloaded", |l| !l.service.status().loaded);
     let loads = l.model.loads.load(Ordering::SeqCst);
@@ -279,7 +279,7 @@ fn a_reconcile_drops_the_vectors_of_a_note_gone() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
 
     l.forget_note_files();
     l.reconcile();
@@ -297,13 +297,13 @@ fn a_reopen_with_unchanged_files_embeds_nothing() {
     for id in &ids {
         l.embedded(id);
     }
-    l.settled();
+    l.all_embedded();
     let (embeds, loads) = (l.embeds(), l.model.loads.load(Ordering::SeqCst));
 
     l.e.close();
     l.e.open();
     l.e.facts_until(indexed);
-    l.settled();
+    l.all_embedded();
     assert_eq!(l.embeds(), embeds, "the reopen embedded again");
     assert_eq!(l.model.loads.load(Ordering::SeqCst), loads);
     for id in &ids {
