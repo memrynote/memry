@@ -690,7 +690,18 @@ export const compactVault = async (
       if (result.built) await rollupLogged(db, storage, scope, kind)
     }
   } finally {
-    await deleteReplacedPackObjects(db, storage, scope)
+    // Objects still due fail the message, so Queues redelivers it (max_retries
+    // 3, no retry delay) inside the purge deadline instead of acking it. Builds
+    // this message committed stay committed: a redelivery finds their
+    // watermarks moved and lists nothing twice.
+    if ((await deleteReplacedPackObjects(db, storage, scope)).pending) {
+      logger.error('replaced pack objects still due after the compaction message; redelivered', {
+        userId: scope.userId,
+        vaultId: scope.vaultId
+      })
+      // oxlint-disable-next-line no-unsafe-finally -- the throw is the redelivery signal
+      throw new Error('replaced pack objects still due')
+    }
   }
   return results
 }

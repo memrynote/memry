@@ -299,10 +299,10 @@ export const cleanupExpiredTombstones = async (
 // Deleted documents read per tick, and vaults purged per tick (VERIFY-5267
 // F5). A vault costs one db.batch per 20 documents, one snapshot db.batch, one
 // bulk R2 delete of snapshot objects, the replaced-object pass (a select, a
-// bulk R2 delete, a D1 delete) and at most one enqueue: 6 plus its chunks. A
-// tick spends at most 1 select + 5 x 6 + (100 / 20 + 5) chunks = 41
-// subrequests, inside the ~100 that pack_backfill's 900 leaves the scheduled
-// invocation. Rows are read vault by vault, so the vaults past the cap are the
+// bulk R2 delete, a D1 delete) and one enqueue, retried twice on backpressure:
+// 8 plus its chunks. A tick spends at most 1 select + 5 x 8 + (100 / 20 + 5)
+// chunks = 51 subrequests, inside the ~105 that pack_backfill (~895 at real
+// build cost) leaves the scheduled invocation. Rows are read vault by vault, so the vaults past the cap are the
 // next tick's.
 const DELETED_BODY_LIMIT = 100
 const DELETED_BODY_VAULTS_PER_TICK = 5

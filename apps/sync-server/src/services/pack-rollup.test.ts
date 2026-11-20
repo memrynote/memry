@@ -288,6 +288,19 @@ describe('rollup contents (#5229)', () => {
     expect(logged.every((entry) => entry.kind === 'record')).toBe(true)
   })
 
+  // VERIFY-5267 r2 V10: each unreadable pack can split a run in two (protocol 08 §8.14).
+  it('lists at most the bound plus twice its unreadable packs, plus one', async () => {
+    await buildSmallPacks('record', 40)
+    const rows = listed('record')
+    const bad = [5, 10, 15, 20, 25, 30, 35]
+    for (const i of bad) await storage.delete(rows[i].pack_key)
+
+    for (let tick = 0; tick < 30; tick++) await runPackBackfill(harness.db, storage)
+
+    expect(listed('record')).toHaveLength(15) // eight merged runs and the seven unreadable packs
+    expect(listed('record').length).toBeLessThanOrEqual(boundOf('record') + 2 * bad.length + 1)
+  })
+
   // VERIFY-5267 F4: the re-plan stayed inside the failed run, so bad packs in
   // the longest run hid a mergeable run elsewhere, every tick.
   it('re-plans over every listed pack when the longest run has no mergeable pair left', async () => {
@@ -471,6 +484,39 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     await expect(compactVault(harness.db, storage, SCOPE)).rejects.toThrow('r2 put 500')
 
     expect(await holding(old, 'note-4')).toEqual([])
+  })
+
+  // VERIFY-5267 r2 V12: the delayed message acked with objects still due, so
+  // Queues never redelivered it and three failed deletes missed 900 s.
+  it('a delayed message that leaves objects due throws, and its redelivery deletes them before 900 s', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    deleteNoteRecord('note-4', 50)
+    const remove = storage.delete.bind(storage)
+    let failures = 3 // the purge and both passes of the first delivery
+    vi.spyOn(storage, 'delete').mockImplementation(async (keys) => {
+      if (failures > 0 && [keys].flat().some((key) => old.includes(key))) {
+        failures--
+        return Promise.reject(new Error('r2 503'))
+      }
+      return remove(keys)
+    })
+    expect(await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])).toBe(
+      true
+    )
+    advance(PACK_PURGE_RETRY_DELAY_SECONDS)
+    await writeRecord(1, 'task-1', settled())
+
+    await storage.put('tomb', new Uint8Array([1])) // the tombstone row's payload, so the build has no hole
+    await expect(compactVault(harness.db, storage, SCOPE)).rejects.toThrow('still due')
+    // The record build of the failed delivery stays committed.
+    expect(listed('record')).toHaveLength(1)
+    expect(await holding(old, 'note-4')).not.toEqual([])
+
+    advance(1)
+    await compactVault(harness.db, storage, SCOPE) // the redelivery
+    expect(await holding(old, 'note-4')).toEqual([])
+    expect(listed('record')).toHaveLength(1)
   })
 
   // VERIFY-5267 F5: every delete enqueued a delayed message, and one tick

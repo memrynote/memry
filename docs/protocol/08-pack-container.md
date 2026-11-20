@@ -828,7 +828,9 @@ coverage ranges chain, and writes one pack that replaces them:
   (`PACK_PURGE_RETRY_DELAY_SECONDS`,
   `apps/sync-server/src/services/pack-replaced-objects.ts`), whose deletion
   pass runs before its builds and again after them, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:676,692`).
+  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:676,697`).
+  A message whose last pass leaves objects due fails, so the queue redelivers
+  it inside the deadline; builds it committed stay committed.
 - **A 404 between listing and download.** A reader treats a pack that answers
   404, 403 or any other failure as unusable: its range is a gap (§8.10), its
   items stay on the item routes and the feed. It MAY list again once to find
@@ -914,7 +916,7 @@ and at most `PACK_TARGET_BYTES` = 24 MiB of payload
 first; every entry stays under `PACK_MAX_INDEX_ENTRY_BYTES`
 (`packages/contracts/src/pack-format.ts:88`). A build from source blobs is
 also capped at 256 items by its subrequest budget
-(`apps/sync-server/src/services/pack-compaction.ts:110`); a rollup is not
+(`apps/sync-server/src/services/pack-compaction.ts:109`); a rollup is not
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
@@ -954,12 +956,14 @@ A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
 
 **Unreadable packs.** A listed pack whose object cannot be read or verified
-cannot be merged (§8.12), so a kind lists at most the bound, plus the number
-of its listed packs that cannot be read or verified, plus the transient `+ 1`
-above. Each such pack stays listed. Dropping its row would end a record
+cannot be merged (§8.12), and each one can split a run of mergeable packs in
+two, so a kind lists at most the bound, plus twice the number of its listed
+packs that cannot be read or verified, plus the transient `+ 1` above. Each
+such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
 (`apps/sync-server/src/services/pack-rollup.ts:262-266`), and the backfill tick
 rolls the kind up every tick while it is above the bound, so an operator sees
-it once per tick.
+it once per tick. Within the bound no rollup reads it; detecting it there is
+#5272.

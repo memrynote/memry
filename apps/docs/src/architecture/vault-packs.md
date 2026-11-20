@@ -251,10 +251,12 @@ current, and writes one new pack under a new key. It drops:
 A deleted document's body rows stay in packs until the purge removes them and drops those packs.
 An input pack it cannot download or verify is logged by id, left out, and the rollup planned again
 over every listed pack of the kind without it, downloading at most 64 packs in all. A run never
-spans an unreadable pack, so the bound counts each one: a kind lists at most its bound, plus its
-unreadable listed packs, plus the transient one. An unreadable pack stays listed, readers treat it
-as absent and take its range item by item, and every tick logs it at error level with its id and
-kind (`rollup input pack unreadable`).
+spans an unreadable pack, and each one can split a run in two, so a kind lists at most its bound,
+plus twice its unreadable listed packs, plus the transient one. An unreadable pack stays listed and
+readers treat it as absent and take its range item by item. While the kind is above its bound,
+every tick's rollup reads it and logs it at error level with its id and kind
+(`rollup input pack unreadable`). Within the bound no rollup reads it, so nothing reports it;
+detecting and rebuilding it there is #5272.
 
 One D1 batch then records the old objects in `pack_replaced_objects`, deletes the old
 `pack_index` rows and inserts the new one. The batch applies only while every old row is still
@@ -270,7 +272,8 @@ lose it, and the orphan sweep leaves every key in that table alone. A body purge
 it makes the replaced objects of each kind it drops due in the batch that drops the listing, records
 the listed packs it drops as due in the same batch, and deletes them all at once, because they may
 hold the purged body. A failed delete stays due, and only then does the purge enqueue a compaction
-message 660 seconds later to retry it, inside the 900-second deadline. The 6-hourly cleanup purges
+message 660 seconds later to retry it, inside the 900-second deadline. That message fails while
+objects stay due, so Queues redelivers it up to three times. The 6-hourly cleanup purges
 at most five vaults per tick, about 41 subrequests.
 
 **Where it runs.** Every compaction message rolls up each kind once before building, which is what
