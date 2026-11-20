@@ -6,8 +6,11 @@
 //!
 //! - **records**: [`PullLoop::run`] over scripted `/sync/changes` and
 //!   `/sync/pull` responses, with real Ed25519 verify, AEAD and inflate.
-//! - **bodies**: one packed update per note, opened and stored with its
-//!   `crdt:<docId>` cursor the way the per-note body pull stores it.
+//! - **packed bodies**: [`PackBootstrap::run`] over `crdt_snapshot` packs
+//!   holding every note's baseline, with real Ed25519 verify and AEAD.
+//! - **pulled bodies**: [`BodyPull::pull_documents`] over scripted
+//!   `/sync/crdt/snapshot` and `/sync/crdt/updates` responses for a tenth of
+//!   the notes, each with `MEMRY_BENCH_UPDATES` updates (default 10).
 //!
 //! Fixture generation is outside the timed region. Run it in release:
 //!
@@ -21,26 +24,29 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use http_fakes::{FakeTransport, response};
-use memry_core::crdt::update_log;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use http_fakes::{FakeTransport, bytes_response, mpak, response};
 use memry_core::crypto::sodium;
 use memry_core::protocol::crdt_envelope::{self, CrdtMaterial, CrdtRequest};
 use memry_core::protocol::envelope::{
     self, EnvelopeError, RecordEnvelope, RecordMaterial, RecordRequest, SyncOperation,
 };
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::pack::{extract_entry, parse_pack};
 use memry_core::protocol::types::Declaration;
-use memry_core::storage::nested_tx;
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::body_pull::crdt_cursor_scope;
+use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
+use memry_core::sync::pack_bootstrap::PackBootstrap;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
-use memry_core::sync::store;
 use serde_json::{Value as Json, json};
 use yrs::{ReadTxn as _, StateVector, Text as _, Transact as _};
 
 const SIGNER: &str = "bench-device";
 const PAGE: usize = 500;
 const PULL_IDS: usize = 100;
+/// Entries per pack, under the reader's 4,096 cap (§8.6).
+const PACK_ENTRIES: usize = 2_500;
 
 /// The production cipher's work for one record: verify, unwrap, decrypt and
 /// inflate. The directory lookup `AccountCipher` adds is one map read.
@@ -55,11 +61,39 @@ impl RecordCipher for BenchCipher {
     }
 }
 
-fn notes() -> usize {
-    std::env::var("MEMRY_BENCH_NOTES")
+/// The production body open: verify the signer's key, then AEAD.
+struct BenchCrdtCipher {
+    vault_key: Vec<u8>,
+    public_key: Vec<u8>,
+}
+
+impl CrdtCipher for BenchCrdtCipher {
+    fn open(&self, update: &PackedUpdate<'_>) -> Result<Vec<u8>, EnvelopeError> {
+        if update.signer_device_id != Some(SIGNER) {
+            return Err(EnvelopeError::SignatureInvalid);
+        }
+        crdt_envelope::unpack(
+            update.packed,
+            update.doc_id,
+            &self.vault_key,
+            &self.public_key,
+        )
+    }
+
+    fn signer_candidates(&self) -> Vec<String> {
+        vec![SIGNER.to_owned()]
+    }
+}
+
+fn env_count(name: &str, default: usize) -> usize {
+    std::env::var(name)
         .ok()
         .and_then(|value| value.parse().ok())
-        .unwrap_or(10_000)
+        .unwrap_or(default)
+}
+
+fn notes() -> usize {
+    env_count("MEMRY_BENCH_NOTES", 10_000)
 }
 
 fn scratch_db() -> Db {
@@ -100,17 +134,47 @@ fn body_update(index: usize) -> Vec<u8> {
 
 struct Fixture {
     cipher: Arc<BenchCipher>,
+    crdt_cipher: Arc<BenchCrdtCipher>,
     script: Vec<String>,
-    bodies: Vec<(String, Vec<u8>)>,
-    signer_public: Vec<u8>,
-    vault_key: Vec<u8>,
+    /// `crdt_snapshot` packs with every note's baseline, oldest first.
+    packs: Vec<Vec<u8>>,
+    /// The per-document pull of `pulled_docs` documents.
+    body_script: Vec<String>,
+    pulled_docs: Vec<String>,
+}
+
+fn pack_listing(packs: usize) -> String {
+    let packs: Vec<Json> = (0..packs)
+        .map(|number| {
+            json!({
+                "id": format!("pack-{number}"), "itemKind": "crdt_snapshot", "packKey": "k",
+                "minCursor": number + 1, "maxCursor": number + 1, "itemCount": 1,
+                "byteSize": 1, "createdAt": 1,
+                "url": format!("https://r2.example/packs/{number}"),
+                "expiresAt": 4_000_000_000i64
+            })
+        })
+        .collect();
+    json!({ "packs": packs, "serverTime": 1 }).to_string()
 }
 
 fn seed(count: usize) -> Fixture {
     let vault_key = sodium::random_bytes(32);
     let (public_key, secret_key) = sodium::sign_keypair().expect("a keypair");
     let mut envelopes: Vec<Json> = Vec::with_capacity(count);
-    let mut bodies = Vec::with_capacity(count);
+    let mut snapshots: Vec<(String, Option<Json>, Vec<u8>)> = Vec::with_capacity(count);
+    let seal_body = |doc_id: &str, update: &[u8]| {
+        crdt_envelope::pack(
+            &CrdtRequest {
+                note_id: doc_id,
+                update,
+                vault_key: &vault_key,
+                signing_secret_key: &secret_key,
+            },
+            &CrdtMaterial::random(),
+        )
+        .expect("pack a body")
+    };
     for index in 0..count {
         let id = note_id(index);
         let payload = note_payload(index);
@@ -133,17 +197,28 @@ fn seed(count: usize) -> Fixture {
         let mut item = envelope::to_json(&sealed.envelope);
         item["serverCursor"] = json!(index as i64 + 1);
         envelopes.push(item);
-        let packed = crdt_envelope::pack(
-            &CrdtRequest {
-                note_id: &id,
-                update: &body_update(index),
-                vault_key: &vault_key,
-                signing_secret_key: &secret_key,
-            },
-            &CrdtMaterial::random(),
-        )
-        .expect("pack a body");
-        bodies.push((id, packed));
+        let packed = seal_body(&id, &body_update(index));
+        let meta = json!({ "sequenceNum": 1, "revision": format!("rev-{index}") });
+        snapshots.push((id, Some(meta), packed));
+    }
+
+    let updates = env_count("MEMRY_BENCH_UPDATES", 10);
+    let pulled_docs: Vec<String> = (0..count / 10).map(|i| format!("u{i:011}")).collect();
+    let mut body_script = Vec::new();
+    for doc_id in &pulled_docs {
+        // §7.8: cursor 0 asks for a snapshot first; none exists.
+        body_script.push(json!({ "snapshot": null }).to_string());
+        let entries: Vec<Json> = (1..=updates)
+            .map(|seq| {
+                let packed = seal_body(doc_id, &body_update(seq));
+                json!({
+                    "sequenceNum": seq,
+                    "data": BASE64.encode(packed),
+                    "signerDeviceId": SIGNER,
+                })
+            })
+            .collect();
+        body_script.push(json!({ "updates": entries, "hasMore": false }).to_string());
     }
 
     let mut script = Vec::new();
@@ -173,10 +248,23 @@ fn seed(count: usize) -> Fixture {
             vault_key: vault_key.clone(),
             public_key: public_key.clone(),
         }),
+        crdt_cipher: Arc::new(BenchCrdtCipher {
+            vault_key: vault_key.clone(),
+            public_key: public_key.clone(),
+        }),
         script,
-        bodies,
-        signer_public: public_key,
-        vault_key,
+        packs: snapshots
+            .chunks(PACK_ENTRIES)
+            .map(|chunk| {
+                let entries: Vec<_> = chunk
+                    .iter()
+                    .map(|(id, meta, packed)| (id.as_str(), meta.clone(), packed.clone()))
+                    .collect();
+                mpak(&entries)
+            })
+            .collect(),
+        body_script,
+        pulled_docs,
     }
 }
 
@@ -221,28 +309,70 @@ async fn bench_local_apply_of_a_seeded_vault() {
     let crypto = started.elapsed();
 
     let started = Instant::now();
+    for bytes in &fixture.packs {
+        let pack = parse_pack(bytes).expect("a pack");
+        for entry in &pack.entries {
+            let packed = extract_entry(bytes, entry).expect("an entry");
+            fixture
+                .crdt_cipher
+                .open(&PackedUpdate {
+                    doc_id: &entry.id,
+                    signer_device_id: Some(SIGNER),
+                    packed,
+                })
+                .expect("open a packed body");
+        }
+    }
+    let body_crypto = started.elapsed();
+
+    let started = Instant::now();
     let report = pull.run(u32::MAX).await.expect("the pull");
     let records = started.elapsed();
     assert_eq!(report.applied, count, "every record applied");
     assert_eq!(report.corrupt, 0);
 
+    let bodies = |transport: Arc<FakeTransport>| {
+        let http = Arc::new(HttpClient::new(
+            transport,
+            "https://sync.example",
+            ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+        ));
+        let pull = Arc::new(BodyPull::new(
+            Arc::clone(&http),
+            db.clone(),
+            Declaration::subscribed(),
+            fixture.crdt_cipher.clone(),
+        ));
+        (http, pull)
+    };
+
+    // The bootstrap downloads the newest pack (highest `maxCursor`) first.
+    let mut script = vec![response(200, &pack_listing(fixture.packs.len()))];
+    script.extend(fixture.packs.iter().rev().cloned().map(bytes_response));
+    let (http, pull) = bodies(FakeTransport::new(script));
     let started = Instant::now();
-    for (doc_id, packed) in &fixture.bodies {
-        let update =
-            crdt_envelope::unpack(packed, doc_id, &fixture.vault_key, &fixture.signer_public)
-                .expect("open a body");
-        let doc = doc_id.clone();
-        db.call(move |conn| {
-            let txn = nested_tx::begin(conn).expect("begin");
-            update_log::append_server_update(&txn, &doc, 1, &update, 0).expect("append");
-            store::write_cursor(&txn, &crdt_cursor_scope(&doc), Some("1"), 0)?;
-            txn.commit().expect("commit");
-            Ok(())
-        })
+    let packed = PackBootstrap::new(http, db.clone(), pull)
+        .run(1_000)
         .await
-        .expect("store a body");
-    }
-    let bodies = started.elapsed();
+        .expect("the pack bootstrap");
+    let packs = started.elapsed();
+    assert_eq!(packed.entries_applied, count, "every packed body seeded");
+
+    let (_, pull) = bodies(FakeTransport::new(
+        fixture
+            .body_script
+            .iter()
+            .map(|body| response(200, body))
+            .collect(),
+    ));
+    let started = Instant::now();
+    let pulled = pull
+        .pull_documents(&fixture.pulled_docs)
+        .await
+        .expect("the body pull");
+    let pulled_time = started.elapsed();
+    assert!(pulled.merged(), "every pulled document reached its head");
+    let pulled_updates = pulled.updates;
 
     let stored: i64 = db
         .call(|conn| {
@@ -254,13 +384,19 @@ async fn bench_local_apply_of_a_seeded_vault() {
         .expect("count notes");
     assert_eq!(stored as usize, count);
 
-    let per = |total: std::time::Duration| total.as_secs_f64() * 1000.0 / count as f64;
+    let ms = |total: std::time::Duration| total.as_secs_f64() * 1000.0;
     println!(
-        "apply-bench notes={count} record_crypto_ms={:.0} records_ms={:.0} ms_per_record={:.4} bodies_ms={:.0} ms_per_body={:.4}",
-        crypto.as_secs_f64() * 1000.0,
-        records.as_secs_f64() * 1000.0,
-        per(records),
-        bodies.as_secs_f64() * 1000.0,
-        per(bodies),
+        "apply-bench notes={count} record_crypto_ms={:.0} records_ms={:.0} ms_per_record={:.4} \
+         packed_body_crypto_ms={:.0} packed_bodies_ms={:.0} ms_per_packed_body={:.4} pulled_docs={} pulled_updates={pulled_updates} \
+         pulled_ms={:.0} ms_per_pulled_update={:.4}",
+        ms(crypto),
+        ms(records),
+        ms(records) / count as f64,
+        ms(body_crypto),
+        ms(packs),
+        ms(packs) / count as f64,
+        fixture.pulled_docs.len(),
+        ms(pulled_time),
+        ms(pulled_time) / pulled_updates.max(1) as f64,
     );
 }
