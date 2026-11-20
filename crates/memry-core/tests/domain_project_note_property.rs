@@ -109,7 +109,9 @@ fn the_project_property_links_the_note_and_moves_it_between_projects() {
 
         // A legacy import holds the note as `file` in Beta too; the property
         // does not name Beta, so the next write drops it.
-        projects::link(conn, "pb", LinkItemType::File, "n1", DEVICE, NOW + 2)?.acknowledge();
+        projects::link(conn, "pb", LinkItemType::File, "n1", DEVICE, NOW + 2)?
+            .expect("a new link writes the project")
+            .acknowledge();
         set_projects(conn, "n1", json!(["Alpha"]), NOW + 3);
         assert_eq!(linked(conn, "pa"), [note_link("note", false, 0)]);
         assert!(linked(conn, "pb").is_empty());
@@ -131,8 +133,12 @@ fn a_kept_link_keeps_its_pin_and_an_unchanged_membership_queues_nothing() {
     db.call_blocking(|conn| {
         create_project(conn, "pa", "Alpha", NOW);
         seed_note(conn, "n1", "markdown");
-        projects::link(conn, "pa", LinkItemType::Note, "n1", DEVICE, NOW + 1)?.acknowledge();
-        projects::set_link_pinned(conn, "pa", "n1", true, DEVICE, NOW + 2)?.acknowledge();
+        projects::link(conn, "pa", LinkItemType::Note, "n1", DEVICE, NOW + 1)?
+            .expect("a new link writes the project")
+            .acknowledge();
+        projects::set_link_pinned(conn, "pa", "n1", true, DEVICE, NOW + 2)?
+            .expect("a new pin writes the project")
+            .acknowledge();
         drain(conn);
 
         properties::set(conn, "note", "n1", "area", json!("home"), DEVICE, NOW + 3)
@@ -150,7 +156,9 @@ fn a_shared_name_resolves_to_the_oldest_project_archived_or_not() {
     db.call_blocking(|conn| {
         create_project(conn, "old", "Same", NOW);
         create_project(conn, "new", "same", NOW + 1);
-        projects::set_archived(conn, "old", true, DEVICE, NOW + 2)?.acknowledge();
+        projects::set_archived(conn, "old", true, DEVICE, NOW + 2)?
+            .expect("archiving writes the project")
+            .acknowledge();
         seed_note(conn, "n1", "markdown");
 
         set_projects(conn, "n1", json!("Same"), NOW + 3);
