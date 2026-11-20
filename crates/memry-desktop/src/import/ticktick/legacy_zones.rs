@@ -4,12 +4,21 @@
 //! task shifts by the zone's offset.
 //!
 //! An alias is the zone ICU resolves the name to; each was compared with Node's ICU for every day
-//! from 1900 to 2099. The `SystemV/*` zones with daylight time are not aliases: ICU gives them one
-//! frozen rule (the last Sunday of April to the last Sunday of October, at 02:00), which no modern
-//! zone follows. Here that rule is a POSIX TZ string. It differs from ICU only in 1900 and 1901,
-//! before ICU's rule starts, and in 1974 and 1975, where ICU has the energy-crisis dates.
+//! from 1900 to 2099. The `SystemV/*` zones with daylight time are not aliases: ICU gives them
+//! tzdata's old `SystemV` rule, which no modern zone follows. A zone is on standard time before
+//! 02:00 on 1902-04-27, in every earlier year. From then on daylight time runs from the last
+//! Sunday of April to the last Sunday of October at 02:00, except in 1974 (January 6 to the last
+//! Sunday of November) and 1975 (February 23 to the last Sunday of October). [`system_v_offset`]
+//! is that rule. It was compared with Electron 43.1.1 (ICU 78.2) at every transition from 1800
+//! to 2400, to the second, and at instants spread over the whole range of a JS Date, with no
+//! difference. No difference from ICU is known for any name here.
 
-use jiff::tz::TimeZone;
+use jiff::Timestamp;
+use jiff::civil::{Weekday, date};
+use jiff::tz::{Offset, TimeZone};
+
+/// The first year of the `SystemV` rule in ICU.
+const SYSTEM_V_FIRST_YEAR: i16 = 1902;
 
 const ALIASES: [(&str, &str); 34] = [
     ("ACT", "Australia/Darwin"),
@@ -48,18 +57,19 @@ const ALIASES: [(&str, &str); 34] = [
     ("SystemV/YST9", "Etc/GMT+9"),
 ];
 
-const SYSTEM_V_DST: [(&str, &str); 6] = [
-    ("SystemV/AST4ADT", "AST4ADT,M4.5.0,M10.5.0"),
-    ("SystemV/CST6CDT", "CST6CDT,M4.5.0,M10.5.0"),
-    ("SystemV/EST5EDT", "EST5EDT,M4.5.0,M10.5.0"),
-    ("SystemV/MST7MDT", "MST7MDT,M4.5.0,M10.5.0"),
-    ("SystemV/PST8PDT", "PST8PDT,M4.5.0,M10.5.0"),
-    ("SystemV/YST9YDT", "YST9YDT,M4.5.0,M10.5.0"),
+/// Each zone with its standard time's hours west of UTC.
+const SYSTEM_V_DST: [(&str, i8); 6] = [
+    ("SystemV/AST4ADT", 4),
+    ("SystemV/CST6CDT", 6),
+    ("SystemV/EST5EDT", 5),
+    ("SystemV/MST7MDT", 7),
+    ("SystemV/PST8PDT", 8),
+    ("SystemV/YST9YDT", 9),
 ];
 
-/// The zone ICU reads `name` as, for a name jiff's tzdb lacks; ICU matches ids without regard to
-/// case.
-pub(super) fn legacy_zone(name: &str) -> Option<TimeZone> {
+/// The offset ICU gives the zone `name` at `at`, for a name jiff's tzdb lacks; ICU matches ids
+/// without regard to case.
+pub(super) fn legacy_offset(name: &str, at: Timestamp) -> Option<Offset> {
     if let Some((_, target)) = ALIASES
         .iter()
         .find(|(alias, _)| alias.eq_ignore_ascii_case(name))
@@ -67,11 +77,38 @@ pub(super) fn legacy_zone(name: &str) -> Option<TimeZone> {
         return Some(
             jiff::tz::db()
                 .get(target)
-                .expect("an alias names a tzdb zone"),
+                .expect("an alias names a tzdb zone")
+                .to_offset(at),
         );
     }
     SYSTEM_V_DST
         .iter()
         .find(|(alias, _)| alias.eq_ignore_ascii_case(name))
-        .map(|(_, rule)| TimeZone::posix(rule).expect("a static POSIX TZ string"))
+        .map(|(_, west)| system_v_offset(*west, at))
+}
+
+/// The offset of a `SystemV/*` zone with daylight time at `at`, standard time `west` hours west
+/// of UTC.
+fn system_v_offset(west: i8, at: Timestamp) -> Offset {
+    let standard = Offset::constant(-west);
+    let wall = at.to_zoned(TimeZone::fixed(standard)).datetime();
+    let year = wall.year();
+    let last_sunday = |month| {
+        date(year, month, 1)
+            .nth_weekday_of_month(-1, Weekday::Sunday)
+            .expect("a month has a last Sunday")
+    };
+    let (start, end) = match year {
+        1974 => (date(1974, 1, 6), last_sunday(11)),
+        1975 => (date(1975, 2, 23), last_sunday(10)),
+        _ => (last_sunday(4), last_sunday(10)),
+    };
+    // The rule ends at 02:00 daylight time, which is 01:00 on the standard-time wall clock.
+    let daylight =
+        year >= SYSTEM_V_FIRST_YEAR && start.at(2, 0, 0, 0) <= wall && wall < end.at(1, 0, 0, 0);
+    if daylight {
+        Offset::constant(1 - west)
+    } else {
+        standard
+    }
 }

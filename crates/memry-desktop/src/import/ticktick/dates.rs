@@ -14,7 +14,7 @@ use jiff::tz::{AmbiguousOffset, Offset, TimeZone};
 use memry_core::markdown::frontmatter::js_trim;
 use regex::Regex;
 
-use super::legacy_zones::legacy_zone;
+use super::legacy_zones::legacy_offset;
 use crate::web::extract::utils::date::{civil_from_days, parse_date_in};
 
 const DAY_MS: i64 = 86_400_000;
@@ -85,18 +85,19 @@ fn offset_zone(name: &str) -> Option<TimeZone> {
         .map(TimeZone::fixed)
 }
 
-/// `timezone.trim() || 'UTC'` as `Intl.DateTimeFormat` resolves it, and UTC where it throws.
-/// ICU refuses the tzdb's `Factory` zone, which jiff reads as UTC anyway, and keeps names the
-/// tzdb dropped, which [`legacy_zone`] resolves.
-fn intl_zone(name: &str) -> TimeZone {
+/// The offset at `at` of `timezone.trim() || 'UTC'` as `Intl.DateTimeFormat` resolves it, and
+/// UTC's where it throws. ICU refuses the tzdb's `Factory` zone, which jiff reads as UTC anyway,
+/// and keeps names the tzdb dropped, which [`legacy_offset`] resolves.
+fn intl_offset(name: &str, at: Timestamp) -> Offset {
     let name = match js_trim(name) {
         "" => "UTC",
         name => name,
     };
     offset_zone(name)
         .or_else(|| jiff::tz::db().get(name).ok())
-        .or_else(|| legacy_zone(name))
-        .unwrap_or(TimeZone::UTC)
+        .map(|zone| zone.to_offset(at))
+        .or_else(|| legacy_offset(name, at))
+        .unwrap_or(Offset::UTC)
 }
 
 /// `splitDateTime(iso, timezone, allDay)`: the instant's `{ date, time }` in `timezone`, the year
@@ -114,7 +115,7 @@ pub(super) fn split_date_time(
         return (None, None);
     };
     let ms = ms as i64;
-    let offset = intl_zone(timezone).to_offset(into_jiff_range(ms));
+    let offset = intl_offset(timezone, into_jiff_range(ms));
     let wall = ms + i64::from(offset.seconds()) * 1000;
     let (year, month, day) = civil_from_days(wall.div_euclid(DAY_MS));
     let year = if year > 0 { year } else { 1 - year };
