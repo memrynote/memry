@@ -94,7 +94,10 @@ export async function appendBlocksToNote(
 
   const parsed = parseNote(nextFile, target.path)
   markWritebackIgnored(absolutePath)
+  // A caller's retry would append twice: a failed file write resolves.
   const contentHash = await landBodyEdit(db, targetNoteId, nextFile, {
+    notePath: target.path,
+    appends: true,
     feed: () =>
       feedExternalEditToCrdt(
         targetNoteId,

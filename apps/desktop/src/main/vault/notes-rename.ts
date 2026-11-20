@@ -243,6 +243,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       rewritten === null
         ? baselineAfterWrite(db, id, original, original)
         : await landBodyEdit(db, id, rewritten, {
+            notePath: newRelativePath,
             feed: () =>
               feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
             write: () => atomicWrite(newPath, rewritten)

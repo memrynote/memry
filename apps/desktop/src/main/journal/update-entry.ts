@@ -103,6 +103,7 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
   const contentHash =
     content !== undefined
       ? await landBodyEdit(db, cacheId, fileContent, {
+          notePath: journalPath,
           feed: () => feedExternalEditToCrdt(cacheId, content),
           write
         })

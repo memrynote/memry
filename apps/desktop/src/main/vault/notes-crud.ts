@@ -749,6 +749,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   const contentHash =
     content !== undefined
       ? await landBodyEdit(db, input.id, fileContent, {
+          notePath: existing.path,
           feed: () => feedExternalEditToCrdt(input.id, content),
           write
         })

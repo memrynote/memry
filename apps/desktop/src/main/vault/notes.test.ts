@@ -653,10 +653,10 @@ describe('notes operations', () => {
 
     it('refuses the body, with the file untouched, when the CRDT feed throws', async () => {
       const created = await notes.createNote({ title: 'Feed Throws', content: 'Before' })
-      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('store failed'))
+      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('converter failed'))
 
       await expect(notes.updateNote({ id: created.id, content: 'After' })).rejects.toThrow(
-        'store failed'
+        'converter failed'
       )
 
       const { content } = readTestNote(path.join(tempVault.path, created.path))

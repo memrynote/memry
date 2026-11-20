@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { getNoteCacheById, insertNoteCache, updateNoteCache } from '@main/database/queries/notes'
 import { generateContentHash } from '../vault/frontmatter'
+import { folderLockedError } from '../vault-locks/registry'
 import {
   baselineAfterWrite,
   baselineBeforeFeed,
@@ -113,6 +114,7 @@ describe("Memry's own body edit (landBodyEdit)", () => {
   it('writes the file and records it once the doc took the edit', async () => {
     const order: string[] = []
     const published = await landBodyEdit(index.db, 'n1', B, {
+      notePath: 'a.md',
       feed: async () => (order.push('feed'), true),
       write: async () => (order.push('write'), write())
     })
@@ -123,7 +125,11 @@ describe("Memry's own body edit (landBodyEdit)", () => {
   })
 
   it('writes the file and keeps the baseline when the doc declines', async () => {
-    const published = await landBodyEdit(index.db, 'n1', B, { feed: async () => false, write })
+    const published = await landBodyEdit(index.db, 'n1', B, {
+      notePath: 'a.md',
+      feed: async () => false,
+      write
+    })
     expect(disk).toBe(B)
     expect(published).toBe(generateContentHash(A))
     expect(isOutsideEdit(index.db, 'n1', cached(), B)).toBe(true)
@@ -132,6 +138,7 @@ describe("Memry's own body edit (landBodyEdit)", () => {
   it('throws with no file written and the baseline kept when the feed throws', async () => {
     await expect(
       landBodyEdit(index.db, 'n1', B, {
+        notePath: 'a.md',
         feed: async () => {
           throw new Error('store failed')
         },
@@ -143,9 +150,11 @@ describe("Memry's own body edit (landBodyEdit)", () => {
   })
 
   // The doc holds the edit, so the caller must not keep a second copy.
-  it('resolves with the baseline kept and retries through the write-back when the write fails after the feed', async () => {
+  it('an append resolves with the baseline kept and retries through the write-back when the write fails after the feed', async () => {
     retryWriteback.mockClear()
     const published = await landBodyEdit(index.db, 'n1', B, {
+      notePath: 'a.md',
+      appends: true,
       feed: async () => true,
       write: async () => {
         throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' })
@@ -157,16 +166,32 @@ describe("Memry's own body edit (landBodyEdit)", () => {
     expect(retryWriteback).toHaveBeenCalledWith('n1')
   })
 
+  it('an append still throws a lock refusal of the write after the feed', async () => {
+    retryWriteback.mockClear()
+    await expect(
+      landBodyEdit(index.db, 'n1', B, {
+        notePath: 'a.md',
+        appends: true,
+        feed: async () => true,
+        write: async () => {
+          throw folderLockedError()
+        }
+      })
+    ).rejects.toThrow(folderLockedError().message)
+    expect(retryWriteback).not.toHaveBeenCalled()
+  })
+
   // A crash between the file write and the record: the pending hash names the
   // bytes, so recovery reads them as Memry's own.
   it('leaves its bytes its own when the process stops after the write', async () => {
     await landBodyEdit(index.db, 'n1', B, {
+      notePath: 'a.md',
       feed: async () => true,
       write: async () => {
         disk = B
         throw new Error('crash after the file write')
       }
-    })
+    }).catch(() => {})
     expect(cached().contentHash).toBe(generateContentHash(A))
     expect(isOutsideEdit(index.db, 'n1', cached(), disk)).toBe(false)
   })

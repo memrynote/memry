@@ -113,6 +113,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   // write-back rewrites the file from the unrestored Y.Doc. The doc takes the
   // restore first, then the file (`landBodyEdit`).
   const contentHash = await landBodyEdit(db, cached.id, snapshot.fileContent, {
+    notePath: cached.path,
     feed: () =>
       feedExternalEditToCrdt(
         cached.id,

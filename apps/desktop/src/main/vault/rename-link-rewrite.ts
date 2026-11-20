@@ -187,6 +187,7 @@ export async function landSourceRewrite(
   const parsed = parseNote(rewritten, sourcePath)
   markWritebackIgnored(absolutePath)
   const contentHash = await landBodyEdit(db, sourceId, rewritten, {
+    notePath: sourcePath,
     feed: () =>
       feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
     write: () => atomicWrite(absolutePath, rewritten)

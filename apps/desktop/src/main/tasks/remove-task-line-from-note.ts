@@ -135,6 +135,7 @@ async function rewriteSourceNote(taskId: string, noteId: string): Promise<void> 
   const parsed = parseNote(nextFile, cached.path)
   markWritebackIgnored(absolutePath)
   const contentHash = await landBodyEdit(db, noteId, nextFile, {
+    notePath: cached.path,
     feed: () =>
       feedExternalEditToCrdt(noteId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
     write: () => atomicWrite(absolutePath, nextFile)

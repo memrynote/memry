@@ -35,6 +35,7 @@ const h = vi.hoisted(() => ({
   /** Store writes wait here; closing the store rejects them, as shutdown does. */
   storeGate: null as null | { reject: (e: Error) => void; promise: Promise<void> },
   lockedNoteIds: new Set<string>(),
+  lockedFolders: new Set<string>(),
   /** The next file write never lands. */
   crashBeforeWrite: false,
   /** The process stops at the next feed, before or after the doc takes it. */
@@ -116,6 +117,12 @@ vi.mock('../lib/paths', async (importOriginal) => ({
 vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {
+    // The vault lock's file guard (vault-locks/files).
+    const registry = await import('../vault-locks/registry')
+    const relative = absolute.replace('/vault/', '')
+    if (registry.lockedFolderCovering(relative) !== null && !registry.isLockedWriteAllowed()) {
+      throw registry.folderLockedError()
+    }
     if (h.failWrite) throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' })
     if (h.crashBeforeWrite) {
       h.crashBeforeWrite = false
@@ -209,7 +216,10 @@ function stop(): Promise<never> {
   return new Promise<never>(() => {})
 }
 vi.mock('../vault-locks/store', () => ({
-  listLockedRows: () => [...h.lockedNoteIds].map((target) => ({ targetKind: 'note', target }))
+  listLockedRows: () => [
+    ...[...h.lockedNoteIds].map((target) => ({ targetKind: 'note', target })),
+    ...[...h.lockedFolders].map((target) => ({ targetKind: 'folder', target }))
+  ]
 }))
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))
 vi.mock('../projections', () => ({ flushProjectionEvents: async () => {} }))
@@ -230,10 +240,12 @@ import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 import { appendBlocksToNote } from '../vault/append-blocks'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { landBodyEdit } from './writeback-baseline'
+import { atomicWrite } from '../vault/file-ops'
 import { landSourceRewrite } from '../vault/rename-link-rewrite'
 import { updateJournalEntry } from '../journal/update-entry'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
-import { getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
+import { deleteNoteCache, getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache, NoteCache } from '@memry/db-schema/schema/notes-cache'
 
 beforeAll(() => {
@@ -241,7 +253,7 @@ beforeAll(() => {
   h.contentHash = generateContentHash
   installVaultLockSource({
     dataDb: () => ({}) as never,
-    notePathOf: () => null,
+    notePathOf: (id: string) => getNoteCacheById(h.indexDb as never, id)?.path ?? null,
     noteIdAtPath: () => null
   })
 })
@@ -259,6 +271,7 @@ function disarm(): void {
   h.storeFail = false
   h.storeGate = null
   h.lockedNoteIds.clear()
+  h.lockedFolders.clear()
   invalidateVaultLocks()
   h.hangAtFeed = null
   h.crashBeforeWrite = false
@@ -485,6 +498,44 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
     const doc = getCrdtProvider().getDoc(id)!
     expect(res).toBe('rejected')
     expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).not.toContain('Saved.')
+  })
+
+  // R2-2: the lock check takes the writer's path, not the index row's.
+  it('journal save of a day in a locked folder with no index row: refused before the feed', async () => {
+    const date = '2026-04-07'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    await seedNote(id, notePath, 'Morning.')
+    deleteNoteCache(h.indexDb as never, id)
+    h.lockedFolders.add('Journal')
+    invalidateVaultLocks()
+    const res = await outcome(updateJournalEntry({ date, content: 'Morning. Saved.' }))
+    const doc = getCrdtProvider().getDoc(id)!
+    expect(res).toBe('rejected')
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).not.toContain('Saved.')
+    expect(h.files.get(`/vault/${notePath}`)).not.toContain('Saved.')
+  })
+
+  // R2-10: updateNote's shape. The feed carries the body only; the file also
+  // carries new frontmatter, which a write-back from the doc would drop.
+  it('a full-body writer whose file write fails after the feed rejects, with the file untouched', async () => {
+    const id = 'full-body'
+    const notePath = 'Full/note.md'
+    const indexed = await seedNote(id, notePath, 'Body one.')
+    const next = `---\ntags:\n  - urgent\nstatus: done\n---\n${indexed.replace('Body one.', 'Body two.')}`
+    h.failWrite = true
+    const res = await outcome(
+      landBodyEdit(h.indexDb as never, id, next, {
+        notePath,
+        feed: () => feedExternalEditToCrdt(id, 'Body two.'),
+        write: () => atomicWrite(`/vault/${notePath}`, next)
+      })
+    )
+    h.failWrite = false
+    await settle(id)
+    expect(res).toBe('rejected')
+    expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
+    expect(hashOf(id)).toBe(generateContentHash(indexed))
   })
 
   it('append-blocks whose file write fails after the feed resolves, and the write-back writes the file', async () => {

@@ -20,8 +20,8 @@
  *   rename's link rewrites) feed the doc first, wait for the store to hold the
  *   update, and then write the file through `writeWithBaseline`
  *   (`landBodyEdit`, D-DOC-FIRST). A locked note is refused before the feed.
- *   A crash or a failed file write after the feed leaves the doc ahead of the
- *   file with the baseline kept, and the write-back writes it; a crash after
+ *   A crash after the feed, or a failed file write, leaves the doc ahead of
+ *   the file with the baseline kept, and the write-back writes it; a crash after
  *   the write leaves the pending hash naming Memry's own bytes. A store that
  *   fails fails the writer, with no file written. A doc that declines the
  *   feed (closed and empty, owed, large-file) gets the file written with the
@@ -55,6 +55,7 @@ import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { flushProjectionEvents } from '../projections'
 import { createLogger } from '../lib/logger'
 import { assertNoteWritable } from '../vault-locks/registry'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 import { crdtWriteback } from './crdt-writeback-port'
 
 const log = createLogger('WritebackBaseline')
@@ -150,17 +151,27 @@ export function baselineBeforeFeed(indexDb: IndexDb, noteId: string, written: st
  * - A feed that rejects (the store failed) throws, with no file written and
  *   the baseline kept: the caller keeps its copy of the edit.
  * - A feed that declines writes the file and keeps the baseline.
- * - Once the feed landed, the doc owns the change. A failed file write keeps
- *   the baseline and resolves, and the write-back writes the file; throwing
- *   would make the caller keep a second copy of an edit the doc holds.
+ * - A failed file write after the feed keeps the baseline and throws. The
+ *   writer replaces the whole body, and often the frontmatter the doc does not
+ *   hold, so the caller's retry is idempotent and nothing is dropped silently.
+ * - `appends`: the edit adds to the body, so a caller's retry would add it
+ *   twice. A failed file write after the feed then resolves, and the
+ *   write-back writes the file from the doc, which owns the change. A lock
+ *   refusal still throws.
  */
 export async function landBodyEdit(
   indexDb: IndexDb,
   noteId: string,
   fileContent: string,
-  steps: { feed: () => Promise<boolean>; write: () => Promise<void> }
+  steps: {
+    /** Vault-relative, so the lock check does not depend on the index row. */
+    notePath: string
+    feed: () => Promise<boolean>
+    write: () => Promise<void>
+    appends?: boolean
+  }
 ): Promise<string> {
-  assertNoteWritable(noteId)
+  assertNoteWritable(noteId, steps.notePath)
   const fed = await steps.feed().catch((err: unknown) => {
     log.error('Could not store a body change in its doc; nothing was written', { noteId, err })
     throw err
@@ -172,6 +183,8 @@ export async function landBodyEdit(
   try {
     await writeWithBaseline(indexDb, noteId, fileContent, steps.write)
   } catch (err) {
+    const refused = err instanceof NoteError && err.code === NoteErrorCode.READ_ONLY
+    if (!steps.appends || refused) throw err
     log.error('The doc holds a body change its file write missed; the write-back writes it', {
       noteId,
       err
