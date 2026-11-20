@@ -165,7 +165,11 @@ fn serialize_mark(mark: &CriticMarkupMark, visible: &[u16]) -> Vec<u16> {
     out
 }
 
-fn resolve_mark_range(plain: &[u16], mark: &CriticMarkupMark) -> Option<CriticMarkupMark> {
+/// Where the serializer writes `mark` in `plain`; `None` drops it.
+pub(crate) fn resolve_mark_range(
+    plain: &[u16],
+    mark: &CriticMarkupMark,
+) -> Option<CriticMarkupMark> {
     let visible = to_units(&mark.visible_text);
     if mark.start >= 0
         && mark.end >= mark.start

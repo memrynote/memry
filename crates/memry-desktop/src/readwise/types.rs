@@ -127,6 +127,10 @@ pub struct ReaderDocument {
     pub source_url: Option<String>,
     pub notes: Option<String>,
     pub parent_id: Option<String>,
+    /// Reader server time: the run's cursor is the newest of these.
+    pub updated_at: Option<String>,
+    /// The article HTML, sent only with `withHtmlContent=true` (the full-text toggle).
+    pub html_content: Option<String>,
 }
 
 /// Reader's `published_date`: a date string or a Unix time.
