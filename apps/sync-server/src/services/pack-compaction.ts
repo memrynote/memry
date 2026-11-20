@@ -17,12 +17,19 @@ import {
   watermarkUnchanged,
   watermarkUpsert,
   type Coverage,
+  type Guard,
   type VaultScope
 } from './pack-index-write'
 import { roomForPack, roomGuard } from './pack-list'
 import { isSelectedRecordVersion, recordRowShedInPlace } from './pack-record-selection'
-import { loadSnapshotMeta, snapshotsLive, snapshotTieEnd } from './pack-snapshot-selection'
-import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
+import { loadSnapshotMeta, snapshotSlot, snapshotsLive } from './pack-snapshot-selection'
+import {
+  fitBeside,
+  readCollidingPack,
+  replacePacks,
+  rollupKind,
+  type CollidingPack
+} from './pack-rollup'
 import { withReplacedObjectPasses } from './pack-message-passes'
 import {
   deleteUnlisted,
@@ -30,7 +37,7 @@ import {
   recordChainReanchor,
   recordUnlisted
 } from './pack-replaced-objects'
-import { selectCandidates } from './pack-selection'
+import { selectCandidates, type PackSelection } from './pack-selection'
 import { updateEntrySource, updatesLive, type EntrySource } from './pack-update-selection'
 
 const logger = createLogger('PackCompaction')
@@ -201,15 +208,13 @@ export const compactOneRange = async (
   // beside them. When none fit or the pack cannot be read, record and update
   // builds hold the watermark: they sort on the unique server_cursor, so only
   // a foreign row collides, and rows passed unpacked would be in no pack and
-  // in no gap (#5229 P6). Snapshot packs are a cache only and readers trust
-  // the manifest, not their coverage, so a snapshot build leaves the rest of
-  // the tie item by item and moves past it, once: later seconds still pack
-  // and the colliding pack is not downloaded again (D-P6-EXIT).
+  // in no gap (#5229 P6). A snapshot build lists the rest of that second in a
+  // pack of its own at a free min_cursor below it, so a tie group of any size
+  // ends up packed and the colliding pack is not downloaded again
+  // (D-TIE-REMAINDER, #5310).
   const prior = await readCollidingPack(db, storage, scope, kind, minSortValue)
-  const candidates =
-    prior === null || typeof prior === 'string'
-      ? selection.candidates
-      : fitBeside(prior, selection.candidates)
+  const rolled = prior === null || typeof prior === 'string' ? null : prior
+  const candidates = rolled ? fitBeside(rolled, selection.candidates) : selection.candidates
   if (typeof prior === 'string' || candidates.length === 0) {
     const context = {
       userId: scope.userId,
@@ -225,27 +230,63 @@ export const compactOneRange = async (
       )
       return { ...noop, reason: 'held' }
     }
-    logger.warn(
-      'snapshot tie collides with a listed pack it cannot roll in; left item by item',
-      context
-    )
-    const tieEnd = await snapshotTieEnd(db, scope, minSortValue)
-    await advanceWatermark(
-      db,
-      scope,
-      kind,
-      minSortValue,
-      tieEnd ?? selection.candidates[selection.candidates.length - 1].tiebreak,
-      unchanged
-    )
-    return { ...noop, reason: 'skipped' }
+    const slot = await snapshotSlot(db, scope, minSortValue)
+    logger.warn('snapshot tie collides with a listed pack it cannot roll in; listed below it', {
+      ...context,
+      slot: slot.minCursor
+    })
+    return listRange(db, storage, scope, kind, noop, {
+      candidates: selection.candidates.filter((row) => row.sortKey <= slot.lastSecond),
+      prior: null,
+      minSortValue: slot.minCursor,
+      coverage: null,
+      guard: unchanged,
+      advances: true
+    })
   }
   const last = candidates[candidates.length - 1]
+  return listRange(db, storage, scope, kind, noop, {
+    candidates,
+    prior: rolled,
+    minSortValue,
+    coverage: selection.coverage && {
+      from: rolled?.pack.cover_from ?? selection.coverage.from,
+      through: last.sortKey
+    },
+    guard: unchanged,
+    advances: true
+  })
+}
+
+/** One range a build lists: its rows, where it starts, and what its commit checks. */
+export interface ListedRange {
+  candidates: PackSelection['candidates']
+  /** The listed pack starting at `minSortValue` that this one replaces, with its current entries. */
+  prior: CollidingPack | null
+  /** The row's min_cursor: the first row's sort key, or a free snapshot slot below it (snapshotSlot). */
+  minSortValue: number
+  coverage: Coverage
+  /** Holds at commit, beside the §7.15 recheck and the listing cap. */
+  guard: Guard
+  /** True when the watermark moves to the last row: false for rows below it (pack-snapshot-heal.ts). */
+  advances: boolean
+}
+
+/**
+ * Fetch, write and list one range (the module doc's steps 2 to 4). Returns
+ * `noop` with its reason when nothing lists.
+ */
+export const listRange = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  kind: PackKindName,
+  noop: Omit<PackBuildResult, 'reason'>,
+  range: ListedRange
+): Promise<PackBuildResult> => {
+  const { candidates, prior, minSortValue, coverage } = range
+  const last = candidates[candidates.length - 1]
   const maxSortValue = last.sortKey
-  const coverage: Coverage = selection.coverage && {
-    from: prior?.pack.cover_from ?? selection.coverage.from,
-    through: last.sortKey
-  }
   const packId = crypto.randomUUID()
   const packKey = packObjectKey(scope, kind, minSortValue, maxSortValue, packId)
 
@@ -393,7 +434,8 @@ export const compactOneRange = async (
   }
 
   if (writtenCount === 0) {
-    await advanceWatermark(db, scope, kind, last.sortKey, last.tiebreak, unchanged)
+    if (range.advances)
+      await advanceWatermark(db, scope, kind, last.sortKey, last.tiebreak, range.guard)
     return { ...noop, holes, reason: 'skipped' }
   }
 
@@ -420,8 +462,8 @@ export const compactOneRange = async (
   // another kind's build or a concurrent run may have taken the last slot.
   const room = roomGuard(scope)
   const guard = {
-    sql: `(${current.sql}) AND (${room.sql}) AND (${unchanged.sql})`,
-    bind: [...current.bind, ...room.bind, ...unchanged.bind]
+    sql: `(${current.sql}) AND (${room.sql}) AND (${range.guard.sql})`,
+    bind: [...current.bind, ...room.bind, ...range.guard.bind]
   }
   const replacing =
     prior &&
@@ -452,15 +494,19 @@ export const compactOneRange = async (
       },
       replacing?.recorded ?? guard
     ),
-    watermarkUpsert(
-      db,
-      scope,
-      kind,
-      last.sortKey,
-      last.tiebreak,
-      listed,
-      coverage?.through ?? null
-    ),
+    ...(range.advances
+      ? [
+          watermarkUpsert(
+            db,
+            scope,
+            kind,
+            last.sortKey,
+            last.tiebreak,
+            listed,
+            coverage?.through ?? null
+          )
+        ]
+      : []),
     recordUnlisted(db, scope, packId, packKey),
     db.prepare(`SELECT ${listed.sql} AS listed`).bind(...listed.bind)
   ])

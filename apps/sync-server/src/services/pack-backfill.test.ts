@@ -328,7 +328,12 @@ describe('backfill messages (#5278)', () => {
         "SELECT SUM(item_count) c FROM pack_index WHERE user_id = 'u-hole' AND item_kind = 'crdt_snapshot'"
       )
     ).toBe(600)
-    expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
+    // The 256 rows without a blob stay in no pack, so each tick sends the heal
+    // one message (#5310, D-TIE-REMAINDER). It lists nothing and ends there.
+    const packs = count("SELECT COUNT(*) c FROM pack_index WHERE user_id = 'u-hole'")
+    const next = await runBackfillTick(harness.db, storage)
+    expect(next.messages).toHaveLength(1)
+    expect(count("SELECT COUNT(*) c FROM pack_index WHERE user_id = 'u-hole'")).toBe(packs)
   })
 
   it('a vault at the listing cap ends the chain with no build', async () => {
