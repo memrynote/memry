@@ -9,7 +9,8 @@
 // are out of the benchmark's scope.
 //
 // The benchmark only reads the vault: the proxy answers every write under
-// /sync/ with 403 itself and never forwards it.
+// /sync/ with 403 itself and never forwards it. It keeps the type and
+// operation of each refused push item, and the `hasMore` of each feed page.
 //
 // What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
 // its own pooled TLS connections upstream. Electron's net.fetch opens at most
@@ -21,6 +22,7 @@ import http from 'node:http'
 import https from 'node:https'
 import net from 'node:net'
 import tls from 'node:tls'
+import zlib from 'node:zlib'
 
 const R2_PREFIX = '/__r2/'
 const HOP_HEADERS = new Set([
@@ -83,6 +85,49 @@ function rewritePackUrls(body, base) {
   return Buffer.from(JSON.stringify(json))
 }
 
+/**
+ * `{ 'note:create': 3 }` for a refused push body: only each item's type and
+ * operation, which travel in clear beside the ciphertext. Other bodies count
+ * as `other`.
+ */
+export function refusedItems(body) {
+  let items
+  try {
+    items = JSON.parse(body.toString('utf8')).items
+  } catch {
+    items = null
+  }
+  if (!Array.isArray(items)) return { other: 1 }
+  const counts = {}
+  for (const item of items) {
+    const key = `${item?.type ?? '?'}:${item?.operation ?? '?'}`
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+}
+
+const DECODERS = {
+  gzip: zlib.gunzipSync,
+  br: zlib.brotliDecompressSync,
+  deflate: zlib.inflateSync,
+  zstd: zlib.zstdDecompressSync
+}
+
+/**
+ * The `hasMore` of one `GET /sync/changes` page, so a shell's records mark
+ * can be read off the timeline: the feed head is the first page without more.
+ * Null when the body does not parse.
+ */
+export function feedHasMore(body, encoding) {
+  try {
+    const decode = encoding ? DECODERS[encoding] : (bytes) => bytes
+    const hasMore = JSON.parse(decode(body).toString('utf8')).hasMore
+    return typeof hasMore === 'boolean' ? hasMore : null
+  } catch {
+    return null
+  }
+}
+
 /** The proxy URL that fetches `url` through the proxy's R2 route. */
 export function throughProxy(proxyUrl, url) {
   return `${proxyUrl}${R2_PREFIX}${Buffer.from(url).toString('base64url')}`
@@ -107,6 +152,7 @@ export async function startProxy({ upstream, port = 0 }) {
     const isPackList = !isR2 && req.method === 'GET' && target.pathname.endsWith('/packs')
     const headers = forwardHeaders(req.headers, target.host)
     if (isPackList) headers['accept-encoding'] = 'identity'
+    const isFeedPage = !isR2 && req.method === 'GET' && target.pathname === '/sync/changes'
 
     const entry = {
       startMs,
@@ -121,9 +167,11 @@ export async function startProxy({ upstream, port = 0 }) {
     req.on('data', (chunk) => (entry.reqBytes += chunk.length))
 
     if (!isR2 && isWriteRoute(req.method, target.pathname)) {
-      req.resume()
+      const chunks = []
+      req.on('data', (chunk) => chunks.push(chunk))
       req.on('end', () => {
         Object.assign(entry, { status: 403, refused: true, endMs: Date.now() })
+        entry.refusedItems = refusedItems(Buffer.concat(chunks))
         requests.push(entry)
         res.writeHead(403, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ error: 'BENCH_READ_ONLY', message: 'the benchmark only reads' }))
@@ -140,11 +188,14 @@ export async function startProxy({ upstream, port = 0 }) {
       const chunks = []
       up.on('data', (chunk) => {
         entry.resBytes += chunk.length
-        if (isPackList) chunks.push(chunk)
-        else res.write(chunk)
+        if (isPackList || isFeedPage) chunks.push(chunk)
+        if (!isPackList) res.write(chunk)
       })
       up.on('end', () => {
         entry.endMs = Date.now()
+        if (isFeedPage && entry.status === 200) {
+          entry.hasMore = feedHasMore(Buffer.concat(chunks), up.headers['content-encoding'])
+        }
         requests.push(entry)
         if (isPackList && entry.status === 200) {
           const body = rewritePackUrls(Buffer.concat(chunks), `http://127.0.0.1:${address.port}`)
