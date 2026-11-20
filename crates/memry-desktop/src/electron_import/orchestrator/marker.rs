@@ -26,9 +26,10 @@ pub struct Marker {
     pub completed_at: i64,
     pub electron_profile: String,
     pub vaults: Vec<MarkerVault>,
-    /// The path of the vault whose import read the unclaimed legacy `crdt-store/`, which Electron
-    /// gives to one vault per profile. Written before a deferred import reads it, so a crash or a
-    /// rerun never folds it into a second vault. Electron's own `legacyStoreClaimedBy` wins.
+    /// The vault uuid whose import read the unclaimed legacy `crdt-store/`, which Electron gives
+    /// to one vault per profile, keyed by uuid as Electron's `legacyStoreClaimedBy` is. Written
+    /// once, before a deferred import reads it, so a crash or a rerun never folds it into a second
+    /// vault, and the vault reads it at any path. Electron's own claim wins.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legacy_store_read_by: Option<String>,
     #[serde(flatten)]
@@ -79,8 +80,21 @@ impl Marker {
         Ok(Some(marker))
     }
 
+    /// The legacy claim is write-once and `IMPORT_LOCK` is process-local: a process writing a
+    /// marker it read before another process recorded the claim keeps that claim.
     pub fn write(&self, data_dir: &Path) -> Result<(), ImportError> {
-        write_json(&data_dir.join(MARKER_FILE), self)
+        let path = data_dir.join(MARKER_FILE);
+        if self.legacy_store_read_by.is_none()
+            && let Some(Self {
+                legacy_store_read_by: Some(claim),
+                ..
+            }) = Self::read(data_dir)?
+        {
+            let mut kept = self.clone();
+            kept.legacy_store_read_by = Some(claim);
+            return write_json(&path, &kept);
+        }
+        write_json(&path, self)
     }
 
     pub fn vault_mut(&mut self, path: &str) -> Option<&mut MarkerVault> {

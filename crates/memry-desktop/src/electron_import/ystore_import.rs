@@ -249,11 +249,13 @@ pub fn takes_unclaimed_legacy(
 /// through a symlink) is gone is passed over: Electron cannot open it. Every vault's import
 /// applies this rule to the same list, the vault being imported included, so at most one
 /// passes. A profile of one vault gives the store to that vault; `currentVault` counts as a
-/// vault here even when `vaults[]` does not list it, as the plan imports it. A folder the config
-/// does not name (a vault moved from another path, a copied-in folder) never takes it, and with
-/// no config no folder does: Electron's ownership of the store follows the vaults it opened.
-/// (Folders the config does name but that an earlier import passed over are held off by the
-/// recorded [`ImportClaim`].)
+/// vault here even when `vaults[]` does not list it, as the plan imports it. Electron keys its
+/// claim by vault uuid, not path: a folder the config does not name stands at the place of a
+/// listed vault whose folder is gone and whose config `vaultUuid` is `vault_uuid` (that vault,
+/// moved at a remount). A copy beside a present original takes nothing, and any other folder the
+/// config does not name never takes the store; with no config no folder does. (Folders the
+/// config does name but that an earlier import passed over are held off by the recorded
+/// [`ImportClaim`].)
 /// Each other vault is named by [`electron_vault_uuid`] (its singleton, then its config
 /// `vaultUuid`), the order the caller names the vault being imported by.
 fn inherits_unclaimed_legacy(
@@ -272,8 +274,26 @@ fn inherits_unclaimed_legacy(
         .into_iter()
         .chain(vaults.iter().map(|v| v.path.as_str()))
         .collect();
+    let config_uuid = |path: &str| {
+        vaults
+            .iter()
+            .find(|v| v.path == path)
+            .and_then(|v| v.vault_uuid.as_deref())
+    };
+    let place = |path: &'_ str| -> Option<String> {
+        if std::fs::metadata(path).is_ok_and(|m| m.is_dir()) {
+            Some(path.to_owned())
+        } else if !distinct.contains(vault_path) && config_uuid(path) == Some(vault_uuid) {
+            Some(vault_path.to_owned())
+        } else {
+            None
+        }
+    };
     if distinct.len() + unreadable <= 1 {
-        return distinct.contains(vault_path);
+        return distinct.contains(vault_path)
+            || distinct
+                .iter()
+                .any(|path| place(path).as_deref() == Some(vault_path));
     }
     let is_dir = |path: &Path| std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());
     let has_store = |path: &str| {
@@ -295,8 +315,9 @@ fn inherits_unclaimed_legacy(
         .current_vault()
         .into_iter()
         .chain(vaults.iter().map(|v| v.path.as_str()))
-        .filter(|path| std::fs::metadata(path).is_ok_and(|m| m.is_dir()))
+        .filter_map(place)
         .find(|path| !has_store(path))
+        .as_deref()
         == Some(vault_path)
 }
 

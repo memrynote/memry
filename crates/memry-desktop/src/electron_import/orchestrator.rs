@@ -393,8 +393,8 @@ fn phases(
     Ok(())
 }
 
-/// The vault whose fold read the unclaimed legacy store, as its prep report records it. The
-/// plan gives the store to one vault at most, so the first such section is the only one.
+/// The uuid of the vault whose fold read the unclaimed legacy store, as its prep report records
+/// it. The plan gives the store to one vault at most, so the first such section is the only one.
 fn legacy_reader(run: &Run<'_>) -> Option<String> {
     run.report
         .vaults
@@ -404,7 +404,7 @@ fn legacy_reader(run: &Run<'_>) -> Option<String> {
                 .as_ref()
                 .is_some_and(|p| p["fold"]["legacy"] == "read")
         })
-        .map(|s| s.path.clone())
+        .and_then(|s| s.vault_id.clone())
 }
 
 fn stage_all(

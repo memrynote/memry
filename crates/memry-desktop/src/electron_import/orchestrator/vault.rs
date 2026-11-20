@@ -106,6 +106,18 @@ pub(super) enum Staged {
     Install(Box<PendingInstall>),
 }
 
+/// The id the vault is imported under: an id minted by a cut-off attempt (`previous`, its
+/// section) stays the vault's id.
+pub(super) fn import_id(previous: Option<&VaultSection>, id: &VaultId) -> VaultId {
+    match previous.and_then(|s| s.vault_id.clone()) {
+        Some(vault_id) if id.minted => VaultId {
+            vault_id,
+            minted: true,
+        },
+        _ => id.clone(),
+    }
+}
+
 /// Stages one vault and runs checks 3, 7 and 8, saving its section into `run` as it goes.
 /// Installs nothing.
 pub(super) fn stage(
@@ -126,14 +138,7 @@ pub(super) fn stage(
     if let Some(done) = earlier_import(previous.as_ref(), path, &fingerprint) {
         return Ok(Staged::Settled(Box::new(done.map_err(fail)?)));
     }
-    // An id minted by a cut-off attempt stays the vault's id.
-    let id = &match previous.as_ref().and_then(|s| s.vault_id.clone()) {
-        Some(vault_id) if id.minted => VaultId {
-            vault_id,
-            minted: true,
-        },
-        _ => id.clone(),
-    };
+    let id = &import_id(previous.as_ref(), id);
     let mut prepared = prepare_vault(
         phase.profile,
         phase.config,
@@ -143,7 +148,7 @@ pub(super) fn stage(
         phase.scratch,
         match phase.legacy_read_by {
             None => ImportClaim::Unrecorded,
-            Some(reader) if reader == path => ImportClaim::This,
+            Some(reader) if reader == id.vault_id => ImportClaim::This,
             Some(_) => ImportClaim::Other,
         },
     )

@@ -243,11 +243,13 @@ fn deferred_import(
                 &ctx.tauri_data_dir,
                 ctx.free_space,
             )?;
-            // Recorded before the fold reads it: a crash or a rerun then gives it to no other vault.
+            // Recorded before the fold reads it, by vault uuid as Electron records its claim: a
+            // crash or a rerun then gives it to this vault wherever it is mounted, and to no other.
+            let vault_id = vault::import_id(run.section(path), id).vault_id;
             if marker.legacy_store_read_by.is_none()
-                && takes_unclaimed_legacy(&profile, path, &id.vault_id, config.as_ref(), &scratch)?
+                && takes_unclaimed_legacy(&profile, path, &vault_id, config.as_ref(), &scratch)?
             {
-                marker.legacy_store_read_by = Some(path.to_owned());
+                marker.legacy_store_read_by = Some(vault_id);
                 marker.write(&ctx.tauri_data_dir)?;
             }
             let phase = VaultPhase {
