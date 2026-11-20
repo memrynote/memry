@@ -61,13 +61,15 @@ feature additive.
 | `session.ttlSeconds`          | mirrors `exp - iat`, for renewal scheduling (`:25-26`)                                                                                                                                                                           |
 | `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-102`)                                                      |
 | `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:104-108`, absent rows give `0` at `:148`)                                                 |
-| `packs`                       | **reserved; always present, always empty** until the pack pipeline lands (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:150`)                                                                                              |
+| `packs`                       | **reserved; always present, always empty** (`:37-39`; `apps/sync-server/src/routes/bootstrap.ts:156`). Pack coverage lives in `GET /sync/packs` (chapter 08 §8.10)                                                               |
 | `attachments`                 | **informational only**, absent entirely on deployments that cannot presign (`:39-43`); `chunkHashes` is a first keyset page of at most `CHUNK_HASH_PAGE_LIMIT = 512` (`apps/sync-server/src/routes/bootstrap.ts:51`, `:126-130`) |
 | `attachments.nextChunkCursor` | **names where a continuation page would start; no continuation endpoint exists** (`:64-70`)                                                                                                                                      |
 
 **A client MUST NOT treat `attachments.chunkHashes` as a complete inventory**,
 and MUST NOT treat `packs: []` as meaning the vault has no packs — use
-`GET /sync/packs` (chapter 08 §8.9).
+`GET /sync/packs` (chapter 08 §8.9). Coverage is stated there, next to the
+ranges it describes, because a client reads the listing with or without a
+session (`packages/contracts/src/sync-api.ts:805-820`).
 
 ## 10.5 Errors, and the fallback rule
 

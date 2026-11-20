@@ -636,6 +636,18 @@
             "cursorAfter": 5
           },
           {
+            "scenario": "cursor at the floor",
+            "cursor": 3,
+            "floor": 3,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
+            "apply": [
+              4,
+              5
+            ],
+            "cursorAfter": 5
+          },
+          {
             "scenario": "fresh device after the purge",
             "cursor": 0,
             "floor": 3,
@@ -857,6 +869,279 @@
       "expectErrorCode": "entry-count-too-large",
       "referenceOnlyMessage": "pack truncated",
       "pins": "parsePack does not itself enforce PACK_MAX_ENTRIES — it runs out of index bytes first and says \"pack truncated\". A conforming reader applies the cap BEFORE allocating (chapter 08 §8.6) and therefore fails earlier, with entry-count-too-large. Asserting the reference message here would require deleting the check the chapter mandates, so only the code is normative"
+    }
+  ],
+  "coverageCases": [
+    {
+      "scenario": "no coverage (every server today)",
+      "noteBody": false,
+      "coverage": null,
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 0
+    },
+    {
+      "scenario": "record packs that chain up to packedThrough",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 200,
+          "coveredThrough": 210
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 100,
+          "coverThrough": 200,
+          "usable": true
+        },
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 210
+    },
+    {
+      "scenario": "a pack in the middle of the chain answered 404",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 300,
+          "coveredThrough": 300
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        },
+        {
+          "itemKind": "record",
+          "coverFrom": 100,
+          "coverThrough": 200,
+          "usable": false
+        },
+        {
+          "itemKind": "record",
+          "coverFrom": 200,
+          "coverThrough": 300,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 100
+    },
+    {
+      "scenario": "a rollup listed both the old packs and the new one",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 200,
+          "coveredThrough": 250
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        },
+        {
+          "itemKind": "record",
+          "coverFrom": 100,
+          "coverThrough": 200,
+          "usable": true
+        },
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 200,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 250
+    },
+    {
+      "scenario": "the newest pack left the listing during the walk",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 200,
+          "coveredThrough": 200
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 100
+    },
+    {
+      "scenario": "an unusable record entry",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 300,
+          "coveredThrough": 300
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 300,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [
+        150
+      ],
+      "tailFrom": 149
+    },
+    {
+      "scenario": "note_body declared and a body kind has no coverage entry",
+      "noteBody": true,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 100,
+          "coveredThrough": 100
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 0
+    },
+    {
+      "scenario": "note_body not declared: body kinds do not bound the tail",
+      "noteBody": false,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 100,
+          "coveredThrough": 100
+        },
+        {
+          "itemKind": "crdt_snapshot",
+          "packedThrough": 0,
+          "coveredThrough": 0
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 100
+    },
+    {
+      "scenario": "note_body declared: the lowest kind bounds the tail",
+      "noteBody": true,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 300,
+          "coveredThrough": 300
+        },
+        {
+          "itemKind": "crdt_snapshot",
+          "packedThrough": 250,
+          "coveredThrough": 280
+        },
+        {
+          "itemKind": "crdt_update",
+          "packedThrough": 0,
+          "coveredThrough": 260
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 300,
+          "usable": true
+        },
+        {
+          "itemKind": "crdt_snapshot",
+          "coverFrom": 0,
+          "coverThrough": 250,
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 260
+    },
+    {
+      "scenario": "a snapshot pack without a coverage range is a cache only",
+      "noteBody": true,
+      "coverage": [
+        {
+          "itemKind": "record",
+          "packedThrough": 100,
+          "coveredThrough": 100
+        },
+        {
+          "itemKind": "crdt_snapshot",
+          "packedThrough": 50,
+          "coveredThrough": 60
+        },
+        {
+          "itemKind": "crdt_update",
+          "packedThrough": 0,
+          "coveredThrough": 100
+        }
+      ],
+      "packs": [
+        {
+          "itemKind": "record",
+          "coverFrom": 0,
+          "coverThrough": 100,
+          "usable": true
+        },
+        {
+          "itemKind": "crdt_snapshot",
+          "usable": true
+        }
+      ],
+      "unusableRecordSortKeys": [],
+      "tailFrom": 0
     }
   ]
 }

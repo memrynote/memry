@@ -226,6 +226,7 @@ describe('pack entry contract vectors', () => {
     const plans = contractCases.flatMap((c) => c.entryContract?.updatePlans ?? [])
     const scenarios = plans.map((p) => p.scenario)
     for (const required of [
+      'cursor at the floor',
       'claimed snapshot after the purge, no floor',
       'floor read before the purge, then the pack',
       'answer without floor (every server today)',
