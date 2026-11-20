@@ -1,6 +1,8 @@
 import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 
 import type { PackEntryMeta } from './pack-format'
+import { packKeyRange } from './pack-index-write'
+import { REWRITE_PENDING } from './pack-replaced-objects'
 
 /**
  * The `crdt_snapshot` half of pack selection (#1839, protocol 08 §8.4): which
@@ -46,6 +48,8 @@ export const snapshotSelectionQuery = (
  * it only has to bound the entries. Such a pack holds that one second, so it
  * starts inside no other pack's range but the ones at seconds it skipped;
  * a pack at its own second holds rows up to the next listed pack's second.
+ * A pack waiting for its purge rewrite counts as listed: the rewrite lists it
+ * back at its own `min_cursor` (protocol 08 §8.13).
  * Of the 1,000 values at or below `second`, at most 999 start a pack (§8.14).
  */
 export const snapshotSlot = async (
@@ -53,15 +57,27 @@ export const snapshotSlot = async (
   scope: VaultScope,
   second: number
 ): Promise<{ minCursor: number; lastSecond: number }> => {
-  const rows = await db
-    .prepare(
-      `SELECT min_cursor FROM pack_index
-       WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot' AND min_cursor >= ?
-       ORDER BY min_cursor ASC`
-    )
-    .bind(scope.userId, scope.vaultId, second - PACK_LIST_MAX_PACKS_PER_VAULT)
-    .all<{ min_cursor: number }>()
-  const mins = (rows.results ?? []).map((row) => row.min_cursor)
+  const [listed, pending] = await db.batch<{ min_cursor?: number; pack_key?: string }>([
+    db
+      .prepare(
+        `SELECT min_cursor FROM pack_index
+         WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot' AND min_cursor >= ?`
+      )
+      .bind(scope.userId, scope.vaultId, second - PACK_LIST_MAX_PACKS_PER_VAULT),
+    db
+      .prepare(
+        `SELECT pack_key FROM pack_replaced_objects
+         WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
+      )
+      .bind(scope.userId, scope.vaultId)
+  ])
+  const mins = [
+    ...(listed.results ?? []).flatMap((row) => row.min_cursor ?? []),
+    ...(pending.results ?? []).flatMap((row) => {
+      const range = packKeyRange(row.pack_key ?? '')
+      return range?.kind === 'crdt_snapshot' ? [range.minSortValue] : []
+    })
+  ].toSorted((a, b) => a - b)
   const taken = new Set(mins)
   let minCursor = second
   while (taken.has(minCursor)) minCursor--
@@ -72,6 +88,15 @@ export const snapshotSlot = async (
     lastSecond: minCursor < second ? second : (next ?? Number.MAX_SAFE_INTEGER)
   }
 }
+
+/**
+ * True while a snapshot pack of the vault waits for its purge rewrite (protocol
+ * 08 §8.13): out of the listing, so its documents look unpacked, and due to
+ * list back at its range. Binds user_id, vault_id.
+ */
+export const snapshotRewritePending = `EXISTS (SELECT 1 FROM pack_replaced_objects
+  WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'
+    AND instr(pack_key, '/packs/crdt_snapshot/') > 0)`
 
 /** The document ids a vault's listed snapshot packs hold; binds user_id, vault_id. */
 export const packedSnapshotIds = `SELECT d.value FROM pack_index p, json_each(p.documents) d

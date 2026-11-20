@@ -382,7 +382,10 @@ watermark that no pack's `documents` holds, and that vault's snapshot backfill c
 rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
 at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
 commit holds only while no listed pack holds any of its documents, so two runs never pack a row
-twice. A vault that still lists a snapshot pack from before migration 0024 is not healed, since D1
+twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows
+to the rebuild. A pack waiting for its purge rewrite is out of the listing, so its documents look
+unpacked: the heal does nothing while any snapshot rewrite is pending, and a free `min_cursor` is
+never one a pending rewrite lists its pack back at. A vault that still lists a snapshot pack from before migration 0024 is not healed, since D1
 does not know what that pack holds. A row whose blob is gone stays unpacked, and the cron sends its
 vault one message per tick that lists nothing.
 

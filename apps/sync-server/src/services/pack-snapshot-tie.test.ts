@@ -5,7 +5,9 @@ import { runBackfillTick } from '../__tests__/pack-queue-memory'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
 import { compactOneRange } from './pack-compaction'
 import { parsePack } from './pack-format'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { deleteReplacedPackObjects, packKindReset } from './pack-replaced-objects'
+import { healSnapshotRemainder } from './pack-snapshot-heal'
+import { snapshotSlot } from './pack-snapshot-selection'
 
 /**
  * #5310 (D-TIE-REMAINDER): a snapshot tie group larger than one pack, and a
@@ -65,6 +67,39 @@ const packedIds = async (): Promise<string[]> => {
   }
   return ids.toSorted()
 }
+
+const tombstone = (noteId: string): void => {
+  harness.raw
+    .prepare(
+      `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
+       VALUES (?, ?, ?, 'note', ?, 'tomb', 1, 'h', 2, 1, 'delete', 1, 'device-1', 'sig', '{}', 1, 1, 1)`
+    )
+    .run(`row-${noteId}`, USER, VAULT, noteId)
+}
+
+/** Holds `storage` GETs of keys `match` accepts until `release()`; `atGate` resolves at the first. */
+const gated = (match: (key: string) => boolean) => {
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  let reached!: () => void
+  const atGate = new Promise<void>((resolve) => (reached = resolve))
+  const read = storage.get.bind(storage)
+  vi.spyOn(storage, 'get').mockImplementation(async (key: string) => {
+    if (match(key)) {
+      reached()
+      await gate
+    }
+    return read(key)
+  })
+  return { release, atGate }
+}
+
+const watermark = () =>
+  harness.raw
+    .prepare(
+      `SELECT last_sort_value, last_sort_tiebreak FROM pack_watermarks WHERE item_kind = 'crdt_snapshot'`
+    )
+    .get()
 
 beforeEach(() => {
   harness = createSqliteD1()
@@ -137,16 +172,96 @@ describe('snapshot tie remainder (#5310)', () => {
     const [remainderPack, firstPack] = listed()
     expect(JSON.parse(remainderPack.documents)).toEqual(['left-0', 'left-1'])
 
-    harness.raw
-      .prepare(
-        `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-         VALUES ('row-left-0', ?, ?, 'note', 'left-0', 'tomb', 1, 'h', 2, 1, 'delete', 1, 'device-1', 'sig', '{}', 1, 1, 1)`
-      )
-      .run(USER, VAULT)
+    tombstone('left-0')
     await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['left-0'])
     await deleteReplacedPackObjects(harness.db, storage)
 
     expect(listed().find((row) => row.min_cursor === 1000)?.pack_key).toBe(firstPack.pack_key)
     expect(await packedIds()).toEqual(['kept-0', 'kept-1', 'kept-2', 'late', 'left-1'])
+  })
+
+  // REVIEW-5315 P1a: a pending purge rewrite takes its pack out of the
+  // listing, so its documents looked unpacked. The heal packed them at the
+  // rewrite's min_cursor, the rewrite lost twice and the kind was reset.
+  it('leaves the documents of a pack waiting for its purge rewrite alone', async () => {
+    for (const id of ['a', 'b', 'c']) seedSnapshot(id, 1000)
+    seedSnapshot('late', 2000)
+    await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+    const [pack] = listed()
+    tombstone('b')
+    const rewrite = gated((key) => key === pack.pack_key)
+    const purge = purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['b'])
+    await rewrite.atGate
+
+    expect((await healSnapshotRemainder(harness.db, storage, SCOPE)).reason).toBe('not_ready')
+    rewrite.release()
+    await purge
+
+    expect(
+      listed().map(({ min_cursor, documents }) => [min_cursor, JSON.parse(documents)])
+    ).toEqual([[1000, ['a', 'c', 'late']]])
+    expect(watermark()).toEqual({ last_sort_value: 2000, last_sort_tiebreak: 'late' })
+  })
+
+  // REVIEW-5315 P1b: with the purged note first, the heal listed at 1001 and
+  // the rewrite at 1000, so both packs held the same documents.
+  it("never lists a pending rewrite's documents in a second pack", async () => {
+    for (const [id, second] of [
+      ['a', 1000],
+      ['b', 1001],
+      ['c', 1002],
+      ['late', 2000]
+    ] as const)
+      seedSnapshot(id, second)
+    await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+    const [pack] = listed()
+    tombstone('a')
+    const rewrite = gated((key) => key === pack.pack_key)
+    const purge = purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['a'])
+    await rewrite.atGate
+
+    await healSnapshotRemainder(harness.db, storage, SCOPE)
+    rewrite.release()
+    await purge
+
+    const documents = listed().flatMap((row) => JSON.parse(row.documents) as string[])
+    expect(documents.toSorted()).toEqual(['b', 'c', 'late'])
+  })
+
+  // REVIEW-5315 P7a: a kind reset between the heal's read and its commit; the
+  // rebuild from 0 then packed the healed row a second time.
+  it('lists nothing when the kind is reset while it builds', async () => {
+    for (const id of ['a', 'b', 'c']) seedSnapshot(id, 1000)
+    seedSnapshot('late', 2000)
+    await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+    seedSnapshot('x', 1000)
+    const fetch = gated((key) => key.includes('/crdt/x/'))
+    const heal = healSnapshotRemainder(harness.db, storage, SCOPE)
+    await fetch.atGate
+    await harness.db.batch(
+      packKindReset(harness.db, SCOPE, 'crdt_snapshot', { sql: '1', bind: [] })
+    )
+    fetch.release()
+
+    expect((await heal).reason).toBe('unlisted')
+    expect(listed()).toEqual([])
+    await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+    expect(await packedIds()).toEqual(['a', 'b', 'c', 'late', 'x'])
+  })
+
+  // REVIEW-5315 M1: a forward tie slot must not take the min_cursor a pending
+  // rewrite lists its pack back at.
+  it("counts a pending rewrite's min_cursor as taken", async () => {
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+         VALUES (?, ?, ?, 'rewrite', 1)`
+      )
+      .run(`${USER}/vaults/${VAULT}/packs/crdt_snapshot/1000_1000_p.pack`, USER, VAULT)
+
+    expect(await snapshotSlot(harness.db, SCOPE, 1000)).toEqual({
+      minCursor: 999,
+      lastSecond: 1000
+    })
   })
 })

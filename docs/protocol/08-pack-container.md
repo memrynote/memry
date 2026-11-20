@@ -623,8 +623,10 @@ anchor of 0, so the rebuild tiles from 0
   (`apps/sync-server/src/services/pack-snapshot-selection.ts`, `snapshotSlot`).
   No reader reads a snapshot pack's `minCursor`. A writer also packs snapshot
   rows at or below the watermark that no listed pack's `documents` holds,
-  without moving the watermark
-  (`apps/sync-server/src/services/pack-snapshot-heal.ts`). A rollup never plans
+  without moving the watermark, never while a `crdt_snapshot` purge rewrite is
+  pending (§8.13), and only while the watermark is the one it read
+  (`apps/sync-server/src/services/pack-snapshot-heal.ts`). A pending rewrite's
+  `minCursor` counts as taken. A rollup never plans
   a run that another listed pack starts inside (#5229, #5310, D-TIE-REMAINDER).
 - **Unlisted objects.** The batch that tries to list a pack records its object
   in `pack_replaced_objects`, due at once, when its row is absent after the
