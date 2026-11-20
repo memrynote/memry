@@ -864,9 +864,9 @@ those bodies item by item.
 A compaction run that selected the old snapshot before the purge commits its
 `pack_index` row and watermark in one batch, and only while every packed
 snapshot row still exists with the packed `blob_key`
-(`apps/sync-server/src/services/pack-compaction.ts:608-613`). Otherwise it deletes
+(`apps/sync-server/src/services/pack-compaction.ts:626-631`). Otherwise it deletes
 the pack object and leaves the watermark, so the next run reselects
-(`apps/sync-server/src/services/pack-compaction.ts:662`). A run that commits
+(`apps/sync-server/src/services/pack-compaction.ts:680`). A run that commits
 first is dropped by the purge's later pack drop.
 
 Before #2986 the server kept the rows. Clients MUST NOT rely on either

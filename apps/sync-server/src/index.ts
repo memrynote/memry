@@ -267,10 +267,10 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
     ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)],
     ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)],
-    // Pack backfill (#1839) rides the 6-hourly trigger: a bounded number of
-    // packs per tick (see pack-backfill.ts for the pacing model), resumed via
-    // watermarks until every vault's historical items are packed.
-    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE)]
+    // Pack backfill (#1839) rides the 6-hourly trigger: it enqueues bounded
+    // per-vault backfill messages and the queue consumer builds (#5278, see
+    // pack-backfill.ts), resumed via watermarks until every vault is packed.
+    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE, env.PACK_BACKFILL_QUEUE)]
   ]
 
   if (event.cron === DAILY_CRON) {
@@ -298,7 +298,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
 
 export { app }
 
-// Queue consumer for pack compaction (#1839). Thin on purpose — message
+// Queue consumer for pack compaction (#1839) and for the pack backfill queue
+// (#5278): the body says which, so one handler serves both. Thin on purpose — message
 // validation, retry semantics, and all compaction logic live in
 // services/pack-consumer.ts / services/pack-compaction.ts so they stay
 // testable without real Queues.
