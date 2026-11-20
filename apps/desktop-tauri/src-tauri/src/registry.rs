@@ -185,6 +185,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
+            crate::commands::notes_import::notes_import_files::<Wry>,
+            crate::commands::notes_import::notes_show_import_dialog,
             crate::commands::notes::notes_append_blocks::<Wry>,
             crate::commands::notes::notes_undo_tag_template::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
@@ -308,6 +310,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::sync_account::account_sign_out,
             crate::commands::sync_account::sync_get_vault_binding,
             crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_repair_device_keys,
             crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
