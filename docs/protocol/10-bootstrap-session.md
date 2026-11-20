@@ -88,7 +88,7 @@ page and statement from the listing.
 backfill chain for every kind a build can extend, on `PACK_BACKFILL_QUEUE`, at
 most once per vault and kind every 15 minutes (`BOOTSTRAP_ENQUEUE_SKIP_SECONDS`,
 held in `pack_bootstrap_enqueues`; a failed send gives the start back)
-(`apps/sync-server/src/services/pack-coverage.ts:68`, `:203`). A client MUST
+(`apps/sync-server/src/services/pack-coverage.ts:68`, `:156-193`, `:203`). A client MUST
 NOT wait for it. It applies the
 packs it has, and takes everything outside the stated coverage item by item:
 the feed tail from the start chapter 08 §8.10 gives, and the closing checks.
