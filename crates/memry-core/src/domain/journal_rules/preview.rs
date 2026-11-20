@@ -22,21 +22,10 @@ pub const JOURNAL_PREVIEW_LENGTH: usize = 100;
 /// (JS keeps the lone half) yields U+FFFD, the one thing a Rust `String`
 /// cannot carry.
 pub fn extract_journal_preview(content: &str, max_length: usize) -> String {
-    let chars: Vec<char> = content.chars().collect();
-    let chars = replace_all(&chars, |c, i| span_tag(c, i).map(|end| (end, Vec::new())));
-    let chars = replace_all(&chars, |c, i| {
-        strip_heading(c, i).map(|end| (end, Vec::new()))
-    });
-    let chars = replace_all(&chars, markdown_link);
-    let chars = replace_all(&chars, wiki_link);
-    let chars = replace_all(&chars, |c, i| image(c, i).map(|end| (end, Vec::new())));
-    let chars = replace_all(&chars, emphasis);
-    let collapsed = collapse_whitespace(&chars);
-    let cleaned = js_trim(&collapsed);
-
+    let cleaned = markdown_plain_text(content, None);
     let units: Vec<u16> = cleaned.encode_utf16().collect();
     if units.len() <= max_length {
-        return cleaned.to_owned();
+        return cleaned;
     }
     let truncated = &units[..max_length];
     let last_space = truncated.iter().rposition(|&unit| unit == u16::from(b' '));
@@ -48,6 +37,33 @@ pub fn extract_journal_preview(content: &str, max_length: usize) -> String {
     let mut preview = String::from_utf16_lossy(kept);
     preview.push_str("...");
     preview
+}
+
+/// The plain text a preview shows for markdown, on one line, before any cut: the note and
+/// journal previews and the backlink contexts all read it.
+///
+/// `kept` is a character no pattern may drop: a match that would drop it does not match, so
+/// every one in `content` is in the result, in order. `None` is the reference's behavior.
+pub fn markdown_plain_text(content: &str, kept: Option<char>) -> String {
+    let chars: Vec<char> = content.chars().collect();
+    let chars = replace_all(&chars, |c, i| {
+        span_tag(c, i, kept).map(|end| (end, Vec::new()))
+    });
+    let chars = replace_all(&chars, |c, i| {
+        strip_heading(c, i).map(|end| (end, Vec::new()))
+    });
+    let chars = replace_all(&chars, |c, i| markdown_link(c, i, kept));
+    let chars = replace_all(&chars, |c, i| wiki_link(c, i, kept));
+    let chars = replace_all(&chars, |c, i| {
+        image(c, i, kept).map(|end| (end, Vec::new()))
+    });
+    let chars = replace_all(&chars, emphasis);
+    js_trim(&collapse_whitespace(&chars)).to_owned()
+}
+
+/// Whether `dropped` may go: it holds no `kept` character.
+fn droppable(dropped: &[char], kept: Option<char>) -> bool {
+    kept.is_none_or(|kept| !dropped.contains(&kept))
 }
 
 /// `text.replace(/pattern/g, …)`: `matcher(chars, i)` returns the match end
@@ -97,7 +113,7 @@ fn starts_with(chars: &[char], i: usize, literal: &str) -> bool {
 
 /// `/<span style="[^"]*">|<\/span>/g`: the match end. `[^"]*` cannot hold the
 /// quote that ends it, so the first `"` after the opening one decides the match.
-fn span_tag(chars: &[char], i: usize) -> Option<usize> {
+fn span_tag(chars: &[char], i: usize, kept: Option<char>) -> Option<usize> {
     const OPEN: &str = "<span style=\"";
     const CLOSE: &str = "</span>";
     if starts_with(chars, i, CLOSE) {
@@ -108,7 +124,7 @@ fn span_tag(chars: &[char], i: usize) -> Option<usize> {
     }
     let value_start = i + OPEN.chars().count();
     let quote = value_start + chars[value_start..].iter().position(|&c| c == '"')?;
-    at(chars, quote + 1, '>').then_some(quote + 2)
+    (at(chars, quote + 1, '>') && droppable(&chars[value_start..quote], kept)).then_some(quote + 2)
 }
 
 /// `/^#+\s+/gm`: the match end.
@@ -128,7 +144,7 @@ fn strip_heading(chars: &[char], i: usize) -> Option<usize> {
 }
 
 /// `/\[([^\]]+)\]\([^)]+\)/g` → `$1`.
-fn markdown_link(chars: &[char], i: usize) -> Option<(usize, Vec<char>)> {
+fn markdown_link(chars: &[char], i: usize, kept: Option<char>) -> Option<(usize, Vec<char>)> {
     if !at(chars, i, '[') {
         return None;
     }
@@ -137,11 +153,14 @@ fn markdown_link(chars: &[char], i: usize) -> Option<(usize, Vec<char>)> {
         return None;
     }
     let paren = run_until(chars, close + 2, |c| c == ')')?;
+    if !droppable(&chars[close + 2..paren], kept) {
+        return None;
+    }
     Some((paren + 1, chars[i + 1..close].to_vec()))
 }
 
 /// `/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g` → `wikiLinkLabel(target, alias)`.
-fn wiki_link(chars: &[char], i: usize) -> Option<(usize, Vec<char>)> {
+fn wiki_link(chars: &[char], i: usize, kept: Option<char>) -> Option<(usize, Vec<char>)> {
     if !at(chars, i, '[') || !at(chars, i + 1, '[') {
         return None;
     }
@@ -154,7 +173,7 @@ fn wiki_link(chars: &[char], i: usize) -> Option<(usize, Vec<char>)> {
     } else {
         (None, target_end)
     };
-    if !at(chars, close, ']') || !at(chars, close + 1, ']') {
+    if !at(chars, close, ']') || !at(chars, close + 1, ']') || !droppable(&chars[i..close], kept) {
         return None;
     }
     let label = wiki_link_label(&target, alias.as_deref());
@@ -184,7 +203,7 @@ fn wiki_link_label(target: &str, alias: Option<&str>) -> String {
 }
 
 /// `/!\[[^\]]*\]\([^)]+\)/g`: the match end.
-fn image(chars: &[char], i: usize) -> Option<usize> {
+fn image(chars: &[char], i: usize, kept: Option<char>) -> Option<usize> {
     if !at(chars, i, '!') || !at(chars, i + 1, '[') {
         return None;
     }
@@ -193,7 +212,7 @@ fn image(chars: &[char], i: usize) -> Option<usize> {
         return None;
     }
     let paren = run_until(chars, close + 2, |c| c == ')')?;
-    Some(paren + 1)
+    droppable(&chars[i..paren], kept).then_some(paren + 1)
 }
 
 fn is_emphasis_marker(c: char) -> bool {

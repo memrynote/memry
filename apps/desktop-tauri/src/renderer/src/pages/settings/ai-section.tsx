@@ -16,7 +16,7 @@ import { CommandLineSettings } from './command-line-section'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@memry/i18n/renderer'
 import { subscribeToEvent } from '@/services/tauri-event'
-import { commands, events } from '../../../../generated/bindings'
+import { commands, events, type AiModelStatus } from '../../../../generated/bindings'
 import {
   VOICE_TRANSCRIPTION_LANGUAGES,
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
@@ -41,15 +41,6 @@ import type { FoldAgentChoice } from '@memry/contracts/note-fold'
 import type { SettingsFocusTarget } from '@/contexts/settings-modal-context'
 
 const log = createLogger('Page:Settings:AI')
-
-interface AIModelStatus {
-  name: string
-  dimension: number
-  loaded: boolean
-  loading: boolean
-  error: string | null
-  embeddingCount?: number
-}
 
 interface VoiceModelStatus {
   name: string
@@ -103,7 +94,7 @@ export function AISettings({
     summarizeAgent: 'auto'
   })
   const [tab, setTab] = useState<AISettingsTab>(initialTab)
-  const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
+  const [modelStatus, setModelStatus] = useState<AiModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>(
     VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
   )

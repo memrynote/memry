@@ -831,8 +831,8 @@ describe('cold major renderer components', () => {
       expect.objectContaining({ name: 'Side' })
     )
 
-    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.openVault'))
-    expect(mocks.selectVault).toHaveBeenCalled()
+    fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.openFolderAsVault'))
+    expect(mocks.selectVault).toHaveBeenCalledWith(undefined)
 
     fireEvent.click(screen.getByLabelText('Remove Side from list'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))

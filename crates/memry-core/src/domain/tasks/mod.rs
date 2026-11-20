@@ -34,10 +34,10 @@
 //! merged row at the union clock, untouched, so it dominates the server's row
 //! ([`crate::sync::hardening::requeue`]).
 //!
-//! It also does not write `task_activity`. Desktop mints a `superseded` row per
-//! conflict; nothing in chapter 06 makes that an obligation on this core, and
-//! those rows sync to every device, so the conflicts are **returned** to the
-//! caller and written nowhere.
+//! It also does not write `task_activity`. The conflicts are **returned** to
+//! the applied-record feed, and the desktop driver's observer writes the
+//! `superseded` rows after the page commits
+//! ([`crate::domain::task_activity::superseded`]).
 //!
 //! `_offline` never reaches a payload written here:
 //! `notes::next_clock` and `task_merge::next_field_clocks` both
@@ -78,7 +78,9 @@ pub mod bulk;
 pub mod create;
 pub mod fields;
 pub mod lifecycle;
+pub mod list;
 pub mod model;
+pub mod stats;
 pub mod structure;
 pub mod update;
 
@@ -100,6 +102,11 @@ pub const ITEM_TYPE: &str = "task";
 /// claim made here is that it is a non-empty string a `(type, id)` key can
 /// hold.
 pub const MAX_ITEM_ID_LEN: usize = 128;
+
+/// A task's three list fields. They are outside `TASK_SYNCABLE_FIELDS`, so
+/// they tick no field clock (§6.7); a concurrent merge unions them (§6.7.1)
+/// and an undo restores them.
+pub(crate) const UNCLOCKED_LISTS: [&str; 3] = ["tags", "linkedNoteIds", "linkedCanvasIds"];
 
 /// What a new task carries.
 ///
@@ -140,8 +147,7 @@ pub enum Inbound {
     /// conflict (§6.5.4).
     ///
     /// `conflicts` carries those fields' values for the applied-record feed
-    /// ([`crate::sync::driver::observer`]). `task` and `project` leave it
-    /// empty until Step 21 (#3538).
+    /// ([`crate::sync::driver::observer`]).
     Merged {
         conflicted_fields: Vec<String>,
         conflicts: Vec<crate::sync::field_merge::FieldConflict>,
@@ -295,10 +301,11 @@ pub fn set_archived(
 /// Replaces the task's tags, deduped case-insensitively.
 ///
 /// **`tags` is not in `TASK_SYNCABLE_FIELDS`** (§6.7), so no field clock ticks
-/// for it and it is not merged at all: on a concurrent apply the local list
-/// survives, and on the wholesale-apply branch the remote's does. That is the
-/// rule as written, and it is why [`super::tags`] excludes `task` from
-/// `TAGGABLE_TYPES` rather than treating it like a note.
+/// for it: on a concurrent apply both lists are unioned (§6.7.1, so a tag
+/// removed here comes back while a concurrent peer still holds it), and on the
+/// wholesale-apply branch the remote's list replaces this one. It is why
+/// [`super::tags`] excludes `task` from `TAGGABLE_TYPES` rather than treating
+/// it like a note.
 pub fn set_tags(
     conn: &Connection,
     task_id: &str,
@@ -361,7 +368,14 @@ pub fn apply_remote(
     clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let local = TASK_FIELDS.local(conn, record)?;
-    let inbound = task_merge::apply_remote_merged(conn, record, &TASK_SYNCABLE_FIELDS, now_ms)?;
+    let inbound = task_merge::apply_remote_merged(
+        conn,
+        record,
+        &TASK_SYNCABLE_FIELDS,
+        &UNCLOCKED_LISTS,
+        task_merge::Carry::Union,
+        now_ms,
+    )?;
     TASK_FIELDS.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
     Ok(inbound)
 }

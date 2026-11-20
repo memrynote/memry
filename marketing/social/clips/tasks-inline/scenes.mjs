@@ -3,7 +3,14 @@
 // row's arrow opens the task's details beside the note. Every camera mark is taken from the live
 // layout, because the note can scroll when its similar-notes list arrives.
 import { day } from '../../vault/cli.mjs'
-import { closeOtherTabs, expandFolder, expandSection, open, settle } from '../../engine/kit.mjs'
+import {
+  closeOtherTabs,
+  expandFolder,
+  expandSection,
+  open,
+  settle,
+  waitForFocus
+} from '../../engine/kit.mjs'
 
 const NOTE = 'Weekly sync with Sam'
 const TITLE = 'Send hero assets to Sam'
@@ -43,7 +50,7 @@ export const scenes = {
     await sleep(400)
     await rec.type('[ ] ', { cps: 9 })
     const name = page.getByRole('textbox', { name: 'Task name...' })
-    await page.waitForFunction((el) => el === document.activeElement, await name.elementHandle())
+    await waitForFocus(name)
     // Follow the line if the note moved under it.
     const n = await name.boundingBox()
     if (Math.abs(n.y - (h.y + h.height + 20)) > 20) zoom(h.x + 320, n.y + 5, 1.9)
@@ -83,7 +90,7 @@ export const scenes = {
     await sleep(600)
     await rec.glide(r.x + r.width - 60, r.y + r.height / 2, 600)
     await sleep(250)
-    await rec.click(page.getByTitle('Open in task panel'))
+    await rec.click(page.locator('[title="Open in task panel"]'))
     await page.getByText('Add sub-issue').waitFor()
     await sleep(700)
     await rec.glide(1440, r.y - 200, 900)

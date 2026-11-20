@@ -41,7 +41,9 @@ pub struct Watermark {
     pub snapshot_revision: String,
 }
 
-/// `expected.json`: what the capture wrote, minus the key material (that is in the secret store).
+/// `expected.json`: what the capture wrote. It holds fixture key material: the mock keychain's
+/// Safe Storage password and, in `plaintexts`, every secret Electron stored (master and device
+/// keys included).
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Expected {
@@ -165,10 +167,18 @@ impl ElectronProfileFixture {
     }
 
     pub fn snapshot(&self) -> ElectronSnapshot {
+        let memry = self.vault.join(".memry");
+        let vault_dbs = ["data.db", "index.db"]
+            .into_iter()
+            .flat_map(|db| ["", "-journal", "-wal", "-shm"].map(|end| format!("{db}{end}")))
+            .map(|name| {
+                let path = memry.join(&name);
+                (name, path.exists().then(|| file_hash(&path)))
+            })
+            .collect();
         ElectronSnapshot {
             profile: tree_hash(&self.profile),
-            data_db: file_hash(&self.data_db()),
-            index_db: file_hash(&self.index_db()),
+            vault_dbs,
         }
     }
 }
@@ -178,8 +188,9 @@ impl ElectronProfileFixture {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ElectronSnapshot {
     pub profile: BTreeMap<String, (u64, String)>,
-    pub data_db: (u64, String),
-    pub index_db: (u64, String),
+    /// `data.db`, `index.db` and their SQLite sidecars (`-journal`, `-wal`, `-shm`), `None` when
+    /// absent: a sidecar an open left behind is a change too.
+    pub vault_dbs: BTreeMap<String, Option<(u64, String)>>,
 }
 
 /// `relative path -> (size, sha256)` of every file under `root`; a directory is an entry with

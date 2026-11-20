@@ -1,3 +1,4 @@
+// Frozen: `crates/xtask/tests/golden/bulk-notes.json` is the contract; the Rust port is the live generator.
 /**
  * Deterministic bulk note generator for benchmark vaults.
  *

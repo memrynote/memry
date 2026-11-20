@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "מעבר לדף הבית",
     "goInbox": "מעבר לתיבת הנכנסים",
-    "goJournal": "מעבר ליומן",
     "goCalendar": "מעבר ללוח השנה",
     "goTasks": "מעבר למשימות",
     "goGraph": "מעבר לגרף",

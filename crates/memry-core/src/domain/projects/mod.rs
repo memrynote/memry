@@ -14,12 +14,16 @@
 //! So every status or link edit is a project edit: it rebuilds the whole array
 //! from the **stored payload** (never from the projection, §13.2 rule 4),
 //! keeps every key of an entry this build does not model, and lands through
-//! [`crate::domain::tasks::edit_merged`] — one transaction, one outbox row, the
-//! document clock and `modifiedAt`'s field clock ticked.
+//! `write::edit_project` — one transaction, one outbox row, the document clock
+//! and `modifiedAt`'s field clock ticked — and writes nothing when the array
+//! did not change.
 //!
 //! Neither array is one of `PROJECT_SYNCABLE_FIELDS` (§6.7), so an edit to one
 //! ticks no field clock of its own. That is desktop's shape too: its field
-//! merge covers the nine scalar fields and the arrays ride beside them.
+//! merge covers the nine scalar fields and the arrays ride beside them: an
+//! inbound record that carries an array replaces the local one, on a
+//! concurrent merge too, and one that omits it keeps the local one (chapter 06
+//! §6.7.2).
 //!
 //! ## Writes that touch other items
 //!
@@ -52,6 +56,7 @@
 //! (`z.number()`) and the projected column only carries booleans.
 
 mod contents;
+mod delete;
 mod links;
 mod note_property;
 mod propagate;
@@ -73,6 +78,8 @@ use super::tasks::Inbound;
 pub use contents::{
     LinkedEvent, LinkedFile, LinkedNote, ProjectContents, ProjectRef, contents, projects_for_item,
 };
+pub use delete::{TaskDisposition, delete};
+pub(crate) use links::keep_markdown_members;
 pub use links::{
     LinkItemType, PROJECT_PROPERTY_KEY, ProjectLink, link, links, set_link_pinned, unlink,
 };
@@ -83,8 +90,8 @@ pub use statuses::{
     NewStatus, StatusPatch, create_status, delete_status, reorder_statuses, update_status,
 };
 pub use write::{
-    DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, TaskDisposition, create, delete,
-    ensure_inbox, reorder, set_archived, set_home_note, update,
+    DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, create, ensure_inbox, reorder,
+    seed_unclocked, set_archived, set_home_note, update,
 };
 
 /// The `(type, _)` half of every key this module reads and writes.
@@ -325,13 +332,26 @@ pub fn summaries(
     Ok(summaries)
 }
 
-/// Applies an inbound `project` record through §6.3.1 and §6.3.
+/// The two nested arrays a project carries beside its field list. They tick
+/// no field clock; an inbound record takes the remote's when it has one
+/// (chapter 06 §6.7.2).
+const NESTED_ARRAYS: [&str; 2] = ["statuses", "links"];
+
+/// Applies an inbound `project` record through §6.3.1 and §6.3, with the
+/// nested arrays by §6.7.2.
 pub fn apply_remote(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    task_merge::apply_remote_merged(conn, record, &PROJECT_SYNCABLE_FIELDS, now_ms)
+    task_merge::apply_remote_merged(
+        conn,
+        record,
+        &PROJECT_SYNCABLE_FIELDS,
+        &NESTED_ARRAYS,
+        task_merge::Carry::Remote,
+        now_ms,
+    )
 }
 
 /// One live status by id, in any live project.

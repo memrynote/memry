@@ -16,6 +16,7 @@
 use memry_core::domain::tasks::{self, Inbound, NewTask};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::field_merge::FieldConflict;
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
@@ -374,11 +375,19 @@ fn a_tied_concurrent_field_is_reported_as_a_conflict_and_the_remote_wins() {
             None,
         )?;
 
+        // The decided field reaches the applied-record feed (Step 21, #3538).
         assert_eq!(
             outcome,
             Inbound::Merged {
                 conflicted_fields: vec!["title".to_owned()],
-                conflicts: Vec::new(),
+                conflicts: vec![FieldConflict {
+                    field: "title".to_owned(),
+                    local_value: Some(json!("Local title")),
+                    remote_value: Some(json!("Remote title")),
+                    merged_value: Some(json!("Remote title")),
+                    merged_clock: serde_json::from_value(json!({"device-a": 2, "device-b": 2}))
+                        .expect("a clock"),
+                }],
             }
         );
         // Remote is the default winner on every tie (§6.3 step 5).
