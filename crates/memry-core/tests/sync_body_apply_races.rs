@@ -86,10 +86,26 @@ fn snapshot(db: &Db) -> Option<Vec<u8>> {
     .expect("read the snapshot")
 }
 
+/// §8.10: only a document with a live record takes a packed body.
+fn live_record(db: &Db, doc_id: &str) {
+    let doc_id = doc_id.to_owned();
+    db.call_blocking(move |conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at)
+             VALUES ('note', ?1, 'metadata-only', 1)",
+            [doc_id],
+        )
+        .expect("the live record");
+        Ok(())
+    })
+    .expect("seed the record");
+}
+
 /// Seeds one packed baseline at sequence 5 with `interleave` run between the
 /// chunk's read and its write.
 async fn seed_with(label: &str, interleave: Interleave) -> (Db, PackSeed) {
     let db = scratch(label);
+    live_record(&db, DOC);
     let cipher = Arc::new(Interleaving {
         db: db.clone(),
         interleave: Mutex::new(Some(interleave)),
@@ -115,8 +131,8 @@ async fn a_document_deleted_mid_chunk_is_not_seeded() {
         Box::new(|db| {
             db.call_blocking(|conn| {
                 conn.execute(
-                    "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at, deleted_at)
-                     VALUES ('note', ?1, 'tombstone', 1, 1)",
+                    "UPDATE sync_items SET payload_state = 'tombstone', deleted_at = 1
+                     WHERE item_type = 'note' AND item_id = ?1",
                     [DOC],
                 )
                 .expect("the tombstone");
@@ -237,6 +253,7 @@ async fn a_bulk_applied_body_converges_with_a_desktop_edit() {
         public_key,
     });
     let db = scratch("converge");
+    live_record(&db, doc);
 
     let packed = seal(&field("snapshot"));
     let seeds = [PackEntrySeed {

@@ -215,34 +215,23 @@ fn body_state(conn: &Connection, doc_id: &str) -> Result<BodyState, StorageError
 /// settled or owed a route pull.
 ///
 /// With a body manifest (`checks`), a listed document proven [`current`] is
-/// settled. One the manifest does not list had no body row at the read, as a
-/// route pull that met an empty head, so it holds a cursor of `0` (#4315) and
-/// is settled. Every other document is owed. Without a manifest every
-/// document is owed: the batch route answers no head. Answers `(settled,
-/// owed)`.
+/// settled. Every other document is owed, including one the manifest does not
+/// list: its paging can skip a document created behind its cursor during the
+/// read, and an absent document takes its baseline through the route
+/// (§8.10). Without a manifest every document is owed: the batch route
+/// answers no head. Answers `(settled, owed)`.
 pub(super) fn settle_pack_bodies(
     conn: &Connection,
     checks: Option<&HashMap<String, BodyCheck>>,
 ) -> Result<(usize, usize), StorageError> {
     let live = live_document_ids(conn)?;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_millis() as i64);
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let (mut settled, mut owed) = (0, 0);
     for doc_id in &live {
         let (cursor, revision) = body_state(&txn, doc_id)?;
-        let is_current = match checks.map(|checks| checks.get(doc_id)) {
-            None => false,
-            Some(Some(check)) => current(check, cursor, revision.as_deref()),
-            Some(None) if cursor.unwrap_or(0) == 0 => {
-                if cursor.is_none() {
-                    store::write_cursor(&txn, &crdt_cursor_scope(doc_id), Some("0"), now)?;
-                }
-                true
-            }
-            Some(None) => false,
-        };
+        let is_current = checks
+            .and_then(|checks| checks.get(doc_id))
+            .is_some_and(|check| current(check, cursor, revision.as_deref()));
         if is_current {
             body_debt::settle(&txn, doc_id)?;
             settled += 1;
