@@ -9,8 +9,9 @@
 //! Completing a **repeating** task (spec 004 D3) closes this occurrence —
 //! `repeatConfig` becomes `null` (desktop also clears the local-only
 //! `isRepeating`, which is not a wire field) — and creates the next one under
-//! a new id. The next due date and the series end are
-//! [`crate::domain::recurrence::complete_repeating_task`], pinned by vectors.
+//! a new random id, as desktop does (chapter 13 §13.7.3). The next due date
+//! and the series end are [`crate::domain::recurrence::complete_repeating_task`],
+//! pinned by the `task-completion-spawn` vectors.
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
@@ -32,14 +33,15 @@ use super::model::{
 /// spreads the whole task and re-creates it through `tasksService.create`,
 /// which carries these and not `sourceNoteId`; `dueDate`, `statusId`,
 /// `repeatConfig` and `position` are set separately, and `startDate` moves
-/// with the due date.
-const OCCURRENCE_FIELDS: [&str; 12] = [
+/// with the due date. `durationMinutes` as `rollRepeatingSeries` copies it.
+const OCCURRENCE_FIELDS: [&str; 13] = [
     "title",
     "description",
     "projectId",
     "parentId",
     "priority",
     "dueTime",
+    "durationMinutes",
     "startDate",
     "repeatFrom",
     "tags",
@@ -154,6 +156,9 @@ pub(super) fn spawn_next(
     let Some(next_due) = completion.next_due_date else {
         return Ok(None);
     };
+    // A random id, as desktop's `generateId()`: two devices that complete
+    // the same occurrence before syncing each create their own, and an undo
+    // tombstones only the one this device created (§13.7.3).
     let id = new_task_id();
     let due_date = next_due.key();
     let mut fields = copied(task, &OCCURRENCE_FIELDS);
