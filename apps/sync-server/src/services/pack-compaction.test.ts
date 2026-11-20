@@ -274,8 +274,9 @@ describe('selection', () => {
     expect(next.candidates.map((c) => c.tiebreak)).toEqual(['note-d'])
 
     // note-d's pack would share min_cursor 1000 with the listed one, and the
-    // listed one is full, so the two cannot be rolled into one. The watermark
-    // stays below note-d instead of passing it unpacked (#5229 P6).
+    // listed one is full, so the two cannot be rolled into one. Snapshot packs
+    // are a cache only: the build leaves the rest of the tie item by item and
+    // moves past it, so later seconds still pack (#5229 P6, D-P6-EXIT).
     const second = await compactOneRange(
       harness.db,
       storage,
@@ -286,7 +287,7 @@ describe('selection', () => {
     expect(second.holes).toEqual([])
     expect(watermarkOf('crdt_snapshot')).toEqual({
       last_sort_value: 1000,
-      last_sort_tiebreak: 'note-c'
+      last_sort_tiebreak: 'note-d'
     })
   })
 })
@@ -735,7 +736,39 @@ describe('min_cursor collision (#5229 P6)', () => {
     ])
   })
 
-  it('holds the watermark when the listed pack it collides with is unreadable', async () => {
+  // REVIEW-5277 P1, P2: a snapshot collision the build could not roll in held
+  // the watermark for good, re-downloading the colliding pack every message.
+  it.each([
+    ['full', false],
+    ['unreadable', true]
+  ])('packs later seconds after a %s colliding snapshot pack', async (_, unreadable) => {
+    const MB = 1024 * 1024
+    const big = (fill: number) => new Uint8Array(unreadable ? 24 : 8 * MB).fill(fill)
+    for (const [i, id] of ['note-a', 'note-b', 'note-c'].entries())
+      seedSnapshot(id, 1000, 1, big(i + 1))
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')).built).toBe(true)
+    const [colliding] = listedRows()
+    if (unreadable) await storage.delete(colliding.pack_key)
+    seedSnapshot('note-d', 1000)
+    for (let i = 0; i < 10; i++) seedSnapshot(`late-${i}`, 2000 + i)
+    const get = vi.spyOn(storage, 'get')
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    for (let run = 0; run < 3; run++)
+      await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 2009,
+      last_sort_tiebreak: 'late-9'
+    })
+    expect(listedRows()).toHaveLength(2)
+    expect(get.mock.calls.filter(([key]) => key === colliding.pack_key)).toHaveLength(1)
+    expect(errors).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
+  })
+
+  it('holds the watermark when the listed record pack it collides with is unreadable', async () => {
     await seedRecord({ cursor: 1 })
     await compactOneRange(harness.db, storage, SCOPE, 'record')
     harness.raw

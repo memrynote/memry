@@ -153,15 +153,22 @@ At-least-once queue delivery means every step has to tolerate re-running:
    pack can start at a given `min_cursor`. A snapshot range whose first row shares the second of a
    listed pack (a tie group larger than one build) rolls that pack and its new rows into one pack,
    taking only the new rows that fit beside it (`readCollidingPack` in `services/pack-rollup.ts`).
-   When none fit or the listed pack cannot be read, the build lists nothing and the watermark holds,
-   logged at error level. The watermark never moves past rows no listed pack holds (#5229).
+   When none fit or the listed pack cannot be read, the build lists nothing. Snapshot packs are a
+   cache only, so a snapshot build then moves the watermark past the rest of that second once, logged
+   at warning level: those snapshots are served item by item, later seconds still pack, and the
+   colliding pack is not downloaded again. A record or update build holds the watermark and logs at
+   error level, because those kinds sort on the unique `server_cursor` and only a foreign row
+   collides (#5229).
 4. The order is **object → one D1 batch**: `storage.put(packKey, built.bytes)`, then one batch that
    inserts the `pack_index` row and moves the watermark only if that row was inserted. A crash
    between the PUT and the batch leaves an orphan pack object — harmless invisible bytes, since only
    a `pack_index` row makes a pack listable. When the batch does not list the row (a lost watermark,
    a purge, the listing cap), the same batch records the object in `pack_replaced_objects`, due at
    once, and the build deletes it. A failed delete is retried by the next deletion pass instead of
-   waiting for the orphan sweep. A rollup that loses its index swap does the same.
+   waiting for the orphan sweep. A rollup that loses its index swap does the same. When the batch
+   throws, the writer records the object the same way, best effort, and deletes it only if a
+   separate read finds its row absent, since a batch can commit and lose its response
+   (`listingBatch` in `services/pack-replaced-objects.ts`).
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it

@@ -82,6 +82,44 @@ export const recordUnlisted = (
     )
     .bind(packKey, scope.userId, scope.vaultId, packId)
 
+/**
+ * Runs the D1 batch that tries to list `written` (null: the batch wrote no
+ * object). When the batch throws, the object is recorded as unlisted, best
+ * effort, and deleted at once only if a separate read finds its row absent: a
+ * batch can commit and still lose its response (REVIEW-5277 P3). Then the
+ * batch error is rethrown.
+ */
+export const listingBatch = async <T>(
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  written: { packId: string; packKey: string } | null,
+  statements: D1PreparedStatement[]
+): Promise<D1Result<T>[]> => {
+  try {
+    return await db.batch<T>(statements)
+  } catch (error) {
+    if (written) {
+      try {
+        await recordUnlisted(db, scope, written.packId, written.packKey).run()
+        const row = await db
+          .prepare('SELECT 1 AS listed FROM pack_index WHERE id = ?')
+          .bind(written.packId)
+          .first()
+        if (!row) await deleteUnlisted(storage, written.packKey)
+      } catch (cleanup) {
+        logger.error(
+          'pack object of a failed listing batch not recorded; left to the orphan sweep',
+          {
+            error: cleanup instanceof Error ? cleanup.message : String(cleanup)
+          }
+        )
+      }
+    }
+    throw error
+  }
+}
+
 /** Deletes an object recordUnlisted recorded; a failure leaves it to the deletion pass. */
 export const deleteUnlisted = async (storage: R2Bucket, packKey: string): Promise<void> => {
   try {

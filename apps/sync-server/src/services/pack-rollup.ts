@@ -20,7 +20,7 @@ import {
   type VaultScope
 } from './pack-index-write'
 import { recordsLive } from './pack-record-selection'
-import { deleteUnlisted, recordUnlisted } from './pack-replaced-objects'
+import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
 import { PACK_TARGET_BYTES, packCountBound } from './pack-sizing'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
@@ -256,6 +256,23 @@ export const readCollidingPack = async (
   }
 }
 
+/** The leading candidates that fit one pack beside a colliding pack's entries. */
+export const fitBeside = <T extends { sizeBytes: number }>(
+  prior: CollidingPack,
+  candidates: readonly T[]
+): T[] => {
+  let entries = prior.kept.length
+  let bytes = prior.kept.reduce((sum, entry) => sum + entry.bytes.byteLength, 0)
+  const fit: T[] = []
+  for (const candidate of candidates) {
+    entries += 1
+    bytes += candidate.sizeBytes
+    if (entries > PACK_MAX_ENTRIES || bytes > PACK_TARGET_BYTES) break
+    fit.push(candidate)
+  }
+  return fit
+}
+
 export interface RollupResult {
   replaced: number
   kept: number
@@ -392,7 +409,7 @@ export const rollupKind = async (
     await storage.put(packKey, built.bytes)
   }
 
-  const swapped = await swapListing(db, scope, kind, {
+  const swapped = await swapListing(db, storage, scope, kind, {
     run,
     packId,
     packKey,
@@ -505,6 +522,7 @@ export const replacePacks = (
  */
 const swapListing = async (
   db: D1Database,
+  storage: R2Bucket,
   scope: VaultScope,
   kind: PackKindName,
   swap: Swap
@@ -553,7 +571,13 @@ const swapListing = async (
       )
       .bind(...recorded.bind, swap.packId)
   )
-  const results = await db.batch<{ swapped: number; listed: number }>(statements)
+  const results = await listingBatch<{ swapped: number; listed: number }>(
+    db,
+    storage,
+    scope,
+    swap.kept.length > 0 ? { packId: swap.packId, packKey: swap.packKey } : null,
+    statements
+  )
   const check = results[results.length - 1].results?.[0]
   return Boolean(check?.swapped) && (swap.kept.length === 0 || Boolean(check?.listed))
 }

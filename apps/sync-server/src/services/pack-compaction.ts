@@ -31,9 +31,19 @@ import {
   type RecordEntry,
   type RecordRow
 } from './pack-record-selection'
-import { loadSnapshotMeta, snapshotSelectionQuery, snapshotsLive } from './pack-snapshot-selection'
-import { readCollidingPack, replacePacks, rollupKind, type CollidingPack } from './pack-rollup'
-import { deleteReplacedPackObjects, deleteUnlisted, recordUnlisted } from './pack-replaced-objects'
+import {
+  loadSnapshotMeta,
+  snapshotSelectionQuery,
+  snapshotsLive,
+  snapshotTieEnd
+} from './pack-snapshot-selection'
+import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
+import {
+  deleteReplacedPackObjects,
+  deleteUnlisted,
+  listingBatch,
+  recordUnlisted
+} from './pack-replaced-objects'
 import { PACK_TARGET_BYTES, packFillReady } from './pack-sizing'
 import {
   updateEntrySource,
@@ -96,9 +106,11 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // SUBREQUEST ARITHMETIC (paid plan: 1000 subrequests per invocation):
 //   N R2 GETs (one per item blob, N ≤ 256)
 // + 1 R2 PUT  (the pack itself)
-// + 5 D1 round trips (watermark read, candidate select, collision check,
-//   pack_index insert, watermark upsert), and one R2 GET and one D1 read more
-//   when the range collides with a listed pack (readCollidingPack)
+// + 5 D1 round trips (listing-cap check, watermark read, candidate select,
+//   collision check, the listing batch). A range that collides with a listed
+//   pack adds one R2 GET and one D1 read (its live entries), and a snapshot
+//   tie it cannot roll in adds one D1 read and one watermark write instead of
+//   the build
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
 // => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
 // pack reads its entry meta in the selection query itself, so it costs
@@ -384,21 +396,46 @@ export const compactOneRange = async (
   // The watermark moves only with an applied pack_index insert (protocol 08
   // §8.10). A listed pack holding this min_cursor would refuse it, so the build
   // rolls that pack in, its rows first, and takes only the new rows that fit
-  // beside them. When none fit or the pack cannot be read, nothing moves: rows
-  // the watermark passed unpacked were in no pack and in no gap (#5229 P6).
+  // beside them. When none fit or the pack cannot be read, record and update
+  // builds hold the watermark: they sort on the unique server_cursor, so only
+  // a foreign row collides, and rows passed unpacked would be in no pack and
+  // in no gap (#5229 P6). Snapshot packs are a cache only and readers trust
+  // the manifest, not their coverage, so a snapshot build leaves the rest of
+  // the tie item by item and moves past it, once: later seconds still pack
+  // and the colliding pack is not downloaded again (D-P6-EXIT).
   const prior = await readCollidingPack(db, storage, scope, kind, minSortValue)
   const candidates =
     prior === null || typeof prior === 'string'
       ? selection.candidates
       : fitBeside(prior, selection.candidates)
   if (typeof prior === 'string' || candidates.length === 0) {
-    logger.error('pack range collides with a listed pack it cannot roll in; watermark held', {
+    const context = {
       userId: scope.userId,
       vaultId: scope.vaultId,
       kind,
       minSortValue,
       reason: typeof prior === 'string' ? prior : 'listed pack full'
-    })
+    }
+    if (kind !== 'crdt_snapshot') {
+      logger.error(
+        'pack range collides with a listed pack it cannot roll in; watermark held',
+        context
+      )
+      return noop
+    }
+    logger.warn(
+      'snapshot tie collides with a listed pack it cannot roll in; left item by item',
+      context
+    )
+    const tieEnd = await snapshotTieEnd(db, scope, minSortValue)
+    await advanceWatermark(
+      db,
+      scope,
+      kind,
+      minSortValue,
+      tieEnd ?? selection.candidates[selection.candidates.length - 1].tiebreak,
+      unchanged
+    )
     return noop
   }
   const last = candidates[candidates.length - 1]
@@ -592,7 +629,7 @@ export const compactOneRange = async (
   // or a concurrent build of the range won. A listed row always has its object.
   const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
   // The watermark and its coverage anchor move only with this row (§8.10).
-  const results = await db.batch<{ listed: number }>([
+  const results = await listingBatch<{ listed: number }>(db, storage, scope, { packId, packKey }, [
     ...(replacing?.statements ?? []),
     packIndexInsert(
       db,
@@ -667,23 +704,6 @@ const r2EntrySource = (storage: R2Bucket, plans: PackEntryPlan[]): EntrySource =
         body ? async () => new Uint8Array(await body.arrayBuffer()) : null
       )
   }
-}
-
-/** The leading candidates that fit one pack beside a colliding pack's entries. */
-const fitBeside = (
-  prior: CollidingPack,
-  candidates: PackSelection['candidates']
-): PackSelection['candidates'] => {
-  let entries = prior.kept.length
-  let bytes = prior.kept.reduce((sum, entry) => sum + entry.bytes.byteLength, 0)
-  const fit: PackSelection['candidates'] = []
-  for (const candidate of candidates) {
-    entries += 1
-    bytes += candidate.sizeBytes
-    if (entries > PACK_MAX_ENTRIES || bytes > PACK_TARGET_BYTES) break
-    fit.push(candidate)
-  }
-  return fit
 }
 
 /**
