@@ -123,6 +123,9 @@ fn years_are_written_as_intl_writes_them_and_history_and_far_rules_apply() {
                 ("2100-07-01T12:00:00Z", "America/New_York", "false"),
                 ("+100000-07-01T12:00:00Z", "America/New_York", "false"),
                 ("-100000-07-01T12:00:00Z", "America/New_York", "false"),
+                ("+100000-01-01T12:00:00Z", "America/New_York", "false"),
+                ("+250000-03-12T12:00:00Z", "America/New_York", "false"),
+                ("+012345-11-05T05:30:00Z", "Europe/London", "false"),
             ],
             None
         ),
@@ -136,6 +139,9 @@ fn years_are_written_as_intl_writes_them_and_history_and_far_rules_apply() {
             due("2100-07-01", "08:00"),
             due("100000-07-01", "08:00"),
             due("100001-07-01", "07:03"),
+            due("100000-01-01", "07:00"),
+            due("250000-03-12", "08:00"),
+            due("12345-11-05", "05:30"),
         ]
     );
 }

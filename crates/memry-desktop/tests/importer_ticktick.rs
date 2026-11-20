@@ -73,8 +73,14 @@ pub(crate) fn row(fields: &[(&str, &str)]) -> String {
     COLUMNS
         .iter()
         .map(|column| {
-            let pick = |set: &[(&str, &str)]| set.iter().find(|(c, _)| c == column).map(|f| f.1);
-            quote(pick(fields).or_else(|| pick(&defaults)).unwrap_or(""))
+            fn pick<'a>(set: &[(&str, &'a str)], column: &str) -> Option<&'a str> {
+                set.iter().find(|(c, _)| *c == column).map(|f| f.1)
+            }
+            quote(
+                pick(fields, column)
+                    .or_else(|| pick(&defaults, column))
+                    .unwrap_or(""),
+            )
         })
         .collect::<Vec<_>>()
         .join(",")

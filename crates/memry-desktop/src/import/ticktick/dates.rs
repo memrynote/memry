@@ -19,8 +19,9 @@ use crate::web::extract::utils::date::{civil_from_days, parse_date_in};
 const DAY_MS: i64 = 86_400_000;
 /// 400 Gregorian years.
 const CYCLE_MS: i64 = 146_097 * DAY_MS;
-/// Inside jiff's -9999 to 9999 years, with room for any zone offset.
-const JIFF_SAFE_MS: i64 = 9_000 * 365 * DAY_MS;
+/// About 7,900 years either side of 1970: inside jiff's -9999 to 9999 years once a whole cycle
+/// and any zone offset are added.
+const JIFF_SAFE_MS: i64 = 7_900 * 365 * DAY_MS;
 
 /// `ms` moved by whole 400-year cycles into jiff's range.
 fn into_jiff_range(ms: i64) -> Timestamp {
@@ -86,15 +87,12 @@ fn offset_zone(name: &str) -> Option<TimeZone> {
 }
 
 /// `timezone.trim() || 'UTC'` as `Intl.DateTimeFormat` resolves it, and UTC where it throws.
-/// The tzdb's `Factory` zone is one ICU refuses.
+/// ICU refuses the tzdb's `Factory` zone, which jiff reads as UTC anyway.
 fn intl_zone(name: &str) -> TimeZone {
     let name = match js_trim(name) {
         "" => "UTC",
         name => name,
     };
-    if name.eq_ignore_ascii_case("factory") {
-        return TimeZone::UTC;
-    }
     offset_zone(name)
         .or_else(|| jiff::tz::db().get(name).ok())
         .unwrap_or(TimeZone::UTC)
