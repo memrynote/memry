@@ -311,8 +311,13 @@ async function runTauri(proxy) {
   // The e2e build reads its launch overrides from this file (memry-desktop
   // src/e2e/control.rs); `pnpm staging:tauri:debug` writes the same one.
   const controlPath = path.join(os.tmpdir(), 'memry-e2e', `control-${values['cdp-port']}.json`)
-  const previousControl = fs.existsSync(controlPath) ? fs.readFileSync(controlPath) : null
-  fs.mkdirSync(path.dirname(controlPath), { recursive: true })
+  let previousControl = null
+  try {
+    previousControl = fs.readFileSync(controlPath)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+  fs.mkdirSync(path.dirname(controlPath), { recursive: true, mode: 0o700 })
   fs.writeFileSync(
     controlPath,
     JSON.stringify({
@@ -322,7 +327,8 @@ async function runTauri(proxy) {
       testVaultPath: null,
       syncServerUrl: proxy.url,
       extraEnv: {}
-    })
+    }),
+    { mode: 0o600 }
   )
   fs.mkdirSync(logDir, { recursive: true })
   const devLog = fs.openSync(path.join(profile, 'dev.log'), 'a')
@@ -373,7 +379,7 @@ async function runTauri(proxy) {
       )
     }
     fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
-    if (previousControl) fs.writeFileSync(controlPath, previousControl)
+    if (previousControl) fs.writeFileSync(controlPath, previousControl, { mode: 0o600 })
     else fs.rmSync(controlPath, { force: true })
     console.log(
       `Remove the downloaded vault folder (under ${vaultsDir}) and the staging device ` +
