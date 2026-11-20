@@ -6,6 +6,7 @@
 //! route, which retry, when to refresh, which status means what — is the
 //! core's (Constitution I).
 
+mod bench;
 mod cli;
 mod commands;
 mod edit;
@@ -13,6 +14,8 @@ mod journal;
 mod push;
 mod session;
 mod transport;
+
+use std::time::Duration;
 
 use cli::{Command, Invocation, Parsed};
 use memry_core::api::runtime;
@@ -76,5 +79,9 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             value_json,
             vault,
         } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
+        Command::BenchBootstrap {
+            vault,
+            pass_interval_secs,
+        } => bench::bootstrap(&cli, &vault, Duration::from_secs(pass_interval_secs)).await,
     }
 }

@@ -9,8 +9,8 @@ use std::io::Write as _;
 use std::sync::Arc;
 
 use memry_core::api::crypto::{
-    account_key_verifier, account_key_verifier_matches, derive_master_key, derive_vault_key,
-    validate_recovery_phrase,
+    account_key_verifier, account_key_verifier_matches, decrypt_vault_name, derive_master_key,
+    derive_vault_key, validate_recovery_phrase,
 };
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::registry::{DocumentRegistry, UpdateSink};
@@ -88,7 +88,23 @@ pub async fn unlock(cli: &Cli, path: &std::path::Path) -> Result<(), CliError> {
 /// `vaults`: the registry, which is also how a vault id for `pull` is found.
 pub async fn vaults(cli: &Cli) -> Result<(), CliError> {
     let http = cli.http()?;
-    let vaults = account::vaults(&http).await?;
+    let mut vaults = account::vaults(&http).await?;
+    // A sealed name opens once the profile is unlocked, so a vault can be
+    // named rather than looked up by id.
+    if let Ok(master_key) = cli.master_key() {
+        for vault in &mut vaults {
+            if let (None, Some(sealed), Some(nonce)) =
+                (&vault.name, &vault.encrypted_name, &vault.name_nonce)
+            {
+                vault.name = decrypt_vault_name(
+                    master_key.clone(),
+                    vault.id.clone(),
+                    sealed.clone(),
+                    nonce.clone(),
+                );
+            }
+        }
+    }
     if vaults.is_empty() {
         eprintln!("this account has no vaults");
         return Ok(());

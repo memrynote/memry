@@ -102,6 +102,53 @@ or an earlier benchmark vault (`.memry/config.json` title `memrynote Benchmark V
 any other folder. It writes only vault files: the app assigns note ids when it first indexes the
 vault, and tags get default colours.
 
+### Bootstrap Benchmark
+
+`pnpm bench:bootstrap` times a fresh-device bootstrap of a staging vault and prints the same
+metrics for every shell. It accepts only `sync-staging.memrynote.com`, `127.0.0.1` and `localhost`
+as the server.
+
+```bash
+# Core (crates/memry-cli). Sign the bench profile in once; it lives in ~/.memry-bench.
+pnpm bench:bootstrap core --login --email <address> --phrase-file <path>
+pnpm bench:bootstrap core --vault sandboxmobile --runs 2 [--pass-interval <seconds>]
+
+# Electron: a dev build with a temp profile and an e2e-bench-* keychain device.
+pnpm bench:bootstrap electron --vault sandboxmobile
+```
+
+The shell talks to the sync server through a recording proxy on `127.0.0.1:8791`, which counts
+every request per endpoint, including the R2 pack downloads it routes through itself. The proxy
+only reads: under `/sync/` it forwards `GET`, `HEAD` and the read and session `POST`s (`/sync/pull`,
+`/sync/records/pull`, `/sync/crdt/updates/batch`, `/sync/bootstrap` with `renew` and `close`, and
+`/sync/attachments/presign-batch`). It answers every other request there with 403 itself and counts
+each refusal. Auth and device registration live outside `/sync/` and pass through. A refused write
+takes no time, so Electron's `t_bodies` leaves out the push it runs after the pull.
+
+Each run starts by measuring the line with one 25 MB GET from Cloudflare's speed test through the
+proxy. A core run then wipes the bench profile's copy of the vault and runs the shells' first sync,
+then the body passes, until no live note is owed a body. The passes run back to back by default,
+the engine's best case. iOS runs a pass on each sync trigger (foreground, screen loads, realtime
+notices), so `--pass-interval` spaces the passes to match a cadence. An Electron run starts the app
+and waits for you to sign in and download the vault from the account picker. Timing starts at that
+download. Afterwards, delete the downloaded vault folder and remove the device from another device.
+
+| Metric         | Definition                                                                                                                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
+| `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`)                                                                                                                                         |
+| Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                           |
+| Writes refused | Write requests the proxy answered with 403                                                                                                                                                                                                                    |
+| Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                               |
+| Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                            |
+| Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                   |
+| Limiter        | When the network is idle half the run or more: client pacing or local apply (core marks its sleeps, so it tells the two apart; Electron cannot). Otherwise line speed when busy throughput reaches half the measured line, else request latency times count   |
+
+Each run writes its metrics to `.perf/bootstrap-bench/`. The proxy speaks HTTP/1.1 to the shell.
+Electron's `net.fetch` opens at most 6 sockets to one HTTP/1.1 host, so through the proxy Electron
+has at most 6 requests in flight, where staging's HTTP/2 would multiplex more. An endpoint whose
+max in flight sits at 6 was capped by the proxy, not by the app.
+
 ### Key Rules
 
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
