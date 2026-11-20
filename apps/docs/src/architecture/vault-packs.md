@@ -157,14 +157,16 @@ At-least-once queue delivery means every step has to tolerate re-running:
    — harmless invisible bytes, since only a `pack_index` row makes a pack listable. Between the row
    and the watermark it costs an idempotent rebuild that lands on the UNIQUE constraint.
 
-One known residual: a build that crashed in the PUT-to-row window leaves an object no row points
-at, and the retry writes a new key, so that object can never be listed — permanently dead bytes.
-Harmless today, and the concrete case a future sweep should cover: an object under `packs/` whose
-key matches no `pack_index` row. Such a sweep has to list the real key, which `packObjectKey`
-builds as `<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>_<packId>.pack`,
-`packId` being the build's `pack_index` id — the vault prefix is
-deliberate, so vault deletion's prefix purge already reaches these objects, and a sweep listing a
-bare `packs/<kind>/` prefix would match nothing.
+A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
+writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
+(`cleanupOrphanedPackObjects` in `services/cleanup.ts`): it lists the `packs/` prefix of every vault
+that has a `pack_index` or `pack_watermarks` row, and deletes an object only when it is older than
+an hour and no `pack_index` row has its key, rechecked in D1 right before the delete. The hour keeps
+it clear of a build still committing. It reads five list pages of 90 objects per tick and resumes
+from `pack_orphan_sweep` (migration 0022) on the next. The key is
+`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>_<packId>.pack`, `packId`
+being the build's `pack_index` id. The vault prefix is deliberate, so vault deletion's prefix purge
+reaches these objects too.
 
 ### Holes
 
