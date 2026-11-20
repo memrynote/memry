@@ -390,16 +390,17 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * the local doc. The caller has to carry that up: a snapshot push would
    * overwrite the very blob that was skipped. `dropped` means the provider
    * refused the bytes (the doc was closing): left out too, but not a failure.
+   * `held` means the server holds a snapshot of this note, merged or not.
    */
   private async applySnapshotBaseline(
     noteId: string,
     snapshot: ReturnType<typeof fetchCrdtSnapshot>,
     vaultKey: Uint8Array,
     mode: 'single' | 'batch'
-  ): Promise<{ since: number; verified: boolean; dropped?: boolean }> {
+  ): Promise<{ since: number; verified: boolean; dropped?: boolean; held: boolean }> {
     const snapshotResult = await snapshot
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
-      return { since: 0, verified: true }
+      return { since: 0, verified: true, held: snapshotResult != null }
     }
     // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
     recordBootstrapBytes('crdt', snapshotResult.snapshot.byteLength)
@@ -410,7 +411,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         noteId,
         signerDeviceId: snapshotResult.signerDeviceId
       })
-      return { since: 0, verified: false }
+      return { since: 0, verified: false, held: true }
     }
 
     // Off-thread decrypt (worker when available); a failure throws here just
@@ -429,7 +430,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       this.signerKeysFor([snapshotResult], () => signerPubKey)
     )
     if (this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted) === false) {
-      return { since: 0, verified: true, dropped: true }
+      return { since: 0, verified: true, dropped: true, held: true }
     }
     const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
     // Recorded here and nowhere else, after the bytes are in the doc: every
@@ -453,7 +454,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       mode,
       sequenceNum: snapshotResult.sequenceNum
     })
-    return { since: baselineSequence, verified: true }
+    return { since: baselineSequence, verified: true, held: true }
   }
 
   /** The pull's last body step: settles foreign journals owed to their day (#2939). */
@@ -565,6 +566,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       )
       let since = baseline.since
       let sawUnmerged = !baseline.verified || baseline.dropped === true
+      // The server holds a body for this note, so it is never seeded (#5286).
+      let serverHeld = baseline.held
       // Owed a pull as well as flagged, matching the batch path: a signer that
       // was only transiently unresolvable then clears the flag on a later pass
       // rather than costing this note its compaction point for the session.
@@ -606,6 +609,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           updateCount: result.updates.length,
           hasMore: result.hasMore
         })
+        if (result.updates.length > 0) serverHeld = true
 
         // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
         // (`u.data.length`), ~0.75x the wire octets — unlike the snapshot site
@@ -680,14 +684,31 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         hasMore = result.hasMore
       }
 
+      if (this.holdsPendingStructs(noteId)) {
+        sawUnmerged = true
+        skippedUpdate = true
+        this.owePendingPull(noteId, failures, true)
+      }
       if (!sawUnmerged) this.settleMergedNotes([noteId], generation)
 
+      // A seed is a local write of the markdown body. Over a server body the
+      // push lands beside it and duplicates the note (#5286): a doc closed by
+      // the cache mid-pass drops every update this pass fetched and reads
+      // empty here. Such a note is owed by the drop, and its retry merges.
       const postVector = crdtProvider.getStateVector(noteId)
       if (!postVector || isEmptyStateVector(postVector)) {
-        await crdtProvider.seedFromMarkdownPublic(noteId)
-        log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
-          noteId
-        })
+        if (postVector && !serverHeld && !sawUnmerged) {
+          await crdtProvider.seedFromMarkdownPublic(noteId)
+          log.debug('applyCrdtIncrementals: seeded from markdown as fallback (no server CRDT)', {
+            noteId
+          })
+        } else {
+          log.debug('applyCrdtIncrementals: no markdown seed, the doc holds no server body', {
+            noteId,
+            serverHeld,
+            docOpen: postVector != null
+          })
+        }
       } else if (!sawUnmerged && crdtProvider.hasPersistence() && owesFileBody(noteId)) {
         await crdtProvider.takeFileAfterMerge(noteId, doc)
       }
@@ -719,6 +740,16 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         await crdtProvider.closeIfInactive(noteId)
       }
     }
+  }
+
+  /**
+   * Server updates that wait on a struct the doc never received integrate
+   * nothing, so the doc may read empty over a body the server holds. Unmerged,
+   * as `landNoteBody` treats them: owed, never settled, never seeded.
+   */
+  private holdsPendingStructs(noteId: string): boolean {
+    const store = this.ctx.deps.crdtProvider?.getDoc(noteId)?.store
+    return store != null && (store.pendingStructs !== null || store.pendingDs !== null)
   }
 
   async applyCrdtBatch(
@@ -1080,6 +1111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     const sawUnmerged = new Set<string>()
     // Notes with an update skipped for its signer; see `applyCrdtIncrementals`.
     const skippedUpdate = new Set<string>()
+    // Notes the server holds a body for, which are never seeded (#5286).
+    const serverHeld = new Set<string>()
     // No `pendingPulls.delete` here, deliberately — the single-note path needs
     // one and this does not. Every caller of this path (the priority pull and
     // the paced sweep chunks) is handed notes that `drainPendingPulls()` has
@@ -1160,6 +1193,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             'batch'
           )
           sinceMap.set(noteId, baseline.since)
+          if (baseline.held) serverHeld.add(noteId)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)
             this.owePendingPull(noteId, failures, true)
@@ -1277,6 +1311,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
         let next = 0
         for (const [noteId, noteData] of Object.entries(result.notes)) {
+          if (noteData.updates.length > 0) serverHeld.add(noteId)
           for (const entry of noteData.updates) {
             const pubKey = signersById.get(entry.signerDeviceId)
             if (!pubKey) {
@@ -1320,11 +1355,18 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             // Dropped without its updates ever arriving, so this pass did not
             // walk it to the end and may not clear its flag.
             sawUnmerged.add(noteId)
+            this.owePendingPull(noteId)
             activeSince.delete(noteId)
           }
         }
       }
 
+      for (const noteId of sinceMap.keys()) {
+        if (!this.holdsPendingStructs(noteId)) continue
+        sawUnmerged.add(noteId)
+        skippedUpdate.add(noteId)
+        this.owePendingPull(noteId, failures, true)
+      }
       this.settleMergedNotes(
         [...sinceMap.keys()].filter((noteId) => !sawUnmerged.has(noteId)),
         generation
@@ -1347,7 +1389,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           log.warn('Skipping markdown seed: CRDT doc closed mid-batch', { noteId })
           continue
         }
-        if (isEmptyStateVector(postVector)) {
+        // A closing doc drops the updates and still reads empty; see the
+        // single-note path. The drop owes the note, and its retry merges.
+        if (isEmptyStateVector(postVector) && (serverHeld.has(noteId) || sawUnmerged.has(noteId))) {
+          log.debug('applyCrdtBatch: no markdown seed, the doc holds no server body', { noteId })
+        } else if (isEmptyStateVector(postVector)) {
           await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
             noteId
