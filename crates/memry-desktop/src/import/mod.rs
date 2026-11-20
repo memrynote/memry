@@ -16,9 +16,11 @@ pub mod csv;
 pub mod google_keep;
 pub mod markdown;
 pub mod messages;
+pub mod obsidian_tasks;
 pub mod registry;
 pub mod runner;
 pub mod sink;
+pub mod source_paths;
 pub mod zip;
 
 use std::io;

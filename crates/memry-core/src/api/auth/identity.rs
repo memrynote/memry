@@ -7,9 +7,12 @@
 //! mint-or-reuse rule both paths share, so the clocks written offline carry
 //! the id of the key that later registers (chapter 02 §2.5).
 
+use zeroize::Zeroizing;
+
 use super::AuthSession;
 use crate::api::errors::AuthError;
 use crate::crypto::sodium;
+use crate::protocol::account;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 
 const ACCOUNT_SECRETS: [SecureStoreKey; 5] = [
@@ -51,6 +54,18 @@ impl AuthSession {
             self.sign_out_marker.store_cleared();
         }
         Ok(())
+    }
+
+    /// The server's id for the device key this install holds, when the account still lists it
+    /// unrevoked (`repairDeviceKeys`, `sync/device-registration.ts:411-428`); `None` when the
+    /// keychain holds no device key or no live device has it. Never mints a key: a key minted here
+    /// would be one the server never saw. Rust-only.
+    pub async fn listed_device_id(&self) -> Result<Option<String>, AuthError> {
+        let Some(secret) = self.store.get(SecureStoreKey::DeviceSigningKey)? else {
+            return Ok(None);
+        };
+        let public = Self::signing_public_key(&Zeroizing::new(secret))?;
+        Ok(account::active_device_with_key(&self.http(), &public).await?)
     }
 }
 

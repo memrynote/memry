@@ -13,6 +13,7 @@
 //! | an unopenable update stops the document  | §7.9's stop-at-gap                  |
 //! | a baseline is taken only when §7.8 says  | §7.8, §7.5                          |
 //! | a tombstoned document is not body-pulled | §7.15                               |
+//! | refs progress counts items, not cursors  | §10.11; FR-028                      |
 //! | elevated bodies run in parallel          | §10.7; the body pass's concurrency  |
 //! | a 429 in the bodies pass is paused out   | §7.10 `retryOn429: false`           |
 
@@ -689,6 +690,61 @@ async fn a_tombstoned_document_is_never_body_pulled() {
     assert_eq!(report.tombstones, 1);
     assert_eq!(report.bodies.documents, 0, "§7.15: not one body request");
     assert_eq!(transport.call_count(), 1);
+}
+
+/// §10.11: the refs pass counts the items it listed (refs and tombstones),
+/// with one more page while the feed has more, as Electron's
+/// `initial-sync-progress.ts` does. The server cursor is a per-user sequence
+/// over every vault and every edit, so it is never a count.
+#[tokio::test]
+async fn the_refs_pass_reports_items_listed_not_server_cursors() {
+    let db = scratch_db("refs-progress");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &changes_page(
+                &[(NOTE, "note"), ("def456abc789", "note")],
+                &["aaa111bbb222"],
+                50_000,
+                true,
+            ),
+        ),
+        response(
+            200,
+            &changes_page(
+                &[("ccc333ddd444", "note")],
+                &["eee555fff666"],
+                50_002,
+                false,
+            ),
+        ),
+        // The metadata pass never answers: only the refs pass is under test.
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let progress = RecordedProgress::new();
+    let run = first_sync(&db, transport, public_key, progress.clone())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(run.is_err(), "the run stops in the metadata pass");
+
+    let refs: Vec<(u64, u64)> = progress
+        .seen()
+        .iter()
+        .filter(|p| p.phase == FirstSyncPhase::Refs)
+        .map(|p| (p.completed, p.total))
+        .collect();
+    assert_eq!(refs, vec![(3, 503), (5, 5)]);
+    assert!(
+        progress
+            .seen()
+            .iter()
+            .all(|p| p.completed < 50_000 && p.total < 50_000),
+        "{:?}",
+        progress.seen()
+    );
 }
 
 /// #2299 review A-5: a coversThrough push moves the server's watermark, so a

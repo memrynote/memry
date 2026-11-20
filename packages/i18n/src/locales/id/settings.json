@@ -2435,7 +2435,8 @@
         "vault-binding": "Kunci perangkat ini sudah dipulihkan, tetapi vault ini belum diatur untuk disinkronkan dengan akun Anda. Pilih cara menyinkronkannya dari menu sinkronisasi.",
         "vault-foreign": "Kunci perangkat ini sudah dipulihkan, tetapi vault ini milik akun lain. Vault tetap lokal di perangkat ini.",
         "entitlement": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi memerlukan paket Sync yang aktif.",
-        "unavailable": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Akan dicoba lagi; mulai ulang Memry jika tidak berhasil."
+        "unavailable": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Akan dicoba lagi; mulai ulang Memry jika tidak berhasil.",
+        "unavailable-restart": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Mulai ulang Memry; jika sinkronisasi masih belum dimulai, keluar lalu masuk lagi."
       }
     },
     "pagesSettingsAiInlineSection": {

@@ -64,7 +64,7 @@ pub fn calendar_ical_conformance(vector_json: String) -> String {
                         })).collect::<Vec<_>>(),
                     }
                 }),
-                Err(_) => json!({ "name": case["name"], "error": "not_a_calendar" }),
+                Err(error) => json!({ "name": case["name"], "error": error.code() }),
             }
         })
         .collect();

@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod capture_support;
 mod device_key;
 mod electron_profile;
 mod embedding_lane;
@@ -22,6 +23,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_sign_out_cancel.rs"]
+mod account_sign_out_cancel;
 #[path = "account_teardown.rs"]
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
@@ -106,6 +109,12 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "capture_pairing.rs"]
+mod capture_pairing;
+#[path = "capture_requests.rs"]
+mod capture_requests;
+#[path = "capture_server.rs"]
+mod capture_server;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
@@ -153,6 +162,8 @@ mod fold_untrusted;
 mod folder_file;
 #[path = "folder_prune.rs"]
 mod folder_prune;
+#[path = "folder_view.rs"]
+mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
@@ -285,6 +296,8 @@ mod notes_folders;
 mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_import_files.rs"]
+mod notes_import_files;
 #[path = "notes_kept.rs"]
 mod notes_kept;
 #[path = "notes_link_rewrite.rs"]
@@ -301,6 +314,8 @@ mod notes_moves_edges;
 mod notes_outside_after_reopen;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
+#[path = "notes_plain_checklists.rs"]
+mod notes_plain_checklists;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_resolve_refs.rs"]
@@ -323,6 +338,8 @@ mod notes_update_critic_marks;
 mod notes_writes;
 #[path = "oauth_loopback.rs"]
 mod oauth_loopback;
+#[path = "obsidian_task_import.rs"]
+mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
 #[path = "path_collision.rs"]
