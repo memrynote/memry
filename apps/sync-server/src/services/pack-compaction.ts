@@ -1,12 +1,18 @@
+import { PACK_MAX_ENTRIES } from '@memry/contracts/pack-format'
+import {
+  PACK_LIST_MAX_PACKS_PER_VAULT,
+  type CrdtUpdatePackEntryMeta
+} from '@memry/contracts/sync-api'
+
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import {
   openPack,
-  type PackEntryMeta,
   type PackEntryPlan,
   type PackEntryPlanMeta,
   type PackKindName
 } from './pack-format'
+import { roomForPack, roomGuard } from './pack-list'
 import {
   isSelectedRecordVersion,
   recordEntryOf,
@@ -15,6 +21,20 @@ import {
   type RecordEntry,
   type RecordRow
 } from './pack-record-selection'
+import {
+  loadSnapshotMeta,
+  snapshotSelectionQuery,
+  snapshotsCurrent
+} from './pack-snapshot-selection'
+import {
+  updateEntrySource,
+  updateFillReady,
+  updateMetaOf,
+  updateSelectionQuery,
+  updatesCurrent,
+  type EntrySource,
+  type UpdateRow
+} from './pack-update-selection'
 
 const logger = createLogger('PackCompaction')
 
@@ -29,8 +49,9 @@ const logger = createLogger('PackCompaction')
  * Every step tolerates a retry (at-least-once queue delivery):
  *
  *   1. selection reads the watermark  -> same range re-selected after a crash
- *   2. the pack key is DETERMINISTIC  -> a retry PUTs identical bytes to the
- *      same object (R2 put is idempotent)
+ *   2. the pack key carries the build's pack id -> no build ever writes a
+ *      key another build wrote, so a purge deleting a dropped pack's object
+ *      can never delete a rebuild of the same range (REVIEW-5260)
  *   3. the pack_index row carries UNIQUE (user_id, vault_id, item_kind,
  *      min_cursor) -> a duplicate insert is a no-op
  *   4. order is pack PUT first, then D1 row, then watermark -> an orphan pack
@@ -78,8 +99,9 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
 // => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
 // pack reads its entry meta in the selection query itself, so it costs
-// ~262. compactVault builds one pack per kind per queue message
-// (max_batch_size 1), ~531 together, and a large vault drains across
+// ~262. An update pack makes no R2 GET: its bytes come from D1 in ⌈24MB/4MB⌉
+// reads, ~11. compactVault builds one pack per kind per queue message
+// (max_batch_size 1), ~542 together, and a large vault drains across
 // invocations: each push nudges one more pack per kind, and the cron backfill
 // continues from the watermark.
 // A full retry doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
@@ -104,9 +126,11 @@ export const PACK_FETCH_CONCURRENCY = 16
  * entry carries the pull item's signature, signer, clock, operation and
  * deletion state as its meta (protocol 08 §8.4.2), so a client verifies it
  * exactly as a pulled item. Released readers drop record packs before
- * download (§8.11). `crdt_update` waits for its writer (#5228).
+ * download (§8.11). A `crdt_update` entry is one update row with
+ * `{sequenceNum, signerDeviceId, createdAt}` as its meta (§8.4.3), read from
+ * D1 with no R2 GET, so an update build is not bound by PACK_MAX_ITEMS.
  */
-export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record']
+export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record', 'crdt_update']
 
 export interface VaultScope {
   userId: string
@@ -127,10 +151,13 @@ export interface PackSelection {
     sizeBytes: number
     /** Record entries: the pull-item meta and the content hash of the same D1 row. */
     record?: RecordEntry
+    update?: CrdtUpdatePackEntryMeta
   }>
   /** Progress marker AFTER the last candidate (composite, exclusive). */
   nextSortValue: number
   nextTiebreak: string
+  /** False while a `crdt_update` window is below its minimum fill: build nothing, move nothing. */
+  ready: boolean
 }
 
 /**
@@ -152,19 +179,15 @@ export const readWatermark = async (
   return row ?? { last_sort_value: 0, last_sort_tiebreak: '' }
 }
 
-const NOTE_RECORD_ROWS = `SELECT 1 FROM sync_items r
-  WHERE r.user_id = s.user_id AND r.vault_id = s.vault_id
-    AND r.item_type IN ('note', 'journal') AND r.item_id = s.note_id`
-
 /**
  * Select up to PACK_MAX_ITEMS un-packed rows ordered ascending, capped so the
  * projected payload stays within PACK_TARGET_BYTES (itself far below
  * PACK_HARD_MAX_BYTES).
  *
  * Ordering keys: records use server_cursor (strictly monotonic per user, so
- * no ties); crdt kinds use created_at epoch seconds, which TIE heavily — the
- * tiebreak column (note_id / type:id) makes progress exact via a row-value
- * comparison instead of skipping or looping on tie groups.
+ * no ties), as do updates; snapshots use created_at epoch seconds, which TIE
+ * heavily — the tiebreak column (note_id / type:id) makes progress exact via a
+ * row-value comparison instead of skipping or looping on tie groups.
  */
 export const selectCandidates = async (
   db: D1Database,
@@ -176,29 +199,9 @@ export const selectCandidates = async (
   const query =
     kind === 'record'
       ? recordSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
-      : {
-          // A deleted note keeps its snapshot row, and a packed body lands on a
-          // fresh device before the tombstone that deletes it. A note id with
-          // any live note or journal row still packs, as does one whose record
-          // has not arrived yet. Dead rows stay in the scan so the watermark
-          // moves past a tail of them, as it does past oversized rows.
-          sql: `SELECT created_at AS sort_key, note_id AS tiebreak, note_id, blob_key, size_bytes,
-                  (EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
-                    AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL)) AS dead
-                FROM crdt_snapshots s
-                WHERE user_id = ? AND vault_id = ?
-                  AND (created_at > ? OR (created_at = ? AND note_id > ?))
-                ORDER BY created_at ASC, note_id ASC
-                LIMIT ?`,
-          bind: [
-            scope.userId,
-            scope.vaultId,
-            watermark.last_sort_value,
-            watermark.last_sort_value,
-            watermark.last_sort_tiebreak,
-            PACK_MAX_ITEMS
-          ]
-        }
+      : kind === 'crdt_update'
+        ? updateSelectionQuery(scope, watermark, PACK_MAX_ENTRIES)
+        : snapshotSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
 
   const rows = await db
     .prepare(query.sql)
@@ -210,9 +213,12 @@ export const selectCandidates = async (
         blob_key: string
         size_bytes: number
         dead?: number
-      } & Partial<RecordRow>
+      } & Partial<RecordRow> &
+        Partial<UpdateRow>
     >()
 
+  const ready =
+    kind !== 'crdt_update' || updateFillReady(rowList(rows), Math.floor(Date.now() / 1000))
   const candidates: PackSelection['candidates'] = []
   let bytes = 0
   for (const row of rowList(rows)) {
@@ -224,6 +230,11 @@ export const selectCandidates = async (
           recordEntryOf(scope, row as typeof row & RecordRow)
         : undefined
     if (record === null) continue
+    const update =
+      kind === 'crdt_update'
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the update query selects every UpdateRow column
+          updateMetaOf(row as typeof row & UpdateRow)
+        : undefined
     if (bytes + row.size_bytes > PACK_TARGET_BYTES) break
     bytes += row.size_bytes
     candidates.push({
@@ -232,7 +243,8 @@ export const selectCandidates = async (
       id: row.tiebreak,
       sourceKey: row.blob_key,
       sizeBytes: row.size_bytes,
-      ...(record ? { record } : {})
+      ...(record ? { record } : {}),
+      ...(update ? { update } : {})
     })
   }
 
@@ -244,6 +256,7 @@ export const selectCandidates = async (
     // writing 0 here would reset progress and force pointless re-scans.
     const scanned = rowList(rows)
     return {
+      ready,
       candidates,
       nextSortValue: scanned.length > 0 ? maxScannedSortKey(scanned) : watermark.last_sort_value,
       nextTiebreak:
@@ -253,6 +266,7 @@ export const selectCandidates = async (
     }
   }
   return {
+    ready,
     candidates,
     nextSortValue: last.sortKey,
     nextTiebreak: last.tiebreak
@@ -272,15 +286,16 @@ const maxScannedTiebreakAt = (
     .filter((row) => row.sort_key === sortKey)
     .reduce((max, row) => (row.tiebreak > max ? row.tiebreak : max), '')
 
-/** Deterministic, collision-free pack object key for one range. */
+/** Pack object key for one build: its range, then its `pack_index` id. */
 export const packObjectKey = (
   scope: VaultScope,
   kind: PackKindName,
   minSortValue: number,
-  maxSortValue: number
+  maxSortValue: number,
+  packId: string
 ): string =>
   // Lives under the vault prefix, so vault deletion's prefix purge reaches it.
-  `${scope.userId}/vaults/${scope.vaultId}/packs/${kind}/${minSortValue}_${maxSortValue}.pack`
+  `${scope.userId}/vaults/${scope.vaultId}/packs/${kind}/${minSortValue}_${maxSortValue}_${packId}.pack`
 
 export interface PackBuildResult {
   built: boolean
@@ -304,6 +319,24 @@ export const compactOneRange = async (
   scope: VaultScope,
   kind: PackKindName
 ): Promise<PackBuildResult> => {
+  // §8.14: a released reader's listing walk truncates past 1,000 packs.
+  if (!(await roomForPack(db, scope))) {
+    logger.warn('vault lists the maximum number of packs; build skipped', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind,
+      max: PACK_LIST_MAX_PACKS_PER_VAULT
+    })
+    return {
+      built: false,
+      packKey: null,
+      itemCount: 0,
+      byteSize: 0,
+      minSortValue: 0,
+      maxSortValue: 0,
+      holes: []
+    }
+  }
   const selection = await selectCandidates(db, scope, kind)
   const noop: PackBuildResult = {
     built: false,
@@ -314,6 +347,7 @@ export const compactOneRange = async (
     maxSortValue: selection.nextSortValue,
     holes: []
   }
+  if (!selection.ready) return noop
   if (selection.candidates.length === 0) {
     // Still persist watermark advancement so oversized-only windows progress.
     await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
@@ -322,19 +356,20 @@ export const compactOneRange = async (
 
   const minSortValue = selection.candidates[0].sortKey
   const maxSortValue = selection.candidates[selection.candidates.length - 1].sortKey
-  const packKey = packObjectKey(scope, kind, minSortValue, maxSortValue)
+  const packId = crypto.randomUUID()
+  const packKey = packObjectKey(scope, kind, minSortValue, maxSortValue, packId)
 
   // Idempotency gate: a row for this exact range means a previous attempt
   // finished (or at least published). Never rewrite the object — immutability.
   const existing = await db
     .prepare(
-      'SELECT id FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND min_cursor = ?'
+      'SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND min_cursor = ?'
     )
     .bind(scope.userId, scope.vaultId, kind, minSortValue)
-    .first<{ id: string }>()
+    .first<{ pack_key: string }>()
   if (existing) {
     await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
-    return { ...noop, built: false, packKey }
+    return { ...noop, built: false, packKey: existing.pack_key }
   }
 
   // Snapshot freshness metadata is read BEFORE any byte fetch. Order matters:
@@ -365,7 +400,8 @@ export const compactOneRange = async (
       sortKey: candidate.sortKey,
       sizeBytes: candidate.sizeBytes
     }
-    const meta = candidate.record?.meta ?? metaBySourceKey?.get(candidate.sourceKey)
+    const meta =
+      candidate.record?.meta ?? candidate.update ?? metaBySourceKey?.get(candidate.sourceKey)
     if (meta) plan.meta = meta
     return plan
   })
@@ -386,12 +422,16 @@ export const compactOneRange = async (
   const holes: string[] = []
   const missingRecords: PackEntryPlan[] = []
   let writtenCount = 0
-  for (let i = 0; i < plans.length; i += PACK_FETCH_CONCURRENCY) {
-    const window = plans.slice(i, i + PACK_FETCH_CONCURRENCY)
-    const bodies = await Promise.all(window.map((plan) => storage.get(plan.sourceKey)))
+  const source =
+    kind === 'crdt_update' ? updateEntrySource(db, scope, plans) : r2EntrySource(storage, plans)
+  let offset = 0
+  for (const window of source.windows) {
+    const bodies = await source.read(window)
+    const first = offset
+    offset += window.length
     for (let j = 0; j < window.length; j++) {
       const plan = window[j]
-      const record = selection.candidates[i + j].record
+      const record = selection.candidates[first + j].record
       const body = bodies[j]
       // A null body is a HOLE, not a failure: the blob was replaced/deleted
       // between selection and fetch (or is a dangling row). Membership is
@@ -407,7 +447,7 @@ export const compactOneRange = async (
         if (record) missingRecords.push(plan)
         continue
       }
-      const bytes = new Uint8Array(await body.arrayBuffer())
+      const bytes = await body()
       // A zero-length blob is a hole for the same reason a vanished one is:
       // openPack rejects an empty entry, and that throw would escape before
       // the watermark moves, so the range re-selects and re-throws forever.
@@ -484,13 +524,26 @@ export const compactOneRange = async (
   // is no second full-size allocation anywhere in this flow.
   await storage.put(packKey, built.bytes)
 
-  // A note delete purges its snapshot rows and drops every snapshot pack of the
-  // vault (#2986). One that commits after this run selected would leave the
-  // deleted body in this pack, so the row and the watermark commit together
-  // and only while every packed snapshot row is still current and not dead.
-  // Otherwise the object is deleted and the next run reselects.
-  const guard = kind === 'crdt_snapshot' ? snapshotsCurrent(scope, built.entries) : ALWAYS
-  const [, , check] = await db.batch<{ ok: number }>([
+  // A note delete purges its body rows and drops every body pack of the vault
+  // (#2986, protocol 07 §7.15). One that commits after this run selected would
+  // leave the deleted body in this pack, so the row and the watermark commit
+  // together and only while every packed body row is still current and not
+  // dead. Otherwise the next run reselects.
+  const current =
+    kind === 'crdt_snapshot'
+      ? snapshotsCurrent(scope, built.entries)
+      : kind === 'crdt_update'
+        ? updatesCurrent(scope, built.entries)
+        : ALWAYS
+  // The listing cap is rechecked in the insert, against the rows before it:
+  // another kind's build or a concurrent run may have taken the last slot.
+  const room = roomGuard(scope)
+  const guard = { sql: `(${current.sql}) AND (${room.sql})`, bind: [...current.bind, ...room.bind] }
+  // The one object-delete rule (VERIFY-5260): the object goes only when this
+  // build's own row is absent after the batch, whether the guard refused it
+  // or a concurrent build of the range won. A listed row always has its object.
+  const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
+  const [, , check] = await db.batch<{ listed: number }>([
     packIndexInsert(
       db,
       scope,
@@ -500,18 +553,22 @@ export const compactOneRange = async (
       maxSortValue,
       built.entries.length,
       built.payloadBytes,
-      guard
+      guard,
+      packId
     ),
-    watermarkUpsert(db, scope, kind, selection.nextSortValue, selection.nextTiebreak, guard),
-    db.prepare(`SELECT ${guard.sql} AS ok`).bind(...guard.bind)
+    watermarkUpsert(db, scope, kind, selection.nextSortValue, selection.nextTiebreak, listed),
+    db.prepare(`SELECT ${listed.sql} AS listed`).bind(...listed.bind)
   ])
-  if (!check.results?.[0]?.ok) {
+  if (!check.results?.[0]?.listed) {
     await storage.delete(packKey)
-    logger.info('pack superseded by a body purge; discarded', {
-      userId: scope.userId,
-      vaultId: scope.vaultId,
-      kind
-    })
+    logger.warn(
+      'pack not listed (body purge or prune, listing cap, or a concurrent build); discarded',
+      {
+        userId: scope.userId,
+        vaultId: scope.vaultId,
+        kind
+      }
+    )
     return { ...noop, holes }
   }
 
@@ -579,7 +636,8 @@ const packIndexInsert = (
   maxSortValue: number,
   itemCount: number,
   byteSize: number,
-  guard: Guard = ALWAYS
+  guard: Guard = ALWAYS,
+  id: string = crypto.randomUUID()
 ): D1PreparedStatement =>
   db
     .prepare(
@@ -588,7 +646,7 @@ const packIndexInsert = (
        ON CONFLICT (user_id, vault_id, item_kind, min_cursor) DO NOTHING`
     )
     .bind(
-      crypto.randomUUID(),
+      id,
       scope.userId,
       scope.vaultId,
       packKey,
@@ -638,49 +696,19 @@ const advanceWatermark = async (
   await watermarkUpsert(db, scope, kind, sortValue, tiebreak).run()
 }
 
-// True while every packed entry's snapshot row still exists with the packed
-// blob and its note is not dead. Entries ride as one JSON bind, clear of
-// D1's 100-bind limit.
-const snapshotsCurrent = (
-  scope: VaultScope,
-  entries: ReadonlyArray<{ id: string; sourceKey: string }>
-): Guard => ({
-  sql: `(SELECT COUNT(*) FROM json_each(?) e JOIN crdt_snapshots s
-          ON s.user_id = ? AND s.vault_id = ?
-            AND s.note_id = json_extract(e.value, '$[0]') AND s.blob_key = json_extract(e.value, '$[1]')
-          WHERE NOT (EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NOT NULL)
-            AND NOT EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS NULL))) = ?`,
-  bind: [
-    JSON.stringify(entries.map((entry) => [entry.id, entry.sourceKey])),
-    scope.userId,
-    scope.vaultId,
-    entries.length
-  ]
-})
-
-const loadSnapshotMeta = async (
-  db: D1Database,
-  scope: VaultScope,
-  sourceKeys: string[]
-): Promise<Map<string, PackEntryMeta>> => {
-  const meta = new Map<string, PackEntryMeta>()
-  // 95-bind split mirrors sync.ts/crdt.ts: user_id + vault_id ride along, and
-  // blob keys are long — keep chunks comfortably under the D1 100-bind ceiling.
-  const CHUNK = 40
-  for (let i = 0; i < sourceKeys.length; i += CHUNK) {
-    const chunk = sourceKeys.slice(i, i + CHUNK)
-    const rows = await db
-      .prepare(
-        `SELECT blob_key, sequence_num, revision FROM crdt_snapshots
-         WHERE user_id = ? AND vault_id = ? AND blob_key IN (${chunk.map(() => '?').join(', ')})`
-      )
-      .bind(scope.userId, scope.vaultId, ...chunk)
-      .all<{ blob_key: string; sequence_num: number; revision: string }>()
-    for (const row of rowList(rows)) {
-      meta.set(row.blob_key, { sequenceNum: row.sequence_num, revision: row.revision })
-    }
+/** Source blobs from R2, PACK_FETCH_CONCURRENCY GETs at a time, read one by one. */
+const r2EntrySource = (storage: R2Bucket, plans: PackEntryPlan[]): EntrySource => {
+  const windows: PackEntryPlan[][] = []
+  for (let i = 0; i < plans.length; i += PACK_FETCH_CONCURRENCY) {
+    windows.push(plans.slice(i, i + PACK_FETCH_CONCURRENCY))
   }
-  return meta
+  return {
+    windows,
+    read: async (window) =>
+      (await Promise.all(window.map((plan) => storage.get(plan.sourceKey)))).map((body) =>
+        body ? async () => new Uint8Array(await body.arrayBuffer()) : null
+      )
+  }
 }
 
 /**
@@ -694,7 +722,9 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  for (const kind of PACKED_KINDS) {
+  // A push nudge never builds `crdt_update`: only the backfill tick does, under
+  // the minimum fill (pack-update-selection.ts), so pushes cannot list tiny packs.
+  for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
     results.push(await compactOneRange(db, storage, scope, kind))
   }
   return results

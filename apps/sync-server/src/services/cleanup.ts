@@ -409,3 +409,109 @@ const parseUploadedChunkHashes = (value: string): Set<string> => {
     return new Set()
   }
 }
+
+// Orphan pack objects (REVIEW-5260). A pack key is unique per build, so a build
+// that fails between its object PUT and its commit batch leaves an object no
+// `pack_index` row lists, and no retry overwrites it. The sweep walks the
+// `packs/` prefix of every vault that has packed, a bounded number of list
+// pages per tick, and resumes from `pack_orphan_sweep` next tick.
+//
+// Subrequests: each page costs one list, one D1 recheck and at most one batched
+// delete, so 5 pages stay well inside what the pack backfill leaves the tick.
+export const PACK_ORPHAN_PAGES_PER_TICK = 5
+const PACK_ORPHAN_PAGE_SIZE = 90
+// Older than any build's PUT-to-commit window, so an object a build is still
+// committing is never taken.
+export const PACK_ORPHAN_MIN_AGE_MS = 60 * 60 * 1000
+
+interface PackSweepPoint {
+  user_id: string
+  vault_id: string
+  list_cursor: string | null
+}
+
+const nextPackedVaults = async (
+  db: D1Database,
+  after: { user_id: string; vault_id: string },
+  limit: number
+): Promise<PackSweepPoint[]> => {
+  const rows = await db
+    .prepare(
+      `SELECT user_id, vault_id, NULL AS list_cursor FROM (
+         SELECT user_id, vault_id FROM pack_index
+         UNION SELECT user_id, vault_id FROM pack_watermarks
+       )
+       WHERE (user_id, vault_id) > (?, ?)
+       ORDER BY user_id, vault_id
+       LIMIT ?`
+    )
+    .bind(after.user_id, after.vault_id, limit)
+    .all<PackSweepPoint>()
+  return rows.results ?? []
+}
+
+export const cleanupOrphanedPackObjects = async (
+  db: D1Database,
+  storage: R2Bucket
+): Promise<number> => {
+  const saved = await db
+    .prepare('SELECT user_id, vault_id, list_cursor FROM pack_orphan_sweep WHERE id = 1')
+    .first<PackSweepPoint>()
+  const queue = saved
+    ? [saved]
+    : await nextPackedVaults(db, { user_id: '', vault_id: '' }, PACK_ORPHAN_PAGES_PER_TICK)
+  let point: PackSweepPoint | undefined = queue.shift()
+  let deleted = 0
+  for (let page = 0; point && page < PACK_ORPHAN_PAGES_PER_TICK; page++) {
+    const prefix = `${point.user_id}/vaults/${point.vault_id}/packs/`
+    const listing = await storage.list({
+      prefix,
+      limit: PACK_ORPHAN_PAGE_SIZE,
+      ...(point.list_cursor ? { cursor: point.list_cursor } : {})
+    })
+    const cutoff = Date.now() - PACK_ORPHAN_MIN_AGE_MS
+    const old = listing.objects
+      .filter((object) => object.uploaded.getTime() <= cutoff)
+      .map((object) => object.key)
+    if (old.length > 0) {
+      // Rechecked right before the delete: only a key no row lists goes.
+      const listed = await db
+        .prepare(
+          `SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ?
+             AND pack_key IN (${old.map(() => '?').join(',')})`
+        )
+        .bind(point.user_id, point.vault_id, ...old)
+        .all<{ pack_key: string }>()
+      const keep = new Set((listed.results ?? []).map((row) => row.pack_key))
+      const orphans = old.filter((key) => !keep.has(key))
+      if (orphans.length > 0) {
+        await storage.delete(orphans)
+        deleted += orphans.length
+      }
+    }
+    if (listing.truncated) {
+      point.list_cursor = listing.cursor
+      continue
+    }
+    if (queue.length === 0) {
+      queue.push(...(await nextPackedVaults(db, point, PACK_ORPHAN_PAGES_PER_TICK)))
+    }
+    point = queue.shift()
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  await (
+    point
+      ? db
+          .prepare(
+            `INSERT INTO pack_orphan_sweep (id, user_id, vault_id, list_cursor, updated_at)
+           VALUES (1, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET user_id = excluded.user_id, vault_id = excluded.vault_id,
+             list_cursor = excluded.list_cursor, updated_at = excluded.updated_at`
+          )
+          .bind(point.user_id, point.vault_id, point.list_cursor, now)
+      : db.prepare('DELETE FROM pack_orphan_sweep WHERE id = 1')
+  ).run()
+  if (deleted > 0) logger.info('Orphaned pack objects deleted', { count: deleted })
+  return deleted
+}

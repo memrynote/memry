@@ -27,6 +27,7 @@ import {
   cleanupExpiredTombstones,
   cleanupExpiredUploadSessions,
   cleanupOrphanedBlobChunks,
+  cleanupOrphanedPackObjects,
   cleanupStaleIdentifySessions,
   cleanupStaleRateLimits
 } from './services/cleanup'
@@ -262,6 +263,7 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
     ['cleanup_deleted_document_bodies', cleanupDeletedDocumentBodies(env.DB, env.STORAGE)],
     ['cleanup_orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
+    ['cleanup_orphaned_pack_objects', cleanupOrphanedPackObjects(env.DB, env.STORAGE)],
     ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
     ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)],
     ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)],

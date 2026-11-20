@@ -986,7 +986,8 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
     latencyMs: Date.now() - startedAt
   })
 
-  return c.json({ updates: encoded, hasMore: result.hasMore, snapshotMeta })
+  // `floor` (#5228): additive, read with the updates; protocol 08 §8.4.3.
+  return c.json({ updates: encoded, hasMore: result.hasMore, floor: result.floor, snapshotMeta })
 }
 
 const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> => {
@@ -1003,7 +1004,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
 
   const batchResult = await getBatchUpdates(c.env.DB, userId, vaultId, parsed.notes, parsed.limit)
 
-  const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
+  const response: Record<string, { updates: unknown[]; hasMore: boolean; floor: number }> = {}
   for (const [noteId, result] of Object.entries(batchResult.notes)) {
     response[noteId] = {
       updates: result.updates.map((update) => ({
@@ -1012,7 +1013,8 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
         signerDeviceId: update.signer_device_id,
         createdAt: update.created_at
       })),
-      hasMore: result.hasMore
+      hasMore: result.hasMore,
+      floor: result.floor
     }
   }
 

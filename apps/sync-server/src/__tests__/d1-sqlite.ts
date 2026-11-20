@@ -118,10 +118,12 @@ export const createSqliteD1 = (): SqliteD1 => {
 /** In-memory R2. `body` is what the pull path reads a stored payload through. */
 export const createMemoryR2 = (): R2Bucket => {
   const objects = new Map<string, ArrayBuffer>()
+  const uploaded = new Map<string, Date>()
   return {
     head: async (key: string) => (objects.has(key) ? ({ key } as R2Object) : null),
     put: async (key: string, value: ArrayBuffer) => {
       objects.set(key, value)
+      uploaded.set(key, new Date())
       return { key } as R2Object
     },
     get: async (key: string) => {
@@ -138,8 +140,23 @@ export const createMemoryR2 = (): R2Bucket => {
         : null
     },
     delete: async (key: string | string[]) => {
-      for (const k of Array.isArray(key) ? key : [key]) objects.delete(k)
+      for (const k of Array.isArray(key) ? key : [key]) {
+        objects.delete(k)
+        uploaded.delete(k)
+      }
     },
-    list: async () => ({ objects: [], truncated: false }) as unknown as R2Objects
+    // Key order, `limit` per page, and the cursor is the offset into that order.
+    list: async (options: R2ListOptions = {}) => {
+      const keys = [...objects.keys()]
+        .filter((key) => key.startsWith(options.prefix ?? ''))
+        .toSorted()
+      const start = Number(options.cursor ?? 0)
+      const end = start + (options.limit ?? 1000)
+      return {
+        objects: keys.slice(start, end).map((key) => ({ key, uploaded: uploaded.get(key) })),
+        truncated: end < keys.length,
+        ...(end < keys.length ? { cursor: String(end) } : {})
+      } as unknown as R2Objects
+    }
   } as unknown as R2Bucket
 }
