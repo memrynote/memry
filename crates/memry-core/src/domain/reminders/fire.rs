@@ -18,6 +18,12 @@
 //! fire instant, and it is created through the outbox like any capture. Every
 //! core device that fires the same instant writes the same item, so the fleet
 //! converges on one. Desktop files `inbox_rem_<nanoid>` per device instead.
+//!
+//! Every device's create is the same version too: it is clocked
+//! `{FIRE_ACTOR: 1}`, not by the device that fired. Any later edit or delete
+//! ticks on top of it and dominates it under the plain vector clock rules
+//! (chapter 06 §6.1), wherever and however late another device's create
+//! arrives, and the server refuses a second create as a replay (§5.7).
 
 use std::collections::HashSet;
 
@@ -26,8 +32,7 @@ use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox;
-use crate::domain::notes::{insert_local, iso, next_clock, object};
-use crate::storage::repositories::schema::Object;
+use crate::domain::notes::{insert_local, iso, object};
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
@@ -36,6 +41,10 @@ use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED};
 
 /// Desktop's `inboxItemType.REMINDER`.
 const INBOX_TYPE: &str = "reminder";
+
+/// The clock actor of every firing's create, the same on every device. Not a
+/// device id: those are UUIDs, which never contain `r` or `m`.
+pub const FIRE_ACTOR: &str = "reminder-fire";
 
 /// A reminder this device just fired.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,7 +82,6 @@ pub fn inbox_id(reminder_id: &str, fired_for_ms: i64) -> String {
 pub fn fire(
     conn: &Connection,
     due: &DueReminder,
-    device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Fired>, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
@@ -90,7 +98,7 @@ pub fn fire(
     let inbox_id = inbox_id(&due.reminder.id, due.fire_at_ms);
     if sync_items::load(&tx, inbox::ITEM_TYPE, &inbox_id)?.is_none() {
         let mut payload = inbox_payload(&tx, due, &inbox_id)?;
-        payload.insert("clock".to_owned(), next_clock(&Object::new(), device_id)?);
+        payload.insert("clock".to_owned(), json!({ FIRE_ACTOR: 1 }));
         insert_local(&tx, inbox::ITEM_TYPE, &inbox_id, payload, now_ms)?;
         outbox::enqueue(
             &tx,

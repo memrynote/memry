@@ -5,7 +5,6 @@
 use std::sync::Arc;
 
 use memry_desktop::locale::LocaleService;
-use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::Session;
 use memry_desktop::tasks::reminders::{
     self, CLICK_HANDLER, ReminderScheduler, ReminderSink, TickReport, notice_text,
@@ -19,19 +18,12 @@ use crate::shutdown::ShutdownService;
 
 /// Registered before the first open, so the open that launches the app ticks.
 pub fn register(app: &AppHandle<Wry>, session: &Session) {
-    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
-        tracing::error!(
-            scope = "Reminders",
-            "no device identity store: reminders do not fire"
-        );
-        return;
-    };
     let scheduler = ReminderScheduler::new(
         tauri::async_runtime::handle().inner().clone(),
         Arc::new(Shell { app: app.clone() }),
         Arc::new(|| i64::try_from(memry_desktop::telemetry::time::now_ms()).unwrap_or(i64::MAX)),
     );
-    scheduler.register(session, store.inner().clone());
+    scheduler.register(session);
 
     let stopping = scheduler.clone();
     let registered = app.state::<ShutdownService>().register(

@@ -2,7 +2,7 @@
 //! paused tokio clock. Desktop is the reference: `startReminderScheduler`,
 //! `processDueReminders` and `showDesktopNotification` (`apps/desktop/src/main/lib/reminders.ts`).
 
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::domain::reminders::{DueReminder, Reminder};
@@ -102,7 +102,7 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
     // Open: the reminder missed while the app was closed fires at once, the badge counts one.
     // The paused clock auto-advances while the test waits, so "at once" is the clock not moving.
     let opened = tokio::time::Instant::now();
-    scheduler.start(db.clone(), Arc::new(|| Ok("device-a".to_owned())));
+    scheduler.start(db.clone());
     let first = rx.recv().await.expect("the open tick");
     assert_eq!(
         tokio::time::Instant::now(),
@@ -128,7 +128,7 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
     );
 
     // Restart: the open tick fires nothing again and sets the badge to zero.
-    scheduler.start(db.clone(), Arc::new(|| Ok("device-a".to_owned())));
+    scheduler.start(db.clone());
     let reopened = rx.recv().await.expect("the open tick after a restart");
     assert!(reopened.fired.is_empty());
     assert_eq!(reopened.pending, 0);
@@ -136,46 +136,10 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
     assert_eq!(inbox_count(&db), 2, "one inbox item per reminder");
 }
 
-/// A keychain locked at open holds reminders back only until it unlocks, not until the next
-/// open.
-#[tokio::test(start_paused = true)]
-async fn a_device_id_unreadable_at_open_delays_reminders_to_the_next_tick() {
-    let db = open("locked");
-    seed(&db, "rem_locked", "2026-03-20T08:00:00.000Z");
-    let unlocked = Arc::new(AtomicBool::new(false));
-    let (tx, mut rx) = mpsc::unbounded_channel();
-    let scheduler = ReminderScheduler::new(
-        tokio::runtime::Handle::current(),
-        Arc::new(Channel(tx)),
-        Arc::new(|| ms("2026-03-20T09:00:00Z")),
-    );
-    let readable = unlocked.clone();
-    scheduler.start(
-        db.clone(),
-        Arc::new(move || {
-            if readable.load(Ordering::SeqCst) {
-                Ok("device-a".to_owned())
-            } else {
-                Err("keychain locked".to_owned())
-            }
-        }),
-    );
-    tokio::time::advance(TICK / 2).await;
-    assert!(rx.try_recv().is_err(), "nothing fires without a device id");
-    assert_eq!(inbox_count(&db), 0);
-
-    unlocked.store(true, Ordering::SeqCst);
-    tokio::time::advance(TICK).await;
-    let report = rx.recv().await.expect("the tick after the unlock");
-    assert_eq!(fired_ids(&report), ["rem_locked"]);
-    scheduler.stop();
-    assert_eq!(inbox_count(&db), 1);
-}
-
 #[test]
 fn an_idle_tick_reports_zero_and_files_nothing() {
     let db = open("idle");
-    let report = reminders::tick(&db, "device-a", ms("2026-03-20T09:00:00Z")).expect("tick");
+    let report = reminders::tick(&db, ms("2026-03-20T09:00:00Z")).expect("tick");
     assert_eq!(
         report,
         TickReport {
@@ -185,7 +149,7 @@ fn an_idle_tick_reports_zero_and_files_nothing() {
     );
     // A future reminder is pending but not due.
     seed(&db, "rem_future", "2026-03-21T09:00:00.000Z");
-    let report = reminders::tick(&db, "device-a", ms("2026-03-20T09:00:00Z")).expect("tick");
+    let report = reminders::tick(&db, ms("2026-03-20T09:00:00Z")).expect("tick");
     assert!(report.fired.is_empty());
     assert_eq!(report.pending, 1);
     assert_eq!(inbox_count(&db), 0);
@@ -258,7 +222,7 @@ fn two_ticks_at_the_same_instant_fire_once() {
         .map(|_| {
             let (db, results) = (db.clone(), results.clone());
             std::thread::spawn(move || {
-                let report = reminders::tick(&db, "device-a", at).expect("tick");
+                let report = reminders::tick(&db, at).expect("tick");
                 results.lock().expect("lock").push(report.fired.len());
             })
         })

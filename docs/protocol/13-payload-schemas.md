@@ -1022,23 +1022,24 @@ key the remote omits keeps the local value; a key it sends as `null` clears it
 `attachmentId` keep the local value on `null` too, so a remote never clears an
 `attachmentId`: an older sender omits the key or sends `null` without knowing
 it, and a capture's file never changes once uploaded
-(`crates/memry-core/src/domain/inbox/merge.rs:44`, `:102-104`; desktop's
+(`crates/memry-core/src/domain/inbox/merge.rs:36`, `:85-87`; desktop's
 `apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:65` reads it as
 `data.attachmentId ?? existing.attachmentId`). A string sets it, including over
 a different known id. `metadata` is `z.unknown()` and replaced whole.
 
-**Core client behaviour, not a wire rule: a reminder firing's item is shared.**
-The core files a fired reminder's inbox item under the id
-`inbox_rem_<reminderId>_<fireInstant>`, where `fireInstant` is the UTC epoch
-milliseconds the reminder fired for, so every core device mints the same id for
-the same firing (`crates/memry-core/src/domain/reminders/fire.rs:62`), and it
-skips the create when a row for that id already exists, live or deleted
-(`:91`). A first create (clock total 1) of an id this device has already edited
-(clock total above 1) or deleted does not overlay or revive it: an edited row
-keeps its payload under the union clock and is re-queued, and a deleted one
-skips the record (`crates/memry-core/src/domain/inbox/merge.rs:127-151`,
-`:53`, `:77-78`). Desktop files `inbox_rem_<nanoid>` on each device and has no
-such rule; its ids never collide, so the rule never applies to them.
+**A fired reminder's item, as the core creates it.** The core files the item
+of a reminder firing under the id `inbox_rem_<reminderId>_<fireInstant>`, where
+`fireInstant` is the UTC epoch milliseconds the reminder fired for, so every
+core device mints the same id for the same firing
+(`crates/memry-core/src/domain/reminders/fire.rs:71-73`). Its create carries
+the clock `{"reminder-fire": 1}` on every device (`:47`, `:101`), a key that
+is no device id (device ids are UUIDs) and that the algebra treats like any
+other key (chapter 06 §6.1). Every device's create is therefore one version: a
+later edit or delete ticks on top of it and dominates it under the apply rule
+above, and the server refuses a second create as a replay (chapter 05 §5.7).
+A receiver needs no rule of its own. Desktop files `inbox_rem_<nanoid>` with
+its own device clock on each device, and no `inbox.json` vector covers this
+item, since the vectors come from the TypeScript code paths.
 
 ### 13.7.16 `calendar_source` — `:410-428`
 

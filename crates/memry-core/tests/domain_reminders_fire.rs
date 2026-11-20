@@ -78,7 +78,7 @@ fn tick(conn: &Connection, now_ms: i64) -> Vec<fire::Fired> {
     fire::due(conn, now_ms)
         .expect("due")
         .iter()
-        .filter_map(|due| fire::fire(conn, due, DEVICE, now_ms).expect("fire"))
+        .filter_map(|due| fire::fire(conn, due, now_ms).expect("fire"))
         .collect()
 }
 
@@ -134,7 +134,7 @@ fn a_reminder_fires_at_its_time_once_and_files_one_inbox_item() {
         );
         // The inbox item is clocked and queued like any capture, and the
         // reminder's synced status stays `pending`: `triggered` is never written.
-        assert_eq!(item["clock"], json!({DEVICE: 1}));
+        assert_eq!(item["clock"], json!({fire::FIRE_ACTOR: 1}));
         assert_eq!(item["createdAt"], "2026-03-20T09:00:00.000Z");
         assert_eq!(
             count(
@@ -309,7 +309,7 @@ fn a_peers_pending_copy_never_refires_but_a_new_time_does() {
             );
             assert!(tick(conn, at + 60_000).is_empty(), "no second inbox item");
             let due = reminders::due_window(conn, Some(at))?;
-            assert_eq!(fire::fire(conn, &due[0], DEVICE, at + 60_000)?, None);
+            assert_eq!(fire::fire(conn, &due[0], at + 60_000)?, None);
 
             // A reschedule on the peer is new user intent: it fires again.
             apply(

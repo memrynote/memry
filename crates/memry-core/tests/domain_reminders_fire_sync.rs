@@ -1,6 +1,6 @@
 //! One shared inbox item per reminder firing across devices (Step 21f, #3538;
-//! Kaan, 20 Nov, option c), over real SQLite on two devices. A sync round trip
-//! hands one device's stored row to the other through the pull's apply path.
+//! Kaan, 20 Nov, option c), over real SQLite on several devices. A sync round
+//! trip hands one device's stored row to another through the pull's apply path.
 
 use memry_core::domain::inbox;
 use memry_core::domain::reminders::fire;
@@ -52,12 +52,12 @@ fn device(label: &str, remind_at: &str) -> Db {
     db
 }
 
-/// One scheduler tick on `device_id`; the inbox ids it filed.
-fn tick(db: &Db, device_id: &'static str, now_ms: i64) -> Vec<String> {
+/// One scheduler tick; the inbox ids it filed.
+fn tick(db: &Db, now_ms: i64) -> Vec<String> {
     db.call_blocking(move |conn| {
         let mut fired = Vec::new();
         for due in fire::due(conn, now_ms)? {
-            if let Some(done) = fire::fire(conn, &due, device_id, now_ms)? {
+            if let Some(done) = fire::fire(conn, &due, now_ms)? {
                 fired.push(done.inbox_id);
             }
         }
@@ -135,8 +135,8 @@ fn two_devices_firing_the_same_reminder_converge_on_one_item() {
     let id = fire::inbox_id(REMINDER, at);
 
     // Each device fires on its own minute tick, at a different wall clock.
-    assert_eq!(tick(&a, "device-a", at + 5_000), [id.as_str()]);
-    assert_eq!(tick(&b, "device-b", at + 47_000), [id.as_str()]);
+    assert_eq!(tick(&a, at + 5_000), [id.as_str()]);
+    assert_eq!(tick(&b, at + 47_000), [id.as_str()]);
 
     // Both creates cross, then the re-queued union rows cross back.
     for round in 0..2 {
@@ -149,7 +149,7 @@ fn two_devices_firing_the_same_reminder_converge_on_one_item() {
     let (on_a, _) = stored(&a, &id).expect("on a");
     let (on_b, _) = stored(&b, &id).expect("on b");
     assert_eq!(on_a, on_b);
-    assert_eq!(on_a["clock"], json!({"device-a": 1, "device-b": 1}));
+    assert_eq!(on_a["clock"], json!({fire::FIRE_ACTOR: 1}));
     assert_eq!(on_a["createdAt"], "2026-03-20T09:00:00.000Z");
 }
 
@@ -160,7 +160,7 @@ fn a_late_or_repeated_create_never_undoes_an_edit() {
     let b = device("edit-b", "2026-03-20T09:00:00.000Z");
     let id = fire::inbox_id(REMINDER, at);
 
-    tick(&a, "device-a", at);
+    tick(&a, at);
     let edit_id = id.clone();
     a.call_blocking(move |conn| {
         inbox::write::update(
@@ -176,7 +176,7 @@ fn a_late_or_repeated_create_never_undoes_an_edit() {
     })
     .expect("edit");
     // B fired offline; its first create reaches A after A's edit.
-    tick(&b, "device-b", at + 30_000);
+    tick(&b, at + 30_000);
     sync(&b, &a, &id, at + 60_000);
     let (on_a, deleted) = stored(&a, &id).expect("on a");
     assert_eq!(on_a["title"], "Call Ada today");
@@ -188,12 +188,71 @@ fn a_late_or_repeated_create_never_undoes_an_edit() {
     // Firing the same instant again on either device keeps the edit.
     forget_fires(&a);
     forget_fires(&b);
-    assert_eq!(tick(&a, "device-a", at + 180_000), [id.as_str()]);
-    assert_eq!(tick(&b, "device-b", at + 180_000), [id.as_str()]);
+    assert_eq!(tick(&a, at + 180_000), [id.as_str()]);
+    assert_eq!(tick(&b, at + 180_000), [id.as_str()]);
     for db in [&a, &b] {
         assert_eq!(stored(db, &id).expect("item").0["title"], "Call Ada today");
         assert_eq!(inbox_rows(db), 1);
     }
+}
+
+fn edit_title(db: &Db, id: &str, title: &'static str, device_id: &'static str, now_ms: i64) {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        inbox::write::update(conn, &id, Some(title), None, device_id, now_ms)?.acknowledge();
+        Ok(())
+    })
+    .expect("edit");
+}
+
+/// VERIFY-5144C's probe: a late create relayed through a third device that
+/// never saw the edit reaches the offline editor and must not undo the edit.
+#[test]
+fn a_late_create_relayed_through_a_third_device_never_undoes_an_edit() {
+    let at = ms("2026-03-20T09:00:00Z");
+    let a = device("relay-a", "2026-03-20T09:00:00.000Z");
+    let b = device("relay-b", "2026-03-20T09:00:00.000Z");
+    let e = device("relay-e", "2026-03-20T09:00:00.000Z");
+    let id = fire::inbox_id(REMINDER, at);
+
+    tick(&a, at);
+    sync(&a, &e, &id, at + 10_000);
+    edit_title(&e, &id, "Call Ada today", "device-e", at + 20_000);
+    // B was closed through the reminder and fires before its first pull.
+    tick(&b, at + 30_000);
+    sync(&b, &a, &id, at + 60_000);
+    sync(&a, &e, &id, at + 120_000);
+    assert_eq!(stored(&e, &id).expect("on e").0["title"], "Call Ada today");
+
+    // The edit then reaches everyone.
+    for peer in [&a, &b] {
+        sync(&e, peer, &id, at + 180_000);
+    }
+    for db in [&a, &b, &e] {
+        let (item, deleted) = stored(db, &id).expect("item");
+        assert_eq!(item["title"], "Call Ada today");
+        assert_eq!(deleted, None);
+        assert_eq!(inbox_rows(db), 1);
+    }
+}
+
+/// C holds A's edit when B's late create reaches it.
+#[test]
+fn a_late_create_arriving_after_the_edit_keeps_the_edit() {
+    let at = ms("2026-03-20T09:00:00Z");
+    let a = device("after-a", "2026-03-20T09:00:00.000Z");
+    let b = device("after-b", "2026-03-20T09:00:00.000Z");
+    let c = device("after-c", "2026-03-20T09:00:00.000Z");
+    let id = fire::inbox_id(REMINDER, at);
+
+    tick(&a, at);
+    edit_title(&a, &id, "Call Ada today", "device-a", at + 1);
+    sync(&a, &c, &id, at + 60_000);
+    tick(&b, at + 30_000);
+    sync(&b, &c, &id, at + 120_000);
+    assert_eq!(stored(&c, &id).expect("on c").0["title"], "Call Ada today");
+    sync(&c, &b, &id, at + 180_000);
+    assert_eq!(stored(&b, &id).expect("on b").0["title"], "Call Ada today");
 }
 
 #[test]
@@ -203,7 +262,7 @@ fn a_late_or_repeated_create_never_brings_back_a_delete() {
     let b = device("del-b", "2026-03-20T09:00:00.000Z");
     let id = fire::inbox_id(REMINDER, at);
 
-    tick(&a, "device-a", at);
+    tick(&a, at);
     let gone = id.clone();
     a.call_blocking(move |conn| {
         inbox::write::delete_permanent(conn, &gone, "device-a", at + 1)?.acknowledge();
@@ -213,7 +272,7 @@ fn a_late_or_repeated_create_never_brings_back_a_delete() {
         Ok(())
     })
     .expect("delete");
-    tick(&b, "device-b", at + 30_000);
+    tick(&b, at + 30_000);
     sync(&b, &a, &id, at + 60_000);
     assert!(stored(&a, &id).expect("the tombstone").1.is_some());
 
@@ -222,8 +281,8 @@ fn a_late_or_repeated_create_never_brings_back_a_delete() {
 
     forget_fires(&a);
     forget_fires(&b);
-    tick(&a, "device-a", at + 180_000);
-    tick(&b, "device-b", at + 180_000);
+    tick(&a, at + 180_000);
+    tick(&b, at + 180_000);
     for db in [&a, &b] {
         assert!(stored(db, &id).expect("the tombstone").1.is_some());
         let live: i64 = db
@@ -249,8 +308,8 @@ fn the_item_id_is_the_same_on_devices_in_different_time_zones() {
     let kolkata = device("tz-kolkata", "2026-03-29T07:00:00+05:30");
 
     let expected = format!("inbox_rem_{REMINDER}_{at}");
-    assert_eq!(tick(&berlin, "device-a", at), [expected.as_str()]);
-    assert_eq!(tick(&kolkata, "device-b", at + 20_000), [expected.as_str()]);
+    assert_eq!(tick(&berlin, at), [expected.as_str()]);
+    assert_eq!(tick(&kolkata, at + 20_000), [expected.as_str()]);
     assert_eq!(
         stored(&berlin, &expected).expect("berlin").0["createdAt"],
         stored(&kolkata, &expected).expect("kolkata").0["createdAt"]
