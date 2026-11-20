@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../../generated/bindings', () => {
   const event = (name: string) => ({
     listen: vi.fn(async (handler: (event: { payload: unknown }) => void) => {
+      await channel.answer
       mocks.listeners.set(name, handler)
       return () => mocks.listeners.delete(name)
     })
@@ -35,6 +36,10 @@ vi.mock('../../../generated/bindings', () => {
     events: {
       syncStatusChangedEvent: event('status'),
       syncInitialSyncProgressEvent: event('progress'),
+      syncQueueClearedEvent: event('queue-cleared'),
+      syncClockSkewWarningEvent: event('clock-skew'),
+      syncSecurityWarningEvent: event('security-warning'),
+      syncCertificatePinFailedEvent: event('pin-failed'),
       syncItemSyncedEvent: {
         listen: async (handler: (received: { payload: Payload }) => void) => {
           await channel.answer
@@ -49,7 +54,11 @@ vi.mock('../../../generated/bindings', () => {
 })
 
 import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
   onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
   onSyncedRecords,
   onSyncStatusChanged,
   syncService
@@ -210,5 +219,90 @@ describe('sync-service', () => {
     })
 
     expect(received).toHaveBeenCalledWith({ phase: 'notes', totalItems: 10, processedItems: 4 })
+  })
+
+  // `sync-context.test.tsx` mocks this module, so the wrappers' event names are proved only here.
+  it.each([
+    {
+      wrapper: 'onSyncStatusChanged',
+      subscribe: onSyncStatusChanged,
+      event: 'status',
+      payload: {
+        status: 'error',
+        pendingCount: 2,
+        lastSyncAt: 1_700_000_000_000,
+        error: 'boom',
+        errorCategory: 'server_error',
+        offlineSince: 1_700_000_001_000
+      }
+    },
+    {
+      wrapper: 'onInitialSyncProgress',
+      subscribe: onInitialSyncProgress,
+      event: 'progress',
+      payload: { phase: 'tasks', totalItems: 10, processedItems: 4, currentItemType: 'task' }
+    },
+    {
+      wrapper: 'onQueueCleared',
+      subscribe: onQueueCleared,
+      event: 'queue-cleared',
+      payload: { itemCount: 7, duration: 420 }
+    },
+    {
+      wrapper: 'onClockSkewWarning',
+      subscribe: onClockSkewWarning,
+      event: 'clock-skew',
+      payload: { localTime: 1_700_000_000_000, serverTime: 1_700_000_900_000, skewSeconds: 900 }
+    },
+    {
+      wrapper: 'onSecurityWarning',
+      subscribe: onSecurityWarning,
+      event: 'security-warning',
+      payload: {
+        itemId: 'n1',
+        itemType: 'note',
+        signerDeviceId: 'd1',
+        reason: 'signature_verification_failed',
+        attemptCount: 2,
+        permanent: false
+      }
+    },
+    {
+      wrapper: 'onCertificatePinFailed',
+      subscribe: onCertificatePinFailed,
+      event: 'pin-failed',
+      payload: { hostname: 'sync.example', actualHash: 'aa', expectedHashes: ['bb', 'cc'] }
+    }
+  ])('$wrapper listens to its own event and hands the payload on', async (row) => {
+    const received = vi.fn()
+    row.subscribe(received)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect([...mocks.listeners.keys()]).toEqual([row.event])
+    mocks.listeners.get(row.event)?.({ payload: row.payload })
+
+    expect(received).toHaveBeenCalledOnce()
+    expect(received).toHaveBeenCalledWith(row.payload)
+  })
+
+  // Tauri's `listen` goes live only when main answers it; a status sent before then reached
+  // nobody, so the provider reads the status again from `onListening` (#4270).
+  it('runs the status onListening only once its listener is live', async () => {
+    let release = (): void => undefined
+    channel.answer = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const onListening = vi.fn()
+    onSyncStatusChanged(vi.fn(), onListening)
+
+    await vi.advanceTimersByTimeAsync(150)
+    expect(mocks.listeners.has('status')).toBe(false)
+    expect(onListening).not.toHaveBeenCalled()
+
+    release()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(mocks.listeners.has('status')).toBe(true)
+    expect(onListening).toHaveBeenCalledOnce()
   })
 })
