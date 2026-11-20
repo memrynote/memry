@@ -117,7 +117,11 @@ vi.mock('../../database/queries/notes', () => ({
   getAllSyncableNoteMetadataIds: () => [],
   getNoteCacheById: (_db: unknown, id: string) => mocks.rows.get(id),
   getNoteCacheByPath: (_db: unknown, rel: string) =>
-    [...mocks.rows.values()].find((row) => row.path === rel)
+    [...mocks.rows.values()].find((row) => row.path === rel),
+  updateNoteCache: (_db: unknown, id: string, patch: Record<string, unknown>) => {
+    const row = mocks.rows.get(id)
+    if (row) mocks.rows.set(id, { ...row, ...patch })
+  }
 }))
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (_db: unknown, id: string) => mocks.rows.get(id)
