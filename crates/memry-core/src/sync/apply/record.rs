@@ -1,4 +1,4 @@
-//! The record half of [`super::apply_page`]: chapter 06 §6.8's table, the
+//! The record half of [`super::apply_page_into`]: chapter 06 §6.8's table, the
 //! one `match` this core makes on an item's type.
 
 use rusqlite::Connection;
