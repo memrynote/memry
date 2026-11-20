@@ -353,6 +353,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::templates::templates_get,
             crate::commands::templates::templates_list,
             crate::commands::templates::templates_update,
+            // terminal command
+            crate::commands::terminal_command::settings_get_terminal_command_status,
+            crate::commands::terminal_command::settings_install_terminal_command,
+            crate::commands::terminal_command::settings_set_terminal_command_default_vault,
+            crate::commands::terminal_command::settings_uninstall_terminal_command,
             // unsplash
             crate::commands::unsplash::unsplash_search,
             // updater
