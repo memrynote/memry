@@ -1,0 +1,110 @@
+{
+  "name": "no-registry",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "use",
+        "a"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Unknown vault: a\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "remove",
+        "a",
+        "--yes"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Unknown vault: a\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{vault}",
+        "--json",
+        "vault",
+        "current"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<vault>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "locale",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.\n"
+    },
+    {
+      "argv": [
+        "notes",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.\n"
+    },
+    {
+      "argv": [],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{vault}"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search|canvas|home-pages|icons|import|readwise>\n"
+    },
+    {
+      "argv": [
+        "--vault",
+        "{vault}",
+        "bogus",
+        "list"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Usage: memrynote [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search|canvas|home-pages|icons|import|readwise>\n"
+    }
+  ]
+}

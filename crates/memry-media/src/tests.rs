@@ -216,6 +216,20 @@ fn zero_size_wrong_magic_and_truncated_inputs_are_errors() {
     }
 }
 
+/// image-webp reads a simple (not VP8X) file's first chunk and nothing after it, so bytes past
+/// that chunk that do not parse as a whole chunk never stop the decode.
+#[test]
+fn a_simple_webp_with_trailing_bytes_decodes() {
+    let clean = fixture("webp lossy @140");
+    assert_ne!(&clean[12..16], b"VP8X", "a simple file");
+    let mut trailing = clean.clone();
+    trailing.extend(b"JUNK\xff\xff\x00\x00");
+    assert_eq!(
+        decode(&trailing).expect("decodes"),
+        decode(&clean).expect("decodes")
+    );
+}
+
 /// Each format, and the inputs whose ICC profile (`p3`) or EXIF orientation the decode reads.
 const VALID: [&str; 9] = [
     "png rgba @140",

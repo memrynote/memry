@@ -18,7 +18,12 @@
 //! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
 //! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
 //! after that many milliseconds, anything else answers `read` at once.
-//! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
+//! `TranscribeLoad` fails for a model path that ends in `missing.bin` and answers `Done` otherwise.
+//! `Transcribe`'s language picks its behaviour: `crash` aborts, `hang` never answers, `xx` answers
+//! `Rejected`, anything else answers the child's pid.
+//! `--crash-before-ready` aborts before the `Ready` frame. A `hold-ready` file in the directory of
+//! `--pdfium-dir` holds the `Ready` frame until it is deleted, after creating `starting` there: how
+//! a test reads the app's state while a child starts. Never bundled.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -55,6 +60,14 @@ fn main() {
     let markers = marker_dir();
     if std::env::args().any(|arg| arg == "--crash-before-ready") {
         std::process::abort();
+    }
+    if let Some(dir) = &markers
+        && dir.join("hold-ready").exists()
+    {
+        let _ = std::fs::write(dir.join("starting"), b"");
+        while dir.join("hold-ready").exists() {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
     let mut recording = String::new();
     let result = serve(
@@ -158,6 +171,16 @@ fn main() {
                 let cwd = std::env::current_dir().unwrap_or_default();
                 Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
             }
+            Request::TranscribeLoad { model } if model.ends_with("missing.bin") => {
+                Response::Failed("failed to load the Whisper model".into())
+            }
+            Request::TranscribeLoad { .. } => Response::Done,
+            Request::Transcribe { language, .. } => match language.as_str() {
+                "crash" => std::process::abort(),
+                "hang" => park_forever(),
+                "xx" => Response::Rejected("unknown transcription language xx".into()),
+                _ => Response::Text(std::process::id().to_string()),
+            },
             Request::Ocr { languages, .. } => {
                 let first = languages.first().map_or("", String::as_str);
                 if first == "hang" {

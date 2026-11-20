@@ -41,6 +41,9 @@ fn main() {
     }
 
     compile_runtime_config(checkout_dir);
+    if target_os == "macos" {
+        build_eventkit_helper(checkout_dir);
+    }
 
     // Rehearsal builds bake their feed in (`updater/velopack_backend.rs`, `option_env!`).
     println!("cargo:rerun-if-env-changed={}", build_env::UPDATE_FEED);
@@ -92,4 +95,49 @@ fn compile_runtime_config(checkout_dir: &Path) {
             panic!("{message}");
         }
     }
+}
+
+/// Builds `memry-eventkit`, the macOS Calendar helper (#3546), for this target only: no universal
+/// binary, and a deployment target equal to `bundle.macOS.minimumSystemVersion`.
+/// `tauri_build::build` copies `bundle.externalBin` (`tauri.macos.conf.json`) beside the app
+/// binary and fails when the file is missing, so this runs before it.
+fn build_eventkit_helper(checkout_dir: &Path) {
+    let dir = checkout_dir.join("eventkit");
+    let source = dir.join("main.swift");
+    println!("cargo:rerun-if-changed={}", source.display());
+    let triple = std::env::var("TARGET").expect("cargo sets TARGET");
+    let arch = match triple.split('-').next() {
+        Some("aarch64") => "arm64",
+        Some("x86_64") => "x86_64",
+        _ => panic!("no EventKit helper build for {triple}"),
+    };
+    let output = dir.join("bin").join(format!("memry-eventkit-{triple}"));
+    let modified = |path: &Path| std::fs::metadata(path).and_then(|metadata| metadata.modified());
+    let source_time = modified(&source).expect("read main.swift's modified time");
+    // This script reruns for other inputs too; a helper stamped below is already current.
+    if modified(&output).is_ok_and(|time| time == source_time) {
+        return;
+    }
+    std::fs::create_dir_all(dir.join("bin")).expect("create eventkit/bin");
+    let status = std::process::Command::new("xcrun")
+        .args(["swiftc", "-O", "-swift-version", "5", "-target"])
+        .arg(format!("{arch}-apple-macos13.0"))
+        .args(["-framework", "EventKit"])
+        .arg(&source)
+        .arg("-o")
+        .arg(&output)
+        .status()
+        .unwrap_or_else(|error| panic!("run xcrun swiftc (Xcode command line tools): {error}"));
+    assert!(
+        status.success(),
+        "swiftc could not build {}",
+        source.display()
+    );
+    // tauri-build watches the copied file. Written during this run, it would be newer than the
+    // run and rerun this script on every build, so it takes the source's time.
+    std::fs::File::options()
+        .write(true)
+        .open(&output)
+        .and_then(|file| file.set_modified(source_time))
+        .expect("set the helper's modified time");
 }

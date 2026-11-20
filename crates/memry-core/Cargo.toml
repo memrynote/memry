@@ -44,7 +44,7 @@ flate2 = { workspace = true }
 serde = { workspace = true }
 # `float_roundtrip`: JSON.parse reads every float to the nearest f64; the default parser
 # can land one ULP off (a `---json` frontmatter block, and iOS reading what desktop wrote).
-serde_json = { workspace = true, features = ["float_roundtrip"] }
+serde_json = { workspace = true, features = ["float_roundtrip", "raw_value"] }
 thiserror = { workspace = true }
 base64 = { workspace = true }
 hex = { workspace = true }
@@ -151,3 +151,7 @@ path = "tests/outbox_durability.rs"
 [[test]]
 name = "read_pool_contention"
 path = "tests/read_pool_contention.rs"
+
+[[test]]
+name = "task_completion_spawn_vectors"
+path = "tests/task_completion_spawn_vectors.rs"
