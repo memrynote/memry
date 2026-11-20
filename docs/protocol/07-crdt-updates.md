@@ -1109,11 +1109,11 @@ names the documents whose log grew.
   - A stop or an error answer backs the document off for
     `2^(failures - 1)` passes, up to 32.
   - **Owed means "awaits its server body".** Every note or journal record a
-    feed page (`crates/memry-core/src/sync/pull.rs:290`) or the first sync's
-    metadata pass (`crates/memry-core/src/sync/pull.rs:349`) applies is owed
+    feed page (`crates/memry-core/src/sync/pull.rs:295`) or the first sync's
+    metadata pass (`crates/memry-core/src/sync/pull.rs:354`) applies is owed
     in a transaction just before the one that applies it, inside the same
     writer call. The first sync's bodies pass owes every live document before
-    its first pull (`crates/memry-core/src/sync/first_sync.rs:415`) and
+    its first pull (`crates/memry-core/src/sync/first_sync.rs:489`) and
     settles a window document by the rule above
     (`crates/memry-core/src/sync/first_sync/body_pass.rs:183`), so a run that
     dies, or a window pull that stops, leaves the document owed for the body

@@ -4,6 +4,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
 import { useHomeBoards } from './use-home-boards'
 
+const service = vi.hoisted(() => ({
+  homePagesService: {
+    list: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    reorder: vi.fn()
+  },
+  onHomePageCreated: vi.fn(),
+  onHomePageUpdated: vi.fn(),
+  onHomePageDeleted: vi.fn()
+}))
+vi.mock('@/services/home-pages-service', () => service)
+const api = service.homePagesService
+
 const board = { id: 'b1', name: 'Work', position: 0, widgets: [] }
 
 // Each remote-event subscription hands back its callback plus an unsubscribe spy.
@@ -30,20 +45,14 @@ beforeEach(() => {
   created = subscription()
   updated = subscription()
   deleted = subscription()
-  // Assign only homePages onto the existing window.api (preserves jsdom window/document)
-  ;(window as any).api = {
-    ...(window as any).api,
-    homePages: {
-      list: vi.fn().mockResolvedValue([board]),
-      create: vi.fn().mockResolvedValue({ ...board, id: 'b2', name: 'New' }),
-      update: vi.fn().mockResolvedValue(board),
-      delete: vi.fn().mockResolvedValue({ success: true }),
-      reorder: vi.fn().mockResolvedValue({ success: true })
-    },
-    onHomePageCreated: created.subscribe,
-    onHomePageUpdated: updated.subscribe,
-    onHomePageDeleted: deleted.subscribe
-  }
+  api.list.mockReset().mockResolvedValue([board])
+  api.create.mockReset().mockResolvedValue({ ...board, id: 'b2', name: 'New' })
+  api.update.mockReset().mockResolvedValue(board)
+  api.delete.mockReset().mockResolvedValue({ success: true })
+  api.reorder.mockReset().mockResolvedValue({ success: true })
+  service.onHomePageCreated.mockImplementation(created.subscribe)
+  service.onHomePageUpdated.mockImplementation(updated.subscribe)
+  service.onHomePageDeleted.mockImplementation(deleted.subscribe)
 })
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -69,21 +78,21 @@ describe('useHomeBoards', () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.updateWidgets('b1', []))
-    expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', widgets: [] })
+    expect(api.update).toHaveBeenCalledWith({ id: 'b1', widgets: [] })
   })
 
   it('renameBoard calls api.update with the new name only', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.renameBoard('b1', 'Planning'))
-    expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', name: 'Planning' })
+    expect(api.update).toHaveBeenCalledWith({ id: 'b1', name: 'Planning' })
   })
 
   it('reorderBoards calls api.reorder with the new id order', async () => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(result.current.boards).toHaveLength(1))
     await act(() => result.current.reorderBoards(['b2', 'b1']))
-    expect(window.api.homePages.reorder).toHaveBeenCalledWith(['b2', 'b1'])
+    expect(api.reorder).toHaveBeenCalledWith(['b2', 'b1'])
   })
 
   // Boards sync, so a peer's create/rename/drag/delete arrives as an event
@@ -96,7 +105,7 @@ describe('useHomeBoards', () => {
   ])('refetches when a remote %s event arrives', async (_name, get) => {
     const { result } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(result.current.boards).toHaveLength(1))
-    const listMock = vi.mocked(window.api.homePages.list)
+    const listMock = api.list
     listMock.mockClear()
 
     act(() => get().fire())
@@ -110,7 +119,7 @@ describe('useHomeBoards', () => {
   // consumer on the value it read at mount.
   it('shares the active board id across hook instances', async () => {
     const second = { ...board, id: 'b2', name: 'Work' }
-    vi.mocked(window.api.homePages.list).mockResolvedValue([board, second])
+    api.list.mockResolvedValue([board, second])
     const { result: page } = renderHook(() => useHomeBoards(), { wrapper })
     const { result: elsewhere } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(elsewhere.current.boards).toHaveLength(2))

@@ -54,7 +54,7 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
     let db = cli.open_vault(&vault)?;
 
     let policy = PolicyTier::new(http.identity().app_version());
-    let gate = policy::poll(&http, &policy, now_ms).await;
+    let gate = policy::poll(&http, &policy, Some(&vault), now_ms).await;
 
     let pending = db.call_blocking(|conn| outbox::pending(conn, now_ms()))?;
     let mut outcome = Outcome {

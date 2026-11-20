@@ -226,8 +226,12 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
         let supervisor = rig.start().await;
         settle().await;
         let observers = lock(&rig.backend.driver.observers).clone();
-        assert_eq!(observers.len(), 1, "one observer per driver");
-        observers[0].records_applied(&[AppliedRecord {
+        let telemetry: Vec<_> = observers
+            .iter()
+            .filter(|observer| observer.name() == "conflict-telemetry")
+            .collect();
+        assert_eq!(telemetry.len(), 1, "one telemetry observer per driver");
+        telemetry[0].records_applied(&[AppliedRecord {
             item_type: "task".into(),
             item_id: "t1".into(),
             outcome: AppliedOutcome::Updated,
@@ -236,6 +240,7 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
                 losing: json!("a"),
                 winning: json!("b"),
                 merged_clock: json!({}),
+                local_lost: true,
             }],
         }]);
         let names: Vec<(String, Option<String>)> = service

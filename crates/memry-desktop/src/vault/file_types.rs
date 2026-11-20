@@ -64,6 +64,11 @@ pub(crate) const TABLE: &[(&str, FileType, &str)] = &[
     ("mkv", FileType::Video, "video/x-matroska"),
 ];
 
+/// `getAllSupportedExtensions`, in its order.
+pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
+    TABLE.iter().map(|(ext, _, _)| *ext)
+}
+
 /// `getExtension`: the text after the last dot of the whole string, lowercased; empty when
 /// there is no dot or it is the last character.
 pub fn extension(path: &str) -> String {

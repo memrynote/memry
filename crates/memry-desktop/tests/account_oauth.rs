@@ -422,6 +422,29 @@ async fn cancel_during_a_start_ends_the_attempt_it_opens() {
     assert_eq!(f.state(), AuthState::SignedOut);
 }
 
+/// A start the user cancelled while it waited on the server is not live, so its browser tab
+/// never opens; a start asked for after that Cancel is.
+#[tokio::test]
+async fn a_start_cancelled_while_it_waits_is_not_live_and_the_next_one_is() {
+    let f = fixture(Keychain::default());
+    let slow = Probe::slow(&format!("{GOOGLE}state-1"));
+
+    let (started, cancelled) = tokio::join!(
+        f.service.init_oauth(&slow, |_| {}),
+        f.service.cancel_oauth()
+    );
+    let started = started.unwrap();
+    cancelled.unwrap();
+    assert!(!f.service.oauth_attempt_live(&started));
+
+    let again = f
+        .service
+        .init_oauth(&Probe::to(&format!("{GOOGLE}state-2")), |_| {})
+        .await
+        .unwrap();
+    assert!(f.service.oauth_attempt_live(&again));
+}
+
 /// The real transport against a server whose 302 points at a host the transport may follow:
 /// the init reads the `location` and never requests it.
 #[tokio::test]

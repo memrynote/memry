@@ -61,7 +61,14 @@ pub enum Outcome {
 pub enum Keep {
     /// The vault session of this pass is over.
     Closed,
+    /// No row names the note's file, and none was made: the note is gone, or the open walk
+    /// has not ended (`unfiled`).
     NoRow,
+    /// The path of a day's first file is taken (`unfiled`).
+    PathTaken,
+    /// A day's first file is not named now: the vault's settings cannot be read, or a journal
+    /// setting change or a moved journal folder holds the days (`unfiled`).
+    DayWaits,
     NotMarkdown,
     /// The row names a file that is not there.
     NoFile,
@@ -89,7 +96,7 @@ pub struct Pass {
     pub(crate) settings: Option<AppSettings>,
     /// What the write-back and the app's other writers wrote this run, and the outside edits the
     /// consumer read.
-    own_files: Arc<OwnFiles>,
+    pub(super) own_files: Arc<OwnFiles>,
 }
 
 impl Pass {
@@ -119,7 +126,8 @@ impl Pass {
     }
 
     /// [`Pass::run`] with a hook that runs after the new file is written aside and before the
-    /// checks ahead of its rename, so a test can edit or move the file in that window.
+    /// checks ahead of its rename, or before a first file is created (`unfiled`), so a test can
+    /// edit or move the file in that window.
     #[doc(hidden)]
     pub fn run_checked(&self, note_id: &str, between: &mut dyn FnMut()) -> Outcome {
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
@@ -134,7 +142,9 @@ impl Pass {
         };
         let row = match lane.files().by_id(note_id) {
             Ok(Some(row)) => row,
-            Ok(None) => return Outcome::Kept(Keep::NoRow),
+            Ok(None) => {
+                return self.file_unfiled(&mut lane, note_id, (read_at, read_mark), between);
+            }
             Err(error) => return Outcome::Failed(format!("note_files: {error}")),
         };
         if row.file_type != FileType::Markdown.as_str() {
@@ -307,7 +317,7 @@ pub(crate) fn output_over(
         &converter,
         note_id,
         path,
-        old_body.strip_prefix(BOM).unwrap_or(old_body),
+        Some(old_body.strip_prefix(BOM).unwrap_or(old_body)),
         &embeds,
     );
     let body = match read {

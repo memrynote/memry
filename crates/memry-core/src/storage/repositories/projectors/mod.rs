@@ -46,12 +46,12 @@
 //! different axis from null tolerance, and widening one of those is a protocol
 //! question rather than a projector's call.
 //!
-//! `custom_icon` and `canvas` are the two subscribed types with a reader and
-//! no table. §A.4 lists no projection for `custom_icon` and `0002` creates
-//! none: the icon bytes ride in the payload (§13.7.11) and the device's icon
-//! directory is re-derived from `sync_items.payload`, which is what keeps it
-//! self-healing. A canvas scene is its payload in the same way. Both readers
-//! still run, so a malformed payload is recorded corrupt like any other.
+//! `custom_icon` is the one subscribed type with a reader and no table. §A.4
+//! lists no projection for it and `0002` creates none: the icon bytes ride in
+//! the payload (§13.7.11) and the device's icon directory is re-derived from
+//! `sync_items.payload`, which is what keeps it self-healing. Its reader still
+//! runs, so a malformed payload is recorded corrupt like any other. `canvas`
+//! projects every field but its scene, which stays in the payload.
 
 pub mod agent;
 pub mod bookmarks;
@@ -161,8 +161,7 @@ pub fn project(
         "calendar_external_event" => calendar::project_external_event(conn, item, view),
         "calendar_binding" => calendar::project_binding(conn, item, view),
         "bookmark" => bookmarks::project_bookmark(conn, item, view),
-        // No table by design; see `canvas`'s module comment.
-        "canvas" => Ok(()),
+        "canvas" => canvas::project_canvas(conn, item, view),
         "vault_lock" => vault_locks::project_vault_lock(conn, item, view),
         "canvas_folder" => canvas_folders::project_canvas_folder(conn, item, view),
         "home_page" => home_pages::project_home_page(conn, item, view),
@@ -262,6 +261,7 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "calendar_binding" => &[("calendar_bindings", Some("id"))],
         "bookmark" => &[("bookmarks", Some("id"))],
         "vault_lock" => &[("vault_locks", Some("id"))],
+        "canvas" => &[("canvases", Some("id"))],
         "canvas_folder" => &[("canvas_folders", Some("id"))],
         "home_page" => &[("home_pages", Some("id"))],
         "sticky_draft" => &[("sticky_drafts", Some("id"))],

@@ -170,6 +170,36 @@ async fn a_stop_that_times_out_still_stops_the_socket() {
     .expect("the socket ended while the loop stayed stuck");
 }
 
+/// Low 3: a loop back from a keychain prompt after the stop fired opens no socket for the
+/// network change that queued while it waited.
+#[tokio::test(start_paused = true)]
+async fn a_loop_back_from_a_keychain_prompt_after_a_stop_opens_no_socket() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let sockets = &rig.backend.driver.sockets;
+    assert_eq!(sockets.load(Ordering::SeqCst), 1);
+    rig.net
+        .set(memry_core::seams::reachability::Reachable::Offline);
+    settle().await;
+    rig.backend.stall_facts.store(true, Ordering::SeqCst);
+    rig.gate.set_entitlement(Entitlement::Entitled);
+    settle().await;
+    rig.net
+        .set(memry_core::seams::reachability::Reachable::Wifi);
+
+    let answer = async {
+        sleep(Duration::from_millis(1)).await;
+        rig.backend.stall_facts.store(false, Ordering::SeqCst);
+    };
+    tokio::join!(supervisor.stop(), answer);
+
+    assert_eq!(
+        sockets.load(Ordering::SeqCst),
+        1,
+        "no socket after the stop"
+    );
+}
+
 /// Medium 6: a close then a reopen never holds two sockets: the stop returns once the old one
 /// ended.
 #[tokio::test(start_paused = true)]

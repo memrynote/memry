@@ -114,7 +114,7 @@ pub fn pass_progress<R: Runtime>(app: &AppHandle<R>) -> projector::ProgressSink 
     Arc::new(move |progress| broadcast(&app, AiEmbeddingProgressEvent::from(progress)))
 }
 
-fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
+pub(crate) fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let exe_dir = exe.parent().ok_or("the executable has no directory")?;
     Ok(WorkerPaths::new(exe_dir, &resource_dir(app)?))
