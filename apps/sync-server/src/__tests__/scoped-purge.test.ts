@@ -17,6 +17,8 @@ import {
   deleteReplacedPackObjects,
   packKindReset
 } from '../services/pack-replaced-objects'
+import { rewritePurgedPacks } from '../services/pack-purge-rewrite'
+import { rollupKind } from '../services/pack-rollup'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
 import {
@@ -613,5 +615,128 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
     expect(send).toHaveBeenCalledWith(expect.anything(), {
       delaySeconds: PACK_PURGE_RETRY_DELAY_SECONDS
     })
+  })
+})
+
+describe('pack work racing a purge on the other queue (VERIFY-5283 V1, V2)', () => {
+  // Update packs one per round, no rollup, so the kind ends above its bound.
+  const packRounds = async (
+    app: App,
+    from: number,
+    to: number,
+    withDay = (round: number) => round > 0 && round < 6
+  ): Promise<void> => {
+    if (from === 0) await createDoc(app, DAY)
+    for (let round = from; round < to; round++) {
+      await createDoc(app, `note-${round}`)
+      if (withDay(round)) await writeBody(DAY, [...DAY_UPDATE, round])
+      await writeBody(`note-${round}`, [0x30 + round, 0x77, 0x78, 0x79])
+      vi.setSystemTime(Date.now() + (PACK_SETTLE_SECONDS + 1) * 1000)
+      expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(true)
+    }
+  }
+
+  const overlappingUpdateRanges = () => {
+    const ranges = harness.raw
+      .prepare(
+        `SELECT min_cursor, max_cursor FROM pack_index WHERE item_kind = 'crdt_update' ORDER BY min_cursor`
+      )
+      .all() as Array<{ min_cursor: number; max_cursor: number }>
+    return ranges.filter((range, i) => i > 0 && range.min_cursor <= ranges[i - 1].max_cursor)
+  }
+
+  /** Runs `action` once, just before the first statement whose SQL matches reads its rows. */
+  const beforeRead = (match: (sql: string) => boolean, action: () => Promise<unknown>) => {
+    const prepare = harness.db.prepare.bind(harness.db)
+    let fired = false
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql: string) => {
+      const statement = prepare(sql)
+      if (!match(sql)) return statement
+      const bind = statement.bind.bind(statement)
+      statement.bind = (...values: unknown[]) => {
+        const bound = bind(...values)
+        const all = bound.all.bind(bound)
+        bound.all = async () => {
+          if (!fired) {
+            fired = true
+            await action()
+          }
+          return all()
+        }
+        return bound
+      }
+      return statement
+    })
+  }
+
+  const pendingRead = (sql: string) =>
+    sql.includes('FROM pack_replaced_objects') &&
+    sql.includes("replaced_by = 'rewrite'") &&
+    !sql.includes('ORDER BY')
+  const listingRead = (sql: string) =>
+    sql.includes('FROM pack_index') && sql.includes('ORDER BY min_cursor ASC, id ASC')
+
+  it('a rewrite that commits while the rollup plans leaves no range listed twice', async () => {
+    const app = buildApp()
+    await packRounds(app, 0, 6)
+    await push(app, deleteSpec(DAY))
+    await packRounds(app, 6, 8)
+    // Back inside the grace, so the rewrite still pending is rewritten, not reset.
+    vi.setSystemTime(Date.now() - 2 * (PACK_SETTLE_SECONDS + 1) * 1000)
+    beforeRead(pendingRead, () => rewritePurgedPacks(harness.db, storage, SCOPE))
+
+    await rollupKind(harness.db, storage, SCOPE, 'crdt_update')
+
+    expect(overlappingUpdateRanges()).toEqual([])
+  })
+
+  it('a purge that commits after the rollup read the pending rewrites fails the swap', async () => {
+    const app = buildApp()
+    await packRounds(app, 0, 8)
+    beforeRead(listingRead, () => push(app, deleteSpec(DAY)))
+
+    await rollupKind(harness.db, storage, SCOPE, 'crdt_update')
+    vi.restoreAllMocks()
+    await rewritePurgedPacks(harness.db, storage, SCOPE)
+
+    expect(overlappingUpdateRanges()).toEqual([])
+  })
+
+  it('a compaction message whose deletion pass settles every pending rewrite is not redelivered', async () => {
+    // #given: more rewrites pending than one pass takes, all past their grace
+    const app = buildApp()
+    await packRounds(app, 0, 10, () => true)
+    await push(app, deleteSpec(DAY))
+    vi.setSystemTime(Date.now() + (PACK_REPLACED_GRACE_SECONDS + 1) * 1000)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    // #when: a nudge's first pass leaves rewrites, its deletion pass resets the kind
+    await compactVault(harness.db, storage, SCOPE)
+
+    // #then: nothing is pending, so the message acks instead of being redelivered
+    const pending = harness.raw
+      .prepare(`SELECT COUNT(*) AS c FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
+      .get() as { c: number }
+    expect(pending.c).toBe(0)
+  })
+
+  it('a cleanup purge whose retry enqueue throws logs the enqueue, not a failed purge, and enqueues once', async () => {
+    // #given: a tombstone whose push purge never ran, its body in more packs
+    // than one rewrite pass takes, so the purge asks for its delayed retry
+    const app = buildApp()
+    await packRounds(app, 0, 7, () => true)
+    harness.raw
+      .prepare(`UPDATE sync_items SET deleted_at = ? WHERE item_id = ?`)
+      .run(now() * 1000, DAY)
+    send.mockReset().mockRejectedValue(new Error('queue down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    expect(await cleanupDeletedDocumentBodies(harness.db, storage, env)).toBe(1)
+
+    expect(send).toHaveBeenCalledOnce()
+    const messages = (spy: typeof warn) => spy.mock.calls.map(([line]) => String(line))
+    expect(messages(warn).filter((line) => line.includes('purge failed'))).toEqual([])
+    expect(messages(error).filter((line) => line.includes('retry not enqueued'))).toHaveLength(1)
   })
 })

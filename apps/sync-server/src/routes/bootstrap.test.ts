@@ -423,6 +423,42 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
     await Promise.allSettled(background)
   })
 
+  it('a failed chain start still logs coverage and leaves the kind to the next open', async () => {
+    // #given: a backlog a build can extend, and a backfill queue that refuses one send
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    const backfills = createMemoryQueue()
+    const sendBatch = backfills.sendBatch
+    backfills.sendBatch = async () => {
+      backfills.sendBatch = sendBatch
+      throw new Error('queue down')
+    }
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    // #when
+    const body = await open({ PACK_BACKFILL_QUEUE: backfills })
+
+    // #then: the open logs the kind as not enqueued
+    expect(coverageLog(info)?.kinds).toContainEqual(
+      expect.objectContaining({ kind: 'record', enqueued: false })
+    )
+
+    // #when: the next open, inside the skip window
+    const closed = await createApp().request(
+      '/sync/bootstrap/close',
+      { method: 'POST', headers: { 'X-Memry-Bootstrap-Token': body.session.token } },
+      { DB: harness.db, ENVIRONMENT: 'development', BOOTSTRAP_SESSION_HMAC_KEY: SECRET }
+    )
+    expect(closed.status).toBe(200)
+    await open({ PACK_BACKFILL_QUEUE: backfills })
+
+    // #then: it starts the chain the failed send did not
+    expect(backfills.sent).toEqual([
+      { body: { userId: 'user-1', vaultId: 'vault-1', backfill: { kind: 'record', hop: 0 } } }
+    ])
+  })
+
   // The PR states subrequests per bootstrap. Before #5230 an open made 6 D1
   // calls on this seed, and the client then listed packs in a second request.
   // Now: the listing batch in the response, and in waitUntil the coverage

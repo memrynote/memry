@@ -149,6 +149,50 @@ const claimChainStarts = async (
 }
 
 /**
+ * Send hop 0 of each claimed kind's chain. A failed send gives the claims
+ * back, so the next open starts the chain instead of skipping it for the
+ * window, and answers the kinds that started.
+ */
+const startChains = async (
+  db: D1Database,
+  queue: Queue<PackCompactionMessageBody>,
+  scope: VaultScope,
+  claimed: Set<PackKindName>,
+  now: number
+): Promise<Set<PackKindName>> => {
+  if (claimed.size === 0) return claimed
+  try {
+    await queue.sendBatch(
+      [...claimed].map((kind) => ({
+        body: { userId: scope.userId, vaultId: scope.vaultId, backfill: { kind, hop: 0 } }
+      }))
+    )
+    return claimed
+  } catch (error) {
+    logger.error('bootstrap backfill not enqueued; chain starts released', {
+      vaultId: scope.vaultId,
+      kinds: [...claimed],
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  try {
+    await db
+      .prepare(
+        `DELETE FROM pack_bootstrap_enqueues WHERE user_id = ? AND vault_id = ?
+           AND item_kind IN (SELECT value FROM json_each(?)) AND enqueued_at = ?`
+      )
+      .bind(scope.userId, scope.vaultId, JSON.stringify([...claimed]), now)
+      .run()
+  } catch (error) {
+    logger.error('bootstrap chain starts not released; the next open skips them for the window', {
+      vaultId: scope.vaultId,
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+  return new Set()
+}
+
+/**
  * Log the vault's coverage per kind and start a backfill chain for each kind
  * a build can extend, on PACK_BACKFILL_QUEUE with the chain's later hops
  * (pack-backfill.ts), so a push nudge or a purge retry on PACK_QUEUE never
@@ -173,7 +217,13 @@ export const reportBootstrapCoverage = async (
   const buildable = assessed.filter((entry) => entry.buildable).map((entry) => entry.kind)
   const started =
     queue && buildable.length > 0
-      ? await claimChainStarts(env.DB, scope, buildable, now)
+      ? await startChains(
+          env.DB,
+          queue,
+          scope,
+          await claimChainStarts(env.DB, scope, buildable, now),
+          now
+        )
       : new Set<PackKindName>()
   const report = assessed.map(({ kind, row, reason }) => ({
     kind,
@@ -182,13 +232,6 @@ export const reportBootstrapCoverage = async (
     ...(reason ? { reason } : {}),
     enqueued: started.has(kind)
   }))
-  if (queue && started.size > 0) {
-    await queue.sendBatch(
-      [...started].map((kind) => ({
-        body: { userId: scope.userId, vaultId: scope.vaultId, backfill: { kind, hop: 0 } }
-      }))
-    )
-  }
   logger.info('bootstrap pack coverage', {
     user: scope.userId.slice(0, 8),
     vaultId: scope.vaultId,

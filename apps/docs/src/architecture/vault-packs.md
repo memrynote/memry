@@ -400,7 +400,9 @@ coverage, its uncovered row count (counted up to 256) and the reason (`cache_onl
 `never_packed`, `unanchored`, `tail`), and starts a backfill chain for each kind a build can extend,
 on the backfill queue, so a push nudge or a purge retry never waits behind it. A vault's kind gets
 at most one chain start per 15 minutes, held in `pack_bootstrap_enqueues` (migration 0025), so
-repeated opens start one chain (`pack-coverage.ts`). A client never waits for that work: it takes
+repeated opens start one chain, and a failed send gives the start back to the next open
+(`pack-coverage.ts`). A rollup reads the pending purge rewrites before the listing and swaps only
+while no other rewrite is pending, so it never lists a range a rewrite lists again. A client never waits for that work: it takes
 whatever is not covered item by item.
 
 - **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,

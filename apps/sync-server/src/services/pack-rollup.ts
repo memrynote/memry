@@ -279,6 +279,18 @@ export const rollupKind = async (
   const bound = packCountBound(stats.entries, stats.bytes)
   if (stats.packs <= bound) return null
 
+  // The pending rewrites are read before the listing (VERIFY-5283 V1): a
+  // rewrite that commits between the two reads then shows as a listed pack,
+  // never as a gap the run could span. A purge that takes a pack out after
+  // the pending read fails the swap (pendingUnchanged).
+  const pending = await db
+    .prepare(
+      `SELECT pack_key FROM pack_replaced_objects
+       WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
+    )
+    .bind(scope.userId, scope.vaultId)
+    .all<{ pack_key: string }>()
+  const pendingKeys = (pending.results ?? []).map(({ pack_key: key }) => key)
   const listed = await db
     .prepare(
       `SELECT id, pack_key, min_cursor, max_cursor, item_count, byte_size, cover_from, cover_through
@@ -288,14 +300,7 @@ export const rollupKind = async (
     .bind(scope.userId, scope.vaultId, kind)
     .all<ListedPack>()
   const packs = listed.results ?? []
-  const pending = await db
-    .prepare(
-      `SELECT pack_key FROM pack_replaced_objects
-       WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
-    )
-    .bind(scope.userId, scope.vaultId)
-    .all<{ pack_key: string }>()
-  const rewriting = (pending.results ?? []).flatMap(({ pack_key: key }) => {
+  const rewriting = pendingKeys.flatMap((key) => {
     const range = packKeyRange(key)
     return range?.kind === kind ? [range.minSortValue] : []
   })
@@ -411,7 +416,8 @@ export const rollupKind = async (
     maxSortValue,
     coverage,
     kept: kept.map(({ entry }) => entry),
-    payloadBytes
+    payloadBytes,
+    pendingKeys
   })
   if (!swapped) {
     // The one object-delete rule: this rollup's own row is absent.
@@ -451,6 +457,8 @@ interface Swap {
   coverage: Coverage
   kept: PackedEntry[]
   payloadBytes: number
+  /** The vault's pending purge rewrites the plan excluded. */
+  pendingKeys: readonly string[]
 }
 
 /**
@@ -510,8 +518,11 @@ export const replacePacks = (
 
 /**
  * The index swap (protocol 08 §8.12), one D1 batch: replacePacks over the
- * inputs while no other row holds the merged `min_cursor` and every kept entry
- * is still current (the §7.15 recheck), then the merged row. An object the
+ * inputs while no other row holds the merged `min_cursor`, every kept entry
+ * is still current (the §7.15 recheck), and no purge rewrite is pending that
+ * the plan did not exclude, then the merged row. A purge after the plan took
+ * a pack out of the listing that the run may span, and its rewrite would list
+ * that range a second time (VERIFY-5283 V1). An object the
  * batch did not list is recorded for deletion at once (recordUnlisted).
  */
 const swapListing = async (
@@ -528,13 +539,19 @@ const swapListing = async (
       : { sql: '1', bind: [] }
   const { statements, recorded } = replacePacks(db, scope, kind, ids, swap.packId, {
     sql: `NOT EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ?
-        AND min_cursor = ? AND id NOT IN (SELECT value FROM json_each(?))) AND ${current.sql}`,
+        AND min_cursor = ? AND id NOT IN (SELECT value FROM json_each(?)))
+      AND NOT EXISTS (SELECT 1 FROM pack_replaced_objects WHERE user_id = ? AND vault_id = ?
+        AND replaced_by = '${REWRITE_PENDING}' AND pack_key NOT IN (SELECT value FROM json_each(?)))
+      AND ${current.sql}`,
     bind: [
       scope.userId,
       scope.vaultId,
       kind,
       swap.minSortValue,
       JSON.stringify(ids),
+      scope.userId,
+      scope.vaultId,
+      JSON.stringify(swap.pendingKeys),
       ...current.bind
     ]
   })

@@ -19,7 +19,7 @@ not, and changes **nothing** about the pull shape.
 ## 10.2 Routes
 
 **Normative** (`apps/sync-server/src/routes/bootstrap.ts`, mounted at
-`/sync/bootstrap`, `apps/sync-server/src/index.ts:221`):
+`/sync/bootstrap`, `apps/sync-server/src/index.ts:240`):
 
 | Method | Path                    | Purpose             | Line   |
 | ------ | ----------------------- | ------------------- | ------ |
@@ -30,7 +30,7 @@ not, and changes **nothing** about the pull shape.
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
 sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:38-41`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
-(`apps/sync-server/src/routes/bootstrap.ts:47-48`).
+(`apps/sync-server/src/routes/bootstrap.ts:48-49`).
 
 Renew and close name their session only through the `X-Memry-Bootstrap-Token`
 header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:179-196`,
@@ -40,8 +40,8 @@ header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:1
 
 **Normative.** `X-Memry-Bootstrap-Token`
 (`packages/contracts/src/bootstrap-api.ts:20`), carrying the `token` from the
-open response **verbatim**, added to elevated requests only
-(`packages/contracts/src/bootstrap-api.ts:23-24`).
+open response **verbatim** (`packages/contracts/src/bootstrap-api.ts:23`). A
+token only widens rate ceilings (`packages/contracts/src/bootstrap-api.ts:13-16`).
 
 **Normative.** `POST /sync/bootstrap/renew` and `POST /sync/bootstrap/close`
 MUST carry the session's token in `X-Memry-Bootstrap-Token`
@@ -84,9 +84,12 @@ packs: a server before step 07 sends it, and the client lists them with
 `GET /sync/packs` (chapter 08 §8.9). A client without a session reads the same
 page and statement from the listing.
 
-**An uncovered kind: never wait.** The open enqueues compaction for every kind
-a build can extend (`apps/sync-server/src/services/pack-coverage.ts`,
-`reportBootstrapCoverage`), but a client MUST NOT wait for it. It applies the
+**An uncovered kind: never wait.** After the response, the open starts a
+backfill chain for every kind a build can extend, on `PACK_BACKFILL_QUEUE`, at
+most once per vault and kind every 15 minutes (`BOOTSTRAP_ENQUEUE_SKIP_SECONDS`,
+held in `pack_bootstrap_enqueues`; a failed send gives the start back)
+(`apps/sync-server/src/services/pack-coverage.ts:68`, `:203`). A client MUST
+NOT wait for it. It applies the
 packs it has, and takes everything outside the stated coverage item by item:
 the feed tail from the start chapter 08 §8.10 gives, and the closing checks.
 That is never slower than a bootstrap without packs, and it waits on nothing
@@ -97,7 +100,7 @@ logs one line per open with each kind's coverage, its uncovered row count
 
 ## 10.5 Errors, and the fallback rule
 
-**Normative** (`apps/sync-server/src/lib/errors.ts:42-56`; statuses from chapter
+**Normative** (`apps/sync-server/src/lib/errors.ts:68-73`; statuses from chapter
 00 §0.5):
 
 | Code                          | Status | Meaning                                                                                                        |
@@ -250,7 +253,7 @@ resuming device exactly as to a fresh one, and is enforced
 | `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 21600 (6 hours)           | `:53`                                                   |
 | `BOOTSTRAP_RESUME_WINDOW_SECONDS`        | 86400 (24 hours)          | `:306`                                                  |
 | `CHUNK_HASH_PAGE_LIMIT`                  | 512                       | `apps/sync-server/src/routes/bootstrap.ts:54`           |
-| session endpoint rate limit              | 30 per 60 s, device-keyed | `apps/sync-server/src/routes/bootstrap.ts:47-48`        |
+| session endpoint rate limit              | 30 per 60 s, device-keyed | `apps/sync-server/src/routes/bootstrap.ts:48-49`        |
 
 ## 10.11 A first sync longer than six hours — Q10.2
 
