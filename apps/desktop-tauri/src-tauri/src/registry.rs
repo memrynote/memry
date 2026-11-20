@@ -300,9 +300,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::sync::sync_trigger::<Wry>,
             crate::commands::sync::sync_update_synced_setting::<Wry>,
             // sync account
-            crate::commands::sync_account::account_sign_out,
+            crate::commands::sync_account::account_sign_out::<Wry>,
             crate::commands::sync_account::sync_get_vault_binding,
-            crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_logout::<Wry>,
             crate::commands::sync_account::sync_repair_device_keys,
             crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
