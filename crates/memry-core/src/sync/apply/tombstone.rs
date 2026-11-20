@@ -7,6 +7,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::journal;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
 use crate::sync::{body_debt, delete_keep, journal_day_merge, store};
@@ -57,7 +58,7 @@ pub(super) fn apply_tombstone(
     clock_device: Option<&str>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
         store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
         if live_clock_is_after(&txn, item_type, item_id, clock)? {
@@ -149,7 +150,7 @@ pub(super) fn apply_untyped_tombstone(
     now_ms: i64,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let item_types = store::item_types_for(&txn, item_id)?;
     let was_live = item_types
         .iter()

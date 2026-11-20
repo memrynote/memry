@@ -26,6 +26,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, insert_local, iso, next_clock, object, require_payload};
 use crate::domain::tag_admin::{DEFINITION_TYPE, definitions};
 use crate::domain::tags::tag_key;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
@@ -44,7 +45,7 @@ const PALETTE: [&str; 24] = [
 /// definitions before it, in one transaction. Nothing is queued. Returns how many it minted.
 pub fn define_used(conn: &Connection, tags: &[String], now_ms: i64) -> Result<usize, StorageError> {
     // Read and written in one transaction: a record that lands meanwhile is never minted over.
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut known: BTreeSet<String> = records(&tx)?.iter().map(|(id, _)| tag_key(id)).collect();
     known.extend(definitions(&tx)?.into_keys());
     // Named by the tag's key, as `ensureTagDefinitions` hands `getOrCreateTag` `tagKey(tag)`.
@@ -83,7 +84,7 @@ pub fn define_used(conn: &Connection, tags: &[String], now_ms: i64) -> Result<us
 /// tag. Run by the sync pass after a pull that reached the feed head. Idempotent: a seeded mint
 /// has a clock and a dropped one is gone. Returns the seeded ids.
 pub fn seed(conn: &Connection, device_id: &str, now_ms: i64) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let records = records(&tx)?;
     let mut seeded = Vec::new();
     for id in mints(&tx)? {

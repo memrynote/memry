@@ -56,6 +56,8 @@ fn fail(what: &str, err: rusqlite::Error) -> StorageError {
     }
 }
 
+const STATEMENT_CACHE_CAPACITY: usize = 64;
+
 /// Pragmas and functions for the one connection that writes.
 pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
     // Asserted here rather than discovered on the first search: a core without
@@ -68,6 +70,9 @@ pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), Stora
         .map_err(|err| fail("synchronous", err))?;
     conn.pragma_update(None, "journal_size_limit", 67_108_864_i64)
         .map_err(|err| fail("journal_size_limit", err))?;
+    // The record apply reuses its hot statements through `prepare_cached`
+    // (#5231); rusqlite's default of 16 would evict them between items.
+    conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
     register_functions(conn)
 }
 

@@ -37,6 +37,7 @@ use rusqlite::{Connection, params};
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::sync::outbox::{self, Change};
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::refused_items;
@@ -213,7 +214,7 @@ pub(crate) fn diff(
         .filter(|key| !server_spellings.contains(key))
         .collect();
     if !reuploaded.is_empty() {
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         for (item_type, id) in &reuploaded {
             eprintln!(
                 "memry-core: a {item_type} missing from the server manifest is queued as create"

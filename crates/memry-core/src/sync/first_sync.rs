@@ -53,6 +53,7 @@ use serde_json::Value as Json;
 use crate::api::errors::StorageError;
 use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
@@ -397,7 +398,7 @@ impl FirstSync {
             let deleted = page.deleted;
             self.db
                 .call(move |conn| {
-                    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+                    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                     for reference in &refs {
                         sync_items::upsert_metadata_only(
                             &txn,

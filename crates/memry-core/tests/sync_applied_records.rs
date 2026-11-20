@@ -205,14 +205,15 @@ async fn two_observers_hear_every_record_of_a_page_after_it_commits() {
     }
 }
 
-/// Every record commits on its own, so a failure after them (here the cursor
-/// write of `land_and_advance`) leaves them stored. The observers hear their
-/// real outcomes before the error propagates: a re-pull would report them
-/// `Skipped`, and a write-back observer would never write their files.
+/// A page's records commit with its cursor or not at all (§5.11, #5231). A
+/// failure in the cursor write (here in `land_and_advance`) stores none of
+/// them and tells the observers nothing; the re-pull then applies and tells
+/// every one.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_failure_after_records_committed_still_tells_the_committed_records() {
+async fn a_failure_in_the_cursor_write_stores_and_tells_no_record_of_the_page() {
     let db = scratch_db();
     let (ids, payloads, script) = ten_drafts(&db);
+    let retry = script.clone();
     db.call_blocking(|conn| {
         conn.execute_batch(
             "CREATE TRIGGER injected_cursor_failure BEFORE INSERT ON sync_cursors
@@ -224,18 +225,30 @@ async fn a_failure_after_records_committed_still_tells_the_committed_records() {
         })
     })
     .expect("the injected failure");
-    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, script);
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads.clone(), script);
 
     let error = pull.pull_page().await.expect_err("the cursor write fails");
     assert!(
         error.to_string().contains("injected cursor failure"),
         "{error}"
     );
+    for reader in &readers {
+        assert!(reader.heard.lock().unwrap().is_empty(), "{}", reader.name);
+    }
 
+    db.call_blocking(|conn| {
+        conn.execute_batch("DROP TRIGGER injected_cursor_failure")
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .expect("drop the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, retry);
+    pull.pull_page().await.expect("the re-pull");
     for reader in readers {
         assert_eq!(
             *reader.heard.lock().unwrap(),
-            expected(&ids, None),
+            expected(&ids, Some("10")),
             "{}",
             reader.name
         );

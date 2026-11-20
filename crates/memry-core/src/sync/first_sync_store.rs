@@ -9,6 +9,7 @@
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::body_debt;
 
@@ -97,7 +98,7 @@ pub(super) fn owe_live_documents(conn: &Connection) -> Result<(), StorageError> 
         .collect::<Result<Vec<String>, _>>()
         .map_err(sqlite_failed)?;
     // One transaction: one commit for a vault of ten thousand notes, not one each.
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     for id in &live {
         body_debt::owe(&txn, id)?;
     }

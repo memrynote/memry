@@ -10,6 +10,7 @@ use crate::api::errors::StorageError;
 use crate::domain::calendar_items::BINDING_TYPE;
 use crate::domain::calendar_items::write::live_payload;
 use crate::domain::notes::{failed, insert_local, iso, next_clock};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -185,7 +186,7 @@ pub fn record_push(
     device_id: &str,
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let existing = find(&tx, provider, target)?;
     let at = iso(now_ms)?;
     let id = existing.as_ref().map_or_else(
@@ -242,7 +243,7 @@ pub fn record_delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(stored) = live_payload(&tx, BINDING_TYPE, binding_id)? {
         let at = iso(now_ms)?;
         let changes = vec![

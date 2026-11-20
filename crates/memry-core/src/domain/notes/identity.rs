@@ -85,6 +85,7 @@ use crate::domain::note_positions;
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::restore::SerializeOptions;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::{body_debt, outbox};
 
@@ -200,7 +201,7 @@ pub fn adopt(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !candidates.is_empty() {
         let text = (file.path, file.body);
@@ -374,7 +375,7 @@ pub fn renamed(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     follow(
         &tx,
         note_id,
@@ -432,7 +433,7 @@ pub fn owe_place(
     from_path: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     owe_in(&tx, note_id, from_path, now_ms)?;
     tx.commit().map_err(failed)
 }
@@ -461,7 +462,7 @@ pub fn hold_place(
     from_path: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     owe_in(&tx, note_id, from_path, now_ms)?;
     place_held::hold(&tx, note_id)?;
     tx.commit().map_err(failed)

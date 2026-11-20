@@ -12,6 +12,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::canvas;
 use crate::domain::inbox::filing::note_path;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{StoredPayload, sync_items};
 
 /// Rows kept per device (`RECENTLY_OPENED_LIMIT`, `recents-api.ts:50`).
@@ -57,7 +58,7 @@ pub fn record(
             what: format!("not a recently opened item: {item_type}"),
         });
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
         "INSERT INTO recently_opened (item_type, item_id, opened_at)
          VALUES (?1, ?2, max(?3, COALESCE((SELECT max(opened_at) + 1 FROM recently_opened), ?3)))
