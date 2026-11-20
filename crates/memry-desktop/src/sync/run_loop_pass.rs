@@ -4,15 +4,17 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use memry_core::api::errors::{ApiError, SyncError};
+use memry_core::sync::driver::ApplyObserver;
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::outbox;
 use memry_core::sync::state::SyncState;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, watch};
 use tokio::time::Instant;
 
 use super::{Loop, blocking, now_ms};
 use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
+use crate::sync::events::{EventObserver, SyncEvent};
 use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use crate::sync::telemetry::{ConflictTelemetry, sync_error_event};
@@ -30,33 +32,46 @@ pub(super) struct PassDone {
     pending: Option<u32>,
 }
 
-/// Runs one pass on `existing`, or on a driver opened for it.
+/// The driver a pass runs on.
+pub(super) enum PassDriver {
+    /// The one the loop holds.
+    Held(Arc<dyn SyncPasses>),
+    /// One the pass opens, which `observers` hear from its open on.
+    Open {
+        entitled: bool,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    },
+}
+
+/// Runs one pass. `pause` is the loop's: it reaches the driver while the pass holds it.
 pub(super) async fn run(
     id: u64,
     trigger: Trigger,
-    existing: Option<Arc<dyn SyncPasses>>,
+    driver: PassDriver,
     backend: Arc<dyn SyncBackend>,
     db: memry_core::storage::Db,
-    entitled: bool,
+    pause: watch::Receiver<bool>,
 ) -> PassDone {
     let started = Instant::now();
-    let driver = match existing {
-        Some(driver) => Ok(driver),
-        None => backend.open().await.inspect(|driver| {
+    let driver = match driver {
+        PassDriver::Held(driver) => Ok(driver),
+        PassDriver::Open {
+            entitled,
+            observers,
+        } => backend.open(observers).await.inspect(|driver| {
             if entitled {
                 driver.set_entitled(true);
             }
         }),
     };
-    let report = match (&driver, trigger) {
-        (Ok(driver), Trigger::Hint { cursor }) => driver.wake(cursor).await,
-        (Ok(driver), _) => driver.run_pass(trigger.pass_trigger()).await,
-        (Err(_), _) => None,
+    let report = match &driver {
+        Ok(driver) => tokio::select! {
+            biased;
+            report = pass_on(driver.as_ref(), trigger) => report,
+            () = follow_pause(driver.as_ref(), pause) => None,
+        },
+        Err(_) => None,
     };
-    // The pass ends with the snapshots due, so their gate reads the pull it just ran.
-    if let (Ok(driver), Some(_)) = (&driver, &report) {
-        driver.push_due_snapshots(now_ms()).await;
-    }
     let pending = match blocking(&db, outbox::depth).await {
         Ok(depth) => u32::try_from(depth).ok(),
         Err(error) => {
@@ -74,7 +89,45 @@ pub(super) async fn run(
     }
 }
 
+async fn pass_on(driver: &dyn SyncPasses, trigger: Trigger) -> Option<PassReport> {
+    let report = match trigger {
+        Trigger::Hint { cursor } => driver.wake(cursor).await,
+        _ => driver.run_pass(trigger.pass_trigger()).await,
+    };
+    // The pass ends with the snapshots due, so their gate reads the pull it just ran.
+    if report.is_some() {
+        driver.push_due_snapshots(now_ms()).await;
+    }
+    report
+}
+
+/// Pauses and resumes `driver` with the loop. The loop does so for the driver it holds; a driver
+/// this pass opened is the pass's until it hands it back, and a pause during its pass must still
+/// cut it.
+async fn follow_pause(driver: &dyn SyncPasses, mut pause: watch::Receiver<bool>) {
+    loop {
+        if *pause.borrow_and_update() {
+            driver.pause();
+        } else {
+            driver.resume();
+        }
+        if pause.changed().await.is_err() {
+            return std::future::pending().await;
+        }
+    }
+}
+
 impl Loop {
+    /// What a driver this loop opens hears: the shell's events and the conflict telemetry.
+    pub(super) fn observers(&self) -> Vec<Arc<dyn ApplyObserver>> {
+        let mut observers: Vec<Arc<dyn ApplyObserver>> =
+            vec![Arc::new(EventObserver(Arc::clone(&self.on_event)))];
+        if let Some(telemetry) = &self.telemetry {
+            observers.push(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
+        }
+        observers
+    }
+
     pub(super) async fn finished(&mut self, done: PassDone) {
         if let Some(pending) = done.pending {
             self.pending = pending;
@@ -96,15 +149,11 @@ impl Loop {
         };
         // The keychain answered: the open read the master key.
         self.keychain = None;
-        let fresh = !self
-            .driver
-            .as_ref()
-            .is_some_and(|d| Arc::ptr_eq(d, &driver));
-        if let Some(telemetry) = self.telemetry.as_ref().filter(|_| fresh) {
-            driver.observe(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
-        }
+        // A pause or resume may have come after the pass let go of the driver.
         if self.paused {
             driver.pause();
+        } else {
+            driver.resume();
         }
         self.driver = Some(Arc::clone(&driver));
         let result = match &done.report {
@@ -113,7 +162,16 @@ impl Loop {
                 TriggerSyncResult::ok()
             }
             None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started),
+            Some(report) => {
+                if report.pushed_items > 0 && report.push_error.is_none() && done.pending == Some(0)
+                {
+                    (self.on_event)(&SyncEvent::QueueCleared {
+                        item_count: u32::try_from(report.pushed_items).unwrap_or(u32::MAX),
+                        duration_ms: i64::try_from(report.push_ms).unwrap_or(i64::MAX),
+                    });
+                }
+                self.record(report, done.started)
+            }
         };
         if result.success {
             self.socket_refused = false;
@@ -131,10 +189,13 @@ impl Loop {
                     skew_ms = clock.skew_ms(),
                     "the clock is off from the server's; sync paused"
                 );
-                match self.set_paused(true).await {
-                    Ok(()) => self.skew_paused = true,
-                    Err(error) => tracing::error!(%error, "could not persist the clock-skew pause"),
+                // Paused in memory even when the write failed (`set_paused`), so the event and
+                // the status agree.
+                if let Err(error) = self.set_paused(true).await {
+                    tracing::error!(%error, "could not persist the clock-skew pause");
                 }
+                self.skew_paused = true;
+                (self.on_event)(&SyncEvent::clock_skew(clock));
             }
         }
         let result = if self.paused {
@@ -147,11 +208,15 @@ impl Loop {
 
     /// Takes in what one pass did and says how a Sync Now caller sees it.
     fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
-        self.engine = Some(report.final_state);
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
             self.signals.pulled();
         }
+        // A pass the pause cut failed nothing: the pass after the resume goes on from it.
+        if report.error().is_some_and(SyncError::is_cancelled) {
+            return TriggerSyncResult::blocked(Blocked::Paused, None);
+        }
+        self.engine = Some(report.final_state);
         match report.error() {
             Some(error) => {
                 self.report(error);

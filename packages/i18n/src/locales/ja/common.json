@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "まだ保管庫はありません",
       "openVault": "保管庫を開く",
+      "createVault": "保管庫を作成",
+      "openFolderAsVault": "フォルダーを保管庫として開く",
       "settings": "設定",
       "remove": "削除：「",
       "removeVaultTitle": "「{name}」を一覧から削除しますか？",
