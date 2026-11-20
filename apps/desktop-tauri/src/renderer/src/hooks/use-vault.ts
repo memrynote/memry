@@ -46,6 +46,18 @@ import { vaultFolderPath } from '@/lib/vault-folder-path'
 
 const log = createLogger('Vault')
 
+/**
+ * Writes the edits still in their debounce, which belong to the vault being
+ * left. Every call that makes main close the open vault runs this first: the
+ * vault's workspace stays mounted (hidden) after a switch, so nothing else would
+ * write them before main closes it. Editors first: their flush hands markdown to
+ * the page saves the registry then writes.
+ */
+async function flushVaultBeforeLeaving(): Promise<void> {
+  await runVaultLeaveFlushes()
+  await flushAllPendingSaves()
+}
+
 export interface SwitchVaultOptions {
   /** Display name for the in-between screen; defaults to the folder name. */
   name?: string
@@ -205,6 +217,7 @@ export function useVault() {
     setError(null)
 
     try {
+      await flushVaultBeforeLeaving()
       const result = await vaultService.select(path)
 
       if (!result.success) {
@@ -241,6 +254,7 @@ export function useVault() {
     setError(null)
 
     try {
+      await flushVaultBeforeLeaving()
       await vaultService.close()
       setConfig(null)
     } catch (err) {
@@ -298,12 +312,7 @@ export function useVault() {
       let switched = false
 
       try {
-        // Edits still in their debounce belong to the vault being left. Its
-        // workspace stays mounted (hidden) after the switch, so nothing else
-        // would write them before main closes the vault. Editors first: their
-        // flush hands markdown to the page saves the registry then writes.
-        await runVaultLeaveFlushes()
-        await flushAllPendingSaves()
+        await flushVaultBeforeLeaving()
         const result = await open()
         switched = result.success
 

@@ -1,18 +1,21 @@
-//! Sign-out and the open vault's account binding (`sync:auth-logout`, `account:sign-out`,
-//! `sync:get-vault-binding`, `sync:resolve-vault-binding`).
+//! Sign-out, the device key repair and the open vault's account binding (`sync:auth-logout`,
+//! `account:sign-out`, `sync:repair-device-keys`, `sync:get-vault-binding`,
+//! `sync:resolve-vault-binding`).
 
 use std::sync::Arc;
 
-use memry_desktop::account::AccountService;
 use memry_desktop::account::binding::BindingChoice;
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::account::{AccountService, KeyRepair};
 use memry_desktop::billing::BillingService;
 use memry_desktop::session::Session;
+use memry_desktop::sync::gate::{GateDecision, SyncNotStartedReason};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Wry};
 
 use super::error::{CommandError, ErrorKind, log_failure};
 use crate::events::{SyncVaultBindingChangedEvent, VaultBindingState, broadcast};
+use crate::shell::account_sync::attach_if_signed_in;
 
 /// `{ success, keychainWarning? }` of both sign-out channels.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -21,6 +24,15 @@ pub struct SignOutResult {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keychain_warning: Option<String>,
+}
+
+/// `RepairDeviceKeysResult` (`ipc-sync-ops.ts`).
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(tag = "status", rename_all = "kebab-case")]
+pub enum RepairDeviceKeysResult {
+    Repaired,
+    SyncNotStarted { reason: SyncNotStartedReason },
+    SignInRequired,
 }
 
 /// `VaultBindingChoice`.
@@ -57,15 +69,67 @@ async fn sign_out(app: &AppHandle<Wry>, command: &str) -> Result<SignOutResult, 
         log_failure(command, &mapped);
         mapped
     })?;
+    report_binding(app);
+    Ok(SignOutResult {
+        success: true,
+        keychain_warning: signed_out.keychain_warning(),
+    })
+}
+
+fn report_binding(app: &AppHandle<Wry>) {
     if let Some(bindings) = app.try_state::<Arc<OpenVaultBinding>>() {
         broadcast(
             app,
             SyncVaultBindingChangedEvent((&bindings.state()).into()),
         );
     }
-    Ok(SignOutResult {
-        success: true,
-        keychain_warning: signed_out.keychain_warning(),
+}
+
+/// `sync:repair-device-keys`: a listed device restarts sync and answers whether its gate lets it
+/// run (`reasonSyncDidNotStart`, `device-registration.ts:400-413`); otherwise the device signed
+/// out keeping its master key and queue.
+#[tauri::command]
+#[specta::specta]
+pub async fn sync_repair_device_keys(
+    app: AppHandle<Wry>,
+) -> Result<RepairDeviceKeysResult, CommandError> {
+    let account = app.state::<Arc<AccountService>>().inner().clone();
+    let session = app.state::<Session>().inner().clone();
+    let repaired = account.repair_device_keys(&session).await;
+    // A teardown that failed after the keychain step still signed the account out: its billing
+    // answer and binding go as for a finished one.
+    if account.is_signed_out() {
+        if let Some(billing) = app.try_state::<Arc<BillingService>>() {
+            billing.forget();
+        }
+        report_binding(&app);
+    }
+    let repaired = repaired.map_err(|error| {
+        let mapped = CommandError::from_core(&error);
+        log_failure("sync_repair_device_keys", &mapped);
+        mapped
+    })?;
+    if repaired == KeyRepair::SignInRequired {
+        return Ok(RepairDeviceKeysResult::SignInRequired);
+    }
+    let wiring = app
+        .try_state::<Arc<SyncWiring>>()
+        .map(|w| w.inner().clone());
+    // Read off the running gate, whose binding is decided, before the restart replaces it. The
+    // keychain read blocks: off the async workers. `attach_sync` rebuilds a running supervisor
+    // and starts none while signed out.
+    let decision = tauri::async_runtime::spawn_blocking(move || {
+        wiring.map_or(
+            GateDecision::NotStarted(SyncNotStartedReason::Unavailable),
+            |wiring| wiring.start_decision(),
+        )
+    })
+    .await
+    .map_err(|e| CommandError::new(ErrorKind::Internal, "repair_device_keys", e.to_string()))?;
+    attach_if_signed_in(app);
+    Ok(match decision {
+        GateDecision::Start => RepairDeviceKeysResult::Repaired,
+        GateDecision::NotStarted(reason) => RepairDeviceKeysResult::SyncNotStarted { reason },
     })
 }
 

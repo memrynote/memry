@@ -6,6 +6,8 @@ import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
+  notesImportFiles: vi.fn(),
+  notesShowImportDialog: vi.fn(),
   notesDelete: vi.fn(),
   notesGet: vi.fn(),
   notesGetByPath: vi.fn(),
@@ -361,11 +363,12 @@ describe('notes-service', () => {
       template: 'weekly',
       emoji: null
     })
-    // Plain checklists (Step 32) would be dropped, so the create is refused.
-    await expect(notesService.create({ title: 'T', plainChecklists: true })).rejects.toMatchObject({
-      name: 'NotPortedError'
-    })
-    expect(commands.notesCreate).toHaveBeenCalledTimes(2)
+    // Plain checklists reach the command (Step 32h1).
+    await notesService.create({ title: 'T', plainChecklists: true })
+    expect(commands.notesCreate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: 'T', plainChecklists: true })
+    )
+    expect(commands.notesCreate).toHaveBeenCalledTimes(3)
     // A failure answers as Electron's handler does, with the command's message.
     commands.notesDelete.mockRejectedValue({
       kind: 'not_found',
@@ -772,11 +775,42 @@ describe('notes-service', () => {
       note: null
     })
 
-    commands.notesApplyTemplate.mockClear()
-    await expect(notesService.applyTemplate({ ...input, plainChecklists: true })).rejects.toThrow(
-      'notes.applyTemplate({ plainChecklists }) is not ported'
-    )
-    expect(commands.notesApplyTemplate).not.toHaveBeenCalled()
+    commands.notesApplyTemplate.mockResolvedValue(view)
+    await notesService.applyTemplate({ ...input, plainChecklists: true })
+    expect(commands.notesApplyTemplate).toHaveBeenLastCalledWith({
+      ...input,
+      plainChecklists: true
+    })
+  })
+
+  it('imports files and shows the import dialog through their commands', async () => {
+    const result = {
+      success: true,
+      imported: 1,
+      failed: 0,
+      errors: [],
+      importedFiles: [{ destPath: '/vault/work/a.pdf', filename: 'a.pdf', fileType: 'pdf' }]
+    }
+    commands.notesImportFiles.mockResolvedValue(result)
+    commands.notesShowImportDialog.mockResolvedValue({ canceled: false, filePaths: ['/x/a.pdf'] })
+
+    await expect(
+      notesService.importFiles(['/staged/a.pdf'], 'work', { plainChecklists: true })
+    ).resolves.toEqual(result)
+    expect(commands.notesImportFiles).toHaveBeenCalledWith({
+      sourcePaths: ['/staged/a.pdf'],
+      targetFolder: 'work',
+      options: { plainChecklists: true }
+    })
+    await expect(notesService.showImportDialog()).resolves.toEqual({
+      canceled: false,
+      filePaths: ['/x/a.pdf']
+    })
+
+    // A refused path rejects, as Electron's handler threw.
+    const refused = { kind: 'Invalid', code: 'import_path_refused', message: 'refused' }
+    commands.notesImportFiles.mockRejectedValue(refused)
+    await expect(notesService.importFiles(['/etc/passwd'])).rejects.toEqual(refused)
   })
 
   // "Move to" removes the block from the source only on `success`: a refused move must answer

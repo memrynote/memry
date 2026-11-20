@@ -70,6 +70,65 @@ fn deep_frontmatter_fails_its_note_on_a_small_stack() {
     assert_eq!(ops(&calls, "createNote"), 1);
 }
 
+/// The language line picks gray-matter's engine as in Electron: YAML and JSON (name trimmed,
+/// `json` exact) import; `javascript` (refused, never run), an unregistered name and invalid JSON
+/// fail the file with unreadable frontmatter.
+#[test]
+fn a_frontmatter_language_line_imports_as_gray_matter_reads_it() {
+    let json = "{\"title\": \"T\", \"k\": 1}";
+    let failing = [
+        ("---JSON", json),
+        ("---Json", json),
+        ("---js", json),
+        ("---JS", json),
+        ("--- javascript", json),
+        ("---Javascript ", json),
+        ("---coffee", json),
+        ("---toml", json),
+        ("---json", "title: T"),
+    ];
+    let importing = [
+        ("---json", json),
+        ("---json  ", json),
+        ("--- json", json),
+        ("---json\r", json),
+        ("---", "title: T\nk: 1"),
+        ("---yaml", "title: T\nk: 1"),
+        ("--- YML ", "title: T\nk: 1"),
+    ];
+    let dir = tempfile::tempdir().unwrap();
+    let write = |name: String, (open, matter): &(&str, &str)| {
+        let file = format!("{open}\n{matter}\n---\nbody\n");
+        fs::write(dir.path().join(name), file).unwrap();
+    };
+    for (at, case) in failing.iter().enumerate() {
+        write(format!("failing-{at}.md"), case);
+    }
+    for (at, case) in importing.iter().enumerate() {
+        write(format!("importing-{at}.md"), case);
+    }
+
+    let (summary, calls) = run(&MarkdownImporter, &[dir.path()]);
+    let mut failed: Vec<&str> = summary
+        .failed
+        .iter()
+        .map(|f| f.item.rsplit(['/', '\\']).next().unwrap())
+        .collect();
+    failed.sort_unstable();
+    let mut expected: Vec<String> = (0..failing.len())
+        .map(|at| format!("failing-{at}.md"))
+        .collect();
+    expected.sort_unstable();
+    assert_eq!(failed, expected, "{summary:?}");
+    assert_eq!(summary.imported, importing.len(), "{summary:?}");
+    let notes: Vec<&Value> = calls.iter().filter(|c| c["op"] == "createNote").collect();
+    assert_eq!(notes.len(), importing.len());
+    for note in notes {
+        assert_eq!(note["title"], "T", "{note}");
+        assert_eq!(note["properties"], serde_json::json!([["k", 1]]), "{note}");
+    }
+}
+
 #[test]
 fn csv_steps_are_linear_in_a_wide_header_over_short_rows() {
     // 2000 columns, then 2000 rows of one cell: a pass over every column of every row is 4
