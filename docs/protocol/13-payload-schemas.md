@@ -230,7 +230,7 @@ plaintext in `data.db`. The exception is bounded:
   rules 3 and 4 hold for what leaves the device. A pending record is already
   the wire value and goes as stored, with or without a key
   (`crates/memry-core/src/crypto/agent_payload.rs:99-121`,
-  `crates/memry-core/src/sync/push.rs:382-385`).
+  `crates/memry-core/src/sync/push.rs:384-387`).
 - **Installing a key** through `Vault::set_at_rest_key` binds the vault's local
   key verifier (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) to
   the first key installed when none is stored, in the same call that checks
