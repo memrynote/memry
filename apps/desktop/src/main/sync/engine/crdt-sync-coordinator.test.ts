@@ -794,6 +794,39 @@ describe('CrdtSyncCoordinator', () => {
     expect(seedFromMarkdownPublic).not.toHaveBeenCalledWith('note-2')
   })
 
+  it('owes and never seeds a note the server left out of its batch answer', async () => {
+    // #given the batch answer names note-1 only; note-2's doc is open and empty
+    const seedFromMarkdownPublic = vi.fn()
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
+          inactiveDocCapacity: 32,
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          hasPersistence: () => false,
+          getStateVector: vi.fn((noteId: string) =>
+            noteId === 'note-2' ? new Uint8Array([]) : new Uint8Array([1, 2, 3, 4])
+          ),
+          seedFromMarkdownPublic,
+          recordWholeBodyMerged: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then the server said nothing about note-2: it is retried, not seeded
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
+    expect(coordinator.drainPendingPulls()).toEqual(['note-2'])
+  })
+
   it('aborts the whole pass when a snapshot baseline is aborted mid-batch', async () => {
     // #given note-1's baseline is aborted (shutdown/signal), not a transient failure
     const { ctx } = createBatchContext()

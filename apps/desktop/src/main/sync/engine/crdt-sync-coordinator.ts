@@ -684,6 +684,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         hasMore = result.hasMore
       }
 
+      if (this.holdsPendingStructs(noteId)) {
+        sawUnmerged = true
+        skippedUpdate = true
+        this.owePendingPull(noteId, failures, true)
+      }
       if (!sawUnmerged) this.settleMergedNotes([noteId], generation)
 
       // A seed is a local write of the markdown body. Over a server body the
@@ -735,6 +740,16 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         await crdtProvider.closeIfInactive(noteId)
       }
     }
+  }
+
+  /**
+   * Server updates that wait on a struct the doc never received integrate
+   * nothing, so the doc may read empty over a body the server holds. Unmerged,
+   * as `landNoteBody` treats them: owed, never settled, never seeded.
+   */
+  private holdsPendingStructs(noteId: string): boolean {
+    const store = this.ctx.deps.crdtProvider?.getDoc(noteId)?.store
+    return store != null && (store.pendingStructs !== null || store.pendingDs !== null)
   }
 
   async applyCrdtBatch(
@@ -1340,11 +1355,18 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             // Dropped without its updates ever arriving, so this pass did not
             // walk it to the end and may not clear its flag.
             sawUnmerged.add(noteId)
+            this.owePendingPull(noteId)
             activeSince.delete(noteId)
           }
         }
       }
 
+      for (const noteId of sinceMap.keys()) {
+        if (!this.holdsPendingStructs(noteId)) continue
+        sawUnmerged.add(noteId)
+        skippedUpdate.add(noteId)
+        this.owePendingPull(noteId, failures, true)
+      }
       this.settleMergedNotes(
         [...sinceMap.keys()].filter((noteId) => !sawUnmerged.has(noteId)),
         generation

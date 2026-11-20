@@ -338,6 +338,38 @@ describe('CRDT body pull against a real sync server', () => {
     expect(provider.text(noteId)).toBe('server one. server two.')
   }, 60_000)
 
+  it('never seeds or settles a note whose server updates wait on a missing base', async () => {
+    for (const mode of ['single', 'batch'] as const) {
+      const noteId = `pending-${mode}-${randomUUID().slice(0, 8)}`
+      const author = new Y.Doc()
+      author.getText('body').insert(0, 'lost base. ')
+      const base = Y.encodeStateVector(author)
+      author.getText('body').insert(11, 'orphan delta.')
+      const orphan = encryptCrdtUpdate(
+        Y.encodeStateAsUpdate(author, base),
+        vaultKey,
+        noteId,
+        signing.privateKey
+      )
+      await paced(() =>
+        postToServer(
+          '/sync/crdt/updates',
+          { noteId, updates: [Buffer.from(orphan).toString('base64')] },
+          token
+        )
+      )
+
+      const provider = memoryProvider()
+      const coordinator = coordinatorOver(provider)
+      if (mode === 'single') await coordinator.pullCrdtForNote(noteId)
+      else await coordinator.pullCrdtForNotes([noteId])
+
+      expect(provider.seeded).toEqual([])
+      expect(provider.text(noteId)).toBe('')
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    }
+  }, 60_000)
+
   it('still seeds a note the server holds no body for', async () => {
     const noteId = `bodyless-${randomUUID().slice(0, 8)}`
     const provider = memoryProvider()
