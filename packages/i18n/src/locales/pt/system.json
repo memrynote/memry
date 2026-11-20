@@ -89,5 +89,53 @@
     },
     "logFolder": "Registros: {path}",
     "reloaded": "O MemryNote foi recarregado após uma falha. Edições recentes podem ter sido perdidas."
+  },
+  "migration": {
+    "running": {
+      "title": "Movendo seus dados",
+      "note": "Isso acontece só uma vez. Mantenha o MemryNote aberto até terminar."
+    },
+    "phase": {
+      "preparing": "Preparando…",
+      "secrets": "Movendo seus segredos…",
+      "vault": "Movendo o cofre {current} de {total}…",
+      "checking": "Verificando seus dados…"
+    },
+    "failed": {
+      "title": "Seus dados não foram movidos",
+      "note": "Nada foi perdido. O app anterior do MemryNote e os dados dele não mudaram.",
+      "check": "Verificação com falha: {check}",
+      "electronRunning": "O app anterior do MemryNote ainda está aberto. Feche-o e tente de novo.",
+      "diskSpace": "Não há espaço livre suficiente no disco para mover seus dados. Libere espaço e tente de novo.",
+      "electronSchema": "O app anterior do MemryNote ainda não terminou de atualizar um cofre. Atualize esse app, abra o cofre nele uma vez, feche-o e tente de novo.",
+      "sharedStore": "Alguns cofres compartilham o mesmo histórico de sincronização, então não podem ser movidos. Continue usando o app anterior do MemryNote para eles.",
+      "vaultUnreachable": "Não é possível ler um cofre agora. Verifique se a unidade dele está conectada e tente de novo.",
+      "secrets": "Não foi possível ler alguns dados de login salvos. Tente de novo. Se continuar acontecendo, verifique se o seu chaveiro está desbloqueado.",
+      "verification": "Uma verificação dos dados movidos não passou, então o MemryNote deixou tudo como estava.",
+      "notReady": "Esta versão do MemryNote ainda não consegue mover os dados deste cofre. Seus dados continuam no app anterior do MemryNote. Continue usando-o e atualize o MemryNote para tentar de novo.",
+      "io": "Não foi possível ler ou gravar um arquivo ao mover seus dados. Verifique se o disco tem espaço livre e se as pastas dos seus cofres permitem gravação, e tente de novo.",
+      "sourceChanged": "O app anterior do MemryNote alterou seus dados durante a transferência. Feche-o e tente de novo.",
+      "coreFileExists": "Um cofre já tem dados desta versão do MemryNote, então ele não foi substituído. Continue usando o app anterior e envie ao suporte o relatório em Mostrar detalhes.",
+      "malformedRow": "Parte dos dados do app anterior está em um formato que não pode ser movido. Continue usando o app anterior e envie ao suporte o relatório em Mostrar detalhes.",
+      "deleteWithoutDevice": "Uma exclusão em um cofre ainda não foi sincronizada. Abra o app anterior do MemryNote, deixe-o terminar a sincronização, feche-o e tente de novo.",
+      "deviceKeyMismatch": "A chave de dispositivo do app anterior não corresponde ao registro de sincronização deste dispositivo, então seu login não foi movido. Continue usando o app anterior e envie ao suporte o relatório em Mostrar detalhes.",
+      "keyVerifierMismatch": "A chave de criptografia do app anterior não corresponde à sua conta, então seu login não foi movido. Continue usando o app anterior e envie ao suporte o relatório em Mostrar detalhes.",
+      "targetOccupied": "Esta versão do MemryNote já está conectada, então o login do app anterior não foi movido por cima. Continue usando o app anterior e envie ao suporte o relatório em Mostrar detalhes."
+    },
+    "done": {
+      "title": "Seus dados estão prontos",
+      "body": "Abrindo o MemryNote…"
+    },
+    "retry": "Tentar de novo",
+    "showDetails": "Mostrar detalhes",
+    "reportMissing": "Ainda não há relatório.",
+    "completed": {
+      "title": "Seus dados estão nesta versão",
+      "body": "Suas notas, configurações e login agora estão nesta versão do MemryNote. Os dados do app anterior continuam intactos em {path}."
+    },
+    "notice": {
+      "title": "Alterações feitas no app anterior",
+      "body": "Um cofre foi alterado no app anterior do MemryNote depois de passar para esta versão. Essas alterações não estão aqui: continuam nos dados do app anterior, em {path}. As alterações sincronizadas chegam pela sincronização."
+    }
   }
 }

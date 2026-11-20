@@ -593,6 +593,20 @@ export const commands = {
 	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
 	 */
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
+	/**  Marks `electron-localstorage.json` applied, so no later window sets its keys again. */
+	migrationLocalstorageApplied: () => __TAURI_INVOKE<null>("migration_localstorage_applied"),
+	/**
+	 *  Show details: shows the verification report (`electron-import-report.json`) in the file
+	 *  manager.
+	 */
+	migrationOpenReport: () => __TAURI_INVOKE<null>("migration_open_report"),
+	/**
+	 *  Try again: runs the import again after a failure. Refused while a run is going, after it
+	 *  succeeded, and on a launch without one.
+	 */
+	migrationRetry: () => __TAURI_INVOKE<null>("migration_retry"),
+	/**  What the migration view shows now; `idle` on a launch that migrates nothing. */
+	migrationStatus: () => __TAURI_INVOKE<MigrationStatus>("migration_status"),
 	/**  `search:add-reason`: records a result opened from the palette and answers its row. */
 	searchAddReason: (input: AddReasonInput) => __TAURI_INVOKE<SearchReason>("search_add_reason", { input }),
 	/**  `search:clear-reasons`. */
@@ -2454,6 +2468,28 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+/**  `idle` on a launch that migrates nothing. */
+export type MigrationState = "idle" | "running" | "failed" | "done";
+
+export type MigrationStatus = {
+	/**  Grows with every change, so the page drops an answer older than an update it was sent. */
+	seq: number,
+	state: MigrationState,
+	/**  0 to 100. */
+	percent: number,
+	title: string,
+	/**  The phase line while running. */
+	phase: string | null,
+	body: string,
+	note: string | null,
+	/**  The failing check, as Step 37e2's `RunError::check` names it. */
+	check: string | null,
+	/**  The line that names `check` to the user. */
+	checkLine: string | null,
+	/**  The error message, in English like the log. */
+	details: string | null,
 };
 
 /**

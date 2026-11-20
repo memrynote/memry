@@ -14,6 +14,7 @@ pub mod fonts;
 pub mod guards;
 pub mod instance;
 pub mod menu;
+pub mod migration;
 pub mod ml_worker;
 pub mod notifications;
 pub mod post_reveal;
@@ -81,6 +82,7 @@ fn register_stages() {
         "loopback server",
         shell::loopback::start_server,
     );
+    migration::register_stages();
     commands::unsplash::register_stages();
     commands::attachment_sources::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);

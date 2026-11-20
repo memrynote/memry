@@ -89,5 +89,53 @@
     },
     "logFolder": "Log: {path}",
     "reloaded": "MemryNote dimuat semula selepas ranap. Suntingan terkini mungkin hilang."
+  },
+  "migration": {
+    "running": {
+      "title": "Memindahkan data anda",
+      "note": "Ini berlaku sekali sahaja. Biarkan MemryNote terbuka sehingga selesai."
+    },
+    "phase": {
+      "preparing": "Menyediakan…",
+      "secrets": "Memindahkan rahsia anda…",
+      "vault": "Memindahkan bilik kebal {current} daripada {total}…",
+      "checking": "Menyemak data anda…"
+    },
+    "failed": {
+      "title": "Data anda tidak dipindahkan",
+      "note": "Tiada apa-apa yang hilang. Apl MemryNote sebelumnya dan datanya tidak berubah.",
+      "check": "Semakan yang gagal: {check}",
+      "electronRunning": "Apl MemryNote sebelumnya masih terbuka. Keluar daripadanya, kemudian cuba lagi.",
+      "diskSpace": "Ruang cakera kosong tidak mencukupi untuk memindahkan data anda. Kosongkan sedikit ruang, kemudian cuba lagi.",
+      "electronSchema": "Apl MemryNote sebelumnya belum selesai mengemas kini sebuah bilik kebal. Kemas kini apl itu, buka bilik kebal di dalamnya sekali, keluar, kemudian cuba lagi.",
+      "sharedStore": "Sesetengah bilik kebal berkongsi satu sejarah penyegerakan, jadi ia tidak boleh dipindahkan. Teruskan menggunakan apl MemryNote sebelumnya untuknya.",
+      "vaultUnreachable": "Sebuah bilik kebal tidak dapat dibaca sekarang. Pastikan pemacunya disambungkan, kemudian cuba lagi.",
+      "secrets": "Sesetengah butiran log masuk yang disimpan tidak dapat dibaca. Cuba lagi. Jika ia berterusan, pastikan rantai kunci anda tidak berkunci.",
+      "verification": "Semakan data yang dipindahkan tidak lulus, jadi MemryNote membiarkan semuanya seperti asal.",
+      "notReady": "Versi MemryNote ini belum boleh memindahkan data bilik kebal ini. Data anda masih dalam apl MemryNote sebelumnya. Teruskan menggunakannya, dan kemas kini MemryNote untuk cuba lagi.",
+      "io": "Fail tidak dapat dibaca atau ditulis semasa data anda dipindahkan. Pastikan cakera mempunyai ruang kosong dan folder vault anda boleh ditulis, kemudian cuba lagi.",
+      "sourceChanged": "Apl MemryNote sebelumnya menukar datanya semasa pemindahan. Keluar daripadanya, kemudian cuba lagi.",
+      "coreFileExists": "Sebuah vault sudah mempunyai data daripada versi MemryNote ini, jadi ia tidak diganti. Teruskan menggunakan apl sebelumnya, dan hantar laporan di Tunjukkan butiran kepada sokongan.",
+      "malformedRow": "Sebahagian data apl sebelumnya berada dalam bentuk yang tidak dapat dipindahkan. Teruskan menggunakan apl sebelumnya, dan hantar laporan di Tunjukkan butiran kepada sokongan.",
+      "deleteWithoutDevice": "Pemadaman dalam sebuah vault belum disegerakkan. Buka apl MemryNote sebelumnya, biarkan ia selesai menyegerak, keluar daripadanya, kemudian cuba lagi.",
+      "deviceKeyMismatch": "Kunci peranti apl sebelumnya tidak sepadan dengan pendaftaran penyegerakan peranti ini, jadi log masuk anda tidak dipindahkan. Teruskan menggunakan apl sebelumnya, dan hantar laporan di Tunjukkan butiran kepada sokongan.",
+      "keyVerifierMismatch": "Kunci penyulitan apl sebelumnya tidak sepadan dengan akaun anda, jadi log masuk anda tidak dipindahkan. Teruskan menggunakan apl sebelumnya, dan hantar laporan di Tunjukkan butiran kepada sokongan.",
+      "targetOccupied": "Versi MemryNote ini sudah log masuk, jadi log masuk apl sebelumnya tidak dipindahkan menindihnya. Teruskan menggunakan apl sebelumnya, dan hantar laporan di Tunjukkan butiran kepada sokongan."
+    },
+    "done": {
+      "title": "Data anda sudah sedia",
+      "body": "Membuka MemryNote…"
+    },
+    "retry": "Cuba lagi",
+    "showDetails": "Tunjukkan butiran",
+    "reportMissing": "Belum ada laporan.",
+    "completed": {
+      "title": "Data anda kini dalam versi ini",
+      "body": "Nota, tetapan dan log masuk anda kini berada dalam versi MemryNote ini. Data apl sebelumnya kekal tidak disentuh di {path}."
+    },
+    "notice": {
+      "title": "Perubahan dalam apl sebelumnya",
+      "body": "Sebuah bilik kebal berubah dalam apl MemryNote sebelumnya selepas dipindahkan ke versi ini. Perubahan itu tiada di sini: ia kekal dalam data apl sebelumnya di {path}. Perubahan yang telah disegerakkan tiba melalui penyegerakan."
+    }
   }
 }

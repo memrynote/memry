@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 use serde::Serialize;
@@ -81,6 +81,7 @@ pub enum Stage {
     Plugins,
     Protocols,
     I18n,
+    Migration,
     Menu,
     Telemetry,
     Handlers,
@@ -119,6 +120,14 @@ impl<R: Runtime> Stages<R> {
         self.entries.push((stage, name, f));
     }
 
+    /// The registrations in the order [`Self::run`] runs them.
+    fn ordered(&self) -> Vec<&(Stage, &'static str, StageFn<R>)> {
+        let mut ordered: Vec<_> = self.entries.iter().collect();
+        // Stable: equal stages keep their registration order.
+        ordered.sort_by_key(|(stage, _, _)| *stage);
+        ordered
+    }
+
     /// Runs the registrations stage by stage in enum order and in registration order inside a
     /// stage. `Schedulers` registrations are skipped once `shutting_down` reports true, and
     /// nothing runs after a registration that leaves `halted` true.
@@ -128,10 +137,20 @@ impl<R: Runtime> Stages<R> {
         shutting_down: impl Fn() -> bool,
         halted: impl Fn() -> bool,
     ) -> Result<(), StageFailure> {
-        let mut ordered: Vec<_> = self.entries.iter().collect();
-        // Stable: equal stages keep their registration order.
-        ordered.sort_by_key(|(stage, _, _)| *stage);
-        for (stage, name, f) in ordered {
+        self.run_from(app, 0, shutting_down, halted).map(|_| ())
+    }
+
+    /// [`Self::run`] from position `from` of that order. Answers the position after the
+    /// registration that left `stop` true, where a resumed boot starts, or the end.
+    pub fn run_from(
+        &self,
+        app: &AppHandle<R>,
+        from: usize,
+        shutting_down: impl Fn() -> bool,
+        stop: impl Fn() -> bool,
+    ) -> Result<usize, StageFailure> {
+        let ordered = self.ordered();
+        for (position, (stage, name, f)) in ordered.iter().enumerate().skip(from) {
             if *stage == Stage::Schedulers && shutting_down() {
                 tracing::info!(stage = ?stage, name, "skipped: shutdown has started");
                 continue;
@@ -141,18 +160,20 @@ impl<R: Runtime> Stages<R> {
                 name,
                 error,
             })?;
-            if halted() {
-                tracing::info!(stage = ?stage, name, "boot halted");
-                break;
+            if stop() {
+                tracing::info!(stage = ?stage, name, "boot stopped");
+                return Ok(position + 1);
             }
         }
-        Ok(())
+        Ok(ordered.len())
     }
 }
 
 static STAGES: OnceLock<Mutex<Stages<Wry>>> = OnceLock::new();
 static SHUTDOWN_STARTED: AtomicBool = AtomicBool::new(false);
 static BOOT_HALTED: AtomicBool = AtomicBool::new(false);
+static BOOT_SUSPENDED: AtomicBool = AtomicBool::new(false);
+static RESUME_AT: AtomicUsize = AtomicUsize::new(0);
 
 fn stages() -> &'static Mutex<Stages<Wry>> {
     STAGES.get_or_init(|| Mutex::new(Stages::default()))
@@ -168,10 +189,38 @@ pub fn register(stage: Stage, name: &'static str, f: StageFn<Wry>) {
 
 /// Runs every registered stage of the app.
 pub fn run_registered(app: &AppHandle<Wry>) -> Result<(), StageFailure> {
-    stages()
+    run_registered_from(app, 0)
+}
+
+fn run_registered_from(app: &AppHandle<Wry>, from: usize) -> Result<(), StageFailure> {
+    let next = stages()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .run(app, shutdown_started, boot_halted)
+        .run_from(app, from, shutdown_started, || {
+            boot_halted() || boot_suspended()
+        })?;
+    RESUME_AT.store(next, Ordering::SeqCst);
+    Ok(())
+}
+
+/// Pauses the boot after the calling registration until [`resume_boot`]. The event loop runs
+/// meanwhile, so the window that registration opened paints and answers (the first-launch
+/// migration, `crate::migration`). The managed state of later stages does not exist yet, so the
+/// run loop handles a suspended boot apart (`shutdown::on_run_event`).
+pub fn suspend_boot() {
+    BOOT_SUSPENDED.store(true, Ordering::SeqCst);
+}
+
+pub fn boot_suspended() -> bool {
+    BOOT_SUSPENDED.load(Ordering::SeqCst)
+}
+
+/// Runs the rest of a suspended boot. Call it on the main thread, where `run_registered` ran.
+pub fn resume_boot(app: &AppHandle<Wry>) -> Result<(), StageFailure> {
+    if !BOOT_SUSPENDED.swap(false, Ordering::SeqCst) {
+        return Ok(());
+    }
+    run_registered_from(app, RESUME_AT.load(Ordering::SeqCst))
 }
 
 /// Ends the boot after the calling registration, with no startup-error window: the app runs
@@ -207,7 +256,49 @@ mod tests {
     use std::sync::atomic::AtomicBool;
     use std::sync::{Arc, Barrier};
 
-    use super::mark_started;
+    use super::{PoisonError, Stage, mark_started, stages};
+
+    /// #3554: no sign-in, token refresh, vault open, sync or telemetry runs before the first-launch
+    /// migration has carried the Electron install over (and its telemetry opt-out with it).
+    #[test]
+    fn the_first_launch_migration_runs_before_telemetry_account_vault_and_sync() {
+        crate::register_stages();
+        let names: Vec<_> = stages()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .ordered()
+            .into_iter()
+            .map(|(_, name, _)| *name)
+            .collect();
+        let at = |name: &str| {
+            names
+                .iter()
+                .position(|registered| *registered == name)
+                .unwrap_or_else(|| panic!("{name} is not registered: {names:?}"))
+        };
+        let migration = at("first-launch migration");
+        for later in [
+            "start telemetry",
+            "manage account",
+            "open the last vault",
+            "start account sync",
+        ] {
+            assert!(migration < at(later), "{later} runs before the migration");
+        }
+        for later in [
+            Stage::Menu,
+            Stage::Telemetry,
+            Stage::Handlers,
+            Stage::VaultOpen,
+            Stage::Window,
+            Stage::Schedulers,
+        ] {
+            assert!(
+                Stage::Migration < later,
+                "{later:?} runs before the migration"
+            );
+        }
+    }
 
     #[test]
     fn of_two_threads_starting_the_shutdown_at_once_exactly_one_starts_it() {

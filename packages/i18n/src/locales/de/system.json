@@ -89,5 +89,53 @@
     },
     "logFolder": "Protokolle: {path}",
     "reloaded": "MemryNote wurde nach einem Absturz neu geladen. Letzte Änderungen sind möglicherweise verloren."
+  },
+  "migration": {
+    "running": {
+      "title": "Deine Daten werden übertragen",
+      "note": "Das passiert nur einmal. Lass MemryNote geöffnet, bis es fertig ist."
+    },
+    "phase": {
+      "preparing": "Wird vorbereitet…",
+      "secrets": "Deine Geheimnisse werden übertragen…",
+      "vault": "Tresor {current} von {total} wird übertragen…",
+      "checking": "Deine Daten werden geprüft…"
+    },
+    "failed": {
+      "title": "Deine Daten wurden nicht übertragen",
+      "note": "Nichts ist verloren. Die bisherige MemryNote-App und ihre Daten sind unverändert.",
+      "check": "Fehlgeschlagene Prüfung: {check}",
+      "electronRunning": "Die bisherige MemryNote-App ist noch geöffnet. Beende sie und versuche es dann erneut.",
+      "diskSpace": "Es ist nicht genug Speicherplatz frei, um deine Daten zu übertragen. Gib etwas Speicherplatz frei und versuche es dann erneut.",
+      "electronSchema": "Die bisherige MemryNote-App hat einen Tresor noch nicht fertig aktualisiert. Aktualisiere diese App, öffne den Tresor einmal darin, beende sie und versuche es dann erneut.",
+      "sharedStore": "Einige Tresore teilen sich einen Synchronisierungsverlauf und können daher nicht übertragen werden. Nutze für sie weiter die bisherige MemryNote-App.",
+      "vaultUnreachable": "Ein Tresor kann gerade nicht gelesen werden. Prüfe, ob sein Laufwerk verbunden ist, und versuche es dann erneut.",
+      "secrets": "Einige gespeicherte Anmeldedaten konnten nicht gelesen werden. Versuche es erneut. Wenn das weiter passiert, prüfe, ob dein Schlüsselbund entsperrt ist.",
+      "verification": "Eine Prüfung deiner übertragenen Daten ist fehlgeschlagen, daher hat MemryNote alles so gelassen, wie es war.",
+      "notReady": "Diese Version von MemryNote kann die Daten dieses Tresors noch nicht übertragen. Deine Daten sind weiterhin in der bisherigen MemryNote-App. Nutze sie weiter und aktualisiere MemryNote, um es erneut zu versuchen.",
+      "io": "Beim Umzug deiner Daten konnte eine Datei nicht gelesen oder geschrieben werden. Prüfe, ob auf dem Laufwerk Platz frei ist und deine Vault-Ordner beschreibbar sind, und versuche es dann erneut.",
+      "sourceChanged": "Die bisherige MemryNote-App hat ihre Daten während des Umzugs geändert. Beende sie und versuche es dann erneut.",
+      "coreFileExists": "Ein Vault enthält bereits Daten dieser MemryNote-Version und wurde daher nicht ersetzt. Nutze die bisherige App weiter und sende den Bericht unter „Details anzeigen“ an den Support.",
+      "malformedRow": "Ein Teil der Daten der bisherigen App liegt in einer Form vor, die nicht umgezogen werden kann. Nutze die bisherige App weiter und sende den Bericht unter „Details anzeigen“ an den Support.",
+      "deleteWithoutDevice": "Eine Löschung in einem Vault ist noch nicht synchronisiert. Öffne die bisherige MemryNote-App, lass sie die Synchronisierung abschließen, beende sie und versuche es dann erneut.",
+      "deviceKeyMismatch": "Der Geräteschlüssel der bisherigen App passt nicht zur Sync-Registrierung dieses Geräts, daher wurde deine Anmeldung nicht übernommen. Nutze die bisherige App weiter und sende den Bericht unter „Details anzeigen“ an den Support.",
+      "keyVerifierMismatch": "Der Verschlüsselungsschlüssel der bisherigen App passt nicht zu deinem Konto, daher wurde deine Anmeldung nicht übernommen. Nutze die bisherige App weiter und sende den Bericht unter „Details anzeigen“ an den Support.",
+      "targetOccupied": "Diese MemryNote-Version ist bereits angemeldet, daher wurde die Anmeldung der bisherigen App nicht darüber übernommen. Nutze die bisherige App weiter und sende den Bericht unter „Details anzeigen“ an den Support."
+    },
+    "done": {
+      "title": "Deine Daten sind bereit",
+      "body": "MemryNote wird geöffnet…"
+    },
+    "retry": "Erneut versuchen",
+    "showDetails": "Details anzeigen",
+    "reportMissing": "Es gibt noch keinen Bericht.",
+    "completed": {
+      "title": "Deine Daten sind in dieser Version",
+      "body": "Deine Notizen, Einstellungen und Anmeldung sind jetzt in dieser Version von MemryNote. Die Daten der bisherigen App bleiben unverändert unter {path}."
+    },
+    "notice": {
+      "title": "Änderungen in der bisherigen App",
+      "body": "Ein Tresor wurde in der bisherigen MemryNote-App geändert, nachdem er in diese Version übertragen wurde. Diese Änderungen sind nicht hier: Sie bleiben in den Daten der bisherigen App unter {path}. Synchronisierte Änderungen kommen über die Synchronisierung an."
+    }
   }
 }

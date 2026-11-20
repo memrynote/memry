@@ -89,5 +89,53 @@
     },
     "logFolder": "Günlükler: {path}",
     "reloaded": "MemryNote bir çökmenin ardından yeniden yüklendi. Son düzenlemeler kaybolmuş olabilir."
+  },
+  "migration": {
+    "running": {
+      "title": "Verileriniz taşınıyor",
+      "note": "Bu yalnızca bir kez olur. Bitene kadar MemryNote'u açık tutun."
+    },
+    "phase": {
+      "preparing": "Hazırlanıyor…",
+      "secrets": "Gizli bilgileriniz taşınıyor…",
+      "vault": "Kasa {current}/{total} taşınıyor…",
+      "checking": "Verileriniz kontrol ediliyor…"
+    },
+    "failed": {
+      "title": "Verileriniz taşınmadı",
+      "note": "Hiçbir şey kaybolmadı. Önceki MemryNote uygulaması ve verileri değişmedi.",
+      "check": "Başarısız kontrol: {check}",
+      "electronRunning": "Önceki MemryNote uygulaması hâlâ açık. Kapatın, sonra yeniden deneyin.",
+      "diskSpace": "Verilerinizi taşımak için yeterli boş disk alanı yok. Biraz yer açın, sonra yeniden deneyin.",
+      "electronSchema": "Önceki MemryNote uygulaması bir kasayı güncellemeyi bitirmedi. O uygulamayı güncelleyin, kasayı onda bir kez açın, uygulamayı kapatın, sonra yeniden deneyin.",
+      "sharedStore": "Bazı kasalar aynı eşitleme geçmişini paylaştığı için taşınamıyor. Onlar için önceki MemryNote uygulamasını kullanmaya devam edin.",
+      "vaultUnreachable": "Bir kasa şu anda okunamıyor. Sürücüsünün bağlı olduğunu kontrol edin, sonra yeniden deneyin.",
+      "secrets": "Kayıtlı bazı oturum açma bilgileri okunamadı. Yeniden deneyin. Bu sürerse anahtar zincirinizin kilidinin açık olduğunu kontrol edin.",
+      "verification": "Taşınan verilerinizin bir kontrolü geçmedi, bu yüzden MemryNote her şeyi olduğu gibi bıraktı.",
+      "notReady": "MemryNote'un bu sürümü bu kasanın verilerini henüz taşıyamıyor. Verileriniz hâlâ önceki MemryNote uygulamasında. Onu kullanmaya devam edin ve yeniden denemek için MemryNote'u güncelleyin.",
+      "io": "Verileriniz taşınırken bir dosya okunamadı veya yazılamadı. Diskte boş alan olduğunu ve kasa klasörlerinize yazılabildiğini kontrol edin, sonra yeniden deneyin.",
+      "sourceChanged": "Önceki MemryNote uygulaması taşıma sırasında verilerini değiştirdi. Kapatın, sonra yeniden deneyin.",
+      "coreFileExists": "Bir kasada bu MemryNote sürümüne ait veriler zaten var, bu yüzden değiştirilmedi. Önceki uygulamayı kullanmaya devam edin ve Ayrıntıları göster'deki raporu desteğe gönderin.",
+      "malformedRow": "Önceki uygulamanın verilerinin bir kısmı taşınamayan bir biçimde. Önceki uygulamayı kullanmaya devam edin ve Ayrıntıları göster'deki raporu desteğe gönderin.",
+      "deleteWithoutDevice": "Bir kasadaki silme işlemi henüz eşitlenmedi. Önceki MemryNote uygulamasını açın, eşitlemeyi bitirmesini bekleyin, kapatın, sonra yeniden deneyin.",
+      "deviceKeyMismatch": "Önceki uygulamanın cihaz anahtarı bu cihazın eşitleme kaydıyla eşleşmiyor, bu yüzden oturumunuz taşınmadı. Önceki uygulamayı kullanmaya devam edin ve Ayrıntıları göster'deki raporu desteğe gönderin.",
+      "keyVerifierMismatch": "Önceki uygulamanın şifreleme anahtarı hesabınızla eşleşmiyor, bu yüzden oturumunuz taşınmadı. Önceki uygulamayı kullanmaya devam edin ve Ayrıntıları göster'deki raporu desteğe gönderin.",
+      "targetOccupied": "Bu MemryNote sürümünde zaten oturum açık, bu yüzden önceki uygulamanın oturumu bunun üzerine taşınmadı. Önceki uygulamayı kullanmaya devam edin ve Ayrıntıları göster'deki raporu desteğe gönderin."
+    },
+    "done": {
+      "title": "Verileriniz hazır",
+      "body": "MemryNote açılıyor…"
+    },
+    "retry": "Yeniden dene",
+    "showDetails": "Ayrıntıları göster",
+    "reportMissing": "Henüz rapor yok.",
+    "completed": {
+      "title": "Verileriniz bu sürüme taşındı",
+      "body": "Notlarınız, ayarlarınız ve oturumunuz artık MemryNote'un bu sürümünde. Önceki uygulamanın verileri {path} konumunda olduğu gibi duruyor."
+    },
+    "notice": {
+      "title": "Önceki uygulamada yapılan değişiklikler",
+      "body": "Bir kasa, bu sürüme taşındıktan sonra önceki MemryNote uygulamasında değişti. Bu değişiklikler burada yok: önceki uygulamanın {path} konumundaki verilerinde duruyor. Eşitlenmiş değişiklikler eşitleme ile gelir."
+    }
   }
 }
