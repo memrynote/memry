@@ -41,6 +41,9 @@ const MAX_INPUT_PIXELS: u64 = 0x3FFF * 0x3FFF;
 ///   default, 11.375 (47.2); animated WebP, opaque or alpha, 11 or 12 (48.8 or 44.7); GIF whose
 ///   first frame is offset, 9 (59.6); GIF whose first frame is larger than the screen, the screen's
 ///   4 plus 5 a frame pixel.
+/// - `decode` of a progressive JPEG: 9 (59.7), its coefficients charged at 2 bytes a pixel per
+///   component, where sharp decodes up to its 268 megapixels. A 4:2:0 frame, whose chroma
+///   zune-jpeg holds at a quarter, is charged about twice the coefficients it holds.
 ///
 /// `Limits::max_alloc` caps each allocation on its own and not every decoder checks it before
 /// allocating, so the sum is checked from the headers. Up to four decodes run at once in the app
@@ -359,8 +362,10 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
 /// the rest as grey.
 ///
 /// Returns the bytes of the coefficient buffers zune-jpeg holds for a progressive frame
-/// (`mcu_prog.rs`): per component, one `i16` per pixel of the MCU grid, which sampling factors of
-/// up to 4 pad to a multiple of 32. A baseline frame decodes row by row and holds none.
+/// (`mcu_prog.rs`): per component, one `i16` per pixel of the MCU grid. The grid pads each side to
+/// a multiple of 8 times the largest sampling factor (at most 4, so at most 31 pixels), and a
+/// factor of 3 pads to 24, which no multiple of 32 bounds, so each side is charged 31 over. A
+/// subsampled component is charged in full. A baseline frame decodes row by row and holds none.
 fn jpeg_coefficient_bytes(bytes: &[u8]) -> Result<u64, DecodeError> {
     let (info, scan) = jpeg_headers(bytes)?;
     if !bytes[scan..].windows(2).any(|pair| pair == [0xFF, 0xD9]) {
@@ -369,7 +374,7 @@ fn jpeg_coefficient_bytes(bytes: &[u8]) -> Result<u64, DecodeError> {
     if !info.sof.is_progressive() {
         return Ok(0);
     }
-    let pad = |side: u16| u64::from(side).next_multiple_of(32);
+    let pad = |side: u16| u64::from(side) + 31;
     Ok(u64::from(info.components) * 2 * pad(info.width) * pad(info.height))
 }
 
