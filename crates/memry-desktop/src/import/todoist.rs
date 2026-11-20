@@ -85,7 +85,7 @@ struct Plan {
 }
 
 /// `parseInt(text, 10)` of a trimmed cell.
-fn parse_int(text: &str) -> f64 {
+pub(super) fn parse_int(text: &str) -> f64 {
     let (sign, digits) = match text.as_bytes().first() {
         Some(b'-') => (-1.0, &text[1..]),
         Some(b'+') => (1.0, &text[1..]),
@@ -109,7 +109,7 @@ fn int_or(text: &str, fallback: f64) -> f64 {
 }
 
 /// A JS number as `JSON.stringify` writes it and `serde_json` reads it back.
-fn json_number(n: f64) -> Value {
+pub(super) fn json_number(n: f64) -> Value {
     if n.fract() == 0.0 && n.abs() < 9.0e18 {
         Value::from(n as i64)
     } else {
