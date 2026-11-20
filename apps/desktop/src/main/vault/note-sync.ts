@@ -112,8 +112,9 @@ export interface CanonicalNoteRef {
   modifiedAt: string
   fileSize: number | null
   /**
-   * Other rows fold to this file's path (#5263): their bytes may be the ones
-   * on disk, so the file's size says nothing about this row.
+   * Other rows fold to this file's path (#5263), the row at its exact path
+   * included: their bytes may be the ones on disk, so the file's size and
+   * body say nothing about this row (#5297).
    */
   sharesFile: boolean
   emoji: string | null
@@ -142,8 +143,9 @@ export function findCanonicalNoteForFile(
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
   const exact = getNoteMetadataByPath(dataDb, relativePath)
-  const candidates =
-    exact || !volumeIgnoresCase(vaultPath) ? [] : listNoteMetadataByFoldedPath(dataDb, relativePath)
+  const candidates = volumeIgnoresCase(vaultPath)
+    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
+    : []
   const row =
     exact ?? candidates.find((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
   return row

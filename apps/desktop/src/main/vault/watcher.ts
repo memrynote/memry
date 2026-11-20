@@ -1166,6 +1166,16 @@ export class VaultWatcher {
       return
     }
 
+    // Case twins share one file (#5297): its body may be the other note's, so
+    // neither note takes it. The twin repair owns the file.
+    if (findCanonicalNoteForFile(this.vaultPath, relativePath)?.sharesFile) {
+      logger.warn('Outside edit not taken: the file is shared with a case twin', {
+        id: cached.id,
+        path: relativePath
+      })
+      return
+    }
+
     const syncResult = syncNoteToCache(
       db,
       {

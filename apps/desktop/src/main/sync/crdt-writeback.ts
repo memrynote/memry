@@ -36,7 +36,7 @@ import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
 import { createSnapshot, maybeCreateSignificantSnapshot } from '../vault/notes-versions'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
-import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { syncNoteToCache, deleteNoteFromCache, findCanonicalNoteForFile } from '../vault/note-sync'
 import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
 import { placeLinkedDownloads } from './attachment-files'
 import { flushProjectionEvents } from '../projections'
@@ -842,6 +842,15 @@ async function writebackExisting(
       // A locked note's outside edit is never taken in: its locked text goes
       // back on disk and the edit is kept as a version (#2606).
       if (await restoreLockedNoteFile(noteId, existingRaw)) return
+      // Case twins share one file (#5297): its body may be the other note's.
+      // Neither is fed nor overwritten; the twin repair owns the file.
+      if (findCanonicalNoteForFile(getVaultRoot(), relativePath)?.sharesFile) {
+        log.warn('Write-back skipped: the file is shared with a case twin', {
+          noteId,
+          path: relativePath
+        })
+        return
+      }
       const ingested = await feedExternalEditToCrdt(
         noteId,
         parsed.content,
