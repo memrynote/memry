@@ -154,26 +154,41 @@ impl VaultSyncBackend {
     }
 }
 
+/// The account facts the gate reads, with the master key read from `store` (blocking). The key it
+/// hands back is zeroed on drop.
+pub fn read_auth_facts(
+    signed_in: bool,
+    recovery_confirmed: bool,
+    store: &dyn SecureStore,
+) -> AuthFacts {
+    let key = store
+        .get(SecureStoreKey::MasterKey)
+        .map(|key| key.map(Zeroizing::new).is_some());
+    AuthFacts {
+        signed_in,
+        key_verified: matches!(key, Ok(true)),
+        recovery_confirmed,
+        // Locked, denied or failed: the key may be there, the keychain did not answer.
+        keychain_unavailable: key.is_err(),
+    }
+}
+
 #[async_trait::async_trait]
 impl SyncBackend for VaultSyncBackend {
     async fn auth_facts(&self) -> AuthFacts {
         let (signed_in, recovery_confirmed) = (self.account)();
-        // The keychain can block on an access prompt: off the async workers, and the key it
-        // hands back is zeroed on drop.
+        // The keychain can block on an access prompt: off the async workers.
         let store = Arc::clone(&self.store);
-        let key = tokio::task::spawn_blocking(move || {
-            store
-                .get(SecureStoreKey::MasterKey)
-                .map(|key| key.map(Zeroizing::new).is_some())
+        tokio::task::spawn_blocking(move || {
+            read_auth_facts(signed_in, recovery_confirmed, store.as_ref())
         })
-        .await;
-        AuthFacts {
+        .await
+        .unwrap_or(AuthFacts {
             signed_in,
-            key_verified: matches!(key, Ok(Ok(true))),
+            key_verified: false,
             recovery_confirmed,
-            // Locked, denied or failed: the key may be there, the keychain did not answer.
-            keychain_unavailable: matches!(key, Ok(Err(_))),
-        }
+            keychain_unavailable: false,
+        })
     }
 
     async fn open(

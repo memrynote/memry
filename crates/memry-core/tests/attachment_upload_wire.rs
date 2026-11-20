@@ -19,10 +19,10 @@ use std::sync::Arc;
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::ApiError;
-use memry_core::protocol::attachment_manifest::EncryptedAttachmentManifest;
+use memry_core::protocol::attachment_manifest::{AttachmentChunkRef, EncryptedAttachmentManifest};
 use memry_core::protocol::attachment_upload::{
-    DEREFERENCE_CAP, DirectChunk, cancel, complete, dereference, frame_chunks, initiate, put_chunk,
-    put_chunk_presigned, put_manifest, status,
+    DEREFERENCE_CAP, DirectChunk, FramedChunk, cancel, complete, dereference, frame_chunks,
+    initiate, put_chunk, put_chunk_presigned, put_manifest, status,
 };
 use memry_core::protocol::attachments::{
     SignerResolver, fetch_chunk_proxied, fetch_manifest, presign_batch,
@@ -66,7 +66,7 @@ async fn initiate_declares_the_chunks_that_are_about_to_be_sent() {
         "att-1",
         "picture.png",
         plaintext.len() as u64,
-        &chunks,
+        &refs(&chunks),
     )
     .await
     .expect("initiate");
@@ -229,7 +229,7 @@ async fn worker_routes_carry_the_session_and_presigned_urls_do_not() {
     ]));
     let signed_in = client(Arc::clone(&transport)).with_tokens(Arc::new(SignedIn));
 
-    initiate(&signed_in, VAULT, "att-1", "p.png", 4, &chunks)
+    initiate(&signed_in, VAULT, "att-1", "p.png", 4, &refs(&chunks))
         .await
         .expect("initiate");
     put_chunk(&signed_in, VAULT, "s1", &chunks[0])
@@ -312,7 +312,7 @@ async fn worker_routes_name_the_vault_and_presigned_urls_do_not() {
         signer_device_id: String::new(),
     };
 
-    initiate(&http, VAULT, "att-1", "p.png", 4, &chunks)
+    initiate(&http, VAULT, "att-1", "p.png", 4, &refs(&chunks))
         .await
         .expect("initiate");
     put_chunk(&http, VAULT, "s1", &chunks[0])
@@ -397,4 +397,8 @@ async fn complete_reports_the_chunks_that_went_straight_to_r2() {
     let proxied: serde_json::Value =
         serde_json::from_slice(calls[1].body.as_deref().unwrap_or_default()).expect("json");
     assert!(proxied.get("directChunks").is_none(), "{proxied}");
+}
+
+fn refs(chunks: &[FramedChunk]) -> Vec<AttachmentChunkRef> {
+    chunks.iter().map(|chunk| chunk.reference.clone()).collect()
 }

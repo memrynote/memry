@@ -61,6 +61,7 @@
     "packages/contracts/test-vectors/markdown-roundtrip/*.json",
     "packages/contracts/test-vectors/markdown-convert/*.json",
     "packages/contracts/test-vectors/article-extract/",
+    "packages/contracts/test-vectors/readwise/",
     // Written by crates/memrynote-cli/tests/golden/generate.mjs, which `--check`s them byte for byte.
     "crates/memrynote-cli/tests/golden/expected/",
     "crates/memrynote-cli/tests/golden/manifest.json",
