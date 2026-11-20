@@ -1,6 +1,7 @@
 import { createLogger } from '../lib/logger'
 import { PACKED_KINDS, compactOneRange } from './pack-compaction'
 import type { PackKindName } from './pack-format'
+import { UPDATE_PACK_MAX_WAIT_SECONDS, UPDATE_PACK_MIN_ROWS } from './pack-update-selection'
 
 const logger = createLogger('PackBackfill')
 
@@ -48,7 +49,9 @@ interface BacklogVaultRow {
  * cursor never packs, so it is no backlog), and snapshots use the additive
  * created_at index from 0007. A full
  * index scan every 6 hours is acceptable for an admin-paced maintenance job;
- * LIMIT keeps the result bounded regardless of account count.
+ * LIMIT keeps the result bounded regardless of account count. An update
+ * backlog counts only once it meets the minimum fill (pack-update-selection.ts),
+ * so the tick spends no budget on a vault whose build would be a noop.
  */
 const findBacklogVaults = async (
   db: D1Database,
@@ -62,6 +65,13 @@ const findBacklogVaults = async (
         ? 'crdt_updates si'
         : 'crdt_snapshots si'
   const sortColumn = kind === 'crdt_snapshot' ? 'si.created_at' : 'si.server_cursor'
+  const fill =
+    kind === 'crdt_update'
+      ? {
+          sql: 'HAVING COUNT(*) >= ? OR MIN(si.created_at) <= ?',
+          bind: [UPDATE_PACK_MIN_ROWS, Math.floor(Date.now() / 1000) - UPDATE_PACK_MAX_WAIT_SECONDS]
+        }
+      : { sql: '', bind: [] }
   const result = await db
     .prepare(
       `SELECT si.user_id, si.vault_id, MIN(${sortColumn}) AS oldest_pending
@@ -70,10 +80,11 @@ const findBacklogVaults = async (
          ON w.user_id = si.user_id AND w.vault_id = si.vault_id AND w.item_kind = ?
        WHERE ${sortColumn} IS NOT NULL AND (w.user_id IS NULL OR ${sortColumn} > w.last_sort_value)
        GROUP BY si.user_id, si.vault_id
+       ${fill.sql}
        ORDER BY oldest_pending ASC
        LIMIT ?`
     )
-    .bind(kind, limit)
+    .bind(kind, ...fill.bind, limit)
     .all<BacklogVaultRow>()
   return result.results ?? []
 }

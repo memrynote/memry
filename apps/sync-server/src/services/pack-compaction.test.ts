@@ -9,7 +9,6 @@ import {
   compactVault,
   enqueuePackCompaction,
   insertPackIndexRow,
-  packObjectKey,
   selectCandidates
 } from './pack-compaction'
 import { extractEntry, packSha256, parsePack } from './pack-format'
@@ -311,7 +310,9 @@ describe('pack build', () => {
     )
 
     expect(result.built).toBe(true)
-    expect(result.packKey).toBe(packObjectKey({ userId: USER, vaultId: VAULT }, 'record', 1, 2))
+    // Unique per build (REVIEW-5260): the range, then the pack_index row id.
+    const { id } = harness.raw.prepare('SELECT id FROM pack_index').get() as { id: string }
+    expect(result.packKey).toBe(`${USER}/vaults/${VAULT}/packs/record/1_2_${id}.pack`)
 
     const packBytes = await packOf(result.packKey)
     const parsed = await parsePack(packBytes)
@@ -359,9 +360,9 @@ describe('pack build', () => {
     ).toBe(1)
   })
 
-  // #5227, #5228: record and update entries carry the meta their routes answer
-  // with (protocol 08 §8.4.2, §8.4.3), so the vault sweep packs every kind.
-  it('builds record, snapshot and update packs for a vault', async () => {
+  // #5227, #5228: the push nudge packs records and snapshots. Updates wait for
+  // the cron tick and its minimum fill (protocol 08 §8.14, REVIEW-5260).
+  it('builds record and snapshot packs for a vault and leaves updates to the cron tick', async () => {
     await seedRecord({ cursor: 1 })
     seedSnapshot('note-a', 1000)
     harness.raw
@@ -377,7 +378,7 @@ describe('pack build', () => {
     const kinds = harness.raw
       .prepare('SELECT item_kind FROM pack_index ORDER BY item_kind')
       .all() as Array<{ item_kind: string }>
-    expect(kinds.map((row) => row.item_kind)).toEqual(['crdt_snapshot', 'crdt_update', 'record'])
+    expect(kinds.map((row) => row.item_kind)).toEqual(['crdt_snapshot', 'record'])
   })
 
   // #5227: content-addressed keys make a replaced payload 404, but a pre-#1199

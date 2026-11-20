@@ -12,6 +12,7 @@ import {
   type PackEntryPlanMeta,
   type PackKindName
 } from './pack-format'
+import { roomForPack, roomGuard } from './pack-list'
 import {
   isSelectedRecordVersion,
   recordEntryOf,
@@ -690,21 +691,6 @@ const advanceWatermark = async (
   tiebreak: string
 ): Promise<void> => {
   await watermarkUpsert(db, scope, kind, sortValue, tiebreak).run()
-}
-
-// Fewer listed packs than §8.14's cap, so one more insert keeps the vault at or below it.
-const roomGuard = (scope: VaultScope): Guard => ({
-  sql: '(SELECT COUNT(*) FROM pack_index WHERE user_id = ? AND vault_id = ?) < ?',
-  bind: [scope.userId, scope.vaultId, PACK_LIST_MAX_PACKS_PER_VAULT]
-})
-
-const roomForPack = async (db: D1Database, scope: VaultScope): Promise<boolean> => {
-  const room = roomGuard(scope)
-  const row = await db
-    .prepare(`SELECT ${room.sql} AS room`)
-    .bind(...room.bind)
-    .first<{ room: number }>()
-  return Boolean(row?.room)
 }
 
 /** Source blobs from R2, PACK_FETCH_CONCURRENCY GETs at a time, read one by one. */

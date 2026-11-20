@@ -9,9 +9,15 @@ import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { runPackBackfill } from '../services/pack-backfill'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { extractEntry, parsePack, type PackedEntry } from '../services/pack-format'
+import {
+  UPDATE_PACK_MAX_WAIT_SECONDS,
+  UPDATE_PACK_MIN_ROWS,
+  updateSelectionQuery
+} from '../services/pack-update-selection'
 import type { AppContext, Bindings } from '../types'
 import {
   CrdtUpdatePackEntryMetaSchema,
+  PACK_LIST_MAX_PACKS_PER_VAULT,
   type PackListResponse,
   type RecordSyncItemType
 } from '@memry/contracts/sync-api'
@@ -162,10 +168,21 @@ const writeSnapshot = (noteId: string, data: ArrayBuffer, coversThrough?: number
     coversThrough === undefined ? undefined : { coversThrough }
   )
 
-/** Builds packs until no kind has anything left above its watermark. */
+/** Moves the clock past the update minimum fill's wait, so any unpacked update row is due. */
+const passFillWait = () => vi.setSystemTime(Date.now() + (UPDATE_PACK_MAX_WAIT_SECONDS + 1) * 1000)
+
+/**
+ * Builds packs until no kind has anything left above its watermark: the push
+ * nudge for records and snapshots, the cron tick's call for updates past the
+ * minimum fill.
+ */
 const compactAll = async (): Promise<void> => {
+  passFillWait()
   for (let run = 0; run < 20; run++) {
-    const results = await compactVault(harness.db, storage, SCOPE)
+    const results = [
+      ...(await compactVault(harness.db, storage, SCOPE)),
+      await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
+    ]
     if (!results.some((result) => result.built)) return
   }
   throw new Error('compaction did not drain')
@@ -277,6 +294,7 @@ const updatePackCount = () =>
   count(`SELECT COUNT(*) AS n FROM pack_index WHERE item_kind = 'crdt_update'`)
 
 beforeEach(async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
   harness = createSqliteD1()
   storage = createMemoryR2()
   env = {
@@ -300,6 +318,7 @@ beforeEach(async () => {
 afterEach(() => {
   harness.close()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 describe('crdt_update packs (#5228)', () => {
@@ -413,11 +432,126 @@ describe('crdt_update packs (#5228)', () => {
     expect(updatePackCount()).toBe(0)
   })
 
-  it('the cron backfill builds update packs', async () => {
+  it('the cron backfill builds no update pack below the minimum fill', async () => {
     await writeUpdates('note-a', bytes(1, 1))
+
+    expect(await runPackBackfill(harness.db, storage)).toMatchObject({
+      packsBuilt: 0,
+      scopesVisited: 0
+    })
+    expect(updatePackCount()).toBe(0)
+  })
+
+  it('the cron backfill builds an update pack once the oldest row is 24 h old', async () => {
+    await writeUpdates('note-a', bytes(1, 1))
+    passFillWait()
 
     expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
     expect(updatePackCount()).toBe(1)
+  })
+
+  it('the cron backfill builds an update pack once the vault holds the minimum row count', async () => {
+    for (let i = 0; i < UPDATE_PACK_MIN_ROWS; i += 64) {
+      await writeUpdates(`note-${i}`, ...Array.from({ length: 64 }, (_, j) => bytes(i % 256, j)))
+    }
+
+    expect((await runPackBackfill(harness.db, storage)).packsBuilt).toBe(1)
+    expect(updatePackCount()).toBe(1)
+  })
+
+  // REVIEW-5260 P3: a push nudge used to list one tiny update pack per push.
+  it('push nudges build no update pack; the fill-ready build packs them all at once', async () => {
+    for (let i = 0; i < 10; i++) {
+      await writeUpdates(`note-${i}`, bytes(1, i))
+      await compactVault(harness.db, storage, SCOPE)
+    }
+    expect(updatePackCount()).toBe(0)
+
+    passFillWait()
+    const built = await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
+
+    expect(built).toMatchObject({ built: true, itemCount: 10 })
+    expect(updatePackCount()).toBe(1)
+  })
+
+  it('builds nothing and moves no watermark below the minimum fill', async () => {
+    await writeUpdates('note-a', bytes(1, 1))
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(false)
+    expect(count('SELECT COUNT(*) AS n FROM pack_watermarks')).toBe(0)
+  })
+
+  // REVIEW-5260 P5: the selection used to scan every update row and sort it.
+  it('the selection rides the server_cursor index with no sort', () => {
+    const query = updateSelectionQuery(SCOPE, { last_sort_value: 0, last_sort_tiebreak: '' }, 4096)
+    const plan = (
+      harness.raw
+        .prepare(`EXPLAIN QUERY PLAN ${query.sql}`)
+        .all(...(query.bind as never[])) as Array<{
+        detail: string
+      }>
+    ).map((row) => row.detail)
+
+    expect(plan.some((detail) => detail.includes('idx_crdt_updates_user_cursor'))).toBe(true)
+    expect(plan.some((detail) => detail.includes('TEMP B-TREE'))).toBe(false)
+  })
+})
+
+describe('the listing cap (REVIEW-5260 P2, protocol 08 §8.14)', () => {
+  const listPack = (id: string, sortValue: number) =>
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+         VALUES (?, ?, ?, ?, 'crdt_snapshot', ?, ?, 1, 1, ?)`
+      )
+      .run(
+        id,
+        USER_ID,
+        VAULT_ID,
+        `${USER_ID}/vaults/${VAULT_ID}/packs/x/${id}`,
+        sortValue,
+        sortValue,
+        now()
+      )
+  const listPacks = (n: number) => {
+    for (let i = 0; i < n; i++) listPack(`seed-${i}`, i)
+  }
+  const watermarks = () => count('SELECT COUNT(*) AS n FROM pack_watermarks')
+
+  it('a vault listing the maximum builds no pack of any kind and moves no watermark', async () => {
+    listPacks(PACK_LIST_MAX_PACKS_PER_VAULT)
+    await writeUpdates('note-a', bytes(1, 1))
+    await writeSnapshot('note-b', bytes(9, 1))
+    passFillWait()
+
+    for (const kind of ['crdt_snapshot', 'record', 'crdt_update'] as const) {
+      expect((await compactOneRange(harness.db, storage, SCOPE, kind)).built).toBe(false)
+    }
+
+    expect(count('SELECT COUNT(*) AS n FROM pack_index')).toBe(PACK_LIST_MAX_PACKS_PER_VAULT)
+    expect(watermarks()).toBe(0)
+  })
+
+  it('the commit batch rechecks the cap: a slot taken during the build discards the pack', async () => {
+    listPacks(PACK_LIST_MAX_PACKS_PER_VAULT - 1)
+    await writeUpdates('note-a', bytes(1, 1))
+    passFillWait()
+    const puts: string[] = []
+    const put = storage.put.bind(storage)
+    storage.put = (async (...args: Parameters<R2Bucket['put']>) => {
+      puts.push(args[0])
+      // A concurrent build takes the last slot after the precheck.
+      listPack('concurrent', 1_000_000)
+      return put(...args)
+    }) as typeof storage.put
+
+    const result = await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
+
+    expect(result.built).toBe(false)
+    expect(puts).toHaveLength(1)
+    expect(await storage.get(puts[0])).toBeNull()
+    expect(count('SELECT COUNT(*) AS n FROM pack_index')).toBe(PACK_LIST_MAX_PACKS_PER_VAULT)
+    expect(watermarks()).toBe(0)
   })
 })
 
@@ -484,6 +618,56 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
     expect(ids).toEqual(['note-live'])
   })
 
+  // REVIEW-5260 P1: the drop was keyed on surviving update rows, and a
+  // snapshot that claimed the packed updates had already pruned them.
+  it('drops the update packs of a document whose update rows a snapshot pruned', async () => {
+    const app = buildApp()
+    const dayId = 'j2026-05-01'
+    await pushJournal(app, { [DEVICE_ID]: 1 })
+    const written = await writeUpdates(dayId, bytes(1, 1), bytes(1, 2), bytes(1, 3))
+    await writeUpdates('note-live', bytes(5, 1))
+    await compactAll()
+    await writeSnapshot(dayId, bytes(9, 1), written.cursor)
+    expect(count(`SELECT COUNT(*) AS n FROM crdt_updates WHERE note_id = '${dayId}'`)).toBe(0)
+
+    await pushJournal(app, { [DEVICE_ID]: 2 }, true)
+
+    const held = (await downloadPacks(app)).filter((pack) =>
+      pack.entries.some((entry) => entry.kind === 'crdt_update' && entry.id === dayId)
+    )
+    expect(held).toHaveLength(0)
+  })
+
+  // REVIEW-5260 P4: a rebuild between the purge commit and its object delete
+  // reused the dropped pack's key, and the delete removed the listed rebuild.
+  it('the purge object delete never removes a pack rebuilt in the meantime', async () => {
+    const app = buildApp()
+    const dayId = 'j2026-05-01'
+    await pushJournal(app, { [DEVICE_ID]: 1 })
+    await writeUpdates('note-a', bytes(5, 1))
+    await writeUpdates(dayId, bytes(1, 1))
+    await writeUpdates('note-b', bytes(6, 1))
+    await compactAll()
+    const del = storage.delete.bind(storage)
+    let raced = false
+    storage.delete = async (keys: string | string[]) => {
+      if (!raced && [keys].flat().some((key) => key.includes('/packs/crdt_update/'))) {
+        raced = true
+        await compactAll()
+      }
+      return del(keys)
+    }
+
+    await pushJournal(app, { [DEVICE_ID]: 2 }, true)
+
+    expect(raced).toBe(true)
+    const listed = harness.raw
+      .prepare(`SELECT pack_key FROM pack_index WHERE item_kind = 'crdt_update'`)
+      .all() as Array<{ pack_key: string }>
+    expect(listed).toHaveLength(1)
+    expect(await storage.get(listed[0].pack_key)).not.toBeNull()
+  })
+
   it('leaves update packs alone when the purge deletes no update row', async () => {
     const app = buildApp()
     await writeUpdates('note-live', bytes(5, 1))
@@ -524,6 +708,7 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
       return statement
     })
 
+    passFillWait()
     const racing = await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')
     vi.mocked(harness.db.prepare).mockRestore()
 

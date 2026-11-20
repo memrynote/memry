@@ -307,8 +307,9 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   read before the pack can predate a purge the pack still reflects, so it is
   read again on every run. Neither `snapshotMeta.sequenceNum` (#5248) nor the
   lowest `sequenceNum` a route returned stands in for it.
-- **Purge dependency.** Whenever the §7.15 purge deletes any `crdt_updates`
-  row of a document, it MUST take every `crdt_update` pack that holds that
+- **Purge dependency.** Whenever the §7.15 purge removes a document that has
+  any body row (a `crdt_updates` or a `crdt_snapshots` row), it MUST take
+  every `crdt_update` pack that holds that
   document out of the listing, and rewrite it, as §8.13 states for every kind,
   with the same commit-time recheck §7.15 gives snapshot compaction. Until the
   membership index of §8.13 exists, that is every `crdt_update` pack of the
@@ -316,9 +317,11 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   the purge does for `crdt_snapshot`
   (`apps/sync-server/src/services/document-body-purge.ts:106-118`); without the
   reset, compaction never packs the other documents of a dropped pack again.
-  The purge does both in the D1 batch that deletes the update rows,
-  conditioned on that batch deleting one, so the drop and the delete commit
-  together (`apps/sync-server/src/services/document-body-purge.ts:93-106`). A
+  Keying on update rows alone is not enough: a snapshot that claims the
+  packed updates prunes their rows (#2299), and the packs still hold them.
+  The purge does both in the D1 batch that deletes the body rows,
+  conditioned on the document having one, so the drop and the delete commit
+  together (`apps/sync-server/src/services/document-body-purge.ts:68-107`). A
   compaction run that selected the rows before the purge fails its
   commit-time recheck (`updatesCurrent`,
   `apps/sync-server/src/services/pack-update-selection.ts`). This shipped with
@@ -427,7 +430,12 @@ ignorable.
 
 **Normative.** A pack **object is never modified after its single PUT**, and
 its key is never written again: new data goes into new objects under new keys
-(`packages/contracts/src/pack-format.ts:52-53`). What changes is the listing.
+(`packages/contracts/src/pack-format.ts:52-53`). A key is unique per build,
+not per range: it ends in the build's `pack_index` id
+(`<min>_<max>_<packId>.pack`, `packObjectKey` in
+`apps/sync-server/src/services/pack-compaction.ts`), so a rebuild of a range a
+purge dropped never lands on the key the purge then deletes. A reader takes
+the object from the listed `url` and never parses the key. What changes is the listing.
 A pack's `pack_index` row may be removed, by a rollup that replaces it
 (§8.12) or by a purge (§8.13), and the object is deleted after the grace
 period of §8.12. Stale entries therefore stay as dead bytes for the life of
@@ -806,7 +814,7 @@ are touched, and the document's ciphertext MUST leave every pack object within
   pending past the deadline raises an alert, an error log with the vault and
   the object count, and the sweep keeps retrying it. This replaces today's purge, which logs a failed
   R2 delete and drops it
-  (`apps/sync-server/src/services/document-body-purge.ts:121-127`).
+  (`apps/sync-server/src/services/document-body-purge.ts:125-145`).
 - **A purge that fails.** The purge runs after the push that deleted the
   document commits, and its failure never fails the push (chapter 07 §7.15).
   The 900 s bound runs from the purge's commit, so it does not cover a purge
@@ -855,5 +863,16 @@ also capped at 256 items by its subrequest budget
 kinds** (`packages/contracts/src/sync-api.ts:796-800`), below the 1,000 a
 released reader walks (§8.11). A writer rolls up before a new row would pass
 it; when a rollup cannot make room, the writer stops, and the rest of the vault
-stays on the tail. At 24 MiB per pack that bound is about 23 GiB, far above
+stays on the tail. The server checks the cap before a build and again in the
+D1 batch that inserts the `pack_index` row: the insert and the watermark
+commit only while the vault lists fewer than 999 packs, and otherwise the
+object is deleted and the watermark stays (`roomGuard`,
+`apps/sync-server/src/services/pack-list.ts:41-61`).
+
+**Update packs wait for a minimum fill.** A push nudge builds no
+`crdt_update` pack; only the cron backfill does, and only once the vault
+holds 256 unpacked update rows or its oldest unpacked update row is 24 h old
+(`UPDATE_PACK_MIN_ROWS`, `UPDATE_PACK_MAX_WAIT_SECONDS`,
+`apps/sync-server/src/services/pack-update-selection.ts:52-69`). Without it,
+every push listed one tiny pack and an active vault passed the cap in days. At 24 MiB per pack that bound is about 23 GiB, far above
 the 28 MB measured vault of #5221.

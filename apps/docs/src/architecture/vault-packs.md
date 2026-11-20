@@ -146,8 +146,9 @@ stays predictable.
 At-least-once queue delivery means every step has to tolerate re-running:
 
 1. Selection reads the watermark, so a crash re-selects the same range.
-2. The pack object key is deterministic from the range, so a retry PUTs identical bytes to the same
-   object, and an R2 put is idempotent.
+2. The pack object key is unique per build: it ends in the build's `pack_index` id, so no build
+   writes a key another build wrote, and a purge that deletes a dropped pack's object can never
+   delete a rebuild of the same range.
 3. `pack_index` carries `UNIQUE (user_id, vault_id, item_kind, min_cursor)`, so a duplicate insert
    is a no-op.
 4. The order is **object → D1 row → watermark**: `storage.put(packKey, built.bytes)`, then
@@ -156,12 +157,12 @@ At-least-once queue delivery means every step has to tolerate re-running:
    — harmless invisible bytes, since only a `pack_index` row makes a pack listable. Between the row
    and the watermark it costs an idempotent rebuild that lands on the UNIQUE constraint.
 
-One known residual: a window whose every source blob turned out to be a hole writes no pack and
-advances its watermark _without_ a `pack_index` row. If an earlier attempt of that same range
-crashed in the PUT-to-row window, the object at the deterministic key now has no row pointing at it
-and can never be listed — permanently dead bytes. Harmless today, and the concrete case a future
-sweep should cover. Such a sweep has to list the real key, which `packObjectKey` builds as
-`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>.pack` — the vault prefix is
+One known residual: a build that crashed in the PUT-to-row window leaves an object no row points
+at, and the retry writes a new key, so that object can never be listed — permanently dead bytes.
+Harmless today, and the concrete case a future sweep should cover: an object under `packs/` whose
+key matches no `pack_index` row. Such a sweep has to list the real key, which `packObjectKey`
+builds as `<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>_<packId>.pack`,
+`packId` being the build's `pack_index` id — the vault prefix is
 deliberate, so vault deletion's prefix purge already reaches these objects, and a sweep listing a
 bare `packs/<kind>/` prefix would match nothing.
 
@@ -214,8 +215,13 @@ not be dead, or the pack is discarded and the next run reselects.
 
 Both update routes answer a per-document `floor`, the highest purged sequence number, read in the
 same D1 batch as the updates. A reader applies a packed update only above it, so a pack downloaded
-before a purge never brings the deleted incarnation back. Whenever the purge deletes an update row,
-the same D1 batch drops every `crdt_update` pack of the vault and resets that kind's watermark.
+before a purge never brings the deleted incarnation back. Whenever the purged document has any body
+row, update or snapshot, the same D1 batch drops every `crdt_update` pack of the vault and resets
+that kind's watermark: a snapshot that pruned the packed update rows leaves them only in the packs.
+
+A push nudge builds no update pack. The cron backfill builds one once the vault holds 256 unpacked
+update rows or the oldest is 24 hours old (`UPDATE_PACK_MIN_ROWS`, `UPDATE_PACK_MAX_WAIT_SECONDS`),
+and `findBacklogVaults` skips a vault below that fill. Without it every push listed a tiny pack.
 
 ### Entry meta per kind
 
@@ -282,7 +288,9 @@ any of it yet.
   without its body and older versions. The tombstone stays. Its ciphertext is gone from pack
   objects within 15 minutes, with a sweep that retries failed object deletes.
 - **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
-  a released reader's 1,000-pack walk never truncates.
+  a released reader's 1,000-pack walk never truncates. Compaction checks the cap before a build
+  and again in the batch that inserts the row; a build that would pass it deletes its object and
+  leaves the watermark.
 
 ## Client Bootstrap Flow
 

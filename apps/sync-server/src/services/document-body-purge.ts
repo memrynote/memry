@@ -34,9 +34,10 @@ const PURGE_CHUNK = 20
  * are deleted. A pack is immutable and holds many notes, so the packs that may
  * hold this body are dropped with their kind's watermark reset, and compaction
  * rebuilds them without the dead note. Every `crdt_update` pack of the vault
- * goes in the same transaction as the update rows, whenever it deletes any
- * (protocol 08 §8.4.3): a pack left listed would hand a fresh device the
- * deleted updates. Every `crdt_snapshot` pack goes after the rows when a
+ * goes in the same transaction as the rows whenever the document has any body
+ * row (protocol 08 §8.4.3): a pack left listed would hand a fresh device the
+ * deleted updates, and a pack built before a snapshot pruned its update rows
+ * still holds them (REVIEW-5260). Every `crdt_snapshot` pack goes after the rows when a
  * snapshot was deleted, because an older revision of this note may sit in any
  * pack built before its current row. Packs are a derived cache, so this costs
  * bootstrap speed until the rebuild, never data.
@@ -64,7 +65,8 @@ export const purgeDeletedDocumentBodies = async (
     const statements = ids.slice(i, i + PURGE_CHUNK).flatMap((noteId) => {
       const body = [userId, vaultId, noteId]
       const dead = [userId, vaultId, noteId, userId, vaultId, noteId]
-      const deletesUpdates = `EXISTS (SELECT 1 FROM crdt_updates WHERE ${BODY_ROWS}) AND ${DEAD}`
+      const hasBody = `(EXISTS (SELECT 1 FROM crdt_updates WHERE ${BODY_ROWS})
+        OR EXISTS (SELECT 1 FROM crdt_snapshots WHERE ${BODY_ROWS})) AND ${DEAD}`
       return [
         db
           .prepare(
@@ -93,16 +95,16 @@ export const purgeDeletedDocumentBodies = async (
         db
           .prepare(
             `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
-               AND ${deletesUpdates}
+               AND ${hasBody}
              RETURNING pack_key`
           )
-          .bind(userId, vaultId, ...body, ...dead),
+          .bind(userId, vaultId, ...body, ...body, ...dead),
         db
           .prepare(
             `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_update'
-               AND ${deletesUpdates}`
+               AND ${hasBody}`
           )
-          .bind(userId, vaultId, ...body, ...dead),
+          .bind(userId, vaultId, ...body, ...body, ...dead),
         db
           .prepare(`DELETE FROM crdt_updates WHERE ${BODY_ROWS} AND ${DEAD}`)
           .bind(...body, ...dead),

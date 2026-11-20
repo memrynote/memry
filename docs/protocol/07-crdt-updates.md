@@ -779,11 +779,11 @@ and recorded).**
 **Normative (server, #2986).** When the server accepts a `delete` of a `note` or
 `journal` record, it purges that document's body after the commit
 (`purgeDeletedDocumentBodies`,
-`apps/sync-server/src/services/document-body-purge.ts:45-127`, called from push
+`apps/sync-server/src/services/document-body-purge.ts:51-145`, called from push
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
-`crdt_snapshots` rows. When that batch deletes any update row, the same batch
+`crdt_snapshots` rows. When the document has any body row, the same batch
 drops every `crdt_update` pack of the vault and resets that kind's pack
 watermark (chapter 08 §8.4.3). Then, when it deleted a snapshot, it drops every
 `crdt_snapshot` pack of the vault and resets that kind's pack watermark, and
