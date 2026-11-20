@@ -822,6 +822,10 @@ export const commands = {
 	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
 	/**  Saves the fields `input` names; a built-in is refused. */
 	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
+	settingsGetTerminalCommandStatus: () => __TAURI_INVOKE<TerminalCommandStatus>("settings_get_terminal_command_status"),
+	settingsInstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_install_terminal_command"),
+	settingsSetTerminalCommandDefaultVault: (vaultPath: string) => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_set_terminal_command_default_vault", { vaultPath }),
+	settingsUninstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_uninstall_terminal_command"),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -4205,6 +4209,39 @@ export type TemplateView = {
 	content: string,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**
+ *  `TerminalCommandMutationResult`: `{ success: true, status }` or
+ *  `{ success: false, error, status? }`.
+ */
+export type TerminalCommandMutationResult = {
+	success: boolean,
+	error?: string | null,
+	status?: TerminalCommandStatus | null,
+};
+
+export type TerminalCommandPlatform = "darwin" | "linux" | "win32";
+
+/**  `TerminalCommandStatus` (`packages/rpc/src/settings.ts`). */
+export type TerminalCommandStatus = {
+	supported: boolean,
+	installed: boolean,
+	command: string,
+	platform: TerminalCommandPlatform,
+	shimPath: string,
+	binDir: string,
+	targetPath: string,
+	inPath: boolean,
+	pathHint: string | null,
+	defaultVaultPath: string | null,
+	vaults: TerminalCommandVault[],
+};
+
+export type TerminalCommandVault = {
+	path: string,
+	name: string,
+	isDefault: boolean,
 };
 
 /**
