@@ -1,3 +1,4 @@
+import { onAttachmentMaterialized, onAttachmentUploadFailed } from '../services/attachment-events'
 import {
   diagnosticsApi,
   feedbackService,
@@ -26,7 +27,9 @@ const ported: Record<string, unknown> = {
   diagnostics: diagnosticsApi,
   onSettingsChanged,
   onSettingsOpenRequested,
-  onLocaleChanged
+  onLocaleChanged,
+  onAttachmentMaterialized,
+  onAttachmentUploadFailed
 }
 
 export interface PortedApiHost {

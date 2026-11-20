@@ -940,6 +940,8 @@ export const events = {
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
+	syncAttachmentMaterializedEvent: makeEvent<SyncAttachmentMaterializedEvent, SyncAttachmentMaterializedEvent>("sync-attachment-materialized-event"),
+	syncAttachmentUploadFailedEvent: makeEvent<SyncAttachmentUploadFailedEvent, SyncAttachmentUploadFailedEvent>("sync-attachment-upload-failed-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
 	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
@@ -3597,6 +3599,21 @@ export type StreakView = {
 	currentStreak: number,
 	longestStreak: number,
 	lastEntryDate: string | null,
+};
+
+/**  `sync:attachment-materialized`: a download of the note's attachment landed. */
+export type SyncAttachmentMaterializedEvent = {
+	noteId: string,
+};
+
+/**
+ *  `sync:attachment-upload-failed`: an attachment of the note failed to download, or will not
+ *  upload. `errorCategory` is never sent; the renderer shows its generic message.
+ */
+export type SyncAttachmentUploadFailedEvent = {
+	noteId: string,
+	diskPath: string,
+	error: string,
 };
 
 /**  `sync:certificate-pin-failed`: the sync host's certificate matches none of its pins. */

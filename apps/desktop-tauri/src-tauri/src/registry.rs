@@ -435,6 +435,8 @@ pub fn builder() -> Builder<Wry> {
             // stickies
             crate::events::StickyDraftsChangedEvent,
             // sync
+            crate::events::SyncAttachmentMaterializedEvent,
+            crate::events::SyncAttachmentUploadFailedEvent,
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,
             crate::events::SyncInitialSyncProgressEvent,

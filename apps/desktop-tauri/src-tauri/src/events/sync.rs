@@ -80,6 +80,24 @@ pub fn broadcast_sync_event(app: &AppHandle<Wry>, event: &SyncEvent) {
                 item_type: item_type.clone(),
             },
         ),
+        SyncEvent::AttachmentMaterialized { note_id } => broadcast(
+            app,
+            SyncAttachmentMaterializedEvent {
+                note_id: note_id.clone(),
+            },
+        ),
+        SyncEvent::AttachmentFailed {
+            note_id,
+            disk_path,
+            error,
+        } => broadcast(
+            app,
+            SyncAttachmentUploadFailedEvent {
+                note_id: note_id.clone(),
+                disk_path: disk_path.clone(),
+                error: error.clone(),
+            },
+        ),
     }
 }
 
@@ -115,6 +133,23 @@ pub struct SyncItemSyncedEvent {
     pub operation: SyncDirection,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub item_operation: Option<SyncItemOperation>,
+}
+
+/// `sync:attachment-materialized`: a download of the note's attachment landed.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncAttachmentMaterializedEvent {
+    pub note_id: String,
+}
+
+/// `sync:attachment-upload-failed`: an attachment of the note failed to download, or will not
+/// upload. `errorCategory` is never sent; the renderer shows its generic message.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncAttachmentUploadFailedEvent {
+    pub note_id: String,
+    pub disk_path: String,
+    pub error: String,
 }
 
 /// `sync:queue-cleared`: a push emptied the queue.
