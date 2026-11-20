@@ -10,13 +10,10 @@ use memry_core::sync::policy::ServerClock;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncEvent {
-    /// A pulled record changed this vault, told after its page committed. A skipped record
-    /// changed nothing and is not told (`pull-coordinator.ts:964-969`).
-    Pulled {
-        item_type: String,
-        item_id: String,
-        operation: ItemOperation,
-    },
+    /// The records one committed page changed in this vault, told once per page, each record
+    /// once with its last operation. A skipped record changed nothing and is not told
+    /// (`pull-coordinator.ts:964-969`), and notes and journals are not told here.
+    Pulled(Vec<PulledItem>),
     /// A pass pushed rows and left the outbox empty (`push-coordinator.ts:518-535`).
     QueueCleared { item_count: u32, duration_ms: i64 },
     /// The local clock is off from the server's by more than five minutes and sync paused, in
@@ -40,6 +37,14 @@ pub enum SyncEvent {
     Recovered { item_type: String, item_id: String },
 }
 
+/// One record a page applied.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PulledItem {
+    pub item_type: String,
+    pub item_id: String,
+    pub operation: ItemOperation,
+}
+
 /// What a pulled record did to the local row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemOperation {
@@ -47,6 +52,10 @@ pub enum ItemOperation {
     Update,
     Delete,
 }
+
+/// Notes and journals reach the renderer from the vault tier (`shell/note_events.rs`,
+/// `journal_events.rs`), which writes their files; the sync feed does not tell them.
+const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
 pub type OnSyncEvent = Arc<dyn Fn(&SyncEvent) + Send + Sync>;
 
@@ -72,6 +81,7 @@ impl ApplyObserver for EventObserver {
     }
 
     fn records_applied(&self, batch: &[AppliedRecord]) {
+        let mut items: Vec<PulledItem> = Vec::new();
         for record in batch {
             let operation = match record.outcome {
                 AppliedOutcome::Created => ItemOperation::Create,
@@ -79,11 +89,23 @@ impl ApplyObserver for EventObserver {
                 AppliedOutcome::Deleted => ItemOperation::Delete,
                 AppliedOutcome::Skipped => continue,
             };
-            (self.0)(&SyncEvent::Pulled {
-                item_type: record.item_type.clone(),
-                item_id: record.item_id.clone(),
-                operation,
-            });
+            if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
+                continue;
+            }
+            match items
+                .iter_mut()
+                .find(|item| item.item_type == record.item_type && item.item_id == record.item_id)
+            {
+                Some(item) => item.operation = operation,
+                None => items.push(PulledItem {
+                    item_type: record.item_type.clone(),
+                    item_id: record.item_id.clone(),
+                    operation,
+                }),
+            }
+        }
+        if !items.is_empty() {
+            (self.0)(&SyncEvent::Pulled(items));
         }
     }
 
