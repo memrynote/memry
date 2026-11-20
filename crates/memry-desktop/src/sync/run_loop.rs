@@ -16,7 +16,7 @@ use tokio::time::Instant;
 
 use super::backend::{SyncBackend, SyncPasses};
 use super::error_category::SyncErrorCategory;
-use super::events::OnSyncEvent;
+use super::events::{OnSyncEvent, ProgressEvents};
 use super::gate::{self, AuthFacts, Entitlement, GateDecision, SyncStartGate};
 use super::realtime::SocketEnd;
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
@@ -435,6 +435,7 @@ impl Loop {
             Arc::clone(&self.backend),
             self.db.clone(),
             self.pause.subscribe(),
+            Arc::new(ProgressEvents(Arc::clone(&self.on_event))),
         );
         let mut stopping = self.stopping.clone();
         self.running = Some(tokio::spawn(async move {

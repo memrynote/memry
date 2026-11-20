@@ -27,7 +27,7 @@ impl WriteBackReader {
         converter: &Converter,
         note_id: &str,
         note_path: &str,
-        file_body: &str,
+        file_body: Option<&str>,
         embeds: &dyn EmbedResolver,
     ) -> Result<BodyRead, CrdtError> {
         self.db

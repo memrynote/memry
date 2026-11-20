@@ -263,6 +263,10 @@ name = "sync_supervisor_harness"
 path = "tests/sync_supervisor_harness.rs"
 
 [[test]]
+name = "sync_disk_harness"
+path = "tests/sync_disk_harness.rs"
+
+[[test]]
 name = "attachment_holds_harness"
 path = "tests/attachment_holds_harness.rs"
 
@@ -325,6 +329,10 @@ path = "tests/readwise_vectors.rs"
 [[test]]
 name = "readwise_untrusted"
 path = "tests/readwise_untrusted.rs"
+
+[[test]]
+name = "readwise_client"
+path = "tests/readwise_client.rs"
 
 [[test]]
 name = "watch_perf"

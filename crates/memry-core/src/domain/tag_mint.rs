@@ -144,14 +144,16 @@ fn records(conn: &Connection) -> Result<Vec<(String, bool)>, StorageError> {
     Ok(records)
 }
 
-/// The live mints: records this device wrote with no clock, which no pull touched.
+/// The live mints: records this device wrote with no clock, which no pull touched. A mint first
+/// sync's refs pass found on the server too waits `metadata-only` for the server's body, so it is
+/// never seeded, even when that fetch failed.
 fn mints(conn: &Connection) -> Result<Vec<String>, StorageError> {
     ids(
         conn,
         "SELECT item_id FROM sync_items
           WHERE item_type = ?1 AND clock IS NULL AND signer_device_id IS NULL
             AND server_cursor IS NULL AND deleted_at IS NULL AND payload IS NOT NULL
-            AND corrupt_at IS NULL
+            AND corrupt_at IS NULL AND payload_state <> 'metadata-only'
           ORDER BY rowid",
     )
 }
