@@ -523,11 +523,11 @@ impl Desktop {
                 declaration,
                 first_sync: FirstSyncLimits::ALL,
                 max_pages_per_pass: MAX_PAGES_PER_PASS,
-                pack_concurrency: 1,
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),
             observers,
+            spill_dir: None,
         })
         .await
         .expect("the driver");

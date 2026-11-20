@@ -102,20 +102,16 @@ pub struct DriverConfig {
     pub first_sync: FirstSyncLimits,
     /// Pages one pass walks before it yields the gate.
     pub max_pages_per_pass: u32,
-    /// Packs the first sync downloads at once.
-    pub pack_concurrency: usize,
 }
 
 impl DriverConfig {
-    /// Desktop: its declaration, every body (Electron's first sync), and
-    /// three packs at once (`pack-bootstrap.ts`).
+    /// Desktop: its declaration and every body (Electron's first sync).
     #[cfg(feature = "markdown")]
     pub fn desktop() -> Self {
         Self {
             declaration: Declaration::desktop(),
             first_sync: FirstSyncLimits::ALL,
             max_pages_per_pass: super::engine::MAX_PAGES_PER_PASS,
-            pack_concurrency: 3,
         }
     }
 }
@@ -149,6 +145,9 @@ pub struct DriverParts {
     pub pass_gate: Arc<tokio::sync::Mutex<()>>,
     /// Hear every page applied from the open on, its re-pull included.
     pub observers: Vec<Arc<dyn ApplyObserver>>,
+    /// Where the first sync holds body packs until their checks
+    /// ([`PackBootstrap::with_spill_dir`]). `None` uses no body pack.
+    pub spill_dir: Option<std::path::PathBuf>,
 }
 
 /// The first sync's parts, built once and run under the pass gate.
@@ -197,6 +196,7 @@ impl SyncDriver {
             seeds,
             pass_gate,
             observers: listeners,
+            spill_dir,
         } = parts;
         let server_vault = db
             .call(|conn| super::server_vault::bound(conn))
@@ -280,9 +280,11 @@ impl SyncDriver {
             .with_vault(&server_vault)
             .with_bootstrap(Arc::clone(&bootstrap)),
         );
-        let packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
-            .with_concurrency(config.pack_concurrency)
+        let mut packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
             .with_vault(&server_vault);
+        if let Some(dir) = spill_dir {
+            packs = packs.with_spill_dir(dir);
+        }
 
         let tags = TagHub::over(db.clone(), &session.store)?;
         let mut engine = SyncEngine::new(Arc::new(feed), Arc::clone(&http), reachability)

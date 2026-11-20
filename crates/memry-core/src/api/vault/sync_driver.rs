@@ -87,6 +87,8 @@ impl Vault {
             seeds,
             pass_gate: crate::api::sync::pass_gate(&self.id),
             observers,
+            // Beside `data.db`, as `VaultSync::first_sync` holds it.
+            spill_dir: Some(std::path::Path::new(&self.directory).join("pack-spill")),
         })
         .await
     }

@@ -75,10 +75,12 @@ use super::store;
 
 mod baseline;
 mod log_writes;
+mod manifest;
 mod pack_seed;
 mod probe;
 
-pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed};
+pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;
+pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
 pub(super) use probe::Probed;
 
 /// §7.3: the client's own page size for a sweep, matching the reference's

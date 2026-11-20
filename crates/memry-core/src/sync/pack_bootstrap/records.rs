@@ -279,7 +279,7 @@ impl PackBootstrap {
     }
 }
 
-async fn download(http: &HttpClient, url: &str) -> Result<Vec<u8>, String> {
+pub(super) async fn download(http: &HttpClient, url: &str) -> Result<Vec<u8>, String> {
     let request = ApiRequest::new("GET", url)
         .auth(Auth::None)
         .retry(RetryPolicy::polled());

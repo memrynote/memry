@@ -58,11 +58,10 @@ use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::feed_restart;
 use super::first_sync_store::{
-    metadata_left_behind, owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids,
-    record_ref, write_meta,
+    metadata_left_behind, pending_metadata_ids, read_meta, record_ref, write_meta,
 };
 use super::note_body_feed;
-use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport, RecordPackReport};
+use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
 
 mod body_pass;
 mod open_session;
@@ -86,6 +85,9 @@ pub const META_FIRST_SYNC_WINDOW_START: &str = "first_sync.window_start";
 /// Set once the record pack phase ended: `1` when record packs were applied,
 /// so the manifest reconcile is due, `0` when none were.
 pub const META_FIRST_SYNC_RECORD_PACKS: &str = "first_sync.record_packs";
+/// Set once the body pack phase ended: `1` when it settled or owed every
+/// live document, `0` when the bodies were left to the item-granular pass.
+pub const META_FIRST_SYNC_BODY_PACKS: &str = "first_sync.body_packs";
 pub use reconcile::META_FIRST_SYNC_RECONCILED;
 
 /// How far back "recent" reaches, in milliseconds. Thirty days.
@@ -172,7 +174,7 @@ pub trait ProgressSink: Send + Sync {
     /// The pack bootstrap starts (`None`) and ends (`Some(report)`). A no-op
     /// by default: [`FirstSyncPhase`] and the FFI's `SyncPhase` have no packs
     /// pass, and only the desktop driver reports one (Electron's `packs`).
-    fn packs(&self, _report: Option<&PackBootstrapReport>) {}
+    fn packs(&self, _report: Option<&BodyPackReport>) {}
 }
 
 /// A sink that drops everything, for a caller that does not want progress.
@@ -198,7 +200,8 @@ pub struct FirstSyncReport {
     pub reconcile_removed: usize,
     /// Requests the reconcile sent: the manifest plus its pulls.
     pub reconcile_requests: usize,
-    pub packs: PackBootstrapReport,
+    /// Bodies from `crdt_snapshot` and `crdt_update` packs (§8.4.3, §8.10).
+    pub body_packs: BodyPackReport,
     pub bodies: BodyPullReport,
     /// The window boundary this run used, epoch milliseconds.
     pub window_start: i64,
@@ -269,8 +272,8 @@ impl FirstSync {
         self
     }
 
-    /// Seeds body baselines from `crdt_snapshot` packs before the bodies
-    /// pass, so it skips their snapshot GETs. Every pack failure falls back.
+    /// Takes records and bodies from packs (chapter 08). Every pack failure
+    /// falls back to the item-granular passes.
     pub fn with_packs(mut self, packs: Arc<PackBootstrap>) -> Self {
         self.packs = Some(packs);
         self
@@ -356,13 +359,11 @@ impl FirstSync {
                 feed_restart::reopen_cursor_skip_repair(conn)
             })
             .await?;
-        // After refs, so a tombstoned document is known and never seeded.
-        if let Some(packs) = &self.packs {
-            self.progress.packs(None);
-            report.packs = packs.run(now_ms / 1_000).await?;
-            self.progress.packs(Some(&report.packs));
-        }
-        self.bodies_pass(report.window_start, report).await?;
+        // After the reconcile, so a document whose record is a tombstone or
+        // absent takes no packed body (§8.10).
+        let body_packs_used = self.body_packs_pass(report).await?;
+        self.bodies_pass(report.window_start, body_packs_used, report)
+            .await?;
 
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
@@ -507,46 +508,6 @@ impl FirstSync {
                 total,
             });
         }
-        Ok(())
-    }
-
-    /// Pass three: bodies for the recent window.
-    ///
-    /// This is the pass that makes a note show its text. Everything above
-    /// carries note *metadata*; a body edit's record push carries
-    /// `content: null` (chapter 07's opening), so `yjs_updates` fills here or
-    /// it never fills at all.
-    async fn bodies_pass(
-        &self,
-        window_start: i64,
-        report: &mut FirstSyncReport,
-    ) -> Result<(), FirstSyncError> {
-        let limit = self.limits.recent_body_limit;
-        let window = self
-            .db
-            .call(move |conn| recent_document_ids(conn, window_start, limit))
-            .await?;
-        // §7.15: a tombstoned document is excluded by the query above. The
-        // server still answers with the surviving log, and applying it would
-        // resurrect a body the record feed says is deleted.
-
-        // Every live document is owed before any pull, the window included
-        // (a merged pull settles it), and so is a record an older build's
-        // interrupted run applied without a debt.
-        self.db.call(|conn| owe_live_documents(conn)).await?;
-
-        // Renewed once here rather than per request: the document pulls run
-        // concurrently and must not race each other into two renewals. The
-        // pass is minutes long against a sixty-minute token, so one check is
-        // enough; a lapsed token only drops the header (§10.11 rule 2).
-        let elevated = match &self.bootstrap {
-            Some(bootstrap) => bootstrap.renew_if_due(now_ms() / 1_000).await,
-            None => false,
-        };
-        report.bodies.absorb(
-            body_pass::pull_parallel(&self.bodies, &self.db, window, elevated, &self.progress)
-                .await?,
-        );
         Ok(())
     }
 

@@ -6,8 +6,9 @@
 //!
 //! - **records**: [`PullLoop::run`] over scripted `/sync/changes` and
 //!   `/sync/pull` responses, with real Ed25519 verify, AEAD and inflate.
-//! - **packed bodies**: [`PackBootstrap::run`] over `crdt_snapshot` packs
-//!   holding every note's baseline, with real Ed25519 verify and AEAD.
+//! - **packed bodies**: [`PackBootstrap::run_bodies`] over `crdt_snapshot`
+//!   packs holding every note's baseline, confirmed by a body manifest, with
+//!   real Ed25519 verify and AEAD.
 //! - **pulled bodies**: [`BodyPull::pull_documents`] over scripted
 //!   `/sync/crdt/snapshot` and `/sync/crdt/updates` responses for a tenth of
 //!   the notes, each with `MEMRY_BENCH_UPDATES` updates (default 10).
@@ -138,6 +139,8 @@ struct Fixture {
     script: Vec<String>,
     /// `crdt_snapshot` packs with every note's baseline, oldest first.
     packs: Vec<Vec<u8>>,
+    /// The `GET /sync/crdt/manifest` pages confirming every packed baseline.
+    manifest: Vec<String>,
     /// The per-document pull of `pulled_docs` documents.
     body_script: Vec<String>,
     pulled_docs: Vec<String>,
@@ -263,6 +266,22 @@ fn seed(count: usize) -> Fixture {
                 mpak(&entries)
             })
             .collect(),
+        manifest: snapshots
+            .chunks(1000)
+            .enumerate()
+            .map(|(page, chunk)| {
+                let documents: Vec<Json> = chunk
+                    .iter()
+                    .map(|(id, meta, _)| {
+                        json!({ "noteId": id, "floor": 0, "maxSequenceNum": 0,
+                                "snapshot": meta })
+                    })
+                    .collect();
+                let last = (page + 1) * 1000 >= snapshots.len();
+                let next = chunk.last().map(|(id, _, _)| id.clone()).filter(|_| !last);
+                json!({ "documents": documents, "nextCursor": next }).to_string()
+            })
+            .collect(),
         body_script,
         pulled_docs,
     }
@@ -349,14 +368,21 @@ async fn bench_local_apply_of_a_seeded_vault() {
     // The bootstrap downloads the newest pack (highest `maxCursor`) first.
     let mut script = vec![response(200, &pack_listing(fixture.packs.len()))];
     script.extend(fixture.packs.iter().rev().cloned().map(bytes_response));
+    script.extend(fixture.manifest.iter().map(|page| response(200, page)));
     let (http, pull) = bodies(FakeTransport::new(script));
     let started = Instant::now();
+    let spill = tempfile::Builder::new()
+        .prefix("memry-apply-bench-spill-")
+        .tempdir()
+        .expect("the spill directory")
+        .keep();
     let packed = PackBootstrap::new(http, db.clone(), pull)
-        .run(1_000)
+        .with_spill_dir(spill)
+        .run_bodies(1_000, &|_, _| {})
         .await
         .expect("the pack bootstrap");
     let packs = started.elapsed();
-    assert_eq!(packed.entries_applied, count, "every packed body seeded");
+    assert_eq!(packed.snapshots_applied, count, "every packed body seeded");
 
     let (_, pull) = bodies(FakeTransport::new(
         fixture
