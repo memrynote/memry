@@ -5,7 +5,7 @@
     "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
     "class": "settings-groups",
     "implementation": "crates/memry-core/src/domain/app_settings",
-    "groupCount": 17
+    "groupCount": 21
   },
   "ranges": {
     "general.fontSizePx": {
@@ -162,9 +162,62 @@
         "weekStartDay": "monday",
         "showNotesOnCalendar": false
       },
+      "syncable": [
+        "weekStartDay",
+        "showNotesOnCalendar",
+        "defaultWriteTarget"
+      ],
+      "maps": [],
+      "source": "apps/desktop/src/main/calendar/calendar-settings-sync.ts"
+    },
+    "calendar.google": {
+      "defaults": {
+        "defaultTargetCalendarId": null,
+        "onboardingCompleted": false,
+        "promoteConfirmDismissed": false,
+        "pushEventsToGoogle": true,
+        "agentReadEventsConsent": null
+      },
+      "syncable": [
+        "defaultTargetCalendarId",
+        "onboardingCompleted",
+        "promoteConfirmDismissed",
+        "pushEventsToGoogle",
+        "agentReadEventsConsent"
+      ],
+      "maps": [],
+      "source": "apps/desktop/src/main/calendar/calendar-settings-sync.ts"
+    },
+    "calendar.caldav": {
+      "defaults": {
+        "agentReadEventsConsent": null,
+        "pushEventsToProvider": true
+      },
+      "syncable": [
+        "agentReadEventsConsent",
+        "pushEventsToProvider"
+      ],
+      "maps": [],
+      "source": "apps/desktop/src/main/calendar/calendar-settings-sync.ts"
+    },
+    "calendar.ics": {
+      "defaults": {
+        "agentReadEventsConsent": null
+      },
+      "syncable": [
+        "agentReadEventsConsent",
+        "pushEventsToProvider"
+      ],
+      "maps": [],
+      "source": "apps/desktop/src/main/calendar/calendar-settings-sync.ts"
+    },
+    "calendar.apple-eventkit": {
+      "defaults": {
+        "agentReadEventsConsent": null
+      },
       "syncable": [],
       "maps": [],
-      "source": "packages/contracts/src/settings-schemas.ts"
+      "source": "apps/desktop/src/main/calendar/calendar-settings-sync.ts"
     },
     "features": {
       "defaults": {
@@ -338,5 +391,230 @@
       ],
       "source": "apps/desktop/src/main/settings/sidebar-*-store.ts"
     }
-  }
+  },
+  "calendarLeaves": [
+    {
+      "path": "calendar.weekStartDay",
+      "value": "sunday",
+      "accepted": true
+    },
+    {
+      "path": "calendar.weekStartDay",
+      "value": "monday",
+      "accepted": true
+    },
+    {
+      "path": "calendar.weekStartDay",
+      "value": "tuesday",
+      "accepted": false
+    },
+    {
+      "path": "calendar.weekStartDay",
+      "value": "Sunday",
+      "accepted": false
+    },
+    {
+      "path": "calendar.weekStartDay",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.weekStartDay",
+      "value": 0,
+      "accepted": false
+    },
+    {
+      "path": "calendar.showNotesOnCalendar",
+      "value": true,
+      "accepted": true
+    },
+    {
+      "path": "calendar.showNotesOnCalendar",
+      "value": false,
+      "accepted": true
+    },
+    {
+      "path": "calendar.showNotesOnCalendar",
+      "value": "true",
+      "accepted": false
+    },
+    {
+      "path": "calendar.showNotesOnCalendar",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": {
+        "provider": "google",
+        "remoteCalendarId": "primary"
+      },
+      "accepted": true
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": null,
+      "accepted": true
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": "garbage",
+      "accepted": false
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": {},
+      "accepted": false
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": {
+        "provider": "google"
+      },
+      "accepted": false
+    },
+    {
+      "path": "calendar.defaultWriteTarget",
+      "value": {
+        "provider": 1,
+        "remoteCalendarId": "primary"
+      },
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.defaultTargetCalendarId",
+      "value": "primary",
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.defaultTargetCalendarId",
+      "value": null,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.defaultTargetCalendarId",
+      "value": 5,
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.defaultTargetCalendarId",
+      "value": true,
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.onboardingCompleted",
+      "value": true,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.onboardingCompleted",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.onboardingCompleted",
+      "value": "yes",
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.promoteConfirmDismissed",
+      "value": false,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.promoteConfirmDismissed",
+      "value": 1,
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.pushEventsToGoogle",
+      "value": false,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.pushEventsToGoogle",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.pushEventsToGoogle",
+      "value": "no",
+      "accepted": false
+    },
+    {
+      "path": "calendar.google.agentReadEventsConsent",
+      "value": true,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.agentReadEventsConsent",
+      "value": null,
+      "accepted": true
+    },
+    {
+      "path": "calendar.google.agentReadEventsConsent",
+      "value": "yes",
+      "accepted": false
+    },
+    {
+      "path": "calendar.caldav.agentReadEventsConsent",
+      "value": false,
+      "accepted": true
+    },
+    {
+      "path": "calendar.caldav.agentReadEventsConsent",
+      "value": null,
+      "accepted": true
+    },
+    {
+      "path": "calendar.caldav.agentReadEventsConsent",
+      "value": "yes",
+      "accepted": false
+    },
+    {
+      "path": "calendar.caldav.pushEventsToProvider",
+      "value": false,
+      "accepted": true
+    },
+    {
+      "path": "calendar.caldav.pushEventsToProvider",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.caldav.pushEventsToProvider",
+      "value": "no",
+      "accepted": false
+    },
+    {
+      "path": "calendar.ics.agentReadEventsConsent",
+      "value": true,
+      "accepted": true
+    },
+    {
+      "path": "calendar.ics.agentReadEventsConsent",
+      "value": null,
+      "accepted": true
+    },
+    {
+      "path": "calendar.ics.agentReadEventsConsent",
+      "value": 1,
+      "accepted": false
+    },
+    {
+      "path": "calendar.ics.pushEventsToProvider",
+      "value": true,
+      "accepted": true
+    },
+    {
+      "path": "calendar.ics.pushEventsToProvider",
+      "value": null,
+      "accepted": false
+    },
+    {
+      "path": "calendar.ics.pushEventsToProvider",
+      "value": "no",
+      "accepted": false
+    }
+  ]
 }
