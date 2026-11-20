@@ -157,31 +157,36 @@ fn hear(
 }
 
 #[test]
-fn a_pulled_task_update_tells_the_renderer_its_activity_may_have_grown() {
+fn a_task_activity_page_tells_the_renderer_each_task_and_a_task_update_alone_tells_none() {
     let app = mock_app();
     let heard = hear(&app, &[TaskActivityCreatedEvent::NAME]);
-    let item = |item_type: &str, item_id: &str, operation| PulledItem {
-        item_type: item_type.into(),
-        item_id: item_id.into(),
-        operation,
-    };
 
     broadcast_sync_event(
         app.handle(),
-        &SyncEvent::Pulled(vec![
-            item("task", "t1", ItemOperation::Update),
-            item("task", "t2", ItemOperation::Create),
-            item("project", "p1", ItemOperation::Update),
-        ]),
+        &SyncEvent::Pulled(vec![PulledItem {
+            item_type: "task".into(),
+            item_id: "t1".into(),
+            operation: ItemOperation::Update,
+        }]),
+    );
+    broadcast_sync_event(
+        app.handle(),
+        &SyncEvent::TaskActivityCreated(vec!["t1".into(), "t2".into()]),
     );
 
     let heard = heard.lock().expect("lock");
     assert_eq!(
         *heard,
-        [(
-            TaskActivityCreatedEvent::NAME,
-            serde_json::json!({ "taskId": "t1" })
-        )]
+        [
+            (
+                TaskActivityCreatedEvent::NAME,
+                serde_json::json!({ "taskId": "t1" })
+            ),
+            (
+                TaskActivityCreatedEvent::NAME,
+                serde_json::json!({ "taskId": "t2" })
+            ),
+        ]
     );
 }
 

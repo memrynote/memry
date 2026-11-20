@@ -18,7 +18,6 @@ use super::contract::{
     TaskUpdateInput, TaskView,
 };
 use crate::session::OpenVault;
-use crate::sync::events::{ItemOperation, PulledItem};
 
 /// `createStatus` falls back to this when its write throws (`tasks-handlers.ts`).
 pub const STATUS_CREATE_FAILED: &str = "errors:taskStatus.createFailed";
@@ -204,20 +203,6 @@ impl TasksService {
         self.store.reorder_statuses(&ids, &input.positions)?;
         Ok(StatusMutation::ok(None))
     }
-}
-
-/// The tasks of a pulled page whose activity log may have grown: every task update, the one
-/// apply that writes a `superseded` row (core's `SupersededObserver`), so the renderer's
-/// `task-activity:created` listener refetches.
-pub fn activity_task_ids(items: &[PulledItem]) -> Vec<String> {
-    items
-        .iter()
-        .filter(|item| {
-            item.item_type == memry_core::domain::tasks::ITEM_TYPE
-                && item.operation == ItemOperation::Update
-        })
-        .map(|item| item.item_id.clone())
-        .collect()
 }
 
 fn views<T, V: From<T>>(items: Vec<T>) -> Vec<V> {

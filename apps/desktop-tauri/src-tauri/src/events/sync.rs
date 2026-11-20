@@ -3,7 +3,6 @@
 
 use memry_desktop::sync::events::{InitialSyncPhase as Phase, ItemOperation, SyncEvent};
 use memry_desktop::sync::status::SyncStatus;
-use memry_desktop::tasks::service::activity_task_ids;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
@@ -12,29 +11,33 @@ use super::{TaskActivityCreatedEvent, broadcast};
 /// Sends the typed event of one supervisor event.
 pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
     match event {
-        SyncEvent::Pulled(items) => {
-            // A pulled task update is where a lost local edit becomes a `superseded` row.
-            for task_id in activity_task_ids(items) {
-                broadcast(app, TaskActivityCreatedEvent { task_id });
+        SyncEvent::Pulled(items) => broadcast(
+            app,
+            SyncItemSyncedEvent {
+                operation: SyncDirection::Pull,
+                items: items
+                    .iter()
+                    .map(|item| SyncedItem {
+                        item_id: item.item_id.clone(),
+                        item_type: item.item_type.clone(),
+                        item_operation: match item.operation {
+                            ItemOperation::Create => SyncItemOperation::Create,
+                            ItemOperation::Update => SyncItemOperation::Update,
+                            ItemOperation::Delete => SyncItemOperation::Delete,
+                        },
+                    })
+                    .collect(),
+            },
+        ),
+        SyncEvent::TaskActivityCreated(task_ids) => {
+            for task_id in task_ids {
+                broadcast(
+                    app,
+                    TaskActivityCreatedEvent {
+                        task_id: task_id.clone(),
+                    },
+                );
             }
-            broadcast(
-                app,
-                SyncItemSyncedEvent {
-                    operation: SyncDirection::Pull,
-                    items: items
-                        .iter()
-                        .map(|item| SyncedItem {
-                            item_id: item.item_id.clone(),
-                            item_type: item.item_type.clone(),
-                            item_operation: match item.operation {
-                                ItemOperation::Create => SyncItemOperation::Create,
-                                ItemOperation::Update => SyncItemOperation::Update,
-                                ItemOperation::Delete => SyncItemOperation::Delete,
-                            },
-                        })
-                        .collect(),
-                },
-            )
         }
         SyncEvent::QueueCleared {
             item_count,

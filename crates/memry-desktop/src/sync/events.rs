@@ -16,6 +16,10 @@ pub enum SyncEvent {
     /// once with its last operation. A skipped record changed nothing and is not told
     /// (`pull-coordinator.ts:964-969`), and notes and journals are not told here.
     Pulled(Vec<PulledItem>),
+    /// These tasks' activity logs grew in a committed page, by a pulled peer row or a
+    /// `superseded` row this device wrote, each told after its row committed
+    /// (`task-activity-handler.ts:76`, `task-handler.ts`).
+    TaskActivityCreated(Vec<String>),
     /// A pass pushed rows and left the outbox empty (`push-coordinator.ts:518-535`).
     QueueCleared { item_count: u32, duration_ms: i64 },
     /// The local clock is off from the server's by more than five minutes and sync paused, in
@@ -120,6 +124,10 @@ impl ApplyObserver for EventObserver {
         if !items.is_empty() {
             (self.0)(&SyncEvent::Pulled(items));
         }
+    }
+
+    fn task_activity_created(&self, task_ids: &[String]) {
+        (self.0)(&SyncEvent::TaskActivityCreated(task_ids.to_vec()));
     }
 
     fn security_warning(&self, warning: &SecurityWarning) {

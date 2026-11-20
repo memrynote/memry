@@ -4125,9 +4125,9 @@ export type TagsProgressEvent = {
 };
 
 /**
- *  A task's activity log may have grown (`task-activity:created`): sent for every pulled task
- *  update, the one apply that writes a `superseded` row (`SupersededObserver`), so the open
- *  activity list refetches.
+ *  A task's activity log grew (`task-activity:created`): a pulled peer row or a `superseded` row
+ *  this device wrote, sent once its row committed (`SyncEvent::TaskActivityCreated`), so the
+ *  open activity list refetches.
  */
 export type TaskActivityCreatedEvent = {
 	taskId: string,

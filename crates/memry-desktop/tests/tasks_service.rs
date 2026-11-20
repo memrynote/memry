@@ -9,15 +9,13 @@ use memry_core::api::tasks::Tasks;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::domain::calendar::{CivilDate, LocalDateTime};
+use memry_core::domain::task_settings;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::sync::events::{ItemOperation, PulledItem};
 use memry_desktop::tasks::contract::{
     StatusCreateInput, StatusMutation, StatusReorderInput, StatusUpdateInput, TaskListInput,
     TaskUpdateInput,
 };
-use memry_desktop::tasks::service::{
-    STATUS_CREATE_FAILED, STATUS_NOT_FOUND, TasksService, activity_task_ids,
-};
+use memry_desktop::tasks::service::{STATUS_CREATE_FAILED, STATUS_NOT_FOUND, TasksService};
 use serde_json::json;
 
 use crate::device_key;
@@ -103,6 +101,14 @@ impl Fixture {
                     .unwrap())
             })
             .unwrap()
+    }
+
+    /// Sets the device-local `tasks.nestedSubtasks`.
+    fn nested_subtasks(&self, on: bool) {
+        self.vault
+            .db_handle()
+            .call_blocking(move |conn| task_settings::set_nested_subtasks(conn, on).map(drop))
+            .unwrap();
     }
 
     fn update(&self, id: &str, patch: serde_json::Value) -> TaskUpdateInput {
@@ -407,18 +413,40 @@ fn the_status_commands_refuse_with_electrons_keys() {
     );
 }
 
+/// `tasks.nestedSubtasks` (`checkParent` in `commands.ts`): off, a subtask cannot take a
+/// subtask, refused with Electron's key and nothing queued; on, the same move lands.
 #[test]
-fn a_pulled_task_update_names_its_task_for_the_activity_refetch() {
-    let item = |item_type: &str, item_id: &str, operation| PulledItem {
-        item_type: item_type.into(),
-        item_id: item_id.into(),
-        operation,
-    };
-    let ids = activity_task_ids(&[
-        item("task", "t1", ItemOperation::Update),
-        item("task", "t2", ItemOperation::Create),
-        item("project", "p1", ItemOperation::Update),
-        item("task", "t3", ItemOperation::Delete),
-    ]);
-    assert_eq!(ids, ["t1"]);
+fn tasks_update_follows_the_nested_subtasks_setting() {
+    let f = Fixture::new();
+    let top = f.task("Top", None, &[]);
+    let child = f.task("Child", None, &[]);
+    assert!(
+        f.service
+            .update(f.update(&child, json!({ "parentId": top })))
+            .unwrap()
+            .mutation
+            .success
+    );
+    let moved = f.task("Moved", None, &[]);
+    f.pushed();
+
+    f.nested_subtasks(false);
+    let refused = f
+        .service
+        .update(f.update(&moved, json!({ "parentId": child })))
+        .unwrap();
+    assert_eq!(
+        refused.mutation.error.as_deref(),
+        Some("errors:task.invalidParent"),
+        "off: a subtask takes no subtask"
+    );
+    assert_eq!(f.outbox(&moved), 0, "a refusal queues nothing");
+
+    f.nested_subtasks(true);
+    let written = f
+        .service
+        .update(f.update(&moved, json!({ "parentId": child })))
+        .unwrap();
+    assert!(written.mutation.success, "on: {written:?}");
+    assert_eq!(f.outbox(&moved), 1);
 }
