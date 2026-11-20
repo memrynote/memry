@@ -177,7 +177,7 @@ fn plan(listed: &[Listed], held: &[HeldRow], pull: &PullLoop) -> Plan {
             !exact
         })
         .collect();
-    wanted.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    wanted.sort_by_key(|item| std::cmp::Reverse(item.modified_at));
     let mut seen = HashSet::new();
     let pull_ids: Vec<String> = wanted
         .into_iter()
