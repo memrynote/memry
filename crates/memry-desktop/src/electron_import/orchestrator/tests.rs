@@ -174,9 +174,11 @@ impl World {
         for vault in report["vaults"].as_array_mut().unwrap() {
             vault.as_object_mut().unwrap().remove("sourceFingerprint");
         }
+        // The root as it reads inside a JSON string: on Windows its backslashes are doubled.
+        let root = serde_json::to_string(&*self.root.path().to_string_lossy()).unwrap();
         serde_json::to_string_pretty(&report)
             .unwrap()
-            .replace(&*self.root.path().to_string_lossy(), "<root>")
+            .replace(&root[1..root.len() - 1], "<root>")
     }
 
     /// The fingerprint of the vault's Electron `data.db` as it is now.

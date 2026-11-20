@@ -443,29 +443,18 @@ fn a_stale_marker_write_keeps_the_recorded_legacy_claim() {
     );
 }
 
-/// Makes every file of the legacy store but `LOCK` unreadable, or readable again: its fold then
-/// fails after the claim is recorded.
-#[cfg(unix)]
-fn legacy_unreadable(w: &World, unreadable: bool) {
-    use std::os::unix::fs::PermissionsExt as _;
-    let mode = if unreadable { 0o000 } else { 0o644 };
-    for entry in fs::read_dir(w.profile.join("crdt-store")).unwrap() {
-        let path = entry.unwrap().path();
-        if path.file_name() != Some("LOCK".as_ref()) {
-            fs::set_permissions(&path, fs::Permissions::from_mode(mode)).unwrap();
-        }
-    }
-}
-
 /// Away, with no uuid in its `data.db` or the config and missing at first launch, comes back;
 /// its first import fails in the fold, after its claim, then is retried. Returns the claim.
-#[cfg(unix)]
+/// The fold fails because the legacy store's `CURRENT` names a manifest that is not there, a
+/// fault that needs no permissions and so runs on every OS.
 fn fail_away_after_its_claim(w: &World) -> String {
     let away = PathBuf::from(w.vault("Away"));
     w.electron_vault("Away", None);
-    legacy_unreadable(w, true);
+    let current = w.profile.join("crdt-store").join("CURRENT");
+    let intact = fs::read(&current).unwrap();
+    fs::write(&current, "MANIFEST-999999\n").unwrap();
     let failed = migrate_vault(&w.ctx(None), &away);
-    legacy_unreadable(w, false);
+    fs::write(&current, intact).unwrap();
     assert!(failed.is_err(), "the fold failed");
     let claim = w.marker().unwrap().legacy_store_read_by.unwrap();
     migrate_vault(&w.ctx(None), &away).unwrap();
@@ -474,7 +463,6 @@ fn fail_away_after_its_claim(w: &World) -> String {
 
 /// VERIFY-5140C C4: the retry at the same path imports under the id the claim names and reads
 /// the note once. Red with the minted id not kept in the marker entry (`{0, claimedByOther}`).
-#[cfg(unix)]
 #[test]
 fn a_uuidless_vault_whose_fold_failed_after_its_claim_reads_the_store_on_retry() {
     let w = away_world(&[("Work", Some(WORK_UUID)), ("Away", None)]);
@@ -491,7 +479,6 @@ fn a_uuidless_vault_whose_fold_failed_after_its_claim_reads_the_store_on_retry()
 /// VERIFY-5140C finding 3: a profile whose one vault was last opened in Electron before June
 /// 2026 (no singleton, no config `vaultUuid`) reads the unclaimed legacy store as a listed vault
 /// with a uuid does, a failed first attempt included. Red with the minted id not kept.
-#[cfg(unix)]
 #[test]
 fn a_pre_june_profiles_uuidless_vault_reads_the_legacy_store() {
     let w = away_world(&[("Away", None)]);
