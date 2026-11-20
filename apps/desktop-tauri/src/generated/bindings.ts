@@ -348,10 +348,7 @@ export const commands = {
 	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
 	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
 	notesSetFolderConfig: (folderPath: string, config: FolderConfigInput) => __TAURI_INVOKE<null>("notes_set_folder_config", { folderPath, config }),
-	/**
-	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
-	 *  (Step 32) is not read: the renderer's service refuses it until its step.
-	 */
+	/**  `notes:create`, from a template when one is named or a tag names one. */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
 	/**
 	 *  `notes:delete`. A file holding text the note never read goes to the OS trash; where the
@@ -420,6 +417,17 @@ export const commands = {
 	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
+	/**
+	 *  `notes:import-files`: copies the files into the folder, vault-relative, or the vault's
+	 *  default note folder. One file that fails leaves the others; a path neither dropped nor
+	 *  picked, a folder outside the vault or a locked one refuses the call.
+	 */
+	notesImportFiles: (input: ImportFilesInput) => __TAURI_INVOKE<ImportFilesResult>("notes_import_files", { input }),
+	/**
+	 *  `notes:show-import-dialog`: files to import, from the supported types or any. What it returns
+	 *  is what `notes_import_files` may read next.
+	 */
+	notesShowImportDialog: () => __TAURI_INVOKE<ImportDialogResult>("notes_show_import_dialog"),
 	/**
 	 *  `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
 	 *  target's body. The renderer removes them from the source only once this answers; a refused
@@ -698,6 +706,12 @@ export const commands = {
 	syncGetVaultBinding: () => __TAURI_INVOKE<VaultBindingState>("sync_get_vault_binding"),
 	/**  `sync:auth-logout`. */
 	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
+	/**
+	 *  `sync:repair-device-keys`: a listed device restarts sync and answers whether its gate lets it
+	 *  run (`reasonSyncDidNotStart`, `device-registration.ts:400-413`); otherwise the device signed
+	 *  out keeping its master key and queue.
+	 */
+	syncRepairDeviceKeys: () => __TAURI_INVOKE<RepairDeviceKeysResult>("sync_repair_device_keys"),
 	/**
 	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
 	 *  `success: false` with the state unchanged, as Electron answers.
@@ -1182,11 +1196,12 @@ export type AppendedBlocks = {
 	targetPath: string,
 };
 
-/**  `ApplyTemplateSchema`, the fields this step reads. */
+/**  `ApplyTemplateSchema`. */
 export type ApplyTemplateInput = {
 	noteId: string,
 	templateId: string,
 	mode: TemplateMode,
+	plainChecklists?: boolean,
 };
 
 /**  The kinds of a note whose file is not markdown. */
@@ -2009,6 +2024,37 @@ export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | 
 /**  `ImpactResult`. */
 export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
 
+/**  `{ canceled, filePaths }` of `notes:show-import-dialog`. */
+export type ImportDialogResult = {
+	canceled: boolean,
+	filePaths: string[],
+};
+
+/**  `ImportFilesSchema`. */
+export type ImportFilesInput = {
+	sourcePaths: string[],
+	targetFolder?: string | null,
+	options?: PlainChecklistsOption | null,
+};
+
+/**  `ImportFilesResult`. */
+export type ImportFilesResult = {
+	success: boolean,
+	imported: number,
+	failed: number,
+	errors: string[],
+	importedFiles: ImportedFileInfo[],
+};
+
+/**  `ImportedFileInfo`. */
+export type ImportedFileInfo = {
+	/**  Absolute, as Electron's `path.join(targetDir, destFilename)`. */
+	destPath: string,
+	/**  The name the file had where it came from. */
+	filename: string,
+	fileType: FileType,
+};
+
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
@@ -2560,10 +2606,7 @@ export type NoteClustersResponse = {
 	missing: string[],
 };
 
-/**
- *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
- *  refuses until then.
- */
+/**  `NoteCreateSchema`. */
 export type NoteCreateInput = {
 	title: string,
 	content?: string | null,
@@ -2575,6 +2618,8 @@ export type NoteCreateInput = {
 	template?: string | null,
 	/**  Absent: the template's icon, if any; `null`: no icon. */
 	emoji?: string | null,
+	/**  The body's checkbox lines stay checklists (`NewNoteFile::plain_checklists`). */
+	plainChecklists?: boolean | null,
 };
 
 /**  A note was made, by the app or from a file that appeared (`notes:created`). */
@@ -2925,6 +2970,11 @@ export type PauseSyncResult = {
 	wasPaused: boolean,
 };
 
+/**  `PlainChecklistsOptionSchema`. */
+export type PlainChecklistsOption = {
+	plainChecklists?: boolean | null,
+};
+
 export type PlanChangePeriod = "monthly" | "annual";
 
 export type PlanChangePlan = "plus" | "pro";
@@ -3206,6 +3256,9 @@ export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
 	categories?: CategoryOrderInput[] | null,
 };
+
+/**  `RepairDeviceKeysResult` (`ipc-sync-ops.ts`). */
+export type RepairDeviceKeysResult = { status: "repaired" } | { status: "sync-not-started"; reason: SyncNotStartedReason } | { status: "sign-in-required" };
 
 /**  `ResolveVaultBindingResult`. */
 export type ResolveVaultBindingResult = {
@@ -3671,12 +3724,13 @@ export type SyncItemRecoveredEvent = {
 	type: string,
 };
 
-/**  `sync:item-synced`: one item went up or came down. */
+/**
+ *  `sync:item-synced`, once per committed pull page: every record the page changed, each once
+ *  with its last operation. Notes and journals come from the vault tier's events instead.
+ */
 export type SyncItemSyncedEvent = {
-	itemId: string,
-	type: string,
 	operation: SyncDirection,
-	itemOperation?: SyncItemOperation | null,
+	items: SyncedItem[],
 };
 
 /**  A link this device started was approved (`sync:linking-approved`). */
@@ -3699,6 +3753,9 @@ export type SyncLinkingRequestedEvent = {
 	newDeviceName: string,
 	newDevicePlatform: string,
 };
+
+/**  `SyncNotStartedReason` in `ipc-sync-ops.ts`. */
+export type SyncNotStartedReason = "vault-binding" | "vault-foreign" | "entitlement" | "unavailable";
 
 /**
  *  Why Sync Now sent and received nothing. `busy` is in the contract and never produced here:
@@ -3744,6 +3801,13 @@ export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_
 
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
+
+/**  One record of a [`SyncItemSyncedEvent`]. */
+export type SyncedItem = {
+	itemId: string,
+	type: string,
+	itemOperation: SyncItemOperation,
+};
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
