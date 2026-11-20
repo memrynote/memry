@@ -266,17 +266,7 @@ impl ReadwiseClient {
                 limiter.acquire(cancel).await?;
             }
             let request = self.http.get(url.clone()).timeout(self.timeout);
-            let auth = format!("Token {token}");
-            let sent = match HeaderValue::from_str(&auth) {
-                Ok(mut value) => {
-                    value.set_sensitive(true);
-                    request.header(AUTHORIZATION, value)
-                }
-                // reqwest refuses the same value at `send`, as a builder error: `network`, as
-                // Electron's `fetch` throws on it.
-                Err(_) => request.header(AUTHORIZATION, auth),
-            }
-            .send();
+            let sent = with_token(request, token).send();
             let response = cancellable(cancel, sent).await?.map_err(|error| {
                 tracing::warn!(
                     path,
@@ -331,6 +321,21 @@ impl ReadwiseClient {
                 .extend_pairs(query.iter().map(|(key, value)| (*key, value.as_str())));
         }
         url
+    }
+}
+
+/// Adds `Authorization: Token <token>`, marked sensitive so reqwest and hyper keep it out of
+/// `Debug` output and HTTP/2 header compression tables.
+fn with_token(request: reqwest::RequestBuilder, token: &str) -> reqwest::RequestBuilder {
+    let auth = format!("Token {token}");
+    match HeaderValue::from_str(&auth) {
+        Ok(mut value) => {
+            value.set_sensitive(true);
+            request.header(AUTHORIZATION, value)
+        }
+        // reqwest refuses the same value at `send`, as a builder error: `network`, as
+        // Electron's `fetch` throws on it.
+        Err(_) => request.header(AUTHORIZATION, auth),
     }
 }
 
