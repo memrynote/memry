@@ -24,6 +24,8 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
+use serde_json::Value as Json;
+use sha2::{Digest as _, Sha256};
 
 /// A transport that answers from a script, in order, and records what it was
 /// asked. Running past the end of the script is a test bug, so it panics
@@ -235,4 +237,48 @@ pub fn jwt(payload: serde_json::Value) -> String {
 
 pub fn body_json(request: &HttpRequest) -> serde_json::Value {
     serde_json::from_slice(request.body.as_ref().expect("request has a body")).unwrap()
+}
+
+/// A 200 whose body is raw bytes, such as a pack.
+pub fn bytes_response(bytes: Vec<u8>) -> Result<HttpResponse, TransportError> {
+    Ok(HttpResponse {
+        status: 200,
+        headers: Default::default(),
+        body: bytes,
+    })
+}
+
+/// A chapter 08 pack of `crdt_snapshot` entries: header, payload, index block, footer.
+pub fn mpak(entries: &[(&str, Option<Json>, Vec<u8>)]) -> Vec<u8> {
+    let text = |out: &mut Vec<u8>, value: &str| {
+        out.extend((value.len() as u16).to_be_bytes());
+        out.extend(value.as_bytes());
+    };
+    let mut payload = Vec::new();
+    let mut index = Vec::new();
+    for (id, meta, bytes) in entries {
+        index.push(1u8); // crdt_snapshot
+        text(&mut index, id);
+        text(&mut index, &format!("crdt/{id}"));
+        index.extend(1_760_000_000u64.to_be_bytes());
+        text(
+            &mut index,
+            &meta.as_ref().map(Json::to_string).unwrap_or_default(),
+        );
+        index.extend((payload.len() as u64).to_be_bytes());
+        index.extend((bytes.len() as u64).to_be_bytes());
+        index.extend(Sha256::digest(bytes));
+        payload.extend(bytes);
+    }
+    let mut out = b"MPAK".to_vec();
+    out.extend([1u8, 0, 0, 0]);
+    out.extend(&payload);
+    let index_offset = out.len() as u64;
+    out.extend(&index);
+    out.extend(Sha256::digest(&payload));
+    out.extend((entries.len() as u64).to_be_bytes());
+    out.extend(index_offset.to_be_bytes());
+    out.extend(b"MPAK");
+    out.push(1);
+    out
 }

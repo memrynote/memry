@@ -441,7 +441,7 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 | Reader                    | Server lists a `record` or `crdt_update` pack                                                                                                                                                                                                                                                    | A `record` pack without meta                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
 | desktop `v2026-11-19`     | `PackListResponseSchema` accepts all three kinds (`packages/contracts/src/sync-api.ts:717` at the tag); the pack is dropped before download (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:189` at the tag), and a non-snapshot entry in any pack it opens is counted skipped (`:347-350`) | never downloaded                                              |
-| Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:334-337`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
+| Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:322-325`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
 | a reader built to §8.4.2+ | reads it                                                                                                                                                                                                                                                                                         | each entry unusable, item stays on `POST /sync/pull` (§8.4.2) |
 
 - **New reader, old server.** A server whose `PACKED_KINDS` is
@@ -457,12 +457,12 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
   so a shipped reader meets them only on the last pages, after every snapshot
   pack. Both shipped readers stop after 20 pages
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:54` at the tag,
-  `crates/memry-core/src/sync/pack_bootstrap.rs:52`) of 50 packs
-  (`PACK_LIST_PAGE_LIMIT`, `:51` at the tag, `:49`). When the extra packs push a
+  `crates/memry-core/src/sync/pack_bootstrap.rs:51`) of 50 packs
+  (`PACK_LIST_PAGE_LIMIT`, `:51` at the tag, `:48`). When the extra packs push a
   listing past 1,000 packs, the walk ends `truncated`: the snapshot packs it saw
   still apply, and the applied-through watermark is not recorded
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:310-314` at the tag,
-  `crates/memry-core/src/sync/pack_bootstrap.rs:184-188`), so the next run lists
+  `crates/memry-core/src/sync/pack_bootstrap.rs:183-187`), so the next run lists
   again. That costs requests and loses nothing.
 - **Sizing dependency for part b.** Every run that ends `truncated` repeats
   the 20-page walk, so a vault whose listing passes 1,000 packs of all kinds
