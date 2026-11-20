@@ -201,7 +201,9 @@ an integer from 1, default and ceiling `CRDT_MANIFEST_PAGE_LIMIT` = 1000
 (`packages/contracts/src/sync-api.ts:886`); a larger value is capped. A
 `cursor` is the previous page's `nextCursor`, opaque to the client, and
 `nextCursor` is `null` on the last page, so a vault of `n` documents reads in
-`ceil(n / 1000)` requests. A malformed `cursor` or `limit` answers 400.
+`ceil(n / 1000)` requests. A page can hold more than `limit` documents, by
+the documents created in its range while it is read. A malformed `cursor` or
+`limit` answers 400.
 
 A page reads its key range first and then the documents in it with one D1
 batch (`apps/sync-server/src/services/crdt-manifest.ts:66`), so one
@@ -988,8 +990,9 @@ and no push response carries the cursor.
   whose reserved cursor is never used.
 - **Packs cover bodies on the same axis.** A reader that applied body packs
   tails this feed from the cursor chapter 08 §8.10 gives it, and confirms each
-  packed snapshot and the `floor` of its packed updates through
-  `POST /sync/crdt/updates/batch` read after the pack bytes
+  packed snapshot and the `floor` of its packed updates through a body
+  manifest read (§7.4.1) or `POST /sync/crdt/updates/batch`, read after the
+  pack bytes
   (`packages/contracts/src/sync-api.ts:769-784`).
 
 ### 7.17.1 What the feed serves

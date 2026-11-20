@@ -2480,7 +2480,7 @@ describe('CRDT rate limit wiring', () => {
     expect(optionsFor('crdt_push')).toMatchObject({ maxRequests: 300, windowSeconds: 60 })
   })
 
-  it('runs a 13,527-document body manifest (14 pages) inside one window', () => {
+  it('allows 30 body manifest pages per minute, room for 14 back to back', () => {
     // #then — ceil(n / 1000) pages back to back, elevated x3 under bootstrap
     expect(optionsFor('crdt_manifest')).toMatchObject({ maxRequests: 30, windowSeconds: 60 })
   })

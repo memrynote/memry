@@ -120,8 +120,8 @@ kind, the one its listing row names (`apps/sync-server/src/services/pack-compact
 selects one kind per pack). A reader still checks each entry's own `kind`.
 
 Snapshot entries carry `{sequenceNum, revision}` in `metaBytes`, which is the
-**freshness token a client compares against `snapshotMeta` before trusting the
-bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
+**freshness token a client compares against `snapshotMeta`, or against the body
+manifest's `snapshot.revision` (§8.4.3), before trusting the bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 ### 8.4.1 Will a reader ever see kind 2 — Q08.1
 
@@ -867,8 +867,9 @@ those entries inert:
   §5.8); a re-create seeds its clock from the tombstone, so it dominates the
   old entry too. A live entry of an item whose tombstone was shed is dropped
   by the manifest reconcile (§8.10).
-- `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`
-  read after the pack (§8.10); a deleted incarnation's revision never does.
+- `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`,
+  or the body manifest's `snapshot.revision` (§8.4.3), read after the pack
+  (§8.10); a deleted incarnation's revision never does.
 - `crdt_update`: applied only above a `floor` read after the pack (§8.4.3).
 
 A reader that applied a body and then meets the document's tombstone deletes
