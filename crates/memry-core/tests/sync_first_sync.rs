@@ -876,6 +876,85 @@ fn first_sync(
     FirstSync::new(pull, bodies, db.clone()).with_progress(progress)
 }
 
+fn bootstrap_opened()
+-> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError> {
+    response(
+        200,
+        &json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+            .to_string(),
+    )
+}
+
+fn closed_with_token(transport: &FakeTransport) -> Vec<Option<String>> {
+    transport
+        .calls_to("/sync/bootstrap/close")
+        .iter()
+        .map(|call| call.headers.get(BOOTSTRAP_TOKEN_HEADER).cloned())
+        .collect()
+}
+
+#[tokio::test]
+async fn a_first_sync_that_fails_mid_run_still_closes_its_bootstrap_session() {
+    // #5281: an early error return used to skip the close, so the session
+    // held one of the user's two slots until it expired.
+    let db = scratch_db("close-on-error");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        bootstrap_opened(),
+        error_response(400, "VALIDATION_ERROR", "the change feed refused"),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+
+    let failed = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_bootstrap(bootstrap)
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+
+    assert!(failed.is_err(), "the change feed failure fails the run");
+    assert_eq!(
+        closed_with_token(&transport),
+        [Some("boot-token".to_string())]
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_cancelled_mid_run_still_closes_its_bootstrap_session() {
+    // A shell cancels by dropping the run (a foreign future, an aborted
+    // task), which no `.await` after the passes survives.
+    let db = scratch_db("close-on-cancel");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[38u8; 32]).expect("keypair");
+    let transport = FakeTransport::slow(
+        vec![
+            bootstrap_opened(),
+            response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+            response(200, &json!({"success": true}).to_string()),
+        ],
+        50,
+    );
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+    let run = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_bootstrap(Arc::clone(&bootstrap));
+
+    // The open answers at 50 ms; at 75 ms the change feed is still in flight.
+    let cancelled = tokio::time::timeout(
+        std::time::Duration::from_millis(75),
+        run.run(epoch(MODIFIED_AT) + 1_000),
+    )
+    .await;
+    assert!(cancelled.is_err(), "the run was dropped mid-feed");
+    assert_eq!(transport.call_count(), 2, "the open and the change feed");
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    assert_eq!(
+        closed_with_token(&transport),
+        [Some("boot-token".to_string())]
+    );
+    assert_eq!(bootstrap.header(0), None);
+}
+
 #[test]
 fn a_replayed_update_is_skipped_rather_than_re_applied() {
     // §7.9's replay rule, at the storage layer: the same sequence twice is a

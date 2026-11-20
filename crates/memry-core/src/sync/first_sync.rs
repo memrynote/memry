@@ -66,7 +66,9 @@ use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 
 mod body_pass;
+mod open_session;
 mod refs_page;
+use open_session::OpenSession;
 use refs_page::{read_refs_page, reference_now};
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
@@ -287,6 +289,26 @@ impl FirstSync {
             report.elevated = bootstrap.open(now_ms / 1_000).await.elevated();
         }
 
+        // Close on every exit after the open, so a failed or cancelled run
+        // frees its slot (#5281). A close failure is logged by the client and
+        // never fails the run.
+        let session = OpenSession(self.bootstrap.clone());
+        let passes = self.passes(now_ms, &mut report).await;
+        session.close().await;
+        passes?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Done,
+            completed: 1,
+            total: 1,
+        });
+        Ok(report)
+    }
+
+    async fn passes(
+        &self,
+        now_ms: i64,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
         report.window_start = self.window_start(now_ms).await?;
 
         // The refs pass reads the feed from the start under this declaration,
@@ -301,8 +323,8 @@ impl FirstSync {
             })
             .await?;
 
-        self.refs_pass(&mut report).await?;
-        self.metadata_pass(&mut report).await?;
+        self.refs_pass(report).await?;
+        self.metadata_pass(report).await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
         // leaves its rows `metadata-only`. A row held corrupt or refused does too,
         // and a re-read does not fix it.
@@ -320,20 +342,12 @@ impl FirstSync {
             report.packs = packs.run(now_ms / 1_000).await?;
             self.progress.packs(Some(&report.packs));
         }
-        self.bodies_pass(report.window_start, &mut report).await?;
+        self.bodies_pass(report.window_start, report).await?;
 
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
             .await?;
-        if let Some(bootstrap) = &self.bootstrap {
-            bootstrap.close().await;
-        }
-        self.progress.progress(FirstSyncProgress {
-            phase: FirstSyncPhase::Done,
-            completed: 1,
-            total: 1,
-        });
-        Ok(report)
+        Ok(())
     }
 
     /// Pass one: `GET /sync/changes` to the end.
