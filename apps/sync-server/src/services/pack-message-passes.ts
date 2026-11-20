@@ -1,12 +1,25 @@
 import { createLogger } from '../lib/logger'
 import type { VaultScope } from './pack-index-write'
 import { rewritePurgedPacks } from './pack-purge-rewrite'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { REWRITE_PENDING, deleteReplacedPackObjects } from './pack-replaced-objects'
 
 const logger = createLogger('PackMessagePasses')
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
+
+const rewritesStillPending = async (db: D1Database, scope: VaultScope): Promise<boolean> =>
+  Boolean(
+    (
+      await db
+        .prepare(
+          `SELECT EXISTS (SELECT 1 FROM pack_replaced_objects
+             WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}') AS pending`
+        )
+        .bind(scope.userId, scope.vaultId)
+        .first<{ pending: number }>()
+    )?.pending
+  )
 
 /**
  * Runs one compaction or backfill message's `work` for a vault after the purge
@@ -51,6 +64,22 @@ export const withReplacedObjectPasses = async <T>(
     pending = (await deleteReplacedPackObjects(db, storage, scope)).pending
   } catch (error) {
     passFailure = { error }
+  }
+  // The first pass's answer is stale by now: a deletion pass resets the kind
+  // of a rewrite past its grace, and the other queue's pass may have finished
+  // the rest (VERIFY-5283 V2).
+  if (rewritesPending) {
+    try {
+      rewritesPending = await rewritesStillPending(db, scope)
+    } catch (error) {
+      rewriteFailure ??= { error }
+    }
+    if (!rewritesPending && rewriteFailure) {
+      logger.warn(`purge rewrite pass failed before the ${message}; nothing left pending`, {
+        vaultId: scope.vaultId,
+        rewriteError: errorMessage(rewriteFailure.error)
+      })
+    }
   }
   if (rewritesPending && !options.rewritesFatal) {
     logger.warn(`purge rewrites still pending after the ${message}; left to the purge retry`, {
