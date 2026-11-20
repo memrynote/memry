@@ -8,10 +8,11 @@ import { useAppUpdater } from '@/hooks/use-app-updater'
 import { createLogger } from '@/lib/logger'
 import { dismissInstallFailed, useInstallFailedDismissed } from './install-failed-dismissal'
 import { openLink } from '@/lib/external-link-guard'
+import { memrynoteUrl } from '@/lib/memrynote-url'
 
 const log = createLogger('Component:UpdateInstallFailedDialog')
 
-const DOWNLOAD_URL = 'https://memrynote.com/download/desktop'
+const DOWNLOAD_URL = memrynoteUrl('/download/desktop', 'update_failed')
 
 /**
  * Only surfaces for an install that was attempted and never applied — the flag is

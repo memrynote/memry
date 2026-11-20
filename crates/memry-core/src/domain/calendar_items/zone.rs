@@ -32,8 +32,10 @@ pub fn local_to_utc(zone: &dyn LocalZone, date: CivilDate, hour: u32, minute: u3
     let wall = date.days_since_epoch() * MS_PER_DAY
         + i64::from(hour) * 3_600_000
         + i64::from(minute) * 60_000;
-    let before = zone.offset_ms(wall - MS_PER_DAY / 2);
-    let after = zone.offset_ms(wall + MS_PER_DAY / 2);
+    // A day each side: offsets reach +14 h, so a half day can miss the
+    // transition of a zone past +12 h (Pacific/Chatham).
+    let before = zone.offset_ms(wall - MS_PER_DAY);
+    let after = zone.offset_ms(wall + MS_PER_DAY);
     if before == after {
         return wall - before;
     }
@@ -113,6 +115,43 @@ pub(crate) mod tests {
             crate::storage::repositories::instants::to_iso8601(later).as_deref(),
             Some("2026-11-01T15:00:00.000Z")
         );
+    }
+
+    /// Pacific/Chatham: +12:45, +13:45 in DST. The transitions sit 13 h 45 min
+    /// or more from the wall clock, past a half-day sample.
+    #[test]
+    fn zones_past_twelve_hours_resolve_their_transition_days() {
+        use crate::api::calendar_records::{CalendarZone, CalendarZoneTransition};
+        let chatham = CalendarZone {
+            identifier: "Pacific/Chatham".into(),
+            base_offset_ms: 45_900_000,
+            transitions: vec![
+                CalendarZoneTransition {
+                    at_ms: 1_758_981_600_000,
+                    offset_ms: 49_500_000,
+                },
+                CalendarZoneTransition {
+                    at_ms: 1_775_311_200_000,
+                    offset_ms: 45_900_000,
+                },
+            ],
+        };
+        // Expected values are Node's `new Date(...)` under TZ=Pacific/Chatham.
+        let cases = [
+            (day(2026, 4, 5), 2, 1_775_304_900_000), // before the overlap, DST
+            (day(2026, 4, 5), 3, 1_775_308_500_000), // overlap: the earlier instant
+            (day(2026, 4, 5), 4, 1_775_315_700_000), // after it, standard
+            (day(2025, 9, 28), 2, 1_758_978_900_000), // before the gap, standard
+            (day(2025, 9, 28), 3, 1_758_982_500_000), // gap: moves forward
+            (day(2025, 9, 28), 4, 1_758_982_500_000), // after it, DST
+        ];
+        for (date, hour, want) in cases {
+            assert_eq!(
+                local_to_utc(&chatham, date, hour, 0),
+                want,
+                "{date:?} {hour}:00"
+            );
+        }
     }
 
     #[test]
