@@ -13,6 +13,7 @@ use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
 use memry_desktop::shell::power::PowerEvent;
 use memry_desktop::sync::signals::SessionEndReason;
+use memry_desktop::vault::consumer::VaultTier;
 use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::RecvError;
@@ -93,6 +94,10 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
         on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
+        // Managed by the vault boot, a stage before this one.
+        tier: app
+            .try_state::<Arc<VaultTier>>()
+            .map(|tier| tier.inner().clone()),
         on_gate: Arc::new(move |gate| billing.attach_gate(gate)),
     });
     app.manage(bindings);

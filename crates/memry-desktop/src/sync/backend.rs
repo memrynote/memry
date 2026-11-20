@@ -9,6 +9,7 @@ use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
@@ -28,6 +29,14 @@ pub trait SyncPasses: Send + Sync {
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport>;
     /// A socket hint's pass; `None` while paused or when the hint was dropped.
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport>;
+    /// Whether this vault has not finished a first sync on this device.
+    async fn needs_first_sync(&self) -> Result<bool, SyncError>;
+    /// The first sync, its progress told to `progress`, then passes to the feed head. Answers
+    /// the last pass, with the rows every pass pushed; `None` while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError>;
     /// The vault's realtime socket: hints to `sink`, `on_connected` at each open, terminal
     /// closes latched in `latch`.
     fn realtime(
@@ -57,6 +66,17 @@ impl SyncPasses for SyncDriver {
     }
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
         SyncDriver::wake(self, cursor).await
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        SyncDriver::needs_first_sync(self).await
+    }
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        Ok(SyncDriver::first_sync(self, progress)
+            .await?
+            .and_then(|outcome| last_with_every_push(outcome.passes)))
     }
     fn realtime(
         &self,
@@ -101,6 +121,20 @@ impl SyncPasses for SyncDriver {
     }
 }
 
+/// The first sync's last catch-up pass, with the rows and push time of all of them: Electron's
+/// full sync pushes once and tells queue-cleared with every row it sent
+/// (`full-sync-runner.ts:453`).
+pub(super) fn last_with_every_push(passes: Vec<PassReport>) -> Option<PassReport> {
+    let pushed_items = passes.iter().map(|pass| pass.pushed_items).sum();
+    let push_ms = passes.iter().map(|pass| pass.push_ms).sum();
+    passes.into_iter().last().map(|mut last| {
+        last.pushed |= pushed_items > 0;
+        last.pushed_items = pushed_items;
+        last.push_ms = push_ms;
+        last
+    })
+}
+
 #[async_trait::async_trait]
 pub trait SyncBackend: Send + Sync {
     /// The account side of the gate, read at each start attempt.
@@ -127,6 +161,8 @@ pub struct VaultSyncBackend {
     reachability: Arc<dyn Reachability>,
     seeds: Vec<Arc<dyn PassSeed>>,
     account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    /// Heard by every driver this backend opens, after the supervisor's own.
+    observers: Vec<Arc<dyn ApplyObserver>>,
     keys: Arc<AtRestKeys>,
     /// Sync's hold on the at-rest key while a driver is open.
     guard: Arc<Mutex<Option<AtRestKeyGuard>>>,
@@ -154,10 +190,17 @@ impl VaultSyncBackend {
             reachability,
             seeds,
             account,
+            observers: Vec::new(),
             keys,
             guard: Arc::default(),
             closes: Arc::default(),
         }
+    }
+
+    /// Adds `observer` to every driver this backend opens (`sync::disk`).
+    pub fn with_observer(mut self, observer: Arc<dyn ApplyObserver>) -> Self {
+        self.observers.push(observer);
+        self
     }
 }
 
@@ -232,7 +275,10 @@ impl SyncBackend for VaultSyncBackend {
                 Arc::clone(&self.reachability),
                 DriverConfig::desktop(),
                 self.seeds.clone(),
-                observers,
+                observers
+                    .into_iter()
+                    .chain(self.observers.iter().cloned())
+                    .collect(),
             )
             .await
             .inspect_err(|_| self.close())?;

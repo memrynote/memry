@@ -42,6 +42,7 @@ use memry_core::api::vault::Vault;
 
 pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
+pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;

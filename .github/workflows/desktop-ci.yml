@@ -219,6 +219,9 @@ jobs:
       # The note export vectors come from Electron's export-utils.ts and export-image-inliner.ts.
       - name: Check note export vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:export:check
+      # The superseded activity id vectors come from Electron's tasks/activity-log.ts the same way.
+      - name: Check task superseded id vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:task-superseded:check
 
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.

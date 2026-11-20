@@ -2,6 +2,7 @@
 //! the renderer shows. The passes themselves are `memry_core::sync::driver::SyncDriver`'s.
 
 pub mod backend;
+pub mod disk;
 pub mod error_category;
 pub mod events;
 mod frames;

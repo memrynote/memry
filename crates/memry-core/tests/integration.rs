@@ -101,16 +101,22 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "body_tags_reindex.rs"]
+mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
+#[path = "calendar_feed_untrusted.rs"]
+mod calendar_feed_untrusted;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ical_vectors.rs"]
 mod calendar_ical_vectors;
 #[path = "calendar_provider_push.rs"]
 mod calendar_provider_push;
+#[path = "calendar_schema.rs"]
+mod calendar_schema;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
 #[path = "calendar_source_purge.rs"]
@@ -249,12 +255,16 @@ mod domain_tag_categories;
 mod domain_task_activity;
 #[path = "domain_task_settings.rs"]
 mod domain_task_settings;
+#[path = "domain_task_superseded.rs"]
+mod domain_task_superseded;
 #[path = "domain_task_views.rs"]
 mod domain_task_views;
 #[path = "domain_tasks.rs"]
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_list.rs"]
+mod domain_tasks_list;
 #[path = "domain_tasks_update.rs"]
 mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
@@ -511,6 +521,9 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[cfg(feature = "markdown")]
+#[path = "sync_task_conflicts.rs"]
+mod sync_task_conflicts;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
