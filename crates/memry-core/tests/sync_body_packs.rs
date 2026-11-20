@@ -255,7 +255,7 @@ async fn a_kill_in_a_download_or_on_the_manifest_resumes_without_downloading_a_h
 }
 
 #[tokio::test]
-async fn an_apply_that_fails_part_way_runs_again_with_every_update_once() {
+async fn an_apply_that_fails_part_way_resumes_with_every_update_once() {
     let (db, dir) = body_pack_server::scratch("abort");
     let (docs, packs) = three_shapes();
     seed_records(&db, &SHAPES.map(|(id, _)| id), &[]);
@@ -275,10 +275,7 @@ async fn an_apply_that_fails_part_way_runs_again_with_every_update_once() {
         .run_bodies(NOW_MS / 1_000, &|_, _| {})
         .await;
     assert!(failed.is_err(), "a storage failure fails the phase");
-    assert!(
-        !dir.join("pack-spill").exists(),
-        "the spill goes on every exit"
-    );
+    assert!(dir.join("pack-spill").exists(), "the packs stay held");
 
     db.call_blocking(|conn| {
         conn.execute_batch("DROP TRIGGER refuse").expect("drop");
@@ -287,11 +284,7 @@ async fn an_apply_that_fails_part_way_runs_again_with_every_update_once() {
     .expect("drop the trigger");
     let report = run_bodies(&db, &routes, &dir).await;
 
-    assert_eq!(
-        routes.count("/packs/"),
-        4,
-        "each pack again after the error"
-    );
+    assert_eq!(routes.count("/packs/"), 2, "no pack downloaded twice");
     holds_the_three_shapes(&db, &routes);
     assert_eq!((report.settled, report.owed), (3, 0));
 }
@@ -446,12 +439,25 @@ async fn a_lost_pack_leaves_its_documents_owed(label: &str, lose: impl FnOnce(&m
     holds_exactly(&db, server.doc("lostdoc00001"), 4);
     holds_exactly(&db, server.doc("keptdoc00001"), 3);
     assert!(!is_owed(&db, "lostdoc00001"), "{label}");
+    for pack in ["/packs/s1", "/packs/s2"] {
+        assert_eq!(routes.count(pack), 1, "{label}: {pack} again");
+    }
 }
 
 #[tokio::test]
 async fn a_corrupt_snapshot_pack_leaves_its_documents_owed() {
     a_lost_pack_leaves_its_documents_owed("corrupt", |server| {
         server.corrupt.insert("s1".to_owned());
+    })
+    .await;
+}
+
+/// A network drop on a download is no error of the phase: the pack is
+/// absent, the finished packs are used, and none is downloaded again.
+#[tokio::test]
+async fn a_network_drop_mid_download_uses_the_finished_packs() {
+    a_lost_pack_leaves_its_documents_owed("dropped", |server| {
+        server.dropped.insert("u1".to_owned());
     })
     .await;
 }

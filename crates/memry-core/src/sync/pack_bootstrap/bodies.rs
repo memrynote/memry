@@ -170,9 +170,10 @@ impl PackBootstrap {
     /// `ran: false`: the item-granular bodies pass then decides every
     /// document, as before packs. Only a SQLite failure is an error.
     ///
-    /// The spill is removed on every return, an error included: the phase
-    /// runs again only after a kill, and then it finds the spill of the
-    /// killed run and downloads no held pack again.
+    /// The spill is removed on every `Ok`, `ran: false` included, since the
+    /// phase does not run again after one. An `Err` keeps it: the first sync
+    /// is retried with the marker unset, and the retry downloads no held
+    /// pack again.
     pub async fn run_bodies(
         &self,
         now_s: i64,
@@ -185,8 +186,9 @@ impl PackBootstrap {
         let result = self
             .bodies_through(dir, now_s, &mut report, on_progress)
             .await;
+        result?;
         report.fallback_reasons.extend(spill::remove(dir).await);
-        result.map(|()| report)
+        Ok(report)
     }
 
     /// Removes a spill a killed run left, for a resume that does not run the

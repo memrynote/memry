@@ -336,6 +336,8 @@ pub struct Server {
     pub corrupt: HashSet<String>,
     /// Packs listed but answering 404 on download.
     pub gone: HashSet<String>,
+    /// Packs whose download the network drops.
+    pub dropped: HashSet<String>,
     /// `GET /sync/packs` answers 404 from this call on (0 is the first).
     pub listing_missing_from: Option<usize>,
     listings: usize,
@@ -353,6 +355,7 @@ impl Server {
             hang: None,
             corrupt: HashSet::new(),
             gone: HashSet::new(),
+            dropped: HashSet::new(),
             listing_missing_from: None,
             listings: 0,
         }
@@ -478,6 +481,11 @@ impl Server {
         if let Some(id) = url.strip_prefix(R2) {
             if id == "r0" {
                 return Some(bytes_response(self.record_pack()));
+            }
+            if self.dropped.contains(id) {
+                return Some(Err(TransportError::Failed {
+                    what: "the network dropped".to_owned(),
+                }));
             }
             if self.gone.contains(id) {
                 return Some(response(404, ""));
