@@ -4,13 +4,13 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-s
 import { AppError } from '../lib/errors'
 import {
   ENQUEUE_RETRY_DELAYS_MS,
-  PACK_TARGET_BYTES,
   compactOneRange,
   compactVault,
   enqueuePackCompaction,
-  insertPackIndexRow,
   selectCandidates
 } from './pack-compaction'
+import { insertPackIndexRow } from './pack-index-write'
+import { PACK_TARGET_BYTES } from './pack-sizing'
 import { extractEntry, packSha256, parsePack } from './pack-format'
 
 /**

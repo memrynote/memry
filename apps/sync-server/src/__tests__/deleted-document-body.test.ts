@@ -9,6 +9,7 @@ import { getSnapshot, getUpdates, storeUpdates } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { purgeDeletedDocumentBodies } from '../services/document-body-purge'
 import { compactOneRange } from '../services/pack-compaction'
+import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
 import type { RecordSyncItemType } from '@memry/contracts/sync-api'
 
@@ -294,6 +295,10 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     })
 
     const scope = { userId: USER_ID, vaultId: VAULT_ID }
+    // Written a settle interval ago, so the build meets the minimum fill (#5229).
+    harness.raw
+      .prepare('UPDATE crdt_snapshots SET created_at = created_at - ?')
+      .run(PACK_SETTLE_SECONDS)
     const racing = await compactOneRange(harness.db, storage, scope, 'crdt_snapshot')
     expect(raced).toBe(true)
     expect(count('pack_index')).toBe(0)

@@ -9,11 +9,8 @@ import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { runPackBackfill } from '../services/pack-backfill'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { extractEntry, parsePack, type PackedEntry } from '../services/pack-format'
-import {
-  UPDATE_PACK_MAX_WAIT_SECONDS,
-  UPDATE_PACK_MIN_ROWS,
-  updateSelectionQuery
-} from '../services/pack-update-selection'
+import { PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from '../services/pack-sizing'
+import { updateSelectionQuery } from '../services/pack-update-selection'
 import type { AppContext, Bindings } from '../types'
 import {
   CrdtUpdatePackEntryMetaSchema,
@@ -169,7 +166,7 @@ const writeSnapshot = (noteId: string, data: ArrayBuffer, coversThrough?: number
   )
 
 /** Moves the clock past the update minimum fill's wait, so any unpacked update row is due. */
-const passFillWait = () => vi.setSystemTime(Date.now() + (UPDATE_PACK_MAX_WAIT_SECONDS + 1) * 1000)
+const passFillWait = () => vi.setSystemTime(Date.now() + (PACK_SETTLE_SECONDS + 1) * 1000)
 
 /**
  * Builds packs until no kind has anything left above its watermark: the push
@@ -451,7 +448,7 @@ describe('crdt_update packs (#5228)', () => {
   })
 
   it('the cron backfill builds an update pack once the vault holds the minimum row count', async () => {
-    for (let i = 0; i < UPDATE_PACK_MIN_ROWS; i += 64) {
+    for (let i = 0; i < PACK_MIN_FILL_ROWS; i += 64) {
       await writeUpdates(`note-${i}`, ...Array.from({ length: 64 }, (_, j) => bytes(i % 256, j)))
     }
 

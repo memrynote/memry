@@ -3,7 +3,8 @@ import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 import { createLogger } from '../lib/logger'
 import { PACKED_KINDS, compactOneRange } from './pack-compaction'
 import type { PackKindName } from './pack-format'
-import { UPDATE_PACK_MAX_WAIT_SECONDS, UPDATE_PACK_MIN_ROWS } from './pack-update-selection'
+import { ROLLUP_SUBREQUESTS, deleteReplacedPackObjects, rollupKind } from './pack-rollup'
+import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
 const logger = createLogger('PackBackfill')
 
@@ -38,6 +39,12 @@ export const PACKS_PER_BACKFILL_TICK = 3
 const SUBREQUESTS_PER_PACK = 300
 const SUBREQUEST_CEILING_PER_TICK = 900
 
+// Rollups per tick, run before the builds. A vault that stopped pushing gets no
+// nudge, so the tick is what brings it under its pack bound, a vault at the
+// listing cap included (protocol 08 §8.14). Four take 288 of the 900, which
+// leaves two builds.
+export const ROLLUPS_PER_BACKFILL_TICK = 4
+
 interface BacklogVaultRow {
   user_id: string
   vault_id: string
@@ -52,9 +59,9 @@ interface BacklogVaultRow {
  * created_at index from 0007. A full
  * index scan every 6 hours is acceptable for an admin-paced maintenance job;
  * LIMIT keeps the result bounded regardless of account count. A vault at the
- * listing cap is left out, and an update backlog counts only once it meets the
- * minimum fill (pack-update-selection.ts), so the tick spends no budget on a
- * vault whose build would be a noop.
+ * listing cap is left out, and a backlog counts only once it meets the
+ * minimum fill (pack-sizing.ts), so the tick spends no budget on a vault whose
+ * build would be a noop.
  */
 const findBacklogVaults = async (
   db: D1Database,
@@ -68,19 +75,17 @@ const findBacklogVaults = async (
         ? 'crdt_updates si'
         : 'crdt_snapshots si'
   const sortColumn = kind === 'crdt_snapshot' ? 'si.created_at' : 'si.server_cursor'
+  const timeColumn = kind === 'record' ? 'si.updated_at' : 'si.created_at'
   // A vault at the listing cap (§8.14) builds nothing, so it is no backlog:
   // left in, it sorts first every tick and spends the budget of every vault.
   const room = {
     sql: '(SELECT COUNT(*) FROM pack_index p WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?',
     bind: [PACK_LIST_MAX_PACKS_PER_VAULT]
   }
-  const fill =
-    kind === 'crdt_update'
-      ? {
-          sql: ' AND (COUNT(*) >= ? OR MIN(si.created_at) <= ?)',
-          bind: [UPDATE_PACK_MIN_ROWS, Math.floor(Date.now() / 1000) - UPDATE_PACK_MAX_WAIT_SECONDS]
-        }
-      : { sql: '', bind: [] }
+  const fill = {
+    sql: ` AND (COUNT(*) >= ? OR MIN(${timeColumn}) <= ?)`,
+    bind: [PACK_MIN_FILL_ROWS, Math.floor(Date.now() / 1000) - PACK_SETTLE_SECONDS]
+  }
   const result = await db
     .prepare(
       `SELECT si.user_id, si.vault_id, MIN(${sortColumn}) AS oldest_pending
@@ -98,7 +103,26 @@ const findBacklogVaults = async (
   return result.results ?? []
 }
 
+/** Kinds that list more packs than their bound (pack-sizing.ts), most packs first. */
+const findRollupScopes = async (
+  db: D1Database,
+  limit: number
+): Promise<Array<{ user_id: string; vault_id: string; item_kind: PackKindName }>> => {
+  const result = await db
+    .prepare(
+      `SELECT user_id, vault_id, item_kind, COUNT(*) AS packs FROM pack_index
+       GROUP BY user_id, vault_id, item_kind
+       HAVING COUNT(*) > ${PACK_COUNT_BOUND_SQL}
+       ORDER BY packs DESC
+       LIMIT ?`
+    )
+    .bind(limit)
+    .all<{ user_id: string; vault_id: string; item_kind: PackKindName }>()
+  return result.results ?? []
+}
+
 export interface BackfillTickResult {
+  rollups: number
   packsBuilt: number
   scopesVisited: number
   budgetRemaining: number
@@ -116,6 +140,34 @@ export const runPackBackfill = async (
   let budget = Math.min(packsPerTick * SUBREQUESTS_PER_PACK, SUBREQUEST_CEILING_PER_TICK)
   let packsBuilt = 0
   let scopesVisited = 0
+  let rollups = 0
+
+  try {
+    await deleteReplacedPackObjects(db, storage)
+  } catch (error) {
+    logger.error('replaced pack object deletion failed', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+
+  for (const row of await findRollupScopes(db, ROLLUPS_PER_BACKFILL_TICK)) {
+    try {
+      const result = await rollupKind(
+        db,
+        storage,
+        { userId: row.user_id, vaultId: row.vault_id },
+        row.item_kind
+      )
+      if (result) rollups++
+    } catch (error) {
+      logger.error('backfill rollup failed', {
+        vaultId: row.vault_id,
+        kind: row.item_kind,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+    budget -= ROLLUP_SUBREQUESTS
+  }
 
   outer: for (const kind of PACKED_KINDS) {
     // Ask for more candidate scopes than the budget allows; extra rows are
@@ -148,5 +200,5 @@ export const runPackBackfill = async (
     }
   }
 
-  return { packsBuilt, scopesVisited, budgetRemaining: budget }
+  return { rollups, packsBuilt, scopesVisited, budgetRemaining: budget }
 }

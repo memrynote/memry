@@ -8,6 +8,7 @@ import type { AppContext, Bindings } from '../types'
 import { cleanupExpiredTombstones } from './cleanup'
 import { compactOneRange, compactVault } from './pack-compaction'
 import { extractEntry, parsePack, type PackedEntry } from './pack-format'
+import { PACK_SETTLE_SECONDS } from './pack-sizing'
 import {
   RECORD_SYNC_ITEM_TYPES,
   RecordPackEntryMetaSchema,
@@ -237,6 +238,11 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+// Rows written a settle interval ago, so a build meets the minimum fill (#5229).
+const settleRecords = (): void => {
+  harness.raw.prepare('UPDATE sync_items SET updated_at = updated_at - ?').run(PACK_SETTLE_SECONDS)
+}
+
 describe('record packs carry the pull item (#5227)', () => {
   it('packs every record, tombstones included, exactly as POST /sync/pull returns it', async () => {
     const app = buildApp()
@@ -251,6 +257,7 @@ describe('record packs carry the pull item (#5227)', () => {
       { id: 'task-gone', clock: { [DEVICE_ID]: 2 }, deletedAt: now() }
     ])
 
+    settleRecords()
     await compactVault(harness.db, storage, SCOPE)
 
     const packed = await packedRecordItems()
@@ -285,6 +292,7 @@ describe('record packs carry the pull item (#5227)', () => {
       return realGet(key)
     })
 
+    settleRecords()
     const result = await compactOneRange(harness.db, storage, SCOPE, 'record')
     vi.mocked(storage.get).mockRestore()
 
@@ -310,6 +318,7 @@ describe('record packs carry the pull item (#5227)', () => {
       return realGet(key)
     })
 
+    settleRecords()
     await compactOneRange(harness.db, storage, SCOPE, 'record')
     vi.mocked(storage.get).mockRestore()
 
@@ -332,6 +341,7 @@ describe('record packs carry the pull item (#5227)', () => {
       return realGet(key)
     })
 
+    settleRecords()
     const raced = await compactOneRange(harness.db, storage, SCOPE, 'record')
     vi.mocked(storage.get).mockRestore()
 
@@ -341,6 +351,7 @@ describe('record packs carry the pull item (#5227)', () => {
     expect(rowOf('task-x')).toEqual({ blob_key: '', server_cursor: shedding.server_cursor })
 
     // The next run reads the marker as it now is: no payload, no entry.
+    settleRecords()
     await compactOneRange(harness.db, storage, SCOPE, 'record')
     expect((await packedRecordItems()).map(({ item }) => item)).toEqual(await pull(app, ['task-y']))
     expect(recordWatermark()).toBe(rowOf('task-y').server_cursor)
@@ -361,6 +372,7 @@ describe('record packs carry the pull item (#5227)', () => {
       return realGet(key)
     })
 
+    settleRecords()
     const raced = await compactOneRange(harness.db, storage, SCOPE, 'record')
     vi.mocked(storage.get).mockRestore()
 
@@ -379,6 +391,7 @@ describe('record packs carry the pull item (#5227)', () => {
     await push(app, [{ id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
     await storage.delete(rowOf('task-x').blob_key)
 
+    settleRecords()
     const result = await compactOneRange(harness.db, storage, SCOPE, 'record')
 
     expect(result.built).toBe(true)
@@ -397,10 +410,12 @@ describe('record packs carry the pull item (#5227)', () => {
       { id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } },
       { id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }
     ])
+    settleRecords()
     await compactVault(harness.db, storage, SCOPE)
     await expiredTombstone(app, 'task-x')
     await push(app, [{ id: 'task-z', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
     expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(1)
+    settleRecords()
     await compactVault(harness.db, storage, SCOPE)
 
     const packedX = (await packedRecordItems()).filter(({ item }) => item.id === 'task-x')

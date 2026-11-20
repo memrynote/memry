@@ -474,13 +474,17 @@ export const cleanupOrphanedPackObjects = async (
       .filter((object) => object.uploaded.getTime() <= cutoff)
       .map((object) => object.key)
     if (old.length > 0) {
-      // Rechecked right before the delete: only a key no row lists goes.
+      // Rechecked right before the delete: only a key no row lists goes. A
+      // rollup's replaced object waits out its grace period in
+      // pack_replaced_objects, whose own deletion owns it (pack-rollup.ts).
       const listed = await db
         .prepare(
           `SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ?
-             AND pack_key IN (${old.map(() => '?').join(',')})`
+             AND pack_key IN (SELECT value FROM json_each(?))
+           UNION SELECT pack_key FROM pack_replaced_objects
+             WHERE pack_key IN (SELECT value FROM json_each(?))`
         )
-        .bind(point.user_id, point.vault_id, ...old)
+        .bind(point.user_id, point.vault_id, JSON.stringify(old), JSON.stringify(old))
         .all<{ pack_key: string }>()
       const keep = new Set((listed.results ?? []).map((row) => row.pack_key))
       const orphans = old.filter((key) => !keep.has(key))

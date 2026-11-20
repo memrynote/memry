@@ -172,8 +172,8 @@ describe('runPackBackfill', () => {
     // (#5227): the dead vaults' tombstone markers are not entries, and the
     // record watermark moves past them.
     expect(ticks).toEqual([
-      { packsBuilt: 0, scopesVisited: 3, budgetRemaining: 0 },
-      { packsBuilt: 1, scopesVisited: 3, budgetRemaining: 0 }
+      { rollups: 0, packsBuilt: 0, scopesVisited: 3, budgetRemaining: 0 },
+      { rollups: 0, packsBuilt: 1, scopesVisited: 3, budgetRemaining: 0 }
     ])
     const packed = harness.raw
       .prepare('SELECT DISTINCT user_id FROM pack_index ORDER BY user_id')
