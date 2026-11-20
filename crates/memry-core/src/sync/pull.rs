@@ -86,6 +86,8 @@ pub use super::pull_report::{PullError, PullReport};
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
+mod shared_apply;
+
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
     http: Arc<HttpClient>,
@@ -332,61 +334,6 @@ impl PullLoop {
         let yielded = report.applied + report.deleted + report.skipped + report.expired;
         report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
 
-        Ok(report)
-    }
-
-    /// Fetches, decodes and applies a named set of ids, **without touching
-    /// the record cursor**.
-    ///
-    /// The first sync's metadata pass (T122) drives this: its work list is
-    /// the `payload_state = 'metadata-only'` rows the refs pass recorded, not
-    /// a position in the feed, so there is no cursor to move and §5.14's page
-    /// breaker — which is about a page of the feed — does not apply. Every
-    /// other rule does: per-item validation, the §5.13 apply order, and one
-    /// corrupt item never poisoning its chunk mates.
-    pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
-        let mut report = PullReport::default();
-        let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-
-        let decoder = self.decoder();
-        let mut decoding = Vec::with_capacity(ids.len().div_ceil(MAX_PULL_IDS));
-        for chunk in ids.chunks(MAX_PULL_IDS) {
-            let mut body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get_mut("items").and_then(Json::as_array_mut) else {
-                report.dropped_pages += 1;
-                continue;
-            };
-            decoding.push(decoder.spawn(std::mem::take(items)));
-        }
-        for chunk in decoding {
-            self.take_items(chunk, &mut report, &mut pending).await?;
-        }
-
-        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let now = now_ms();
-        let clock_device = self.clock_device.clone();
-        let outcomes = self
-            .db
-            .call(move |conn| {
-                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-                let totals = apply_items(
-                    &txn,
-                    pending,
-                    Vec::new(),
-                    false,
-                    now,
-                    clock_device.as_deref(),
-                )?;
-                txn.commit().map_err(sqlite_failed)?;
-                Ok(totals)
-            })
-            .await?;
-        report.applied += outcomes.applied;
-        report.deleted += outcomes.deleted;
-        report.skipped += outcomes.skipped;
-        report.corrupt += outcomes.corrupt;
-        report.expired += outcomes.expired;
-        report.purged_documents.extend(outcomes.purged_documents);
         Ok(report)
     }
 
