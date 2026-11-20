@@ -84,6 +84,17 @@ function recordPathWrite(db: NoteMetadataDb, row: NoteMetadata | undefined): voi
   if (index && row) trackPath(index, row.id, row.path)
 }
 
+function buildFoldedPathIndex(db: NoteMetadataDb, dataVersion: number): FoldedPathIndex {
+  const index: FoldedPathIndex = { dataVersion, idsByKey: new Map() }
+  for (const row of db
+    .select({ id: noteMetadata.id, path: noteMetadata.path })
+    .from(noteMetadata)
+    .all()) {
+    trackPath(index, row.id, row.path)
+  }
+  return index
+}
+
 /**
  * Every row whose path folds to the same key as `path`, `path` itself
  * included. Each candidate is read back by id, so the rows come from the
@@ -93,21 +104,19 @@ function recordPathWrite(db: NoteMetadataDb, row: NoteMetadata | undefined): voi
  * module's writes, so a miss costs a map lookup instead of a table scan per
  * file. A commit by another connection (the CLI) rebuilds it. A write to
  * `note_metadata` on this connection that bypasses this module would be
- * missed until the next rebuild.
+ * missed until the next rebuild. Inside a transaction the table read sees
+ * writes that may roll back, so an index built there is used for that call
+ * only and never cached.
  */
 export function listNoteMetadataByFoldedPath(db: NoteMetadataDb, path: string): NoteMetadata[] {
   const connection = connectionOf(db)
   const dataVersion = db.get<{ data_version: number }>(sql`PRAGMA data_version`)?.data_version ?? 0
   let index = foldedPathIndexes.get(connection)
   if (!index || index.dataVersion !== dataVersion) {
-    index = { dataVersion, idsByKey: new Map() }
-    for (const row of db
-      .select({ id: noteMetadata.id, path: noteMetadata.path })
-      .from(noteMetadata)
-      .all()) {
-      trackPath(index, row.id, row.path)
-    }
-    foldedPathIndexes.set(connection, index)
+    index = buildFoldedPathIndex(db, dataVersion)
+    // A transaction may still roll back what this read saw.
+    const inTransaction = 'inTransaction' in connection && connection.inTransaction === true
+    if (!inTransaction) foldedPathIndexes.set(connection, index)
   }
   const key = foldNotePath(path)
   return [...(index.idsByKey.get(key) ?? [])]

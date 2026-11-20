@@ -690,7 +690,6 @@ export class VaultWatcher {
   ): Promise<void> {
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) return
-    const cached = getNoteCacheById(db, claimed.id)
     if (fileType === 'markdown') {
       syncNoteStatToCache(
         db,
@@ -701,8 +700,9 @@ export class VaultWatcher {
           createdAt: claimed.createdAt,
           modifiedAt: stats.mtime.toISOString(),
           fileSize: stats.size,
-          localOnly: cached?.localOnly ?? false,
-          emoji: cached?.emoji ?? null
+          // The canonical row owns both; the index row can lag behind it.
+          localOnly: claimed.localOnly,
+          emoji: claimed.emoji
         },
         { isNew: false }
       )

@@ -366,6 +366,20 @@ describe('note-metadata-repository', () => {
       expect(idsFor('docs/b.md')).toEqual(['stayed'])
       expect(idsFor('other/b.md')).toEqual([])
     })
+
+    it('still finds a row when the index was first read inside a transaction that rolled back', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'kept', path: 'Docs/a.md' }))
+
+      expect(() =>
+        testDb.db.transaction((tx) => {
+          deleteNoteMetadata(tx, 'kept')
+          expect(listNoteMetadataByFoldedPath(tx, 'docs/a.md')).toEqual([])
+          throw new Error('rollback')
+        })
+      ).toThrow('rollback')
+
+      expect(idsFor('docs/a.md')).toEqual(['kept'])
+    })
   })
 
   describe('countLocalOnlyNoteMetadata', () => {

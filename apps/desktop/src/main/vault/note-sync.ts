@@ -108,6 +108,7 @@ export interface CanonicalNoteRef {
   title: string
   createdAt: string
   emoji: string | null
+  localOnly: boolean
 }
 
 /**
@@ -139,7 +140,14 @@ export function findCanonicalNoteForFile(
         )
       : undefined)
   return row
-    ? { id: row.id, path: row.path, title: row.title, createdAt: row.createdAt, emoji: row.emoji }
+    ? {
+        id: row.id,
+        path: row.path,
+        title: row.title,
+        createdAt: row.createdAt,
+        emoji: row.emoji,
+        localOnly: row.localOnly
+      }
     : null
 }
 

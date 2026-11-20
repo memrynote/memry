@@ -147,7 +147,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     id: string,
     relativePath: string,
     body: string,
-    options: { indexed?: boolean; remote?: boolean; emoji?: string } = {}
+    options: { indexed?: boolean; remote?: boolean; emoji?: string; localOnly?: boolean } = {}
   ): void {
     const isMarkdown = relativePath.endsWith('.md')
     const fields = {
@@ -156,6 +156,7 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       title: path.basename(relativePath, path.extname(relativePath)),
       fileType: isMarkdown ? ('markdown' as const) : ('image' as const),
       emoji: options.emoji ?? null,
+      localOnly: options.localOnly ?? false,
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z'
     }
@@ -291,12 +292,48 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(row?.emoji).toBe('X')
   }, 20_000)
 
+  // The projection runs behind the canonical write, so the index row can be
+  // missing when the file arrives: the re-key takes emoji and local-only from
+  // the canonical row.
+  it('the watcher keeps the emoji and local-only flag of an applied note the index has not seen', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    await watch()
+    seed('remote', 'SuperNotes/a.md', '# a\n\nbody\n', {
+      emoji: 'X',
+      indexed: false,
+      localOnly: true
+    })
+    await settleOn(() =>
+      expect(metadataRows()).toEqual([{ id: 'remote', path: 'Supernotes/a.md' }])
+    )
+    const row = data.db
+      .select({ emoji: noteMetadata.emoji, localOnly: noteMetadata.localOnly })
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, 'remote'))
+      .get()
+    expect(row).toEqual({ emoji: 'X', localOnly: true })
+  }, 20_000)
+
   it('the watcher keeps the id of a note applied into a non-ASCII case-variant folder', async () => {
     fs.mkdirSync(path.join(vault.path, 'ärzte'))
     await watch()
     seed('remote', 'Ärzte/a.md', '# a\n\nbody\n')
     await settleOn(() => expect(cacheRows()).toEqual([{ id: 'remote', path: 'ärzte/a.md' }]))
     expect(metadataRows()).toEqual([{ id: 'remote', path: 'ärzte/a.md' }])
+    expect(noteCreates()).toEqual([])
+  }, 20_000)
+
+  // An HFS+ vault stores names decomposed (NFD), and sync writes them composed
+  // (NFC). The volume ignores both case and normalization, so the row moves to
+  // the spelling the disk stores, byte for byte.
+  it('keeps the id of a note applied in NFC into an NFD case-variant folder', async () => {
+    const nfdFolder = 'a\u0308rzte'
+    fs.mkdirSync(path.join(vault.path, nfdFolder))
+    await watch()
+    seed('remote', '\u00c4rzte/a.md', '# a\n\nbody\n')
+    const expected = [{ id: 'remote', path: `${nfdFolder}/a.md` }]
+    await settleOn(() => expect(cacheRows()).toEqual(expected))
+    expect(metadataRows()).toEqual(expected)
     expect(noteCreates()).toEqual([])
   }, 20_000)
 
