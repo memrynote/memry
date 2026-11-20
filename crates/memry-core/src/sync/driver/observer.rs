@@ -39,13 +39,17 @@ pub enum AppliedOutcome {
 }
 
 /// One field a concurrent merge decided (chapter 06 §6.5), for the
-/// `conflict_resolved` telemetry and the conflict report.
+/// `conflict_resolved` telemetry, the conflict report and a task's
+/// `superseded` row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldConflict {
     pub field: String,
     pub losing: Json,
     pub winning: Json,
     pub merged_clock: Json,
+    /// This device's value lost, so `losing` is the value it held. False when
+    /// it won (§6.3's `_offline` tie rule), and `losing` is the remote's.
+    pub local_lost: bool,
 }
 
 /// One record of a committed page. Ids, the outcome and the conflicts only:
@@ -112,9 +116,34 @@ pub trait ApplyObserver: Send + Sync {
     /// resident documents, so this is how a non-resident body reaches its file.
     fn bodies_applied(&self, _doc_ids: &[String]) {}
 
+    /// The pass's body step finished and every debt it pulled is settled or
+    /// re-owed, committed. `bodies_applied` fires before a document's debt is
+    /// settled, so work that needs a settled body (an owed file's take) runs
+    /// here.
+    fn bodies_settled(&self) {}
+
     /// A pulled record's signature did not verify, and its quarantine
     /// counted it (desktop's `SecurityWarningEvent`).
     fn security_warning(&self, _warning: &SecurityWarning) {}
+
+    /// A pulled record did not decode and its row is marked corrupt, on the
+    /// feed or on the hourly refetch (desktop's `ItemCorruptEvent`).
+    fn item_corrupt(&self, _item: &CorruptItem) {}
+
+    /// A row held corrupt was refetched and applied (desktop's
+    /// `ItemRecoveredEvent`). Its page's `records_applied` told it too.
+    fn item_recovered(&self, _record: &AppliedRecord) {}
+}
+
+/// A pulled record marked corrupt. `warning` when its bad signature counted
+/// toward the quarantine.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CorruptItem {
+    pub item_type: String,
+    pub item_id: String,
+    /// Why it did not decode; names no content.
+    pub reason: String,
+    pub warning: Option<SecurityWarning>,
 }
 
 /// An observer call this slow is logged: it runs under the pass gate.
@@ -183,16 +212,47 @@ impl Observers {
         .await;
     }
 
-    /// Tells every observer each quarantine, on `spawn_blocking`.
-    pub async fn security_warnings(&self, warnings: Vec<SecurityWarning>) {
-        if warnings.is_empty() {
+    /// Tells every observer that the body step settled, on `spawn_blocking`.
+    pub async fn bodies_settled(&self) {
+        self.each("bodies_settled", |observer| {
+            guarded(observer, "bodies_settled", 0, || observer.bodies_settled());
+        })
+        .await;
+    }
+
+    /// Tells every observer each corrupt record, then its quarantine, on
+    /// `spawn_blocking`.
+    pub async fn corrupt(&self, items: Vec<CorruptItem>) {
+        if items.is_empty() {
             return;
         }
-        let size = warnings.len();
-        self.each("security_warning", move |observer| {
-            for warning in &warnings {
-                guarded(observer, "security_warning", size, || {
-                    observer.security_warning(warning)
+        let size = items.len();
+        self.each("corrupt", move |observer| {
+            for item in &items {
+                guarded(observer, "item_corrupt", size, || {
+                    observer.item_corrupt(item)
+                });
+                if let Some(warning) = &item.warning {
+                    guarded(observer, "security_warning", size, || {
+                        observer.security_warning(warning)
+                    });
+                }
+            }
+        })
+        .await;
+    }
+
+    /// Tells every observer each corrupt row a refetch applied, on
+    /// `spawn_blocking`.
+    pub async fn recovered(&self, records: Vec<AppliedRecord>) {
+        if records.is_empty() {
+            return;
+        }
+        let size = records.len();
+        self.each("recovered", move |observer| {
+            for record in &records {
+                guarded(observer, "item_recovered", size, || {
+                    observer.item_recovered(record)
                 });
             }
         })

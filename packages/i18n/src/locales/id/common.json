@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Belum ada brankas",
       "openVault": "Buka brankas",
+      "createVault": "Buat brankas",
+      "openFolderAsVault": "Buka folder sebagai brankas",
       "settings": "Pengaturan",
       "remove": "Hapus “",
       "removeVaultTitle": "Hapus “{name}” dari daftar?",

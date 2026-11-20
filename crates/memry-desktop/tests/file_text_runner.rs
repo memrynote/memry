@@ -20,6 +20,11 @@ pub struct FakePdf {
     pub reads: Mutex<Vec<(String, u32)>>,
     pub released: AtomicUsize,
     pub renders: AtomicUsize,
+    /// `open` and `release`, in order.
+    pub events: Mutex<Vec<&'static str>>,
+    /// Runs inside each `open` with the open's number, from 1.
+    #[allow(clippy::type_complexity)]
+    pub on_open: Mutex<Option<Box<dyn Fn(usize) + Send>>>,
 }
 
 struct FakeDoc<'a> {
@@ -30,7 +35,11 @@ struct FakeDoc<'a> {
 
 impl PdfReader for FakePdf {
     fn open(&self, path: &Path) -> Result<Box<dyn PdfPages + '_>, String> {
-        self.opens.fetch_add(1, Ordering::SeqCst);
+        let opened = self.opens.fetch_add(1, Ordering::SeqCst) + 1;
+        self.events.lock().unwrap().push("open");
+        if let Some(hook) = &*self.on_open.lock().unwrap() {
+            hook(opened);
+        }
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let pages = self.pages.lock().unwrap().get(&name).cloned();
         let pages = pages.ok_or_else(|| "not a PDF".to_owned())?;
@@ -43,6 +52,7 @@ impl PdfReader for FakePdf {
 
     fn release(&self) {
         self.released.fetch_add(1, Ordering::SeqCst);
+        self.events.lock().unwrap().push("release");
     }
 }
 
@@ -414,4 +424,49 @@ fn an_image_without_ocr_is_not_read_and_fails_for_the_retry() {
         (FileTextJobStatus::Failed, Some("OCR unavailable"), Some(1))
     );
     assert_eq!(f.text(&of.note_id), "");
+}
+
+/// A stop that lands while a failed page's document is opened again: that open started a new
+/// worker child after the stop released the last one, so the runner releases it too.
+#[test]
+fn a_stop_during_a_page_retry_releases_the_worker_it_opened() {
+    let f = ft(&[("doc.pdf", b"%PDF")]);
+    f.pdf
+        .pages
+        .lock()
+        .unwrap()
+        .insert("doc.pdf".into(), pages(&[Err("x"), Ok("two")]));
+    let file_text = Arc::downgrade(&f.file_text);
+    *f.pdf.on_open.lock().unwrap() = Some(Box::new(move |opened| {
+        if opened == 2
+            && let Some(runner) = file_text.upgrade().and_then(|file_text| file_text.runner())
+        {
+            runner.stop();
+        }
+    }));
+    // The first scan runs on open; a stopped runner scans no more.
+    f.until("the retry's child released", |f| {
+        f.pdf.released.load(Ordering::SeqCst) >= 2
+    });
+    let events = f.pdf.events.lock().unwrap().clone();
+    assert_eq!(
+        events,
+        ["open", "open", "release", "release"],
+        "the retry's child is released"
+    );
+}
+
+/// Without OCR nothing changes in a day, so the day-old retry would fail the job again; the
+/// app-version retry still reads it once a build has OCR.
+#[test]
+fn a_job_failed_for_want_of_ocr_is_not_retried_after_a_day() {
+    let f = ft_without_ocr(&[("scan.png", b"png bytes")], Arc::new(FakePdf::default()));
+    f.scanned();
+    let of = own(&f.id_of("scan.png"));
+    let job = f.settled_job(&of);
+    assert_eq!(job.error.as_deref(), Some("OCR unavailable"));
+
+    f.clock_offset.store(25 * 60 * 60 * 1000, Ordering::SeqCst);
+    f.scanned();
+    assert_eq!(f.job(&of).unwrap(), job, "not read again");
 }

@@ -70,22 +70,37 @@ fn is_https(url: &str) -> bool {
     url::Url::parse(url).is_ok_and(|url| url.scheme() == "https")
 }
 
-/// `buildCheckoutPageUrl`: `plan` and `cadence` in the query when preselected, `token=` in the
-/// fragment, both form-encoded as `URLSearchParams` writes them.
+/// The checkout page's UTM tags (`marketing/utm.md`), so PostHog credits the visit to the app.
+const CHECKOUT_UTM: [(&str, &str); 3] = [
+    ("utm_source", "app"),
+    ("utm_medium", "desktop"),
+    ("utm_campaign", "checkout"),
+];
+
+/// `buildCheckoutPageUrl`: `plan` and `cadence` in the query when preselected, then the UTM tags,
+/// and `token=` in the fragment, all form-encoded as `URLSearchParams` writes them.
 fn build_checkout_url(page: &str, token: &str, preselect: Option<StartCheckoutInput>) -> String {
     let mut url = url::Url::parse(page).expect("the checkout page is a parsed https URL");
-    if let Some(input) = preselect {
-        let kept: Vec<(String, String)> = url
-            .query_pairs()
-            .filter(|(key, _)| key != "plan" && key != "cadence")
-            .map(|(key, value)| (key.into_owned(), value.into_owned()))
-            .collect();
-        url.query_pairs_mut()
-            .clear()
-            .extend_pairs(kept)
-            .append_pair("plan", input.plan.as_str())
-            .append_pair("cadence", input.cadence.as_str());
-    }
+    let set: Vec<(&str, &str)> = preselect
+        .map(|input| {
+            [
+                ("plan", input.plan.as_str()),
+                ("cadence", input.cadence.as_str()),
+            ]
+        })
+        .into_iter()
+        .flatten()
+        .chain(CHECKOUT_UTM)
+        .collect();
+    let kept: Vec<(String, String)> = url
+        .query_pairs()
+        .filter(|(key, _)| set.iter().all(|(name, _)| key != name))
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+    url.query_pairs_mut()
+        .clear()
+        .extend_pairs(kept)
+        .extend_pairs(set);
     let fragment = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("token", token)
         .finish();
@@ -460,18 +475,15 @@ impl BillingService {
         }
     }
 
-    /// A new vault supervisor's gate: the cached verdict at once, then the resolved one. Every
-    /// later answer goes to this gate until the next one replaces it.
+    /// A new vault supervisor's gate: the cached verdict at once, then the server's, which
+    /// [`Self::remember`] tells it in order with every later answer until the next gate
+    /// replaces it.
     pub fn attach_gate(self: &Arc<Self>, gate: &Arc<SyncStartGate>) {
         *lock(&self.gate) = Arc::downgrade(gate);
         gate.set_entitlement(verdict(self.cache.get().as_ref()));
         let service = Arc::clone(self);
-        let gate = Arc::downgrade(gate);
         self.runtime.spawn(async move {
-            let resolved = service.resolve_for_sync_start().await;
-            if let Some(gate) = gate.upgrade() {
-                gate.set_entitlement(resolved);
-            }
+            service.resolve_for_sync_start().await;
         });
     }
 
@@ -537,11 +549,11 @@ mod tests {
     fn opens_the_checkout_page_with_the_token_in_the_hash() {
         assert_eq!(
             build_checkout_url(DEFAULT_CHECKOUT_PAGE_URL, "abc.def", None),
-            "https://memrynote.com/account/sync#token=abc.def"
+            "https://memrynote.com/account/sync?utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=abc.def"
         );
         assert_eq!(
             build_checkout_url(DEFAULT_CHECKOUT_PAGE_URL, "a+b/c=d &e", None),
-            "https://memrynote.com/account/sync#token=a%2Bb%2Fc%3Dd+%26e",
+            "https://memrynote.com/account/sync?utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=a%2Bb%2Fc%3Dd+%26e",
             "the fragment is form-encoded"
         );
     }
@@ -555,15 +567,15 @@ mod tests {
         };
         assert_eq!(
             build_checkout_url(DEFAULT_CHECKOUT_PAGE_URL, "t", Some(preselect)),
-            "https://memrynote.com/account/sync?plan=pro&cadence=annual#token=t"
+            "https://memrynote.com/account/sync?plan=pro&cadence=annual&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=t"
         );
         assert_eq!(
             build_checkout_url(
-                "https://example.test/sync?ref=app&plan=plus",
+                "https://example.test/sync?ref=app&plan=plus&utm_source=x",
                 "t",
                 Some(preselect)
             ),
-            "https://example.test/sync?ref=app&plan=pro&cadence=annual#token=t",
+            "https://example.test/sync?ref=app&plan=pro&cadence=annual&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=t",
             "set, not appended twice"
         );
     }

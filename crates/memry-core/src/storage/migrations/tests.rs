@@ -210,9 +210,9 @@ fn a_migration_interrupted_between_commit_and_pragma_recovers() {
 
     db.call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("migrate");
-    // The crash window §A.0's ordering leaves open: the statements committed
-    // but the counter never moved.
-    db.call_blocking(|conn| set_user_version(conn, 0))
+    // Earlier builds' crash window: the statements committed, the counter did not.
+    db.call_blocking(|conn| Ok(conn.execute_batch("PRAGMA user_version = 0")))
+        .expect("call")
         .expect("rewind");
 
     let version = db

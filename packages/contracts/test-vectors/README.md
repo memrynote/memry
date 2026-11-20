@@ -84,6 +84,7 @@ one-class change reviewable.
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `html-text.json`                         |                                   35 | `apps/desktop/scripts/html-text-oracle/`                                                       | Rust `services::file_text::html` tests                                               |
 | `export.json`                            |                                   72 | `apps/desktop/scripts/export-oracle/`                                                          | Rust `memry-desktop/tests/export_vectors.rs`                                         |
+| `task-superseded-id.json`                |                                   10 | `apps/desktop/scripts/task-superseded-oracle/`                                                 | Rust `domain_task_superseded.rs`                                                     |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
 | `audio-features.json`                    |                           33 + 9 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
 | `embeddings-audio.json`                  |                  7 files, 17 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
@@ -115,7 +116,8 @@ one-class change reviewable.
 | `importers/markdown/expected.json`       |                                    6 | `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`                            | Rust `importer_vectors.rs`                                                           |
 | `importers/csv/expected.json`            |                                    2 | same                                                                                           | same                                                                                 |
 | `importers/messages.json`                |                                    1 | same                                                                                           | same                                                                                 |
-| **Total**                                | **32355 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| `importers/obsidian-tasks.json`          |                                  139 | `apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts`                | Rust `obsidian_task_import.rs`                                                       |
+| **Total**                                | **32494 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `importers/`: frozen at cutover
 
@@ -128,6 +130,12 @@ replays the same inputs through the Rust importers and compares the records as J
 once the Electron importers are deleted, the files stay as committed and the Rust importers are
 held to them; a deliberate change edits the Rust and the expected file in the same change and
 says why. A difference is a bug in the Rust.
+
+`obsidian-tasks.json` records `buildObsidianTaskImport` (`packages/shared/src/obsidian-task-import.ts`)
+for 84 lines in UTC with each done date in two fixed-offset zones, 19 done dates around midnight
+transitions in five real zones (`chrono::Local` replays them with `TZ` set, unix only), and the 36 lines of the Obsidian Tasks plugin's fixtures
+(`packages/shared/src/obsidian-tasks-fixtures`) through `parseObsidianTaskLine` and the import.
+The same freeze applies.
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 

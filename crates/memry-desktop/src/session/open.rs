@@ -43,7 +43,7 @@ fn now_ms() -> i64 {
 /// `initVault` for a folder with no `.memry` yet, then `.memry/core/` (mode 0700 on Unix),
 /// which proves the folder is writable. The init comes first: afterwards `.memry` exists and
 /// the folder would read as initialised.
-pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
+pub(crate) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     if !path.is_dir() {
         return Err(SessionError::Invalid(
             "Selected path is not a valid directory".into(),

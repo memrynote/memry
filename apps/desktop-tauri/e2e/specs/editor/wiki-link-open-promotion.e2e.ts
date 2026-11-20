@@ -140,9 +140,9 @@ test.describe('Wiki links on open', () => {
     await openWithoutTyping(page, title)
 
     // Both ends in one read, so a failure names the one that gave way: the file is what the other
-    // program wrote, the chip is what the editor made of the document. The document itself has no
-    // markdown probe yet (`e2e_crdt_doc_markdown`); `e2e_note_body` reads run text only, and a
-    // promoted wikiLink node carries its target outside the text.
+    // program wrote, the chip is what the editor made of the document. The document has no
+    // markdown probe (HOOKS.md, Hooks without a command); `e2e_note_body` reads run text only,
+    // and a promoted wikiLink node carries its target outside the text.
     await expect
       .poll(
         async () => ({
