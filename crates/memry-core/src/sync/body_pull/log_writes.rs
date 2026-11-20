@@ -11,6 +11,9 @@ use crate::sync::store;
 
 use super::{BodyPull, BodyPullError, crdt_cursor_scope, now_ms};
 
+/// One document's opened packed updates, in sequence order.
+pub(super) type PackRun = (String, Vec<(i64, Vec<u8>)>);
+
 /// One verified baseline from a pack, ready to store.
 pub(super) struct Baseline {
     pub(super) doc_id: String,
@@ -129,6 +132,48 @@ impl BodyPull {
         Ok(stored)
     }
 
+    /// Opened packed updates, one run per document in sequence order, each
+    /// run stored with its cursor in one transaction for the chunk (§7.9).
+    /// A run is stored only when its first update is the stored cursor plus
+    /// one and the record is live, both read inside the transaction; answers
+    /// the updates stored per run.
+    pub(super) async fn store_pack_runs(
+        &self,
+        runs: Vec<PackRun>,
+    ) -> Result<Vec<usize>, BodyPullError> {
+        let now = now_ms();
+        let stored = self
+            .db
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                let mut stored = Vec::with_capacity(runs.len());
+                for (doc_id, updates) in &runs {
+                    let scope = crdt_cursor_scope(doc_id);
+                    let cursor: i64 = store::read_cursor(&txn, &scope)?
+                        .and_then(|text| text.parse().ok())
+                        .unwrap_or(0);
+                    let Some(&(last, _)) = updates.last() else {
+                        stored.push(0);
+                        continue;
+                    };
+                    if updates[0].0 != cursor + 1 || record_gone(&txn, doc_id)? {
+                        stored.push(0);
+                        continue;
+                    }
+                    for (sequence_num, update) in updates {
+                        update_log::append_server_update(&txn, doc_id, *sequence_num, update, now)
+                            .map_err(crdt_failed)?;
+                    }
+                    store::write_cursor(&txn, &scope, Some(&last.to_string()), now)?;
+                    stored.push(updates.len());
+                }
+                txn.commit().map_err(sqlite_failed)?;
+                Ok(stored)
+            })
+            .await?;
+        Ok(stored)
+    }
+
     /// A `crdt:<docId>` cursor of `0`, unless one is already stored.
     pub(super) async fn hold_empty_body(&self, doc_id: &str) -> Result<(), BodyPullError> {
         let scope = crdt_cursor_scope(doc_id);
@@ -151,25 +196,19 @@ pub(super) enum Freshness {
     /// The cursor already reaches the snapshot, or the stored revision is
     /// this one (§7.5, equality only).
     Stale,
-    /// §7.15: a deleted document's body is never resurrected.
+    /// §7.15, §8.10: the record is a tombstone or absent, so the document's
+    /// body is never resurrected.
     Deleted,
 }
 
-/// Desktop's `shouldApply` for a pack entry, plus the tombstone check.
+/// Desktop's `shouldApply` for a pack entry, plus the record check.
 pub(super) fn pack_freshness(
     conn: &Connection,
     sequence_num: i64,
     doc_id: &str,
     revision: &str,
 ) -> Result<Freshness, StorageError> {
-    let deleted = conn
-        .prepare_cached(
-            "SELECT EXISTS(SELECT 1 FROM sync_items
-             WHERE item_id = ?1 AND deleted_at IS NOT NULL)",
-        )
-        .and_then(|mut statement| statement.query_row(params![doc_id], |row| row.get::<_, bool>(0)))
-        .map_err(sqlite_failed)?;
-    if deleted {
+    if record_gone(conn, doc_id)? {
         return Ok(Freshness::Deleted);
     }
     let cursor = store::read_cursor(conn, &crdt_cursor_scope(doc_id))?
@@ -191,6 +230,18 @@ pub(super) fn pack_freshness(
         return Ok(Freshness::Stale);
     }
     Ok(Freshness::Fresh { cursor })
+}
+
+/// §7.15 and §8.10: a document whose record is a tombstone, or that has no
+/// live note or journal record at all, takes no packed body.
+pub(super) fn record_gone(conn: &Connection, doc_id: &str) -> Result<bool, StorageError> {
+    conn.prepare_cached(
+        "SELECT NOT EXISTS(SELECT 1 FROM sync_items WHERE item_id = ?1
+                             AND item_type IN ('note', 'journal') AND deleted_at IS NULL)
+             OR EXISTS(SELECT 1 FROM sync_items WHERE item_id = ?1 AND deleted_at IS NOT NULL)",
+    )
+    .and_then(|mut statement| statement.query_row(params![doc_id], |row| row.get::<_, bool>(0)))
+    .map_err(sqlite_failed)
 }
 
 fn put_baseline(

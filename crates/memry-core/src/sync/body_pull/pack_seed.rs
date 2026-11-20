@@ -1,6 +1,10 @@
 //! Seeding documents' baselines from packed `crdt_snapshot`s (chapter 08
 //! §8.4), the same baseline [`BodyPull::fetch_baseline`] takes over
-//! `GET /sync/crdt/snapshot/:noteId`.
+//! `GET /sync/crdt/snapshot/:noteId`, and their updates from packed
+//! `crdt_update`s (§8.4.3), as a page of `GET /sync/crdt/updates` stores them.
+//!
+//! The caller decides which entries are usable (`pack_bootstrap/bodies.rs`,
+//! after the body checks); this module verifies, and stores with cursors.
 //!
 //! It lives on [`BodyPull`] because the body feed owns a document's baseline
 //! and its `crdt:<docId>` cursor. A seeded document then looks exactly like
@@ -13,11 +17,12 @@
 //! blocking pool, and one transaction that stores every verified baseline with
 //! its cursor.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::api::errors::StorageError;
 
-use super::log_writes::{Baseline, Freshness, pack_freshness};
+use super::log_writes::{Baseline, Freshness, PackRun, pack_freshness};
 use super::{BodyPull, BodyPullError, CrdtCipher, PackedUpdate};
 
 /// Pack entries seeded per transaction. A chunk holds at most this many
@@ -34,6 +39,15 @@ pub enum PackSeed {
     Deleted,
     /// No known signer verifies the bytes. The document keeps its GET.
     Unverified,
+}
+
+/// One packed update to seed: the next number of its document's run.
+pub struct PackUpdateSeed<'a> {
+    pub doc_id: &'a str,
+    pub sequence_num: i64,
+    /// From the entry's meta (§8.4.3), resolved as for a pulled update.
+    pub signer_device_id: &'a str,
+    pub packed: &'a [u8],
 }
 
 /// One pack entry to seed.
@@ -88,25 +102,7 @@ impl BodyPull {
             .filter(|(at, _)| outcome[*at] == PackSeed::Applied)
             .map(|(at, entry)| (at, entry.doc_id.to_owned(), entry.packed.to_vec()))
             .collect();
-        // Verify and decrypt are about half a chunk's cost, so they spread
-        // over the blocking pool, one slice per core.
-        let cores = std::thread::available_parallelism().map_or(1, usize::from);
-        let slice = fresh.len().div_ceil(cores).max(1);
-        let mut fresh = fresh.into_iter().peekable();
-        let mut tasks = Vec::new();
-        while fresh.peek().is_some() {
-            let part: Vec<_> = fresh.by_ref().take(slice).collect();
-            let cipher = Arc::clone(&self.cipher);
-            tasks.push(tokio::task::spawn_blocking(move || {
-                open_all(cipher.as_ref(), part)
-            }));
-        }
-        let mut opened = Vec::new();
-        for task in tasks {
-            opened.extend(task.await.map_err(|error| StorageError::Failed {
-                what: format!("the pack signature checks did not finish: {error}"),
-            })?);
-        }
+        let opened = on_blocking_pool(fresh, Arc::clone(&self.cipher), open_all).await?;
 
         let mut baselines = Vec::with_capacity(opened.len());
         let mut placed = Vec::with_capacity(opened.len());
@@ -132,6 +128,108 @@ impl BodyPull {
         }
         Ok(outcome)
     }
+}
+
+impl BodyPull {
+    /// Verifies and stores `entries`, consecutive runs of one document each in
+    /// sequence order. A run stops at its first update that does not open
+    /// (§7.9's stop-at-gap): the updates before it are stored with their
+    /// cursor and the document keeps its route pull from there. Answers the
+    /// updates stored and the documents whose run stopped short.
+    pub async fn seed_pack_updates(
+        &self,
+        entries: &[PackUpdateSeed<'_>],
+    ) -> Result<(usize, HashSet<String>), BodyPullError> {
+        let owned: Vec<(usize, String, String, Vec<u8>)> = entries
+            .iter()
+            .enumerate()
+            .map(|(at, entry)| {
+                (
+                    at,
+                    entry.doc_id.to_owned(),
+                    entry.signer_device_id.to_owned(),
+                    entry.packed.to_vec(),
+                )
+            })
+            .collect();
+        let opened = on_blocking_pool(owned, Arc::clone(&self.cipher), |cipher, part| {
+            part.into_iter()
+                .map(|(at, doc_id, signer, packed)| {
+                    let update = cipher
+                        .open(&PackedUpdate {
+                            doc_id: &doc_id,
+                            signer_device_id: Some(&signer),
+                            packed: &packed,
+                        })
+                        .ok();
+                    (at, update)
+                })
+                .collect()
+        })
+        .await?;
+
+        let mut stopped = HashSet::new();
+        let mut runs: Vec<PackRun> = Vec::new();
+        for (at, update) in opened {
+            let entry = &entries[at];
+            if stopped.contains(entry.doc_id) {
+                continue;
+            }
+            let Some(update) = update else {
+                stopped.insert(entry.doc_id.to_owned());
+                continue;
+            };
+            match runs.last_mut() {
+                Some((doc_id, run)) if doc_id == entry.doc_id => {
+                    run.push((entry.sequence_num, update))
+                }
+                _ => runs.push((entry.doc_id.to_owned(), vec![(entry.sequence_num, update)])),
+            }
+        }
+        let wanted: Vec<usize> = runs.iter().map(|(_, run)| run.len()).collect();
+        let doc_ids: Vec<String> = runs.iter().map(|(doc_id, _)| doc_id.clone()).collect();
+        let stored = self.store_pack_runs(runs).await?;
+        let mut applied = 0;
+        for ((doc_id, wanted), stored) in doc_ids.into_iter().zip(wanted).zip(stored) {
+            applied += stored;
+            if stored < wanted {
+                stopped.insert(doc_id);
+            }
+        }
+        Ok((applied, stopped))
+    }
+}
+
+/// Runs `open` over `items` on the blocking pool, one slice per core, and
+/// answers the results in the order of `items`. Verify and decrypt are about
+/// half a chunk's cost.
+async fn on_blocking_pool<T, R>(
+    items: Vec<T>,
+    cipher: Arc<dyn CrdtCipher>,
+    open: fn(&dyn CrdtCipher, Vec<T>) -> Vec<R>,
+) -> Result<Vec<R>, StorageError>
+where
+    T: Send + 'static,
+    R: Send + 'static,
+{
+    let cores = std::thread::available_parallelism().map_or(1, usize::from);
+    let slice = items.len().div_ceil(cores).max(1);
+    let mut items = items.into_iter().peekable();
+    let mut tasks = Vec::new();
+    while items.peek().is_some() {
+        let part: Vec<T> = items.by_ref().take(slice).collect();
+        let cipher = Arc::clone(&cipher);
+        tasks.push(tokio::task::spawn_blocking(move || {
+            open(cipher.as_ref(), part)
+        }));
+    }
+    let mut out = Vec::new();
+    for task in tasks {
+        out.extend(task.await.map_err(|error| StorageError::Failed {
+            what: format!("the pack signature checks did not finish: {error}"),
+        })?);
+    }
+    Ok(out)
 }
 
 /// The index names no signer, so every registered device is tried. This

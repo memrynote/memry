@@ -186,7 +186,7 @@ pub fn tail_start(ranges: &[(i64, i64)], coverage: Option<Coverage>) -> i64 {
 
 /// The keyset cursor is opaque (`maxCursor` + separator + id), so every byte
 /// outside RFC 3986's unreserved set is escaped.
-fn query_encode(text: &str) -> String {
+pub(crate) fn query_encode(text: &str) -> String {
     text.bytes()
         .map(|byte| match byte {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
