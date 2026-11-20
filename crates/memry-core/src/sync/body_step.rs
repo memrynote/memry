@@ -43,7 +43,7 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
         if total.requests >= BODY_REQUEST_BUDGET {
             break;
         }
-        let probed = match body_pull.probe(chunk, &mut total.requests).await {
+        let mut probed = match body_pull.probe(chunk, &mut total.requests).await {
             Ok(probed) => probed,
             Err(BodyPullError::Storage { source }) => return Err(source),
             Err(BodyPullError::Api { .. }) => Default::default(),
@@ -52,7 +52,7 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
             if total.requests >= BODY_REQUEST_BUDGET {
                 break 'step;
             }
-            if !pull_one(db, body_pull, doc_id, probed.get(doc_id), &mut total).await? {
+            if !pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await? {
                 break 'step;
             }
         }
@@ -65,7 +65,7 @@ async fn pull_one(
     db: &Db,
     body_pull: &BodyPull,
     doc_id: &str,
-    probed: Option<&Probed>,
+    probed: Option<Probed>,
     total: &mut BodyPullReport,
 ) -> Result<bool, StorageError> {
     let doc = doc_id.to_owned();

@@ -360,6 +360,36 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     );
 }
 
+/// A kill on the second updates page of a document with more updates than one
+/// page: the batch probe's answer was the first page, so the first per-document
+/// GET is the second page. The resume ends with the server's updates exactly.
+#[tokio::test]
+async fn a_kill_on_the_second_updates_page_resumes_with_every_update() {
+    let (db, dir) = body_pack_server::scratch("kill-second-page");
+    let long = ServerDoc::new("longdoc00001", 150);
+    let mut server = Server::new(vec![long], vec![]);
+    server.records = true;
+    server.hang = Some("/sync/crdt/updates?note_id=longdoc00001".to_owned());
+    let routes = Routes::new(server);
+    killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
+    assert_eq!(routes.count("/sync/crdt/updates/batch"), 1);
+    assert_eq!(
+        update_seqs(&db, "longdoc00001"),
+        (1..=100).collect::<Vec<i64>>(),
+        "the first page, from the batch answer, is stored before the kill"
+    );
+
+    routes.server.lock().unwrap().hang = None;
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the resumed first sync");
+
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("longdoc00001"), 150);
+    assert!(!is_owed(&db, "longdoc00001"));
+}
+
 /// The request ceiling of a fresh device whose documents the packs bring to
 /// their heads: two listing walks (records, then bodies) of `ceil(P / 50)`
 /// pages, `P` downloads, one feed page and one record manifest, and one body

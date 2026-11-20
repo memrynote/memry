@@ -256,9 +256,9 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let probed = self.probe(chunk, &mut total.requests).await?;
+            let mut probed = self.probe(chunk, &mut total.requests).await?;
             for doc_id in chunk {
-                total.absorb(self.pull_with(doc_id, probed.get(doc_id)).await?);
+                total.absorb(self.pull_with(doc_id, probed.remove(doc_id)).await?);
             }
         }
         Ok(total)
@@ -267,8 +267,8 @@ impl BodyPull {
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
         let mut probes = 0;
-        let probed = self.probe(&[doc_id.to_owned()], &mut probes).await?;
-        let mut report = self.pull_with(doc_id, probed.get(doc_id)).await?;
+        let mut probed = self.probe(&[doc_id.to_owned()], &mut probes).await?;
+        let mut report = self.pull_with(doc_id, probed.remove(doc_id)).await?;
         report.requests += probes;
         Ok(report)
     }
@@ -276,17 +276,23 @@ impl BodyPull {
     pub(super) async fn pull_with(
         &self,
         doc_id: &str,
-        probed: Option<&Probed>,
+        probed: Option<Probed>,
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut report = BodyPullReport {
             documents: 1,
             ..BodyPullReport::default()
         };
-        if probed.is_some_and(|probed| probed.current) {
+        // Taken by value: the probe page moves into the first page below
+        // and is dropped once applied, never copied.
+        let Probed {
+            meta,
+            current,
+            answer,
+        } = probed.unwrap_or_default();
+        if current {
             return Ok(report);
         }
-        let meta = probed.and_then(|probed| probed.meta.as_ref());
-        let answer = probed.and_then(|probed| probed.answer.as_ref());
+        let meta = meta.as_ref();
         let mut cursor = self.read_cursor(doc_id).await?;
         let mut first_page = None;
 
@@ -307,7 +313,7 @@ impl BodyPull {
                 }
             } else if answer.since == cursor {
                 // #5293: the answer is this document's first page already.
-                first_page = Some(answer.page.clone());
+                first_page = Some(answer.page);
             }
         } else {
             // §7.8, first clause: a cursor of 0 always takes the snapshot

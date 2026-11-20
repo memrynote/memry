@@ -342,8 +342,8 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
         response(
             200,
             &json!({"notes": {
-                "goodnote1234": {"updates": [], "hasMore": false},
-                "stopnote1234": {"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false}
+                "goodnote1234": {"updates": [], "hasMore": false, "floor": 0},
+                "stopnote1234": {"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false, "floor": 0}
             }, "snapshotMeta": {}})
             .to_string(),
         ),

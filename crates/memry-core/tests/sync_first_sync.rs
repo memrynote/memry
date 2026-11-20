@@ -276,7 +276,7 @@ async fn a_first_sync_fills_yjs_updates_so_extract_text_returns_the_body() {
                 "data": packed_base64(NOTE, &update, &secret_key),
                 "createdAt": 1_700_000_000_000i64,
                 "signerDeviceId": "device-a"
-            }], "hasMore": false}}, "snapshotMeta": {}})
+            }], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
             .to_string(),
         ),
     ]);
@@ -362,8 +362,8 @@ async fn a_kill_mid_first_sync_resumes_without_re_pulling_or_skipping() {
                     "sequenceNum": 1,
                     "data": packed_base64(NOTE, &update, &secret_key),
                     "signerDeviceId": "device-a"
-                }], "hasMore": false},
-                other: {"updates": [], "hasMore": false}
+                }], "hasMore": false, "floor": 0},
+                other: {"updates": [], "hasMore": false, "floor": 0}
             }, "snapshotMeta": {}})
             .to_string(),
         ),
@@ -414,7 +414,7 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
                 // unpulled, or the cursor would step over update 2 forever.
                 {"sequenceNum": 2, "data": packed_base64(NOTE, &body_update("second"), &secret_key), "signerDeviceId": "device-unknown"},
                 {"sequenceNum": 3, "data": packed_base64(NOTE, &body_update("third"), &secret_key), "signerDeviceId": "device-a"}
-            ], "hasMore": true}}, "snapshotMeta": {}})
+            ], "hasMore": true, "floor": 0}}, "snapshotMeta": {}})
             .to_string(),
         ),
     ]);
@@ -465,7 +465,7 @@ async fn a_pulled_update_is_stamped_with_this_devices_clock_not_the_servers() {
         200,
         &json!({"notes": {NOTE: {"updates": [
             {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "createdAt": 1_700_000_000i64, "signerDeviceId": "device-a"}
-        ], "hasMore": false}}, "snapshotMeta": {}})
+        ], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
         .to_string(),
     )]);
     let bodies = BodyPull::new(
@@ -525,7 +525,7 @@ async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherw
             &json!({
                 "notes": {NOTE: {
                     "updates": [{"sequenceNum": 6, "data": packed_base64(NOTE, &body_update("six"), &secret_key), "signerDeviceId": "device-a"}],
-                    "hasMore": false
+                    "hasMore": false, "floor": 0
                 }},
                 "snapshotMeta": {NOTE: {"sequenceNum": 8, "revision": "rev-1"}}
             })
@@ -590,7 +590,7 @@ async fn a_snapshot_that_pruned_past_the_cursor_is_taken_from_the_probe() {
         response(
             200,
             &json!({
-                "notes": {NOTE: {"updates": [], "hasMore": false}},
+                "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 0}},
                 "snapshotMeta": {NOTE: {"sequenceNum": 24, "revision": "rev-2"}}
             })
             .to_string(),
@@ -1189,8 +1189,8 @@ async fn a_resumed_bodies_pass_counts_finished_documents_and_pulls_them_no_more(
         response(
             200,
             &json!({"notes": {
-                done: {"updates": [], "hasMore": false},
-                left: {"updates": [], "hasMore": false}
+                done: {"updates": [], "hasMore": false, "floor": 0},
+                left: {"updates": [], "hasMore": false, "floor": 0}
             }, "snapshotMeta": {}})
             .to_string(),
         ),
@@ -1236,7 +1236,7 @@ async fn a_probe_showing_nothing_new_and_the_held_snapshot_sends_no_pull() {
     let transport = FakeTransport::new(vec![response(
         200,
         &json!({
-            "notes": {NOTE: {"updates": [], "hasMore": false}},
+            "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 0}},
             "snapshotMeta": {NOTE: {"sequenceNum": 4, "revision": "rev-1"}}
         })
         .to_string(),

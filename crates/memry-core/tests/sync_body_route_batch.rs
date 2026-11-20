@@ -10,6 +10,7 @@ use body_pack_server::{
     BodyPack, NOW_MS, Routes, Server, ServerDoc, first_sync, holds_exactly, is_owed,
     snapshot_items, update_items,
 };
+use serde_json::{Value as Json, json};
 
 const SNAPSHOT_GET: &str = "/sync/crdt/snapshot/";
 const UPDATES_GET: &str = "/sync/crdt/updates?note_id";
@@ -113,4 +114,70 @@ async fn owed_documents_without_a_baseline_due_are_served_by_one_batch() {
     for id in ["editeddoc001", "freshdoc0001", "emptydoc0001"] {
         assert!(!is_owed(&db, id), "{id} is settled");
     }
+}
+
+const MALFORMED: &str = "maldoc000001";
+
+/// A batch answer whose entry for the document is rewritten: it must not
+/// stand in for the updates GET, so the device still ends with the server's
+/// body exactly (REVIEW-5303).
+async fn pulls_whole_despite(doc: ServerDoc, rewrite: fn(&mut Json)) {
+    let (db, dir) = body_pack_server::scratch("malformed-batch");
+    let edits = doc.updates.len() as i64 + doc.floor;
+    let mut server = Server::new(vec![doc], vec![]);
+    server.records = true;
+    server.batch_rewrite = Some(rewrite);
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc(MALFORMED), edits);
+    assert!(!is_owed(&db, MALFORMED));
+}
+
+#[tokio::test]
+async fn a_batch_entry_without_updates_is_not_a_page() {
+    pulls_whole_despite(ServerDoc::new(MALFORMED, 3), |body| {
+        body["notes"][MALFORMED] = json!({});
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn a_batch_entry_whose_updates_are_not_an_array_is_not_a_page() {
+    pulls_whole_despite(ServerDoc::new(MALFORMED, 3), |body| {
+        body["notes"][MALFORMED] = json!({"updates": "x", "hasMore": false, "floor": 0});
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn a_batch_entry_with_an_unreadable_update_is_not_a_page() {
+    pulls_whole_despite(ServerDoc::new(MALFORMED, 3), |body| {
+        body["notes"][MALFORMED]["updates"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("data");
+    })
+    .await;
+}
+
+/// The log is purged through the snapshot, and the answer omits that
+/// snapshot: a floor above `since` with no snapshot meta is not trusted.
+#[tokio::test]
+async fn a_floor_above_since_with_no_snapshot_meta_is_not_trusted() {
+    let doc = ServerDoc::new(MALFORMED, 3)
+        .snapshot_at(2)
+        .purged_through(2);
+    pulls_whole_despite(doc, |body| {
+        body["snapshotMeta"]
+            .as_object_mut()
+            .unwrap()
+            .remove(MALFORMED);
+    })
+    .await;
 }

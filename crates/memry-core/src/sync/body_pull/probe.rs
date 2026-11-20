@@ -12,7 +12,7 @@ use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT};
 
 /// What the probe learned about one document.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub(in crate::sync) struct Probed {
     pub(in crate::sync) meta: Option<SnapshotMeta>,
     /// The server holds nothing this device lacks: a held cursor, no update
@@ -27,7 +27,7 @@ pub(in crate::sync) struct Probed {
     pub(in crate::sync) answer: Option<ProbeAnswer>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(in crate::sync) struct ProbeAnswer {
     pub(in crate::sync) since: i64,
     pub(in crate::sync) page: UpdatePage,
@@ -79,11 +79,25 @@ impl BodyPull {
         let mut probed = HashMap::new();
         for (doc_id, cursor) in cursors {
             let page = read_update_page(&body, &doc_id);
-            // A note the server left out of `notes` reads as an empty page.
-            let answered = body
-                .get("notes")
-                .and_then(|notes| notes.get(&doc_id))
-                .is_some();
+            let since = cursor.unwrap_or(0);
+            // A note the server left out of `notes` reads as an empty page,
+            // and an entry `read_update_page` read tolerantly may have
+            // dropped updates it could not parse: only a whole page stands in
+            // for the updates GET.
+            let entry = body.get("notes").and_then(|notes| notes.get(&doc_id));
+            let whole_page = entry.is_some_and(|entry| {
+                entry
+                    .get("updates")
+                    .and_then(Json::as_array)
+                    .is_some_and(|updates| updates.len() == page.updates.len())
+                    && entry.get("hasMore").is_some_and(Json::is_boolean)
+            });
+            // A log purged above `since` with no server snapshot to take
+            // instead contradicts itself (§7.11 needs a baseline there).
+            let floor = entry
+                .and_then(|entry| entry.get("floor"))
+                .and_then(Json::as_i64);
+            let floor_held = page.snapshot_meta.is_some() || floor.is_some_and(|f| f <= since);
             // §7.11: an id absent from `snapshotMeta` (or null) has no server
             // snapshot. A present entry that does not parse is not "none".
             let meta_read = match metas.map(|metas| metas.get(&doc_id)) {
@@ -91,7 +105,7 @@ impl BodyPull {
                 Some(Some(_)) => page.snapshot_meta.is_some(),
                 None => false,
             };
-            let trusted = answered && meta_read;
+            let trusted = whole_page && meta_read && floor_held;
             let current = trusted
                 && page.updates.is_empty()
                 && !page.has_more
@@ -110,10 +124,7 @@ impl BodyPull {
                 Probed {
                     meta: page.snapshot_meta.clone(),
                     current,
-                    answer: trusted.then(|| ProbeAnswer {
-                        since: cursor.unwrap_or(0),
-                        page,
-                    }),
+                    answer: trusted.then_some(ProbeAnswer { since, page }),
                 },
             );
         }

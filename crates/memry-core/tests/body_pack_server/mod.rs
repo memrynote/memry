@@ -370,6 +370,8 @@ pub struct Server {
     /// `GET /sync/packs` answers 404 from this call on (0 is the first).
     pub listing_missing_from: Option<usize>,
     listings: usize,
+    /// Rewrites each batch answer, to send a malformed one.
+    pub batch_rewrite: Option<fn(&mut Json)>,
 }
 
 impl Server {
@@ -387,6 +389,7 @@ impl Server {
             dropped: HashSet::new(),
             listing_missing_from: None,
             listings: 0,
+            batch_rewrite: None,
         }
     }
 
@@ -551,7 +554,10 @@ impl Server {
                 notes[id] = self.update_page(self.find(id), since, limit);
                 metas[id] = self.find(id).map_or(Json::Null, ServerDoc::snapshot_meta);
             }
-            let body = json!({"notes": notes, "snapshotMeta": metas});
+            let mut body = json!({"notes": notes, "snapshotMeta": metas});
+            if let Some(rewrite) = self.batch_rewrite {
+                rewrite(&mut body);
+            }
             return Some(response(200, &body.to_string()));
         }
         if let Some(id) = url.split("/sync/crdt/snapshot/").nth(1) {

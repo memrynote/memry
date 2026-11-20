@@ -4,10 +4,6 @@ import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { buildWorker } from '../scripts/build-worker.js'
-import {
-  PACK_MIN_FILL_ROWS,
-  PACK_SETTLE_SECONDS
-} from '../../../apps/sync-server/src/services/pack-sizing.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
@@ -17,8 +13,21 @@ const BACKFILL_QUEUE = 'memry-pack-backfill-dev'
 /** Past the backfill's 10 s hop delay (`pack-backfill.ts`), so a chain's next message runs. */
 const BACKFILL_RETICK_MS = 12_000
 const BACKFILL_SETTLE_DEADLINE_MS = 120_000
-/** `REWRITE_PENDING` (`pack-replaced-objects.ts`), whose module loads the Worker's logger. */
-const REWRITE_PENDING = 'rewrite'
+/**
+ * The backfill's limits, copied because Playwright loads this file as CJS and
+ * cannot import the Worker's ESM sources. `tests/backfill-limits.test.ts`
+ * holds each equal to its source.
+ */
+export const BACKFILL_LIMITS = {
+  /** `PACK_MIN_FILL_ROWS` (`pack-sizing.ts`). */
+  minFillRows: 256,
+  /** `PACK_SETTLE_SECONDS` (`pack-sizing.ts`). */
+  settleSeconds: 24 * 60 * 60,
+  /** `PACK_LIST_MAX_PACKS_PER_VAULT` (`@memry/contracts/sync-api`). */
+  maxPacksPerVault: 999,
+  /** `REWRITE_PENDING` (`pack-replaced-objects.ts`). */
+  rewritePending: 'rewrite'
+} as const
 
 /**
  * Each packed kind's rows, sort column and write-time column, as the
@@ -132,8 +141,9 @@ export class SimulatedServer {
 
   /**
    * Runs the cron until no vault holds a kind's rows the backfill would pack:
-   * rows above its watermark that pass `packFillReady` (`pack-sizing.ts`), or a
-   * purge rewrite still pending (`REWRITE_PENDING`, `pack-replaced-objects.ts`).
+   * rows above its watermark that pass `packFillReady` (`pack-sizing.ts`) in a
+   * vault below the listing cap, or a purge rewrite still pending
+   * (`BACKFILL_LIMITS.rewritePending`).
    * A build lists its pack and moves the watermark in one D1 batch, so an empty
    * backlog means `pack_index` is final. Young rows below the fill stay unpacked.
    */
@@ -154,10 +164,10 @@ export class SimulatedServer {
     const db = await this.getD1()
     const rewrite = await db
       .prepare('SELECT 1 FROM pack_replaced_objects WHERE replaced_by = ? LIMIT 1')
-      .bind(REWRITE_PENDING)
+      .bind(BACKFILL_LIMITS.rewritePending)
       .first()
     if (rewrite) return true
-    const settledBefore = Math.floor(Date.now() / 1000) - PACK_SETTLE_SECONDS
+    const settledBefore = Math.floor(Date.now() / 1000) - BACKFILL_LIMITS.settleSeconds
     for (const { kind, table, sort, time } of BACKLOG_SOURCES) {
       const ready = await db
         .prepare(
@@ -166,10 +176,12 @@ export class SimulatedServer {
              ON w.user_id = si.user_id AND w.vault_id = si.vault_id AND w.item_kind = ?
            WHERE si.${sort} IS NOT NULL AND (w.user_id IS NULL OR si.${sort} > w.last_sort_value)
            GROUP BY si.user_id, si.vault_id
-           HAVING COUNT(*) >= ? OR MIN(si.${time}) <= ?
+           HAVING (SELECT COUNT(*) FROM pack_index p
+                   WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?
+             AND (COUNT(*) >= ? OR MIN(si.${time}) <= ?)
            LIMIT 1`
         )
-        .bind(kind, PACK_MIN_FILL_ROWS, settledBefore)
+        .bind(kind, BACKFILL_LIMITS.maxPacksPerVault, BACKFILL_LIMITS.minFillRows, settledBefore)
         .first()
       if (ready) return true
     }
