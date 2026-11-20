@@ -107,7 +107,7 @@ struct SyncEnvironmentTests {
     func baseURLs() {
         #expect(SyncEnvironment.staging.baseURL == "https://sync-staging.memrynote.com")
         #expect(SyncEnvironment.production.baseURL == "https://sync.memrynote.com")
-        #expect(SyncEnvironment.local.baseURL == "http://localhost:8787")
+        #expect(SyncEnvironment.local.baseURL == "http://127.0.0.1:8787")
     }
 
     @Test("every fault says what failed, that nothing was contacted, and offers no retry")
