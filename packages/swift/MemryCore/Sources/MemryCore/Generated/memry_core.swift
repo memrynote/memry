@@ -13892,12 +13892,12 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
-     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-     * says "older content on demand" — so a note outside it arrives with its
+     * **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+     * leaves the bodies outside the recent window owed until
+     * [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+     * says "older content on demand": a note opened before then has its
      * metadata and no body, and [`crate::api::notes::Notes::read`] answers
-     * `NoteBody { present: false }`. Without this call that note could never
-     * become readable, which is spec-defect 136 one layer down.
+     * `NoteBody { present: false }`. This call makes it readable now.
      *
      * **`async`**, and one document rather than the whole feed: a handful of
      * round trips, not tens.
@@ -13912,8 +13912,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func fetchNoteBody(noteId: String) async throws  -> BodyFetchSummary
     
     /**
-     * The first sync: refs to the end, then metadata newest first, then bodies
-     * for the recent window (data-model §C.3, FR-028).
+     * The first sync: note records for the whole vault, then bodies from packs
+     * for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+     * coverage it pulls the owed bodies of the recent window and leaves the
+     * rest owed for [`Self::drain_bodies`].
      *
      * **`async`, and that is contract, not detail** (spec-defect 90). It is
      * tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -14032,6 +14034,23 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
     
     /**
+     * One round of the foreground drain: pulls up to
+     * [`body_drain::DRAIN_ROUND_DOCUMENTS`] of the bodies still owed, then
+     * returns. A shell calls it again while it is in the foreground, the
+     * last round pulled something, and `remaining` is above 0.
+     *
+     * Bounded so a write's [`Self::sync_now`] waits for at most one round:
+     * rounds and passes take the same pass gate. A round with nothing due
+     * makes no request. It opens a bootstrap session for the round and
+     * pulls four documents at a time when the server grants one (a device's
+     * first day, §10.9), one at a time otherwise.
+     *
+     * `progress` gets `Bodies` ticks in live documents of the vault, so a
+     * shell continues the first sync's bar where it stopped.
+     */
+    func drainBodies(progress: SyncProgressListener?) async throws  -> BodyDrainSummary
+    
+    /**
      * Attaches a capture's file to a note it is being filed into.
      *
      * A capture whose upload is cached here is referenced from the note and
@@ -14135,12 +14154,12 @@ open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
     /**
      * One note's body, on demand (chapter 07 §7.8 – §7.11).
      *
-     * **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-     * recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-     * says "older content on demand" — so a note outside it arrives with its
+     * **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+     * leaves the bodies outside the recent window owed until
+     * [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+     * says "older content on demand": a note opened before then has its
      * metadata and no body, and [`crate::api::notes::Notes::read`] answers
-     * `NoteBody { present: false }`. Without this call that note could never
-     * become readable, which is spec-defect 136 one layer down.
+     * `NoteBody { present: false }`. This call makes it readable now.
      *
      * **`async`**, and one document rather than the whole feed: a handful of
      * round trips, not tens.
@@ -14169,8 +14188,10 @@ open func fetchNoteBody(noteId: String)async throws  -> BodyFetchSummary  {
 }
     
     /**
-     * The first sync: refs to the end, then metadata newest first, then bodies
-     * for the recent window (data-model §C.3, FR-028).
+     * The first sync: note records for the whole vault, then bodies from packs
+     * for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+     * coverage it pulls the owed bodies of the recent window and leaves the
+     * rest owed for [`Self::drain_bodies`].
      *
      * **`async`, and that is contract, not detail** (spec-defect 90). It is
      * tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -14368,6 +14389,37 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * One round of the foreground drain: pulls up to
+     * [`body_drain::DRAIN_ROUND_DOCUMENTS`] of the bodies still owed, then
+     * returns. A shell calls it again while it is in the foreground, the
+     * last round pulled something, and `remaining` is above 0.
+     *
+     * Bounded so a write's [`Self::sync_now`] waits for at most one round:
+     * rounds and passes take the same pass gate. A round with nothing due
+     * makes no request. It opens a bootstrap session for the round and
+     * pulls four documents at a time when the server grants one (a device's
+     * first day, §10.9), one at a time otherwise.
+     *
+     * `progress` gets `Bodies` ticks in live documents of the vault, so a
+     * shell continues the first sync's bar where it stopped.
+     */
+open func drainBodies(progress: SyncProgressListener?)async throws  -> BodyDrainSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_drain_bodies(
+                        self.uniffiCloneHandle(),FfiConverterOptionTypeSyncProgressListener.lower(progress)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBodyDrainSummary_lift,
             errorHandler: FfiConverterTypeSyncError_lift
         )
 }
@@ -15633,6 +15685,93 @@ public func FfiConverterTypeBlockProp_lift(_ buf: RustBuffer) throws -> BlockPro
 #endif
 public func FfiConverterTypeBlockProp_lower(_ value: BlockProp) -> RustBuffer {
     return FfiConverterTypeBlockProp.lower(value)
+}
+
+
+/**
+ * What one drain round did.
+ */
+public struct BodyDrainSummary: Equatable, Hashable {
+    /**
+     * Documents pulled this round, settled or not.
+     */
+    public var documents: UInt32
+    public var requests: UInt32
+    /**
+     * Live documents still owed a body. Some may be backing off after a
+     * failure, so a round that pulled nothing ends the drain even when this
+     * is above 0.
+     */
+    public var remaining: UInt32
+    /**
+     * Whether a bootstrap session widened the round (chapter 10 §10.7).
+     */
+    public var elevated: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Documents pulled this round, settled or not.
+         */documents: UInt32, requests: UInt32, 
+        /**
+         * Live documents still owed a body. Some may be backing off after a
+         * failure, so a round that pulled nothing ends the drain even when this
+         * is above 0.
+         */remaining: UInt32, 
+        /**
+         * Whether a bootstrap session widened the round (chapter 10 §10.7).
+         */elevated: Bool) {
+        self.documents = documents
+        self.requests = requests
+        self.remaining = remaining
+        self.elevated = elevated
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BodyDrainSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBodyDrainSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BodyDrainSummary {
+        return
+            try BodyDrainSummary(
+                documents: FfiConverterUInt32.read(from: &buf), 
+                requests: FfiConverterUInt32.read(from: &buf), 
+                remaining: FfiConverterUInt32.read(from: &buf), 
+                elevated: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BodyDrainSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.documents, into: &buf)
+        FfiConverterUInt32.write(value.requests, into: &buf)
+        FfiConverterUInt32.write(value.remaining, into: &buf)
+        FfiConverterBool.write(value.elevated, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyDrainSummary_lift(_ buf: RustBuffer) throws -> BodyDrainSummary {
+    return try FfiConverterTypeBodyDrainSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBodyDrainSummary_lower(_ value: BodyDrainSummary) -> RustBuffer {
+    return FfiConverterTypeBodyDrainSummary.lower(value)
 }
 
 
@@ -18330,7 +18469,28 @@ public func FfiConverterTypeFieldValue_lower(_ value: FieldValue) -> RustBuffer 
 public struct FirstSyncSummary: Equatable, Hashable {
     public var refsRecorded: UInt32
     public var tombstones: UInt32
+    /**
+     * Records the metadata pass applied. With record packs this is often 0:
+     * the packs and the reconcile applied them (the two counts below).
+     */
     public var metadataApplied: UInt32
+    /**
+     * Record pack entries applied (chapter 08 §8.4.2).
+     */
+    public var recordPackEntries: UInt32
+    /**
+     * Items the manifest reconcile pulled by id (§8.10).
+     */
+    public var reconcilePulled: UInt32
+    /**
+     * Documents the body pack phase proved current.
+     */
+    public var packBodiesSettled: UInt32
+    /**
+     * Documents still owed a body when the run ended: the shell's
+     * [`VaultSync::drain_bodies`] pulls them.
+     */
+    public var bodiesOwed: UInt32
     public var metadataCorrupt: UInt32
     public var bodies: UInt32
     public var updates: UInt32
@@ -18353,7 +18513,24 @@ public struct FirstSyncSummary: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(refsRecorded: UInt32, tombstones: UInt32, metadataApplied: UInt32, metadataCorrupt: UInt32, bodies: UInt32, updates: UInt32, 
+    public init(refsRecorded: UInt32, tombstones: UInt32, 
+        /**
+         * Records the metadata pass applied. With record packs this is often 0:
+         * the packs and the reconcile applied them (the two counts below).
+         */metadataApplied: UInt32, 
+        /**
+         * Record pack entries applied (chapter 08 §8.4.2).
+         */recordPackEntries: UInt32, 
+        /**
+         * Items the manifest reconcile pulled by id (§8.10).
+         */reconcilePulled: UInt32, 
+        /**
+         * Documents the body pack phase proved current.
+         */packBodiesSettled: UInt32, 
+        /**
+         * Documents still owed a body when the run ended: the shell's
+         * [`VaultSync::drain_bodies`] pulls them.
+         */bodiesOwed: UInt32, metadataCorrupt: UInt32, bodies: UInt32, updates: UInt32, 
         /**
          * Documents whose body pull stopped at an update this device could not
          * open (chapter 07 §7.9). Their cursor did **not** advance, so the next
@@ -18370,6 +18547,10 @@ public struct FirstSyncSummary: Equatable, Hashable {
         self.refsRecorded = refsRecorded
         self.tombstones = tombstones
         self.metadataApplied = metadataApplied
+        self.recordPackEntries = recordPackEntries
+        self.reconcilePulled = reconcilePulled
+        self.packBodiesSettled = packBodiesSettled
+        self.bodiesOwed = bodiesOwed
         self.metadataCorrupt = metadataCorrupt
         self.bodies = bodies
         self.updates = updates
@@ -18397,6 +18578,10 @@ public struct FfiConverterTypeFirstSyncSummary: FfiConverterRustBuffer {
                 refsRecorded: FfiConverterUInt32.read(from: &buf), 
                 tombstones: FfiConverterUInt32.read(from: &buf), 
                 metadataApplied: FfiConverterUInt32.read(from: &buf), 
+                recordPackEntries: FfiConverterUInt32.read(from: &buf), 
+                reconcilePulled: FfiConverterUInt32.read(from: &buf), 
+                packBodiesSettled: FfiConverterUInt32.read(from: &buf), 
+                bodiesOwed: FfiConverterUInt32.read(from: &buf), 
                 metadataCorrupt: FfiConverterUInt32.read(from: &buf), 
                 bodies: FfiConverterUInt32.read(from: &buf), 
                 updates: FfiConverterUInt32.read(from: &buf), 
@@ -18410,6 +18595,10 @@ public struct FfiConverterTypeFirstSyncSummary: FfiConverterRustBuffer {
         FfiConverterUInt32.write(value.refsRecorded, into: &buf)
         FfiConverterUInt32.write(value.tombstones, into: &buf)
         FfiConverterUInt32.write(value.metadataApplied, into: &buf)
+        FfiConverterUInt32.write(value.recordPackEntries, into: &buf)
+        FfiConverterUInt32.write(value.reconcilePulled, into: &buf)
+        FfiConverterUInt32.write(value.packBodiesSettled, into: &buf)
+        FfiConverterUInt32.write(value.bodiesOwed, into: &buf)
         FfiConverterUInt32.write(value.metadataCorrupt, into: &buf)
         FfiConverterUInt32.write(value.bodies, into: &buf)
         FfiConverterUInt32.write(value.updates, into: &buf)
@@ -24879,17 +25068,19 @@ public func FfiConverterTypeSyncPassSummary_lower(_ value: SyncPassSummary) -> R
 
 
 /**
- * FR-028's determinate progress. `completed` is never above `total`, so a
- * shell renders a fraction without guarding against one above 1.
+ * FR-028's determinate progress, in live notes and journals of the vault
+ * (#5233). `completed` is never above `total`, so a shell renders a fraction
+ * without guarding against one above 1. `total` is `None` while the vault's
+ * total is not known yet, early in the records phase.
  */
 public struct SyncProgress: Equatable, Hashable {
     public var phase: SyncPhase
     public var completed: UInt64
-    public var total: UInt64
+    public var total: UInt64?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(phase: SyncPhase, completed: UInt64, total: UInt64) {
+    public init(phase: SyncPhase, completed: UInt64, total: UInt64?) {
         self.phase = phase
         self.completed = completed
         self.total = total
@@ -24913,14 +25104,14 @@ public struct FfiConverterTypeSyncProgress: FfiConverterRustBuffer {
             try SyncProgress(
                 phase: FfiConverterTypeSyncPhase.read(from: &buf), 
                 completed: FfiConverterUInt64.read(from: &buf), 
-                total: FfiConverterUInt64.read(from: &buf)
+                total: FfiConverterOptionUInt64.read(from: &buf)
         )
     }
 
     public static func write(_ value: SyncProgress, into buf: inout [UInt8]) {
         FfiConverterTypeSyncPhase.write(value.phase, into: &buf)
         FfiConverterUInt64.write(value.completed, into: &buf)
-        FfiConverterUInt64.write(value.total, into: &buf)
+        FfiConverterOptionUInt64.write(value.total, into: &buf)
     }
 }
 
@@ -33011,7 +33202,7 @@ public func FfiConverterTypeSyncError_lower(_ value: SyncError) -> RustBuffer {
 
 
 /**
- * Which pass a first sync is in, data-model §C.3 and FR-028.
+ * Which part of the vault is arriving, data-model §C.3 and FR-028.
  *
  * A mirror of [`FirstSyncPhase`] rather than a derive on it: the internal type
  * is free to gain a pass, and the day it does, this enum's absence of one is a
@@ -33021,15 +33212,11 @@ public func FfiConverterTypeSyncError_lower(_ value: SyncError) -> RustBuffer {
 public enum SyncPhase: Equatable, Hashable {
     
     /**
-     * `GET /sync/changes` to the end of the feed.
+     * Note records: what a shell shows as "Downloading notes".
      */
-    case refs
+    case records
     /**
-     * `POST /sync/pull`, newest first.
-     */
-    case metadata
-    /**
-     * `GET /sync/crdt/updates` for the recent window.
+     * Note bodies: what a shell shows as "Downloading note content".
      */
     case bodies
     case done
@@ -33054,13 +33241,11 @@ public struct FfiConverterTypeSyncPhase: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .refs
+        case 1: return .records
         
-        case 2: return .metadata
+        case 2: return .bodies
         
-        case 3: return .bodies
-        
-        case 4: return .done
+        case 3: return .done
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -33070,20 +33255,16 @@ public struct FfiConverterTypeSyncPhase: FfiConverterRustBuffer {
         switch value {
         
         
-        case .refs:
+        case .records:
             writeInt(&buf, Int32(1))
         
         
-        case .metadata:
+        case .bodies:
             writeInt(&buf, Int32(2))
         
         
-        case .bodies:
-            writeInt(&buf, Int32(3))
-        
-        
         case .done:
-            writeInt(&buf, Int32(4))
+            writeInt(&buf, Int32(3))
         
         }
     }
@@ -37859,10 +38040,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_syncprogresslistener_progress() != 60104) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
+    if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 65350) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 29986) {
+    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 27015) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
@@ -37881,6 +38062,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 32295) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
