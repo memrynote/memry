@@ -99,6 +99,10 @@ impl ImportSink for RecordingSink {
         }));
         Ok(())
     }
+
+    fn finish(&self) {
+        self.push(json!({ "op": "finish" }));
+    }
 }
 
 /// The generator's `tagValue`: a frontmatter value as `JSON.stringify` writes it, with the
