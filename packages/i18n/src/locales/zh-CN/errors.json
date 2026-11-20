@@ -29,6 +29,7 @@
     "moveFailed": "移动笔记失败",
     "applyTemplateFailed": "应用模板失败",
     "appendBlocksFailed": "无法将此块移到该笔记",
+    "appendIntoCaseTwin": "该笔记与另一篇仅名称大小写不同的笔记共用同一个文件。请重命名其中一篇，然后再次移动此块。",
     "exportPdfFailed": "导出 PDF 失败",
     "exportHtmlFailed": "导出 HTML 失败",
     "restoreVersionFailed": "恢复版本失败",

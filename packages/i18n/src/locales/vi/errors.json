@@ -29,6 +29,7 @@
     "moveFailed": "Không thể di chuyển ghi chú",
     "applyTemplateFailed": "Không thể áp dụng mẫu",
     "appendBlocksFailed": "Không thể di chuyển khối sang ghi chú đó",
+    "appendIntoCaseTwin": "Ghi chú đó dùng chung tệp với một ghi chú có tên chỉ khác nhau ở chữ hoa và chữ thường. Hãy đổi tên một trong hai ghi chú, rồi di chuyển lại khối.",
     "exportPdfFailed": "Không thể xuất PDF",
     "exportHtmlFailed": "Không thể xuất HTML",
     "restoreVersionFailed": "Không thể khôi phục phiên bản",

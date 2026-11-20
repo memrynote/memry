@@ -29,6 +29,7 @@
     "moveFailed": "No se pudo mover la nota",
     "applyTemplateFailed": "No se pudo aplicar la plantilla",
     "appendBlocksFailed": "No se pudo mover el bloque a esa nota",
+    "appendIntoCaseTwin": "Esa nota comparte su archivo con una nota cuyo nombre solo difiere en mayúsculas y minúsculas. Cambia el nombre de una de ellas y vuelve a mover el bloque.",
     "exportPdfFailed": "No se pudo exportar el PDF",
     "exportHtmlFailed": "No se pudo exportar el HTML",
     "restoreVersionFailed": "No se pudo restaurar la versión",

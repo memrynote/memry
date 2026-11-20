@@ -39,6 +39,7 @@ vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn(() => calls.push('markWritebackIgnored'))
 }))
 vi.mock('./note-sync', () => ({
+  refusesCaseTwinFile: () => false,
   syncNoteToCache: vi.fn(() => {
     calls.push('syncNoteToCache')
     return { wordCount: 3, characterCount: 12, tags: [] }

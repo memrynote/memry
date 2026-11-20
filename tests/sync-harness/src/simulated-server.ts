@@ -10,6 +10,34 @@ const ROOT = path.resolve(__dirname, '../../..')
 // Canonical schema = the ordered D1 migrations wrangler applies on deploy.
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../../apps/sync-server/migrations')
 const BACKFILL_QUEUE = 'memry-pack-backfill-dev'
+/** Past the backfill's 10 s hop delay (`pack-backfill.ts`), so a chain's next message runs. */
+const BACKFILL_RETICK_MS = 12_000
+const BACKFILL_SETTLE_DEADLINE_MS = 120_000
+/**
+ * The backfill's limits, copied because Playwright loads this file as CJS and
+ * cannot import the Worker's ESM sources. `tests/backfill-limits.test.ts`
+ * holds each equal to its source.
+ */
+export const BACKFILL_LIMITS = {
+  /** `PACK_MIN_FILL_ROWS` (`pack-sizing.ts`). */
+  minFillRows: 256,
+  /** `PACK_SETTLE_SECONDS` (`pack-sizing.ts`). */
+  settleSeconds: 24 * 60 * 60,
+  /** `PACK_LIST_MAX_PACKS_PER_VAULT` (`@memry/contracts/sync-api`). */
+  maxPacksPerVault: 999,
+  /** `REWRITE_PENDING` (`pack-replaced-objects.ts`). */
+  rewritePending: 'rewrite'
+} as const
+
+/**
+ * Each packed kind's rows, sort column and write-time column, as the
+ * backfill's backlog query reads them (`findBacklogVaults`, `pack-backfill.ts`).
+ */
+const BACKLOG_SOURCES = [
+  { kind: 'record', table: 'sync_items', sort: 'server_cursor', time: 'updated_at' },
+  { kind: 'crdt_snapshot', table: 'crdt_snapshots', sort: 'created_at', time: 'created_at' },
+  { kind: 'crdt_update', table: 'crdt_updates', sort: 'server_cursor', time: 'created_at' }
+] as const
 
 export interface ServerKeys {
   publicKeyPem: string
@@ -109,6 +137,55 @@ export class SimulatedServer {
     if (!this.mf) throw new Error('Server not started')
     const worker = await this.mf.getWorker()
     await worker.scheduled({ cron })
+  }
+
+  /**
+   * Runs the cron until no vault holds a kind's rows the backfill would pack:
+   * rows above its watermark that pass `packFillReady` (`pack-sizing.ts`) in a
+   * vault below the listing cap, or a purge rewrite still pending
+   * (`BACKFILL_LIMITS.rewritePending`).
+   * A build lists its pack and moves the watermark in one D1 batch, so an empty
+   * backlog means `pack_index` is final. Young rows below the fill stay unpacked.
+   */
+  async settlePackBackfill(): Promise<void> {
+    const deadline = Date.now() + BACKFILL_SETTLE_DEADLINE_MS
+    let retick = 0
+    while (await this.packBacklog()) {
+      if (Date.now() > deadline) throw new Error('the pack backfill never settled')
+      if (Date.now() >= retick) {
+        await this.triggerScheduled()
+        retick = Date.now() + BACKFILL_RETICK_MS
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    }
+  }
+
+  private async packBacklog(): Promise<boolean> {
+    const db = await this.getD1()
+    const rewrite = await db
+      .prepare('SELECT 1 FROM pack_replaced_objects WHERE replaced_by = ? LIMIT 1')
+      .bind(BACKFILL_LIMITS.rewritePending)
+      .first()
+    if (rewrite) return true
+    const settledBefore = Math.floor(Date.now() / 1000) - BACKFILL_LIMITS.settleSeconds
+    for (const { kind, table, sort, time } of BACKLOG_SOURCES) {
+      const ready = await db
+        .prepare(
+          `SELECT 1 FROM ${table} si
+           LEFT JOIN pack_watermarks w
+             ON w.user_id = si.user_id AND w.vault_id = si.vault_id AND w.item_kind = ?
+           WHERE si.${sort} IS NOT NULL AND (w.user_id IS NULL OR si.${sort} > w.last_sort_value)
+           GROUP BY si.user_id, si.vault_id
+           HAVING (SELECT COUNT(*) FROM pack_index p
+                   WHERE p.user_id = si.user_id AND p.vault_id = si.vault_id) < ?
+             AND (COUNT(*) >= ? OR MIN(si.${time}) <= ?)
+           LIMIT 1`
+        )
+        .bind(kind, BACKFILL_LIMITS.maxPacksPerVault, BACKFILL_LIMITS.minFillRows, settledBefore)
+        .first()
+      if (ready) return true
+    }
+    return false
   }
 
   async getD1(): Promise<D1Database> {

@@ -29,6 +29,7 @@
     "moveFailed": "Nepodarilo sa presunúť poznámku",
     "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
     "appendBlocksFailed": "Nepodarilo sa presunúť blok do cieľovej poznámky",
+    "appendIntoCaseTwin": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen. Jednu z nich premenujte a potom blok presuňte znova.",
     "exportPdfFailed": "Nepodarilo sa exportovať PDF",
     "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
     "restoreVersionFailed": "Nepodarilo sa obnoviť verziu",

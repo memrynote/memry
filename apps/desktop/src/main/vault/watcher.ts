@@ -30,6 +30,7 @@ import {
   moveFileInCache,
   deleteNoteFromCache,
   findCanonicalNoteForFile,
+  refusesCaseTwinFile,
   findCanonicalNotePath,
   isRemoteApplySpelling,
   type CanonicalNoteRef
@@ -1166,6 +1167,8 @@ export class VaultWatcher {
     ) {
       return
     }
+
+    if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return
 
     const syncResult = syncNoteToCache(
       db,

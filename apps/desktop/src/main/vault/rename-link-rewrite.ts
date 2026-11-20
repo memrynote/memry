@@ -47,7 +47,7 @@ import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache } from './note-sync'
+import { refusesCaseTwinFile, syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import { isNoteLocked } from '../vault-locks/registry'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
@@ -147,6 +147,14 @@ async function rewriteSource(
   // The renamed note linking to itself: its cache row lags the rename (the
   // projector is async), so its file lives at the caller-supplied new path.
   const sourcePath = sourceId === noteId ? input.newPath : cached.path
+  // The file may hold a case twin's body (#5297): the link stays stale.
+  if (refusesCaseTwinFile(getVaultRoot(), sourcePath, sourceId)) {
+    log.warn('Left an inbound link stale: the source shares its file with a case twin', {
+      sourceId,
+      renamedNoteId: noteId
+    })
+    return
+  }
   const original = await readVaultFile(getVaultRoot(), sourcePath)
   if (!original) return
 

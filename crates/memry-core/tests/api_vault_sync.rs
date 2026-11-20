@@ -300,6 +300,7 @@ async fn a_failed_bodies_pass_still_leaves_the_notes_that_arrived_visible() {
     // §0.6.1's ladder retries 5xx, so a 500 here would be three more scripted
     // responses and would be testing the ladder rather than the rule.
     let mut script = first_sync_script(&public, secret, RECENT);
+    script.push(http_fakes::probe_refused());
     script.push(error_response(
         403,
         "SYNC_VAULT_FORBIDDEN",
@@ -349,11 +350,12 @@ async fn a_windowed_out_body_arrives_only_through_the_on_demand_fetch() {
     );
     assert_eq!(before.body.text, "");
 
-    // The second script: the directory again, then §7.8's snapshot probe, then
-    // the update itself.
+    // The second script: the directory again, a refused batch probe, then
+    // §7.8's snapshot probe, then the update itself.
     let update = body_update("Hello from the server");
     let transport = FakeTransport::new(vec![
         devices_response(&public),
+        http_fakes::probe_refused(),
         response(200, &json!({ "snapshot": Json::Null }).to_string()),
         response(
             200,

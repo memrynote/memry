@@ -20,6 +20,11 @@ const senderWindow = vi.hoisted(() => ({
 // A real, empty folder: the outside-vault check resolves every read against it.
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-vault-'))
 
+// No case twins here: the twin rule reads canonical rows these mocks do not hold.
+vi.mock('../vault/note-sync', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  refusesCaseTwinFile: () => false
+}))
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/crdt-test-userdata' },
   BrowserWindow: {

@@ -29,6 +29,7 @@
     "moveFailed": "Premještanje bilješke nije uspjelo",
     "applyTemplateFailed": "Primjena predloška nije uspjela",
     "appendBlocksFailed": "Premještanje bloka u tu bilješku nije uspjelo",
+    "appendIntoCaseTwin": "Ta bilješka dijeli datoteku s bilješkom čiji se naziv razlikuje samo po velikim i malim slovima. Preimenuj jednu od njih, a zatim ponovno premjesti blok.",
     "exportPdfFailed": "Izvoz u PDF nije uspio",
     "exportHtmlFailed": "Izvoz u HTML nije uspio",
     "restoreVersionFailed": "Vraćanje verzije nije uspjelo",

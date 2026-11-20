@@ -33,6 +33,7 @@ import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { getVaultRoot } from '../vault/notes-io'
+import { refusesCaseTwinFile } from '../vault/note-sync'
 import { openVaultFile } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
@@ -897,7 +898,7 @@ export class CrdtProvider {
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
       const file = await openNoteFile(noteId, cached.path)
-      if (file === OUTSIDE_VAULT) return true
+      if (file === REFUSED) return true
       const raw = file === null ? null : await readAndClose(file)
       if (raw === null) {
         clearOwedFileBody(noteId)
@@ -1862,7 +1863,7 @@ export class CrdtProvider {
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
     const file = await openNoteFile(noteId, cached.path)
-    if (file === OUTSIDE_VAULT) return
+    if (file === REFUSED) return
 
     // Classify from `stat` before reading. The byte ceiling settles a large
     // file on its own, and the vault-wide sweep reaches every note on every
@@ -2556,22 +2557,25 @@ export class CrdtProvider {
   }
 }
 
-const OUTSIDE_VAULT = Symbol('outside vault')
+const REFUSED = Symbol('refused')
 
 /**
  * The note file opened for reading, or null when it is missing. A file linked
- * outside the vault gives the doc nothing: refuse, never follow (#2804).
+ * outside the vault gives the doc nothing: refuse, never follow (#2804). So
+ * does a file shared with a case twin (#5297).
  */
 async function openNoteFile(
   noteId: string,
   relativePath: string
-): Promise<FileHandle | null | typeof OUTSIDE_VAULT> {
+): Promise<FileHandle | null | typeof REFUSED> {
+  const vaultRoot = getVaultRoot()
+  if (refusesCaseTwinFile(vaultRoot, relativePath, noteId)) return REFUSED
   try {
-    return await openVaultFile(getVaultRoot(), relativePath)
+    return await openVaultFile(vaultRoot, relativePath)
   } catch (err) {
     if (!(err instanceof OutsideVaultError)) throw err
     log.warn('Refusing a note file that links outside the vault', { noteId })
-    return OUTSIDE_VAULT
+    return REFUSED
   }
 }
 

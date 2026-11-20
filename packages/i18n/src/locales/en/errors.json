@@ -29,6 +29,7 @@
     "moveFailed": "Failed to move note",
     "applyTemplateFailed": "Failed to apply template",
     "appendBlocksFailed": "Failed to move the block to that note",
+    "appendIntoCaseTwin": "That note shares its file with a note whose name differs only in case. Rename one of them, then move the block again.",
     "exportPdfFailed": "Failed to export PDF",
     "exportHtmlFailed": "Failed to export HTML",
     "restoreVersionFailed": "Failed to restore version",

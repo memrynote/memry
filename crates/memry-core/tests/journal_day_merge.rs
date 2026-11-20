@@ -142,8 +142,8 @@ fn text_update(client: u64, text: &str) -> Vec<u8> {
         .encode_state_as_update_v1(&StateVector::default())
 }
 
-/// The server answers for one document with no cursor: no snapshot, then
-/// one page holding `update`.
+/// The server answers for one document with no cursor: a refused batch
+/// probe, no snapshot, then one page holding `update`.
 fn body_pull(db: &Db, update: &[u8]) -> BodyPull {
     bodies_for(db, &[Some(update)])
 }
@@ -156,6 +156,7 @@ fn bodies_for(db: &Db, logs: &[Option<&[u8]>]) -> BodyPull {
             .iter()
             .map(|update| json!({"sequenceNum": 1, "data": BASE64.encode(update), "signerDeviceId": "device-b", "createdAt": 1}))
             .collect();
+        script.push(http_fakes::probe_refused());
         script.push(response(200, &json!({"snapshot": null}).to_string()));
         script.push(response(
             200,

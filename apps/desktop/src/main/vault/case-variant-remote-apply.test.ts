@@ -555,6 +555,62 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(noteCreates()).toEqual([])
   }, 20_000)
 
+  /** Each feed of a file body into a doc, as the twin whose body it is. */
+  const fedBodies = () =>
+    vi
+      .mocked(feedExternalEditToCrdt)
+      .mock.calls.map(([id, markdown]) => [
+        id,
+        markdown.includes('upper') ? 'upper' : markdown.includes('lower') ? 'lower' : markdown
+      ])
+
+  // The shared file holds one twin's body, so neither note may take it as an
+  // outside edit of its own: that pushes one note's body into the other (#5297).
+  it('an outside edit to a file shared with a case twin feeds neither note', async () => {
+    await watch()
+    seed('remote-lower', 'Supernotes/a.md', '# a\n\nlower\n')
+    seed('remote-upper', 'SuperNotes/a.md', '# a\n\nupper\n')
+    seed('control', 'Supernotes/c.md', '# c\n\nbody\n')
+    await passSentinel()
+    // Past the window in which the watcher drops the apply's own writes. The
+    // control note's edit lands in the same batch, and marks it handled.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+    try {
+      fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), '# a\n\nupper outside\n')
+      fs.writeFileSync(path.join(vault.path, 'Supernotes/c.md'), '# c\n\nbody outside\n')
+      await settleOn(() => expect(fedBodies().map(([id]) => id)).toContain('control'))
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(fedBodies().filter(([id]) => id !== 'control')).toEqual([])
+    expect(metadataRows().map((row) => row.id)).toEqual(['control', 'remote-lower', 'remote-upper'])
+  }, 20_000)
+
+  it('vault open leaves case twins sharing a file to their own bodies on write-back', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('remote-lower', 'SuperNotes/a.md', '# a\n\nlower\n')
+    seed('remote-upper', 'SUPERNOTES/a.md', '# a\n\nupper\n')
+
+    await healCaseVariantRows(vault.path)
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+    await writebackNow('remote-lower', await storedDoc('# a\n\nlower\n', 'Supernotes/a.md'))
+    await writebackNow('remote-upper', await storedDoc('# a\n\nupper\n', 'Supernotes/a.md'))
+
+    expect({
+      rows: metadataRows().map((row) => row.id),
+      file: fs.readFileSync(path.join(vault.path, 'Supernotes/a.md'), 'utf8'),
+      fed: fedBodies(),
+      creates: noteCreates()
+    }).toEqual({
+      rows: ['remote-lower', 'remote-upper'],
+      file: '# a\n\nupper\n',
+      fed: [],
+      creates: []
+    })
+  })
+
   it('vault open keeps the applied rows when the index is rebuilt', async () => {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'))
     fs.mkdirSync(path.join(vault.path, 'ärzte'))

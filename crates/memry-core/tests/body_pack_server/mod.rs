@@ -166,6 +166,35 @@ impl ServerDoc {
         self
     }
 
+    /// What a snapshot push with no update rows leaves on the server: the
+    /// snapshot of every edit at `sequenceNum` 0, and no update row
+    /// (`crdt-snapshot-write.ts`, the watermark of no rows is 0).
+    pub fn snapshot_only(mut self) -> Self {
+        let all = self.raw.len() as i64;
+        self = self.snapshot_at(all);
+        if let Some(snapshot) = self.snapshot.as_mut() {
+            snapshot.sequence_num = 0;
+        }
+        self.updates.clear();
+        self
+    }
+
+    /// A snapshot of the first `at` edits pushed with no update rows, so at
+    /// `sequenceNum` 0, then the later edits pushed as updates 1, 2, ...
+    pub fn snapshot_zero_then_updates(mut self, at: i64) -> Self {
+        self = self.snapshot_at(at);
+        if let Some(snapshot) = self.snapshot.as_mut() {
+            snapshot.sequence_num = 0;
+        }
+        let id = self.id.clone();
+        self.updates = self.raw[at as usize..]
+            .iter()
+            .enumerate()
+            .map(|(i, update)| (i as i64 + 1, seal(&id, update)))
+            .collect();
+        self
+    }
+
     /// Purges the updates through `floor`.
     pub fn purged_through(mut self, floor: i64) -> Self {
         self.updates.retain(|seq, _| *seq > floor);
@@ -341,6 +370,8 @@ pub struct Server {
     /// `GET /sync/packs` answers 404 from this call on (0 is the first).
     pub listing_missing_from: Option<usize>,
     listings: usize,
+    /// Rewrites each batch answer, to send a malformed one.
+    pub batch_rewrite: Option<fn(&mut Json)>,
 }
 
 impl Server {
@@ -358,6 +389,7 @@ impl Server {
             dropped: HashSet::new(),
             listing_missing_from: None,
             listings: 0,
+            batch_rewrite: None,
         }
     }
 
@@ -522,7 +554,10 @@ impl Server {
                 notes[id] = self.update_page(self.find(id), since, limit);
                 metas[id] = self.find(id).map_or(Json::Null, ServerDoc::snapshot_meta);
             }
-            let body = json!({"notes": notes, "snapshotMeta": metas});
+            let mut body = json!({"notes": notes, "snapshotMeta": metas});
+            if let Some(rewrite) = self.batch_rewrite {
+                rewrite(&mut body);
+            }
             return Some(response(200, &body.to_string()));
         }
         if let Some(id) = url.split("/sync/crdt/snapshot/").nth(1) {
