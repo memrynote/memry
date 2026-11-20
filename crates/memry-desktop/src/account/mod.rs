@@ -363,6 +363,11 @@ impl AccountService {
         }
     }
 
+    /// The registered sync device id (`getCurrentDeviceId`), from the config: no keychain read.
+    pub fn device_id(&self) -> Option<String> {
+        self.sync_fields().1
+    }
+
     /// What the sync gate reads at each start attempt: signed in, and `sync.recoveryPhraseConfirmed`
     /// is not `false`. The master key is the backend's own read.
     pub fn sync_facts(&self) -> (bool, bool) {
