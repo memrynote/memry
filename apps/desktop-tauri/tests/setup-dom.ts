@@ -465,6 +465,8 @@ vi.mock('../src/generated/bindings', () => {
       ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
+      // Pulled pages (services/sync-service.ts); the domain services compose it with their events.
+      syncItemSyncedEvent: { listen: async () => () => undefined },
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
       ocrLanguagesChangedEvent: { listen: async () => () => undefined },
       aiEmbeddingProgressEvent: { listen: async () => () => undefined },

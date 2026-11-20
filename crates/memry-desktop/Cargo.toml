@@ -304,6 +304,10 @@ name = "sandbox_template"
 path = "tests/sandbox_template.rs"
 
 [[test]]
+name = "sandbox_replay"
+path = "tests/sandbox_replay.rs"
+
+[[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
 

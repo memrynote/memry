@@ -1,0 +1,19 @@
+{
+  "permission": [
+    {
+      "identifier": "boot",
+      "description": "The commands every window that loads index.html calls while it starts: main.tsx, logger.ts, app-services.ts, settings-service.ts, window-service.ts and external-link-guard.ts. A secondary window capability grants it next to the permission of that window.",
+      "commands": {
+        "allow": [
+          "app_info",
+          "app_set_zoom_factor",
+          "locale_get",
+          "log_write",
+          "settings_get_group",
+          "shell_open_link",
+          "telemetry_track"
+        ]
+      }
+    }
+  ]
+}
