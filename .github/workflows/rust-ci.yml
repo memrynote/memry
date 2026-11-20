@@ -157,7 +157,11 @@ jobs:
     # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
     # nextest suite alone is 11 of build and 24 of run (run 43766971845). A timed-out run saves no
     # cache, so the next run starts cold again. Warm, the Apple Silicon leg takes about 57 minutes.
-    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 90 || 65 }}
+    # windows-11-arm is cold on every run (no cache restores there) and compiles BoringSSL (btls-sys,
+    # for `services/web_fetch`) from scratch in each of the job's first cargo steps, about 6 minutes
+    # apiece. Run 44756156023 reached the Electron profile step after 46 minutes, run 44749865321
+    # (before the dependency) after 22: the job needs about 70 minutes.
+    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm') && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
@@ -364,17 +368,24 @@ jobs:
       # The live steps run under nextest's `live` profile with --no-capture: each test prints START
       # and its result, and a test that hangs is killed after 5 minutes (crates/.config/nextest.toml)
       # and named. Their passing runs take under 3 minutes, so the 10-minute step limit fails a hang
-      # long before the job limit (#3907).
+      # long before the job limit (#3907). The build is a step of its own, outside that limit: on
+      # windows-11-arm the lint alone took 8 minutes (BoringSSL builds from scratch there) and the
+      # step timed out in the test build, before any test started (run 44756156023).
+      - name: Electron profile readers, build (macOS, Windows)
+        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os != 'Linux'
+        timeout-minutes: 30
+        run: |
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          fi
+          cargo nextest run -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
+
       - name: Electron profile readers, live OS secrets (macOS, Windows)
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os != 'Linux'
         timeout-minutes: 10
         env:
           MEMRY_LIVE_KEYTAR: '1'
-        run: |
-          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
-            cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
-          fi
-          cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live
+        run: cargo nextest run --profile live --no-capture -p memry-desktop --features live-os-secrets --test electron_secrets_live
 
       # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
       # session bus at all, where the reader must answer "missing" and create nothing.
