@@ -16,19 +16,27 @@
  * - A seed, and the take of an owed file (`takeOwedFile`), record the bytes
  *   they built the doc from, over any older hash.
  * - Memry's other body writers (the note command, journal saves, appended
- *   blocks, task-line removal, version restore, a rename's link rewrites, the
- *   watcher's ingest) write the file, publish the baseline they find
- *   (`baselineBeforeFeed`), feed the doc, and record their bytes only once the
- *   doc holds them (`feedThenRecordBaseline`). A crash before the feed leaves
- *   their bytes an outside edit, which the next write-back feeds instead of
- *   writing the doc over them (#5304).
+ *   blocks, task-line removal, version restore, a move's ref rewrite, a
+ *   rename's link rewrites) feed the doc first, wait for the store to hold the
+ *   update, and then write the file through `writeWithBaseline`
+ *   (`landBodyEdit`, D-DOC-FIRST). A crash before the write leaves the doc
+ *   ahead of the file, which the write-back writes; a crash after it leaves the
+ *   pending hash naming Memry's own bytes. A doc that declines the feed (closed
+ *   and empty, owed, large-file) gets the file written with the baseline kept,
+ *   so the edit reads as an outside edit and is fed at open.
+ * - The watcher's ingest of an outside edit drains the cache sync's projection,
+ *   feeds the doc, and records the bytes once the doc holds them
+ *   (`ingestOutsideEdit`).
  * - A writer or reader that does not feed the doc (a metadata-only note or
- *   journal update, a rename that rewrites nothing, a remote journal apply,
- *   the ingest backfill) keeps the baseline it finds unless its bytes only
- *   change the frontmatter of the baseline (`baselineAfterWrite`,
- *   `baselineAfterRead`).
- * - A remote note create writes a new file with no baseline to keep, and the
- *   cache sync measures it.
+ *   journal update, a rename that rewrites nothing, a remote note rename or
+ *   frontmatter rewrite, a remote journal apply, a journal create over an
+ *   existing day file, the ingest backfill) keeps the baseline it finds unless
+ *   its bytes only change the frontmatter of the baseline
+ *   (`baselineAfterWrite`, `baselineAfterRead`).
+ * - Exceptions, with no baseline to keep or move: a remote note create writes
+ *   a new file the cache sync measures; the root-properties migration rewrites
+ *   only frontmatter and re-reads the files it wrote (`indexVault`
+ *   forcePaths); a vault lock writes back the locked text its doc holds.
  *
  * Any hash a writer moves clears a pending write (`updateNoteCache`,
  * `insertNoteCache`), so a stale pending hash never outlives the baseline it
@@ -41,6 +49,9 @@ import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
 import type { getIndexDatabase } from '../database/client'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { flushProjectionEvents } from '../projections'
+import { createLogger } from '../lib/logger'
+
+const log = createLogger('WritebackBaseline')
 
 type IndexDb = ReturnType<typeof getIndexDatabase>
 type Baseline = { contentHash?: string | null; pendingWriteHash?: string | null }
@@ -116,30 +127,54 @@ export function baselineAfterRead(baseline: Baseline | undefined, measuredHash: 
 }
 
 /**
- * The hash a writer publishes for bytes it wrote and has not fed to the doc
- * yet: the baseline it finds, or the written hash when the note has none.
+ * The hash a writer publishes for bytes its doc does not hold yet: the
+ * baseline it finds, or the written hash when the note has none.
  */
 export function baselineBeforeFeed(indexDb: IndexDb, noteId: string, written: string): string {
   return baselineAfterRead(getNoteCacheById(indexDb, noteId), generateContentHash(written))
 }
 
 /**
- * Feeds the doc the bytes a writer wrote, then records them as the baseline
- * once the doc holds them. The cache sync's projection, which carries the
- * baseline the writer found, drains first so it cannot land over the record.
- * A baseline that moved meanwhile (a write-back pass) is left alone.
+ * Lands Memry's own change of a note body (D-DOC-FIRST): `feed` puts it in the
+ * doc, then `write` puts `fileContent` on disk through `writeWithBaseline`. A
+ * feed that declines or fails still writes the file and keeps the baseline,
+ * so the change is fed at open. Resolves the hash the cache sync publishes.
  */
-export async function feedThenRecordBaseline(
+export async function landBodyEdit(
   indexDb: IndexDb,
   noteId: string,
-  written: string,
+  fileContent: string,
+  steps: { feed: () => Promise<boolean>; write: () => Promise<void> }
+): Promise<string> {
+  const fed = await steps.feed().catch((err: unknown) => {
+    log.error('Could not feed a body change to its doc; the file carries it', { noteId, err })
+    return false
+  })
+  if (!fed) {
+    await steps.write()
+    return baselineBeforeFeed(indexDb, noteId, fileContent)
+  }
+  await writeWithBaseline(indexDb, noteId, fileContent, steps.write)
+  return generateContentHash(fileContent)
+}
+
+/**
+ * The watcher's ingest of an outside edit already on disk: the cache sync's
+ * projection, which carries the baseline the watcher found, drains first, then
+ * the doc takes `raw`, and `raw` becomes the baseline once the doc holds it. A
+ * baseline that moved meanwhile (a write-back pass) is left alone.
+ */
+export async function ingestOutsideEdit(
+  indexDb: IndexDb,
+  noteId: string,
+  raw: string,
   feed: () => Promise<boolean>
 ): Promise<boolean> {
+  await flushProjectionEvents()
   const found = getNoteCacheById(indexDb, noteId)?.contentHash
   const fed = await feed()
-  await flushProjectionEvents()
   if (fed && getNoteCacheById(indexDb, noteId)?.contentHash === found) {
-    recordBaseline(indexDb, noteId, written)
+    recordBaseline(indexDb, noteId, raw)
   }
   return fed
 }

@@ -290,6 +290,8 @@ export class CrdtProvider {
   private readonly now: () => number
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
+  /** Each note's updates on their way to the store, chained in order (`whenPersisted`). */
+  private persisting = new Map<string, Promise<void>>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -2213,9 +2215,27 @@ export class CrdtProvider {
 
   private persistUpdate(noteId: string, update: Uint8Array): void {
     if (!this.persistence) return
-    this.persistence.storeUpdate(noteId, update).catch((err: unknown) => {
+    const stored = this.persistence.storeUpdate(noteId, update)
+    stored.catch((err: unknown) => {
       log.error('Failed to persist CRDT update', { noteId, error: err })
     })
+    const chained = (this.persisting.get(noteId) ?? Promise.resolve()).then(() => stored)
+    this.persisting.set(noteId, chained)
+    chained
+      .catch(() => {})
+      .finally(() => {
+        if (this.persisting.get(noteId) === chained) this.persisting.delete(noteId)
+      })
+  }
+
+  /**
+   * Resolves once every update of the note handed to the store so far is
+   * stored, and rejects when one failed. A writer that feeds the doc before it
+   * writes the file waits here, so the file never holds bytes a restart's doc
+   * lacks (sync/writeback-baseline.ts).
+   */
+  async whenPersisted(noteId: string): Promise<void> {
+    await this.persisting.get(noteId)
   }
 
   private maybeCompact(noteId: string): void {

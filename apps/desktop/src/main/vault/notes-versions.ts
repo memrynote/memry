@@ -20,7 +20,7 @@ import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/no
 import { getDatabase, getIndexDatabase } from '../database'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { baselineBeforeFeed, feedThenRecordBaseline } from '../sync/writeback-baseline'
+import { landBodyEdit } from '../sync/writeback-baseline'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
@@ -108,7 +108,19 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
   const snapshotParsed = parseNote(snapshot.fileContent)
   const now = new Date()
 
-  await atomicWrite(absolutePath, snapshot.fileContent)
+  // The file is not the note's body while an editor holds it: the Y.Doc is.
+  // Without the feed a restore of an open note shows nothing and the next
+  // write-back rewrites the file from the unrestored Y.Doc. The doc takes the
+  // restore first, then the file (`landBodyEdit`).
+  const contentHash = await landBodyEdit(db, cached.id, snapshot.fileContent, {
+    feed: () =>
+      feedExternalEditToCrdt(
+        cached.id,
+        snapshotParsed.content,
+        writingFrontmatterOf(snapshotParsed.frontmatter)
+      ),
+    write: () => atomicWrite(absolutePath, snapshot.fileContent)
+  })
 
   const syncResult = syncNoteToCache(
     db,
@@ -116,7 +128,7 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
       id: cached.id,
       path: cached.path,
       fileContent: snapshot.fileContent,
-      contentHash: baselineBeforeFeed(db, cached.id, snapshot.fileContent),
+      contentHash,
       frontmatter: snapshotParsed.frontmatter,
       parsedContent: snapshotParsed.content,
       title: cached.title,
@@ -152,17 +164,6 @@ export async function restoreVersion(snapshotId: string): Promise<Note> {
     source: 'internal'
   })
 
-  // The file is not the note's body while an editor holds it: the Y.Doc is.
-  // Without the feed a restore of an open note shows nothing and the next
-  // write-back rewrites the file from the unrestored Y.Doc. The baseline moves
-  // only once the doc holds the restored bytes (sync/writeback-baseline.ts).
-  await feedThenRecordBaseline(db, cached.id, snapshot.fileContent, () =>
-    feedExternalEditToCrdt(
-      cached.id,
-      snapshotParsed.content,
-      writingFrontmatterOf(snapshotParsed.frontmatter)
-    )
-  )
   replaceNoteTagsInCrdt(cached.id, syncResult.headerTags)
 
   return restoredNote

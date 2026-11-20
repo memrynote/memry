@@ -29,11 +29,7 @@ import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import {
-  baselineAfterWrite,
-  baselineBeforeFeed,
-  feedThenRecordBaseline
-} from '../sync/writeback-baseline'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
   carryPositionToPath,
@@ -234,25 +230,30 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       sourceNoteId: id,
       preserveRootRelativeAttachments: true
     })
-    if (rewritten !== null) {
-      // The watcher's external-edit feed must not race the CRDT push below; the
-      // sync note handler marks its own writes the same way before touching a
-      // file it is about to reconcile itself.
-      markWritebackIgnored(newPath)
-      await atomicWrite(newPath, rewritten)
-    }
     const fileContent = rewritten ?? original
     const parsed = parseNote(fileContent, newRelativePath)
+    // Mandatory, not bookkeeping. Main owns the Y.Doc and it is keyed by note
+    // id, so a move never invalidates it; the doc still holds the pre-move body
+    // and the next write-back would serialize that straight back over the
+    // corrected file. The doc takes the rewrite first, then the file
+    // (`landBodyEdit`). The watcher's external-edit feed must not race it; the
+    // sync note handler marks its own writes the same way.
+    if (rewritten !== null) markWritebackIgnored(newPath)
+    const contentHash =
+      rewritten === null
+        ? baselineAfterWrite(db, id, original, original)
+        : await landBodyEdit(db, id, rewritten, {
+            feed: () =>
+              feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
+            write: () => atomicWrite(newPath, rewritten)
+          })
     syncNoteToCache(
       db,
       {
         id,
         path: newRelativePath,
         fileContent,
-        contentHash:
-          rewritten === null
-            ? baselineAfterWrite(db, id, original, original)
-            : baselineBeforeFeed(db, id, rewritten),
+        contentHash,
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: existing.title,
@@ -263,19 +264,6 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       },
       { isNew: false }
     )
-
-    if (rewritten !== null) {
-      // Mandatory, not bookkeeping. Main owns the Y.Doc and it is keyed by note
-      // id, so a move never invalidates it; the doc still holds the pre-move
-      // body and the next write-back would serialize that straight back over the
-      // file we just corrected — and persist it, so closing the note would not
-      // undo the loss. The cache row already points at the new path, so the
-      // embed resolution inside this call reads the note from where it now
-      // lives. File first, then the doc, then the baseline.
-      await feedThenRecordBaseline(db, id, rewritten, () =>
-        feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
-      )
-    }
   }
 
   // Path links (`[[Old/Folder/Note]]`) name the old folder; re-point them.

@@ -53,8 +53,19 @@ const log = createLogger('CrdtExternalFeed')
 // Full fragment replace: lossy re Yjs history, but these edits round-trip
 // through markdown, which destroys that history anyway.
 //
-// Resolves true when the markdown is now the doc's body.
+// Resolves true when the markdown is now the doc's body and stored, so a
+// restart's doc holds it. Rejects when the store failed.
 export async function feedExternalEditToCrdt(
+  noteId: string,
+  markdownContent: string,
+  writing?: WritingFrontmatter
+): Promise<boolean> {
+  const fed = await feedDoc(noteId, markdownContent, writing)
+  if (fed) await getCrdtProvider().whenPersisted(noteId)
+  return fed
+}
+
+async function feedDoc(
   noteId: string,
   markdownContent: string,
   writing?: WritingFrontmatter

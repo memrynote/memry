@@ -4,22 +4,19 @@
  *
  * The renderer can only write a note body through a mounted editor (Yjs →
  * `crdt:apply-update` → debounced writeback). "Move to" needs to write a note
- * that is usually closed, so the write happens here, in the same order the
- * watcher lands an out-of-app edit — the order proven by
- * `rename-link-rewrite.ts` in this folder:
+ * that is usually closed, so the write happens here, in the order every
+ * Memry body writer uses (`landBodyEdit`, sync/writeback-baseline.ts):
  *
- *  1. `markWritebackIgnored` so the watcher does not re-ingest our own write,
- *  2. `atomicWrite` the file,
- *  3. `syncNoteToCache` to re-project the index rows, keeping the
- *     outside-edit baseline it finds,
- *  4. `notes:updated` with `source: 'external'` for the renderer,
- *  5. feed the note's CRDT body, then record the bytes as the baseline
- *     (`feedThenRecordBaseline`, sync/writeback-baseline.ts).
+ *  1. feed the note's CRDT body and wait for the store to hold it,
+ *  2. `markWritebackIgnored`, then write the file through the outside-edit
+ *     baseline, so a crash at any point leaves the doc or the pending hash
+ *     naming the appended text,
+ *  3. `syncNoteToCache` to re-project the index rows,
+ *  4. `notes:updated` with `source: 'external'` for the renderer.
  *
- * Step 5 is not optional. The watcher ignores this write, so when the target
- * note IS open, its Y.Doc keeps the pre-append body until the feed. A crash
- * before the feed leaves the appended bytes off the baseline, so the next
- * write-back feeds them instead of writing the older body over them.
+ * The feed is not optional. The watcher ignores this write, so when the
+ * target note IS open, its Y.Doc would keep the pre-append body and the next
+ * write-back would overwrite the appended text.
  *
  * @module vault/append-blocks
  */
@@ -30,7 +27,7 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { baselineBeforeFeed, feedThenRecordBaseline } from '../sync/writeback-baseline'
+import { landBodyEdit } from '../sync/writeback-baseline'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
@@ -90,18 +87,26 @@ export async function appendBlocksToNote(
   // presence, and leaves the raw frontmatter block byte-identical.
   const nextFile = serializeParsedNote(parsedOriginal, nextContent, { frontmatterEdited: false })
 
+  const parsed = parseNote(nextFile, target.path)
   markWritebackIgnored(absolutePath)
-  await atomicWrite(absolutePath, nextFile)
+  const contentHash = await landBodyEdit(db, targetNoteId, nextFile, {
+    feed: () =>
+      feedExternalEditToCrdt(
+        targetNoteId,
+        parsed.content,
+        writingFrontmatterOf(parsed.frontmatter)
+      ),
+    write: () => atomicWrite(absolutePath, nextFile)
+  })
 
   const now = new Date().toISOString()
-  const parsed = parseNote(nextFile, target.path)
   const syncResult = syncNoteToCache(
     db,
     {
       id: targetNoteId,
       path: target.path,
       fileContent: nextFile,
-      contentHash: baselineBeforeFeed(db, targetNoteId, nextFile),
+      contentHash,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: target.title,
@@ -123,10 +128,6 @@ export async function appendBlocksToNote(
     source: 'external'
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
-
-  await feedThenRecordBaseline(db, targetNoteId, nextFile, () =>
-    feedExternalEditToCrdt(targetNoteId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
-  )
 
   log.info('Appended blocks to note', { targetNoteId, sourceNoteId, chars: rewritten.length })
 

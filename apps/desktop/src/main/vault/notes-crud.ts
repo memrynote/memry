@@ -32,7 +32,8 @@ import {
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
-import { baselineAfterWrite, baselineBeforeFeed } from '../sync/writeback-baseline'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import {
   atomicWrite,
   deleteFile,
@@ -216,8 +217,6 @@ export interface NoteUpdateInput {
 export interface NoteUpdateOutcome {
   note: Note
   headerTagChange: HeaderTagChange
-  /** The bytes the note file holds after the update. */
-  fileContent: string
 }
 
 /**
@@ -739,9 +738,21 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   }
 
   const wrote = currentRaw === null || fileContent !== currentRaw
-  if (wrote) {
-    await atomicWrite(absolutePath, fileContent)
+  const write = async (): Promise<void> => {
+    if (wrote) await atomicWrite(absolutePath, fileContent)
   }
+  // A new body goes to the doc before the file (`landBodyEdit`): the watcher
+  // ignores Memry's own write, so the next write-back would otherwise put the
+  // doc's older body back over it (#2646). No `writing`: the doc keeps its own
+  // alternatives. A metadata edit keeps the body the doc holds.
+  const content = input.content
+  const contentHash =
+    content !== undefined
+      ? await landBodyEdit(db, input.id, fileContent, {
+          feed: () => feedExternalEditToCrdt(input.id, content),
+          write
+        })
+      : (await write(), baselineAfterWrite(db, input.id, currentRaw, fileContent))
 
   // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar
   // state (title/emoji) still updates the DBs without touching the file.
@@ -764,12 +775,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
           id: input.id,
           path: existing.path,
           fileContent,
-          // A new body reaches the baseline once the caller feeds it
-          // (`writeNoteCommand`); a metadata edit keeps the body the doc holds.
-          contentHash:
-            input.content !== undefined
-              ? baselineBeforeFeed(db, input.id, fileContent)
-              : baselineAfterWrite(db, input.id, currentRaw, fileContent),
+          contentHash,
           frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,
@@ -838,7 +844,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
     emitNoteEvent('notes:tags-changed', undefined)
   }
 
-  return { note, headerTagChange, fileContent }
+  return { note, headerTagChange }
 }
 
 // ============================================================================
