@@ -315,12 +315,13 @@ impl Indexer {
     /// Mints a definition for every tag of the notes `only` names, or of every note, that has
     /// none (#4418, Electron's `ensureTagDefinitions` for each file it indexes), once a pass's
     /// search reindex brought the body tags up to date. A pass mints for the files it read; the
-    /// open's pass for every note, which defines the tags of a vault an older build indexed. A
+    /// open's sweep for every note, which defines the tags of a vault an older build indexed. A
     /// mint goes to `defined`: a list read before it showed the name's default colour. A
-    /// failure is logged, and the next pass that reads the file, or the next open, tries again.
-    pub(super) fn define_tags(&self, only: Option<Vec<String>>, defined: &dyn Fn()) {
+    /// failure is logged and answers `false`: the task owes a failed sweep to its next pass,
+    /// and the next pass that reads a file tries that file's tags again.
+    pub(super) fn define_tags(&self, only: Option<Vec<String>>, defined: &dyn Fn()) -> bool {
         if only.as_ref().is_some_and(Vec::is_empty) {
-            return;
+            return true;
         }
         let minted = self.search.used_tags(only).and_then(|tags| {
             let hub =
@@ -332,16 +333,18 @@ impl Indexer {
             hub.define_used(&tags)
         });
         match minted {
-            Ok(0) => {}
+            Ok(0) => true,
             Ok(created) => {
                 tracing::info!(scope = "note_index", created, "tags defined");
                 defined();
+                true
             }
             Err(error) => {
                 tracing::warn!(
                     scope = "note_index",
                     "tags not defined, retried later: {error}"
                 );
+                false
             }
         }
     }

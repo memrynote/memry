@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Mergi la Acasă",
     "goInbox": "Mergi la Inbox",
-    "goJournal": "Mergi la Jurnal",
     "goCalendar": "Mergi la Calendar",
     "goTasks": "Mergi la Sarcini",
     "goGraph": "Mergi la Grafic",

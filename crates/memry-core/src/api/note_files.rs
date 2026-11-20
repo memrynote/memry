@@ -112,6 +112,14 @@ impl NoteFiles {
             .read_blocking(move |conn| owed_file_body::owes(conn, &note_id))
     }
 
+    /// Whether the note's server body is still to be pulled ([`crate::sync::body_debt`]): a file
+    /// it owes cannot be taken before.
+    pub fn server_body_owed(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::sync::body_debt::is_owed(conn, &note_id))
+    }
+
     /// Every live note that owes its file body, in id order.
     pub fn owed_file_bodies(&self) -> Result<Vec<String>, StorageError> {
         self.db.read_blocking(owed_file_body::list)
@@ -152,6 +160,24 @@ impl NoteFiles {
     /// Every note whose file may be behind its body ([`note_files::behind_bodies`]).
     pub fn behind_bodies(&self) -> Result<Vec<String>, StorageError> {
         self.db.read_blocking(note_files::behind_bodies)
+    }
+
+    /// Every live note and day no row names ([`note_files::unfiled_bodies`]).
+    pub fn unfiled_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(note_files::unfiled_bodies)
+    }
+
+    /// The record `id` when no row names it ([`note_files::unfiled`]).
+    pub fn unfiled(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::unfiled(conn, &id))
+    }
+
+    /// Whether a day's file must wait to be named ([`note_files::days_wait`]).
+    #[cfg(feature = "markdown")]
+    pub fn days_wait(&self) -> Result<bool, StorageError> {
+        self.db.read_blocking(note_files::days_wait)
     }
 
     /// [`note_files::mark_unmarked`], once the vault opened.

@@ -50,6 +50,15 @@ impl AppPaths {
     }
 }
 
+/// Tauri's `app_data_dir()` for `identifier`, without Tauri: the platform data folder
+/// (`~/Library/Application Support`, `%APPDATA%`, `$XDG_DATA_HOME` or `~/.local/share`) joined
+/// with the identifier, as `tauri::path::PathResolver::app_data_dir` builds it. The command
+/// line finds the app's `memry-config.json` with it; memry-tauri's `tests/app_data_dir.rs`
+/// holds the two equal.
+pub fn default_data_dir(identifier: &str) -> Option<PathBuf> {
+    dirs::data_dir().map(|dir| dir.join(identifier))
+}
+
 /// The bundle identifier of this run: `base` without a device, `<base>.<device>` with one.
 ///
 /// An unpackaged `dev` device becomes `dev-<first 8 hex of sha256(checkout_dir)>`, the rule of

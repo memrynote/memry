@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ingen bokse endnu",
       "openVault": "Åbn boks",
+      "createVault": "Opret boks",
+      "openFolderAsVault": "Åbn mappe som boks",
       "settings": "Indstillinger",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne »{name}« fra listen?",

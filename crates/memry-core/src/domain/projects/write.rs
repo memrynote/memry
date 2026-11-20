@@ -201,6 +201,8 @@ pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError
 /// field clocks, and is queued as a `create`. Run by the sync pass after a
 /// pull that reached the feed head ([`crate::sync::engine::PassSeed`]), so an
 /// Inbox another device pushed first has already replaced the seed.
+/// A seed first sync's refs pass found on the server too waits `metadata-only`
+/// for the server's body, so it is never seeded, even when that fetch failed.
 /// Idempotent: a seeded record has a clock. Returns the seeded ids.
 pub fn seed_unclocked(
     conn: &Connection,
@@ -214,7 +216,7 @@ pub fn seed_unclocked(
                 "SELECT item_id FROM sync_items
                   WHERE item_type = ?1 AND clock IS NULL AND signer_device_id IS NULL
                     AND server_cursor IS NULL AND deleted_at IS NULL AND payload IS NOT NULL
-                    AND corrupt_at IS NULL
+                    AND corrupt_at IS NULL AND payload_state <> 'metadata-only'
                   ORDER BY rowid",
             )
             .map_err(failed)?;

@@ -11,10 +11,13 @@ mod adopt;
 pub mod binding;
 pub mod device;
 mod devices;
+#[cfg(feature = "e2e")]
+pub mod e2e_bootstrap;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
+mod repair;
 pub mod session_events;
 mod teardown;
 pub mod vault_directory;
@@ -24,6 +27,7 @@ pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
+pub use repair::KeyRepair;
 pub use teardown::SignedOut;
 
 use std::sync::{Arc, Mutex};
@@ -319,6 +323,18 @@ impl AccountService {
     /// The session shared, for the sync backend of each open vault.
     pub fn shared_session(&self) -> Arc<AuthSession> {
         Arc::clone(&self.session)
+    }
+
+    /// The signed-in account's term, for a write that waits on the network (billing's plan
+    /// answers); `None` signed out or while a sign-out runs.
+    pub fn term(&self) -> Option<u64> {
+        self.signed_in_epoch()
+    }
+
+    /// Runs `write` while `term` is still the account's, `None` after any sign-out (the IPC one or
+    /// a repair's) ended it.
+    pub fn write_in_term<T>(&self, term: u64, write: impl FnOnce() -> T) -> Option<T> {
+        self.epoch.write_if(term, write)
     }
 
     /// A launch probe; a locked keychain leaves the session signed out until the next probe.
