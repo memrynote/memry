@@ -111,6 +111,8 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -168,6 +170,8 @@ mod folder_prune;
 mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]
@@ -449,6 +453,8 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_engine.rs"]
+mod voice_engine;
 
 #[test]
 fn every_test_file_is_built() {

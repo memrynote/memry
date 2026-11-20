@@ -11,6 +11,7 @@
           "e2e_app_terminate",
           "e2e_apply_login_item",
           "e2e_bare_alt_menu_mode",
+          "e2e_bootstrap_sync_device",
           "e2e_clipboard_read",
           "e2e_clipboard_read_image",
           "e2e_clipboard_write",

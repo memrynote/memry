@@ -11,7 +11,7 @@ use memry_desktop::billing::BillingService;
 use memry_desktop::session::Session;
 use memry_desktop::sync::gate::{GateDecision, SyncNotStartedReason};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::error::{CommandError, ErrorKind, log_failure};
 use crate::events::{SyncVaultBindingChangedEvent, VaultBindingState, broadcast};
@@ -56,7 +56,10 @@ pub struct ResolveVaultBindingResult {
 
 /// One teardown behind both channels (`teardownSession('logout')`): sync stops, the five
 /// secrets go, `memry-config.json` `sync` empties; vaults and queued edits stay.
-async fn sign_out(app: &AppHandle<Wry>, command: &str) -> Result<SignOutResult, CommandError> {
+async fn sign_out<R: Runtime>(
+    app: &AppHandle<R>,
+    command: &str,
+) -> Result<SignOutResult, CommandError> {
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let session = app.state::<Session>().inner().clone();
     let signed_out = account.sign_out(&session).await;
@@ -76,7 +79,7 @@ async fn sign_out(app: &AppHandle<Wry>, command: &str) -> Result<SignOutResult, 
     })
 }
 
-fn report_binding(app: &AppHandle<Wry>) {
+fn report_binding<R: Runtime>(app: &AppHandle<R>) {
     if let Some(bindings) = app.try_state::<Arc<OpenVaultBinding>>() {
         broadcast(
             app,
@@ -136,14 +139,16 @@ pub async fn sync_repair_device_keys(
 /// `sync:auth-logout`.
 #[tauri::command]
 #[specta::specta]
-pub async fn sync_logout(app: AppHandle<Wry>) -> Result<SignOutResult, CommandError> {
+pub async fn sync_logout<R: Runtime>(app: AppHandle<R>) -> Result<SignOutResult, CommandError> {
     sign_out(&app, "sync_logout").await
 }
 
 /// `account:sign-out`.
 #[tauri::command]
 #[specta::specta]
-pub async fn account_sign_out(app: AppHandle<Wry>) -> Result<SignOutResult, CommandError> {
+pub async fn account_sign_out<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<SignOutResult, CommandError> {
     sign_out(&app, "account_sign_out").await
 }
 
