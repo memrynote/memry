@@ -104,6 +104,10 @@ vi.mock('../services/crdt', () => ({
   pruneUpdatesBeforeSnapshotBatch: vi.fn().mockResolvedValue(0)
 }))
 
+vi.mock('../services/crdt-manifest', () => ({
+  getCrdtManifestPage: vi.fn().mockResolvedValue({ documents: [], nextCursor: null })
+}))
+
 vi.mock('../services/device', () => ({
   updateDevice: vi.fn().mockResolvedValue(undefined)
 }))
@@ -184,6 +188,7 @@ import {
   pruneUpdatesBeforeSnapshot,
   pruneUpdatesBeforeSnapshotBatch
 } from '../services/crdt'
+import { getCrdtManifestPage } from '../services/crdt-manifest'
 import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
@@ -1657,6 +1662,61 @@ describe('sync routes', () => {
     })
   })
 
+  describe('GET /sync/crdt/manifest (#5232)', () => {
+    it('answers the page for the cursor, a full page by default', async () => {
+      const page = {
+        documents: [
+          {
+            noteId: 'note_2',
+            floor: 3,
+            snapshot: { revision: 'rev-2', sequenceNum: 4 },
+            maxSequenceNum: 6
+          }
+        ],
+        nextCursor: 'note_2'
+      }
+      vi.mocked(getCrdtManifestPage).mockResolvedValueOnce(page)
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/manifest?cursor=note_1',
+        {},
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(page)
+      expect(getCrdtManifestPage).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1', 1000)
+    })
+
+    it('starts at the first document and caps the limit at 1000', async () => {
+      const res = await app.request(
+        'http://localhost/sync/crdt/manifest?limit=5000',
+        {},
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(getCrdtManifestPage).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', '', 1000)
+    })
+
+    it.each([['cursor=bad%20id'], ['limit=0'], ['limit=2x'], ['limit=']])(
+      'rejects %s',
+      async (query) => {
+        const res = await app.request(
+          `http://localhost/sync/crdt/manifest?${query}`,
+          {},
+          env,
+          executionCtx
+        )
+
+        expect(res.status).toBe(400)
+        expect(getCrdtManifestPage).not.toHaveBeenCalled()
+      }
+    )
+  })
+
   describe('CRDT transport separation', () => {
     it('routes /sync/crdt/updates through CRDT services instead of record push', async () => {
       const payload = { noteId: 'note_1', updates: [btoa('hello')] }
@@ -2403,7 +2463,7 @@ describe('CRDT rate limit wiring', () => {
 
   it('keys every CRDT limiter by device, not by account', () => {
     // #then — a second device on one account is normal use, not contention
-    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull']) {
+    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull', 'crdt_manifest']) {
       expect(optionsFor(keyPrefix)?.identifier).toBe(deviceIdentifier)
     }
   })
@@ -2414,10 +2474,15 @@ describe('CRDT rate limit wiring', () => {
     // BOOTSTRAP_ELEVATION_MULTIPLIERS, and that map is deliberately pull-only.
     // Wiring it here is what lets a future policy change be a one-line map edit
     // instead of a route edit; the ceiling itself must not move.
-    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull']) {
+    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull', 'crdt_manifest']) {
       expect(optionsFor(keyPrefix)?.getElevatedLimits).toBe(bootstrapRateLimitElevation)
     }
     expect(optionsFor('crdt_push')).toMatchObject({ maxRequests: 300, windowSeconds: 60 })
+  })
+
+  it('allows 30 body manifest pages per minute, room for 14 back to back', () => {
+    // #then — ceil(n / 1000) pages back to back, elevated x3 under bootstrap
+    expect(optionsFor('crdt_manifest')).toMatchObject({ maxRequests: 30, windowSeconds: 60 })
   })
 
   it('gives the CRDT pull budget room for a whole-vault body sweep', () => {

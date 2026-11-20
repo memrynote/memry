@@ -16,6 +16,8 @@ export type VectorClock = Record<string, number>
 export interface ServerRecord {
   type: string
   clock: VectorClock | null
+  /** The device that signed the stored row: its creator, or its last writer. */
+  signerDeviceId: string
 }
 
 /**
@@ -69,6 +71,7 @@ export type FindingKind =
   | 'clock_diverged'
   | 'resurrected'
   | 'unexpected_record'
+  | 'bootstrap_created'
   | 'body_missing'
   | 'body_stale_snapshot'
   | 'body_short'
@@ -228,6 +231,25 @@ export const checkStructural = (
     body_without_record: Object.keys(local.bodies).filter((id) => !truth.records[id]).length
   }
 })
+
+/**
+ * A bootstrapping device downloads the vault and creates nothing in it (#5261).
+ * Every live record that `before`, read ahead of the bootstrap, lacks and that
+ * the device signed is a create it pushed: a duplicate of an item it was given
+ * under a new id. A re-push of an existing id is not counted here.
+ */
+export const checkBootstrapCreated = (
+  before: ServerVaultTruth,
+  after: ServerVaultTruth,
+  deviceId: string
+): Finding[] =>
+  Object.entries(after.records)
+    .filter(([id, record]) => !before.records[id] && record.signerDeviceId === deviceId)
+    .map(([id, record]) => ({
+      kind: 'bootstrap_created',
+      itemId: id,
+      detail: `${record.type} created by the bootstrapping device`
+    }))
 
 export interface DeviceDigests {
   label: string

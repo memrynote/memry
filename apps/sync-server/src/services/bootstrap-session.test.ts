@@ -154,6 +154,7 @@ describe('bootstrapRateLimitElevation', () => {
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.crdt_pull).toBe(5)
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.blob_download).toBe(5)
     expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.sync_pull).toBe(3)
+    expect(BOOTSTRAP_ELEVATION_MULTIPLIERS.crdt_manifest).toBe(3)
   })
 
   it('does nothing on unrelated buckets even with a valid token', async () => {

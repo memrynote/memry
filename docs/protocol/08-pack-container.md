@@ -120,8 +120,8 @@ kind, the one its listing row names (`apps/sync-server/src/services/pack-compact
 selects one kind per pack). A reader still checks each entry's own `kind`.
 
 Snapshot entries carry `{sequenceNum, revision}` in `metaBytes`, which is the
-**freshness token a client compares against `snapshotMeta` before trusting the
-bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
+**freshness token a client compares against `snapshotMeta`, or against the body
+manifest's `snapshot.revision` (§8.4.3), before trusting the bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 ### 8.4.1 Will a reader ever see kind 2 — Q08.1
 
@@ -292,9 +292,9 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
 - **Floor.** **A reader applies a packed update of a document only when the
   update's `sequenceNum` is above that document's `floor` and is its cursor
   plus one, where `floor` comes from a `GET /sync/crdt/updates` or batch answer
-  for that document read after the reader holds the pack bytes, in the same
-  run; an answer without `floor` makes every packed update of that document
-  unusable.** `floor` is the document's highest purged sequence number, 0 when
+  for that document, or from a body manifest read (below), read after the
+  reader holds the pack bytes, in the same run; an answer without `floor`
+  makes every packed update of that document unusable.** `floor` is the document's highest purged sequence number, 0 when
   it was never purged (chapter 07 §7.4, §7.15). A server from step 05
   (#5228) on, the first kind 2 writer, sends it on both routes, read in the
   same D1 batch as the updates it answers with (`readFloors`,
@@ -307,6 +307,20 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   read before the pack can predate a purge the pack still reflects, so it is
   read again on every run. Neither `snapshotMeta.sequenceNum` (#5248) nor the
   lowest `sequenceNum` a route returned stands in for it.
+- **Body manifest.** `GET /sync/crdt/manifest` (chapter 07 §7.4.1, #5232)
+  answers the same `floor` for up to 1,000 documents per request, read in one
+  D1 batch with the document's snapshot and highest update, so it satisfies
+  the floor rule above in `ceil(n / 1000)` requests instead of `ceil(n / 100)`
+  batch calls. A **body manifest read** is every page from no `cursor` until
+  `nextCursor` is `null`, every page parsed by `CrdtManifestResponseSchema`,
+  all requested after the reader holds the pack bytes, in the same run. A
+  document absent from a body manifest read has no body row and floor 0 at
+  its page's read, so its packed updates are unusable and it goes to the
+  routes of chapter 07 §7.2. A read that stops short (any page failing, a
+  malformed page) answers nothing: the reader reads `floor` from
+  `POST /sync/crdt/updates/batch` for every document it holds packed bodies
+  of. **A server without the route** (every server before #5232) answers it
+  404, and the reader falls back the same way (fail closed, §8.11).
 - **Purge dependency.** Whenever the §7.15 purge removes a document that has
   any body row (a `crdt_updates` or a `crdt_snapshots` row), it MUST take
   every `crdt_update` pack that holds that
@@ -681,9 +695,16 @@ it with checks the server answers:
 
 - **Bodies:** before it applies a packed snapshot, a reader confirms its
   `revision` against `snapshotMeta` from a `POST /sync/crdt/updates/batch`
-  answer read after it holds the pack bytes, in the same run; a different or
-  missing revision means the chapter 07 §7.8 baseline through the route. The
-  same answer carries the `floor` packed updates need (§8.4.3). Revisions are
+  answer, or against the document's `snapshot.revision` from a body manifest
+  read (§8.4.3), read after it holds the pack bytes, in the same run; a
+  different or missing revision, a `null` `snapshot`, or a document absent
+  from the read means the chapter 07 §7.8 baseline through the route. The
+  same answer carries the `floor` packed updates need (§8.4.3). A body
+  manifest read also gives each document's `maxSequenceNum`, its highest
+  stored update: a document whose applied cursor is below it after the packs
+  pulls the rest through the routes of chapter 07 §7.2. A reader prefers the
+  body manifest and uses the batch answer when the server answers the
+  manifest 404 or the read stops short, as §8.4.3 states. Revisions are
   a fresh UUID per write (chapter 07 §7.5), so a snapshot of a deleted
   incarnation never matches the current one. A reader drops every body it
   took from a pack for a document whose record, after the reconcile, is a
@@ -709,6 +730,12 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 | Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:322-325`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
 | a reader built to §8.4.2+ | reads it                                                                                                                                                                                                                                                                                         | each entry unusable, item stays on `POST /sync/pull` (§8.4.2) |
 
+- **Body manifest.** `GET /sync/crdt/manifest` (chapter 07 §7.4.1) is a new
+  route with a new schema, and no released reader calls it. A reader built to
+  §8.4.3 that meets a server without it gets 404, and reads `floor` and
+  `snapshotMeta` from `POST /sync/crdt/updates/batch` instead, for every
+  document it holds packed bodies of (fail closed). It never applies a packed
+  body on a manifest read that stopped short.
 - **New reader, old server.** A server whose `PACKED_KINDS`
   (`apps/sync-server/src/services/pack-compaction.ts`) is `['crdt_snapshot']`,
   every server before step 04 (#5227), lists no record or update pack, and the reader bootstraps records and updates
@@ -862,8 +889,9 @@ those entries inert:
   §5.8); a re-create seeds its clock from the tombstone, so it dominates the
   old entry too. A live entry of an item whose tombstone was shed is dropped
   by the manifest reconcile (§8.10).
-- `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`
-  read after the pack (§8.10); a deleted incarnation's revision never does.
+- `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`,
+  or the body manifest's `snapshot.revision` (§8.4.3), read after the pack
+  (§8.10); a deleted incarnation's revision never does.
 - `crdt_update`: applied only above a `floor` read after the pack (§8.4.3).
 
 A reader that applied a body and then meets the document's tombstone deletes
