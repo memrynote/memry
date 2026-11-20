@@ -17,6 +17,7 @@
 //! The session is synchronous: its methods block and the Tauri adapters call them from
 //! `spawn_blocking`.
 
+pub mod at_rest_key;
 mod hooks;
 mod open;
 pub mod projection;
