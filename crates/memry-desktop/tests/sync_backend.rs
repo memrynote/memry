@@ -123,7 +123,7 @@ async fn sync_letting_go_keeps_the_key_another_holder_needs() {
     let agent = keys.acquire(&vault).expect("the agent's hold");
 
     assert!(
-        backend.open().await.is_err(),
+        backend.open(Vec::new()).await.is_err(),
         "an unbound vault does not sync"
     );
     backend.close();
