@@ -127,7 +127,7 @@ manifest's `snapshot.revision` (§8.4.3), before trusting the bytes** (`packages
 
 **Normative: a server from step 05 (#5228) on produces `crdt_update = 2`.**
 The writer packs the kinds `PACKED_KINDS` names
-(`apps/sync-server/src/services/pack-compaction.ts:98`): `crdt_snapshot`,
+(`apps/sync-server/src/services/pack-compaction.ts:93`): `crdt_snapshot`,
 `record` from step 04 (#5227, #5253) on, and `crdt_update` from step 05 on,
 whose entries follow §8.4.3
 (`apps/sync-server/src/services/pack-update-selection.ts`). An older server
@@ -593,7 +593,7 @@ built from it stay caches only.
   its own object. A writer that finds its insert would conflict rolls the listed pack
   and its new rows into one pack instead (§8.12), taking only the new rows that
   fit beside the listed pack's current entries
-  (`apps/sync-server/src/services/pack-compaction.ts:180-213`). When none fit or
+  (`apps/sync-server/src/services/pack-compaction.ts:193-227`). When none fit or
   the listed pack cannot be read, a `record` or `crdt_update` writer lists
   nothing and the watermark holds, logged at error level; those kinds sort on
   the unique `server_cursor`, so only a foreign row collides. A `crdt_snapshot`
@@ -850,9 +850,15 @@ coverage ranges chain, and writes one pack that replaces them:
   `apps/sync-server/src/services/pack-replaced-objects.ts:83`) deletes the
   objects of replaced packs and of purged ones (§8.13). It runs for every vault
   at the start of every backfill tick
-  (`apps/sync-server/src/services/pack-backfill.ts:147`), and for one vault at
-  the start and the end of every compaction message, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:510,539`).
+  (`apps/sync-server/src/services/pack-backfill.ts:150`), and for one vault at
+  the start and the end of every compaction message and every backfill
+  message, so a build that fails cannot block it. Both messages run their work
+  through `withReplacedObjectPasses`
+  (`apps/sync-server/src/services/pack-message-passes.ts:26-67`; compaction:
+  `apps/sync-server/src/services/pack-compaction.ts:514`; backfill:
+  `apps/sync-server/src/services/pack-backfill.ts:232`), which runs the purge
+  rewrite pass of §8.13 first, then the deletion pass, the work, and the
+  deletion pass again (`pack-message-passes.ts:36`, `:40`, `:50`).
   A body purge (chapter 07 §7.15) skips the grace for objects that may hold
   the purged body: in the batch that deletes the body rows it makes due at once
   every replaced object of each body kind the document has rows of, except an
@@ -924,9 +930,9 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
   of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:195-196`).
-  Every compaction message of the vault runs the same rewrite pass before its
-  first deletion pass
-  (`apps/sync-server/src/services/pack-compaction.ts:506`). When rewrites or
+  Every compaction message and every backfill message of the vault runs the
+  same rewrite pass before its first deletion pass (`withReplacedObjectPasses`,
+  `apps/sync-server/src/services/pack-message-passes.ts:36`, `:40`). When rewrites or
   due objects remain, the purge's caller enqueues a compaction message
   delayed by `PACK_PURGE_RETRY_DELAY_SECONDS` = 660, the grace plus a minute
   (`apps/sync-server/src/services/pack-replaced-objects.ts:18`; push:
@@ -949,9 +955,9 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
      rewrite still pending past its grace (`removed_at = T`), then deletes
      those objects and every object the reset made due; its last deletion
      pass retries any delete that failed
-     (`apps/sync-server/src/services/pack-compaction.ts:510,539`).
+     (`apps/sync-server/src/services/pack-message-passes.ts:36`, `:40`, `:50`).
   3. A message whose last pass leaves objects due or rewrites pending throws
-     (`apps/sync-server/src/services/pack-compaction.ts:551`), so Queues
+     (`apps/sync-server/src/services/pack-message-passes.ts:54-63`), so Queues
      redelivers it, up to `max_retries` = 3 times with no retry delay
      (`apps/sync-server/wrangler.toml:63`), inside the remaining 240 s.
 
@@ -963,11 +969,12 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   (`apps/sync-server/src/services/sync.ts:1029-1032`) and on cleanup
   (`apps/sync-server/src/services/cleanup.ts:369`) alike. A message that still
   leaves objects due logs `replaced pack objects still due after the
-  compaction message; redelivered` at error level with the vault. The
+  compaction message; redelivered` (or `backfill message`) at error level with
+  the vault (`apps/sync-server/src/services/pack-message-passes.ts:55`). The
   fallback is the deletion pass at the start of every backfill tick, which
   covers every vault and resets pending rewrites the same way
-  (`apps/sync-server/src/services/pack-backfill.ts:147`), and every later
-  compaction message of the vault.
+  (`apps/sync-server/src/services/pack-backfill.ts:150`), and every later
+  compaction or backfill message of the vault.
 
 - **Snapshot source objects.** The purge deletes the document's
   `crdt_snapshots` objects, which are not pack objects, best effort: a failed
@@ -1077,7 +1084,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:753`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:529`).
 A backfill message that spends its budget on its last build has none left to
 roll up, so a kind may list `bound + 1` until the chain's next message, the
 next tick or a compaction message rolls it up.
@@ -1090,7 +1097,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:340-344`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:330-334`), and the backfill tick
 enqueues the kind every tick while it is above the bound, so an operator sees
 it at least once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.

@@ -309,7 +309,8 @@ ciphertext is gone from every pack object:
 - With at most four rewrites and R2 answering, the purge deletes the old objects before it
   returns.
 - Otherwise the purge's caller enqueues a compaction message 660 seconds later. Every compaction
-  or backfill message runs four rewrites before its first deletion pass. A deletion pass that meets a rewrite
+  or backfill message runs four rewrites before its first deletion pass (`withReplacedObjectPasses`
+  in `services/pack-message-passes.ts`). A deletion pass that meets a rewrite
   still pending past the 600-second grace resets that kind (drops its packs and sets its watermark
   to 0, so compaction rebuilds it) and deletes the object, so the delayed message finishes the
   rest. A rollup never merges across the range of a pending rewrite.
@@ -320,9 +321,9 @@ The deadline is missed when the delayed message is never enqueued or when all fo
 fail. A purge that throws after its batch commits still enqueues the delayed message, from a push
 or the cleanup; a purge whose batch never commits has not started the deadline, and the cleanup
 retries it. The message logs `replaced pack objects still due after the compaction message;
-redelivered` at error level. The fallback is the deletion pass at the start of
-every 6-hourly backfill tick, which covers every vault, and any later compaction message for the
-vault. Record packs are not scoped yet: older versions of the deleted note's record stay in record
+redelivered` (or `backfill message`) at error level. The fallback is the deletion pass at the start of
+every 6-hourly backfill tick, which covers every vault, and any later compaction or backfill message
+for the vault. Record packs are not scoped yet: older versions of the deleted note's record stay in record
 packs until a rollup drops them (#5247).
 
 The 6-hourly cleanup purges at most five vaults per tick, about 41 subrequests.
