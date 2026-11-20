@@ -126,7 +126,8 @@ A pack built before the delete is immutable and still carries the body. A delete
 a journal day is always `j<date>`. If that pack survived, a fresh device would apply the deleted
 body to the re-created day. So when the server purges a deleted note's body
 (`services/document-body-purge.ts`, protocol chapter 07 §7.15), it deletes every `crdt_snapshot`
-`pack_index` row and pack object of the vault and resets that kind's watermark. It drops all of
+`pack_index` row and pack object of the vault and resets that kind's watermark, and does the same
+for `crdt_update` when it deletes an update row. It drops all of
 them because the note's older revisions can sit in any pack built before its last snapshot write.
 Compaction rebuilds the set without the dead note. Until the rebuild finishes, a fresh device
 fetches those bodies item by item. A compaction run that selected the old snapshot before the
@@ -185,7 +186,7 @@ plan order, so an unclaimed slot makes the next `writeEntry` throw and abort the
 the watermark moves. A window where _every_ candidate turned out to be a hole writes no pack and
 still advances the watermark, so it cannot loop.
 
-### `PACKED_KINDS` is `['crdt_snapshot', 'record']`
+### `PACKED_KINDS` is `['crdt_snapshot', 'record', 'crdt_update']`
 
 A record entry carries the pull item's signature, signer device id, operation, `deletedAt` and
 clock as its meta, so a client verifies it exactly as an item from `POST /sync/pull`. The meta
@@ -198,11 +199,23 @@ purged tombstone (`blob_key` empty), an unknown type, a row without signer metad
 corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_BYTES`. The
 watermark still moves past them.
 
-Each queue message builds one pack per kind, about 531 subrequests together, and a large vault
+Each queue message builds one pack per kind, about 542 subrequests together, and a large vault
 builds across invocations from its watermarks. The Rust core reader is a later step of
 [#5221](https://github.com/memrynote/memry/issues/5221).
 
-No server produces `crdt_update` entries yet.
+An update entry is one `crdt_updates` row: the document id as identity, empty `keyBytes`,
+`server_cursor` as sort key and watermark, and `{sequenceNum, signerDeviceId, createdAt}` as meta.
+Its payload is `update_data`, read from D1 in windows of about 4 MB, so an update build makes no R2
+GET per entry and takes up to `PACK_MAX_ENTRIES` = 4096 rows instead of 256. Rows pruned behind a
+snapshot (#2299) or purged with their document no longer exist and are never selected, and a row
+with a NULL `server_cursor` (written before migration 0011) stays on the update routes. The commit
+is guarded like the snapshot one: every packed update row must still exist and its document must
+not be dead, or the pack is discarded and the next run reselects.
+
+Both update routes answer a per-document `floor`, the highest purged sequence number, read in the
+same D1 batch as the updates. A reader applies a packed update only above it, so a pack downloaded
+before a purge never brings the deleted incarnation back. Whenever the purge deletes an update row,
+the same D1 batch drops every `crdt_update` pack of the vault and resets that kind's watermark.
 
 ### Entry meta per kind
 

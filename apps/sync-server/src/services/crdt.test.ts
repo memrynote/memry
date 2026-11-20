@@ -279,7 +279,7 @@ describe('CRDT service sequencing', () => {
       // #then the first update always fits, the rest wait for the next page
       expect(result.notes['note-1'].updates.map((u) => u.sequence_num)).toEqual([1])
       expect(result.notes['note-1'].hasMore).toBe(true)
-      expect(result.notes['note-2']).toEqual({ updates: [], hasMore: true })
+      expect(result.notes['note-2']).toEqual({ updates: [], hasMore: true, floor: 0 })
 
       // #and the next page resumes where the first stopped
       const next = await getBatchUpdates(
@@ -294,7 +294,7 @@ describe('CRDT service sequencing', () => {
       )
       expect(next.notes['note-1'].updates.map((u) => u.sequence_num)).toEqual([2])
       expect(next.notes['note-1'].hasMore).toBe(false)
-      expect(next.notes['note-2']).toEqual({ updates: [], hasMore: true })
+      expect(next.notes['note-2']).toEqual({ updates: [], hasMore: true, floor: 0 })
     })
 
     it('stops a single-note page at the byte budget and reports hasMore', async () => {
@@ -433,7 +433,7 @@ describe('CRDT service sequencing', () => {
 
     // #and a note the server has no snapshot for is simply absent
     expect(result.snapshotMeta['note-3']).toBeUndefined()
-    expect(result.notes['note-3']).toEqual({ updates: [], hasMore: false })
+    expect(result.notes['note-3']).toEqual({ updates: [], hasMore: false, floor: 0 })
   })
 
   // Rows written before the column existed carry '' — the migration deliberately

@@ -359,11 +359,17 @@ describe('pack build', () => {
     ).toBe(1)
   })
 
-  // #5227: record entries carry the pull item's meta (protocol 08 §8.4.2), so
-  // the vault sweep packs records next to snapshots. Updates wait for #5228.
-  it('builds record and snapshot packs for a vault, and no update packs', async () => {
+  // #5227, #5228: record and update entries carry the meta their routes answer
+  // with (protocol 08 §8.4.2, §8.4.3), so the vault sweep packs every kind.
+  it('builds record, snapshot and update packs for a vault', async () => {
     await seedRecord({ cursor: 1 })
     seedSnapshot('note-a', 1000)
+    harness.raw
+      .prepare(
+        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, server_cursor)
+         VALUES ('u1', ?, ?, 'note-a', ?, 1, 'device-1', 1000, 2)`
+      )
+      .run(USER, VAULT, Buffer.from([1, 2, 3]))
 
     const results = await compactVault(harness.db, storage, { userId: USER, vaultId: VAULT })
 
@@ -371,7 +377,7 @@ describe('pack build', () => {
     const kinds = harness.raw
       .prepare('SELECT item_kind FROM pack_index ORDER BY item_kind')
       .all() as Array<{ item_kind: string }>
-    expect(kinds.map((row) => row.item_kind)).toEqual(['crdt_snapshot', 'record'])
+    expect(kinds.map((row) => row.item_kind)).toEqual(['crdt_snapshot', 'crdt_update', 'record'])
   })
 
   // #5227: content-addressed keys make a replaced payload 404, but a pre-#1199

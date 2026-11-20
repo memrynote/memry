@@ -538,7 +538,7 @@ update only when its `sequenceNum` is the cursor plus one, a missing number is
 pulled from the server, never skipped, and a packed update is used only above
 the document's `floor`, read from the routes after the pack, so a purged update a
 pack still holds is never applied. An answer without `floor`, which every server
-sends today, leaves packed updates unusable (chapter 08 §8.4.3,
+before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3,
 `packages/contracts/src/sync-api.ts:876-880`).
 
 ## 7.10 Retry policy and rate limits
@@ -610,15 +610,17 @@ snapshot endpoint under the §7.13.2 gate.
   { sequenceNum, revision, signerDeviceId }> }`;
 - both forms gain an optional `floor` per document in step 05 (#5228): the
   single form at the top level, the batch form inside each `notes` entry. It is
-  the highest purged sequence number (§7.4, §7.15), 0 when none. No server sends
-  it yet, and a reader of packed updates treats its absence as "use no packed
-  update" (chapter 08 §8.4.3). The item-granular routes never need it;
+  the highest purged sequence number (§7.4, §7.15), 0 when none, read in the
+  same D1 batch as the updates (`apps/sync-server/src/services/crdt.ts:312-332`).
+  A server before step 05 omits it, and a reader of packed updates treats its
+  absence as "use no packed update" (chapter 08 §8.4.3). The item-granular
+  routes never need it;
 - the snapshot response is
   `{ snapshot, sequenceNum, signerDeviceId, revision? }`, with `snapshot` null
   when absent.
 
 **A document absent from `snapshotMeta` has no server snapshot at all**
-(`apps/sync-server/src/services/crdt.ts:292-305` populates the map only from rows
+(`apps/sync-server/src/services/crdt.ts:477-483` populates the map only from rows
 that exist).
 
 **Snapshots use the identical packed envelope as updates. There is no separate
@@ -781,8 +783,11 @@ and recorded).**
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
-`crdt_snapshots` rows. Then it drops every `crdt_snapshot` pack of the vault,
-resets that kind's pack watermark, and deletes the snapshot and pack objects.
+`crdt_snapshots` rows. When that batch deletes any update row, the same batch
+drops every `crdt_update` pack of the vault and resets that kind's pack
+watermark (chapter 08 §8.4.3). Then, when it deleted a snapshot, it drops every
+`crdt_snapshot` pack of the vault and resets that kind's pack watermark, and
+it deletes the snapshot and pack objects.
 Every statement re-checks that a `note` or `journal` record for the id is
 deleted and none is live, so a re-create that commits first keeps its body. A
 purge failure never fails the push. The 6-hourly cleanup

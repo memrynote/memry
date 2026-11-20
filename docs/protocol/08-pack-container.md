@@ -125,11 +125,13 @@ bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 ### 8.4.1 Will a reader ever see kind 2 — Q08.1
 
-**Normative: no writer produces `crdt_update = 2` today.** The writer packs
-only the kinds `PACKED_KINDS` names
-(`apps/sync-server/src/services/pack-compaction.ts`): `crdt_snapshot`, and
-`record` from step 04 (#5227, #5253) on, never `crdt_update`. A kind 2 writer
-is step 05 (#5228), and its entries follow §8.4.3.
+**Normative: a server from step 05 (#5228) on produces `crdt_update = 2`.**
+The writer packs the kinds `PACKED_KINDS` names
+(`apps/sync-server/src/services/pack-compaction.ts:127`): `crdt_snapshot`,
+`record` from step 04 (#5227, #5253) on, and `crdt_update` from step 05 on,
+whose entries follow §8.4.3
+(`apps/sync-server/src/services/pack-update-selection.ts`). An older server
+writes no kind 2 entry.
 
 **A conforming reader MUST accept kind 2 structurally** — `KIND_BY_CODE` maps it
 (`packages/contracts/src/pack-format.ts:102-106`) and rejecting it would be a
@@ -293,9 +295,12 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   for that document read after the reader holds the pack bytes, in the same
   run; an answer without `floor` makes every packed update of that document
   unusable.** `floor` is the document's highest purged sequence number, 0 when
-  it was never purged (chapter 07 §7.4, §7.15); it is introduced by step 05
-  (#5228), which also ships the first kind 2 writer, and no server sends it
-  today, so today's readers fall back to chapter 07 §7.2 (fail closed). The
+  it was never purged (chapter 07 §7.4, §7.15). A server from step 05
+  (#5228) on, the first kind 2 writer, sends it on both routes, read in the
+  same D1 batch as the updates it answers with (`readFloors`,
+  `apps/sync-server/src/services/crdt.ts:312-332`), so a purge cannot commit
+  between the two reads. An older server omits it, and a reader then falls
+  back to chapter 07 §7.2 (fail closed). The
   reason is the purge: it records floor `N` and deletes rows `1..N`, but a pack
   built before it still holds updates `1..N`. Without the floor a fresh device
   at cursor 0 applies the deleted text into the re-created document. A floor
@@ -311,11 +316,14 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   the purge does for `crdt_snapshot`
   (`apps/sync-server/src/services/document-body-purge.ts:106-118`); without the
   reset, compaction never packs the other documents of a dropped pack again.
-  Today the purge drops only `crdt_snapshot` packs, and only when it deleted a
-  snapshot blob (`apps/sync-server/src/services/document-body-purge.ts:102-104`).
-  **This ships before any server writes a kind 2 entry (step 05, #5228).** The
-  floor covers a reader that holds a pack from before the purge; the drop
-  keeps later listings clean.
+  The purge does both in the D1 batch that deletes the update rows,
+  conditioned on that batch deleting one, so the drop and the delete commit
+  together (`apps/sync-server/src/services/document-body-purge.ts:93-106`). A
+  compaction run that selected the rows before the purge fails its
+  commit-time recheck (`updatesCurrent`,
+  `apps/sync-server/src/services/pack-update-selection.ts`). This shipped with
+  the first kind 2 writer (step 05, #5228). The floor covers a reader that
+  holds a pack from before the purge; the drop keeps later listings clean.
 - **Verification.** The reader opens the envelope with the document id as
   associated data and checks it against `signerDeviceId`'s key, as for an
   update the route returned (chapter 07 §7.14).
@@ -685,7 +693,7 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 - **New reader, old server.** A server whose `PACKED_KINDS`
   (`apps/sync-server/src/services/pack-compaction.ts`) is `['crdt_snapshot']`,
   every server before step 04 (#5227), lists no record or update pack, and the reader bootstraps records and updates
-  item by item (§8.0). No server has written a kind 2 entry. A record pack
+  item by item (§8.0). No server before step 05 (#5228) writes a kind 2 entry. A record pack
   from a server that built them before §8.4.2 carries no meta, and the row
   above applies.
 - **Listing order.** The listing sorts on `max_cursor` across kinds
