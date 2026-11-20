@@ -20,6 +20,49 @@ const request = (fields) => ({
 })
 
 describe('summarize', () => {
+  it('clips a request still in flight at the records mark to the window', () => {
+    const metrics = summarize({
+      marks: { startMs: 1_000, recordsMs: 2_000, bodiesMs: 9_000 },
+      lineMbps: 100,
+      requests: [request({ method: 'POST', path: '/sync/pull', startMs: 1_500, endMs: 4_000 })]
+    })
+    assert.equal(metrics.recordsBreakdown.endpoints['POST /sync/pull'].busyMs, 500)
+    assert.equal(metrics.recordsBreakdown.idleMs, 500)
+  })
+
+  it('splits t_records by endpoint, local time and phase marks', () => {
+    const metrics = summarize({
+      marks: { startMs: 1_000, recordsMs: 4_000, bodiesMs: 9_000 },
+      phases: [
+        [1_050, 'Metadata'],
+        [2_500, 'Refs'],
+        [8_000, 'Bodies']
+      ],
+      lineMbps: 100,
+      requests: [
+        request({ method: 'POST', path: '/sync/bootstrap', startMs: 1_000, endMs: 1_500 }),
+        request({ host: 'r2', path: '/a?sig=x', startMs: 1_600, endMs: 2_000 }),
+        request({ host: 'r2', path: '/b?sig=x', startMs: 1_800, endMs: 2_200 }),
+        request({ path: '/sync/changes?limit=500', startMs: 2_500, endMs: 3_000 }),
+        request({ path: '/sync/crdt/snapshot/note1234567890', startMs: 5_000, endMs: 5_100 })
+      ]
+    })
+    assert.deepEqual(metrics.recordsBreakdown, {
+      wallMs: 3_000,
+      idleMs: 1_400,
+      endpoints: {
+        'GET r2:pack': { count: 2, busyMs: 600 },
+        'POST /sync/bootstrap': { count: 1, busyMs: 500 },
+        'GET /sync/changes': { count: 1, busyMs: 500 }
+      },
+      phases: [
+        { phase: 'Metadata', atMs: 50 },
+        { phase: 'Refs', atMs: 1_500 }
+      ]
+    })
+    assert.match(formatReport('core', metrics), /no request in flight 1\.4 s of 3\.0 s/)
+  })
+
   it('counts only the window from start to every body local', () => {
     const metrics = summarize({
       marks: { startMs: 1_000, recordsMs: 3_000, bodiesMs: 5_000 },

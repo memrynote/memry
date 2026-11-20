@@ -8,7 +8,7 @@ use crate::body_pack_server;
 
 use body_pack_server::{
     BodyPack, NOW_MS, Routes, Server, ServerDoc, first_sync, holds_exactly, is_owed,
-    snapshot_items, update_items,
+    snapshot_items, update_items, update_seqs,
 };
 use serde_json::{Value as Json, json};
 
@@ -180,4 +180,158 @@ async fn a_floor_above_since_with_no_snapshot_meta_is_not_trusted() {
             .remove(MALFORMED);
     })
     .await;
+}
+
+/// Staging #5232: 27 snapshot-only documents whose snapshots no pack holds
+/// (a `created_at` tie remainder the builder served item by item). Each
+/// takes its snapshot GET, and the batch answer is its updates page: no
+/// `updates?note_id=` GET follows the baseline.
+#[tokio::test]
+async fn an_unpacked_snapshot_takes_its_get_and_the_batch_page_is_its_updates() {
+    let (db, dir) = body_pack_server::scratch("unpacked-snapshots");
+    let packed: Vec<ServerDoc> = (0..3)
+        .map(|i| ServerDoc::new(&format!("tiepacked{i:03}"), 2).snapshot_only())
+        .collect();
+    let unpacked: Vec<ServerDoc> = (0..27)
+        .map(|i| ServerDoc::new(&format!("tieremain{i:03}"), 2).snapshot_only())
+        .collect();
+    let edited = ServerDoc::new("tieedited001", 5).snapshot_at(2);
+    let packs = vec![BodyPack::new(
+        "s1",
+        snapshot_items(&packed.iter().collect::<Vec<_>>()),
+    )];
+    let docs = packed.into_iter().chain(unpacked).chain([edited]).collect();
+    let mut server = Server::new(docs, packs);
+    server.records = true;
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(routes.count(SNAPSHOT_GET), 28, "{:?}", routes.calls());
+    assert_eq!(routes.count(UPDATES_GET), 0, "{:?}", routes.calls());
+    assert_eq!(routes.count(BATCH), 1, "{:?}", routes.calls());
+    let server = routes.server.lock().unwrap();
+    for i in 0..27 {
+        let id = format!("tieremain{i:03}");
+        holds_exactly(&db, server.doc(&id), 2);
+        assert!(!is_owed(&db, &id), "{id} is settled");
+    }
+    holds_exactly(&db, server.doc("tieedited001"), 5);
+    assert_eq!(update_seqs(&db, "tieedited001"), vec![3, 4, 5]);
+    assert!(!is_owed(&db, "tieedited001"));
+}
+
+/// The batch page starts below an unpacked snapshot taken after it, and
+/// stops at the page limit: its rows at or under the snapshot are replays,
+/// and the pull goes on from the snapshot with every update after it.
+#[tokio::test]
+async fn a_batch_page_below_the_baseline_continues_from_the_snapshot() {
+    let (db, dir) = body_pack_server::scratch("page-below-baseline");
+    let doc = ServerDoc::new("longdoc00001", 150).snapshot_at(120);
+    let mut server = Server::new(vec![doc], vec![]);
+    server.records = true;
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(routes.count(SNAPSHOT_GET), 1, "{:?}", routes.calls());
+    let pages: Vec<String> = routes
+        .calls()
+        .into_iter()
+        .filter(|call| call.contains(UPDATES_GET))
+        .collect();
+    assert_eq!(pages.len(), 1, "{pages:?}");
+    assert!(pages[0].contains("since=120"), "{pages:?}");
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("longdoc00001"), 150);
+    assert_eq!(
+        update_seqs(&db, "longdoc00001"),
+        (121..=150).collect::<Vec<_>>()
+    );
+    assert!(!is_owed(&db, "longdoc00001"));
+}
+
+/// Deleted and re-created under the same id between the probe and the
+/// snapshot GET: the old log is purged through 5 with no snapshot, and the
+/// new incarnation's rows are 6 and 7.
+fn recreate(server: &mut Server) {
+    let at = server
+        .docs
+        .iter()
+        .position(|doc| doc.id == "recreated001")
+        .unwrap();
+    let mut doc = ServerDoc::new("recreated001", 7).purged_through(5);
+    doc.snapshot = None;
+    server.docs[at] = doc;
+}
+
+/// REVIEW-5311 q6: a baseline was due, and the GET finds no snapshot. The
+/// probe page belongs to the purged incarnation, so it is not applied; the
+/// pull pages afresh and stores only the new incarnation's rows.
+#[tokio::test]
+async fn a_baseline_due_but_gone_at_the_get_does_not_apply_the_probe_page() {
+    let (db, dir) = body_pack_server::scratch("baseline-gone");
+    let mut server = Server::new(
+        vec![ServerDoc::new("recreated001", 5).snapshot_at(2)],
+        vec![],
+    );
+    server.records = true;
+    server.before.push((SNAPSHOT_GET.to_owned(), recreate));
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(update_seqs(&db, "recreated001"), vec![6, 7]);
+}
+
+/// Re-created between the probe and the GET, with the new generation's
+/// snapshot at `sequenceNum` 0: a claimed push after a purge starts its
+/// watermark from 0, below the deleted generation's rows (#5323).
+fn recreate_with_zero_snapshot(server: &mut Server) {
+    let at = server
+        .docs
+        .iter()
+        .position(|doc| doc.id == "recreated002")
+        .unwrap();
+    let mut doc = ServerDoc::new("recreated002", 7)
+        .snapshot_at(7)
+        .purged_through(5);
+    if let Some(snapshot) = doc.snapshot.as_mut() {
+        snapshot.sequence_num = 0;
+        snapshot.revision = "rev-new-generation".to_owned();
+    }
+    server.docs[at] = doc;
+}
+
+/// VERIFY-5311 q7, D-REUSE-REVISION: the baseline taken is not the revision
+/// the probe saw, so the probe page (the deleted generation's rows 1..5) is
+/// not applied, whatever sequence the new snapshot sits at.
+#[tokio::test]
+async fn a_baseline_of_another_revision_does_not_apply_the_probe_page() {
+    let (db, dir) = body_pack_server::scratch("baseline-other-revision");
+    let mut server = Server::new(
+        vec![ServerDoc::new("recreated002", 5).snapshot_at(2)],
+        vec![],
+    );
+    server.records = true;
+    server
+        .before
+        .push((SNAPSHOT_GET.to_owned(), recreate_with_zero_snapshot));
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(update_seqs(&db, "recreated002"), vec![6, 7]);
 }

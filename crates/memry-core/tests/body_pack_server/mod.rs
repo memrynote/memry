@@ -347,6 +347,9 @@ pub enum Manifest {
     MalformedAfterFirstPage,
 }
 
+/// Changes the server between two requests of one pull.
+pub type ServerHook = fn(&mut Server);
+
 pub struct Server {
     pub docs: Vec<ServerDoc>,
     pub packs: Vec<BodyPack>,
@@ -372,6 +375,9 @@ pub struct Server {
     listings: usize,
     /// Rewrites each batch answer, to send a malformed one.
     pub batch_rewrite: Option<fn(&mut Json)>,
+    /// Runs once before the first request whose URL holds the key, so a test
+    /// can change the server between two requests of one pull.
+    pub before: Vec<(String, ServerHook)>,
 }
 
 impl Server {
@@ -390,6 +396,7 @@ impl Server {
             listing_missing_from: None,
             listings: 0,
             batch_rewrite: None,
+            before: Vec::new(),
         }
     }
 
@@ -507,6 +514,14 @@ impl Server {
 
     fn answer(&mut self, request: &HttpRequest) -> Option<Result<HttpResponse, TransportError>> {
         let url = request.url.as_str();
+        if let Some(at) = self
+            .before
+            .iter()
+            .position(|(key, _)| url.contains(key.as_str()))
+        {
+            let (_, hook) = self.before.remove(at);
+            hook(self);
+        }
         if self.hang.as_ref().is_some_and(|hang| url.contains(hang)) {
             return None;
         }

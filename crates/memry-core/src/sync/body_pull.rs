@@ -51,8 +51,9 @@
 //! documents, for the meta and the first page (#5293). A probe that shows
 //! nothing above the cursor and no baseline due settles the document with no
 //! further request, as desktop's probe phase does, so a resumed first sync
-//! does not pull its finished documents again. With no baseline due, the
-//! probe's page is the document's first page.
+//! does not pull its finished documents again. The probe's page is the
+//! document's first page, after a baseline too: its rows at or below the
+//! snapshot are replays.
 
 use std::sync::Arc;
 
@@ -341,14 +342,32 @@ impl BodyPull {
                 Some(meta) => self.baseline_due(doc_id, meta).await?,
                 None => false,
             };
+            // D-REUSE-REVISION: the page belongs to the snapshot the probe
+            // saw. It stands in for the updates GET only when no baseline was
+            // due, or the baseline taken is that very revision. Any other
+            // answer (no snapshot, a rewrite, a re-created document) may
+            // pair the page with a different generation's rows, so the page
+            // is fetched afresh (REVIEW-5311, VERIFY-5311).
+            let mut held = !due;
             if due {
                 if self.fetch_baseline(doc_id, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
+                    held = match meta {
+                        Some(meta) => !self.baseline_due(doc_id, meta).await?,
+                        None => true,
+                    };
                 } else if !report.stopped.is_empty() {
                     return Ok(());
                 }
-            } else if answer.since == cursor {
-                // #5293: the answer is this document's first page already.
+            }
+            // #5293: the answer is this document's first page already. The
+            // server pages `sequence_num > since` in order
+            // (`apps/sync-server/src/services/crdt.ts` `planUpdatePage`), so
+            // from a `since` at or below the cursor its rows above the cursor
+            // are the start of the cursor's own page, after a baseline too
+            // (#5232); the loop skips the rest as replays (§7.9). A page from
+            // above the cursor would leave a hole, so that one is fetched.
+            if answer.since <= cursor && held {
                 first_page = Some(answer.page);
             }
         } else {

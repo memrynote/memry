@@ -103,6 +103,7 @@ async function runCore(proxy) {
 
   const marks = {}
   const sleeps = []
+  const phases = []
   const shell = { bodyPasses: 0 }
   const args = [
     'bench',
@@ -132,6 +133,7 @@ async function runCore(proxy) {
       }
       if (event.mark === 'start') marks.startMs = event.atMs
       if (event.mark === 'sleep') sleeps.push([event.atMs, event.ms])
+      if (event.mark === 'phase') phases.push([event.atMs, event.phase])
       if (event.mark === 'records') marks.recordsMs = event.atMs
       if (event.mark === 'bodies') marks.bodiesMs = event.atMs
       if (event.mark === 'bodyPass') shell.bodyPasses += 1
@@ -140,7 +142,7 @@ async function runCore(proxy) {
   })
   const code = await new Promise((resolve) => child.on('exit', resolve))
   if (code !== 0) fail(`memry bench bootstrap exited ${code}`)
-  return { marks, sleeps, shell, staleLockReleases: 0 }
+  return { marks, sleeps, phases, shell, staleLockReleases: 0 }
 }
 
 // ------------------------------------------------------------- electron (dev)
@@ -279,6 +281,7 @@ async function main() {
       requests: proxy.requests,
       marks: result.marks,
       sleeps: result.sleeps ?? null,
+      phases: result.phases ?? [],
       staleLockReleases: result.staleLockReleases,
       lineMbps
     })

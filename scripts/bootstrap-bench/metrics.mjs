@@ -109,12 +109,48 @@ export function limiterOf({ wallMs, busy, pacedMs = null, bytes, requests, lineM
 }
 
 /**
+ * Where `[fromMs, toMs]` went (#5232): per endpoint, its requests and the wall
+ * time at least one of them was in flight (endpoints overlap, so these do not
+ * add up), the time no request was in flight (local work), and the shell's
+ * phase marks as offsets. `phases`: `[atMs, name]`.
+ */
+export function windowBreakdown(requests, fromMs, toMs, phases = []) {
+  // Clipped to the window: a request still in flight at `toMs` counts only
+  // its part inside it.
+  const inside = requests
+    .filter((r) => r.method !== 'WS' && !r.refused && r.startMs >= fromMs && r.startMs <= toMs)
+    .map((r) => ({ ...r, startMs: Math.max(r.startMs, fromMs), endMs: Math.min(r.endMs, toMs) }))
+  const groups = {}
+  for (const request of inside) (groups[endpointOf(request)] ??= []).push(request)
+  const endpoints = Object.fromEntries(
+    Object.entries(groups)
+      .map(([key, group]) => [key, { count: group.length, busyMs: busyMs(group) }])
+      .toSorted((a, b) => b[1].busyMs - a[1].busyMs)
+  )
+  return {
+    wallMs: toMs - fromMs,
+    idleMs: Math.max(0, toMs - fromMs - busyMs(inside)),
+    endpoints,
+    phases: phases
+      .filter(([at]) => at >= fromMs && at <= toMs)
+      .map(([at, phase]) => ({ phase, atMs: at - fromMs }))
+  }
+}
+
+/**
  * `marks`: `startMs` (bootstrap requested), `recordsMs` (every record
  * applied), `bodiesMs` (every live body local; null when not reached).
  * `sleeps`: `[startMs, ms]` waits the client marked, or null when the shell
  * does not mark them. `lineMbps`: the line measured at the start of the run.
  */
-export function summarize({ requests, marks, sleeps = null, staleLockReleases = 0, lineMbps }) {
+export function summarize({
+  requests,
+  marks,
+  sleeps = null,
+  phases = [],
+  staleLockReleases = 0,
+  lineMbps
+}) {
   const { startMs, recordsMs = null, bodiesMs = null } = marks
   const endMs = bodiesMs ?? Math.max(startMs, ...requests.map((r) => r.endMs))
   const inWindow = requests.filter((r) => r.startMs >= startMs && r.startMs <= endMs)
@@ -158,6 +194,8 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
   return {
     tRecordsMs: recordsMs === null ? null : recordsMs - startMs,
     tBodiesMs: bodiesMs === null ? null : bodiesMs - startMs,
+    recordsBreakdown:
+      recordsMs === null ? null : windowBreakdown(requests, startMs, recordsMs, phases),
     requests: {
       total: counted.length,
       worker: counted.filter((r) => r.host === 'worker').length,
@@ -215,6 +253,20 @@ export function formatReport(label, metrics) {
     lines.push(
       `| \`${endpoint}\` | ${row.count} | ${megabytes(row.bytes)} | ${row.p50Ms} ms | ${row.maxInFlight} |`
     )
+  }
+  const breakdown = metrics.recordsBreakdown
+  if (breakdown) {
+    const phases = breakdown.phases.map((p) => `${p.phase} at ${seconds(p.atMs)}`).join(', ')
+    lines.push(
+      '',
+      `t_records by endpoint (wall time in flight; overlaps), no request in flight ${seconds(breakdown.idleMs)} of ${seconds(breakdown.wallMs)}${phases ? `; phases: ${phases}` : ''}`,
+      '',
+      '| Endpoint | Requests | In flight |',
+      '|---|---|---|'
+    )
+    for (const [endpoint, row] of Object.entries(breakdown.endpoints)) {
+      lines.push(`| \`${endpoint}\` | ${row.count} | ${seconds(row.busyMs)} |`)
+    }
   }
   return `${lines.join('\n')}\n`
 }
