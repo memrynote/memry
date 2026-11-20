@@ -112,14 +112,14 @@ Top-level mounts, verbatim from `apps/sync-server/src/index.ts:216-226`:
 (`apps/sync-server/src/index.ts:214`).
 
 Inside the sync router there are two sub-mounts, `/sync/records`
-(`apps/sync-server/src/routes/sync.ts:557`) and `/sync/crdt`
-(`apps/sync-server/src/routes/sync.ts:1146`).
+(`apps/sync-server/src/routes/sync.ts:558`) and `/sync/crdt`
+(`apps/sync-server/src/routes/sync.ts:1156`).
 
 ### 0.3.1 The record handlers are mounted twice — Q00.2
 
 The same five record handlers are reachable under two prefixes: once through the
-`/sync/records` sub-mount (`apps/sync-server/src/routes/sync.ts:557`) and once
-directly on `/sync` (`apps/sync-server/src/routes/sync.ts:559-565`).
+`/sync/records` sub-mount (`apps/sync-server/src/routes/sync.ts:558`) and once
+directly on `/sync` (`apps/sync-server/src/routes/sync.ts:560-566`).
 
 **Normative.** The **unprefixed** form is canonical for a new client:
 `GET /sync/status`, `GET /sync/manifest`, `GET /sync/changes`, `POST /sync/push`,
@@ -144,7 +144,7 @@ Some fields ride **inside** the `error` object rather than beside it; the
 
 **A client MUST also tolerate a bare-string form**, `{ "error": "some message" }`.
 Several routes emit it directly — for example
-`apps/sync-server/src/routes/sync.ts:94` and `:99` — and the reference client
+`apps/sync-server/src/routes/sync.ts:95` and `:99` — and the reference client
 handles both shapes (`packages/sync-client/src/pull/http.ts:107-114`): a string
 `error` becomes the message with no code, an object `error` yields `code` and
 `message`. A non-JSON body degrades to `HTTP <status>` as the message
@@ -181,11 +181,11 @@ read from every non-test throw site under `apps/sync-server/src`.
 | `SYNC_ITEM_NOT_FOUND`         | 404                       |                                                                                                                                                                                  |
 | `SYNC_VERSION_CONFLICT`       | —                         | **classified in telemetry only** (`apps/sync-server/src/services/sync-telemetry.ts:188`); no route returns it. See chapter 05, Q05.5                                             |
 | `SYNC_INVALID_SIGNATURE`      | 403                       | the item's signature did not verify                                                                                                                                              |
-| `SYNC_INVALID_CURSOR`         | 400                       | a non-integer or negative `cursor` on `/sync/manifest` or `/sync/changes` (`apps/sync-server/src/routes/sync.ts:173-181`, `:324`, `:349`)                                        |
+| `SYNC_INVALID_CURSOR`         | 400                       | a non-integer or negative `cursor` on `/sync/manifest` or `/sync/changes` (`apps/sync-server/src/routes/sync.ts:174-182`, `:324`, `:349`)                                        |
 | `SYNC_BATCH_TOO_LARGE`        | —                         | **no producer**                                                                                                                                                                  |
 | `SYNC_INVALID_ITEM`           | per item                  | a **per-item rejection reason** in the push response, never an HTTP status: one item `RecordPushItemSchema` refuses (`apps/sync-server/src/routes/sync.ts`). See chapter 05 §5.4 |
-| `SYNC_REPLAY_DETECTED`        | per item                  | a **per-item rejection reason** in the push response, never an HTTP status (`apps/sync-server/src/services/sync.ts:542`)                                                         |
-| `SYNC_DELETE_WINS`            | per item                  | same (`apps/sync-server/src/services/sync.ts:554`)                                                                                                                               |
+| `SYNC_REPLAY_DETECTED`        | per item                  | a **per-item rejection reason** in the push response, never an HTTP status (`apps/sync-server/src/services/sync.ts:552`)                                                         |
+| `SYNC_DELETE_WINS`            | per item                  | same (`apps/sync-server/src/services/sync.ts:564`)                                                                                                                               |
 | `SYNC_VERSION_INCOMPATIBLE`   | 426 (WebSocket handshake) | `apps/sync-server/src/durable-objects/user-sync-state.ts:104`, `:115`                                                                                                            |
 | `SYNC_PAYMENT_REQUIRED`       | 402                       | no active sync subscription                                                                                                                                                      |
 | `SYNC_VAULT_LIMIT_EXCEEDED`   | 402                       |                                                                                                                                                                                  |

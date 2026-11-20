@@ -92,7 +92,11 @@ const fetchClocks = async (
       if (!item.clock && clockRequired.has(item.type)) {
         throw new Error(`oracle: live ${item.type} ${item.id} has no clock`)
       }
-      records[item.id] = { type: item.type, clock: item.clock ?? null }
+      records[item.id] = {
+        type: item.type,
+        clock: item.clock ?? null,
+        signerDeviceId: item.signerDeviceId
+      }
     }
   }
   for (const [id, type] of live) {

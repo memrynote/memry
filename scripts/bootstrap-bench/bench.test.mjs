@@ -82,11 +82,35 @@ describe('summarize', () => {
           refused: true,
           startMs: 30,
           endMs: 30
+        }),
+        request({
+          path: '/sync/crdt/updates',
+          method: 'POST',
+          status: 403,
+          refused: true,
+          startMs: 40,
+          endMs: 40
+        }),
+        request({
+          path: '/sync/push',
+          method: 'POST',
+          status: 403,
+          refused: true,
+          startMs: 50,
+          endMs: 50
         })
       ]
     })
     assert.equal(metrics.requests.total, 1)
-    assert.equal(metrics.requests.writesRefused, 1)
+    assert.equal(metrics.requests.writesRefused, 3)
+    assert.deepEqual(metrics.requests.writesRefusedByEndpoint, {
+      'POST /sync/push': 2,
+      'POST /sync/crdt/updates': 1
+    })
+    assert.match(
+      formatReport('core', metrics),
+      /Writes refused \| 3 \(`POST \/sync\/push` 2, `POST \/sync\/crdt\/updates` 1\) in the window;/
+    )
     assert.equal(metrics.bytes.attachments, 0)
     assert.match(formatReport('core', metrics), /Attachments \| 0 bytes \(out of scope\)/)
 

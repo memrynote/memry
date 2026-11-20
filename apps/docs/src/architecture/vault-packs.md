@@ -126,7 +126,8 @@ A pack built before the delete is immutable and still carries the body. A delete
 a journal day is always `j<date>`. If that pack survived, a fresh device would apply the deleted
 body to the re-created day. So when the server purges a deleted note's body
 (`services/document-body-purge.ts`, protocol chapter 07 §7.15), it deletes every `crdt_snapshot`
-`pack_index` row and pack object of the vault and resets that kind's watermark. It drops all of
+`pack_index` row and pack object of the vault and resets that kind's watermark, and does the same
+for `crdt_update` when it deletes an update row. It drops all of
 them because the note's older revisions can sit in any pack built before its last snapshot write.
 Compaction rebuilds the set without the dead note. Until the rebuild finishes, a fresh device
 fetches those bodies item by item. A compaction run that selected the old snapshot before the
@@ -145,24 +146,41 @@ stays predictable.
 At-least-once queue delivery means every step has to tolerate re-running:
 
 1. Selection reads the watermark, so a crash re-selects the same range.
-2. The pack object key is deterministic from the range, so a retry PUTs identical bytes to the same
-   object, and an R2 put is idempotent.
-3. `pack_index` carries `UNIQUE (user_id, vault_id, item_kind, min_cursor)`, so a duplicate insert
-   is a no-op.
-4. The order is **object → D1 row → watermark**: `storage.put(packKey, built.bytes)`, then
-   `insertPackIndexRow(...)`, then `advanceWatermark(...)`. A crash inside that ordering is why the
-   first three properties have to hold. Between the PUT and the row it leaves an orphan pack object
-   — harmless invisible bytes, since only a `pack_index` row makes a pack listable. Between the row
-   and the watermark it costs an idempotent rebuild that lands on the UNIQUE constraint.
+2. The pack object key is unique per build: it ends in the build's `pack_index` id, so no build
+   writes a key another build wrote, and a purge that deletes a dropped pack's object can never
+   delete a rebuild of the same range.
+3. `pack_index` carries `UNIQUE (user_id, vault_id, item_kind, min_cursor)`, so only one listed
+   pack can start at a given `min_cursor`. A snapshot range whose first row shares the second of a
+   listed pack (a tie group larger than one build) rolls that pack and its new rows into one pack,
+   taking only the new rows that fit beside it (`readCollidingPack` in `services/pack-rollup.ts`).
+   When none fit or the listed pack cannot be read, the build lists nothing. Snapshot packs are a
+   cache only, so a snapshot build then moves the watermark past the rest of that second once, logged
+   at warning level: those snapshots are served item by item, later seconds still pack, and the
+   colliding pack is not downloaded again. A record or update build holds the watermark and logs at
+   error level, because those kinds sort on the unique `server_cursor` and only a foreign row
+   collides (#5229).
+4. The order is **object → one D1 batch**: `storage.put(packKey, built.bytes)`, then one batch that
+   inserts the `pack_index` row and moves the watermark only if that row was inserted. A crash
+   between the PUT and the batch leaves an orphan pack object — harmless invisible bytes, since only
+   a `pack_index` row makes a pack listable. When the batch does not list the row (a lost watermark,
+   a purge, the listing cap), the same batch records the object in `pack_replaced_objects`, due at
+   once, and the build deletes it. A failed delete is retried by the next deletion pass instead of
+   waiting for the orphan sweep. A rollup that loses its index swap does the same. When the batch
+   throws, the writer records the object the same way, best effort, and deletes it only if a
+   separate read finds its row absent, since a batch can commit and lose its response
+   (`listingBatch` in `services/pack-replaced-objects.ts`).
 
-One known residual: a window whose every source blob turned out to be a hole writes no pack and
-advances its watermark _without_ a `pack_index` row. If an earlier attempt of that same range
-crashed in the PUT-to-row window, the object at the deterministic key now has no row pointing at it
-and can never be listed — permanently dead bytes. Harmless today, and the concrete case a future
-sweep should cover. Such a sweep has to list the real key, which `packObjectKey` builds as
-`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>.pack` — the vault prefix is
-deliberate, so vault deletion's prefix purge already reaches these objects, and a sweep listing a
-bare `packs/<kind>/` prefix would match nothing.
+A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
+writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
+(`cleanupOrphanedPackObjects` in `services/cleanup.ts`): it lists the `packs/` prefix of every vault
+that has a `pack_index` or `pack_watermarks` row, and deletes an object only when it is older than
+an hour and no `pack_index` or `pack_replaced_objects` row has its key, rechecked in D1 right
+before the delete. The hour keeps
+it clear of a build still committing. It reads five list pages of 90 objects per tick and resumes
+from `pack_orphan_sweep` (migration 0022) on the next. The key is
+`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>_<packId>.pack`, `packId`
+being the build's `pack_index` id. The vault prefix is deliberate, so vault deletion's prefix purge
+reaches these objects too.
 
 ### Holes
 
@@ -185,7 +203,7 @@ plan order, so an unclaimed slot makes the next `writeEntry` throw and abort the
 the watermark moves. A window where _every_ candidate turned out to be a hole writes no pack and
 still advances the watermark, so it cannot loop.
 
-### `PACKED_KINDS` is `['crdt_snapshot', 'record']`
+### `PACKED_KINDS` is `['crdt_snapshot', 'record', 'crdt_update']`
 
 A record entry carries the pull item's signature, signer device id, operation, `deletedAt` and
 clock as its meta, so a client verifies it exactly as an item from `POST /sync/pull`. The meta
@@ -198,11 +216,95 @@ purged tombstone (`blob_key` empty), an unknown type, a row without signer metad
 corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_BYTES`. The
 watermark still moves past them.
 
-Each queue message builds one pack per kind, about 531 subrequests together, and a large vault
+Each queue message builds one pack per kind, about 542 subrequests together, and a large vault
 builds across invocations from its watermarks. The Rust core reader is a later step of
 [#5221](https://github.com/memrynote/memry/issues/5221).
 
-No server produces `crdt_update` entries yet.
+An update entry is one `crdt_updates` row: the document id as identity, empty `keyBytes`,
+`server_cursor` as sort key and watermark, and `{sequenceNum, signerDeviceId, createdAt}` as meta.
+Its payload is `update_data`, read from D1 in windows of about 4 MB, so an update build makes no R2
+GET per entry and takes up to `PACK_MAX_ENTRIES` = 4096 rows instead of 256. Rows pruned behind a
+snapshot (#2299) or purged with their document no longer exist and are never selected, and a row
+with a NULL `server_cursor` (written before migration 0011) stays on the update routes. The commit
+is guarded like the snapshot one: every packed update row must still exist and its document must
+not be dead, or the pack is discarded and the next run reselects.
+
+Both update routes answer a per-document `floor`, the highest purged sequence number, read in the
+same D1 batch as the updates. A reader applies a packed update only above it, so a pack downloaded
+before a purge never brings the deleted incarnation back. Whenever the purged document has any body
+row, update or snapshot, the same D1 batch drops every `crdt_update` pack of the vault and resets
+that kind's watermark: a snapshot that pruned the packed update rows leaves them only in the packs.
+
+A push nudge builds no update pack. The cron backfill builds one under the minimum fill below.
+
+### Minimum fill, rollup and the pack bound
+
+Each push used to build one pack from whatever sat past the watermark, and nothing merged packs
+afterwards. The staging vault `sandboxmobile` listed 230 snapshot packs holding 9,754 entries for
+6,484 live snapshots, so at least a third of its packed bytes were dead.
+
+**Minimum fill.** A build of any kind cuts a pack only when the kind holds 256 unpacked rows, its
+rows reach 24 MB, or its oldest unpacked row is 24 hours old (`PACK_MIN_FILL_ROWS`,
+`PACK_SETTLE_SECONDS`, `services/pack-sizing.ts`). Younger rows stay on the item routes and the
+feed. `findBacklogVaults` skips a vault below that fill, so the tick spends no budget on it.
+
+**The bound.** A vault lists at most `2 * (ceil(entries / 4096) + ceil(bytes / 24 MB)) + 2` packs
+of one kind, where `entries` and `bytes` are what its listed packs of that kind hold
+(`packCountBound`). For `sandboxmobile`'s snapshots that is `2 * (3 + 1) + 2 = 10`.
+
+**Rollup** (`services/pack-rollup.ts`). While a kind lists more packs than its bound, a rollup takes
+the longest run of adjacent packs (ascending `min_cursor`) that fit one pack together: at most 4096
+entries, 24 MB and 64 packs. It downloads and verifies them, keeps every entry that is still
+current, and writes one new pack under a new key. It drops:
+
+- a record entry whose row moved to a higher cursor or was shed to a marker,
+- a snapshot entry whose row now has another blob key or was purged,
+- an update entry whose row was pruned or purged.
+
+A deleted document's body rows stay in packs until the purge removes them and drops those packs.
+An input pack it cannot download or verify is logged by id, left out, and the rollup planned again
+over every listed pack of the kind without it, downloading at most 64 packs in all. A run never
+spans an unreadable pack, and each one can split a run in two, so a kind lists at most its bound,
+plus twice its unreadable listed packs, plus the transient one. An unreadable pack stays listed and
+readers treat it as absent and take its range item by item. While the kind is above its bound,
+every tick's rollup reads it and logs it at error level with its id and kind
+(`rollup input pack unreadable`). Within the bound no rollup reads it, so nothing reports it;
+detecting and rebuilding it there is #5272.
+
+One D1 batch then records the old objects in `pack_replaced_objects`, deletes the old
+`pack_index` rows and inserts the new one. The batch applies only while every old row is still
+listed and every kept entry is still current, so a purge, shed or push that landed meanwhile wins
+and the rollup records and deletes its own object. The watermark does not move. A record rollup's coverage is
+the union of its inputs'; body packs carry no coverage yet.
+
+**Grace period.** An old object stays readable for 600 seconds after its row leaves the listing,
+twice the presigned URL lifetime, so a client that listed it before the rollup still downloads it.
+`deleteReplacedPackObjects` deletes it after that, at the start and the end of every compaction
+message for that vault, so a failing build cannot block it, and at the start of every backfill tick. The record lives in D1, so a Worker restart does not
+lose it, and the orphan sweep leaves every key in that table alone. A body purge skips the grace:
+it makes the replaced objects of each kind it drops due in the batch that drops the listing, records
+the listed packs it drops as due in the same batch, and deletes them all at once, because they may
+hold the purged body. A failed delete stays due, and only then does the purge enqueue a compaction
+message 660 seconds later to retry it, inside the 900-second deadline. That message fails while
+objects stay due, so Queues redelivers it up to three times. The 6-hourly cleanup purges
+at most five vaults per tick, about 41 subrequests.
+
+**Where it runs.** Every compaction message rolls up each kind once before building, which is what
+makes room in a vault at the 999-pack cap, and once more after a build that listed a pack, so the
+message ends at or under the bound. Builds take the watermark with a compare-and-swap, so a cron
+build and a queue build of one window never both list. Every backfill tick first rolls up the four kinds with
+the most packs above their bound, then builds with the rest of its budget, so a vault that stopped
+pushing still drains. A tick has no budget to roll up after its builds, so a kind it built for may
+list one pack above its bound until the next tick or message.
+
+**Observability.** Each rollup logs `pack rollup` with `packsBefore`, `packsAfter`, `bound`,
+`inputs`, `entriesIn`, `entriesKept` and `deadRatio`. For one vault, this D1 query gives packs and
+entries per kind:
+
+```sql
+SELECT item_kind, COUNT(*) AS packs, SUM(item_count) AS entries, SUM(byte_size) AS bytes
+FROM pack_index WHERE vault_id = ? GROUP BY item_kind;
+```
 
 ### Entry meta per kind
 
@@ -263,13 +365,17 @@ any of it yet.
   pulls every listed item it lacks or holds at another `server_cursor` (a record entry's sort
   key), pulls every item when the manifest has no cursors, and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
   the pack bytes.
-- **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
-  the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.
+- **Rollup.** Built: see [Minimum fill, rollup and the pack bound](#minimum-fill-rollup-and-the-pack-bound).
+  Record packs record their coverage range in `pack_index`, which the listing does not send yet.
 - **Scoped purge.** A deleted note's packs leave the listing in the purge batch and are rewritten
   without its body and older versions. The tombstone stays. Its ciphertext is gone from pack
   objects within 15 minutes, with a sweep that retries failed object deletes.
 - **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
-  a released reader's 1,000-pack walk never truncates.
+  a released reader's 1,000-pack walk never truncates. Compaction checks the cap before a build
+  and again in the batch that inserts the row, against the rows before it. A build deletes its
+  object only when its own `pack_index` row is absent after that batch (a guard refused it or a
+  concurrent build won), so a listed row always has its object. The cron backfill skips capped
+  vaults.
 
 ## Client Bootstrap Flow
 

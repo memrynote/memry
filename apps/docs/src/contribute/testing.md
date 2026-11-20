@@ -143,8 +143,9 @@ keychain first, so give it a simulator of its own.
 Neither Rust-core shell logs every record applied or every body local. Their marks: start is the
 shell's own log line (Tauri `bootstrap window opened` in main.log, iOS `a first sync started` in the
 unified log). Records is iOS's `the first sync is pulling bodies`; Tauri has no such line, so its
-records mark is the proxy's first CRDT body request, the start of the core's bodies pass (an iOS run
-reports the same proxy point beside its log mark as a check). Bodies is read from the vault's
+records mark is the proxy's feed head: the end of the last `POST /sync/pull` after the first
+`GET /sync/changes` page with `hasMore: false` (an iOS run reports the same proxy point beside its
+log mark as a check). Bodies is read from the vault's
 `data.db`, opened read-only once a second: the first sync completed and no `sync.body_owed:*` row
 is left. The report's `Writes refused` line also counts the whole session's refused push items by
 type and operation, so a shell that pushes after the window closed still shows.
@@ -154,7 +155,7 @@ type and operation, so a shell that pushes after the window closed still shows.
 | `t_records`    | Bootstrap start until every record is applied (core: the metadata pass ends; Electron: `Pull records applied`, logged before the pull's last body batch; Tauri and iOS: see above). Electron fetches inline bodies between record pages, so those fetches count toward its `t_records`. |
 | `t_bodies`     | Bootstrap start until no live note is owed a body (core: the debt list is empty; Electron: `Bootstrap window closed`; Tauri and iOS: data.db has no debt left)                                                                                                                          |
 | Requests       | Count, bytes, median latency and the most requests in flight at once, per endpoint, split between the Worker and R2                                                                                                                                                                     |
-| Writes refused | Write requests the proxy answered with 403                                                                                                                                                                                                                                              |
+| Writes refused | Write requests the proxy answered with 403, per endpoint                                                                                                                                                                                                                                |
 | Bytes          | Per channel: records, packs, snapshots, updates                                                                                                                                                                                                                                         |
 | Attachments    | Out of scope, expected 0. Attachment downloads use presigned URLs that bypass the proxy, so a report with attachment traffic has incomplete counts                                                                                                                                      |
 | Disruptions    | 429 answers, feed reads restarted from cursor 0, stale sync-lock releases, transport errors                                                                                                                                                                                             |

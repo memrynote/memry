@@ -18,9 +18,16 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
+use crate::sync::body_debt;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
+use crate::sync::first_sync_store::{
+    owe_out_of_window, read_meta, recent_document_ids, write_meta,
+};
 
-use super::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
+use super::{
+    FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport,
+    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms,
+};
 
 /// Documents the bodies pass pulls at once while a bootstrap session elevates
 /// the run (`crdt_pull` 3000/min, §10.7).
@@ -45,10 +52,130 @@ pub const MAX_RATE_LIMIT_PAUSE_S: u64 = 60;
 /// the error. The run is resumable, so giving up loses no work; the bound only
 /// stops a server that keeps refusing from holding the pass open forever.
 pub const MAX_RATE_LIMIT_PAUSES: u32 = 8;
+impl FirstSync {
+    /// Bodies from packs, once (`pack_bootstrap/bodies.rs`). Answers whether
+    /// the phase settled or owed every live document, which makes the debts
+    /// the bodies pass's work list.
+    pub(super) async fn body_packs_pass(
+        &self,
+        report: &mut FirstSyncReport,
+    ) -> Result<bool, FirstSyncError> {
+        if let Some(text) = self
+            .db
+            .call(|conn| read_meta(conn, META_FIRST_SYNC_BODY_PACKS))
+            .await?
+        {
+            // A run killed in the phase left its spill; the phase does not
+            // run again to remove it.
+            if let Some(packs) = &self.packs {
+                report
+                    .body_packs
+                    .fallback_reasons
+                    .extend(packs.remove_spill().await);
+            }
+            return Ok(text == "1");
+        }
+        let Some(packs) = &self.packs else {
+            return Ok(false);
+        };
+        let progress = Arc::clone(&self.progress);
+        let on_progress = move |completed: u64, total: u64| {
+            progress.progress(FirstSyncProgress {
+                phase: FirstSyncPhase::Bodies,
+                completed,
+                total: total.max(completed),
+            });
+        };
+        report.body_packs = packs.run_bodies(now_ms() / 1_000, &on_progress).await?;
+        if !report.body_packs.ran {
+            // The phase writes `1` in the transaction that settles; `0` sends
+            // a resumed run straight to the item-granular bodies.
+            self.db
+                .call(|conn| write_meta(conn, META_FIRST_SYNC_BODY_PACKS, "0"))
+                .await?;
+        }
+        Ok(report.body_packs.ran)
+    }
+
+    /// Pass three: bodies for the recent window.
+    ///
+    /// This is the pass that makes a note show its text. Everything above
+    /// carries note *metadata*; a body edit's record push carries
+    /// `content: null` (chapter 07's opening), so `yjs_updates` fills here or
+    /// it never fills at all.
+    ///
+    /// After the body pack phase every live document is settled or owed, so
+    /// the window is the owed documents in it, and each one that reaches its
+    /// head is settled. Otherwise the window is pulled and everything outside
+    /// it is owed.
+    pub(super) async fn bodies_pass(
+        &self,
+        window_start: i64,
+        body_packs_used: bool,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
+        let window = self
+            .db
+            .call(move |conn| recent_document_ids(conn, window_start))
+            .await?;
+        // §7.15: a tombstoned document is excluded by the query above. The
+        // server still answers with the surviving log, and applying it would
+        // resurrect a body the record feed says is deleted.
+        let window = if body_packs_used {
+            self.db
+                .call(move |conn| {
+                    let mut owed = Vec::new();
+                    for doc_id in window {
+                        if body_debt::is_owed(conn, &doc_id)? {
+                            owed.push(doc_id);
+                        }
+                    }
+                    Ok(owed)
+                })
+                .await?
+        } else {
+            // Owed before the pull; every later pass's body step sweeps the rest.
+            let pulled = window.clone();
+            (self.db)
+                .call(move |conn| owe_out_of_window(conn, &pulled))
+                .await?;
+            window
+        };
+
+        // Renewed once here rather than per request: the document pulls run
+        // concurrently and must not race each other into two renewals. The
+        // pass is minutes long against a sixty-minute token, so one check is
+        // enough; a lapsed token only drops the header (§10.11 rule 2).
+        let elevated = match &self.bootstrap {
+            Some(bootstrap) => bootstrap.renew_if_due(now_ms() / 1_000).await,
+            None => false,
+        };
+        let pulled = pull_parallel(&self.bodies, window.clone(), elevated, &self.progress).await?;
+        if body_packs_used {
+            let unfinished: Vec<String> = pulled
+                .stopped
+                .iter()
+                .chain(&pulled.incomplete)
+                .cloned()
+                .collect();
+            self.db
+                .call(move |conn| {
+                    for doc_id in window.iter().filter(|id| !unfinished.contains(id)) {
+                        body_debt::settle(conn, doc_id)?;
+                    }
+                    Ok(())
+                })
+                .await?;
+        }
+        report.bodies.absorb(pulled);
+        Ok(())
+    }
+}
+
 /// Pulls every document in `window`, newest first, `BODY_CONCURRENCY_*` at a
 /// time. `elevated` is whether a bootstrap session widens `crdt_pull` for
 /// this run.
-pub(super) async fn pull_parallel(
+async fn pull_parallel(
     bodies: &Arc<BodyPull>,
     window: Vec<String>,
     elevated: bool,

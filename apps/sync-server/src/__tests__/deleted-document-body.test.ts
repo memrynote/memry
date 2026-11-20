@@ -9,6 +9,7 @@ import { getSnapshot, getUpdates, storeUpdates } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { purgeDeletedDocumentBodies } from '../services/document-body-purge'
 import { compactOneRange } from '../services/pack-compaction'
+import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
 import type { RecordSyncItemType } from '@memry/contracts/sync-api'
 
@@ -269,6 +270,42 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     expect(await storage.get(packKey)).toBeNull()
   })
 
+  // VERIFY-5267 F5: every accepted delete enqueued the delayed retry message.
+  it('a push delete enqueues the delayed purge retry only when a pack delete failed', async () => {
+    const send = vi.fn()
+    env = { ...env, PACK_QUEUE: { send } } as unknown as Bindings
+    const app = buildApp()
+    const delayed = () => send.mock.calls.filter(([, options]) => options?.delaySeconds).length
+    const listPack = async (id: string): Promise<string> => {
+      const key = `${USER_ID}/vaults/${VAULT_ID}/packs/crdt_snapshot/${id}`
+      await storage.put(key, new Uint8Array([1]))
+      harness.raw
+        .prepare(
+          `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+           VALUES (?, ?, ?, ?, 'crdt_snapshot', 0, 1, 1, 1, ?)`
+        )
+        .run(id, USER_ID, VAULT_ID, key, now())
+      return key
+    }
+    await createDay(app)
+    await writeSnapshot(DAY_ID, bytes(9, 9, 9))
+    await listPack('p1')
+    await deleteDay(app)
+    expect(delayed()).toBe(0)
+
+    await createDay(app, { [DEVICE_ID]: 3 })
+    await writeSnapshot(DAY_ID, bytes(8, 8, 8))
+    const key = await listPack('p2')
+    const remove = storage.delete.bind(storage)
+    vi.spyOn(storage, 'delete').mockImplementation(async (keys) =>
+      [keys].flat().includes(key) ? Promise.reject(new Error('r2 down')) : remove(keys)
+    )
+    await push(app, { id: DAY_ID, type: 'journal', clock: { [DEVICE_ID]: 4 }, deleted: true })
+    expect(delayed()).toBe(1)
+    expect(await storage.get(key)).not.toBeNull()
+    expect(count('pack_replaced_objects')).toBe(1)
+  })
+
   // #2986: compaction selected the snapshot before the delete committed.
   it('a compaction run racing the purge publishes no pack with the deleted body', async () => {
     const app = buildApp()
@@ -294,6 +331,10 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
     })
 
     const scope = { userId: USER_ID, vaultId: VAULT_ID }
+    // Written a settle interval ago, so the build meets the minimum fill (#5229).
+    harness.raw
+      .prepare('UPDATE crdt_snapshots SET created_at = created_at - ?')
+      .run(PACK_SETTLE_SECONDS)
     const racing = await compactOneRange(harness.db, storage, scope, 'crdt_snapshot')
     expect(raced).toBe(true)
     expect(count('pack_index')).toBe(0)

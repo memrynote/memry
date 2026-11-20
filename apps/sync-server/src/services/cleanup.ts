@@ -1,6 +1,8 @@
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
+import { enqueuePackCompaction, type PackCompactionMessageBody } from './pack-queue'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from './pack-replaced-objects'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
@@ -294,9 +296,16 @@ export const cleanupExpiredTombstones = async (
   return shed
 }
 
-// Deleted documents purged per tick. Each vault costs one or two db.batch
-// calls and one bulk R2 delete.
+// Deleted documents read per tick, and vaults purged per tick (VERIFY-5267
+// F5). A vault costs one db.batch per 20 documents, one snapshot db.batch, one
+// bulk R2 delete of snapshot objects, the replaced-object pass (a select, a
+// bulk R2 delete, a D1 delete) and one enqueue, retried twice on backpressure:
+// 8 plus its chunks. A tick spends at most 1 select + 5 x 8 + (100 / 20 + 5)
+// chunks = 51 subrequests, inside the ~105 that pack_backfill (~895 at real
+// build cost) leaves the scheduled invocation. Rows are read vault by vault,
+// so the vaults past the cap are the next tick's.
 const DELETED_BODY_LIMIT = 100
+const DELETED_BODY_VAULTS_PER_TICK = 5
 
 /**
  * Purges the server body of deleted notes and journals that still have one
@@ -305,7 +314,8 @@ const DELETED_BODY_LIMIT = 100
  */
 export const cleanupDeletedDocumentBodies = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const rows = await db
     .prepare(
@@ -320,6 +330,7 @@ export const cleanupDeletedDocumentBodies = async (
                 WHERE s.user_id = si.user_id AND s.vault_id = si.vault_id AND s.note_id = si.item_id)
            OR EXISTS (SELECT 1 FROM crdt_updates u
                 WHERE u.user_id = si.user_id AND u.vault_id = si.vault_id AND u.note_id = si.item_id))
+       ORDER BY si.user_id, si.vault_id
        LIMIT ${DELETED_BODY_LIMIT}`
     )
     .all<{ user_id: string; vault_id: string; item_id: string }>()
@@ -329,13 +340,16 @@ export const cleanupDeletedDocumentBodies = async (
     const key = `${row.user_id}\u0000${row.vault_id}`
     const group = byVault.get(key)
     if (group) group.noteIds.push(row.item_id)
-    else byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
+    else if (byVault.size < DELETED_BODY_VAULTS_PER_TICK)
+      byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
   }
 
   let purged = 0
   for (const { userId, vaultId, noteIds } of byVault.values()) {
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
+      if (await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)) {
+        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+      }
       purged += noteIds.length
     } catch (error) {
       logger.warn('Deleted document body purge failed, retried next tick', {
@@ -408,4 +422,114 @@ const parseUploadedChunkHashes = (value: string): Set<string> => {
   } catch {
     return new Set()
   }
+}
+
+// Orphan pack objects (REVIEW-5260). A pack key is unique per build, so a build
+// that fails between its object PUT and its commit batch leaves an object no
+// `pack_index` row lists, and no retry overwrites it. The sweep walks the
+// `packs/` prefix of every vault that has packed, a bounded number of list
+// pages per tick, and resumes from `pack_orphan_sweep` next tick.
+//
+// Subrequests: each page costs one list, one D1 recheck and at most one batched
+// delete, so 5 pages stay well inside what the pack backfill leaves the tick.
+export const PACK_ORPHAN_PAGES_PER_TICK = 5
+const PACK_ORPHAN_PAGE_SIZE = 90
+// Older than any build's PUT-to-commit window, so an object a build is still
+// committing is never taken.
+export const PACK_ORPHAN_MIN_AGE_MS = 60 * 60 * 1000
+
+interface PackSweepPoint {
+  user_id: string
+  vault_id: string
+  list_cursor: string | null
+}
+
+const nextPackedVaults = async (
+  db: D1Database,
+  after: { user_id: string; vault_id: string },
+  limit: number
+): Promise<PackSweepPoint[]> => {
+  const rows = await db
+    .prepare(
+      `SELECT user_id, vault_id, NULL AS list_cursor FROM (
+         SELECT user_id, vault_id FROM pack_index
+         UNION SELECT user_id, vault_id FROM pack_watermarks
+       )
+       WHERE (user_id, vault_id) > (?, ?)
+       ORDER BY user_id, vault_id
+       LIMIT ?`
+    )
+    .bind(after.user_id, after.vault_id, limit)
+    .all<PackSweepPoint>()
+  return rows.results ?? []
+}
+
+export const cleanupOrphanedPackObjects = async (
+  db: D1Database,
+  storage: R2Bucket
+): Promise<number> => {
+  const saved = await db
+    .prepare('SELECT user_id, vault_id, list_cursor FROM pack_orphan_sweep WHERE id = 1')
+    .first<PackSweepPoint>()
+  const queue = saved
+    ? [saved]
+    : await nextPackedVaults(db, { user_id: '', vault_id: '' }, PACK_ORPHAN_PAGES_PER_TICK)
+  let point: PackSweepPoint | undefined = queue.shift()
+  let deleted = 0
+  for (let page = 0; point && page < PACK_ORPHAN_PAGES_PER_TICK; page++) {
+    const prefix = `${point.user_id}/vaults/${point.vault_id}/packs/`
+    const listing = await storage.list({
+      prefix,
+      limit: PACK_ORPHAN_PAGE_SIZE,
+      ...(point.list_cursor ? { cursor: point.list_cursor } : {})
+    })
+    const cutoff = Date.now() - PACK_ORPHAN_MIN_AGE_MS
+    const old = listing.objects
+      .filter((object) => object.uploaded.getTime() <= cutoff)
+      .map((object) => object.key)
+    if (old.length > 0) {
+      // Rechecked right before the delete: only a key no row lists goes. A
+      // rollup's replaced object waits out its grace period in
+      // pack_replaced_objects, whose own deletion owns it (pack-rollup.ts).
+      const listed = await db
+        .prepare(
+          `SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ?
+             AND pack_key IN (SELECT value FROM json_each(?))
+           UNION SELECT pack_key FROM pack_replaced_objects
+             WHERE pack_key IN (SELECT value FROM json_each(?))`
+        )
+        .bind(point.user_id, point.vault_id, JSON.stringify(old), JSON.stringify(old))
+        .all<{ pack_key: string }>()
+      const keep = new Set((listed.results ?? []).map((row) => row.pack_key))
+      const orphans = old.filter((key) => !keep.has(key))
+      if (orphans.length > 0) {
+        await storage.delete(orphans)
+        deleted += orphans.length
+      }
+    }
+    if (listing.truncated) {
+      point.list_cursor = listing.cursor
+      continue
+    }
+    if (queue.length === 0) {
+      queue.push(...(await nextPackedVaults(db, point, PACK_ORPHAN_PAGES_PER_TICK)))
+    }
+    point = queue.shift()
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  await (
+    point
+      ? db
+          .prepare(
+            `INSERT INTO pack_orphan_sweep (id, user_id, vault_id, list_cursor, updated_at)
+           VALUES (1, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET user_id = excluded.user_id, vault_id = excluded.vault_id,
+             list_cursor = excluded.list_cursor, updated_at = excluded.updated_at`
+          )
+          .bind(point.user_id, point.vault_id, point.list_cursor, now)
+      : db.prepare('DELETE FROM pack_orphan_sweep WHERE id = 1')
+  ).run()
+  if (deleted > 0) logger.info('Orphaned pack objects deleted', { count: deleted })
+  return deleted
 }

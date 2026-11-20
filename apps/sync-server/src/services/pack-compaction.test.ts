@@ -2,16 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { AppError } from '../lib/errors'
-import {
-  ENQUEUE_RETRY_DELAYS_MS,
-  PACK_TARGET_BYTES,
-  compactOneRange,
-  compactVault,
-  enqueuePackCompaction,
-  insertPackIndexRow,
-  packObjectKey,
-  selectCandidates
-} from './pack-compaction'
+import { compactOneRange, compactVault, selectCandidates } from './pack-compaction'
+import { ENQUEUE_RETRY_DELAYS_MS, enqueuePackCompaction } from './pack-queue'
+import { insertPackIndexRow } from './pack-index-write'
+import { PACK_TARGET_BYTES } from './pack-sizing'
 import { extractEntry, packSha256, parsePack } from './pack-format'
 
 /**
@@ -279,12 +273,10 @@ describe('selection', () => {
     )
     expect(next.candidates.map((c) => c.tiebreak)).toEqual(['note-d'])
 
-    // Rerunning compaction does NOT rebuild note-d: the range-level
-    // idempotency gate (pack_index UNIQUE on min_cursor) sees min_cursor=1000
-    // as already published and refuses further writes for it, advancing the
-    // watermark instead. note-d therefore stays an item-granular-tail blob —
-    // exactly the snapshot under-coverage documented in pack-list.ts
-    // (missed optimization, never lost data).
+    // note-d's pack would share min_cursor 1000 with the listed one, and the
+    // listed one is full, so the two cannot be rolled into one. Snapshot packs
+    // are a cache only: the build leaves the rest of the tie item by item and
+    // moves past it, so later seconds still pack (#5229 P6, D-P6-EXIT).
     const second = await compactOneRange(
       harness.db,
       storage,
@@ -311,7 +303,9 @@ describe('pack build', () => {
     )
 
     expect(result.built).toBe(true)
-    expect(result.packKey).toBe(packObjectKey({ userId: USER, vaultId: VAULT }, 'record', 1, 2))
+    // Unique per build (REVIEW-5260): the range, then the pack_index row id.
+    const { id } = harness.raw.prepare('SELECT id FROM pack_index').get() as { id: string }
+    expect(result.packKey).toBe(`${USER}/vaults/${VAULT}/packs/record/1_2_${id}.pack`)
 
     const packBytes = await packOf(result.packKey)
     const parsed = await parsePack(packBytes)
@@ -359,11 +353,17 @@ describe('pack build', () => {
     ).toBe(1)
   })
 
-  // #5227: record entries carry the pull item's meta (protocol 08 §8.4.2), so
-  // the vault sweep packs records next to snapshots. Updates wait for #5228.
-  it('builds record and snapshot packs for a vault, and no update packs', async () => {
+  // #5227, #5228: the push nudge packs records and snapshots. Updates wait for
+  // the cron tick and its minimum fill (protocol 08 §8.14, REVIEW-5260).
+  it('builds record and snapshot packs for a vault and leaves updates to the cron tick', async () => {
     await seedRecord({ cursor: 1 })
     seedSnapshot('note-a', 1000)
+    harness.raw
+      .prepare(
+        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, server_cursor)
+         VALUES ('u1', ?, ?, 'note-a', ?, 1, 'device-1', 1000, 2)`
+      )
+      .run(USER, VAULT, Buffer.from([1, 2, 3]))
 
     const results = await compactVault(harness.db, storage, { userId: USER, vaultId: VAULT })
 
@@ -563,7 +563,9 @@ describe('pack build', () => {
     expect(extractEntry(bytes, parsed.entries[1])).toEqual(snapB)
   })
 
-  it('leaves out snapshots of notes whose only record rows are tombstones', async () => {
+  // A deleted note's body rows pack while they exist; the purge removes the rows
+  // and drops the packs (protocol 08 §8.10, REVIEW-5267).
+  it('packs the snapshots of deleted notes while their rows exist', async () => {
     await seedRecord({ cursor: 1, type: 'note', id: 'note-deleted', deleted: true })
     await seedRecord({ cursor: 2, type: 'journal', id: 'note-retyped', deleted: true })
     await seedRecord({ cursor: 3, type: 'note', id: 'note-retyped' })
@@ -582,6 +584,7 @@ describe('pack build', () => {
 
     const parsed = await parsePack(await packOf(result.packKey))
     expect(parsed.entries.map((e) => e.id)).toEqual([
+      'note-deleted',
       'note-retyped',
       'note-live',
       'note-record-pending'
@@ -693,5 +696,90 @@ describe('pack build', () => {
     } finally {
       globalThis.Uint8Array = RealUint8Array
     }
+  })
+})
+
+describe('min_cursor collision (#5229 P6)', () => {
+  const SCOPE = { userId: USER, vaultId: VAULT }
+  const listedRows = () =>
+    harness.raw.prepare('SELECT pack_key, item_count FROM pack_index').all() as Array<{
+      pack_key: string
+      item_count: number
+    }>
+
+  // A tie group larger than one window: the second window starts in the
+  // second the listed pack starts in. The watermark used to pass its rows.
+  it('rolls the listed pack and its new rows into one pack', async () => {
+    const ids = Array.from({ length: 300 }, (_, i) => `note-${String(i).padStart(3, '0')}`)
+    for (const id of ids) seedSnapshot(id, 1000)
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')).itemCount).toBe(256)
+    const [first] = listedRows()
+
+    const second = await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+
+    expect(second.built).toBe(true)
+    expect(listedRows()).toEqual([{ pack_key: second.packKey, item_count: 300 }])
+    const packed = await parsePack(await packOf(second.packKey))
+    expect(packed.entries.map((entry) => entry.id)).toEqual(ids)
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 1000,
+      last_sort_tiebreak: 'note-299'
+    })
+    // The old object waits out the grace period of a replaced pack.
+    expect(
+      harness.raw.prepare('SELECT pack_key, replaced_by FROM pack_replaced_objects').all()
+    ).toEqual([
+      {
+        pack_key: first.pack_key,
+        replaced_by: harness.raw.prepare('SELECT id FROM pack_index').pluck().get()
+      }
+    ])
+  })
+
+  // REVIEW-5277 P1, P2: a snapshot collision the build could not roll in held
+  // the watermark for good, re-downloading the colliding pack every message.
+  it.each([
+    ['full', false],
+    ['unreadable', true]
+  ])('packs later seconds after a %s colliding snapshot pack', async (_, unreadable) => {
+    const MB = 1024 * 1024
+    const big = (fill: number) => new Uint8Array(unreadable ? 24 : 8 * MB).fill(fill)
+    for (const [i, id] of ['note-a', 'note-b', 'note-c'].entries())
+      seedSnapshot(id, 1000, 1, big(i + 1))
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')).built).toBe(true)
+    const [colliding] = listedRows()
+    if (unreadable) await storage.delete(colliding.pack_key)
+    seedSnapshot('note-d', 1000)
+    for (let i = 0; i < 10; i++) seedSnapshot(`late-${i}`, 2000 + i)
+    const get = vi.spyOn(storage, 'get')
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    for (let run = 0; run < 3; run++)
+      await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')
+
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 2009,
+      last_sort_tiebreak: 'late-9'
+    })
+    expect(listedRows()).toHaveLength(2)
+    expect(get.mock.calls.filter(([key]) => key === colliding.pack_key)).toHaveLength(1)
+    expect(errors).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
+  })
+
+  it('holds the watermark when the listed record pack it collides with is unreadable', async () => {
+    await seedRecord({ cursor: 1 })
+    await compactOneRange(harness.db, storage, SCOPE, 'record')
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+         VALUES ('squat', ?, ?, 'gone', 'record', 2, 2, 1, 1, 1)`
+      )
+      .run(USER, VAULT)
+    await seedRecord({ cursor: 2 })
+
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(false)
+    expect(watermarkOf('record')?.last_sort_value).toBe(1)
   })
 })

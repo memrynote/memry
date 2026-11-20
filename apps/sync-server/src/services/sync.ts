@@ -100,6 +100,16 @@ export interface RecordPushBatchResult extends PushResponse {
   committedItems: RecordPullItemResponse[]
   /** Commit time of the batch's latest committed wave; 0 when nothing committed. */
   committedAtMs: number
+  /**
+   * A body purge left pack objects due (protocol 08 §8.13): the caller enqueues
+   * the delayed retry message (PACK_PURGE_RETRY_DELAY_SECONDS).
+   */
+  purgeRetry: boolean
+}
+
+interface PushWaveResult {
+  outcomes: PushItemOutcome[]
+  purgeRetry: boolean
 }
 
 export const validateEncryptedFields = (item: PushItemInput): void => {
@@ -657,7 +667,7 @@ const processPushWave = async (
   vaultId: string,
   client: ClientIdentity | null,
   collectCommitted = false
-): Promise<PushItemOutcome[]> => {
+): Promise<PushWaveResult> => {
   const outcomes: PushItemOutcome[] = Array.from<PushItemOutcome>({ length: items.length })
   const reject = (index: number, reason: string): void => {
     outcomes[index] = { accepted: false, reason }
@@ -702,7 +712,7 @@ const processPushWave = async (
     for (const index of alive()) {
       rejectWithError(index, error)
     }
-    return outcomes
+    return { outcomes, purgeRetry: false }
   }
   const attestations = new Map<number, string>()
   await Promise.all(
@@ -754,7 +764,7 @@ const processPushWave = async (
       for (const index of lookupIndexes) {
         rejectWithError(index, error)
       }
-      return outcomes
+      return { outcomes, purgeRetry: false }
     }
   }
 
@@ -1013,10 +1023,13 @@ const processPushWave = async (
       (entry) => entry.item.operation === 'delete' && DOCUMENT_ITEM_TYPES.has(entry.item.type)
     )
     .map((entry) => entry.item.id)
+  let purgeRetry = false
   if (deletedDocuments.length > 0) {
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, deletedDocuments)
+      purgeRetry = await purgeDeletedDocumentBodies(db, storage, userId, vaultId, deletedDocuments)
     } catch (error) {
+      // The purge may have made pack objects due before it threw.
+      purgeRetry = true
       logger.warn('deleted document body purge failed, left to the cleanup sweep', {
         vaultId,
         documents: deletedDocuments.length,
@@ -1040,7 +1053,7 @@ const processPushWave = async (
     }
   }
 
-  return outcomes
+  return { outcomes, purgeRetry }
 }
 
 export const processRecordPushBatch = async (
@@ -1055,8 +1068,9 @@ export const processRecordPushBatch = async (
   socketItemsBudget = 0
 ): Promise<RecordPushBatchResult> => {
   const itemOutcomes = Array.from<PushItemOutcome>({ length: items.length })
+  let purgeRetry = false
   for (const wave of splitIntoWaves(items)) {
-    const waveOutcomes = await processPushWave(
+    const { outcomes: waveOutcomes, purgeRetry: waveRetry } = await processPushWave(
       db,
       storage,
       userId,
@@ -1065,6 +1079,7 @@ export const processRecordPushBatch = async (
       client,
       socketItemsBudget > 0
     )
+    purgeRetry ||= waveRetry
     wave.forEach((entry, position) => {
       itemOutcomes[entry.index] = waveOutcomes[position]
     })
@@ -1114,7 +1129,8 @@ export const processRecordPushBatch = async (
       committed.toSorted((a, b) => a.serverCursor - b.serverCursor).map((entry) => entry.row),
       socketItemsBudget
     ),
-    committedAtMs
+    committedAtMs,
+    purgeRetry
   }
 }
 
@@ -1127,7 +1143,9 @@ export const processPushItem = async (
   vaultId = 'default',
   client: ClientIdentity | null = null
 ): Promise<PushItemOutcome> => {
-  const [outcome] = await processPushWave(db, storage, userId, [item], vaultId, client)
+  const {
+    outcomes: [outcome]
+  } = await processPushWave(db, storage, userId, [item], vaultId, client)
   return outcome
 }
 

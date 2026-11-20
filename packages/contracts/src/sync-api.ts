@@ -882,6 +882,39 @@ export const CrdtUpdatePackEntryMetaSchema = z.object({
 export type RecordPackEntryMeta = z.infer<typeof RecordPackEntryMetaSchema>
 export type CrdtUpdatePackEntryMeta = z.infer<typeof CrdtUpdatePackEntryMetaSchema>
 
+/** Most documents one `GET /sync/crdt/manifest` page answers (protocol 07 §7.4.1). */
+export const CRDT_MANIFEST_PAGE_LIMIT = 1000
+
+/**
+ * One document of `GET /sync/crdt/manifest` (protocol 07 §7.4.1, #5232). `floor`
+ * is 0 when the document was never purged, `snapshot` null when it has none,
+ * and `maxSequenceNum` its highest stored update, 0 when it stores none. The
+ * three are one D1 read.
+ */
+export const CrdtManifestDocumentSchema = z.object({
+  noteId: z.string().min(1),
+  floor: z.number().int().min(0),
+  snapshot: z
+    .object({
+      revision: z.string().min(1),
+      sequenceNum: z.number().int().min(0)
+    })
+    .nullable(),
+  maxSequenceNum: z.number().int().min(0)
+})
+
+/**
+ * A page of `GET /sync/crdt/manifest`, documents in ascending `noteId`.
+ * `nextCursor` is the `cursor` of the next page, null on the last one.
+ */
+export const CrdtManifestResponseSchema = z.object({
+  documents: z.array(CrdtManifestDocumentSchema),
+  nextCursor: z.string().min(1).nullable()
+})
+
+export type CrdtManifestDocument = z.infer<typeof CrdtManifestDocumentSchema>
+export type CrdtManifestResponse = z.infer<typeof CrdtManifestResponseSchema>
+
 export const PullResponseSchema = z.object({
   items: z.array(PullItemResponseSchema)
 })

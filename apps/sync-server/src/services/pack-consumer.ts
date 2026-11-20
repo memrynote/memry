@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
 import { createLogger } from '../lib/logger'
-import { compactVault, type PackCompactionMessageBody, type VaultScope } from './pack-compaction'
+import { compactVault } from './pack-compaction'
+import type { PackCompactionMessageBody } from './pack-queue'
+import type { VaultScope } from './pack-index-write'
 
 const logger = createLogger('PackConsumer')
 

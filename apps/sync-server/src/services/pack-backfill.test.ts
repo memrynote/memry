@@ -147,10 +147,11 @@ describe('runPackBackfill', () => {
     expect(packed.map((row) => row.user_id)).toEqual(['u-b1', 'u-b2'])
   })
 
-  it('moves past vaults whose snapshot tail is only deleted notes', async () => {
-    // Oldest backlog first: three vaults whose only snapshot is a deleted
-    // note sort ahead of the live vault. Unless their watermarks move, they
-    // take every tick's budget and the live vault is never packed.
+  it('packs the snapshot tail of deleted notes and still reaches the live vault', async () => {
+    // Oldest backlog first: three vaults whose only snapshot is a deleted note
+    // sort ahead of the live vault. A deleted note's body row packs while it
+    // exists (protocol 08 §8.10), so each build moves its vault's watermark and
+    // the live vault is packed on the next tick.
     for (let i = 1; i <= 3; i++) {
       const userId = `u-dead${i}`
       seedVaultWithSnapshots(userId, 'default', 1, i * 100)
@@ -163,22 +164,15 @@ describe('runPackBackfill', () => {
     }
     seedVaultWithSnapshots('u-live', 'default', 1, 5000)
 
-    const ticks = [
-      await runPackBackfill(harness.db, storage),
-      await runPackBackfill(harness.db, storage)
-    ]
+    await runPackBackfill(harness.db, storage)
+    await runPackBackfill(harness.db, storage)
 
-    // Tick 2 packs the live vault, then spends the rest on the record kind
-    // (#5227): the dead vaults' tombstone markers are not entries, and the
-    // record watermark moves past them.
-    expect(ticks).toEqual([
-      { packsBuilt: 0, scopesVisited: 3, budgetRemaining: 0 },
-      { packsBuilt: 1, scopesVisited: 3, budgetRemaining: 0 }
-    ])
     const packed = harness.raw
-      .prepare('SELECT DISTINCT user_id FROM pack_index ORDER BY user_id')
+      .prepare(
+        "SELECT DISTINCT user_id FROM pack_index WHERE item_kind = 'crdt_snapshot' ORDER BY user_id"
+      )
       .all() as Array<{ user_id: string }>
-    expect(packed.map((row) => row.user_id)).toEqual(['u-live'])
+    expect(packed.map((row) => row.user_id)).toEqual(['u-dead1', 'u-dead2', 'u-dead3', 'u-live'])
   })
 
   it('exposes the tick budget constant used by the cron wiring', () => {

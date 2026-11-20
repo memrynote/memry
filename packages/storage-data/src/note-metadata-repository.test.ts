@@ -9,6 +9,7 @@ import {
   getNoteMetadataByPath,
   getJournalNoteMetadataByDate,
   listNoteMetadata,
+  listNoteMetadataByFoldedPath,
   countLocalOnlyNoteMetadata,
   getPropertyDefinition,
   upsertPropertyDefinition,
@@ -306,6 +307,78 @@ describe('note-metadata-repository', () => {
 
     it('is a no-op for missing id', () => {
       expect(() => deleteNoteMetadata(db, 'missing')).not.toThrow()
+    })
+  })
+
+  describe('listNoteMetadataByFoldedPath', () => {
+    const idsFor = (path: string) =>
+      listNoteMetadataByFoldedPath(db, path)
+        .map((row) => row.id)
+        .toSorted()
+
+    it('finds every row whose path differs only in Unicode case', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'a', path: 'Ärzte/a.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'b', path: 'ärzte/A.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'c', path: 'ärzte/b.md' }))
+
+      expect(idsFor('ÄRZTE/a.md')).toEqual(['a', 'b'])
+    })
+
+    it('finds a row written inside a transaction after the index was built', () => {
+      expect(idsFor('docs/a.md')).toEqual([])
+
+      testDb.db.transaction((tx) => {
+        upsertNoteMetadata(tx, makeNote({ id: 'in-tx', path: 'Docs/A.md' }))
+      })
+
+      expect(idsFor('docs/a.md')).toEqual(['in-tx'])
+    })
+
+    it('drops a deleted row and follows a moved one', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'gone', path: 'Docs/a.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'moved', path: 'Docs/b.md' }))
+      expect(idsFor('docs/a.md')).toEqual(['gone'])
+
+      deleteNoteMetadata(db, 'gone')
+      updateNoteMetadata(db, 'moved', { path: 'Other/b.md' })
+
+      expect(idsFor('docs/a.md')).toEqual([])
+      expect(idsFor('docs/b.md')).toEqual([])
+      expect(idsFor('other/B.md')).toEqual(['moved'])
+    })
+
+    // The index is a cache: a write that never commits must not hide the row
+    // the table still holds.
+    it('still finds a row whose delete or move was rolled back', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'kept', path: 'Docs/a.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'stayed', path: 'Docs/b.md' }))
+      expect(idsFor('docs/a.md')).toEqual(['kept'])
+
+      expect(() =>
+        testDb.db.transaction((tx) => {
+          deleteNoteMetadata(tx, 'kept')
+          updateNoteMetadata(tx, 'stayed', { path: 'Other/b.md' })
+          throw new Error('rollback')
+        })
+      ).toThrow('rollback')
+
+      expect(idsFor('docs/a.md')).toEqual(['kept'])
+      expect(idsFor('docs/b.md')).toEqual(['stayed'])
+      expect(idsFor('other/b.md')).toEqual([])
+    })
+
+    it('still finds a row when the index was first read inside a transaction that rolled back', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'kept', path: 'Docs/a.md' }))
+
+      expect(() =>
+        testDb.db.transaction((tx) => {
+          deleteNoteMetadata(tx, 'kept')
+          expect(listNoteMetadataByFoldedPath(tx, 'docs/a.md')).toEqual([])
+          throw new Error('rollback')
+        })
+      ).toThrow('rollback')
+
+      expect(idsFor('docs/a.md')).toEqual(['kept'])
     })
   })
 
