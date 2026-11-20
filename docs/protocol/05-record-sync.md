@@ -1067,7 +1067,8 @@ the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`
 (`purged.rs:295`), then the signed-tombstone apply. Every id a
 `purgedTombstones` entry names is kept out of the page's untyped deletes
 (`crates/memry-core/src/sync/pull.rs:409`). A run that started from cursor 0
-applies none until a page that is not refused lands at the head. The core keeps
+applies none until a page lands at the head, a refused one included, since the
+cursor moves past it (`crates/memry-core/src/sync/pull.rs:438`). The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
 is read from cursor 0 and cleared in the transaction that lands the head
 (`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
@@ -1080,6 +1081,19 @@ its copy locally, and the marker stops a push of it from reaching the server.
 The Rust core produces attestations on every attestable delete it pushes
 (`crates/memry-core/src/protocol/delete_attestation.rs`).
 
+The Rust core does not yet meet the re-upload rule above for `note`, `journal`
+and `bookmark`: its manifest check never queues one of them as `create`
+(`REUPLOADED`, `crates/memry-core/src/sync/hardening/manifest.rs:57`, §5.15),
+so a create of these types that the server lost is not repaired from a Tauri
+device. The reason is resurrection: a run from cursor 0 is never served the
+markers below its cursor, and a marker the pull skipped or refused leaves no
+trace, so a note another device deleted looks like a lost create, and the
+server would accept its `create` over the marker on every device
+(`crates/memry-core/tests/sync_hardening_purged.rs:562`,
+`a_note_whose_marker_a_run_from_zero_skipped_is_not_reuploaded`). The three
+types stay out until the core asks the server by id before it re-uploads, and
+skips the re-upload when the answer is a marker or a tombstone (#4278).
+
 The Rust core pushes `create` only for a `property_definition` the user creates
 (`crates/memry-core/src/domain/property_admin/records.rs:117`), so the server
 re-creates it over a marker. Its other writes go as `update`, a learned
@@ -1087,7 +1101,7 @@ property type's promotion included
 (`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
 refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
 tombstones the local record in the same transaction as the ack
-(`crates/memry-core/src/sync/push.rs:305-309`), unless a newer local change is
+(`crates/memry-core/src/sync/push.rs:323-328`, `:344-346`), unless a newer local change is
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 
@@ -1196,12 +1210,18 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 (`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
 
 The Rust core's desktop driver runs the manifest check at most every 30
-minutes (`crates/memry-core/src/sync/hardening/manifest.rs:47`), diffs on
-`(type, id)` with a note and a journal of one id as one item (`manifest.rs:158`),
-pulls by id a live server row it holds no row of (`manifest.rs:175-193`), and
+minutes (`crates/memry-core/src/sync/hardening/manifest.rs:51`), diffs on
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:162`),
+pulls by id a live server row it holds no row of (`manifest.rs:179-197`), and
 queues as `create` a live clocked local row the server does not list, only of
-the types in `REUPLOADED` (`manifest.rs:53`): none the server re-creates over a
-purged tombstone. Electron re-uploads those too; the core does not yet.
+the types in `REUPLOADED` (`manifest.rs:57`): none the server re-creates over a
+purged tombstone. A marker the pull skipped (a run from cursor 0, §5.12.3) or
+refused leaves no trace, so a note still live here can be one another device
+deleted, and the server would re-create it over the marker on every device.
+Electron re-uploads those types and has that hole
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:312`, `:816`,
+`apps/desktop/src/main/sync/manifest-check.ts:179-224`); the core does not yet
+(#4785).
 
 ## 5.16 Clock skew
 

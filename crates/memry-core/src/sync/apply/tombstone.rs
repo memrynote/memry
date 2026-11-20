@@ -1,4 +1,4 @@
-//! The delete half of [`super::apply_page`]: a typed tombstone, the clock
+//! The delete half of [`super::apply_page_into`]: a typed tombstone, the clock
 //! weighing #2409 adds to it, and §5.12.1's untyped delete.
 
 use rusqlite::Connection;
@@ -84,7 +84,7 @@ pub(super) fn apply_tombstone(
         // A live foreign row keeps its row and body for the drain (#2984).
         if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
             txn.commit().map_err(sqlite_failed)?;
-            totals.deleted += 1;
+            count(totals, was_live);
             feed::deleted(&mut totals.feed, item_type, item_id, was_live);
             return Ok(());
         }
@@ -99,12 +99,22 @@ pub(super) fn apply_tombstone(
         0
     };
     txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
+    count(totals, was_live);
     feed::deleted(&mut totals.feed, item_type, item_id, was_live);
     if purged > 0 {
         totals.purged_documents.push(item_id.to_owned());
     }
     Ok(())
+}
+
+/// Counts one applied delete: deleted when it took a live row, skipped when the row was
+/// never live or already deleted, as the feed reports it ([`feed::deleted`]).
+fn count(totals: &mut ApplyTotals, was_live: bool) {
+    if was_live {
+        totals.deleted += 1;
+    } else {
+        totals.skipped += 1;
+    }
 }
 
 /// Whether the live local row's clock happens strictly after `tombstone`.
@@ -157,9 +167,10 @@ pub(super) fn apply_untyped_tombstone(
         .collect::<Result<Vec<_>, _>>()?;
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;
+    let any_live = was_live.contains(&true);
     if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
         txn.commit().map_err(sqlite_failed)?;
-        totals.deleted += 1;
+        count(totals, any_live);
         for (item_type, live) in item_types.iter().zip(&was_live) {
             feed::deleted(&mut totals.feed, item_type, item_id, *live);
         }
@@ -171,7 +182,7 @@ pub(super) fn apply_untyped_tombstone(
     body_debt::settle(&txn, item_id)?;
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
+    count(totals, any_live);
     for (item_type, live) in item_types.iter().zip(&was_live) {
         feed::deleted(&mut totals.feed, item_type, item_id, *live);
     }
