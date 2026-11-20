@@ -9,6 +9,7 @@
 use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::reminders::fire::FIRE_ACTOR;
 
 use super::clock::OFFLINE_CLOCK_DEVICE_ID;
 use super::first_sync_store::{read_meta, write_meta};
@@ -36,8 +37,10 @@ pub fn has_local_rows(conn: &Connection) -> Result<bool, StorageError> {
     .map_err(failed)
 }
 
-/// A synced record carries a clock tick from a device other than `own` and the offline
-/// placeholder (`vaultHasForeignHistory`): someone else's session wrote it.
+/// A synced record carries a clock tick from a device other than `own`, the offline
+/// placeholder and the reminder-firing actor (`vaultHasForeignHistory`): someone else's
+/// session wrote it. Every device stamps a firing's create with [`FIRE_ACTOR`], so it names
+/// no session.
 pub fn has_foreign_history(conn: &Connection, own: &[String]) -> Result<bool, StorageError> {
     let own = serde_json::to_string(own).map_err(|e| StorageError::Failed {
         what: e.to_string(),
@@ -45,9 +48,9 @@ pub fn has_foreign_history(conn: &Connection, own: &[String]) -> Result<bool, St
     conn.query_row(
         "SELECT 1 FROM sync_items s, json_each(s.clock) c
          WHERE s.clock IS NOT NULL AND json_valid(s.clock)
-           AND c.key <> ?2 AND c.key NOT IN (SELECT value FROM json_each(?1))
+           AND c.key NOT IN (?2, ?3) AND c.key NOT IN (SELECT value FROM json_each(?1))
          LIMIT 1",
-        params![own, OFFLINE_CLOCK_DEVICE_ID],
+        params![own, OFFLINE_CLOCK_DEVICE_ID, FIRE_ACTOR],
         |_| Ok(()),
     )
     .optional()
@@ -118,7 +121,11 @@ mod tests {
             assert!(!has_foreign_history(conn, &own)?);
             item(conn, "a", r#"{"me-local":3,"_offline":1}"#);
             item(conn, "b", r#"{"me-server":1}"#);
-            assert!(!has_foreign_history(conn, &own)?, "own and offline ticks");
+            item(conn, "r", r#"{"reminder-fire":1}"#);
+            assert!(
+                !has_foreign_history(conn, &own)?,
+                "own, offline and firing ticks"
+            );
             item(conn, "c", r#"{"me-local":1,"other":2}"#);
             assert!(has_foreign_history(conn, &own)?);
             Ok(())
