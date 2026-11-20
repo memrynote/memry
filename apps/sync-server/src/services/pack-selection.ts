@@ -25,8 +25,7 @@ import { updateMetaOf, updateSelectionQuery, type UpdateRow } from './pack-updat
 // + 5 D1 round trips (listing-cap check, watermark read, candidate select,
 //   collision check, the listing batch). A range that collides with a listed
 //   pack adds one R2 GET and one D1 read (its live entries), and a snapshot
-//   tie it cannot roll in adds one D1 read and one watermark write instead of
-//   the build
+//   tie it cannot roll in adds one D1 read (its free slot, snapshotSlot)
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
 // => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
 // pack reads its entry meta in the selection query itself, so it costs

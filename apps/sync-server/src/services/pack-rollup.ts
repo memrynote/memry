@@ -81,7 +81,10 @@ const chains = (previous: ListedPack, next: ListedPack): boolean =>
  * `excluded` pack (one that could not be read) ends a run: merging across it
  * would list two packs over its range. So does a `rewriting` min_cursor, the
  * range of a pack waiting for its purge rewrite (protocol 08 §8.13), which
- * lists its pack back there.
+ * lists its pack back there. A run ends only where the next pack starts at or
+ * past the run's last second: a snapshot pack listed below a taken second
+ * (snapshotSlot) starts inside another's range, and the swap refuses a run
+ * that a pack outside it starts inside (swapListing).
  */
 export const planRollup = (
   packs: readonly ListedPack[],
@@ -93,6 +96,7 @@ export const planRollup = (
     const run: ListedPack[] = []
     let entries = 0
     let bytes = 0
+    let maxCursor = -Infinity
     for (let i = start; i < packs.length && run.length < ROLLUP_MAX_INPUTS; i++) {
       const pack = packs[i]
       const previous = run[run.length - 1]
@@ -104,9 +108,11 @@ export const planRollup = (
       if (bytes + pack.byte_size > PACK_TARGET_BYTES) break
       entries += pack.item_count
       bytes += pack.byte_size
+      maxCursor = Math.max(maxCursor, pack.max_cursor)
       run.push(pack)
+      const next = packs[i + 1]
+      if ((!next || next.min_cursor >= maxCursor) && run.length > best.length) best = [...run]
     }
-    if (run.length > best.length) best = run
   }
   return best.length >= 2 ? best : []
 }

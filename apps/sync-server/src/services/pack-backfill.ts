@@ -8,6 +8,8 @@ import type { PackBackfillStep, PackCompactionMessageBody } from './pack-queue'
 import { withReplacedObjectPasses } from './pack-message-passes'
 import { deleteReplacedPackObjects } from './pack-replaced-objects'
 import { ROLLUP_SUBREQUESTS, rollupKind } from './pack-rollup'
+import { MAX_PACKED_ITEM_BYTES } from './pack-selection'
+import { healSnapshotRemainder } from './pack-snapshot-heal'
 import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
 const logger = createLogger('PackBackfill')
@@ -118,6 +120,41 @@ const findBacklogVaults = async (
   return result.results ?? []
 }
 
+/**
+ * Vaults holding a snapshot row at or below the watermark that no listed pack
+ * holds (healSnapshotRemainder), with room to list one more pack. One pass
+ * over the vaults' snapshot rows against the document ids their packs hold,
+ * every 6 hours like findBacklogVaults. A vault with a pack built before
+ * migration 0024 is left out: D1 does not know what that pack holds.
+ */
+const findSnapshotRemainderVaults = async (
+  db: D1Database,
+  limit: number
+): Promise<Array<{ user_id: string; vault_id: string }>> => {
+  const result = await db
+    .prepare(
+      `WITH packed AS MATERIALIZED (
+         SELECT DISTINCT p.user_id, p.vault_id, d.value AS note_id
+         FROM pack_index p, json_each(p.documents) d WHERE p.item_kind = 'crdt_snapshot')
+       SELECT DISTINCT s.user_id, s.vault_id
+       FROM pack_watermarks w
+       JOIN crdt_snapshots s ON s.user_id = w.user_id AND s.vault_id = w.vault_id
+       LEFT JOIN packed k ON k.user_id = s.user_id AND k.vault_id = s.vault_id AND k.note_id = s.note_id
+       WHERE w.item_kind = 'crdt_snapshot' AND k.note_id IS NULL
+         AND (s.created_at < w.last_sort_value
+           OR (s.created_at = w.last_sort_value AND s.note_id <= w.last_sort_tiebreak))
+         AND s.size_bytes <= ?
+         AND NOT EXISTS (SELECT 1 FROM pack_index n WHERE n.user_id = s.user_id
+           AND n.vault_id = s.vault_id AND n.item_kind = 'crdt_snapshot' AND n.documents IS NULL)
+         AND (SELECT COUNT(*) FROM pack_index c WHERE c.user_id = s.user_id
+           AND c.vault_id = s.vault_id) < ?
+       LIMIT ?`
+    )
+    .bind(MAX_PACKED_ITEM_BYTES, PACK_LIST_MAX_PACKS_PER_VAULT, limit)
+    .all<{ user_id: string; vault_id: string }>()
+  return result.results ?? []
+}
+
 /** Kinds that list more packs than their bound (pack-sizing.ts), most packs first. */
 const findRollupScopes = async (
   db: D1Database,
@@ -165,9 +202,19 @@ export const runPackBackfill = async (
     add(row.user_id, row.vault_id, row.item_kind)
   }
   for (const kind of PACKED_KINDS) {
-    for (const row of await findBacklogVaults(db, kind, BACKFILL_MESSAGES_PER_SOURCE)) {
-      add(row.user_id, row.vault_id, kind)
+    const vaults: Array<{ user_id: string; vault_id: string }> = await findBacklogVaults(
+      db,
+      kind,
+      BACKFILL_MESSAGES_PER_SOURCE
+    )
+    // A snapshot remainder below the watermark shares the kind's share of the
+    // tick (D-TIE-REMAINDER): its chain runs the heal once the backlog is gone.
+    if (kind === 'crdt_snapshot' && vaults.length < BACKFILL_MESSAGES_PER_SOURCE) {
+      vaults.push(
+        ...(await findSnapshotRemainderVaults(db, BACKFILL_MESSAGES_PER_SOURCE - vaults.length))
+      )
     }
+    for (const row of vaults) add(row.user_id, row.vault_id, kind)
   }
   if (!queue) {
     logger.warn('no pack queue bound; pack backfill not enqueued', { scopes: bodies.size })
@@ -248,8 +295,25 @@ export const runBackfillMessage = async (
       budget -= SUBREQUESTS_PER_PACK
       if (result.built) packsBuilt++
       else if (ENDS_CHAIN.has(result.reason)) {
-        drained = true
-        return
+        // Snapshots: with nothing left above the watermark, pack what a build
+        // left below it (D-TIE-REMAINDER). A lost race retries; anything else
+        // means no remainder is left that a build can pack. Without the budget
+        // for it the chain still ends, and the cron's next message heals.
+        if (
+          step.kind !== 'crdt_snapshot' ||
+          result.reason !== 'not_ready' ||
+          budget < SUBREQUESTS_PER_PACK
+        ) {
+          drained = true
+          return
+        }
+        const healed = await healSnapshotRemainder(db, storage, scope)
+        budget -= SUBREQUESTS_PER_PACK
+        if (healed.built) packsBuilt++
+        else if (healed.reason !== 'unlisted') {
+          drained = true
+          return
+        }
       }
     }
   })

@@ -166,12 +166,14 @@ At-least-once queue delivery means every step has to tolerate re-running:
    pack can start at a given `min_cursor`. A snapshot range whose first row shares the second of a
    listed pack (a tie group larger than one build) rolls that pack and its new rows into one pack,
    taking only the new rows that fit beside it (`readCollidingPack` in `services/pack-rollup.ts`).
-   When none fit or the listed pack cannot be read, the build lists nothing. Snapshot packs are a
-   cache only, so a snapshot build then moves the watermark past the rest of that second once, logged
-   at warning level: those snapshots are served item by item, later seconds still pack, and the
-   colliding pack is not downloaded again. A record or update build holds the watermark and logs at
-   error level, because those kinds sort on the unique `server_cursor` and only a foreign row
-   collides (#5229).
+   When none fit or the listed pack cannot be read, a record or update build lists nothing, holds
+   the watermark and logs at error level, because those kinds sort on the unique `server_cursor` and
+   only a foreign row collides (#5229). A snapshot build lists the rest of that second in a pack of
+   its own at the highest free `min_cursor` below it (`snapshotSlot`), logged at warning level, so a
+   tie group of any size is packed and the colliding pack is not downloaded again (#5310). Readers
+   never read `minCursor`, and a snapshot pack is a cache, so its range only has to bound its
+   entries. Such a pack holds that one second, and a rollup never ends a run at a pack that a later
+   pack starts inside, because the swap guard would refuse it.
 4. The order is **object → one D1 batch**: `storage.put(packKey, built.bytes)`, then one batch that
    inserts the `pack_index` row and moves the watermark only if that row was inserted. A crash
    between the PUT and the batch leaves an orphan pack object — harmless invisible bytes, since only
@@ -371,11 +373,21 @@ sort key falls inside `[minCursor, maxCursor]` may have been a hole, or may be d
 before it was replaced. The client looks the identity up in the file's own index and falls back to
 the item GET when it is not there.
 
-**Snapshot coverage can under-cover same-second writes.** The watermark is composite
+**Snapshot rows below the watermark are healed.** The watermark is composite
 `(created_at, note_id)`. A note written in the same second as an already-packed tie group but with
-a _smaller_ `note_id` sorts below the watermark and is permanently excluded from packing. It stays
-in the item-granular tail forever. That is a missed optimisation, never lost data — the individual
-blob is still the source of truth at that ordering value.
+a _smaller_ `note_id` sorts below the watermark, and a build before #5310 passed the rest of a tie
+group it could not roll in. Each such row is in no pack, which costs every fresh device one
+`GET /sync/crdt/snapshot/:id`. The cron finds vaults holding a snapshot row at or below the
+watermark that no pack's `documents` holds, and that vault's snapshot backfill chain packs those
+rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
+at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
+commit holds only while no listed pack holds any of its documents, so two runs never pack a row
+twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows
+to the rebuild. A pack waiting for its purge rewrite is out of the listing, so its documents look
+unpacked: the heal does nothing while any snapshot rewrite is pending, and a free `min_cursor` is
+never one a pending rewrite lists its pack back at. A vault that still lists a snapshot pack from before migration 0024 is not healed, since D1
+does not know what that pack holds. A row whose blob is gone stays unpacked, and the cron sends its
+vault one message per tick that lists nothing.
 
 **Items over 8 MB are never packed**, per `MAX_PACKED_ITEM_BYTES` above.
 

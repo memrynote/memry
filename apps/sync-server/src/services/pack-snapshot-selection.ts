@@ -1,4 +1,8 @@
+import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
+
 import type { PackEntryMeta } from './pack-format'
+import { packKeyRange } from './pack-index-write'
+import { REWRITE_PENDING } from './pack-replaced-objects'
 
 /**
  * The `crdt_snapshot` half of pack selection (#1839, protocol 08 §8.4): which
@@ -36,22 +40,67 @@ export const snapshotSelectionQuery = (
 })
 
 /**
- * The last `note_id` of the snapshot rows written in `second`: the watermark
- * tiebreak that leaves a whole tie group behind (pack-compaction.ts).
+ * Where a snapshot pack whose first row was written in `second` can list
+ * (D-TIE-REMAINDER, #5310). `min_cursor` is unique per kind, so a second that
+ * already starts a listed pack (a tie group larger than one pack, or a
+ * remainder left below the watermark) takes the highest free `min_cursor`
+ * below it. A snapshot pack is a cache and readers never read `minCursor`, so
+ * it only has to bound the entries. Such a pack holds that one second, so it
+ * starts inside no other pack's range but the ones at seconds it skipped;
+ * a pack at its own second holds rows up to the next listed pack's second.
+ * A pack waiting for its purge rewrite counts as listed: the rewrite lists it
+ * back at its own `min_cursor` (protocol 08 §8.13).
+ * Of the 1,000 values at or below `second`, at most 999 start a pack (§8.14).
  */
-export const snapshotTieEnd = async (
+export const snapshotSlot = async (
   db: D1Database,
   scope: VaultScope,
   second: number
-): Promise<string | null> =>
-  (
-    await db
+): Promise<{ minCursor: number; lastSecond: number }> => {
+  const [listed, pending] = await db.batch<{ min_cursor?: number; pack_key?: string }>([
+    db
       .prepare(
-        'SELECT MAX(note_id) AS t FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND created_at = ?'
+        `SELECT min_cursor FROM pack_index
+         WHERE user_id = ? AND vault_id = ? AND item_kind = 'crdt_snapshot' AND min_cursor >= ?`
       )
-      .bind(scope.userId, scope.vaultId, second)
-      .first<{ t: string | null }>()
-  )?.t ?? null
+      .bind(scope.userId, scope.vaultId, second - PACK_LIST_MAX_PACKS_PER_VAULT),
+    db
+      .prepare(
+        `SELECT pack_key FROM pack_replaced_objects
+         WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
+      )
+      .bind(scope.userId, scope.vaultId)
+  ])
+  const mins = [
+    ...(listed.results ?? []).flatMap((row) => row.min_cursor ?? []),
+    ...(pending.results ?? []).flatMap((row) => {
+      const range = packKeyRange(row.pack_key ?? '')
+      return range?.kind === 'crdt_snapshot' ? [range.minSortValue] : []
+    })
+  ].toSorted((a, b) => a - b)
+  const taken = new Set(mins)
+  let minCursor = second
+  while (taken.has(minCursor)) minCursor--
+  if (minCursor < 0) throw new Error(`no free snapshot min_cursor at or below ${second}`)
+  const next = mins.find((min) => min > second)
+  return {
+    minCursor,
+    lastSecond: minCursor < second ? second : (next ?? Number.MAX_SAFE_INTEGER)
+  }
+}
+
+/**
+ * True while a snapshot pack of the vault waits for its purge rewrite (protocol
+ * 08 §8.13): out of the listing, so its documents look unpacked, and due to
+ * list back at its range. Binds user_id, vault_id.
+ */
+export const snapshotRewritePending = `EXISTS (SELECT 1 FROM pack_replaced_objects
+  WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'
+    AND instr(pack_key, '/packs/crdt_snapshot/') > 0)`
+
+/** The document ids a vault's listed snapshot packs hold; binds user_id, vault_id. */
+export const packedSnapshotIds = `SELECT d.value FROM pack_index p, json_each(p.documents) d
+  WHERE p.user_id = ? AND p.vault_id = ? AND p.item_kind = 'crdt_snapshot'`
 
 /**
  * The packed entries whose snapshot row still exists with the packed blob: a
@@ -99,3 +148,42 @@ export const loadSnapshotMeta = async (
   }
   return meta
 }
+
+/**
+ * Up to `limit` snapshot rows at or below the watermark that no listed pack
+ * holds, by `pack_index.documents` (migration 0024), oldest first: a tie
+ * remainder an older build passed (#5310), or a same-second write that sorted
+ * below the watermark. Oversized rows are left out as a build leaves them out.
+ * Nothing is selected while a snapshot pack predates 0024, whose membership
+ * D1 does not know.
+ */
+export const snapshotRemainderQuery = (
+  scope: VaultScope,
+  watermark: { last_sort_value: number; last_sort_tiebreak: string },
+  maxItemBytes: number,
+  limit: number
+): { sql: string; bind: unknown[] } => ({
+  sql: `SELECT created_at AS sort_key, note_id AS tiebreak, blob_key, size_bytes
+        FROM crdt_snapshots s
+        WHERE user_id = ? AND vault_id = ?
+          AND (created_at < ? OR (created_at = ? AND note_id <= ?))
+          AND size_bytes <= ?
+          AND note_id NOT IN (${packedSnapshotIds})
+          AND NOT EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ?
+            AND item_kind = 'crdt_snapshot' AND documents IS NULL)
+        ORDER BY created_at ASC, note_id ASC
+        LIMIT ?`,
+  bind: [
+    scope.userId,
+    scope.vaultId,
+    watermark.last_sort_value,
+    watermark.last_sort_value,
+    watermark.last_sort_tiebreak,
+    maxItemBytes,
+    scope.userId,
+    scope.vaultId,
+    scope.userId,
+    scope.vaultId,
+    limit
+  ]
+})

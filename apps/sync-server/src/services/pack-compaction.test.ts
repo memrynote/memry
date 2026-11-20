@@ -275,17 +275,19 @@ describe('selection', () => {
     expect(next.candidates.map((c) => c.tiebreak)).toEqual(['note-d'])
 
     // note-d's pack would share min_cursor 1000 with the listed one, and the
-    // listed one is full, so the two cannot be rolled into one. Snapshot packs
-    // are a cache only: the build leaves the rest of the tie item by item and
-    // moves past it, so later seconds still pack (#5229 P6, D-P6-EXIT).
+    // listed one is full, so the two cannot be rolled into one. The rest of the
+    // tie lists at the free min_cursor below it (#5310, D-TIE-REMAINDER).
     const second = await compactOneRange(
       harness.db,
       storage,
       { userId: USER, vaultId: VAULT },
       'crdt_snapshot'
     )
-    expect(second.built).toBe(false)
-    expect(second.holes).toEqual([])
+    expect(second.built).toBe(true)
+    expect(second.minSortValue).toBe(999)
+    expect((await parsePack(await packOf(second.packKey))).entries.map((e) => e.id)).toEqual([
+      'note-d'
+    ])
     expect(watermarkOf('crdt_snapshot')).toEqual({
       last_sort_value: 1000,
       last_sort_tiebreak: 'note-d'
@@ -739,6 +741,7 @@ describe('min_cursor collision (#5229 P6)', () => {
 
   // REVIEW-5277 P1, P2: a snapshot collision the build could not roll in held
   // the watermark for good, re-downloading the colliding pack every message.
+  // The rest of the tie lists in its own pack below it (#5310).
   it.each([
     ['full', false],
     ['unreadable', true]
@@ -763,7 +766,7 @@ describe('min_cursor collision (#5229 P6)', () => {
       last_sort_value: 2009,
       last_sort_tiebreak: 'late-9'
     })
-    expect(listedRows()).toHaveLength(2)
+    expect(listedRows()).toHaveLength(3)
     expect(get.mock.calls.filter(([key]) => key === colliding.pack_key)).toHaveLength(1)
     expect(errors).not.toHaveBeenCalled()
     vi.restoreAllMocks()
