@@ -25,6 +25,8 @@ import type { LocalVaultState } from './zero-loss-oracle/index.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const BINARY = process.env.MEMRY_CLI_BIN ?? path.join(ROOT, 'crates/target/debug/memry')
+/** A run that outlives this is hung: it is killed and the test fails. */
+const RUN_DEADLINE_MS = 90_000
 
 /** The origin the Worker presigns packs for (its `R2_S3_ENDPOINT` binding). */
 export const R2_ORIGIN = 'https://r2.local'
@@ -159,9 +161,19 @@ export class CoreDevice {
     let stderr = ''
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()))
     child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()))
+    let hung = false
+    const deadline = setTimeout(() => {
+      hung = true
+      child.kill('SIGKILL')
+    }, RUN_DEADLINE_MS)
     return new Promise((resolve, reject) => {
       child.on('error', reject)
-      child.on('close', (code, signal) => resolve({ code, signal, stdout, stderr }))
+      child.on('close', (code, signal) => {
+        clearTimeout(deadline)
+        if (hung)
+          reject(new Error(`memry ${args.join(' ')} hung past ${RUN_DEADLINE_MS} ms: ${stderr}`))
+        else resolve({ code, signal, stdout, stderr })
+      })
     })
   }
 

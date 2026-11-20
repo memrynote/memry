@@ -227,97 +227,103 @@ const coreDigests = (state: CoreOracleState): DeviceDigests => {
   return { label: 'core', digests }
 }
 
-describe('Sync Harness — a core bootstrap from packs under the zero-loss oracle (#5232)', () => {
-  beforeAll(async () => {
-    await initCrypto()
-    // Staging's shape: presigned pack URLs and elevated bootstrap sessions.
-    await server.start({
-      bindings: { ...R2_PRESIGN_BINDINGS, BOOTSTRAP_SESSION_HMAC_KEY: 'harness-bootstrap-key' }
-    })
-  })
-
-  afterAll(async () => {
-    await server.stop()
-  })
-
-  beforeEach(async () => {
-    await server.truncateTables()
-  })
-
-  const bootstrapUnderOracle = async (label: string, kills: KillPoint[]) => {
-    const { author, packs } = await seedVault()
-    expect(packs).toEqual({
-      record: expect.any(Number),
-      crdt_snapshot: expect.any(Number),
-      crdt_update: expect.any(Number)
+describe(
+  'Sync Harness — a core bootstrap from packs under the zero-loss oracle (#5232)',
+  {
+    timeout: 300_000
+  },
+  () => {
+    beforeAll(async () => {
+      await initCrypto()
+      // Staging's shape: presigned pack URLs and elevated bootstrap sessions.
+      await server.start({
+        bindings: { ...R2_PRESIGN_BINDINGS, BOOTSTRAP_SESSION_HMAC_KEY: 'harness-bootstrap-key' }
+      })
     })
 
-    const identity = await createTestDevice(server, {
-      userId: author.identity.userId,
-      vaultKey: author.vaultKey
+    afterAll(async () => {
+      await server.stop()
     })
-    const before = await readTruth(author.identity)
-    const core = new CoreDevice(server, identity, author.masterKey)
-    await core.start()
-    try {
-      const runs = []
-      for (const killAt of kills) {
-        runs.push(await core.bootstrap({ resume: runs.length > 0, killAt }))
+
+    beforeEach(async () => {
+      await server.truncateTables()
+    })
+
+    const bootstrapUnderOracle = async (label: string, kills: KillPoint[]) => {
+      const { author, packs } = await seedVault()
+      expect(packs).toEqual({
+        record: expect.any(Number),
+        crdt_snapshot: expect.any(Number),
+        crdt_update: expect.any(Number)
+      })
+
+      const identity = await createTestDevice(server, {
+        userId: author.identity.userId,
+        vaultKey: author.vaultKey
+      })
+      const before = await readTruth(author.identity)
+      const core = new CoreDevice(server, identity, author.masterKey)
+      await core.start()
+      try {
+        const runs = []
+        for (const killAt of kills) {
+          runs.push(await core.bootstrap({ resume: runs.length > 0, killAt }))
+        }
+        const final = await core.bootstrap({ resume: runs.length > 0 })
+        runs.push(final)
+        console.log(
+          `[#5232 ${label}] packs ${JSON.stringify(packs)}; requests per run ${runs
+            .map((run) => run.requests.length)
+            .join(', ')}\n  final run: ${final.requests.join(' ')}`
+        )
+
+        const state = await core.oracleState()
+        const truth = await readTruth(author.identity)
+        const report = checkStructural(truth, state)
+        const semantic = checkSemantic(coreDigests(state), authorDigests(author))
+        const created = checkBootstrapCreated(before, truth, identity.deviceId)
+        console.log(
+          `[#5232 ${label}]\n${formatFindings([...report.findings, ...semantic, ...created], report.counts)}`
+        )
+        expect(report.findings).toEqual([])
+        expect(semantic).toEqual([])
+        expect(created).toEqual([])
+        expect(state.owed).toEqual([])
+        expect(report.counts).toEqual({ expected_empty: 1, body_without_record: 0 })
+        return runs
+      } finally {
+        await core.stop()
       }
-      const final = await core.bootstrap({ resume: runs.length > 0 })
-      runs.push(final)
-      console.log(
-        `[#5232 ${label}] packs ${JSON.stringify(packs)}; requests per run ${runs
-          .map((run) => run.requests.length)
-          .join(', ')}\n  final run: ${final.requests.join(' ')}`
-      )
-
-      const state = await core.oracleState()
-      const truth = await readTruth(author.identity)
-      const report = checkStructural(truth, state)
-      const semantic = checkSemantic(coreDigests(state), authorDigests(author))
-      const created = checkBootstrapCreated(before, truth, identity.deviceId)
-      console.log(
-        `[#5232 ${label}]\n${formatFindings([...report.findings, ...semantic, ...created], report.counts)}`
-      )
-      expect(report.findings).toEqual([])
-      expect(semantic).toEqual([])
-      expect(created).toEqual([])
-      expect(state.owed).toEqual([])
-      expect(report.counts).toEqual({ expected_empty: 1, body_without_record: 0 })
-      return runs
-    } finally {
-      await core.stop()
     }
+
+    const packDownloads = (requests: string[], kind: string): string[] =>
+      requests.filter((p) => p.startsWith('/__r2/') && p.includes(`/packs/${kind}/`))
+
+    it('a clean bootstrap from packs holds every record and body', async () => {
+      const [run] = await bootstrapUnderOracle('clean', [])
+      for (const kind of ['record', 'crdt_snapshot', 'crdt_update']) {
+        expect(packDownloads(run.requests, kind)).toHaveLength(1)
+      }
+    })
+
+    it('a bootstrap killed in each phase resumes to the whole vault', async () => {
+      // Records (the record pack download), the reconcile (the manifest read
+      // after the records), and bodies (the body check read after the body
+      // packs are held). Each run resumes the one before it.
+      const runs = await bootstrapUnderOracle('killed-resumed', [
+        { path: '/__r2/', n: 1 },
+        { path: '/sync/manifest', n: 1 },
+        { path: '/sync/crdt/manifest', n: 1 }
+      ])
+      expect(runs.slice(0, 3).map((run) => run.killed)).toEqual([true, true, true])
+      // The body packs were held when the third run died: the resume reads
+      // them from the spill and downloads none again.
+      const bodyPacks = (run: CoreRun) => [
+        ...packDownloads(run.requests, 'crdt_snapshot'),
+        ...packDownloads(run.requests, 'crdt_update')
+      ]
+      expect(bodyPacks(runs[2])).toHaveLength(2)
+      expect(bodyPacks(runs[3])).toEqual([])
+    })
   }
-
-  const packDownloads = (requests: string[], kind: string): string[] =>
-    requests.filter((p) => p.startsWith('/__r2/') && p.includes(`/packs/${kind}/`))
-
-  it('a clean bootstrap from packs holds every record and body', async () => {
-    const [run] = await bootstrapUnderOracle('clean', [])
-    for (const kind of ['record', 'crdt_snapshot', 'crdt_update']) {
-      expect(packDownloads(run.requests, kind)).toHaveLength(1)
-    }
-  })
-
-  it('a bootstrap killed in each phase resumes to the whole vault', async () => {
-    // Records (the record pack download), the reconcile (the manifest read
-    // after the records), and bodies (the body check read after the body
-    // packs are held). Each run resumes the one before it.
-    const runs = await bootstrapUnderOracle('killed-resumed', [
-      { path: '/__r2/', n: 1 },
-      { path: '/sync/manifest', n: 1 },
-      { path: '/sync/crdt/manifest', n: 1 }
-    ])
-    expect(runs.slice(0, 3).map((run) => run.killed)).toEqual([true, true, true])
-    // The body packs were held when the third run died: the resume reads
-    // them from the spill and downloads none again.
-    const bodyPacks = (run: CoreRun) => [
-      ...packDownloads(run.requests, 'crdt_snapshot'),
-      ...packDownloads(run.requests, 'crdt_update')
-    ]
-    expect(bodyPacks(runs[2])).toHaveLength(2)
-    expect(bodyPacks(runs[3])).toEqual([])
-  })
-})
+)
