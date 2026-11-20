@@ -8,17 +8,22 @@
 //! real file, whose path the stub cannot pick a behaviour by. `PdfRenderPage`
 //! answers the names of the child's environment variables, a tab, then its cwd. `EmbedText` hangs,
 //! crashes (any text that starts with `crash`) and creates files as `PdfOpen` does, answers NaNs
-//! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
+//! to any text that starts with `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
 //! answers `Done`;
 //! `EmbedImage` answers `Rejected` for bytes that start with `corrupt` (the worker's answer for an
 //! image it cannot decode) and otherwise an embedding whose values are the child's pid;
 //! `ModelManifest` names one empty file, `config.json`, in the app's pinned repo and revision.
 //! `AudioOpen` opens any path as recording 1 of three windows (none for a path ending in
-//! `short.wav`); `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
+//! `short.wav`) and aborts on a path ending in `crash-open.wav`; `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
 //! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
 //! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
 //! after that many milliseconds, anything else answers `read` at once.
-//! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
+//! `TranscribeLoad` fails for a model path that ends in `missing.bin` and answers `Done` otherwise.
+//! `Transcribe`'s language picks its behaviour: `crash` aborts, `hang` never answers, `xx` answers
+//! `Rejected`, anything else answers the child's pid.
+//! `--crash-before-ready` aborts before the `Ready` frame. A `hold-ready` file in the directory of
+//! `--pdfium-dir` holds the `Ready` frame until it is deleted, after creating `starting` there: how
+//! a test reads the app's state while a child starts. Never bundled.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -55,6 +60,14 @@ fn main() {
     let markers = marker_dir();
     if std::env::args().any(|arg| arg == "--crash-before-ready") {
         std::process::abort();
+    }
+    if let Some(dir) = &markers
+        && dir.join("hold-ready").exists()
+    {
+        let _ = std::fs::write(dir.join("starting"), b"");
+        while dir.join("hold-ready").exists() {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
     let mut recording = String::new();
     let result = serve(
@@ -116,7 +129,9 @@ fn main() {
                     park_forever()
                 }
                 crash if crash.starts_with("crash") => std::process::abort(),
-                "nan" => Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION]),
+                nan if nan.starts_with("nan") => {
+                    Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION])
+                }
                 _ => Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION]),
             },
             Request::EmbedImage { bytes, .. } if bytes.starts_with(b"corrupt") => {
@@ -124,6 +139,9 @@ fn main() {
             }
             Request::EmbedImage { .. } => {
                 Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION])
+            }
+            Request::AudioOpen { path } if path.ends_with("crash-open.wav") => {
+                std::process::abort()
             }
             Request::AudioOpen { path } => {
                 let windows = if path.ends_with("short.wav") { 0 } else { 3 };
@@ -153,6 +171,16 @@ fn main() {
                 let cwd = std::env::current_dir().unwrap_or_default();
                 Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
             }
+            Request::TranscribeLoad { model } if model.ends_with("missing.bin") => {
+                Response::Failed("failed to load the Whisper model".into())
+            }
+            Request::TranscribeLoad { .. } => Response::Done,
+            Request::Transcribe { language, .. } => match language.as_str() {
+                "crash" => std::process::abort(),
+                "hang" => park_forever(),
+                "xx" => Response::Rejected("unknown transcription language xx".into()),
+                _ => Response::Text(std::process::id().to_string()),
+            },
             Request::Ocr { languages, .. } => {
                 let first = languages.first().map_or("", String::as_str);
                 if first == "hang" {

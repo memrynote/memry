@@ -459,7 +459,9 @@ vi.mock('../src/generated/bindings', () => {
       aiReindexEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 0, skipped: 0 })),
       // Settings > General reads it on mount; the row's own test mocks the bindings.
       ocrLanguagesGetState: () =>
-        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } })
+        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
+      // HomeTabTitleSync is mounted app-wide; the home board tests mock the service.
+      homePagesList: () => Promise.resolve([])
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
@@ -487,6 +489,9 @@ vi.mock('../src/generated/bindings', () => {
       calendarChangedEvent: event(() => api().onCalendarChanged),
       // Rust announces field names only (services/settings-service.ts); its tests mock the bindings.
       settingsChangedEvent: { listen: async () => () => undefined },
+      homePageCreatedEvent: { listen: async () => () => undefined },
+      homePageUpdatedEvent: { listen: async () => () => undefined },
+      homePageDeletedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
@@ -592,15 +597,6 @@ const createMockApi = () => ({
     deleteFromAccount: vi.fn().mockResolvedValue(undefined),
     prepareSandbox: vi.fn().mockResolvedValue({ path: '/userData/Sandbox' }),
     setIcon: vi.fn().mockResolvedValue(undefined)
-  },
-
-  // Home boards API (mounted app-wide by HomeTabTitleSync, not only by the Home page)
-  homePages: {
-    list: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
-    update: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
-    delete: vi.fn().mockResolvedValue({ success: true }),
-    reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
   // Notes API
@@ -1000,9 +996,6 @@ const createMockApi = () => ({
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onCanvasCreated: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
-  onHomePageCreated: vi.fn().mockReturnValue(() => {}),
-  onHomePageUpdated: vi.fn().mockReturnValue(() => {}),
-  onHomePageDeleted: vi.fn().mockReturnValue(() => {}),
   onCanvasDeleted: vi.fn().mockReturnValue(() => {}),
   onTagsChanged: vi.fn().mockReturnValue(() => {}),
   onTaskCreated: vi.fn().mockReturnValue(() => {}),

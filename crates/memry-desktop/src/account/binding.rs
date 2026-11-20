@@ -180,25 +180,21 @@ pub fn write_binding(
     let json =
         serde_json::to_string(binding).map_err(|e| AccountError::VaultChoice(e.to_string()))?;
     open.vault.set_account_binding(&json).map_err(storage)?;
-    let path = open.path.to_string_lossy();
-    if let Some(mut stored) = registry.get(&path) {
-        stored.account_binding = Some(AccountBinding {
-            user_id: binding.user_id.clone(),
-            mode: match binding.mode {
-                BindingMode::Sync => "sync",
-                BindingMode::Local => "local",
-            }
-            .to_owned(),
-        });
-        if let Some(id) = server_vault {
-            stored.vault_uuid = Some(id.to_owned());
+    let mirror = AccountBinding {
+        user_id: binding.user_id.clone(),
+        mode: match binding.mode {
+            BindingMode::Sync => "sync",
+            BindingMode::Local => "local",
         }
-        if let Err(error) = registry.upsert(&stored) {
-            tracing::warn!(
-                scope = "Binding",
-                "the registry mirror was not written: {error}"
-            );
-        }
+        .to_owned(),
+    };
+    if let Err(error) =
+        registry.set_account_binding(&open.path.to_string_lossy(), &mirror, server_vault)
+    {
+        tracing::warn!(
+            scope = "Binding",
+            "the registry mirror was not written: {error}"
+        );
     }
     Ok(())
 }
@@ -359,7 +355,7 @@ impl AccountService {
 
     /// `bindVaultForSync` (and `adoptVaultLocally` for a merge): the server vault id first, so a
     /// refused rebind (bound to another server vault) records no binding, then the binding.
-    fn bind_for_sync(
+    pub(super) fn bind_for_sync(
         &self,
         open: &OpenVault,
         registry: &VaultRegistry,

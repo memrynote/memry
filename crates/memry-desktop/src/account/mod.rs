@@ -11,6 +11,8 @@ mod adopt;
 pub mod binding;
 pub mod device;
 mod devices;
+#[cfg(feature = "e2e")]
+pub mod e2e_bootstrap;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
