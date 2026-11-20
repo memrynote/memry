@@ -45,8 +45,27 @@ impl ReadwiseSlot {
     }
 
     /// Stops whatever it held, so a run never outlives its vault.
-    fn replace(&self, runs: Option<Arc<ReadwiseRuns>>) {
-        let old = std::mem::replace(&mut *lock(&self.0), runs);
+    fn clear(&self) {
+        let old = lock(&self.0).take();
+        if let Some(old) = old {
+            old.stop();
+        }
+    }
+
+    /// Holds `runs` and starts them, unless `vault_id` is no longer the open vault: the launch
+    /// build can finish after a vault switch installed the new vault's runs.
+    fn install(&self, session: &Session, vault_id: &str, runs: Arc<ReadwiseRuns>) {
+        let old = {
+            let mut slot = lock(&self.0);
+            if session
+                .current()
+                .is_none_or(|open| open.vault_id != vault_id)
+            {
+                return;
+            }
+            runs.start();
+            slot.replace(runs)
+        };
         if let Some(old) = old {
             old.stop();
         }
@@ -77,7 +96,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let closed = app.clone();
     session.on_close(
         "readwise",
-        Arc::new(move |_| closed.state::<ReadwiseSlot>().replace(None)),
+        Arc::new(move |_| closed.state::<ReadwiseSlot>().clear()),
     );
     // The launch vault opened before these hooks existed. Off the setup thread: a build reads
     // the keychain.
@@ -106,12 +125,13 @@ fn install(app: &AppHandle<Wry>, open: &OpenVault) {
             let notify = app.clone();
             runs.status()
                 .on_change(move || broadcast(&notify, ImportReadwiseStatusChangedEvent));
-            runs.start();
-            app.state::<ReadwiseSlot>().replace(Some(runs));
+            let session = app.state::<Session>();
+            app.state::<ReadwiseSlot>()
+                .install(&session, &open.vault_id, runs);
         }
         Err(error) => {
             tracing::error!(scope = SCOPE, %error, "Readwise does not run for this vault");
-            app.state::<ReadwiseSlot>().replace(None);
+            app.state::<ReadwiseSlot>().clear();
         }
     }
 }
