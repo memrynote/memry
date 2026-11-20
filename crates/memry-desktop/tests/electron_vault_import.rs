@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/records.rs"]
+mod records;
 
 const NOW_MS: i64 = 1_800_000_000_000;
 
@@ -148,7 +150,7 @@ fn installed_marker(vault: &Vault) -> Option<String> {
 fn an_empty_electron_pair_installs_a_core_pair_that_opens() {
     let vault = Vault::new();
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
     assert!(report.tables.values().all(|t| t.source_count == 0));
     assert!(!vault.staging().exists(), "staging removed after install");
 
@@ -630,6 +632,7 @@ fn install_refuses_a_native_open_during_its_fsyncs() {
         std::fs::read(vault.core().join(INDEX_FILE)).unwrap(),
         b"native index"
     );
+    assert!(!vault.staging().join("replaced-index").exists());
 }
 
 /// A native `data.db` that appears after the index rename: the `data.db` rename refuses, and the
@@ -646,6 +649,7 @@ fn a_refused_data_rename_puts_the_previous_index_back() {
     let hooked = core.clone();
     crash::hook("install:index-renamed", move || {
         std::fs::write(hooked.join(DATA_FILE), b"native data").unwrap();
+        std::fs::write(hooked.join(format!("{INDEX_FILE}-wal")), b"foreign wal").unwrap();
     });
     let data = core.join(DATA_FILE);
     assert!(matches!(
@@ -658,4 +662,49 @@ fn a_refused_data_rename_puts_the_previous_index_back() {
         b"native index"
     );
     assert_eq!(std::fs::read(&index_wal).unwrap(), b"native wal");
+}
+
+/// A run cut off between the two renames, then a native open, then a rerun: the rerun reads
+/// `NativeFirst` and puts the `index.db` the install replaced back beside the native `data.db`.
+#[test]
+fn a_native_open_after_a_cut_off_install_gets_its_index_back() {
+    let vault = Vault::new();
+    let core = vault.core();
+    std::fs::create_dir_all(&core).unwrap();
+    let index_wal = core.join(format!("{INDEX_FILE}-wal"));
+    std::fs::write(core.join(INDEX_FILE), b"native index").unwrap();
+    std::fs::write(&index_wal, b"native wal").unwrap();
+    crash::arm("install:index-renamed");
+    let crashed = catch_unwind(AssertUnwindSafe(|| {
+        staged(stage_vault_import(vault.input()).unwrap())
+            .install()
+            .unwrap();
+    }));
+    assert!(crashed.is_err());
+    drop(memry_core::storage::open_data(&core.join(DATA_FILE)).unwrap());
+
+    assert!(matches!(
+        stage_vault_import(vault.input()).unwrap(),
+        StageOutcome::NativeFirst
+    ));
+    assert_eq!(
+        std::fs::read(core.join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+    assert_eq!(std::fs::read(&index_wal).unwrap(), b"native wal");
+    assert!(!vault.staging().exists());
+}
+
+/// A recovery marker naming no quarantine file: the run stops before it stages anything.
+#[test]
+fn a_stale_recovery_marker_stops_before_staging() {
+    let vault = Vault::new();
+    std::fs::create_dir_all(vault.core()).unwrap();
+    let marker = vault.core().join(format!("{DATA_FILE}.recovering"));
+    std::fs::write(&marker, vault.core().join("gone.db").display().to_string()).unwrap();
+    assert!(matches!(
+        stage_vault_import(vault.input()),
+        Err(ImportError::CoreFileExists(path)) if path == marker
+    ));
+    assert!(!vault.staging().exists());
 }
