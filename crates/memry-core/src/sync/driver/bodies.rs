@@ -12,6 +12,10 @@
 //! A pass that did not reach the server (offline, a pull that failed or was
 //! refused) runs neither: every debt stays owed for the next pass. A failure
 //! here is a local storage failure; it is logged and the pass report stands.
+//!
+//! A body step that finished tells the observers `bodies_settled`, after its
+//! settles committed: a body's own `bodies_applied` fires before its debt
+//! settles, so an owed file's take waits for this one.
 
 use crate::sync::engine::PassReport;
 use crate::sync::state::SyncState;
@@ -27,8 +31,11 @@ impl SyncDriver {
             return;
         }
         let _gate = self.engine.hold_gate().await;
-        if let Err(error) = body_step::run(&self.db, &self.first.bodies).await {
-            eprintln!("memry-core: the pass's body step failed; the debts stay owed: {error}");
+        match body_step::run(&self.db, &self.first.bodies).await {
+            Ok(_) => self.observers.bodies_settled().await,
+            Err(error) => {
+                eprintln!("memry-core: the pass's body step failed; the debts stay owed: {error}");
+            }
         }
         let device_id = &self.snapshots.device_id;
         if let Err(error) = journal_day_merge::drain(&self.db, &self.first.bodies, device_id).await

@@ -205,7 +205,7 @@ fn oversized_templates_are_refused_before_parsing() {
     let bytes = vec![b' '; MAX_TEMPLATE_BYTES + 1];
     assert!(matches!(
         Manifest::parse(&bytes),
-        Err(SandboxError::TooLarge(len)) if len == MAX_TEMPLATE_BYTES + 1
+        Err(SandboxError::TooLarge(what)) if what.starts_with(&format!("{} bytes", MAX_TEMPLATE_BYTES + 1))
     ));
     assert!(matches!(
         TemplateInfo::parse(&bytes),
