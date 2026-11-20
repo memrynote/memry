@@ -190,6 +190,8 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
 #[path = "importer_untrusted.rs"]

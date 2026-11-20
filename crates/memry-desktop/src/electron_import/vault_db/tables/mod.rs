@@ -8,6 +8,8 @@
 use super::ImportError;
 use super::TableCtx;
 
+pub mod records;
+
 /// The Electron database a table lives in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SourceDb {
@@ -97,6 +99,9 @@ pub struct TableMapping {
 }
 
 macro_rules! map {
+    ($db:ident $origin:ident $table:literal [$owner:literal, $class:ident => $import:path]: $reason:literal) => {
+        map!(@ $db $origin $table $owner, Class::$class(Importer::Ready($import)), $reason)
+    };
     ($db:ident $origin:ident $table:literal [$owner:literal, $class:ident, $pending:literal]: $reason:literal) => {
         map!(@ $db $origin $table $owner, Class::$class(Importer::Pending($pending)), $reason)
     };
@@ -150,7 +155,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "custom_icons" [13, Convert, "36b"]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
     map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
-    map!(Data Migration "folder_configs" [13, Convert, "36b"]: "core folders table (data 0002, item id is the folder path)"),
+    map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
     map!(Data Migration "home_pages" [16, Convert, "36b"]: "core home_page record table of Step 16"),
     map!(Data Migration "inbox_attachment_uploads" [27, Convert, "36d1"]: "core inbox_attachment_uploads (data 0016)"),
     map!(Data Migration "inbox_item_tags" [26, Convert, "36d1"]: "core inbox_item_tags table (data 0004)"),
@@ -162,7 +167,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "note_positions" [13, Convert, "36b"]: "Step 13 manual order rows (data 0021)"),
     map!(Data Migration "project_links" [21, Convert, "36d2"]: "core project_links table"),
     map!(Data Migration "projects" [21, Convert, "36d2"]: "core projects table; clock JSON kept"),
-    map!(Data Migration "property_definitions" [13, Convert, "36b"]: "core property_definitions table"),
+    map!(Data Migration "property_definitions" [13, Convert => records::property_definitions]: "core property_definitions table"),
     map!(Data Migration "readwise_highlights" [32, Convert, "36f"]: "Step 33 Readwise highlight rows"),
     map!(Data Migration "readwise_links" [32, Convert, "36f"]: "Step 33 Readwise link rows"),
     map!(Data Migration "recently_opened" [29, Convert, "36f"]: "Step 30 recently_opened (device-local, cap 50 kept)"),
@@ -192,7 +197,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0025)"),
     map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0025)"),
     map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0025)"),
-    map!(Data Migration "vault_metadata" [8, Copy, "36b"]: "vault uuid passed to Vault::open as the vault id; bit exact"),
+    map!(Data Migration "vault_metadata" [8, Copy => records::vault_metadata]: "singleton vault uuid into core meta vault.id, bit exact; Step 37 opens the vault under it"),
     // index.db, 16 tables.
     map!(Index Migration "block_link_refs" [13, Rebuild]: "derived link table; rebuilt from vault files"),
     map!(Index Migration "extracted_text" [25, Copy, "36e"]: "Step 25 extracted_text; kept when the file signature and OCR language set match"),
