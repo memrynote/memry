@@ -11,7 +11,9 @@
 //!   file that appeared meanwhile, and a save never replaces a file that changed on disk since
 //!   the app read it. Electron overwrites both.
 //! - a rename never replaces another document at the target; Electron's `renameSync` does.
-//! - path allocation counts any entry at a candidate path as taken, a dangling link included.
+//! - path allocation counts any entry at a candidate path as taken, a dangling link included,
+//!   and compares names case- and normalization-insensitively on every platform; Electron's
+//!   `existsSync` does so only where the file system does.
 
 use std::collections::HashSet;
 use std::fs;
@@ -127,16 +129,18 @@ pub fn allocate_canvas_path(
 ) -> Result<String, CanvasFolderError> {
     let base = portable_canvas_base(title);
     let folder = portable_canvas_folder(folder)?;
-    let claimed: HashSet<String> = taken.iter().map(|path| canvas_path_key(path)).collect();
-    let own = current.map(canvas_path_key);
-    let in_folder = |name: &str| match &folder {
-        Some(folder) => format!("{CANVAS_DIR}/{folder}/{name}{CANVAS_FILE_EXT}"),
-        None => format!("{CANVAS_DIR}/{name}{CANVAS_FILE_EXT}"),
+    let dir = match &folder {
+        Some(folder) => format!("{CANVAS_DIR}/{folder}"),
+        None => CANVAS_DIR.to_owned(),
     };
+    let mut claimed: HashSet<String> = taken.iter().map(|path| canvas_path_key(path)).collect();
+    claimed.extend(entries_on_disk(vault, &dir));
+    let own = current.map(canvas_path_key);
+    let in_folder = |name: &str| format!("{dir}/{name}{CANVAS_FILE_EXT}");
     let mut candidate = in_folder(&base);
     let mut counter = 1;
     while own.as_deref() != Some(canvas_path_key(&candidate).as_str())
-        && (claimed.contains(&canvas_path_key(&candidate)) || is_taken(vault, &candidate))
+        && claimed.contains(&canvas_path_key(&candidate))
     {
         counter += 1;
         candidate = in_folder(&format!("{base} {counter}"));
@@ -144,8 +148,23 @@ pub fn allocate_canvas_path(
     Ok(candidate)
 }
 
-fn is_taken(vault: &Path, relative: &str) -> bool {
-    resolve_canvas_file(vault, relative).is_ok_and(|path| fs::symlink_metadata(path).is_ok())
+/// The [`canvas_path_key`] of every entry in the vault folder `dir`, a dangling link included.
+/// Listed rather than probed per candidate: Linux tells `plan` from `Plan`, and Linux and
+/// Windows tell NFC `Café` from NFD, so a probe would hand out a second name that a
+/// case- and normalization-insensitive device (macOS) folds into the first document.
+fn entries_on_disk(vault: &Path, dir: &str) -> Vec<String> {
+    // A folder not created yet holds nothing; a write still refuses a file that is there
+    // ([`Expect::New`]), so an unreadable folder cannot cost a document.
+    let Ok(path) = resolve_canvas_file(vault, dir) else {
+        return Vec::new();
+    };
+    let Ok(entries) = fs::read_dir(path) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .map(|entry| canvas_path_key(&format!("{dir}/{}", entry.file_name().to_string_lossy())))
+        .collect()
 }
 
 /// `portableCanvasBase`: a file name every platform takes. Trailing dots and spaces go (Win32
@@ -182,8 +201,12 @@ fn is_reserved_name(base: &str) -> bool {
 /// its place). Read through the opened file, so a link out of the vault is
 /// [`ReadError::Outside`] and nothing is read from it.
 pub fn read_canvas_file(vault: &Path, relative: &str) -> Result<Option<CanvasDocument>, ReadError> {
-    if resolve_canvas_file(vault, relative).is_err() {
+    let Ok(path) = resolve_canvas_file(vault, relative) else {
         return Err(ReadError::Unreadable(OpenError::Outside));
+    };
+    // Windows refuses to open a folder (ERROR_ACCESS_DENIED) where unix answers EISDIR.
+    if fs::metadata(&path).is_ok_and(|meta| meta.is_dir()) {
+        return Ok(None);
     }
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
     let mut bytes = Vec::new();

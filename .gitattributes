@@ -41,3 +41,6 @@ packages/contracts/test-vectors/importers/** -text -whitespace
 # replayed byte for byte into a new vault. Re-exported, never hand-edited.
 crates/memry-desktop/resources/sandbox/** -text -whitespace linguist-generated
 crates/memry-desktop/tests/fixtures/sandbox/** -text -whitespace linguist-generated
+# Electron's canvas files as the Rust core must write them, compared byte for byte with
+# include_str!: a Windows checkout would convert them to CRLF.
+crates/memry-core/src/domain/canvas/file_format/* text eol=lf
