@@ -5,7 +5,8 @@ import { PACKED_KINDS, compactOneRange, type PackBuildOutcome } from './pack-com
 import type { PackKindName } from './pack-format'
 import type { VaultScope } from './pack-index-write'
 import type { PackBackfillStep, PackCompactionMessageBody } from './pack-queue'
-import { deleteReplacedPackObjects, withReplacedObjectPasses } from './pack-replaced-objects'
+import { withReplacedObjectPasses } from './pack-message-passes'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
 import { ROLLUP_SUBREQUESTS, rollupKind } from './pack-rollup'
 import { PACK_COUNT_BOUND_SQL, PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
@@ -213,7 +214,8 @@ const ENDS_CHAIN: ReadonlySet<PackBuildOutcome> = new Set(['not_ready', 'cap', '
 /**
  * One backfill message: roll the kind up while it is above its bound and build
  * while its backlog meets the minimum fill, within one invocation's budget,
- * between the replaced-object passes of withReplacedObjectPasses. Throws on a
+ * after the purge rewrite pass and between the replaced-object passes of
+ * withReplacedObjectPasses. Throws on a
  * build failure or replaced objects still due, so Queues redelivers; a
  * redelivery finds committed builds' watermarks moved.
  */

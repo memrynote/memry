@@ -373,7 +373,7 @@ describe('backfill messages (#5278)', () => {
     const prepare = harness.db.prepare.bind(harness.db)
     let passes = 0
     vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
-      if (sql.includes('FROM pack_replaced_objects r') && ++passes === 2) throw new Error('d1 down')
+      if (sql.includes('AS listed') && ++passes === 2) throw new Error('d1 down')
       return prepare(sql)
     })
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)

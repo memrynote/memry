@@ -179,10 +179,6 @@ const TOMBSTONE_SHED_USERS_PER_TICK = 20
 // Rows per shed transaction: two statements each, one db.batch per chunk.
 const TOMBSTONE_SHED_CHUNK = 50
 
-// An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
-// the same predicate as the partial index idx_sync_items_unshed_tombstones.
-const UNSHED_GUARD = "id = ? AND server_cursor = ? AND deleted_at IS NOT NULL AND blob_key <> ''"
-
 interface ExpiredTombstoneRow {
   id: string
   blob_key: string
@@ -201,6 +197,16 @@ export const EXPIRED_TOMBSTONE_SQL = `si.deleted_at IS NOT NULL
          AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
              < ? - (COALESCE(e.version_history_days, 0) * 86400)`
 
+// An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
+// the same predicate as the partial index idx_sync_items_unshed_tombstones.
+// The row must still be past retention when the write runs: a retention that
+// grew since the select keeps the tombstone, so the shed never empties a row
+// compaction found unexpired and packed past (#5247). Binds the id, the
+// selected server_cursor, the id again and `now`.
+const UNSHED_GUARD = `id = ? AND server_cursor = ? AND blob_key <> '' AND id IN (
+  SELECT si.id FROM sync_items si LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
+  WHERE si.id = ? AND ${EXPIRED_TOMBSTONE_SQL})`
+
 /**
  * Sheds the payload of tombstones past the user's `version_history_days` and
  * keeps each row as a marker (#2302, protocol 05 §5.12.3). Deleting the row
@@ -214,11 +220,12 @@ export const EXPIRED_TOMBSTONE_SQL = `si.deleted_at IS NOT NULL
  * that refunds and marks each row together. Only rows whose object delete
  * succeeded are marked: a failed delete leaves them unshed for the next tick,
  * never an orphaned object behind a marker. Both statements are guarded on the
- * selected `server_cursor` and on the row still holding its payload, so a push
- * that re-created or re-deleted the item in between leaves it alone, and a
- * re-run refunds nothing twice. A crash after the R2 delete leaves a tombstone
- * without bytes; pull serves it as a purged tombstone and the next run marks
- * it. Returns the number of rows shed.
+ * selected `server_cursor`, on the row still holding its payload and on it
+ * still being past retention, so a push that re-created or re-deleted the item
+ * in between, or a retention that grew, leaves it alone, and a re-run refunds
+ * nothing twice. A crash after the R2 delete, or a retention that grew after
+ * it, leaves a tombstone without bytes; pull serves it as a purged tombstone
+ * and the run after it expires marks it. Returns the number of rows shed.
  *
  * Known gap: a push that read the unshed tombstone (size S) in its Stage 3 and
  * commits after this shed refunds S again through its size delta, so the
@@ -278,14 +285,14 @@ export const cleanupExpiredTombstones = async (
           `UPDATE users SET storage_used = MAX(0, storage_used - ?), updated_at = ?
            WHERE id = ? AND EXISTS (SELECT 1 FROM sync_items WHERE ${UNSHED_GUARD})`
         )
-        .bind(row.size_bytes, now, row.user_id, row.id, row.server_cursor),
+        .bind(row.size_bytes, now, row.user_id, row.id, row.server_cursor, row.id, now),
       db
         .prepare(
           `UPDATE sync_items
            SET blob_key = '', content_hash = '', signature = '', size_bytes = 0, payload_purged_at = ?
            WHERE ${UNSHED_GUARD}`
         )
-        .bind(now, row.id, row.server_cursor)
+        .bind(now, row.id, row.server_cursor, row.id, now)
     ])
     const results = await db.batch(statements)
     shed += results.filter(
@@ -356,6 +363,16 @@ export const cleanupDeletedDocumentBodies = async (
         documents: noteIds.length,
         error: error instanceof Error ? error.message : String(error)
       })
+      // The purge may have committed its batch, and so made pack objects due or
+      // left rewrites pending, before it threw (sync.ts does the same).
+      try {
+        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+      } catch (enqueueError) {
+        logger.error('Deleted document body purge retry not enqueued', {
+          vaultId,
+          error: enqueueError instanceof Error ? enqueueError.message : String(enqueueError)
+        })
+      }
     }
   }
   return purged

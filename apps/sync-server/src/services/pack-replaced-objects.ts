@@ -1,7 +1,8 @@
 import { PACK_REPLACED_GRACE_SECONDS } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../lib/logger'
-import type { VaultScope } from './pack-index-write'
+import type { PackKindName } from './pack-format'
+import { ALWAYS, packKeyRange, type Guard, type VaultScope } from './pack-index-write'
 
 const logger = createLogger('PackReplacedObjects')
 
@@ -15,6 +16,62 @@ const REPLACED_DELETE_BATCH = 500
  * message only when that deletion left some due; its deletion passes retry them.
  */
 export const PACK_PURGE_RETRY_DELAY_SECONDS = PACK_REPLACED_GRACE_SECONDS + 60
+
+/** Marker of a recorded object still waiting for its purge rewrite (pack-purge-rewrite.ts). */
+export const REWRITE_PENDING = 'rewrite'
+
+const kindPath = (kind: PackKindName): string => `/packs/${kind}/`
+
+/**
+ * Statements that drop every listed `kind` pack of the vault while `when`
+ * holds, reset the kind's watermark so compaction rebuilds it from source
+ * rows, and make every recorded object of the kind due at once, a pending
+ * rewrite's included (the rebuild replaces it). `when` is read before the
+ * `pack_index` delete, so it may test the rows that delete removes.
+ */
+export const packKindReset = (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  when: Guard
+): D1PreparedStatement[] => {
+  const vault = [scope.userId, scope.vaultId]
+  return [
+    db
+      .prepare(
+        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+         SELECT pack_key, user_id, vault_id, 'purge', 0 FROM pack_index
+         WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}
+         ON CONFLICT (pack_key) DO UPDATE SET replaced_by = 'purge', removed_at = 0`
+      )
+      .bind(...vault, kind, ...when.bind),
+    db
+      .prepare(
+        `UPDATE pack_replaced_objects SET removed_at = 0,
+           replaced_by = CASE WHEN replaced_by = '${REWRITE_PENDING}' THEN 'purge' ELSE replaced_by END
+         WHERE user_id = ? AND vault_id = ? AND instr(pack_key, ?) > 0 AND ${when.sql}
+         RETURNING pack_key AS replaced_key`
+      )
+      .bind(...vault, kindPath(kind), ...when.bind),
+    // Reset, not deleted: a build in flight selected under the old watermark,
+    // and its compare-and-swap passes when the row is absent, so it would list
+    // above the reset range and leave that range unpacked (REVIEW-5283 P6).
+    db
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         SELECT ?, ?, ?, 0, '', ?, NULL WHERE ${when.sql}
+         ON CONFLICT (user_id, vault_id, item_kind) DO UPDATE SET
+           last_sort_value = 0, last_sort_tiebreak = '', covered_through = NULL,
+           updated_at = excluded.updated_at`
+      )
+      .bind(...vault, kind, Math.floor(Date.now() / 1000), ...when.bind),
+    db
+      .prepare(
+        `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}`
+      )
+      .bind(...vault, kind, ...when.bind)
+  ]
+}
 
 /**
  * Delete replaced pack objects whose grace period has passed (protocol 08
@@ -30,6 +87,16 @@ export const deleteReplacedPackObjects = async (
 ): Promise<{ deleted: number; pending: boolean }> => {
   const due = Math.floor(Date.now() / 1000) - PACK_REPLACED_GRACE_SECONDS
   const where = scope ? 'AND r.user_id = ? AND r.vault_id = ?' : ''
+  const vault = scope ? [scope.userId, scope.vaultId] : []
+  // Before the select below, so the objects a reset makes due are in it.
+  const unrewritten = await db
+    .prepare(
+      `SELECT r.pack_key, r.user_id, r.vault_id FROM pack_replaced_objects r
+       WHERE r.removed_at <= ? AND r.replaced_by = '${REWRITE_PENDING}' ${where}`
+    )
+    .bind(due, ...vault)
+    .all<{ pack_key: string; user_id: string; vault_id: string }>()
+  await resetUnrewritten(db, unrewritten.results ?? [])
   const rows = await db
     .prepare(
       `SELECT r.pack_key, EXISTS (SELECT 1 FROM pack_index p
@@ -39,7 +106,7 @@ export const deleteReplacedPackObjects = async (
        ORDER BY r.removed_at ASC
        LIMIT ?`
     )
-    .bind(due, ...(scope ? [scope.userId, scope.vaultId] : []), REPLACED_DELETE_BATCH)
+    .bind(due, ...vault, REPLACED_DELETE_BATCH)
     .all<{ pack_key: string; listed: number }>()
   const found = rows.results ?? []
   if (found.length === 0) return { deleted: 0, pending: false }
@@ -53,12 +120,46 @@ export const deleteReplacedPackObjects = async (
     })
     return { deleted: 0, pending: true }
   }
+  // A record found listed is dropped only while its pack is still listed: a
+  // reset or purge since the select made it the record of a due object.
+  const stale = found.filter((row) => row.listed).map((row) => row.pack_key)
   await db
-    .prepare('DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))')
-    .bind(JSON.stringify(found.map((row) => row.pack_key)))
+    .prepare(
+      `DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))
+         OR (pack_key IN (SELECT value FROM json_each(?))
+           AND EXISTS (SELECT 1 FROM pack_index p WHERE p.pack_key = pack_replaced_objects.pack_key))`
+    )
+    .bind(JSON.stringify(doomed), JSON.stringify(stale))
     .run()
   if (doomed.length > 0) logger.info('replaced pack objects deleted', { count: doomed.length })
   return { deleted: doomed.length, pending: found.length === REPLACED_DELETE_BATCH }
+}
+
+/**
+ * A purge rewrite still pending past its grace (protocol 08 §8.13): the object
+ * goes now, so its range is rebuilt from source rows instead. Resets the kind
+ * of each such object (packKindReset), which also makes the kind's listed
+ * packs due, so the pass that called it deletes them.
+ */
+const resetUnrewritten = async (
+  db: D1Database,
+  rows: ReadonlyArray<{ pack_key: string; user_id: string; vault_id: string }>
+): Promise<void> => {
+  const kinds = new Map<string, { scope: VaultScope; kind: PackKindName }>()
+  for (const row of rows) {
+    const range = packKeyRange(row.pack_key)
+    if (!range || range.kind === 'record') continue
+    const scope = { userId: row.user_id, vaultId: row.vault_id }
+    kinds.set(`${row.user_id}\u0000${row.vault_id}\u0000${range.kind}`, { scope, kind: range.kind })
+  }
+  for (const { scope, kind } of kinds.values()) {
+    logger.error('purge rewrite still pending past its grace; the kind is dropped and rebuilt', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind
+    })
+    await db.batch(packKindReset(db, scope, kind, ALWAYS))
+  }
 }
 
 /**
@@ -85,13 +186,13 @@ export const recordUnlisted = (
 /**
  * Runs the D1 batch that tries to list `written` (null: the batch wrote no
  * object). When the batch throws, the object is recorded as unlisted, best
- * effort, and deleted at once only if a separate read finds its row absent: a
- * batch can commit and still lose its response (REVIEW-5277 P3). Then the
- * batch error is rethrown.
+ * effort, and the batch error is rethrown. The object is not deleted here: a
+ * batch can commit and still lose its response (REVIEW-5277 P3), and its
+ * commit can land after any read this catch makes. The deletion pass deletes
+ * it later, only while no row lists its key.
  */
 export const listingBatch = async <T>(
   db: D1Database,
-  storage: R2Bucket,
   scope: VaultScope,
   written: { packId: string; packKey: string } | null,
   statements: D1PreparedStatement[]
@@ -102,11 +203,6 @@ export const listingBatch = async <T>(
     if (written) {
       try {
         await recordUnlisted(db, scope, written.packId, written.packKey).run()
-        const row = await db
-          .prepare('SELECT 1 AS listed FROM pack_index WHERE id = ?')
-          .bind(written.packId)
-          .first()
-        if (!row) await deleteUnlisted(storage, written.packKey)
       } catch (cleanup) {
         logger.error(
           'pack object of a failed listing batch not recorded; left to the orphan sweep',
@@ -129,52 +225,4 @@ export const deleteUnlisted = async (storage: R2Bucket, packKey: string): Promis
       error: error instanceof Error ? error.message : String(error)
     })
   }
-}
-
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
-
-/**
- * Runs one compaction or backfill message's `work` for a vault between two
- * deletion passes, so a build that throws cannot keep a purged body past its
- * deadline (protocol 08 §8.13): the message may be the purge's delayed retry.
- * Objects still due after the work fail the message, so Queues redelivers it
- * (max_retries 3, no retry delay) inside the purge deadline instead of acking
- * it. Builds the work committed stay committed: a redelivery finds their
- * watermarks moved and lists nothing twice. A work error is logged and kept as
- * the cause, also when the final pass itself throws (VERIFY-5267).
- */
-export const withReplacedObjectPasses = async <T>(
-  db: D1Database,
-  storage: R2Bucket,
-  scope: VaultScope,
-  message: string,
-  work: () => Promise<T>
-): Promise<T> => {
-  await deleteReplacedPackObjects(db, storage, scope)
-  let outcome: { ok: true; value: T } | { ok: false; error: unknown }
-  try {
-    outcome = { ok: true, value: await work() }
-  } catch (error) {
-    outcome = { ok: false, error }
-  }
-  let passFailure: { error: unknown } | null = null
-  let pending = true
-  try {
-    pending = (await deleteReplacedPackObjects(db, storage, scope)).pending
-  } catch (error) {
-    passFailure = { error }
-  }
-  if (pending) {
-    logger.error(`replaced pack objects still due after the ${message}; redelivered`, {
-      userId: scope.userId,
-      vaultId: scope.vaultId,
-      ...(passFailure ? { passError: errorMessage(passFailure.error) } : {}),
-      ...(outcome.ok ? {} : { buildError: errorMessage(outcome.error) })
-    })
-    const cause = outcome.ok ? passFailure : outcome
-    throw new Error('replaced pack objects still due', cause ? { cause: cause.error } : {})
-  }
-  if (!outcome.ok) throw outcome.error
-  return outcome.value
 }
