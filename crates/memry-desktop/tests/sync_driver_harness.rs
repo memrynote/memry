@@ -12,7 +12,7 @@
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 //! | a desktop first sync pulls every body                  | > 500 bodies, one older than 30 days; progress phases |
 //! | an elevated first sync paces ×5 until it closes        | ch. 10, `onBootstrapElevationChange` |
-//! | a failed or cancelled elevated first sync reverts to 1 | `closeBootstrapSession('failed')`     |
+//! | a failed or cancelled elevated first sync reverts to 1 and frees its slot | `closeBootstrapSession`, #1837 |
 //! | the manifest check pulls a lost row, pushes a lost create | ch. 05 §5.15, at most every 30 min |
 //! | a reconnect a day after the last pull reads the feed again | Electron `reconnectSync`, the driver's pass |
 //! | a task whose project a peer deleted is deleted and pushed | orphan repair, the driver's pass      |
@@ -601,26 +601,98 @@ async fn an_elevated_first_sync_paces_downloads_five_times_until_it_closes() {
     assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
 }
 
+/// The Worker's per-user cap on open bootstrap sessions (`MAX_CONCURRENT_BOOTSTRAP_SESSIONS`).
+const BOOTSTRAP_SLOTS: usize = 2;
+
 /// A first sync that fails after the Worker elevated it closes the window, so pacing is back at 1
-/// before the next run (`full-sync-runner.ts:528`, `closeBootstrapSession('failed')`).
+/// and the server freed the user's session slot before the failure is reported
+/// (`full-sync-runner.ts:528`, `await closeBootstrapSession('failed')`).
 #[tokio::test(flavor = "multi_thread")]
-async fn a_failed_elevated_first_sync_reverts_the_pace_to_one() {
+async fn a_failed_elevated_first_sync_reverts_the_pace_and_frees_its_slot() {
     let server = Server::start_elevating();
-    let pulls = Arc::new(FailPulls {
-        inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
-        fail: AtomicBool::new(true),
-        body_gets: AtomicUsize::new(0),
-    });
-    let b = Device::over(&server, 1, pulls).await;
-    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let sink = Arc::clone(&heard);
-    b.driver
-        .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
+    for _ in 0..BOOTSTRAP_SLOTS {
+        // A slow close, so only a close the run waits for has landed when the run returns.
+        let closes = Arc::new(Closes::over(
+            Arc::new(FailPulls {
+                inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+                fail: AtomicBool::new(true),
+                body_gets: AtomicUsize::new(0),
+            }),
+            std::time::Duration::from_secs(1),
+        ));
+        let b = Device::over(&server, 1, closes.clone()).await;
+        let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let sink = Arc::clone(&heard);
+        b.driver
+            .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
 
-    let first = b.driver.first_sync(Arc::new(SilentInitialSync)).await;
+        let first = b.driver.first_sync(Arc::new(SilentInitialSync)).await;
 
-    assert!(first.is_err(), "the refs pass failed");
-    assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+        assert!(first.is_err(), "the refs pass failed");
+        assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+        assert_eq!(
+            closes.answered.load(Ordering::SeqCst),
+            1,
+            "the server closed the session"
+        );
+    }
+    assert_a_fresh_open_elevates(&server).await;
+}
+
+/// A device's first sync gets a bootstrap session, so the user's cap has a free slot.
+async fn assert_a_fresh_open_elevates(server: &Server) {
+    let c = Device::new(server, 1).await;
+    let first = c
+        .driver
+        .first_sync(Arc::new(SilentInitialSync))
+        .await
+        .unwrap()
+        .expect("not paused");
+    assert!(
+        first.first_sync.elevated,
+        "an ended run still holds its bootstrap slot (#1837)"
+    );
+}
+
+/// `inner`, answering `/sync/bootstrap/close` after `delay` and counting the answers.
+struct Closes {
+    inner: Arc<dyn Transport>,
+    delay: std::time::Duration,
+    answered: AtomicUsize,
+    closed: tokio::sync::Notify,
+}
+
+impl Closes {
+    fn over(inner: Arc<dyn Transport>, delay: std::time::Duration) -> Self {
+        Self {
+            inner,
+            delay,
+            answered: AtomicUsize::new(0),
+            closed: tokio::sync::Notify::new(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Transport for Closes {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        if !request.url.contains("/sync/bootstrap/close") {
+            return self.inner.send(request).await;
+        }
+        tokio::time::sleep(self.delay).await;
+        let response = self.inner.send(request).await;
+        self.answered.fetch_add(1, Ordering::SeqCst);
+        self.closed.notify_one();
+        response
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.inner.open_socket(request, listener)
+    }
 }
 
 /// The app transport, never answering `/sync/changes`, and telling `reached` once one is sent.
@@ -649,26 +721,34 @@ impl Transport for HangPulls {
 }
 
 /// An elevated first sync dropped mid-run (an aborted pass, a vault switch) reverts the pace to 1
-/// at once, as Electron's `closeBootstrapSession('vault_switch')` does (`full-sync-runner.ts:281`).
+/// at once and sends the server close without waiting for it, so the user's session slot frees
+/// (`void closeBootstrapSession('vault_switch')`, `full-sync-runner.ts:281`, #1837).
 #[tokio::test(flavor = "multi_thread")]
-async fn a_cancelled_elevated_first_sync_reverts_the_pace_to_one() {
+async fn a_cancelled_elevated_first_sync_reverts_the_pace_and_frees_its_slot() {
     let server = Server::start_elevating();
-    let pulls = Arc::new(HangPulls {
-        inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
-        reached: tokio::sync::Notify::new(),
-    });
-    let b = Device::over(&server, 1, pulls.clone()).await;
-    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let sink = Arc::clone(&heard);
-    b.driver
-        .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
+    for _ in 0..BOOTSTRAP_SLOTS {
+        let pulls = Arc::new(HangPulls {
+            inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+            reached: tokio::sync::Notify::new(),
+        });
+        let closes = Arc::new(Closes::over(pulls.clone(), std::time::Duration::ZERO));
+        let b = Device::over(&server, 1, closes.clone()).await;
+        let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let sink = Arc::clone(&heard);
+        b.driver
+            .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
 
-    tokio::select! {
-        _ = b.driver.first_sync(Arc::new(SilentInitialSync)) => panic!("the refs pass hangs"),
-        () = pulls.reached.notified() => {}
+        tokio::select! {
+            _ = b.driver.first_sync(Arc::new(SilentInitialSync)) => panic!("the refs pass hangs"),
+            () = pulls.reached.notified() => {}
+        }
+
+        assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+        // The close runs on its own; give it time to land, and let the open below judge it.
+        let _ =
+            tokio::time::timeout(std::time::Duration::from_secs(5), closes.closed.notified()).await;
     }
-
-    assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+    assert_a_fresh_open_elevates(&server).await;
 }
 
 /// A device that registers after A's driver opened, and pushes: A's next pass applies the record

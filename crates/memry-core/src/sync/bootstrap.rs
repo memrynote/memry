@@ -313,25 +313,46 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if !self.close_local() {
-            return;
+        if let Some(request) = self.end() {
+            let _ = self.http.send_json::<Json>(request).await;
         }
-        let request = self
-            .request("POST", "/sync/bootstrap/close")
-            .retry(RetryPolicy::never())
-            .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
     }
 
-    /// Ends the window here, with no round trip, so pacing reverts at once (`closeLocalOnly`).
-    /// Returns whether a session was held.
-    pub(crate) fn close_local(&self) -> bool {
-        if self.lock().session.take().is_none() {
-            return false;
-        }
+    /// [`Self::close`] for a run that is being dropped: pacing reverts at once and the server close
+    /// runs on its own, so teardown never waits for it (`void closeBootstrapSession('vault_switch')`,
+    /// `full-sync-runner.ts:281`). Without it the user's concurrent-session slot stays taken until
+    /// the token expires (#1837).
+    pub(crate) fn close_detached(&self) {
+        let Some(request) = self.end() else {
+            return;
+        };
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!(
+                "memry-core: no runtime to close the dropped bootstrap session; its slot frees when the token expires"
+            );
+            return;
+        };
+        let http = Arc::clone(&self.http);
+        runtime.spawn(async move {
+            if let Err(error) = http.send_json::<Json>(request).await {
+                eprintln!("memry-core: closing the dropped bootstrap session failed; its slot frees when the token expires: {error}");
+            }
+        });
+    }
+
+    /// Ends the window here so pacing reverts at once (`closeLocalOnly`), and returns the server
+    /// close for the session it held. The close carries the token, which the Worker needs to find
+    /// the session's ledger row (`bootstrap-session.ts:200-211`).
+    fn end(&self) -> Option<ApiRequest> {
+        let session = self.lock().session.take()?;
         self.lock().finished = true;
         self.notify();
-        true
+        Some(
+            self.request("POST", "/sync/bootstrap/close")
+                .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
+                .retry(RetryPolicy::never())
+                .json(&json!({})),
+        )
     }
 
     fn fall_back(&self) {

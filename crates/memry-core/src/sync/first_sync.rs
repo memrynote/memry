@@ -281,7 +281,7 @@ impl FirstSync {
     pub async fn run(&self, now_ms: i64) -> Result<FirstSyncReport, FirstSyncError> {
         // Electron closes the window when the run completes and when it fails
         // (`full-sync-runner.ts:528`), so pacing reverts at once. A dropped run never reaches the
-        // close, so the guard ends the window locally.
+        // close, so the guard ends the window and sends the close without waiting (`:281`).
         let _window = self.bootstrap.as_deref().map(EndsWindow);
         let report = self.passes(now_ms).await;
         if let Some(bootstrap) = &self.bootstrap {
@@ -562,12 +562,12 @@ impl FirstSync {
     }
 }
 
-/// Ends the bootstrap window when a run is dropped (`closeLocalOnly`). A no-op after `close`.
+/// Ends the bootstrap window when a run is dropped (`'vault_switch'`). A no-op after `close`.
 struct EndsWindow<'a>(&'a BootstrapClient);
 
 impl Drop for EndsWindow<'_> {
     fn drop(&mut self) {
-        self.0.close_local();
+        self.0.close_detached();
     }
 }
 
