@@ -180,3 +180,45 @@ describe('listPacks', () => {
     expect(mine.packs.map((p) => p.id)).toEqual(['mine'])
   })
 })
+
+describe('listPacks coverage (protocol 08 §8.10, #5230)', () => {
+  const setWatermark = (kind: string, coveredThrough: number | null): void => {
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         VALUES (?, ?, ?, 0, '', 1, ?)`
+      )
+      .run(USER, VAULT, kind, coveredThrough)
+  }
+
+  it('states record coverage on the first page only, with each pack range', async () => {
+    seedPack({ id: 'a', minCursor: 1, maxCursor: 10 })
+    seedPack({ id: 'b', minCursor: 11, maxCursor: 20 })
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 0, cover_through = 10 WHERE id = 'a'`)
+      .run()
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 10, cover_through = 20 WHERE id = 'b'`)
+      .run()
+    setWatermark('record', 20)
+
+    const first = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+    const second = await listPacks(harness.db, USER, VAULT, { cursor: first.nextCursor })
+
+    expect(first.coverage).toEqual([{ itemKind: 'record', packedThrough: 20, coveredThrough: 20 }])
+    expect(first.packs[0]).toMatchObject({ id: 'b', coverFrom: 10, coverThrough: 20 })
+    expect(second.coverage).toBeUndefined()
+    expect(second.packs[0]).toMatchObject({ id: 'a', coverFrom: 0, coverThrough: 10 })
+  })
+
+  it('states nothing for a cache-only record chain or for body kinds', async () => {
+    seedPack({ id: 'a', minCursor: 1, maxCursor: 10 })
+    setWatermark('record', null)
+    setWatermark('crdt_update', 40)
+
+    const page = await listPacks(harness.db, USER, VAULT)
+
+    expect(page.coverage).toEqual([])
+    expect('coverFrom' in page.packs[0]).toBe(false)
+  })
+})

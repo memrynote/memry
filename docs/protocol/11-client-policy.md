@@ -78,7 +78,7 @@ alone:
   `POST /sync/pull` and `POST /sync/records/pull` MAY stamp
   `sync_items.blob_missing_at` on a live row whose blob is lost; the server sets
   it, and a repeat pull keeps the first stamp
-  (`apps/sync-server/src/services/sync.ts:1589`, called at `:1646`; #2302):
+  (`apps/sync-server/src/services/sync.ts:1596`, called at `:1679`; #2302):
 
 | Route                                  | Registered at                                                                             |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- |

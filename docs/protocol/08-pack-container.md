@@ -158,7 +158,7 @@ as it would for a pack it could not verify (§8.0).
 `type` and `blob` (`packages/contracts/src/sync-api.ts:851-869`), so a field
 added to the pull item reaches the entry with no second list to update. A writer
 fills the meta from the same columns `POST /sync/pull` answers from
-(`pullItemFromColumns`, `apps/sync-server/src/services/sync.ts:415-441`):
+(`pullItemFromColumns`, `apps/sync-server/src/services/sync.ts:433-441`):
 `deletedAt` and `clock` are present exactly when the pull item has them.
 
 - **Cursor.** The entry's `sortKey` is the row's `server_cursor`, the cursor
@@ -466,29 +466,32 @@ throughout (`packages/contracts/src/sync-api.ts:739-744`).
 ## 8.9 Listing
 
 **Normative.** `GET /sync/packs` returns `PackListResponseSchema`
-(`packages/contracts/src/sync-api.ts:802-827`), whose `packs` are
-`PackSummarySchema` (`:737-758`):
+(`packages/contracts/src/sync-api.ts:815-830`), whose `packs` are
+`PackSummarySchema` (`:746-767`). The `POST /sync/bootstrap` open response
+carries the same first page (chapter 10 §10.4):
 
 | Field                    | Rule                                                                                                                                                  |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`, `packKey`          | non-empty strings                                                                                                                                     |
-| `itemKind`               | one of `record`, `crdt_snapshot`, `crdt_update` (`:717`)                                                                                              |
-| `minCursor`, `maxCursor` | `server_cursor` bounds for `record` and `crdt_update`; `created_at` epoch-second bounds for `crdt_snapshot` (`:711-716`)                              |
+| `itemKind`               | one of `record`, `crdt_snapshot`, `crdt_update` (`:726`)                                                                                              |
+| `minCursor`, `maxCursor` | `server_cursor` bounds for `record` and `crdt_update`; `created_at` epoch-second bounds for `crdt_snapshot` (`:719-724`)                              |
 | `itemCount`              |                                                                                                                                                       |
-| `byteSize`               | **the payload region only** — header, index and footer excluded. **NOT a file length: a reader MUST NOT Range-request against it** (`:744-749`)       |
+| `byteSize`               | **the payload region only** — header, index and footer excluded. **NOT a file length: a reader MUST NOT Range-request against it** (`:753-758`)       |
 | `createdAt`              |                                                                                                                                                       |
-| `url`                    | a presigned GET, present **only** when the deployment opted into presigned transfers; **absent means "use the item-granular endpoints"** (`:726-728`) |
-| `expiresAt`              | epoch seconds at which `url` stops working (`:752-753`)                                                                                               |
-| `coverFrom`              | exclusive lower bound of the pack's coverage range, a `server_cursor`, for every kind (`:754-755`); §8.10                                             |
-| `coverThrough`           | inclusive upper bound of that range (`:756-757`). Both are absent on a pack written before §8.10, which is a cache only                               |
+| `url`                    | a presigned GET, present **only** when the deployment opted into presigned transfers; **absent means "use the item-granular endpoints"** (`:735-737`) |
+| `expiresAt`              | epoch seconds at which `url` stops working (`:761-762`)                                                                                               |
+| `coverFrom`              | exclusive lower bound of the pack's coverage range, a `server_cursor`, for every kind (`:763-764`); §8.10                                             |
+| `coverThrough`           | inclusive upper bound of that range (`:765-766`). Both are absent on a cache-only pack (§8.10)                                                        |
 
 `nextCursor` is an opaque keyset token, absent on the final page, and **packs
-arrive newest-first** (`packages/contracts/src/sync-api.ts:831-836`). A client
+arrive newest-first** (`packages/contracts/src/sync-api.ts:824-829`). A client
 MUST treat it as opaque. The first page also carries `coverage`, one
-`PackCoverageSchema` per kind (`packages/contracts/src/sync-api.ts:775-784`,
-`:805-820`), §8.10. A reader parses `coverage` entry by entry and skips an
-entry it cannot parse, such as one of a kind added after it shipped, which
-leaves that kind uncovered (`:801-811`).
+`PackCoverageSchema` per covered kind (`packages/contracts/src/sync-api.ts:775-784`,
+`:818-823`), read in the same D1 batch as the page
+(`apps/sync-server/src/services/pack-list.ts`, `listPacks`), §8.10. A reader
+parses `coverage` entry by entry and skips an entry it cannot parse, such as
+one of a kind added after it shipped, which leaves that kind uncovered
+(`PackCoverageListSchema`, `:786-797`).
 
 ## 8.10 Coverage and where the tail starts
 
@@ -537,7 +540,7 @@ whose payload is lost as a purged tombstone
 `apps/sync-server/src/services/crdt.ts:143`). A writer counts a 404 on a
 snapshot object as lost only while the row still points at the key it read,
 re-reading the row as `markSyncItemBlobMissing`
-(`apps/sync-server/src/services/sync.ts:1590-1605`) and `getSnapshot`
+(`apps/sync-server/src/services/sync.ts:1590-1611`) and `getSnapshot`
 (`apps/sync-server/src/services/crdt.ts:478-490`) do. A row that moved or is
 gone is not needed at that cursor; its replacement sits at a higher cursor. A
 lost body row is needed and cannot be packed, so it ends the range (below).
@@ -552,13 +555,29 @@ cursor, and that is what ends the loss.
 What a server MUST do to keep it. Each item is a **step 06 MUST** (#5229)
 unless it says **step 07 MUST** (#5230). A server from step 06a (#5229) on
 records a coverage range on every `record` pack it builds or rolls up
-(`cover_from`, `cover_through`, migration 0023) and lists none of it yet. Its
-body packs carry no range until step 07, because its snapshot builds still
-select on `created_at`. Its builds and rollups pack the body rows of a deleted
-document while those rows exist, and the purge takes the body packs that hold
-them out of the listing and rewrites them (§8.13). A `record` watermark
-written before migration 0023 has a NULL `covered_through`, and the packs
-built from it stay caches only.
+(`cover_from`, `cover_through`, migration 0023). Its builds and rollups pack
+the body rows of a deleted document while those rows exist, and the purge
+takes the body packs that hold them out of the listing and rewrites them
+(§8.13).
+
+**What a server from step 07 (#5230) states.** It lists `coverFrom` and
+`coverThrough` on every pack that has a range, and the first page carries one
+`coverage` entry for `record` when the kind's watermark has a coverage anchor,
+with `packedThrough` and `coveredThrough` both equal to that anchor, the
+`coverThrough` of the newest committed record pack
+(`apps/sync-server/src/services/pack-list.ts`, `COVERED_KINDS` and
+`coverageStatement`). It states no `coverage` for `crdt_snapshot` or
+`crdt_update`: its body packs carry no range, because snapshot builds still
+select on `created_at`, and a body reader trusts the body manifest, not pack
+coverage. Leaving a kind out is always a true statement. A `record` watermark
+written before migration 0023 has a NULL `covered_through`, so the packs built
+from it are caches only and the kind states nothing. The next record build
+re-anchors such a chain: in one batch, guarded on the watermark it read, it
+takes the kind's packs out of the listing, records their objects for deletion
+after the grace period of §8.12, and restarts the watermark at 0 with an
+anchor of 0, so the rebuild tiles from 0
+(`apps/sync-server/src/services/pack-replaced-objects.ts`,
+`recordChainReanchor`).
 
 - A writer selects rows of every kind by `server_cursor` above the kind's
   watermark. A pack's `coverFrom` is the `coverThrough` of the kind's previous
@@ -681,12 +700,15 @@ it with checks the server answers:
   holds the pack bytes, and reconcile before it trusts the packs. The
   reconcile is **cursor-exact**:
   1. A manifest item the reader does not hold, holds only as a tombstone, or
-     holds at a cursor other than the item's `serverCursor` is pulled by id
+     holds at a cursor other than the item's `serverCursor`, or that carries no
+     `serverCursor`, is pulled by id
      through `POST /sync/pull`, at most 100 ids per request
      (`packages/contracts/src/sync-api.ts:514`). The cursor it holds is the
      entry's `sortKey` for a row taken from a pack (§8.4.2), or the
-     `serverCursor` of the feed ref it pulled against (chapter 05 §5.11.1); a
-     row held with no known cursor matches none. A pulled item whose payload
+     `serverCursor` of the feed ref it pulled against (chapter 05 §5.11.1),
+     that is, the cursor of the write it applied; a row held with no known
+     cursor matches none, and an item that came back in `blobMissing` gave it
+     no write, so it holds none for that item. A pulled item whose payload
      is lost comes back in `blobMissing` (chapter 05 §5.12.4), and the reader
      then knows its held row is not current.
   2. A live record the reader took from a pack and the manifest does not list
@@ -705,8 +727,10 @@ it with checks the server answers:
   (`apps/sync-server/src/services/sync.ts:1230-1232`). Each accepted write
   gives the row a cursor no earlier write of that user had
   (`apps/sync-server/src/services/cursor.ts:1-13`, set at
-  `apps/sync-server/src/services/sync.ts:910`), so a held row whose cursor
-  equals the manifest's is the current write, byte for byte. Any live row the
+  `apps/sync-server/src/services/sync.ts:910`), so a held live row whose
+  cursor equals the manifest's is the current write, byte for byte. One write
+  per cursor holds for live rows only: the shed empties a tombstone in place
+  at its cursor (chapter 05 §5.12.3), and the manifest omits tombstones. Any live row the
   writer omitted, whatever the reason, is absent from what the reader holds or
   sits at another cursor, and rule 1 pulls it. A stale packed entry is caught
   the same way, whether or not its newer write could be packed, and even when
@@ -714,8 +738,9 @@ it with checks the server answers:
 
   **A manifest without `serverCursor`.** Every server before step 04 (#5227)
   omits it (`RecordSyncManifestItemSchema`,
-  `packages/contracts/src/sync-api.ts:543-545`). A reader then does not trust
-  record packs: it may apply them only as a seed, and it pulls every manifest
+  `packages/contracts/src/sync-api.ts:543-545`). The check is per item, so a
+  manifest that mixes items with and without it during a rollout is read item
+  by item. A reader facing a manifest without it does not trust record packs: it may apply them only as a seed, and it pulls every manifest
   item through `POST /sync/pull`, as if it held none of them. Rules 2 and 3
   still apply. This fails closed, and it costs what a bootstrap without
   record packs costs: `ceil(n / 100)` pull requests for `n` live records, 136

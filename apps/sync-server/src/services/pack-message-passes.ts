@@ -16,8 +16,8 @@ const errorMessage = (error: unknown): string =>
  * resets the kind of a rewrite still pending past its grace, and a rewrite
  * this message can finish should not cost the kind a rebuild.
  *
- * Objects still due or rewrites still pending after the work fail the message,
- * so Queues redelivers it (max_retries 3, no retry delay) inside the purge
+ * Objects still due, or rewrites still pending when `rewritesFatal`, after the
+ * work fail the message, so Queues redelivers it (max_retries 3, no retry delay) inside the purge
  * deadline instead of acking it. Builds the work committed stay committed: a
  * redelivery finds their watermarks moved and lists nothing twice. A work
  * error is logged and kept as the cause, also when the final pass itself
@@ -28,6 +28,7 @@ export const withReplacedObjectPasses = async <T>(
   storage: R2Bucket,
   scope: VaultScope,
   message: string,
+  options: { rewritesFatal: boolean },
   work: () => Promise<T>
 ): Promise<T> => {
   let rewriteFailure: { error: unknown } | null = null
@@ -51,7 +52,13 @@ export const withReplacedObjectPasses = async <T>(
   } catch (error) {
     passFailure = { error }
   }
-  if (pending || rewritesPending) {
+  if (rewritesPending && !options.rewritesFatal) {
+    logger.warn(`purge rewrites still pending after the ${message}; left to the purge retry`, {
+      vaultId: scope.vaultId,
+      ...(rewriteFailure ? { rewriteError: errorMessage(rewriteFailure.error) } : {})
+    })
+  }
+  if (pending || (rewritesPending && options.rewritesFatal)) {
     logger.error(`replaced pack objects still due after the ${message}; redelivered`, {
       userId: scope.userId,
       vaultId: scope.vaultId,

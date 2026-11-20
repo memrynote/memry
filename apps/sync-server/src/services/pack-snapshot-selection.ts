@@ -57,13 +57,15 @@ export const snapshotTieEnd = async (
  * The packed entries whose snapshot row still exists with the packed blob: a
  * `FROM` clause for `allLive` and the rollup. A deleted document's row counts
  * while it exists (protocol 08 §8.12).
- * Entries ride as one JSON bind, clear of D1's 100-bind limit.
+ * Entries ride as one JSON bind, clear of D1's 100-bind limit. CROSS JOIN
+ * keeps `json_each` the outer loop, one index probe per entry: SQLite otherwise
+ * scans the vault's rows and every entry inside, about 13 s at 10k rows (#5230).
  */
 export const snapshotsLive = (
   scope: VaultScope,
   entries: ReadonlyArray<{ id: string; sourceKey: string }>
 ): { sql: string; bind: unknown[] } => ({
-  sql: `FROM json_each(?) e JOIN crdt_snapshots s
+  sql: `FROM json_each(?) e CROSS JOIN crdt_snapshots s
           ON s.user_id = ? AND s.vault_id = ?
             AND s.note_id = json_extract(e.value, '$[0]') AND s.blob_key = json_extract(e.value, '$[1]')`,
   bind: [

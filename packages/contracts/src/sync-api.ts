@@ -784,6 +784,19 @@ export const PackCoverageSchema = z.object({
 })
 
 /**
+ * The `coverage` statement of the first listing page and of the bootstrap open
+ * response. An entry of a kind this build does not know, or a malformed one,
+ * leaves that kind uncovered (its tail starts at 0) instead of failing the
+ * response (§8.9).
+ */
+export const PackCoverageListSchema = z.array(z.unknown()).transform((entries) =>
+  entries.flatMap((entry) => {
+    const parsed = PackCoverageSchema.safeParse(entry)
+    return parsed.success ? [parsed.data] : []
+  })
+)
+
+/**
  * A replaced or purged pack's object outlives its listing row by at least this
  * long, twice the presigned URL lifetime (`DEFAULT_PRESIGN_TTL_SECONDS`, 300),
  * so a URL handed out before the row went away still reads (protocol 08 §8.12).
@@ -807,17 +820,7 @@ export const PackListResponseSchema = z.object({
    * invariant. A kind it omits, or no `coverage` at all, means nothing of that
    * kind is covered: the reader's tail for it starts at 0.
    */
-  coverage: z
-    .array(z.unknown())
-    .transform((entries) =>
-      // An entry of a kind this build does not know, or a malformed one, leaves that
-      // kind uncovered (its tail starts at 0) instead of failing the listing (§8.9).
-      entries.flatMap((entry) => {
-        const parsed = PackCoverageSchema.safeParse(entry)
-        return parsed.success ? [parsed.data] : []
-      })
-    )
-    .optional(),
+  coverage: PackCoverageListSchema.optional(),
   /**
    * Opaque keyset token (max_cursor + row id of the last returned pack).
    * Pass back as `cursor` on GET /sync/packs to fetch the next (older) page;

@@ -24,7 +24,12 @@ import { isSelectedRecordVersion, recordRowShedInPlace } from './pack-record-sel
 import { loadSnapshotMeta, snapshotsLive, snapshotTieEnd } from './pack-snapshot-selection'
 import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
 import { withReplacedObjectPasses } from './pack-message-passes'
-import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import {
+  deleteUnlisted,
+  listingBatch,
+  recordChainReanchor,
+  recordUnlisted
+} from './pack-replaced-objects'
 import { selectCandidates } from './pack-selection'
 import { updateEntrySource, updatesLive, type EntrySource } from './pack-update-selection'
 
@@ -160,12 +165,22 @@ export const compactOneRange = async (
     maxSortValue: selection.nextSortValue,
     holes: []
   }
-  if (!selection.ready) return { ...noop, reason: 'not_ready' }
-  // Compare-and-swap: a cron build and a queue build of one scope may select
+  // Compare-and-swap: the nudge consumer and the backfill consumer may select
   // the same window. Only the first to commit moves the watermark; the other
   // lists nothing and deletes its own object, so ranges never overlap and
   // covered_through never moves back (REVIEW-5267 P10).
   const unchanged = watermarkUnchanged(scope, kind, selection.watermark)
+  // A record chain without a coverage anchor never states coverage, so it is
+  // rebuilt from 0 with one (recordChainReanchor). The next build starts it.
+  if (kind === 'record' && selection.watermark.covered_through === null) {
+    await db.batch(recordChainReanchor(db, scope, unchanged))
+    logger.info('record packs re-anchored for coverage; rebuilt from cursor 0', {
+      user: scope.userId.slice(0, 8),
+      vaultId: scope.vaultId
+    })
+    return { ...noop, reason: 'skipped' }
+  }
+  if (!selection.ready) return { ...noop, reason: 'not_ready' }
   if (selection.candidates.length === 0) {
     // Still persist watermark advancement so oversized-only windows progress.
     await advanceWatermark(
@@ -511,7 +526,8 @@ export const compactVault = async (
   const results: PackBuildResult[] = []
   // The purge rewrite pass, then deletion passes before and after the builds
   // (withReplacedObjectPasses).
-  await withReplacedObjectPasses(db, storage, scope, 'compaction message', async () => {
+  const passes = { rewritesFatal: true }
+  await withReplacedObjectPasses(db, storage, scope, 'compaction message', passes, async () => {
     // Rollup first: at the listing cap it is what makes room for the build
     // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
     for (const kind of PACKED_KINDS) await rollupLogged(db, storage, scope, kind)

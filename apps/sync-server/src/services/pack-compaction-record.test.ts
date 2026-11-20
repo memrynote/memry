@@ -6,7 +6,10 @@ import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import type { AppContext, Bindings } from '../types'
 import { cleanupExpiredTombstones } from './cleanup'
+import { createMemoryQueue } from '../__tests__/pack-queue-memory'
+import { runBackfillMessage } from './pack-backfill'
 import { compactOneRange, compactVault } from './pack-compaction'
+import { listPacks } from './pack-list'
 import { extractEntry, parsePack, type PackedEntry } from './pack-format'
 import { PACK_SETTLE_SECONDS } from './pack-sizing'
 import {
@@ -423,5 +426,103 @@ describe('record packs carry the pull item (#5227)', () => {
     expect(recordWatermark()).toBe(rowOf('task-z').server_cursor)
     expect(rowOf('task-x').server_cursor).toBeLessThan(rowOf('task-z').server_cursor)
     expect(await manifestIds(app)).toEqual(['task-y', 'task-z'])
+  })
+})
+
+describe('record coverage (#5230)', () => {
+  const recordPacks = () =>
+    harness.raw
+      .prepare(
+        `SELECT pack_key, cover_from, cover_through FROM pack_index WHERE item_kind = 'record' ORDER BY min_cursor`
+      )
+      .all() as Array<{ pack_key: string; cover_from: number | null; cover_through: number | null }>
+
+  it('re-anchors a cache-only record chain and states coverage once rebuilt from 0', async () => {
+    // #given: a pack built before migration 0023, which left every record
+    // watermark without an anchor (all four on staging) and every pack cache-only
+    const app = buildApp()
+    await push(
+      app,
+      ['t-1', 't-2', 't-3'].map((id) => ({
+        id,
+        operation: 'create' as const,
+        clock: { [DEVICE_ID]: 1 }
+      }))
+    )
+    settleRecords()
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(true)
+    harness.raw.prepare('UPDATE pack_watermarks SET covered_through = NULL').run()
+    harness.raw.prepare('UPDATE pack_index SET cover_from = NULL, cover_through = NULL').run()
+    const [legacy] = recordPacks()
+    await push(
+      app,
+      ['t-4', 't-5'].map((id) => ({ id, operation: 'create' as const, clock: { [DEVICE_ID]: 1 } }))
+    )
+    expect((await listPacks(harness.db, USER_ID, VAULT_ID)).coverage).toEqual([])
+
+    // #when: the next record build
+    const reanchored = await compactOneRange(harness.db, storage, SCOPE, 'record')
+
+    // #then: the chain leaves the listing, its object waits out the grace period
+    expect(reanchored).toMatchObject({ built: false, reason: 'skipped' })
+    expect(recordPacks()).toEqual([])
+    const replaced = harness.raw
+      .prepare('SELECT replaced_by, removed_at FROM pack_replaced_objects WHERE pack_key = ?')
+      .get(legacy.pack_key) as { replaced_by: string; removed_at: number }
+    expect(replaced.replaced_by).toBe('reanchor')
+    expect(replaced.removed_at).toBeGreaterThan(now() - 5)
+    expect(await storage.get(legacy.pack_key)).not.toBeNull()
+
+    // ... and the rebuild tiles from 0, so the listing states record coverage
+    settleRecords()
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'record')).built).toBe(true)
+    const top = rowOf('t-5').server_cursor
+    expect(
+      recordPacks().map(({ cover_from: from, cover_through: through }) => [from, through])
+    ).toEqual([[0, top]])
+    expect((await packedRecordItems()).map(({ item }) => item.id).toSorted()).toEqual([
+      't-1',
+      't-2',
+      't-3',
+      't-4',
+      't-5'
+    ])
+    const listing = await listPacks(harness.db, USER_ID, VAULT_ID)
+    expect(listing.coverage).toEqual([
+      { itemKind: 'record', packedThrough: top, coveredThrough: top }
+    ])
+    expect(listing.packs[0]).toMatchObject({ coverFrom: 0, coverThrough: top })
+  })
+
+  it('an anchored chain is never re-anchored', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 't-1', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    settleRecords()
+    await compactOneRange(harness.db, storage, SCOPE, 'record')
+    const before = recordPacks()
+    await push(app, [{ id: 't-2', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    settleRecords()
+    await compactOneRange(harness.db, storage, SCOPE, 'record')
+    expect(recordPacks().slice(0, 1)).toEqual(before)
+    expect(recordPacks()[1].cover_from).toBe(before[0].cover_through)
+  })
+
+  // VERIFY-5279 V5: the abandoned range comes back on every build until the
+  // daily shed runs, so the chain spent its hops building nothing.
+  it('a range abandoned for a tombstone the shed will empty ends the backfill chain', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await expiredTombstone(app, 'task-x')
+    await storage.delete(rowOf('task-x').blob_key)
+    settleRecords()
+    const queue = createMemoryQueue()
+
+    const result = await runBackfillMessage(harness.db, storage, queue, SCOPE, {
+      kind: 'record',
+      hop: 0
+    })
+
+    expect(result).toMatchObject({ packsBuilt: 0, drained: true, continued: false })
+    expect(queue.sent).toEqual([])
   })
 })

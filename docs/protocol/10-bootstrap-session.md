@@ -7,11 +7,11 @@
 
 **Normative.** A bootstrap session is an **elevated-throughput window** a fresh
 device opens while it pulls an entire vault for the first time
-(`packages/contracts/src/bootstrap-api.ts:3-5`).
+(`packages/contracts/src/bootstrap-api.ts:6-7`).
 
 **It only ever widens server rate ceilings. A missing, expired or forged token
 degrades to steady-state behaviour byte for byte and can never fail an unrelated
-request** (`packages/contracts/src/bootstrap-api.ts:11-14`).
+request** (`packages/contracts/src/bootstrap-api.ts:13-16`).
 
 It is **not** required (§10.6), carries **no** data the ordinary endpoints do
 not, and changes **nothing** about the pull shape.
@@ -23,64 +23,77 @@ not, and changes **nothing** about the pull shape.
 
 | Method | Path                    | Purpose             | Line   |
 | ------ | ----------------------- | ------------------- | ------ |
-| POST   | `/sync/bootstrap`       | open                | `:86`  |
-| POST   | `/sync/bootstrap/renew` | extend              | `:160` |
-| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:179` |
+| POST   | `/sync/bootstrap`       | open                | `:89`  |
+| POST   | `/sync/bootstrap/renew` | extend              | `:179` |
+| POST   | `/sync/bootstrap/close` | end; **idempotent** | `:198` |
 
 All three sit behind auth, the client gate (chapter 11), the paid gate and the
-sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:35-38`), and
+sync-types middleware (`apps/sync-server/src/routes/bootstrap.ts:38-41`), and
 share one rate limiter of **30 requests per 60 s**, device-keyed
-(`apps/sync-server/src/routes/bootstrap.ts:45-46`).
+(`apps/sync-server/src/routes/bootstrap.ts:47-48`).
 
 Renew and close name their session only through the `X-Memry-Bootstrap-Token`
-header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:160-176`,
-`:179-187`).
+header (§10.3), with an empty body (`apps/sync-server/src/routes/bootstrap.ts:179-196`,
+`:198-207`).
 
 ## 10.3 The header
 
 **Normative.** `X-Memry-Bootstrap-Token`
-(`packages/contracts/src/bootstrap-api.ts:18`), carrying the `token` from the
+(`packages/contracts/src/bootstrap-api.ts:20`), carrying the `token` from the
 open response **verbatim**, added to elevated requests only
-(`packages/contracts/src/bootstrap-api.ts:21-22`).
+(`packages/contracts/src/bootstrap-api.ts:23-24`).
 
 **Normative.** `POST /sync/bootstrap/renew` and `POST /sync/bootstrap/close`
 MUST carry the session's token in `X-Memry-Bootstrap-Token`
-(`apps/sync-server/src/routes/bootstrap.ts:167`, `:184`). A request without it
+(`apps/sync-server/src/routes/bootstrap.ts:186`, `:203`). A request without it
 is answered `401 BOOTSTRAP_SESSION_INVALID`
-(`apps/sync-server/src/routes/bootstrap.ts:66-74`), and a close without it
+(`apps/sync-server/src/routes/bootstrap.ts:69-78`), and a close without it
 leaves the session holding its concurrency slot until the token expires.
 
 **Old servers ignore it and old clients never send it**
-(`packages/contracts/src/bootstrap-api.ts:8-10`), which is what makes the whole
+(`packages/contracts/src/bootstrap-api.ts:10-12`), which is what makes the whole
 feature additive.
 
 ## 10.4 The open response
 
-**Normative** (`packages/contracts/src/bootstrap-api.ts:45-74`):
+**Normative** (`packages/contracts/src/bootstrap-api.ts:54-85`):
 
 ```
 { session: { token, expiresAt, ttlSeconds },
   manifest: { items: [{id, type, version, modifiedAt, size}], nextCursor?, serverTime },
   tailCursor,
   attachments?: { chunkHashes: string[], nextChunkCursor? },
-  packs: [] }
+  packs: PackSummary[], packsNextCursor?, coverage? }
 ```
 
-| Field                         | Rule                                                                                                                                                                                                                             |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `session.expiresAt`           | epoch seconds at which the token stops being honoured (`:23-24`)                                                                                                                                                                 |
-| `session.ttlSeconds`          | mirrors `exp - iat`, for renewal scheduling (`:25-26`)                                                                                                                                                                           |
-| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:34-35`; `apps/sync-server/src/routes/bootstrap.ts:99-102`)                                                      |
-| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:35-36`; `apps/sync-server/src/routes/bootstrap.ts:104-108`, absent rows give `0` at `:148`)                                                 |
-| `packs`                       | **reserved; always present, always empty** (`:37-39`; `apps/sync-server/src/routes/bootstrap.ts:156`). Pack coverage lives in `GET /sync/packs` (chapter 08 §8.10)                                                               |
-| `attachments`                 | **informational only**, absent entirely on deployments that cannot presign (`:39-43`); `chunkHashes` is a first keyset page of at most `CHUNK_HASH_PAGE_LIMIT = 512` (`apps/sync-server/src/routes/bootstrap.ts:51`, `:126-130`) |
-| `attachments.nextChunkCursor` | **names where a continuation page would start; no continuation endpoint exists** (`:64-70`)                                                                                                                                      |
+| Field                         | Rule                                                                                                                                                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session.expiresAt`           | epoch seconds at which the token stops being honoured (`:25-26`)                                                                                                                                                                                      |
+| `session.ttlSeconds`          | mirrors `exp - iat`, for renewal scheduling (`:27-28`)                                                                                                                                                                                                |
+| `manifest`                    | **the first page** of the paginated manifest service, at `MAX_MANIFEST_PAGE_LIMIT`, **never the whole vault** (`:36-37`; `apps/sync-server/src/routes/bootstrap.ts:101-111`)                                                                          |
+| `tailCursor`                  | the current `MAX(server_cursor)`, so the client knows when its pull has caught up (`:37-38`; `apps/sync-server/src/routes/bootstrap.ts:113-117`, absent rows give `0` at `:171`)                                                                      |
+| `packs`                       | the first page of `GET /sync/packs`, `PackSummarySchema` entries newest first, at `MAX_PACK_PAGE_LIMIT` = 50 (`:39-47`, `:82`; `apps/sync-server/src/routes/bootstrap.ts:148-156`, `:173`). Always present; `[]` from a server before step 07 (#5230) |
+| `packsNextCursor`             | that page's `nextCursor`, absent on the last page; the client continues with `GET /sync/packs?cursor=` (`:83`; `apps/sync-server/src/routes/bootstrap.ts:174`; chapter 08 §8.9)                                                                       |
+| `coverage`                    | that page's coverage statement, read in the same D1 batch (`:84`; `apps/sync-server/src/routes/bootstrap.ts:175`; chapter 08 §8.10). Absent from a server before step 07, which means nothing is covered                                              |
+| `attachments`                 | **informational only**, absent entirely on deployments that cannot presign (`:48-52`); `chunkHashes` is a first keyset page of at most `CHUNK_HASH_PAGE_LIMIT = 512` (`apps/sync-server/src/routes/bootstrap.ts:54`, `:131-136`)                      |
+| `attachments.nextChunkCursor` | **names where a continuation page would start; no continuation endpoint exists** (`:73-79`)                                                                                                                                                           |
 
 **A client MUST NOT treat `attachments.chunkHashes` as a complete inventory**,
-and MUST NOT treat `packs: []` as meaning the vault has no packs — use
-`GET /sync/packs` (chapter 08 §8.9). Coverage is stated there, next to the
-ranges it describes, because a client reads the listing with or without a
-session (`packages/contracts/src/sync-api.ts:805-820`).
+and MUST NOT treat `packs: []` without `coverage` as meaning the vault has no
+packs: a server before step 07 sends it, and the client lists them with
+`GET /sync/packs` (chapter 08 §8.9). A client without a session reads the same
+page and statement from the listing.
+
+**An uncovered kind: never wait.** The open enqueues compaction for every kind
+a build can extend (`apps/sync-server/src/services/pack-coverage.ts`,
+`reportBootstrapCoverage`), but a client MUST NOT wait for it. It applies the
+packs it has, and takes everything outside the stated coverage item by item:
+the feed tail from the start chapter 08 §8.10 gives, and the closing checks.
+That is never slower than a bootstrap without packs, and it waits on nothing
+the client cannot bound. A client MAY wait only for a bounded time it can show
+is shorter than the item-by-item path, and no client does today. The server
+logs one line per open with each kind's coverage, its uncovered row count
+(counted up to `COVERAGE_COUNT_CAP` = 256) and the reason (`cache_only`, `never_packed`, `unanchored`, `tail`).
 
 ## 10.5 Errors, and the fallback rule
 
@@ -91,15 +104,15 @@ session (`packages/contracts/src/sync-api.ts:805-820`).
 | ----------------------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
 | `BOOTSTRAP_NOT_ELIGIBLE`      | 409    | this device already pulled this vault and is past the resume window (§10.9)                                    |
 | `BOOTSTRAP_SESSION_LIMIT`     | 429    | the per-user concurrent cap                                                                                    |
-| `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:66-74`)          |
+| `BOOTSTRAP_SESSION_INVALID`   | 401    | missing, expired, forged or revoked token (missing: `apps/sync-server/src/routes/bootstrap.ts:69-78`)          |
 | `BOOTSTRAP_IDENTITY_MISMATCH` | 403    | a valid token presented by another authenticated context; renewal and close require the session's own identity |
 | `BOOTSTRAP_SESSION_EXPIRED`   | 403    | the absolute maximum lifetime is spent                                                                         |
-| `BOOTSTRAP_UNAVAILABLE`       | 501    | the deployment has no HMAC key configured (`apps/sync-server/src/routes/bootstrap.ts:53-64`)                   |
+| `BOOTSTRAP_UNAVAILABLE`       | 501    | the deployment has no HMAC key configured (`apps/sync-server/src/routes/bootstrap.ts:56-67`)                   |
 
 **The fallback rule, normative and absolute: a client treats _any_ open failure —
 including a `404` from a server that does not mount these routes — as "no
 bootstrap" and falls back silently to steady-state pacing**
-(`apps/sync-server/src/routes/bootstrap.ts:28-30`). It MUST NOT surface any of
+(`apps/sync-server/src/routes/bootstrap.ts:31-33`). It MUST NOT surface any of
 these to the user, MUST NOT retry beyond its ordinary transport retry, and MUST
 NOT block the first sync on one.
 
@@ -236,8 +249,8 @@ resuming device exactly as to a fresh one, and is enforced
 | `BOOTSTRAP_RENEW_LEAD_SECONDS`           | 300                       | `:41`                                                   |
 | `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 21600 (6 hours)           | `:53`                                                   |
 | `BOOTSTRAP_RESUME_WINDOW_SECONDS`        | 86400 (24 hours)          | `:306`                                                  |
-| `CHUNK_HASH_PAGE_LIMIT`                  | 512                       | `apps/sync-server/src/routes/bootstrap.ts:51`           |
-| session endpoint rate limit              | 30 per 60 s, device-keyed | `apps/sync-server/src/routes/bootstrap.ts:45-46`        |
+| `CHUNK_HASH_PAGE_LIMIT`                  | 512                       | `apps/sync-server/src/routes/bootstrap.ts:54`           |
+| session endpoint rate limit              | 30 per 60 s, device-keyed | `apps/sync-server/src/routes/bootstrap.ts:47-48`        |
 
 ## 10.11 A first sync longer than six hours — Q10.2
 
@@ -270,7 +283,7 @@ longer. A client MUST NOT reset, restart, or report failure at this point.
 
 **Normative.** The secret is optional per deployment. Without it every bootstrap
 route answers `501 BOOTSTRAP_UNAVAILABLE`
-(`apps/sync-server/src/routes/bootstrap.ts:53-64`), and the elevation seam
+(`apps/sync-server/src/routes/bootstrap.ts:56-67`), and the elevation seam
 returns null everywhere, so an unconfigured deployment behaves exactly as it did
 before the feature existed
 (`apps/sync-server/src/services/bootstrap-session.ts:19-22`).

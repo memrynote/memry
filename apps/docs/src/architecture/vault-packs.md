@@ -330,8 +330,8 @@ The 6-hourly cleanup purges at most five vaults per tick, about 41 subrequests.
 
 **Where it runs.** Every compaction message rolls up each kind once before building, which is what
 makes room in a vault at the 999-pack cap, and once more after a build that listed a pack, so the
-message ends at or under the bound. Builds take the watermark with a compare-and-swap, so a cron
-build and a queue build of one window never both list. Every backfill tick enqueues each kind above
+message ends at or under the bound. Builds take the watermark with a compare-and-swap, so the nudge consumer and
+the backfill consumer never both list one window. Every backfill tick enqueues each kind above
 its bound, and a backfill message rolls the kind up before each build, so a vault that stopped
 pushing still drains. A message that spends its budget on its last build has none left to roll up,
 so a kind may list one pack above its bound until the chain's next message or the next tick.
@@ -383,10 +383,25 @@ Two packs can also share a `maxCursor`: a same-second group larger than the byte
 across packs. Any client bookkeeping keyed on `maxCursor` has to treat such a tie group as a unit —
 see the watermark rule below.
 
-### The coverage contract (not built yet)
+### The coverage contract
 
-Chapter 08 §8.10 to §8.14 define the contract steps 04 to 07 of #5221 build. No server sends
-any of it yet.
+Chapter 08 §8.10 to §8.14 define the contract steps 04 to 07 of #5221 build. Since step 07
+(#5230) the listing sends each pack's `coverFrom` and `coverThrough`, and the first page, in both
+`GET /sync/packs` and the `POST /sync/bootstrap` open response, states `record` coverage from the
+record watermark's anchor (`COVERED_KINDS` in `pack-list.ts`). Body kinds state none yet: their
+packs carry no range, and a body reader trusts the body manifest. A record chain built before
+migration 0023 has no anchor; the next record build re-anchors it (`recordChainReanchor`): its
+packs leave the listing, their objects wait out the grace period, and the kind is rebuilt from
+cursor 0 with ranges that tile.
+
+**Bootstrap.** The open response carries the first pack page and its coverage, so a client needs
+no listing request to start. After the response it logs one line per open with each kind's
+coverage, its uncovered row count (counted up to 256) and the reason (`cache_only`,
+`never_packed`, `unanchored`, `tail`), and starts a backfill chain for each kind a build can extend,
+on the backfill queue, so a push nudge or a purge retry never waits behind it. A vault's kind gets
+at most one chain start per 15 minutes, held in `pack_bootstrap_enqueues` (migration 0025), so
+repeated opens start one chain (`pack-coverage.ts`). A client never waits for that work: it takes
+whatever is not covered item by item.
 
 - **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,
   for every kind. The first `GET /sync/packs` page states, per kind, `packedThrough` and
@@ -405,7 +420,7 @@ any of it yet.
   key), pulls every item when the manifest has no cursors, and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
   the pack bytes.
 - **Rollup.** Built: see [Minimum fill, rollup and the pack bound](#minimum-fill-rollup-and-the-pack-bound).
-  Record packs record their coverage range in `pack_index`, which the listing does not send yet.
+  A record rollup's range is the union of its inputs', which the listing sends.
 - **Scoped purge.** Built for body packs: see [Minimum fill, rollup and the pack
   bound](#minimum-fill-rollup-and-the-pack-bound). Rewriting record packs and the
   purged-tombstone marker rule are not built (#5247).

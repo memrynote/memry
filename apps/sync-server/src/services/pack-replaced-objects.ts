@@ -74,6 +74,47 @@ export const packKindReset = (
 }
 
 /**
+ * Statements that re-anchor a `record` chain of cache-only packs (#5230): a
+ * watermark written before migration 0023 carries a NULL `covered_through`, so
+ * every pack built after it is cache-only and the kind never states coverage
+ * (protocol 08 §8.10). While `when` holds, the kind's listed packs leave the
+ * listing, their objects wait out the grace period (a reader may hold a URL),
+ * and the watermark restarts at 0 with a coverage anchor of 0, so the rebuild
+ * tiles from 0. The watermark moves last, so `when` may test it.
+ */
+export const recordChainReanchor = (
+  db: D1Database,
+  scope: VaultScope,
+  when: Guard
+): D1PreparedStatement[] => {
+  const vault = [scope.userId, scope.vaultId]
+  const now = Math.floor(Date.now() / 1000)
+  return [
+    db
+      .prepare(
+        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+         SELECT pack_key, user_id, vault_id, 'reanchor', ? FROM pack_index
+         WHERE user_id = ? AND vault_id = ? AND item_kind = 'record' AND ${when.sql}
+         ON CONFLICT (pack_key) DO NOTHING`
+      )
+      .bind(now, ...vault, ...when.bind),
+    db
+      .prepare(
+        `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = 'record' AND ${when.sql}`
+      )
+      .bind(...vault, ...when.bind),
+    db
+      .prepare(
+        `UPDATE pack_watermarks SET last_sort_value = 0, last_sort_tiebreak = '', covered_through = 0,
+           updated_at = ?
+         WHERE user_id = ? AND vault_id = ? AND item_kind = 'record' AND covered_through IS NULL
+           AND ${when.sql}`
+      )
+      .bind(now, ...vault, ...when.bind)
+  ]
+}
+
+/**
  * Delete replaced pack objects whose grace period has passed (protocol 08
  * §8.12), oldest first. An object some row still lists is never deleted (the
  * one object-delete rule); its stale record is dropped. A failed R2 delete
