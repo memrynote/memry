@@ -265,7 +265,7 @@ key, **a ciphertext from vault A decrypts cleanly under vault B**. A conforming
 client **MUST NOT rely on decryption failure to detect a mis-routed record**.
 Vault association is a routing fact carried outside the ciphertext — the
 `X-Memry-Vault-Id` header and the route parameter
-(`apps/sync-server/src/routes/sync.ts:79`) — and MUST be checked explicitly.
+(`apps/sync-server/src/routes/sync.ts:80`) — and MUST be checked explicitly.
 
 FR-021 therefore holds with no extra key exchange: a client holding the master
 key can open every vault on the account, and choosing one is
@@ -305,7 +305,7 @@ MUST NOT reproduce it.
 | general id (tasks, projects, …) | 21-character nanoid          | `/^[A-Za-z0-9_-]{21}$/` (`:41`)  |
 
 The server is looser: `NoteIdSchema` is `/^[a-zA-Z0-9_-]+$/` capped at 128
-characters (`apps/sync-server/src/routes/sync.ts:571-574`), which both a note id
+characters (`apps/sync-server/src/routes/sync.ts:572-575`), which both a note id
 and a journal id satisfy.
 
 **Journal ids are the only deterministically generated ids in the product**

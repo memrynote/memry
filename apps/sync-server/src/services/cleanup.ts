@@ -1,6 +1,8 @@
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
+import { enqueuePackCompaction, type PackCompactionMessageBody } from './pack-queue'
+import { PACK_PURGE_RETRY_DELAY_SECONDS } from './pack-replaced-objects'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
@@ -294,9 +296,16 @@ export const cleanupExpiredTombstones = async (
   return shed
 }
 
-// Deleted documents purged per tick. Each vault costs one or two db.batch
-// calls and one bulk R2 delete.
+// Deleted documents read per tick, and vaults purged per tick (VERIFY-5267
+// F5). A vault costs one db.batch per 20 documents, one snapshot db.batch, one
+// bulk R2 delete of snapshot objects, the replaced-object pass (a select, a
+// bulk R2 delete, a D1 delete) and one enqueue, retried twice on backpressure:
+// 8 plus its chunks. A tick spends at most 1 select + 5 x 8 + (100 / 20 + 5)
+// chunks = 51 subrequests, inside the ~105 that pack_backfill (~895 at real
+// build cost) leaves the scheduled invocation. Rows are read vault by vault,
+// so the vaults past the cap are the next tick's.
 const DELETED_BODY_LIMIT = 100
+const DELETED_BODY_VAULTS_PER_TICK = 5
 
 /**
  * Purges the server body of deleted notes and journals that still have one
@@ -305,7 +314,8 @@ const DELETED_BODY_LIMIT = 100
  */
 export const cleanupDeletedDocumentBodies = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const rows = await db
     .prepare(
@@ -320,6 +330,7 @@ export const cleanupDeletedDocumentBodies = async (
                 WHERE s.user_id = si.user_id AND s.vault_id = si.vault_id AND s.note_id = si.item_id)
            OR EXISTS (SELECT 1 FROM crdt_updates u
                 WHERE u.user_id = si.user_id AND u.vault_id = si.vault_id AND u.note_id = si.item_id))
+       ORDER BY si.user_id, si.vault_id
        LIMIT ${DELETED_BODY_LIMIT}`
     )
     .all<{ user_id: string; vault_id: string; item_id: string }>()
@@ -329,13 +340,16 @@ export const cleanupDeletedDocumentBodies = async (
     const key = `${row.user_id}\u0000${row.vault_id}`
     const group = byVault.get(key)
     if (group) group.noteIds.push(row.item_id)
-    else byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
+    else if (byVault.size < DELETED_BODY_VAULTS_PER_TICK)
+      byVault.set(key, { userId: row.user_id, vaultId: row.vault_id, noteIds: [row.item_id] })
   }
 
   let purged = 0
   for (const { userId, vaultId, noteIds } of byVault.values()) {
     try {
-      await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)
+      if (await purgeDeletedDocumentBodies(db, storage, userId, vaultId, noteIds)) {
+        await enqueuePackCompaction(queue, { userId, vaultId }, PACK_PURGE_RETRY_DELAY_SECONDS)
+      }
       purged += noteIds.length
     } catch (error) {
       logger.warn('Deleted document body purge failed, retried next tick', {
@@ -474,13 +488,17 @@ export const cleanupOrphanedPackObjects = async (
       .filter((object) => object.uploaded.getTime() <= cutoff)
       .map((object) => object.key)
     if (old.length > 0) {
-      // Rechecked right before the delete: only a key no row lists goes.
+      // Rechecked right before the delete: only a key no row lists goes. A
+      // rollup's replaced object waits out its grace period in
+      // pack_replaced_objects, whose own deletion owns it (pack-rollup.ts).
       const listed = await db
         .prepare(
           `SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ?
-             AND pack_key IN (${old.map(() => '?').join(',')})`
+             AND pack_key IN (SELECT value FROM json_each(?))
+           UNION SELECT pack_key FROM pack_replaced_objects
+             WHERE pack_key IN (SELECT value FROM json_each(?))`
         )
-        .bind(point.user_id, point.vault_id, ...old)
+        .bind(point.user_id, point.vault_id, JSON.stringify(old), JSON.stringify(old))
         .all<{ pack_key: string }>()
       const keep = new Set((listed.results ?? []).map((row) => row.pack_key))
       const orphans = old.filter((key) => !keep.has(key))

@@ -45,7 +45,7 @@ export const recordSelectionQuery = (
 ): { sql: string; bind: unknown[] } => ({
   sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes,
           content_hash, crypto_version, operation, signer_device_id, signature, clock, deleted_at,
-          blob_missing_at
+          blob_missing_at, updated_at AS row_time
         FROM sync_items
         WHERE user_id = ? AND vault_id = ?
           AND (server_cursor > ? OR (server_cursor = ? AND (item_type || ':' || item_id) > ?))
@@ -159,3 +159,23 @@ export const recordRowShedInPlace = async (
     )
   })
 }
+
+/**
+ * The packed record entries that are still their row's current write: the row
+ * sits at the entry's cursor with the entry's blob and is not a marker
+ * (protocol 08 §8.12). A row a later push moved, or the shed emptied, drops.
+ * A `FROM` clause for `allLive` and the rollup.
+ */
+export const recordsLive = (
+  scope: VaultScope,
+  entries: ReadonlyArray<{ sortKey: number; sourceKey: string }>
+): { sql: string; bind: unknown[] } => ({
+  sql: `FROM json_each(?) e JOIN sync_items s
+          ON s.user_id = ? AND s.vault_id = ? AND s.server_cursor = json_extract(e.value, '$[0]')
+            AND s.blob_key = json_extract(e.value, '$[1]') AND s.blob_key <> ''`,
+  bind: [
+    JSON.stringify(entries.map((entry) => [entry.sortKey, entry.sourceKey])),
+    scope.userId,
+    scope.vaultId
+  ]
+})

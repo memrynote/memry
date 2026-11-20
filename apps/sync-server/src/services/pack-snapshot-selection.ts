@@ -1,5 +1,4 @@
 import type { PackEntryMeta } from './pack-format'
-import { BODY_ROW_DEAD } from './pack-update-selection'
 
 /**
  * The `crdt_snapshot` half of pack selection (#1839, protocol 08 §8.4): which
@@ -10,11 +9,9 @@ import { BODY_ROW_DEAD } from './pack-update-selection'
 type VaultScope = { userId: string; vaultId: string }
 
 /**
- * A deleted note keeps its snapshot row, and a packed body lands on a fresh
- * device before the tombstone that deletes it. A note id with any live note or
- * journal row still packs, as does one whose record has not arrived yet. Dead
- * rows stay in the scan so the watermark moves past a tail of them, as it does
- * past oversized rows.
+ * Every snapshot row packs, a deleted document's included, while the row
+ * exists (protocol 08 §8.10): the purge removes the row and drops the packs
+ * that may hold it (protocol 07 §7.15).
  */
 export const snapshotSelectionQuery = (
   scope: VaultScope,
@@ -22,7 +19,7 @@ export const snapshotSelectionQuery = (
   limit: number
 ): { sql: string; bind: unknown[] } => ({
   sql: `SELECT created_at AS sort_key, note_id AS tiebreak, note_id, blob_key, size_bytes,
-          ${BODY_ROW_DEAD} AS dead
+          created_at AS row_time
         FROM crdt_snapshots s
         WHERE user_id = ? AND vault_id = ?
           AND (created_at > ? OR (created_at = ? AND note_id > ?))
@@ -39,23 +36,22 @@ export const snapshotSelectionQuery = (
 })
 
 /**
- * True while every packed entry's snapshot row still exists with the packed
- * blob and its note is not dead. Entries ride as one JSON bind, clear of D1's
- * 100-bind limit.
+ * The packed entries whose snapshot row still exists with the packed blob: a
+ * `FROM` clause for `allLive` and the rollup. A deleted document's row counts
+ * while it exists (protocol 08 §8.12).
+ * Entries ride as one JSON bind, clear of D1's 100-bind limit.
  */
-export const snapshotsCurrent = (
+export const snapshotsLive = (
   scope: VaultScope,
   entries: ReadonlyArray<{ id: string; sourceKey: string }>
 ): { sql: string; bind: unknown[] } => ({
-  sql: `(SELECT COUNT(*) FROM json_each(?) e JOIN crdt_snapshots s
+  sql: `FROM json_each(?) e JOIN crdt_snapshots s
           ON s.user_id = ? AND s.vault_id = ?
-            AND s.note_id = json_extract(e.value, '$[0]') AND s.blob_key = json_extract(e.value, '$[1]')
-          WHERE NOT ${BODY_ROW_DEAD}) = ?`,
+            AND s.note_id = json_extract(e.value, '$[0]') AND s.blob_key = json_extract(e.value, '$[1]')`,
   bind: [
     JSON.stringify(entries.map((entry) => [entry.id, entry.sourceKey])),
     scope.userId,
-    scope.vaultId,
-    entries.length
+    scope.vaultId
   ]
 })
 

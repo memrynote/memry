@@ -78,13 +78,13 @@ alone:
   `POST /sync/pull` and `POST /sync/records/pull` MAY stamp
   `sync_items.blob_missing_at` on a live row whose blob is lost; the server sets
   it, and a repeat pull keeps the first stamp
-  (`apps/sync-server/src/services/sync.ts:1571`, called at `:1646`; #2302):
+  (`apps/sync-server/src/services/sync.ts:1589`, called at `:1646`; #2302):
 
 | Route                                  | Registered at                                                                             |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `POST /sync/pull`                      | `apps/sync-server/src/routes/sync.ts:724`                                                 |
-| `POST /sync/records/pull`              | `apps/sync-server/src/routes/sync.ts:714`, mounted at `:718`                              |
-| `POST /sync/crdt/updates/batch`        | `apps/sync-server/src/routes/sync.ts:1384`, mounted at `:1389`                            |
+| `POST /sync/pull`                      | `apps/sync-server/src/routes/sync.ts:734`                                                 |
+| `POST /sync/records/pull`              | `apps/sync-server/src/routes/sync.ts:724`, mounted at `:718`                              |
+| `POST /sync/crdt/updates/batch`        | `apps/sync-server/src/routes/sync.ts:1394`, mounted at `:1389`                            |
 | `POST /sync/attachments/presign-batch` | `apps/sync-server/src/routes/blob.ts:767`, mounted at `apps/sync-server/src/index.ts:238` |
 
 Every other `POST`, and every `PUT`, `PATCH` and `DELETE`, is a write
@@ -211,7 +211,7 @@ A pull-only client learns about a flipped switch this way
 300 s is chosen to match `CLOCK_SKEW_THRESHOLD_SECONDS` (chapter 05 §5.16), so a
 client that already polls status for skew gets policy for free, and it sits far
 inside the `sync_status` budget of 60 requests per 60 s
-(`apps/sync-server/src/routes/sync.ts:246-247`).
+(`apps/sync-server/src/routes/sync.ts:247-248`).
 
 **There is no push channel for a flipped switch.** The WebSocket's `error` frame
 carries only `WS_RATE_LIMITED` and `WS_TOKEN_EXPIRED` (chapter 09 §9.5), and no
