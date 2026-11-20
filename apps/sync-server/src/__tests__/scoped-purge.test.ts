@@ -9,11 +9,15 @@ import { storeUpdatesWithCursor } from '../services/crdt'
 import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
-import { PACK_PURGE_RETRY_DELAY_SECONDS } from '../services/pack-replaced-objects'
+import {
+  PACK_PURGE_RETRY_DELAY_SECONDS,
+  deleteReplacedPackObjects
+} from '../services/pack-replaced-objects'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
 import {
   PACK_PURGE_DEADLINE_SECONDS,
+  PACK_REPLACED_GRACE_SECONDS,
   type PackListResponse,
   type RecordSyncItemType
 } from '@memry/contracts/sync-api'
@@ -416,6 +420,32 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
     await compactVault(harness.db, storage, SCOPE)
     expect(await objectsHolding(DAY_UPDATE)).toEqual([])
     expect(bodyPacks()).toHaveLength(5)
+  })
+
+  it('a deletion pass that reaches a rewrite still pending resets its kind instead of leaving a gap', async () => {
+    const app = buildApp()
+    await createDoc(app, DAY)
+    for (let round = 0; round < 5; round++) {
+      await writeBody(DAY, [...DAY_UPDATE, round])
+      await writeBody(`note-${round}`, [0x30 + round])
+      await compactAll()
+    }
+    await push(app, deleteSpec(DAY))
+    expect(await objectsHolding(DAY_UPDATE)).toHaveLength(1)
+
+    // The delayed message never ran; the cron's vault-wide pass finds the
+    // pending object past its grace.
+    vi.setSystemTime(Date.now() + (PACK_REPLACED_GRACE_SECONDS + 1) * 1000)
+    await deleteReplacedPackObjects(harness.db, storage)
+    await deleteReplacedPackObjects(harness.db, storage)
+
+    expect(await objectsHolding(DAY_UPDATE)).toEqual([])
+    await compactAll()
+    const updates = (await download(await listing(app)))
+      .flatMap((pack) => pack.entries)
+      .filter((entry) => entry.kind === 'crdt_update')
+      .map((entry) => entry.id)
+    expect(updates.toSorted()).toEqual(['note-0', 'note-1', 'note-2', 'note-3', 'note-4'])
   })
 
   it('a pack that cannot be rewritten resets its kind, and the rebuild leaves the document out', async () => {

@@ -10,7 +10,13 @@ import {
   type VaultScope
 } from './pack-index-write'
 import { roomGuard } from './pack-list'
-import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import {
+  REWRITE_PENDING,
+  deleteUnlisted,
+  listingBatch,
+  packKindReset,
+  recordUnlisted
+} from './pack-replaced-objects'
 import { liveIndexes, planOf, readPackObject } from './pack-repack'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
@@ -25,14 +31,12 @@ const logger = createLogger('PackPurgeRewrite')
  * as a rollup of one pack: the same kind and range under a new key, without
  * the entries whose row is gone (the purged document's, and any other dead
  * ones). The commit makes the old object due at once, so the deletion pass
- * removes it; it never goes before its rewrite committed, because the rewrite
- * reads it. A rewrite that cannot commit resets the kind instead
+ * removes it. A deletion pass that reaches the object first, past its grace,
+ * resets the kind (pack-replaced-objects.ts). A rewrite that cannot commit
+ * resets the kind too
  * (packKindReset): the vault's packs of that kind are dropped and rebuilt from
  * source rows, so no range stays a gap.
  */
-
-/** Marker of a recorded object still waiting for its rewrite. */
-export const REWRITE_PENDING = 'rewrite'
 
 // Rewrites per pass, one at a time: each holds the old pack and the new buffer
 // (up to twice PACK_TARGET_BYTES) and costs one R2 GET, one PUT and two D1
@@ -44,57 +48,11 @@ export const PURGE_REWRITES_PER_PASS = 4
 // its read and its commit; a second loss resets the kind.
 const REWRITE_ATTEMPTS = 2
 
-const kindPath = (kind: PackKindName): string => `/packs/${kind}/`
-
 type BodyKind = Exclude<PackKindName, 'record'>
 
 /** The live join of a body kind (pack-rollup.ts liveJoin, without `record`). */
 const bodyLive = (kind: BodyKind, scope: VaultScope, entries: readonly PackedEntry[]): Guard =>
   kind === 'crdt_snapshot' ? snapshotsLive(scope, entries) : updatesLive(scope, entries)
-
-/**
- * Statements that drop every listed `kind` pack of the vault while `when`
- * holds, reset the kind's watermark so compaction rebuilds it from source
- * rows, and make every recorded object of the kind due at once, a pending
- * rewrite's included (the rebuild replaces it). `when` is read before the
- * `pack_index` delete, so it may test the rows that delete removes.
- */
-export const packKindReset = (
-  db: D1Database,
-  scope: VaultScope,
-  kind: PackKindName,
-  when: Guard
-): D1PreparedStatement[] => {
-  const vault = [scope.userId, scope.vaultId]
-  return [
-    db
-      .prepare(
-        `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
-         SELECT pack_key, user_id, vault_id, 'purge', 0 FROM pack_index
-         WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}
-         ON CONFLICT (pack_key) DO UPDATE SET replaced_by = 'purge', removed_at = 0`
-      )
-      .bind(...vault, kind, ...when.bind),
-    db
-      .prepare(
-        `UPDATE pack_replaced_objects SET removed_at = 0,
-           replaced_by = CASE WHEN replaced_by = '${REWRITE_PENDING}' THEN 'purge' ELSE replaced_by END
-         WHERE user_id = ? AND vault_id = ? AND instr(pack_key, ?) > 0 AND ${when.sql}
-         RETURNING pack_key AS replaced_key`
-      )
-      .bind(...vault, kindPath(kind), ...when.bind),
-    db
-      .prepare(
-        `DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}`
-      )
-      .bind(...vault, kind, ...when.bind),
-    db
-      .prepare(
-        `DELETE FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND ${when.sql}`
-      )
-      .bind(...vault, kind, ...when.bind)
-  ]
-}
 
 const resetKind = async (
   db: D1Database,

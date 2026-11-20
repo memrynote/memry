@@ -495,8 +495,8 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // A purge's pending rewrites run first: the deletion pass removes an object
-  // whose rewrite is still pending once its grace period passed (protocol 08
+  // A purge's pending rewrites run first: a deletion pass that meets an object
+  // whose rewrite is still pending past its grace resets the kind (protocol 08
   // §8.13). The deletion runs next and again after the builds, so a build that
   // throws cannot keep a purged body past its deadline: this message may be
   // the purge's delayed retry.

@@ -1,8 +1,8 @@
 import { deleteBlobs } from './blob'
 import { createLogger } from '../lib/logger'
 import type { Guard } from './pack-index-write'
-import { REWRITE_PENDING, packKindReset, rewritePurgedPacks } from './pack-purge-rewrite'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { rewritePurgedPacks } from './pack-purge-rewrite'
+import { REWRITE_PENDING, deleteReplacedPackObjects, packKindReset } from './pack-replaced-objects'
 
 const logger = createLogger('DocumentBodyPurge')
 
