@@ -519,6 +519,47 @@ describe('the purge and replaced objects (#5229, protocol 08 §8.13)', () => {
     expect(listed('record')).toHaveLength(1)
   })
 
+  // VERIFY-5267 r3 F4: the still-due throw replaced a build error and nothing logged it.
+  it('a build error in a message that leaves objects due is logged and kept as the cause', async () => {
+    await buildSmallPacks('crdt_snapshot', 8)
+    const old = listed('crdt_snapshot').map((row) => row.pack_key)
+    deleteNoteRecord('note-4', 50)
+    failDeletesOf(old)
+    await purgeDeletedDocumentBodies(harness.db, storage, USER, VAULT, ['note-4'])
+    advance(PACK_PURGE_RETRY_DELAY_SECONDS)
+    await writeRecord(1, 'task-1', settled())
+    await storage.put('tomb', new Uint8Array([1]))
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/record/')) throw new Error('r2 put 500 BUILD')
+      return put(key, value, options)
+    })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const thrown = await compactVault(harness.db, storage, SCOPE).then(
+      () => null,
+      (error: unknown) => error
+    )
+
+    expect(thrown).toBeInstanceOf(Error)
+    expect((thrown as Error).message).toBe('replaced pack objects still due')
+    expect(((thrown as Error).cause as Error).message).toBe('r2 put 500 BUILD')
+    const logged = errors.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as { message: string; buildError?: string })
+      .find((entry) => entry.message.startsWith('replaced pack objects still due'))
+    expect(logged?.buildError).toBe('r2 put 500 BUILD')
+  })
+
+  it('a build error in a message with nothing due is rethrown unchanged', async () => {
+    await writeRecord(1, 'task-1', settled())
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation(async (key, value, options) => {
+      if (key.includes('/packs/record/')) throw new Error('r2 put 500 BUILD')
+      return put(key, value, options)
+    })
+    await expect(compactVault(harness.db, storage, SCOPE)).rejects.toThrow('r2 put 500 BUILD')
+  })
+
   // VERIFY-5267 F5: every delete enqueued a delayed message, and one tick
   // purged up to 100 vaults, about 700 subrequests.
   it('the cleanup sweep purges at most five vaults per tick and asks no retry when none is due', async () => {

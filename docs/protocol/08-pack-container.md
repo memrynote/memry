@@ -828,7 +828,7 @@ coverage ranges chain, and writes one pack that replaces them:
   (`PACK_PURGE_RETRY_DELAY_SECONDS`,
   `apps/sync-server/src/services/pack-replaced-objects.ts`), whose deletion
   pass runs before its builds and again after them, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:676,697`).
+  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:676,700`).
   A message whose last pass leaves objects due fails, so the queue redelivers
   it inside the deadline; builds it committed stay committed.
 - **A 404 between listing and download.** A reader treats a pack that answers
@@ -951,7 +951,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:690`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:691`).
 A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
 

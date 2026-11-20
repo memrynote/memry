@@ -670,10 +670,11 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // The replaced-object deletion runs first and again in `finally`, so a build
+  // The replaced-object deletion runs first and again after the builds, so a build
   // that throws cannot keep a purged body past its deadline (protocol 08
   // §8.13): this message may be the purge's delayed retry.
   await deleteReplacedPackObjects(db, storage, scope)
+  let failure: { error: unknown } | null = null
   try {
     // Rollup first: at the listing cap it is what makes room for the build
     // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
@@ -689,20 +690,27 @@ export const compactVault = async (
       results.push(result)
       if (result.built) await rollupLogged(db, storage, scope, kind)
     }
-  } finally {
-    // Objects still due fail the message, so Queues redelivers it (max_retries
-    // 3, no retry delay) inside the purge deadline instead of acking it. Builds
-    // this message committed stay committed: a redelivery finds their
-    // watermarks moved and lists nothing twice.
-    if ((await deleteReplacedPackObjects(db, storage, scope)).pending) {
-      logger.error('replaced pack objects still due after the compaction message; redelivered', {
-        userId: scope.userId,
-        vaultId: scope.vaultId
-      })
-      // oxlint-disable-next-line no-unsafe-finally -- the throw is the redelivery signal
-      throw new Error('replaced pack objects still due')
-    }
+  } catch (error) {
+    failure = { error }
   }
+  // Objects still due fail the message, so Queues redelivers it (max_retries 3,
+  // no retry delay) inside the purge deadline instead of acking it. Builds this
+  // message committed stay committed: a redelivery finds their watermarks moved
+  // and lists nothing twice. A build error is logged and kept as the cause.
+  if ((await deleteReplacedPackObjects(db, storage, scope)).pending) {
+    logger.error('replaced pack objects still due after the compaction message; redelivered', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      ...(failure
+        ? {
+            buildError:
+              failure.error instanceof Error ? failure.error.message : String(failure.error)
+          }
+        : {})
+    })
+    throw new Error('replaced pack objects still due', failure ? { cause: failure.error } : {})
+  }
+  if (failure) throw failure.error
   return results
 }
 

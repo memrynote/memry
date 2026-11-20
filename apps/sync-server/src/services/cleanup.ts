@@ -302,8 +302,8 @@ export const cleanupExpiredTombstones = async (
 // bulk R2 delete, a D1 delete) and one enqueue, retried twice on backpressure:
 // 8 plus its chunks. A tick spends at most 1 select + 5 x 8 + (100 / 20 + 5)
 // chunks = 51 subrequests, inside the ~105 that pack_backfill (~895 at real
-// build cost) leaves the scheduled invocation. Rows are read vault by vault, so the vaults past the cap are the
-// next tick's.
+// build cost) leaves the scheduled invocation. Rows are read vault by vault,
+// so the vaults past the cap are the next tick's.
 const DELETED_BODY_LIMIT = 100
 const DELETED_BODY_VAULTS_PER_TICK = 5
 
