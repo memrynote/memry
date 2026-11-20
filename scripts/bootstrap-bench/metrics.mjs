@@ -152,6 +152,12 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
       ])
   )
 
+  const refusedByEndpoint = {}
+  for (const request of inWindow.filter((r) => r.refused)) {
+    const key = endpointOf(request)
+    refusedByEndpoint[key] = (refusedByEndpoint[key] ?? 0) + 1
+  }
+
   const totalBytes = Object.values(bytes).reduce((a, b) => a + b, 0)
   const busy = busyMs(counted)
   const zeroReads = counted.filter(readsFromZero).length
@@ -164,6 +170,9 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
       r2: counted.filter((r) => r.host === 'r2').length,
       maxInFlight: maxInFlight(counted),
       writesRefused: inWindow.filter((r) => r.refused).length,
+      writesRefusedByEndpoint: Object.fromEntries(
+        Object.entries(refusedByEndpoint).toSorted((a, b) => b[1] - a[1])
+      ),
       byEndpoint
     },
     lineMbps,
@@ -188,6 +197,11 @@ export function summarize({ requests, marks, sleeps = null, staleLockReleases = 
 const seconds = (ms) => (ms === null ? 'not reached' : `${(ms / 1000).toFixed(1)} s`)
 const megabytes = (n) => `${(n / 1e6).toFixed(2)} MB`
 
+const refusedRoutes = (byEndpoint) => {
+  const routes = Object.entries(byEndpoint).map(([endpoint, n]) => `\`${endpoint}\` ${n}`)
+  return routes.length === 0 ? '' : ` (${routes.join(', ')})`
+}
+
 export function formatReport(label, metrics) {
   const lines = [
     `### ${label}`,
@@ -197,7 +211,7 @@ export function formatReport(label, metrics) {
     `| t_records | ${seconds(metrics.tRecordsMs)} |`,
     `| t_bodies | ${seconds(metrics.tBodiesMs)} |`,
     `| Requests | ${metrics.requests.total} (Worker ${metrics.requests.worker}, R2 ${metrics.requests.r2}), at most ${metrics.requests.maxInFlight} in flight |`,
-    `| Writes refused | ${metrics.requests.writesRefused} |`,
+    `| Writes refused | ${metrics.requests.writesRefused}${refusedRoutes(metrics.requests.writesRefusedByEndpoint)} |`,
     `| Bytes | records ${megabytes(metrics.bytes.records)}, packs ${megabytes(metrics.bytes.packs)}, snapshots ${megabytes(metrics.bytes.snapshots)}, updates ${megabytes(metrics.bytes.updates)}, other ${megabytes(metrics.bytes.other)} |`,
     `| Attachments | ${
       metrics.bytes.attachments === 0
