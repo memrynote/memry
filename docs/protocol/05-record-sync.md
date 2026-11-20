@@ -1081,6 +1081,19 @@ its copy locally, and the marker stops a push of it from reaching the server.
 The Rust core produces attestations on every attestable delete it pushes
 (`crates/memry-core/src/protocol/delete_attestation.rs`).
 
+The Rust core does not yet meet the re-upload rule above for `note`, `journal`
+and `bookmark`: its manifest check never queues one of them as `create`
+(`REUPLOADED`, `crates/memry-core/src/sync/hardening/manifest.rs:57`, §5.15),
+so a create of these types that the server lost is not repaired from a Tauri
+device. The reason is resurrection: a run from cursor 0 is never served the
+markers below its cursor, and a marker the pull skipped or refused leaves no
+trace, so a note another device deleted looks like a lost create, and the
+server would accept its `create` over the marker on every device
+(`crates/memry-core/tests/sync_hardening_purged.rs:562`,
+`a_note_whose_marker_a_run_from_zero_skipped_is_not_reuploaded`). The three
+types stay out until the core asks the server by id before it re-uploads, and
+skips the re-upload when the answer is a marker or a tombstone (#4278).
+
 The Rust core pushes `create` only for a `property_definition` the user creates
 (`crates/memry-core/src/domain/property_admin/records.rs:117`), so the server
 re-creates it over a marker. Its other writes go as `update`, a learned
