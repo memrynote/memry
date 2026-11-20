@@ -1,0 +1,39 @@
+{
+  "name": "no-registry",
+  "registry": null,
+  "steps": [
+    {
+      "argv": ["vault", "list"]
+    },
+    {
+      "argv": ["--json", "vault", "list"]
+    },
+    {
+      "argv": ["vault", "current"]
+    },
+    {
+      "argv": ["vault", "use", "a"]
+    },
+    {
+      "argv": ["vault", "remove", "a", "--yes"]
+    },
+    {
+      "argv": ["--vault", "{vault}", "--json", "vault", "current"]
+    },
+    {
+      "argv": ["locale", "list"]
+    },
+    {
+      "argv": ["notes", "list"]
+    },
+    {
+      "argv": []
+    },
+    {
+      "argv": ["--vault", "{vault}"]
+    },
+    {
+      "argv": ["--vault", "{vault}", "bogus", "list"]
+    }
+  ]
+}

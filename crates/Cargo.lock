@@ -4150,6 +4150,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "comrak",
+ "dirs 7.0.0",
  "flate2",
  "futures-util",
  "gethostname",
@@ -4300,6 +4301,7 @@ dependencies = [
  "memry-core",
  "memry-desktop",
  "memry-ml",
+ "memrynote-cli",
  "minidumper",
  "objc2",
  "objc2-app-kit",
@@ -4354,6 +4356,17 @@ dependencies = [
  "proptest",
  "serde_json",
  "yrs",
+]
+
+[[package]]
+name = "memrynote-cli"
+version = "0.0.0"
+dependencies = [
+ "memry-desktop",
+ "regex",
+ "serde_json",
+ "tempfile",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -8,6 +8,7 @@ members = [
     "memry-ml",
     "memry-ml-worker",
     "memry-test-kit",
+    "memrynote-cli",
     "uniffi-bindgen-swift",
     "xtask",
     "../apps/desktop-tauri/src-tauri",
