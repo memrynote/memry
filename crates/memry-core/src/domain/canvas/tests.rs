@@ -6,7 +6,9 @@
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
-use super::{EMPTY_SCENE, ITEM_TYPE, NewCanvas, canonical_scene, create, get, set_scene};
+use super::{
+    CanvasEdit, EMPTY_SCENE, ITEM_TYPE, NewCanvas, Updated, canonical_scene, create, get, update,
+};
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::{Db, open_data, test_support::temp_dir};
 use crate::sync::apply::{Pending, apply_inbound, apply_inbound_on, apply_page};
@@ -440,12 +442,13 @@ fn a_local_create_writes_desktops_push_shape_and_queues_it() {
                 title: Some("MB live board"),
                 owner_note_id: Some("note-1"),
                 scene: None,
+                ..NewCanvas::default()
             },
             VAULT_ID,
             LOCAL_DEVICE,
             NOW,
         )?
-        .acknowledge();
+        .canvas;
         let raw = sync_items::push_payload(conn, ITEM_TYPE, &canvas.id)?.expect("a payload");
         assert_eq!(
             raw,
@@ -469,7 +472,14 @@ fn a_scene_edit_is_canonicalized_and_ticks_the_clock() {
     db.call_blocking(|conn| {
         seed(conn, "c1", &scene_with("note-1"), json!({ "B": 3 }), json!({}));
         let pretty = "{\n  \"elements\": [],\n  \"type\": \"excalidraw\",\n  \"memry\": {\"id\": \"c1\"}\n}";
-        let canvas = set_scene(conn, "c1", pretty, LOCAL_DEVICE, NOW)?.acknowledge();
+        let edit = CanvasEdit {
+            scene: Some(pretty),
+            ..CanvasEdit::default()
+        };
+        let Updated::Saved(saved) = update(conn, "c1", &edit, LOCAL_DEVICE, NOW)? else {
+            panic!("no conflict was asked for");
+        };
+        let canvas = saved.canvas;
         assert_eq!(
             canvas.scene,
             r#"{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}"#

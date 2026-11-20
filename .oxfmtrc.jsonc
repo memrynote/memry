@@ -62,6 +62,10 @@
     "packages/contracts/test-vectors/markdown-convert/*.json",
     "packages/contracts/test-vectors/article-extract/",
     "packages/contracts/test-vectors/readwise/",
+    // Written by crates/memrynote-cli/tests/golden/generate.mjs, which `--check`s them byte for byte.
+    "crates/memrynote-cli/tests/golden/expected/",
+    "crates/memrynote-cli/tests/golden/manifest.json",
+    "crates/memrynote-cli/tests/golden/normalize-cases.json",
     // Importer vectors (Step 32): inputs byte for byte (BOM, CRLF), JSON the generator writes.
     "packages/contracts/test-vectors/importers/",
     // Sandbox template and rebase vectors (Step 32): written by apps/cli/src/sandbox/export-template.ts, replayed byte for byte.
