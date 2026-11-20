@@ -51,6 +51,26 @@ pub(crate) fn map_error(error: SettingsError) -> CommandError {
     }
 }
 
+/// The part of [`announce`] every runtime has: one `setting_changed` per field, then
+/// `settings-changed` to every window.
+pub(crate) fn notify<R: Runtime>(app: &AppHandle<R>, key: &str, fields: Vec<String>) {
+    if let Some(service) = telemetry(app) {
+        if fields.is_empty() {
+            setting_changed(&service, key);
+        }
+        for field in &fields {
+            setting_changed(&service, &format!("{key}.{field}"));
+        }
+    }
+    broadcast(
+        app,
+        SettingsChangedEvent {
+            key: key.to_owned(),
+            fields,
+        },
+    );
+}
+
 fn patch_of(value: Value) -> Result<Map<String, Value>, CommandError> {
     match value {
         Value::Object(map) => Ok(map),
@@ -70,14 +90,6 @@ pub(crate) fn announce(
     fields: Vec<String>,
 ) -> Result<(), CommandError> {
     let mut login_item = Ok(());
-    if let Some(service) = telemetry(app) {
-        if fields.is_empty() {
-            setting_changed(&service, key);
-        }
-        for field in &fields {
-            setting_changed(&service, &format!("{key}.{field}"));
-        }
-    }
     if key == "general" {
         login_item = crate::autostart::on_general_written(app, &fields);
         // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
@@ -85,13 +97,7 @@ pub(crate) fn announce(
             tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
         }
     }
-    broadcast(
-        app,
-        SettingsChangedEvent {
-            key: key.to_owned(),
-            fields,
-        },
-    );
+    notify(app, key, fields);
     if key == "keyboard" {
         crate::menu::apply(app, false);
         crate::shortcuts::apply_from_settings(app);

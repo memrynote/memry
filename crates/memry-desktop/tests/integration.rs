@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod capture_support;
 mod device_key;
 mod electron_profile;
 mod embedding_lane;
@@ -110,6 +111,12 @@ mod block_refs;
 mod byte_preservation;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "capture_pairing.rs"]
+mod capture_pairing;
+#[path = "capture_requests.rs"]
+mod capture_requests;
+#[path = "capture_server.rs"]
+mod capture_server;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
