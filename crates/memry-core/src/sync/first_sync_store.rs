@@ -11,6 +11,7 @@ use std::collections::HashSet;
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::body_debt;
 
@@ -87,10 +88,13 @@ pub(super) fn owe_out_of_window(conn: &Connection, pulled: &[String]) -> Result<
         .collect::<Result<Vec<String>, _>>()
         .map_err(sqlite_failed)?;
     let pulled: HashSet<&str> = pulled.iter().map(String::as_str).collect();
+    // One transaction for the whole sweep (#5231): about 9,500 rows on a
+    // large vault, and a failure part way owes none of them rather than some.
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     for id in live.iter().filter(|id| !pulled.contains(id.as_str())) {
-        body_debt::owe(conn, id)?;
+        body_debt::owe(&txn, id)?;
     }
-    Ok(())
+    txn.commit().map_err(sqlite_failed)
 }
 
 pub fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
@@ -116,5 +120,55 @@ pub(super) fn write_meta(conn: &Connection, key: &str, value: &str) -> Result<()
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::open_data;
+
+    fn notes(conn: &Connection, count: usize) {
+        for index in 0..count {
+            conn.execute(
+                "INSERT INTO notes (id, title) VALUES (?1, 't')",
+                params![format!("n{index:04}")],
+            )
+            .expect("a note");
+        }
+    }
+
+    fn owed(conn: &Connection) -> i64 {
+        conn.query_row(
+            "SELECT COUNT(*) FROM meta WHERE key LIKE '%n0%'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("count")
+    }
+
+    /// #5231: the sweep's debts land in one transaction, so a failure part way
+    /// leaves none rather than some, and the next pass owes them all again.
+    #[test]
+    fn the_out_of_window_debts_land_all_or_none() {
+        let dir = std::env::temp_dir().join(format!("memry-owe-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("scratch");
+        let db = open_data(&dir.join("data.db")).expect("open");
+        db.call_blocking(|conn| {
+            notes(conn, 100);
+            conn.execute_batch(
+                "CREATE TEMP TRIGGER refuse BEFORE INSERT ON meta WHEN NEW.key LIKE '%n0050'
+                 BEGIN SELECT RAISE(ABORT, 'refused'); END",
+            )
+            .expect("trigger");
+            assert!(owe_out_of_window(conn, &["n0001".to_owned()]).is_err());
+            assert_eq!(owed(conn), 0, "a failed sweep owes nothing");
+            conn.execute_batch("DROP TRIGGER refuse").expect("drop");
+            owe_out_of_window(conn, &["n0001".to_owned()])?;
+            assert_eq!(owed(conn), 99, "every note outside the window is owed once");
+            Ok(())
+        })
+        .expect("the sweep");
     }
 }

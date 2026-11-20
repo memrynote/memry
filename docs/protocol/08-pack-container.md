@@ -679,7 +679,7 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 | Reader                    | Server lists a `record` or `crdt_update` pack                                                                                                                                                                                                                                                    | A `record` pack without meta                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
 | desktop `v2026-11-19`     | `PackListResponseSchema` accepts all three kinds (`packages/contracts/src/sync-api.ts:726` at the tag); the pack is dropped before download (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:189` at the tag), and a non-snapshot entry in any pack it opens is counted skipped (`:347-350`) | never downloaded                                              |
-| Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:334-337`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
+| Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:322-325`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
 | a reader built to §8.4.2+ | reads it                                                                                                                                                                                                                                                                                         | each entry unusable, item stays on `POST /sync/pull` (§8.4.2) |
 
 - **New reader, old server.** A server whose `PACKED_KINDS`
@@ -695,12 +695,12 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
   so a shipped reader meets them only on the last pages, after every snapshot
   pack. Both shipped readers stop after 20 pages
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:54` at the tag,
-  `crates/memry-core/src/sync/pack_bootstrap.rs:52`) of 50 packs
-  (`PACK_LIST_PAGE_LIMIT`, `:51` at the tag, `:49`). When the extra packs push a
+  `crates/memry-core/src/sync/pack_bootstrap.rs:51`) of 50 packs
+  (`PACK_LIST_PAGE_LIMIT`, `:51` at the tag, `:48`). When the extra packs push a
   listing past 1,000 packs, the walk ends `truncated`: the snapshot packs it saw
   still apply, and the applied-through watermark is not recorded
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:310-314` at the tag,
-  `crates/memry-core/src/sync/pack_bootstrap.rs:184-188`), so the next run lists
+  `crates/memry-core/src/sync/pack_bootstrap.rs:183-187`), so the next run lists
   again. That costs requests and loses nothing.
 - **Listing size.** Every run that ends `truncated` repeats the 20-page walk,
   so a vault whose listing passed 1,000 packs would cost a released reader 20
@@ -710,12 +710,12 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
   optional. Desktop `v2026-11-19` parses the listing with zod objects that
   strip unknown keys (`packages/contracts/src/sync-api.ts:747`, `:766` at the
   tag), and the Rust core reads only the keys it names
-  (`crates/memry-core/src/sync/pack_bootstrap.rs:338-342`), so both ignore
+  (`crates/memry-core/src/sync/pack_bootstrap.rs:326-330`), so both ignore
   them.
 - **Replaced and purged packs.** A released reader whose download fails, on a
   404 or any other error, logs it and leaves those items to the item routes
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:449-454` at the tag,
-  `crates/memry-core/src/sync/pack_bootstrap.rs:178-180`). Desktop re-lists
+  `crates/memry-core/src/sync/pack_bootstrap.rs:177-179`). Desktop re-lists
   for an expired URL and finds no pack under a replaced id
   (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:420-433` at the tag).
   So §8.12 and §8.13 cost a released reader requests, never data.
