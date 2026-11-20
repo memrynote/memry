@@ -13,6 +13,8 @@ mod placement;
 mod runners;
 pub mod vault_files;
 
+pub(crate) use placement::place_linked_downloads;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
