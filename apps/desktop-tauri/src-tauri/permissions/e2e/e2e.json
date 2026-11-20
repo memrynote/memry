@@ -43,6 +43,7 @@
           "e2e_quit_on_page_start",
           "e2e_request_flush",
           "e2e_request_quit",
+          "e2e_restart_sync_runtime",
           "e2e_revealed_paths",
           "e2e_save_held_edit",
           "e2e_send_session_end",
