@@ -13,7 +13,7 @@
 //!    deleted on the server. It is pulled by id, so a tombstone the server
 //!    still holds arrives with its clock; one the server answers nothing for
 //!    (a shed tombstone, §5.12.3) is deleted locally. A row the device
-//!    changed locally is kept.
+//!    changed locally is kept, rechecked in the transaction that deletes.
 //! 3. Packed tombstones already applied as pulled ones would.
 //!
 //! The unpaged manifest is one request and one consistent read. The pulls are
@@ -73,9 +73,9 @@ impl FirstSync {
 
         let total = (plan.pull.len() + plan.stale.len()) as u64;
         let mut done = 0u64;
-        let pull_ids = plan.pull.clone();
+        let forget = plan.forget;
         self.db
-            .call(move |conn| forget_cursors(conn, &pull_ids))
+            .call(move |conn| forget_cursors(conn, &forget))
             .await?;
         for chunk in plan.pull.chunks(MAX_PULL_IDS) {
             let page = self.pull.fetch_ids(chunk).await?;
@@ -119,9 +119,11 @@ impl FirstSync {
         let removed = self
             .db
             .call(move |conn| {
-                let still: HashSet<(String, String, Option<i64>)> = held_rows(conn)?
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                // An edit made while the pull was in flight keeps its row.
+                let still: HashSet<(String, String, Option<i64>)> = held_rows(&txn)?
                     .into_iter()
-                    .filter(|row| row.held)
+                    .filter(|row| row.held && !row.local_change)
                     .map(|row| (row.item_type, row.item_id, row.server_cursor))
                     .collect();
                 let gone: Vec<Pending> = stale
@@ -143,7 +145,6 @@ impl FirstSync {
                     })
                     .collect();
                 let count = gone.len();
-                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 apply::apply_page(&txn, gone, Vec::new(), now, None)?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok(count)
@@ -157,6 +158,8 @@ impl FirstSync {
 struct Plan {
     /// Ids to pull, newest first.
     pull: Vec<String>,
+    /// The listed `(type, id)` items behind `pull`.
+    forget: Vec<(String, String)>,
     /// Pack-held live rows the manifest does not list.
     stale: Vec<HeldRow>,
 }
@@ -178,10 +181,14 @@ fn plan(listed: &[Listed], held: &[HeldRow], pull: &PullLoop) -> Plan {
         })
         .collect();
     wanted.sort_by_key(|item| std::cmp::Reverse(item.modified_at));
+    let forget = wanted
+        .iter()
+        .map(|item| (item.item_type.clone(), item.item_id.clone()))
+        .collect();
     let mut seen = HashSet::new();
     let pull_ids: Vec<String> = wanted
         .into_iter()
-        .filter(|item| seen.insert(item.item_id.clone()))
+        .filter(|item| seen.insert(item.item_id.as_str()))
         .map(|item| item.item_id.clone())
         .collect();
 
@@ -189,6 +196,8 @@ fn plan(listed: &[Listed], held: &[HeldRow], pull: &PullLoop) -> Plan {
         .iter()
         .map(|item| (item.item_type.as_str(), item.item_id.as_str()))
         .collect();
+    // Keyed on (type, id): a listed item of another type that shares the id
+    // does not stand for this row.
     let stale = held
         .iter()
         .filter(|row| {
@@ -197,12 +206,12 @@ fn plan(listed: &[Listed], held: &[HeldRow], pull: &PullLoop) -> Plan {
                 && !row.local_change
                 && pull.declares(&row.item_type)
                 && !listed_keys.contains(&(row.item_type.as_str(), row.item_id.as_str()))
-                && !seen.contains(&row.item_id)
         })
         .cloned()
         .collect();
     Plan {
         pull: pull_ids,
+        forget,
         stale,
     }
 }

@@ -81,11 +81,17 @@ fn tombstone_meta() -> Json {
            "clock": {"device-a": 2}})
 }
 
-/// The `POST /sync/pull` item for `id`.
-fn pull_item(id: &str) -> Json {
+/// `type:id` names its type; a bare id is a note.
+fn typed(key: &str) -> (&str, &str) {
+    key.split_once(':').unwrap_or(("note", key))
+}
+
+/// The `POST /sync/pull` item for `key`.
+fn pull_item(key: &str) -> Json {
+    let (item_type, id) = typed(key);
     let mut item = live_meta();
     item["id"] = json!(id);
-    item["type"] = json!("note");
+    item["type"] = json!(item_type);
     item["blob"] = serde_json::from_str(BLOB).unwrap();
     item
 }
@@ -107,7 +113,7 @@ impl Entry {
     }
 }
 
-/// A chapter 08 `record` pack: kind 0, `note:<id>`, `sortKey` = cursor.
+/// A chapter 08 `record` pack: kind 0, `type:id` ([`typed`]), `sortKey` = cursor.
 fn record_pack(entries: &[Entry]) -> Vec<u8> {
     let text = |out: &mut Vec<u8>, value: &str| {
         out.extend((value.len() as u16).to_be_bytes());
@@ -118,8 +124,9 @@ fn record_pack(entries: &[Entry]) -> Vec<u8> {
     for entry in entries {
         let bytes = BLOB.as_bytes();
         index.push(0u8);
-        text(&mut index, &format!("note:{}", entry.id));
-        text(&mut index, &format!("u/note/{}", entry.id));
+        let (item_type, id) = typed(&entry.id);
+        text(&mut index, &format!("{item_type}:{id}"));
+        text(&mut index, &format!("u/{item_type}/{id}"));
         index.extend((entry.cursor as u64).to_be_bytes());
         text(
             &mut index,
@@ -155,7 +162,9 @@ struct Server {
     packs: Vec<Pack>,
     /// `(packedThrough, coveredThrough)` for `record`.
     coverage: Option<(i64, i64)>,
-    /// The live items: id and current `server_cursor`.
+    /// Empty `crdt_snapshot` packs listed after the record packs.
+    snapshots: usize,
+    /// The live items: `type:id` ([`typed`]) and current `server_cursor`.
     live: Vec<(String, i64)>,
     /// Deleted ids the feed reports.
     deleted: Vec<String>,
@@ -170,8 +179,15 @@ struct Server {
 }
 
 impl Server {
-    fn listing(&self) -> Json {
-        let packs: Vec<Json> = self
+    /// One `GET /sync/packs` page of 50 from `offset`, records then snapshots.
+    fn listing(&self, offset: usize) -> Json {
+        let snapshots = (0..self.snapshots).map(|at| {
+            json!({"id": format!("s{at}"), "itemKind": "crdt_snapshot", "packKey": "k",
+                   "minCursor": 1, "maxCursor": 1, "itemCount": 0, "byteSize": 10,
+                   "createdAt": 1, "url": format!("https://r2.example/packs/s{at}"),
+                   "expiresAt": 4_000_000_000i64})
+        });
+        let all: Vec<Json> = self
             .packs
             .iter()
             .map(|pack| {
@@ -187,9 +203,14 @@ impl Server {
                 }
                 listed
             })
+            .chain(snapshots)
             .collect();
+        let packs: Vec<&Json> = all.iter().skip(offset).take(50).collect();
         let mut body = json!({"packs": packs, "serverTime": 1});
-        if let Some((packed, covered)) = self.coverage {
+        if offset + 50 < all.len() {
+            body["nextCursor"] = json!((offset + 50).to_string());
+        }
+        if let Some((packed, covered)) = self.coverage.filter(|_| offset == 0) {
             body["coverage"] = json!([{"itemKind": "record", "packedThrough": packed,
                                        "coveredThrough": covered}]);
         }
@@ -209,6 +230,9 @@ impl Server {
             if self.missing.contains(id) {
                 return Some(response(404, "{}"));
             }
+            if id.starts_with('s') {
+                return Some(bytes_response(record_pack(&[])));
+            }
             let pack = self.packs.iter().find(|pack| pack.id == id)?;
             let mut bytes = record_pack(&pack.entries);
             if self.corrupt.contains(id) {
@@ -217,7 +241,11 @@ impl Server {
             return Some(bytes_response(bytes));
         }
         if url.contains("/sync/packs") {
-            return Some(response(200, &self.listing().to_string()));
+            let offset = url
+                .split("cursor=")
+                .nth(1)
+                .map_or(0, |offset| offset.parse().unwrap());
+            return Some(response(200, &self.listing(offset).to_string()));
         }
         if url.contains("/sync/changes") {
             let from: i64 = url
@@ -230,7 +258,10 @@ impl Server {
                 .live
                 .iter()
                 .filter(|(_, cursor)| *cursor > from)
-                .map(|(id, _)| json!({"id": id, "type": "note", "version": 1, "modifiedAt": 1, "size": 1}))
+                .map(|(key, _)| {
+                    let (item_type, id) = typed(key);
+                    json!({"id": id, "type": item_type, "version": 1, "modifiedAt": 1, "size": 1})
+                })
                 .collect();
             let head = self
                 .live
@@ -254,8 +285,9 @@ impl Server {
             let items: Vec<Json> = self
                 .live
                 .iter()
-                .map(|(id, cursor)| {
-                    let mut item = json!({"id": id, "type": "note", "version": 1,
+                .map(|(key, cursor)| {
+                    let (item_type, id) = typed(key);
+                    let mut item = json!({"id": id, "type": item_type, "version": 1,
                                           "modifiedAt": cursor, "size": 1});
                     if self.manifest_cursors {
                         item["serverCursor"] = json!(cursor);
@@ -275,8 +307,12 @@ impl Server {
                 .unwrap()
                 .iter()
                 .filter_map(Json::as_str)
-                .filter(|id| self.live.iter().any(|(live, _)| live == id))
-                .map(pull_item)
+                .flat_map(|id| {
+                    self.live
+                        .iter()
+                        .filter(move |(live, _)| typed(live).1 == id)
+                        .map(|(live, _)| pull_item(live))
+                })
                 .collect();
             return Some(response(200, &json!({"items": items}).to_string()));
         }
@@ -288,6 +324,8 @@ struct Routes {
     server: Mutex<Server>,
     calls: Mutex<Vec<String>>,
     hung: Notify,
+    /// Runs once, when the first `/sync/pull` is sent.
+    on_pull: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 impl Routes {
@@ -296,6 +334,7 @@ impl Routes {
             server: Mutex::new(server),
             calls: Mutex::new(Vec::new()),
             hung: Notify::new(),
+            on_pull: Mutex::new(None),
         })
     }
 
@@ -315,6 +354,12 @@ impl Routes {
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.calls.lock().unwrap().push(request.url.clone());
+        if request.url.contains("/sync/pull") {
+            let hook = self.on_pull.lock().unwrap().take();
+            if let Some(hook) = hook {
+                hook();
+            }
+        }
         let answer = self.server.lock().unwrap().answer(&request);
         match answer {
             Some(answer) => answer,
@@ -423,10 +468,11 @@ fn sorted(mut ids: Vec<String>) -> Vec<String> {
     ids
 }
 
-/// The request ceiling of a covered, unchanged vault of `N` records in `P`
-/// record packs: two listing walks of `ceil(P / 50)` pages (records, then
-/// snapshots), `P` downloads, one feed page from the coverage boundary and one
-/// manifest. Nothing in it counts items.
+/// The request ceiling of a covered, unchanged vault of `N` records with `P`
+/// listed packs of every kind: two listing walks of `ceil(P / 50)` pages
+/// (records, then snapshots; each walk pages every kind), `P` downloads, one
+/// feed page from the coverage boundary and one manifest. Nothing in it
+/// counts items.
 fn ceiling(packs: usize) -> usize {
     2 * packs.div_ceil(50) + packs + 2
 }
@@ -458,6 +504,71 @@ async fn the_request_count_follows_the_packs_and_not_the_items() {
     let routes = Routes::new(covered_vault(300, 100));
     run(&db, &routes, &[]).await;
     assert_eq!(routes.calls().len(), ceiling(3));
+
+    // Snapshot packs share the listing, so 3 record and 60 snapshot packs
+    // are two pages per walk.
+    let db = scratch_db("ceiling-paged");
+    let mut server = covered_vault(300, 100);
+    server.snapshots = 60;
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+    assert_eq!(routes.count("/sync/packs"), 4, "{:?}", routes.calls());
+    assert_eq!(routes.calls().len(), ceiling(63));
+    assert_eq!(report.record_packs.entries_applied, 300);
+}
+
+#[tokio::test]
+async fn an_undeclared_last_entry_does_not_drop_the_chunk_before_it() {
+    let db = scratch_db("undeclared-last");
+    let mut server = covered_vault(3, 10);
+    server.packs[0]
+        .entries
+        .push(Entry::live("agent_message:m1", 4));
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+    assert_eq!(report.record_packs.entries_applied, 3);
+    assert_eq!(routes.count("/sync/pull"), 0, "{:?}", routes.calls());
+    assert_eq!(live_ids(&db).len(), 3);
+}
+
+#[tokio::test]
+async fn a_row_edited_locally_during_the_reconcile_is_not_tombstoned() {
+    let db = scratch_db("edited-in-flight");
+    let mut server = covered_vault(4, 10);
+    // n3 was deleted and its tombstone shed: the manifest omits it and the
+    // pull by id answers nothing.
+    server.live.retain(|(id, _)| id != "n3");
+    let routes = Routes::new(server);
+    let edit = db.clone();
+    *routes.on_pull.lock().unwrap() = Some(Box::new(move || {
+        edit.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO outbox (item_type, item_id, op, enqueued_at)
+                 VALUES ('note', 'n3', 'upsert', 1)",
+                [],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    }));
+    let report = run(&db, &routes, &[]).await;
+    assert_eq!(routes.count("/sync/pull"), 1);
+    assert_eq!(report.reconcile_removed, 0);
+    assert!(notes(&db)["n3"].0, "the local edit keeps n3 live");
+}
+
+#[tokio::test]
+async fn a_shed_row_sharing_an_id_with_another_types_pulled_item_is_removed() {
+    let db = scratch_db("shared-id");
+    let mut server = covered_vault(2, 10);
+    // note:x1 was deleted and shed; task:x1, never packed, is live.
+    server.packs[0].entries.push(Entry::live("x1", 3));
+    server.live.push(("task:x1".into(), 9));
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+    assert!(!notes(&db)["x1"].0, "note:x1 is not listed");
+    assert_eq!(report.reconcile_removed, 1);
 }
 
 #[tokio::test]

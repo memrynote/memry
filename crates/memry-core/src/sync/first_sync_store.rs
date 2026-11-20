@@ -159,15 +159,19 @@ pub(super) fn held_rows(conn: &Connection) -> Result<Vec<HeldRow>, StorageError>
     Ok(rows)
 }
 
-/// Forgets the cursor of every row under these ids before they are pulled by
+/// Forgets the cursor of these `(type, id)` rows before they are pulled by
 /// id: `POST /sync/pull` names no cursor, and an item it reports in
-/// `blobMissing` is not the write the row held either.
-pub(super) fn forget_cursors(conn: &Connection, ids: &[String]) -> Result<(), StorageError> {
+/// `blobMissing` is not the write the row held either. A row of another type
+/// under the same id keeps its cursor.
+pub(super) fn forget_cursors(
+    conn: &Connection,
+    keys: &[(String, String)],
+) -> Result<(), StorageError> {
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-    for id in ids {
+    for (item_type, item_id) in keys {
         txn.execute(
-            "UPDATE sync_items SET server_cursor = NULL WHERE item_id = ?1",
-            params![id],
+            "UPDATE sync_items SET server_cursor = NULL WHERE item_type = ?1 AND item_id = ?2",
+            params![item_type, item_id],
         )
         .map_err(sqlite_failed)?;
     }

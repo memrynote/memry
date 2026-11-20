@@ -226,26 +226,24 @@ impl PackBootstrap {
         let mut chunk_bytes = 0usize;
         for (at, entry) in entries.iter().enumerate() {
             // Every pack holds one kind, and a reader still checks each entry.
-            if entry.kind != PackKind::Record {
-                continue;
-            }
-            match rebuild_item(bytes, entry) {
-                Rebuilt::Item(item) => {
-                    if !pull.declares(item_type_of(&item)) {
-                        // Exempt from the tail bound: the tail would not
-                        // serve it either (§8.4.2, **Undeclared types**).
-                        continue;
+            // A skipped entry still reaches the flush below, so a pack that
+            // ends on one applies the chunk before it.
+            if entry.kind == PackKind::Record {
+                match rebuild_item(bytes, entry) {
+                    // An undeclared type is exempt from the tail bound: the
+                    // tail would not serve it either (§8.4.2, **Undeclared
+                    // types**).
+                    Rebuilt::Item(item) if !pull.declares(item_type_of(&item)) => {}
+                    Rebuilt::Item(item) => {
+                        chunk_bytes += entry.length as usize;
+                        chunk.push(item);
                     }
-                    chunk_bytes += entry.length as usize;
-                    chunk.push(item);
+                    Rebuilt::Unusable => unusable(entry.sort_key, report),
                 }
-                Rebuilt::Unusable => unusable(entry.sort_key, report),
             }
             let last = at + 1 == entries.len();
-            if chunk.len() >= RECORD_CHUNK_ENTRIES || chunk_bytes >= RECORD_CHUNK_BYTES || last {
-                if chunk.is_empty() {
-                    continue;
-                }
+            let full = chunk.len() >= RECORD_CHUNK_ENTRIES || chunk_bytes >= RECORD_CHUNK_BYTES;
+            if !chunk.is_empty() && (full || last) {
                 let (applied, failed) = pull.apply_pack_items(std::mem::take(&mut chunk)).await?;
                 chunk_bytes = 0;
                 report.entries_applied += applied.applied + applied.deleted;
