@@ -231,6 +231,7 @@ impl BootstrapClient {
 
         let request = self
             .request("POST", "/sync/bootstrap/renew")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::polled())
             .json(&json!({}));
 
@@ -290,15 +291,26 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
-            return;
-        }
-        self.lock().finished = true;
+        let session = {
+            let mut inner = self.lock();
+            let Some(session) = inner.session.take() else {
+                return;
+            };
+            inner.finished = true;
+            session
+        };
+        // The server finds the session to delete through this header alone.
         let request = self
             .request("POST", "/sync/bootstrap/close")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
+        if let Err(error) = self.http.send_json::<Json>(request).await {
+            eprintln!(
+                "memry-core: bootstrap session close failed, its slot frees at expiry {}: {error}",
+                session.expires_at
+            );
+        }
     }
 
     fn fall_back(&self) {
