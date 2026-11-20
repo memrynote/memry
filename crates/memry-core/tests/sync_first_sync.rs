@@ -304,7 +304,10 @@ async fn a_first_sync_fills_yjs_updates_so_extract_text_returns_the_body() {
 
     // FR-028: determinate, and never above one.
     let seen = progress.seen();
-    assert!(seen.iter().all(|p| p.completed <= p.total));
+    assert!(
+        seen.iter()
+            .all(|p| p.total.is_none_or(|total| p.completed <= total))
+    );
     assert!(
         seen.iter()
             .any(|p| p.phase == memry_core::sync::first_sync::FirstSyncPhase::Bodies)
@@ -1210,13 +1213,13 @@ async fn a_resumed_bodies_pass_counts_finished_documents_and_pulls_them_no_more(
         "the finished document was pulled again"
     );
     assert_eq!(resumed.calls_to("/sync/crdt/updates/batch").len(), 1);
-    let bodies_progress: Vec<(u64, u64)> = progress
+    let bodies_progress: Vec<(u64, Option<u64>)> = progress
         .seen()
         .iter()
         .filter(|p| p.phase == FirstSyncPhase::Bodies)
         .map(|p| (p.completed, p.total))
         .collect();
-    assert_eq!(bodies_progress, vec![(1, 2), (2, 2)]);
+    assert_eq!(bodies_progress, vec![(1, Some(2)), (2, Some(2))]);
 }
 
 #[tokio::test]

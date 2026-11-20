@@ -4,6 +4,14 @@
 //! > window, with determinate progress. App open is never blocked on any of
 //! > it.
 //!
+//! **Whole vault, not a window (#5233).** With packs, the body pack phase
+//! settles or owes every live document, so a vault the packs fully cover
+//! takes every body from packs and owes nothing. The recent window below is
+//! the path for partial coverage only: the first sync pulls the owed documents
+//! inside it, and the shell then drains the rest in the foreground
+//! ([`crate::sync::body_drain`]) until none is owed. FR-028's "older content
+//! on demand" still holds for a note opened before the drain reaches it.
+//!
 //! **It is a sub-sequence, not a state.** Nothing here appears in §C.3's
 //! diagram; the engine's states are unchanged and a first sync is three
 //! ordered passes over the ordinary routes.
@@ -60,8 +68,11 @@ use super::note_body_feed;
 use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
 
 mod body_pass;
+mod progress;
 mod reconcile;
 mod refs;
+
+pub(crate) use progress::read_body_counts;
 
 use refs::{read_refs_page, reference_now};
 
@@ -93,44 +104,42 @@ pub use reconcile::META_FIRST_SYNC_RECONCILED;
 /// a different one.
 pub const RECENT_WINDOW_MS: i64 = 30 * 24 * 60 * 60 * 1_000;
 
-/// The ceiling on bodies the first sync pulls before declaring itself done.
+/// The ceiling on bodies the first sync pulls item by item before declaring
+/// itself done, when packs did not cover the vault.
 ///
 /// The window alone is not a bound: a vault whose whole history landed last
 /// week has every document inside thirty days, and pulling ten thousand
 /// bodies is seventeen minutes unelevated (§10.6.1) against SC-007's two.
-/// Everything past this loads on demand, which is exactly what FR-028 asks
-/// for ("older content on demand"), and owed a pull each pass sweeps (#3253).
+/// Everything past this stays owed, and the shell's foreground drain pulls it
+/// next (#5233); a note opened first loads on demand (FR-028).
 pub const RECENT_BODY_LIMIT: usize = 500;
 
 /// How many ids one metadata call asks for. Chapter 05 §5.10: `POST
 /// /sync/pull` takes at most 100.
 pub const METADATA_CHUNK: usize = 100;
 
-/// Which pass the run is in.
+/// Which part of the vault is arriving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FirstSyncPhase {
-    /// `GET /sync/changes` to the end of the feed.
-    Refs,
-    /// `POST /sync/pull`, newest first.
-    Metadata,
-    /// `GET /sync/crdt/updates` for the recent window.
+    /// Note records: record packs, the feed, the reconcile, the metadata pass.
+    Records,
+    /// Note bodies: body packs, then the owed documents.
     Bodies,
     Done,
 }
 
-/// FR-028's determinate progress.
+/// FR-028's determinate progress, in live notes and journals (#5233).
 ///
 /// `total` is never below `completed`, so a shell can render a fraction
-/// without guarding against one above 1. §10.11: progress is measured against
-/// the tail cursor and the client's own cursor, neither of which a bootstrap
-/// session affects — so the numbers survive Q10.2's mid-run fallback
-/// unchanged, and the only observable difference is that the run takes
-/// longer.
+/// without guarding against one above 1. It is `None` while the vault's total
+/// is not yet known (records before the feed's end). Every count is read from
+/// this device's tables, which a bootstrap session does not affect, so the
+/// numbers survive Q10.2's mid-run fallback unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FirstSyncProgress {
     pub phase: FirstSyncPhase,
     pub completed: u64,
-    pub total: u64,
+    pub total: Option<u64>,
 }
 
 /// Where progress goes. Synchronous, because a shell's progress bar is not
@@ -165,6 +174,8 @@ pub struct FirstSyncReport {
     /// Bodies from `crdt_snapshot` and `crdt_update` packs (§8.4.3, §8.10).
     pub body_packs: BodyPackReport,
     pub bodies: BodyPullReport,
+    /// Live documents still owed a body when the run ended.
+    pub bodies_owed: usize,
     /// The window boundary this run used, epoch milliseconds.
     pub window_start: i64,
     /// Whether the session was elevated (§10.7). Informational: the run is
@@ -256,18 +267,15 @@ impl FirstSync {
         let mut report = FirstSyncReport::default();
 
         // §10.5: this cannot fail in any way a caller must handle.
-        let tail_cursor = match &self.bootstrap {
-            Some(bootstrap) => {
-                let opened = bootstrap.open(now_ms / 1_000).await;
-                report.elevated = opened.elevated();
-                opened.tail_cursor
-            }
-            None => 0,
-        };
+        if let Some(bootstrap) = &self.bootstrap {
+            report.elevated = bootstrap.open(now_ms / 1_000).await.elevated();
+        }
 
-        // Close on every exit after the open, so a failed run frees its slot.
-        // A close failure is logged by the client and never fails the run.
-        let passes = self.passes(tail_cursor, now_ms, &mut report).await;
+        // Close on every exit after the open, so a failed run frees its slot;
+        // the guard closes a run dropped mid-flight. A close failure is logged
+        // by the client and never fails the run.
+        let _close = self.bootstrap.as_ref().map(BootstrapClient::close_on_drop);
+        let passes = self.passes(now_ms, &mut report).await;
         if let Some(bootstrap) = &self.bootstrap {
             bootstrap.close().await;
         }
@@ -275,14 +283,13 @@ impl FirstSync {
         self.progress.progress(FirstSyncProgress {
             phase: FirstSyncPhase::Done,
             completed: 1,
-            total: 1,
+            total: Some(1),
         });
         Ok(report)
     }
 
     async fn passes(
         &self,
-        tail_cursor: i64,
         now_ms: i64,
         report: &mut FirstSyncReport,
     ) -> Result<(), FirstSyncError> {
@@ -291,7 +298,9 @@ impl FirstSync {
         // Records first (#5232): packs, then the feed from where they end,
         // then the manifest decides, so the note list fills before any body.
         let record_packs_used = self.record_packs_pass(report).await?;
-        self.refs_pass(tail_cursor, report).await?;
+        self.refs_pass(report).await?;
+        // The feed has been read to its end: the vault's total is known.
+        self.records_progress(true).await?;
         if record_packs_used {
             self.reconcile(report).await?;
         }
@@ -301,6 +310,7 @@ impl FirstSync {
         let body_packs_used = self.body_packs_pass(report).await?;
         self.bodies_pass(report.window_start, body_packs_used, report)
             .await?;
+        report.bodies_owed = read_body_counts(&self.db).await?.1 as usize;
 
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
@@ -334,12 +344,14 @@ impl FirstSync {
             .is_none();
         let (used, tail_start) = match &self.packs {
             Some(packs) if fresh => {
+                // A fresh device holds no record yet, so the documents the
+                // packs applied are the documents it holds.
                 let progress = Arc::clone(&self.progress);
-                let on_progress = move |completed: u64, total: u64| {
+                let on_progress = move |documents: u64| {
                     progress.progress(FirstSyncProgress {
-                        phase: FirstSyncPhase::Metadata,
-                        completed,
-                        total: total.max(completed),
+                        phase: FirstSyncPhase::Records,
+                        completed: documents,
+                        total: None,
                     });
                 };
                 let records = packs
@@ -375,11 +387,7 @@ impl FirstSync {
     /// pass two's job, and separating them is the whole point of the
     /// windowing: on a large vault the refs pass is twenty calls and gives
     /// the client the complete inventory it needs to order everything else.
-    async fn refs_pass(
-        &self,
-        tail_cursor: i64,
-        report: &mut FirstSyncReport,
-    ) -> Result<(), FirstSyncError> {
+    async fn refs_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
         loop {
             let cursor = self
                 .db
@@ -442,22 +450,10 @@ impl FirstSync {
             report.refs_recorded += recorded;
             report.tombstones += tombstones;
 
-            let seen = next.as_deref().and_then(|c| c.parse::<u64>().ok());
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Refs,
-                completed: seen.unwrap_or(report.refs_recorded as u64),
-                // §10.4's `tailCursor` when a session supplied one; otherwise
-                // the tail is not knowable until the feed says `hasMore:
-                // false`, and reporting the cursor against itself is the
-                // honest answer rather than an invented denominator.
-                total: seen
-                    .unwrap_or(report.refs_recorded as u64)
-                    .max(tail_cursor.max(0) as u64),
-            });
-
             if !page.has_more {
                 return Ok(());
             }
+            self.records_progress(false).await?;
         }
     }
 
@@ -469,19 +465,11 @@ impl FirstSync {
     /// dated before the rest of the vault is touched.
     async fn metadata_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
         let outstanding = self.db.call(|conn| pending_metadata_ids(conn)).await?;
-        let total = outstanding.len() as u64;
-        let mut done = 0u64;
-
         for chunk in outstanding.chunks(METADATA_CHUNK) {
             let page = self.pull.fetch_ids(chunk).await?;
             report.metadata_applied += page.applied;
             report.metadata_corrupt += page.corrupt;
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
+            self.records_progress(true).await?;
         }
         Ok(())
     }

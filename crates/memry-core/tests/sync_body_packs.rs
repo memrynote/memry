@@ -26,7 +26,7 @@ use sha2::{Digest as _, Sha256};
 
 async fn run_bodies(db: &Db, routes: &Arc<Routes>, dir: &Path) -> BodyPackReport {
     bootstrap(db, routes, dir)
-        .run_bodies(NOW_MS / 1_000, &|_, _| {})
+        .run_bodies(NOW_MS / 1_000)
         .await
         .expect("the body pack phase")
 }
@@ -274,7 +274,7 @@ async fn an_apply_that_fails_part_way_resumes_with_every_update_once() {
     .expect("install the trigger");
 
     let failed = bootstrap(&db, &routes, &dir)
-        .run_bodies(NOW_MS / 1_000, &|_, _| {})
+        .run_bodies(NOW_MS / 1_000)
         .await;
     assert!(failed.is_err(), "a storage failure fails the phase");
     assert!(dir.join("pack-spill").exists(), "the packs stay held");

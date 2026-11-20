@@ -174,18 +174,12 @@ impl PackBootstrap {
     /// phase does not run again after one. An `Err` keeps it: the first sync
     /// is retried with the marker unset, and the retry downloads no held
     /// pack again.
-    pub async fn run_bodies(
-        &self,
-        now_s: i64,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
-    ) -> Result<BodyPackReport, BodyPullError> {
+    pub async fn run_bodies(&self, now_s: i64) -> Result<BodyPackReport, BodyPullError> {
         let mut report = BodyPackReport::default();
         let Some(dir) = &self.spill_dir else {
             return Ok(report);
         };
-        let result = self
-            .bodies_through(dir, now_s, &mut report, on_progress)
-            .await;
+        let result = self.bodies_through(dir, now_s, &mut report).await;
         result?;
         report.fallback_reasons.extend(spill::remove(dir).await);
         Ok(report)
@@ -202,7 +196,6 @@ impl PackBootstrap {
         dir: &Path,
         now_s: i64,
         report: &mut BodyPackReport,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<(), BodyPullError> {
         let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
@@ -221,7 +214,7 @@ impl PackBootstrap {
         if packs.is_empty() {
             return Ok(());
         }
-        let Some(held) = self.hold(dir, packs, report, on_progress).await? else {
+        let Some(held) = self.hold(dir, packs, report).await? else {
             return Ok(());
         };
         if held.files.is_empty() {
@@ -265,7 +258,6 @@ impl PackBootstrap {
         dir: &Path,
         packs: Vec<PackSummary>,
         report: &mut BodyPackReport,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
     ) -> Result<Option<Held>, BodyPullError> {
         if let Err(error) = spill::create(dir).await? {
             report
@@ -273,7 +265,6 @@ impl PackBootstrap {
                 .push(format!("the pack spill cannot be created: {error}"));
             return Ok(None);
         }
-        let total = packs.len() as u64;
         let mut held = Held::default();
         let mut queue = Vec::new();
         for pack in packs {
@@ -283,8 +274,6 @@ impl PackBootstrap {
                 None => queue.push((pack, path)),
             }
         }
-        on_progress(held.files.len() as u64, total);
-
         let mut queue = queue.into_iter();
         let mut relisted: Option<Vec<PackSummary>> = None;
         let mut running: JoinSet<(PackSummary, PathBuf, Result<Vec<u8>, String>)> = JoinSet::new();
@@ -343,7 +332,6 @@ impl PackBootstrap {
                     .fallback_reasons
                     .push(format!("pack {}: {reason}", pack.id)),
             }
-            on_progress(held.files.len() as u64, total);
         }
         report.packs_held = held.files.len();
         Ok(Some(held))

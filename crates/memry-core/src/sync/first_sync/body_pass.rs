@@ -26,7 +26,7 @@ use crate::sync::first_sync_store::{
 
 use super::{
     FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport,
-    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms,
+    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms, read_body_counts,
 };
 
 /// Documents the bodies pass pulls at once while a bootstrap session elevates
@@ -78,15 +78,15 @@ impl FirstSync {
         let Some(packs) = &self.packs else {
             return Ok(false);
         };
-        let progress = Arc::clone(&self.progress);
-        let on_progress = move |completed: u64, total: u64| {
-            progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Bodies,
-                completed,
-                total: total.max(completed),
-            });
-        };
-        report.body_packs = packs.run_bodies(now_ms() / 1_000, &on_progress).await?;
+        // No body is held before this phase decides, so the count starts at
+        // 0 of the vault and moves once the packs are applied and settled.
+        let (live, _) = read_body_counts(&self.db).await?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Bodies,
+            completed: 0,
+            total: Some(live),
+        });
+        report.body_packs = packs.run_bodies(now_ms() / 1_000).await?;
         if !report.body_packs.ran {
             // The phase writes `1` in the transaction that settles; `0` sends
             // a resumed run straight to the item-granular bodies.
@@ -150,7 +150,23 @@ impl FirstSync {
             Some(bootstrap) => bootstrap.renew_if_due(now_ms() / 1_000).await,
             None => false,
         };
-        let pulled = pull_parallel(&self.bodies, window.clone(), elevated, &self.progress).await?;
+        // Every live document not owed and not in this window is done: a
+        // window document is owed after packs and not owed without them.
+        let (live, owed) = read_body_counts(&self.db).await?;
+        let pending = if body_packs_used {
+            0
+        } else {
+            window.len() as u64
+        };
+        let done = live.saturating_sub(owed).saturating_sub(pending);
+        let pulled = pull_parallel(
+            &self.bodies,
+            window.clone(),
+            elevated,
+            (done, live),
+            &self.progress,
+        )
+        .await?;
         if body_packs_used {
             let unfinished: Vec<String> = pulled
                 .stopped
@@ -174,11 +190,13 @@ impl FirstSync {
 
 /// Pulls every document in `window`, newest first, `BODY_CONCURRENCY_*` at a
 /// time. `elevated` is whether a bootstrap session widens `crdt_pull` for
-/// this run.
+/// this run. `(done, live)` places the window's documents within the vault's
+/// count, so the bar reads documents of the vault.
 async fn pull_parallel(
     bodies: &Arc<BodyPull>,
     window: Vec<String>,
     elevated: bool,
+    (done, live): (u64, u64),
     progress: &Arc<dyn ProgressSink>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
@@ -186,7 +204,6 @@ async fn pull_parallel(
     for chunk in window.chunks(PROBE_CHUNK) {
         probed.extend(bodies.probe(chunk, &mut report.requests).await?);
     }
-    let total = window.len() as u64;
     let (current, pending): (Vec<String>, Vec<String>) = window
         .into_iter()
         .partition(|doc_id| probed.get(doc_id).is_some_and(|probed| probed.current));
@@ -199,10 +216,12 @@ async fn pull_parallel(
     }
     .min(pending.len());
 
+    let completed = done + current.len() as u64;
+    let total = live.max(completed + pending.len() as u64);
     let queue = Arc::new(BodyQueue::new(
         pending,
         total,
-        current.len() as u64,
+        completed,
         probed,
         Arc::clone(progress),
     ));
@@ -231,7 +250,9 @@ struct BodyQueue {
     total: u64,
     /// Probe pages until a worker takes its document's (#5293): with the
     /// server's 8 MiB batch byte budget, at most 8 MiB of updates per probe
-    /// chunk, and each leaves the map when its document is pulled.
+    /// chunk, and each leaves the map when its document is pulled. The window
+    /// is at most [`super::RECENT_BODY_LIMIT`] documents, five probe chunks of
+    /// [`PROBE_CHUNK`], so the map holds at most 5 x 8 MiB = 40 MiB.
     probed: Mutex<HashMap<String, Probed>>,
     progress: Arc<dyn ProgressSink>,
 }
@@ -257,7 +278,7 @@ impl BodyQueue {
             progress.progress(FirstSyncProgress {
                 phase: FirstSyncPhase::Bodies,
                 completed,
-                total,
+                total: Some(total),
             });
         }
         Self {
@@ -307,7 +328,7 @@ impl BodyQueue {
         self.progress.progress(FirstSyncProgress {
             phase: FirstSyncPhase::Bodies,
             completed: state.completed,
-            total: self.total,
+            total: Some(self.total),
         });
     }
 

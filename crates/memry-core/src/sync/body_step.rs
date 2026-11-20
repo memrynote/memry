@@ -52,7 +52,9 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
             if total.requests >= BODY_REQUEST_BUDGET {
                 break 'step;
             }
-            if !pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await? {
+            if pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await?
+                == Step::Ended
+            {
                 break 'step;
             }
         }
@@ -60,14 +62,25 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
     Ok(total)
 }
 
-/// One owed document: settled, re-owed, or backed off. `false` ends the step.
-async fn pull_one(
+/// What one owed document's pull did to the step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Step {
+    /// The debt is settled: the pull reached the server's head.
+    Settled,
+    /// The document stays owed, backed off or as it was.
+    Owed,
+    /// A failure every later request would repeat: the step ends here.
+    Ended,
+}
+
+/// One owed document: settled, re-owed, or backed off.
+pub(super) async fn pull_one(
     db: &Db,
     body_pull: &BodyPull,
     doc_id: &str,
     probed: Option<Probed>,
     total: &mut BodyPullReport,
-) -> Result<bool, StorageError> {
+) -> Result<Step, StorageError> {
     let doc = doc_id.to_owned();
     match body_pull.pull_with(doc_id, probed).await {
         Ok(pulled) => {
@@ -91,16 +104,17 @@ async fn pull_one(
                 requests: 0,
                 ..pulled
             });
+            Ok(if merged { Step::Settled } else { Step::Owed })
         }
-        Err(BodyPullError::Storage { source }) => return Err(source),
-        Err(BodyPullError::Api { source }) if ends_the_step(&source) => return Ok(false),
+        Err(BodyPullError::Storage { source }) => Err(source),
+        Err(BodyPullError::Api { source }) if ends_the_step(&source) => Ok(Step::Ended),
         Err(BodyPullError::Api { .. }) => {
             db.call(move |conn| body_debt::owe_after_failure(conn, &doc))
                 .await?;
             total.requests += 1;
+            Ok(Step::Owed)
         }
     }
-    Ok(true)
 }
 
 /// A failure every later request of this pass would repeat: a `429`, no

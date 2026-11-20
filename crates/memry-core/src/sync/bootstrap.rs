@@ -120,6 +120,28 @@ pub enum SessionState {
 }
 
 /// The session client. One per vault, held for the length of a first sync.
+/// How long [`BootstrapClient::close`] waits for the server.
+pub const BOOTSTRAP_CLOSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// See [`BootstrapClient::close_on_drop`].
+pub struct CloseOnDrop(Arc<BootstrapClient>);
+
+impl Drop for CloseOnDrop {
+    fn drop(&mut self) {
+        if self.0.lock().session.is_none() {
+            return;
+        }
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!(
+                "memry-core: a dropped run left its bootstrap session open: no runtime to close it"
+            );
+            return;
+        };
+        let client = Arc::clone(&self.0);
+        runtime.spawn(async move { client.close().await });
+    }
+}
+
 pub struct BootstrapClient {
     http: Arc<HttpClient>,
     vault_id: Option<String>,
@@ -317,12 +339,28 @@ impl BootstrapClient {
             .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        if let Err(error) = self.http.send_json::<Json>(request).await {
-            eprintln!(
-                "memry-core: bootstrap session close failed, its slot frees at expiry {}: {error}",
-                session.expires_at
-            );
-        }
+        // Bounded: a stalled network must not hold a failed run's caller for
+        // the transport's whole timeout over a courtesy.
+        let sent = tokio::time::timeout(
+            BOOTSTRAP_CLOSE_TIMEOUT,
+            self.http.send_json::<Json>(request),
+        );
+        let failure = match sent.await {
+            Ok(Ok(_)) => return,
+            Ok(Err(error)) => error.to_string(),
+            Err(_) => format!("no answer in {}s", BOOTSTRAP_CLOSE_TIMEOUT.as_secs()),
+        };
+        eprintln!(
+            "memry-core: bootstrap session close failed, its slot frees at expiry {}: {failure}",
+            session.expires_at
+        );
+    }
+
+    /// A guard that closes the session when dropped, for a run that is
+    /// dropped or cancelled before its own [`Self::close`]. Without it the
+    /// slot stays taken until the session expires, up to an hour.
+    pub fn close_on_drop(self: &Arc<Self>) -> CloseOnDrop {
+        CloseOnDrop(Arc::clone(self))
     }
 
     fn fall_back(&self) {
