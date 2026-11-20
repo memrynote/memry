@@ -372,7 +372,7 @@ live while `ref_count > 0` or a hold names it.
 - A dereference that takes a held chunk to zero refunds nothing; the release of
   its last hold does (`apps/sync-server/src/routes/blob.ts:695-706`). The sweep
   reaps only rows with `ref_count <= 0` and no hold
-  (`apps/sync-server/src/services/cleanup.ts:377,392`).
+  (`apps/sync-server/src/services/cleanup.ts:387,402`).
 - A server that predates holds answers 404. A client treats that as "no holds":
   it pushes as before and has nothing to release
   (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:107,143`).

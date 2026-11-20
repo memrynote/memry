@@ -300,14 +300,17 @@ ciphertext is gone from every pack object:
   returns.
 - Otherwise the purge's caller enqueues a compaction message 660 seconds later. Every compaction
   message runs four rewrites before its first deletion pass. A deletion pass that meets a rewrite
-  still pending past the 600-second grace resets that kind (drops its packs and watermark, so
-  compaction rebuilds it) and deletes the object, so the delayed message finishes the rest.
+  still pending past the 600-second grace resets that kind (drops its packs and sets its watermark
+  to 0, so compaction rebuilds it) and deletes the object, so the delayed message finishes the
+  rest. A rollup never merges across the range of a pending rewrite.
 - That message fails while objects stay due or rewrites pending, so Queues redelivers it up to
   three times with no delay, inside the 240 seconds left.
 
-The deadline is missed when the delayed message is never enqueued, when all four deliveries fail,
-or when the purge itself fails. The message logs `replaced pack objects still due after the
-compaction message; redelivered` at error level. The fallback is the deletion pass at the start of
+The deadline is missed when the delayed message is never enqueued or when all four deliveries
+fail. A purge that throws after its batch commits still enqueues the delayed message, from a push
+or the cleanup; a purge whose batch never commits has not started the deadline, and the cleanup
+retries it. The message logs `replaced pack objects still due after the compaction message;
+redelivered` at error level. The fallback is the deletion pass at the start of
 every 6-hourly backfill tick, which covers every vault, and any later compaction message for the
 vault. Record packs are not scoped yet: older versions of the deleted note's record stay in record
 packs until a rollup drops them (#5247).

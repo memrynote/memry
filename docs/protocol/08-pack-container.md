@@ -816,9 +816,9 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:314`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:337`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:291`). A run never spans an excluded pack, so
+  among packs already read (`:314`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
@@ -847,12 +847,12 @@ coverage ranges chain, and writes one pack that replaces them:
   the object expires before the object goes. A server MUST NOT raise the
   presign lifetime above half the grace period. The deletion pass
   (`deleteReplacedPackObjects`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:76`) deletes the
+  `apps/sync-server/src/services/pack-replaced-objects.ts:83`) deletes the
   objects of replaced packs and of purged ones (§8.13). It runs for every vault
   at the start of every backfill tick
   (`apps/sync-server/src/services/pack-backfill.ts:147`), and for one vault at
   the start and the end of every compaction message, so a build that fails
-  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:510,538`).
+  cannot block it (`apps/sync-server/src/services/pack-compaction.ts:510,539`).
   A body purge (chapter 07 §7.15) skips the grace for objects that may hold
   the purged body: in the batch that deletes the body rows it makes due at once
   every replaced object of each body kind the document has rows of, except an
@@ -915,7 +915,12 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   prune, purge or listing, resets the kind of the vault instead
   (`packKindReset`): every pack of the kind leaves the listing, every object
   of the kind is due at once, and compaction rebuilds the kind from source
-  rows. No pack's other documents stay unpacked.
+  rows. The reset sets the kind's watermark to 0 rather than deleting it, so
+  a build in flight under the old watermark loses its compare-and-swap and
+  deletes its own object instead of listing above the reset range. No pack's
+  other documents stay unpacked. A rollup never merges across the range of a
+  pending rewrite, which would list two packs over it (`planRollup`,
+  `apps/sync-server/src/services/pack-rollup.ts:86`).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
   of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:195-196`).
@@ -923,15 +928,16 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   first deletion pass
   (`apps/sync-server/src/services/pack-compaction.ts:506`). When rewrites or
   due objects remain, the purge's caller enqueues a compaction message
-  delayed by `PACK_PURGE_RETRY_DELAY_SECONDS` = `PACK_REPLACED_GRACE_SECONDS`
-  - 60 = 660 (`apps/sync-server/src/services/pack-replaced-objects.ts:18`;
-    push: `apps/sync-server/src/routes/sync.ts:589`; cleanup:
-    `apps/sync-server/src/services/cleanup.ts:358`).
+  delayed by `PACK_PURGE_RETRY_DELAY_SECONDS` = 660, the grace plus a minute
+  (`apps/sync-server/src/services/pack-replaced-objects.ts:18`; push:
+  `apps/sync-server/src/routes/sync.ts:589`; cleanup:
+  `apps/sync-server/src/services/cleanup.ts:358,369`).
 - **A rewrite still pending past its grace.** A deletion pass that finds a
   pending rewrite whose `removed_at` is at least `PACK_REPLACED_GRACE_SECONDS`
-  old resets that kind of the vault (`packKindReset`) and deletes the object
-  (`resetUnrewritten`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:134`). A deletion
+  old resets that kind of the vault (`packKindReset`) before it selects the
+  due objects, so it deletes that object and every object the reset made due
+  in the same pass (`resetUnrewritten`,
+  `apps/sync-server/src/services/pack-replaced-objects.ts:144`). A deletion
   never waits for a rewrite past the grace, and the range of a rewrite that
   never ran is rebuilt from source rows instead of staying unpacked.
 - **The 900 s bound.** For a purge that commits at `T`:
@@ -939,20 +945,23 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
      object is deleted before the purge returns, inside the push request or
      the cleanup tick that ran it.
   2. Otherwise the delayed message runs at `T + 660`. Its rewrite pass runs
-     four more rewrites. Its first deletion pass finds every rewrite still
-     pending past its grace (`removed_at = T`), resets those kinds and
-     deletes those objects, and its last deletion pass deletes the objects
-     the reset made due
-     (`apps/sync-server/src/services/pack-compaction.ts:510,538`).
+     four more rewrites. Its first deletion pass resets the kinds of every
+     rewrite still pending past its grace (`removed_at = T`), then deletes
+     those objects and every object the reset made due; its last deletion
+     pass retries any delete that failed
+     (`apps/sync-server/src/services/pack-compaction.ts:510,539`).
   3. A message whose last pass leaves objects due or rewrites pending throws
-     (`apps/sync-server/src/services/pack-compaction.ts:550`), so Queues
+     (`apps/sync-server/src/services/pack-compaction.ts:551`), so Queues
      redelivers it, up to `max_retries` = 3 times with no retry delay
      (`apps/sync-server/wrangler.toml:63`), inside the remaining 240 s.
 
   No sweep runs more often than the 6-hourly cron. The bound fails when the
   delayed message is never enqueued (a push enqueues it best effort, after
-  its response), when all four deliveries fail (R2 or D1 down for that
-  window), or when the purge itself fails (below). A message that still
+  its response, and a failed enqueue is logged), or when all four deliveries
+  fail (R2 or D1 down for that window). A purge that throws after its batch
+  committed still enqueues the delayed message, on push
+  (`apps/sync-server/src/services/sync.ts:1029-1032`) and on cleanup
+  (`apps/sync-server/src/services/cleanup.ts:369`) alike. A message that still
   leaves objects due logs `replaced pack objects still due after the
   compaction message; redelivered` at error level with the vault. The
   fallback is the deletion pass at the start of every backfill tick, which
@@ -968,7 +977,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
 - **A purge that fails.** The purge runs after the push that deleted the
   document commits, and its failure never fails the push (chapter 07 §7.15).
   The 900 s bound runs from the purge's commit, so it does not cover a purge
-  that failed. The 6-hourly cleanup (`cleanupDeletedDocumentBodies`,
+  whose batch never committed. The 6-hourly cleanup (`cleanupDeletedDocumentBodies`,
   `apps/sync-server/src/services/cleanup.ts`) runs the purge again, and the
   bound runs from that commit. Until then the document's packs stay listed,
   and the rules below keep their entries inert.
@@ -1053,7 +1062,7 @@ the bound such a run exists, because if every adjacent pair passed a limit,
 covers the one boundary between cache-only and covered packs. The 28 MB vault
 of #5221 is bound at about 10 packs per kind. A compaction message rolls up
 again after a build that listed a pack, so it ends with that kind at or under
-the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:525`).
+the bound (`compactVault`, `apps/sync-server/src/services/pack-compaction.ts:526`).
 A cron tick builds after its rollups and has no budget for another, so a kind
 it built for may list `bound + 1` until the next tick or message rolls it up.
 
@@ -1065,7 +1074,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:307-311`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:330-334`), and the backfill tick
 rolls the kind up every tick while it is above the bound, so an operator sees
 it once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.
