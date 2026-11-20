@@ -97,6 +97,87 @@ pub(super) fn owe_out_of_window(conn: &Connection, pulled: &[String]) -> Result<
     txn.commit().map_err(sqlite_failed)
 }
 
+/// Records one refs-pass row (chapter 05 §5.11.1).
+///
+/// A row this device already holds keeps its `server_cursor`: that cursor
+/// names the write the row holds, taken from a record pack entry, and the
+/// manifest reconcile compares it (chapter 08 §8.10). A ref names an item,
+/// not a write, so it can neither confirm nor replace that cursor; a newer
+/// write shows as a cursor mismatch and is pulled.
+pub(super) fn record_ref(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+    modified_at: i64,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO sync_items (
+             item_type, item_id, payload, payload_state, server_cursor, updated_at
+         ) VALUES (?1, ?2, NULL, 'metadata-only', NULL, ?3)
+         ON CONFLICT(item_type, item_id) DO UPDATE SET updated_at = excluded.updated_at",
+        params![item_type, item_id, modified_at],
+    )
+    .map_err(sqlite_failed)?;
+    Ok(())
+}
+
+/// One local `sync_items` row as the manifest reconcile sees it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct HeldRow {
+    pub(super) item_type: String,
+    pub(super) item_id: String,
+    pub(super) server_cursor: Option<i64>,
+    /// Live and carrying a payload.
+    pub(super) held: bool,
+    /// An outbox entry names it: the device changed it locally.
+    pub(super) local_change: bool,
+}
+
+pub(super) fn held_rows(conn: &Connection) -> Result<Vec<HeldRow>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT s.item_type, s.item_id, s.server_cursor,
+                    s.deleted_at IS NULL AND s.payload_state <> 'metadata-only',
+                    EXISTS (SELECT 1 FROM outbox o
+                            WHERE o.item_type = s.item_type AND o.item_id = s.item_id)
+             FROM sync_items s",
+        )
+        .map_err(sqlite_failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(HeldRow {
+                item_type: row.get(0)?,
+                item_id: row.get(1)?,
+                server_cursor: row.get(2)?,
+                held: row.get(3)?,
+                local_change: row.get(4)?,
+            })
+        })
+        .map_err(sqlite_failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(sqlite_failed)?;
+    Ok(rows)
+}
+
+/// Forgets the cursor of these `(type, id)` rows before they are pulled by
+/// id: `POST /sync/pull` names no cursor, and an item it reports in
+/// `blobMissing` is not the write the row held either. A row of another type
+/// under the same id keeps its cursor.
+pub(super) fn forget_cursors(
+    conn: &Connection,
+    keys: &[(String, String)],
+) -> Result<(), StorageError> {
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+    for (item_type, item_id) in keys {
+        txn.execute(
+            "UPDATE sync_items SET server_cursor = NULL WHERE item_type = ?1 AND item_id = ?2",
+            params![item_type, item_id],
+        )
+        .map_err(sqlite_failed)?;
+    }
+    txn.commit().map_err(sqlite_failed)
+}
+
 pub fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
     conn.query_row(
         "SELECT value FROM meta WHERE key = ?1",

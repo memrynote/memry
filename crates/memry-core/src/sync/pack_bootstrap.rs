@@ -7,10 +7,9 @@
 //! the packed notes already seeded. It also reaches notes outside the recent
 //! window, which the windowed first sync leaves for on-demand loading.
 //!
-//! **Record packs are never applied.** A record pack entry is the bare R2
-//! blob; the signature, signer and vector clock live in D1 rows and travel
-//! only on `POST /sync/pull`. Only `crdt_snapshot` entries carry their own
-//! Ed25519 signature inside the envelope, so only they are trusted here.
+//! Record packs are applied by [`PackBootstrap::run_records`] (§8.4.2), whose
+//! entries carry the pull item's meta and go through the `/sync/pull` apply.
+//! [`PackBootstrap::run`] seeds `crdt_snapshot` entries only.
 //!
 //! **Every failure is a fallback** (§8.0: a pack is a derived cache). An old
 //! server's 404, no presigned URL, an expired URL, a bad digest or an
@@ -27,9 +26,18 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 use crate::protocol::pack::{PackKind, extract_entry, parse_pack};
 use crate::storage::Db;
+
+mod listing;
+mod records;
+
+pub use listing::{Coverage, Listing, PACK_LIST_PAGE_LIMIT, PackSummary, list, tail_start};
+pub use records::{
+    META_RECORD_PACKS_DONE, META_RECORD_UNUSABLE_BELOW, RECORD_CHUNK_BYTES, RECORD_CHUNK_ENTRIES,
+    RECORD_DOWNLOAD_WIDTH, RecordPackReport,
+};
 
 use super::body_pull::{BodyPull, BodyPullError, PACK_SEED_CHUNK, PackEntrySeed, PackSeed};
 use super::first_sync_store::{read_meta, write_meta};
@@ -44,30 +52,6 @@ pub const META_PACKS_APPLIED_THROUGH: &str = "pack_bootstrap.applied_through_cur
 /// pack again. Written after each pack, pruned as the watermark passes them.
 pub const META_PACKS_COMPLETED: &str = "pack_bootstrap.completed_pack_ids";
 
-/// Packs per `GET /sync/packs` page (the server caps at 50).
-pub const PACK_LIST_PAGE_LIMIT: u32 = 50;
-
-/// Ceiling on pages walked, so a pathological listing cannot loop forever.
-const MAX_PACK_LIST_PAGES: usize = 20;
-
-/// Clock-skew margin subtracted from a presigned URL's expiry.
-const PRESIGN_EXPIRY_SAFETY_SECONDS: i64 = 30;
-
-/// One usable `crdt_snapshot` pack from the listing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PackSummary {
-    pub id: String,
-    pub max_cursor: i64,
-    pub url: String,
-    pub expires_at: i64,
-}
-
-impl PackSummary {
-    fn live(&self, now_s: i64) -> bool {
-        self.expires_at - PRESIGN_EXPIRY_SAFETY_SECONDS > now_s
-    }
-}
-
 /// What the pack bootstrap did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PackBootstrapReport {
@@ -79,14 +63,6 @@ pub struct PackBootstrapReport {
     pub applied_through_cursor: Option<i64>,
     /// Why some or all packs fell back to the item-granular path.
     pub fallback_reasons: Vec<String>,
-}
-
-struct Listing {
-    packs: Vec<PackSummary>,
-    /// The walk hit [`MAX_PACK_LIST_PAGES`] with older packs still unlisted,
-    /// so contiguity from the oldest listed pack would claim a range nothing
-    /// walked.
-    truncated: bool,
 }
 
 pub struct PackBootstrap {
@@ -115,7 +91,7 @@ impl PackBootstrap {
     /// failure; every network or pack failure is a fallback in the report.
     pub async fn run(&self, now_s: i64) -> Result<PackBootstrapReport, StorageError> {
         let mut report = PackBootstrapReport::default();
-        let listing = match self.list(now_s).await {
+        let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
             Err(reason) => {
                 report.fallback_reasons.push(reason);
@@ -131,7 +107,7 @@ impl PackBootstrap {
         let mut packs: Vec<PackSummary> = listing
             .packs
             .into_iter()
-            .filter(|pack| pack.max_cursor > covered)
+            .filter(|pack| pack.kind == PackKind::CrdtSnapshot && pack.max_cursor > covered)
             .collect();
         packs.sort_by_key(|pack| std::cmp::Reverse(pack.max_cursor));
 
@@ -152,7 +128,12 @@ impl PackBootstrap {
                 // The listing's URLs are signed once with a TTL in minutes; a
                 // large vault outlives it. One re-list mints fresh ones.
                 if relisted.is_none() {
-                    relisted = Some(self.list(now()).await.map(|l| l.packs).unwrap_or_default());
+                    relisted = Some(
+                        list(&self.http, self.vault_id.as_deref(), now())
+                            .await
+                            .map(|l| l.packs)
+                            .unwrap_or_default(),
+                    );
                 }
                 match relisted
                     .iter()
@@ -274,62 +255,6 @@ impl PackBootstrap {
         }
         Ok(Ok(()))
     }
-
-    /// Walks `GET /sync/packs` newest first. `Err` means "no packs here":
-    /// an old server's 404, any non-2xx, or a body that does not parse.
-    async fn list(&self, now_s: i64) -> Result<Listing, String> {
-        let mut packs = Vec::new();
-        let mut cursor: Option<String> = None;
-        let mut truncated = false;
-        for page in 0..MAX_PACK_LIST_PAGES {
-            let mut path = format!("/sync/packs?limit={PACK_LIST_PAGE_LIMIT}");
-            if let Some(cursor) = &cursor {
-                path.push_str("&cursor=");
-                path.push_str(&query_encode(cursor));
-            }
-            let mut request = ApiRequest::new("GET", &path)
-                .auth(Auth::Session)
-                .retry(RetryPolicy::polled());
-            if let Some(vault_id) = &self.vault_id {
-                request = request.header(VAULT_ID_HEADER, vault_id);
-            }
-            let body: Json = self
-                .http
-                .send_json(request)
-                .await
-                .map_err(|error| error.to_string())?;
-            let listed = body
-                .get("packs")
-                .and_then(Json::as_array)
-                .ok_or("the pack list carried no `packs` array")?;
-            packs.extend(listed.iter().filter_map(|pack| usable_pack(pack, now_s)));
-            cursor = body
-                .get("nextCursor")
-                .and_then(Json::as_str)
-                .filter(|next| !next.is_empty())
-                .map(str::to_owned);
-            if cursor.is_none() {
-                break;
-            }
-            truncated = page == MAX_PACK_LIST_PAGES - 1;
-        }
-        Ok(Listing { packs, truncated })
-    }
-}
-
-/// A listed pack this client can use: a `crdt_snapshot` with a presigned URL
-/// that is still live.
-fn usable_pack(pack: &Json, now_s: i64) -> Option<PackSummary> {
-    if pack.get("itemKind").and_then(Json::as_str) != Some(PackKind::CrdtSnapshot.as_str()) {
-        return None;
-    }
-    let summary = PackSummary {
-        id: pack.get("id").and_then(Json::as_str)?.to_owned(),
-        max_cursor: pack.get("maxCursor").and_then(Json::as_i64)?,
-        url: pack.get("url").and_then(Json::as_str)?.to_owned(),
-        expires_at: pack.get("expiresAt").and_then(Json::as_i64)?,
-    };
-    summary.live(now_s).then_some(summary)
 }
 
 /// `{sequenceNum, revision}`, both present, or the entry is not trusted.
@@ -365,19 +290,6 @@ pub fn contiguous_applied_cursor(
     watermark
 }
 
-/// The keyset cursor is opaque (`maxCursor` + separator + id), so every byte
-/// outside RFC 3986's unreserved set is escaped.
-fn query_encode(text: &str) -> String {
-    text.bytes()
-        .map(|byte| match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
-                (byte as char).to_string()
-            }
-            _ => format!("%{byte:02X}"),
-        })
-        .collect()
-}
-
 fn now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -392,9 +304,12 @@ mod tests {
     fn pack(id: &str, max_cursor: i64) -> PackSummary {
         PackSummary {
             id: id.to_owned(),
+            kind: PackKind::CrdtSnapshot,
             max_cursor,
+            item_count: 0,
             url: String::new(),
             expires_at: 0,
+            cover: None,
         }
     }
 
@@ -427,25 +342,6 @@ mod tests {
         assert_eq!(
             contiguous_applied_cursor(&packs, &done(&["a", "b1", "b2"])),
             Some(20)
-        );
-    }
-
-    #[test]
-    fn only_a_live_presigned_crdt_snapshot_pack_is_usable() {
-        let listed = |kind: &str, expires: i64| {
-            serde_json::json!({"id": "p", "itemKind": kind, "maxCursor": 5,
-                "url": "https://r2.example/p", "expiresAt": expires})
-        };
-        assert!(usable_pack(&listed("crdt_snapshot", 1_000), 900).is_some());
-        assert!(usable_pack(&listed("record", 1_000), 900).is_none());
-        assert!(usable_pack(&listed("crdt_snapshot", 1_000), 980).is_none());
-        assert!(
-            usable_pack(
-                &serde_json::json!({"id": "p", "itemKind": "crdt_snapshot",
-            "maxCursor": 5, "expiresAt": 1_000}),
-                900
-            )
-            .is_none()
         );
     }
 

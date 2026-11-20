@@ -205,9 +205,9 @@ fn packed_base64(update: &[u8], secret_key: &[u8]) -> String {
     BASE64.encode(packed)
 }
 
-/// The refs page, the metadata page, the bootstrap 501 that precedes them,
-/// and an old server's 404 for `GET /sync/packs` (#3252), which falls back to
-/// the item-granular bodies pass.
+/// The bootstrap 501, an old server's 404 for the record packs listing
+/// (#5232), the refs page, the metadata page, and the same 404 for the
+/// snapshot listing (#3252), which falls back to the item-granular bodies pass.
 ///
 /// Chapter 10 §10.12: a deployment with no bootstrap key answers 501 and the
 /// client says nothing about it. Scripting it here is the honest default — the
@@ -220,6 +220,7 @@ fn first_sync_script(
     vec![
         devices_response(public_key),
         error_response(501, "BOOTSTRAP_UNAVAILABLE", "no bootstrap key"),
+        error_response(404, "NOT_FOUND", "no pack route"),
         response(200, &changes_page(modified_at)),
         response(
             200,
@@ -439,9 +440,9 @@ async fn a_pass_asked_for_during_the_first_sync_waits_for_it() {
         "the pass ran after it and met its own scripted page: {pass:?}"
     );
     let urls: Vec<String> = transport.calls().into_iter().map(|c| c.url).collect();
-    assert_eq!(urls.len(), 7, "{urls:?}");
-    assert!(urls[5].ends_with("/auth/devices"), "{urls:?}");
-    assert!(urls[6].contains("/sync/changes"), "{urls:?}");
+    assert_eq!(urls.len(), 8, "{urls:?}");
+    assert!(urls[6].ends_with("/auth/devices"), "{urls:?}");
+    assert!(urls[7].contains("/sync/changes"), "{urls:?}");
 }
 
 /// No master key means no vault key, and a pull with no vault key could only
