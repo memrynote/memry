@@ -279,7 +279,8 @@ async fn a_delete_for_a_colliding_tag_name_leaves_the_notes_body_alone() {
         .await
         .expect("the page");
 
-    assert_eq!(report.deleted, 1);
+    // The tag was never live here, so its delete counts as skipped (S17-5).
+    assert_eq!((report.deleted, report.skipped), (0, 1));
     assert_eq!(
         record_deleted_at(&db, "tag_definition"),
         Some(DELETED_AT),
