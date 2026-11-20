@@ -576,6 +576,29 @@ async fn a_paused_driver_runs_no_pass() {
     assert_eq!(b.ids("note").len(), 1);
 }
 
+/// A first sync the Worker elevates paces downloads ×5 while its bootstrap window is open, and
+/// at 1 once it closes (`sync-attachment-handlers.ts:165-166`; the open names no factor, so
+/// Electron always takes `DEFAULT_ELEVATION_FACTOR = 5`).
+#[tokio::test(flavor = "multi_thread")]
+async fn an_elevated_first_sync_paces_downloads_five_times_until_it_closes() {
+    let server = Server::start_elevating();
+    let b = Device::new(&server, 1).await;
+    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    b.driver
+        .on_bootstrap_elevation(Arc::new(move |factor| sink.lock().unwrap().push(factor)));
+
+    let first = b
+        .driver
+        .first_sync(Arc::new(SilentInitialSync))
+        .await
+        .unwrap()
+        .expect("not paused");
+
+    assert!(first.first_sync.elevated, "the Worker granted no session");
+    assert_eq!(*heard.lock().unwrap(), [1, 5, 1]);
+}
+
 /// A device that registers after A's driver opened, and pushes: A's next pass applies the record
 /// (chapter 01 §1.4.0, a signer missing from the directory is the ordinary case), never holding it
 /// corrupt behind a cursor that moved past it.

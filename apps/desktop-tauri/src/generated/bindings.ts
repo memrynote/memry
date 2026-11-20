@@ -3608,12 +3608,13 @@ export type SyncAttachmentMaterializedEvent = {
 
 /**
  *  `sync:attachment-upload-failed`: an attachment of the note failed to download, or will not
- *  upload. `errorCategory` is never sent; the renderer shows its generic message.
+ *  upload. `errorCategory` is sent only for a file over the plan's limit (`file_too_large`).
  */
 export type SyncAttachmentUploadFailedEvent = {
 	noteId: string,
 	diskPath: string,
 	error: string,
+	errorCategory?: SyncErrorCategory,
 };
 
 /**  `sync:certificate-pin-failed`: the sync host's certificate matches none of its pins. */

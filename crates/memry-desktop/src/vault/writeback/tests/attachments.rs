@@ -29,6 +29,8 @@ use memry_core::sync::attachments::store::files;
 use super::{Fixture, Keep, Outcome, assert_wrote, fixture};
 use crate::attachments::{PlannedRename, plan_renames, reconcile_renames};
 use crate::shell::file_service::heal;
+use crate::sync::attachments::place_linked_downloads;
+use crate::sync::attachments::vault_files::DesktopVaultFiles;
 
 fn folder(f: &Fixture, id: &str) -> PathBuf {
     f.root.join("attachments").join(id)
@@ -418,4 +420,22 @@ fn a_download_that_landed_before_its_body_moves_where_the_body_links_it() {
             assert_eq!(recorded, ["sources/report.zip"]);
         }
     }
+}
+
+/// A note with no downloaded file to place never has its body read (`placeLinkedDownloads`
+/// checks the records first): a body that cannot be read fails nothing.
+#[test]
+fn a_note_with_nothing_downloaded_never_reads_its_body() {
+    let mut f = fixture();
+    let id = note_with_image(&mut f, "n.md");
+    fs::remove_file(f.root.join("n.md")).unwrap();
+    fs::create_dir(f.root.join("n.md")).unwrap();
+    let (files_of, owner) = (DesktopVaultFiles::new(f.root.clone()), id.clone());
+
+    let placed = f
+        .vault
+        .db_handle()
+        .call_blocking(move |conn| place_linked_downloads(conn, &files_of, &owner, 1));
+
+    placed.expect("no body read");
 }

@@ -63,14 +63,18 @@ pub(crate) fn place_linked_downloads(
     owner: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
+    // The records first: most notes have none, and the body is a disk read on the DB writer.
+    let folder = format!("attachments/{owner}/");
+    let mut landed = files::records(conn, owner)?;
+    landed.retain(|row| row.path.starts_with(&folder));
+    if landed.is_empty() {
+        return Ok(());
+    }
     let Some(body) = body_of(conn, vault, owner)? else {
         return Ok(());
     };
-    let folder = format!("attachments/{owner}/");
-    for row in files::records(conn, owner)? {
-        if row.path.starts_with(&folder)
-            && let Some(to) = place(conn, vault, owner, &row.path, &body)?
-        {
+    for row in landed {
+        if let Some(to) = place(conn, vault, owner, &row.path, &body)? {
             files::move_record(conn, owner, &row.path, &to, now_ms)?;
         }
     }

@@ -27,6 +27,12 @@
  * plan, so it can add vaults to its account (`POST /sync/vaults`). It answers
  * `{ harnessEntitled: true }`.
  *
+ * A `file-limit <bytes>` line sets the bootstrap user's `max_file_size`, so a larger attachment
+ * gets the Worker's 413 `STORAGE_FILE_TOO_LARGE`. It answers `{ harnessFileLimit: true }`.
+ *
+ * `HARNESS_BOOTSTRAP_KEY` in the environment gives the Worker a bootstrap session key, so
+ * `POST /sync/bootstrap` grants a session instead of answering 501.
+ *
  * A `policy <writesEnabled 0|1> [minWriteVersion]` line upserts the `desktop` row of
  * `client_policies` (chapter 11 §11.8), which the Worker reads on every request. It answers
  * `{ harnessPolicy: true }`.
@@ -39,7 +45,9 @@ import { createTestDevice } from '../src/test-auth.js'
 
 const count = Number(process.env.DEVICES ?? '2')
 const server = new SimulatedServer()
-await server.start()
+// Bootstrap sessions (chapter 10) answer 501 unless the Worker holds a key.
+const bootstrapKey = process.env.HARNESS_BOOTSTRAP_KEY
+await server.start(bootstrapKey ? { BOOTSTRAP_SESSION_HMAC_KEY: bootstrapKey } : {})
 
 const userId = crypto.randomUUID()
 const register = async (at: number) => {
@@ -116,6 +124,15 @@ const entitle = async (email: string): Promise<void> => {
     .run()
   process.stdout.write(`${JSON.stringify({ harnessEntitled: meta.changes > 0 })}\n`)
 }
+// The user's plan allows files up to `bytes` (`entitlements.ts:189`, a 413 above it).
+const fileLimit = async (bytes: string): Promise<void> => {
+  const db = await server.getD1()
+  const { meta } = await db
+    .prepare('UPDATE sync_entitlements SET max_file_size = ? WHERE user_id = ?')
+    .bind(Number(bytes), userId)
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessFileLimit: meta.changes > 0 })}\n`)
+}
 // A server that lies: gives an account vault an id no client would register.
 const renameVault = async (from: string, to: string): Promise<void> => {
   const db = await server.getD1()
@@ -144,6 +161,7 @@ commands.on('line', (line) => {
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
   if (command === 'entitle' && args.length === 1) void entitle(args[0])
+  if (command === 'file-limit' && args.length === 1) void fileLimit(args[0])
   if (command === 'rename-vault' && args.length === 2) void renameVault(args[0], args[1])
   if (command === 'policy' && args.length >= 1) void policy(args[0], args[1])
   if (command === 'register') {

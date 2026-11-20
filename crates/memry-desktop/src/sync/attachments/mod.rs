@@ -27,6 +27,7 @@ use memry_core::sync::attachments::queue::{DownloadFn, DownloadQueue, VaultFiles
 use memry_core::sync::attachments::revival;
 use memry_core::sync::attachments::store::download_failures;
 use memry_core::sync::attachments::transfer::AttachmentTransfer;
+use memry_core::sync::bootstrap::ElevationListener;
 use memry_core::sync::driver::{ApplyObserver, AttachmentDownload};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::state::SyncState;
@@ -147,6 +148,17 @@ impl AttachmentSync {
             .runtime
             .spawn(runners::drive(Arc::downgrade(&self.inner), live.clone()));
         *lock(&self.inner.running) = Some(Running { live, task });
+    }
+
+    /// Paces the running drivers' downloads by the bootstrap factor
+    /// (`sync-attachment-handlers.ts:165-166`); a later start begins at 1 until told again.
+    pub fn pace_listener(&self) -> ElevationListener {
+        let inner = Arc::downgrade(&self.inner);
+        Arc::new(move |factor| {
+            if let Some(live) = inner.upgrade().and_then(|inner| inner.live()) {
+                live.queue.set_pace_multiplier(factor);
+            }
+        })
     }
 
     /// Ends the drivers and clears the download queue; its waiters record nothing.

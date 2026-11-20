@@ -8,6 +8,8 @@ use memry_core::sync::driver::{
 };
 use memry_core::sync::policy::ServerClock;
 
+use super::error_category::SyncErrorCategory;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncEvent {
     /// A pulled record changed this vault, told after its page committed. A skipped record
@@ -48,6 +50,9 @@ pub enum SyncEvent {
         note_id: String,
         disk_path: String,
         error: String,
+        /// `FileTooLarge` when the server refused the file as over the plan, so the renderer
+        /// says `sync.fileTooLarge`; `None` gets the generic message.
+        category: Option<SyncErrorCategory>,
     },
 }
 

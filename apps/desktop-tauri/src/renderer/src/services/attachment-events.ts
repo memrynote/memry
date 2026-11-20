@@ -17,7 +17,7 @@ export function onAttachmentMaterialized(
 
 /**
  * `sync:attachment-upload-failed`: an attachment of the note failed to download or will not
- * upload. Rust sends no `errorCategory`, so the renderer shows its generic message.
+ * upload. Rust sends `errorCategory` only for a file over the plan (`file_too_large`).
  */
 export function onAttachmentUploadFailed(
   callback: (event: AttachmentUploadFailedEvent) => void
