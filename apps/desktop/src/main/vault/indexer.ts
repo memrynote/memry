@@ -25,7 +25,12 @@ import { parseNote } from './frontmatter'
 import { ATTACHMENTS_DIR } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
-import { syncNoteToCache, syncFileToCache, findCanonicalNoteForFile } from './note-sync'
+import {
+  syncNoteToCache,
+  syncFileToCache,
+  findCanonicalNoteForFile,
+  type CanonicalNoteRef
+} from './note-sync'
 import { flushProjectionEvents } from '../projections'
 import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
@@ -228,6 +233,7 @@ async function indexMarkdownFile(
 
   const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
   const noteId = canonical?.id ?? newMarkdownFileId(relativePath)
+  const modifiedAt = keptModifiedAt(canonical, relativePath) ?? parsed.modified
 
   // Use syncNoteToCache for unified cache operations
   try {
@@ -246,7 +252,7 @@ async function indexMarkdownFile(
         // is written with emoji=null and the note falls back to the default icon.
         emoji: canonical?.emoji,
         createdAt: parsed.created,
-        modifiedAt: parsed.modified
+        modifiedAt
       },
       { isNew: true }
     )
@@ -290,7 +296,9 @@ export async function indexBinaryFile(
   // Get file stats for metadata
   const stats = await stat(absolutePath)
 
-  const id = findCanonicalNoteForFile(vaultPath, relativePath)?.id ?? generateNoteId()
+  const canonical = findCanonicalNoteForFile(vaultPath, relativePath)
+  const id = canonical?.id ?? generateNoteId()
+  const modifiedAt = keptModifiedAt(canonical, relativePath)
 
   // Get MIME type
   const ext = getExtension(absolutePath)
@@ -307,11 +315,23 @@ export async function indexBinaryFile(
     mimeType,
     fileSize: stats.size,
     createdAt: stats.birthtime,
-    modifiedAt: stats.mtime
+    modifiedAt: modifiedAt ? new Date(modifiedAt) : stats.mtime
   })
   await flushProjectionEvents()
 
   return result.id
+}
+
+/**
+ * The modifiedAt a row matched under another case of its path keeps. That file
+ * is one sync applied into a folder the disk spells differently (#5261), so
+ * its mtime is sync's own write. Stamped onto the row, a pulled note reads as
+ * edited since its sync, and the first pull into a doc the store never held
+ * takes the file over the server body (#5276), as `adoptCaseVariantRow` does
+ * in the watcher.
+ */
+function keptModifiedAt(canonical: CanonicalNoteRef | null, relativePath: string): string | null {
+  return canonical && canonical.path !== relativePath ? canonical.modifiedAt : null
 }
 
 /**
