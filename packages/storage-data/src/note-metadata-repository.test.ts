@@ -324,6 +324,18 @@ describe('note-metadata-repository', () => {
       expect(idsFor('ÄRZTE/a.md')).toEqual(['a', 'b'])
     })
 
+    // NTFS upcases `ı` to `I`, and APFS folds `ß` to `ss`: each pair names one
+    // file on that disk, so each must be a candidate.
+    it('finds a row whose path differs by a fold lowercasing misses', () => {
+      upsertNoteMetadata(db, makeNote({ id: 'dotless', path: 'Docs/ılık.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'sharp', path: 'Docs/straße.md' }))
+      upsertNoteMetadata(db, makeNote({ id: 'dotted', path: 'Docs/İstanbul.md' }))
+
+      expect(idsFor('Docs/Ilık.md')).toEqual(['dotless'])
+      expect(idsFor('Docs/STRASSE.md')).toEqual(['sharp'])
+      expect(idsFor('Docs/istanbul.md')).toEqual([])
+    })
+
     it('finds a row written inside a transaction after the index was built', () => {
       expect(idsFor('docs/a.md')).toEqual([])
 

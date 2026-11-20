@@ -140,7 +140,8 @@ vi.mock('../database/client', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
+  updateNoteCache: vi.fn()
 }))
 
 vi.mock('@memry/storage-data', () => ({

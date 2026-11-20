@@ -13,7 +13,7 @@ import {
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { crdtBodyDebtStore } from './engine/crdt-body-debts'
-import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
+import { getNoteCacheById } from '@main/database/queries/notes'
 import type { NoteBodyOutbox } from './note-body-outbox'
 import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-client/queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
@@ -35,7 +35,8 @@ import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { getVaultRoot } from '../vault/notes-io'
 import { openVaultFile } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
-import { generateContentHash, parseNote } from '../vault/frontmatter'
+import { parseNote } from '../vault/frontmatter'
+import { recordBaseline } from './writeback-baseline'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
 import { repairEmptyBlockIds } from './repair-block-ids'
@@ -1884,7 +1885,7 @@ export class CrdtProvider {
       // first keystroke into an empty foreign note reach the file — without it
       // the write-back's never-read guard would refuse that save forever,
       // since nothing else fills the column in (#1909).
-      if (raw === '') this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      if (raw === '') this.recordSeedRead(indexDb, noteId, raw)
       return
     }
 
@@ -1909,7 +1910,7 @@ export class CrdtProvider {
       // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
       // WERE read and the empty doc represents the empty body faithfully, so
       // the same recording applies as for an empty file above.
-      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, raw)
       return
     }
 
@@ -1935,7 +1936,7 @@ export class CrdtProvider {
     // row. The bytes ARE read here, and the doc is built from them, so this is
     // the honest place to say so.
     if (ok) {
-      this.recordSeedRead(indexDb, noteId, cached.contentHash, raw)
+      this.recordSeedRead(indexDb, noteId, raw)
     }
 
     if (ok && this.persistence) {
@@ -1948,20 +1949,18 @@ export class CrdtProvider {
   }
 
   // The doc now represents the file: a note that owed its file body owes it no
-  // longer (#2646). A hash the indexer already measured is left alone; this
-  // only ever fills a hole, and only with the hash of bytes the seed read.
+  // longer (#2646), and the bytes the seed read are the write-back's baseline,
+  // over any hash measured before an edit made while the app was closed (#5296).
   private recordSeedRead(
     indexDb: ReturnType<typeof getIndexDatabase>,
     noteId: string,
-    existingHash: string | null | undefined,
     raw: string
   ): void {
     clearOwedFileBody(noteId)
     const entry = this.docs.get(noteId)
     if (entry) entry.awaitingMerge = false
-    if (existingHash) return
     try {
-      updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
+      recordBaseline(indexDb, noteId, raw)
     } catch (err) {
       log.warn('Failed to record the seeded content hash', { noteId, error: err })
     }

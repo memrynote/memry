@@ -220,7 +220,8 @@ async function indexFile(
  * it as an exact-path row the index does not know.
  *
  * A file name that changed case is the user's rename made while the app was
- * closed: it takes the exact-path code, which restamps the title and syncs it.
+ * closed: it takes the exact-path code, which restamps the title and marks the
+ * row modified since its sync.
  * A folder renamed by case offline looks the same as a folder sync spelled
  * differently, and is re-keyed without a sync.
  */

@@ -2276,7 +2276,8 @@ describe('CrdtProvider', () => {
     // write-back's never-read guard lets the first keystroke into this empty
     // file reach the disk (#1909).
     expect(mocks.updateNoteCache).toHaveBeenCalledWith(expect.anything(), 'empty-note', {
-      contentHash: 'hash:'
+      contentHash: 'hash:',
+      pendingWriteHash: null
     })
 
     await provider.open('blank-note', undefined, { skipSeed: true })
@@ -2318,11 +2319,12 @@ describe('CrdtProvider', () => {
     await provider.seedFromMarkdownPublic('foreign-note')
 
     expect(mocks.updateNoteCache).toHaveBeenCalledWith(expect.anything(), 'foreign-note', {
-      contentHash: 'hash:Line one  \nLine two'
+      contentHash: 'hash:Line one  \nLine two',
+      pendingWriteHash: null
     })
   })
 
-  it('leaves a hash the indexer already measured alone', async () => {
+  it('records the seeded bytes over a hash measured before an edit made while closed (#5296)', async () => {
     await provider.open('indexed-note', undefined, { skipSeed: true })
     mocks.getNoteCacheById.mockReturnValue({
       id: 'indexed-note',
@@ -2330,16 +2332,15 @@ describe('CrdtProvider', () => {
       fileType: 'markdown',
       contentHash: 'hash:what the indexer read'
     })
-    mocks.safeRead.mockResolvedValueOnce('what the indexer read')
-    mocks.parseNote.mockReturnValueOnce({ content: 'what the indexer read' })
+    mocks.safeRead.mockResolvedValueOnce('edited while closed')
+    mocks.parseNote.mockReturnValueOnce({ content: 'edited while closed' })
 
     await provider.seedFromMarkdownPublic('indexed-note')
 
-    expect(mocks.updateNoteCache).not.toHaveBeenCalledWith(
-      expect.anything(),
-      'indexed-note',
-      expect.objectContaining({ contentHash: expect.anything() })
-    )
+    expect(mocks.updateNoteCache).toHaveBeenCalledWith(expect.anything(), 'indexed-note', {
+      contentHash: 'hash:edited while closed',
+      pendingWriteHash: null
+    })
   })
 
   it('records no hash when the conversion fails, since the doc does not hold the bytes', async () => {

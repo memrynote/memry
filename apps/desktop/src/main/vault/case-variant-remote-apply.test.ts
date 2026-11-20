@@ -677,4 +677,28 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(listNoteMetadataByFoldedPath(asClientDb(data.db), 'Docs/b.md')).toEqual([])
     expect(findCanonicalNoteForFile(vault.path, 'Docs/b.md')?.id).toBe('unseen')
   })
+
+  // The fold finds candidates and the disk proves them with the same fold, so
+  // a row sync spelled `STRASSE.md` matches the `straße.md` APFS holds for it.
+  it('proves a candidate the disk folds beyond case, as the lookup does', () => {
+    seed('sharp', 'Docs/STRASSE.md', '# s\n', { remote: false, indexed: false })
+    fs.renameSync(path.join(vault.path, 'Docs/STRASSE.md'), path.join(vault.path, 'Docs/tmp.md'))
+    fs.renameSync(path.join(vault.path, 'Docs/tmp.md'), path.join(vault.path, 'Docs/straße.md'))
+
+    expect(findCanonicalNoteForFile(vault.path, 'Docs/straße.md')?.id).toBe('sharp')
+  })
+
+  // `ılık.md` and `ilık.md` share a fold key but are two files on APFS: only
+  // rows that resolve to the file on disk make it a shared file.
+  it('counts only rows on the same disk file as twins', () => {
+    seed('dotted', 'Docs/ilık.md', '# i\n', { remote: false, indexed: false })
+    seed('dotless', 'Docs/ılık.md', '# ı\n', { remote: false, indexed: false })
+    fs.renameSync(path.join(vault.path, 'Docs/ilık.md'), path.join(vault.path, 'Docs/tmp.md'))
+    fs.renameSync(path.join(vault.path, 'Docs/tmp.md'), path.join(vault.path, 'Docs/Ilık.md'))
+
+    expect(findCanonicalNoteForFile(vault.path, 'Docs/Ilık.md')).toMatchObject({
+      id: 'dotted',
+      sharesFile: false
+    })
+  })
 })

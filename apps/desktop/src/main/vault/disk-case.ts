@@ -10,6 +10,7 @@
 
 import { existsSync, realpathSync } from 'fs'
 import path from 'path'
+import { foldNotePath } from '@memry/storage-data'
 import { normalizeRelativePath } from '../lib/paths'
 
 /**
@@ -17,7 +18,8 @@ import { normalizeRelativePath } from '../lib/paths'
  * file system ignores case and stores it differently, else `relativePath`
  * itself. Null when nothing is at the path.
  *
- * Only a case or Unicode normalization difference is taken from the disk:
+ * Only a case or Unicode normalization difference (`foldNotePath`, the fold
+ * that finds the candidate rows) is taken from the disk:
  * APFS and HFS+ also ignore normalization, so `Ärzte/` (NFC) opens an `Ärzte/`
  * stored decomposed (NFD). A path the disk resolves anywhere else (a symlink)
  * is returned as given.
@@ -36,8 +38,7 @@ export function diskCaseOf(vaultPath: string, relativePath: string): string | nu
   } catch {
     return null
   }
-  return onDisk !== relativePath &&
-    onDisk.normalize('NFC').toLowerCase() === relativePath.normalize('NFC').toLowerCase()
+  return onDisk !== relativePath && foldNotePath(onDisk) === foldNotePath(relativePath)
     ? onDisk
     : relativePath
 }

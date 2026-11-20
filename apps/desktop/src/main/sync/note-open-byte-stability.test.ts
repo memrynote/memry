@@ -100,7 +100,10 @@ vi.mock('../database/client', () => ({
 
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: () => mocks.noteRow,
-  getNoteCacheByPath: () => mocks.noteRow
+  getNoteCacheByPath: () => mocks.noteRow,
+  updateNoteCache: (_db: unknown, _id: string, patch: Record<string, unknown>) => {
+    if (mocks.noteRow) mocks.noteRow = { ...mocks.noteRow, ...patch }
+  }
 }))
 
 vi.mock('@memry/storage-data', () => ({ getNoteMetadataById: () => null }))
