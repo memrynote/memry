@@ -84,3 +84,13 @@ describe('native warm-up scripts', () => {
     assert.match(desktopPackage.scripts.predev, /ensure-native\.sh electron/)
   })
 })
+
+describe('seed scripts', () => {
+  it('seeds the bench vault through cargo xtask, from crates/ where the alias lives', () => {
+    assert.equal(rootPackage.scripts.seed1k, 'cd crates && cargo xtask seed bench')
+    assert.match(
+      readFileSync(new URL('../crates/.cargo/config.toml', import.meta.url), 'utf8'),
+      /^xtask = "run -p xtask --"$/m
+    )
+  })
+})

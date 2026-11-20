@@ -49,7 +49,9 @@ Shows the current sync plan, activation state, storage limit, max file size, syn
 version-history window. **Upgrade** (labelled **Unlock Sync** on the free plan) opens the plan
 picker at `memrynote.com/account/sync` in your browser — no separate web login needed — where you
 choose a plan (Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing
-to Paddle checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
+to Paddle checkout. When the payment goes through, the success page's **Open Memry** link
+(`memry://billing/complete`) brings Memry to the front on Settings > Account; Memry checks the plan
+with the sync server and starts sync without a restart. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
 **Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
 If Memry has no billing account for you yet, it says so; right after paying, choose **Refresh status**
 and try again.

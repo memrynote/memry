@@ -390,7 +390,9 @@ pub fn suggest_vault_folder(vault_uuid: &str, name: Option<&str>, parent: &Path)
         .expect("folder names never run out")
 }
 
-/// The slug of `name`, else `memry-vault-<first 8 of the id>`.
+/// The slug of `name`, else `memry-vault-<first 8 of the id>`. A slug Windows reserves for a
+/// device (`con`, `nul`, `com1`, ...) gets `-vault`, on every OS so a name maps to one folder.
+/// A slug has no `.`, so `aux.txt` (`aux-txt`) is not one.
 fn folder_base(vault_uuid: &str, name: Option<&str>) -> String {
     let slug = name.map(slugify).unwrap_or_default();
     if slug.is_empty() {
@@ -398,8 +400,20 @@ fn folder_base(vault_uuid: &str, name: Option<&str>) -> String {
             "memry-vault-{}",
             vault_uuid.chars().take(8).collect::<String>()
         )
+    } else if is_windows_device(&slug) {
+        format!("{slug}-vault")
     } else {
         slug
+    }
+}
+
+/// `con|prn|aux|nul|com0-9|lpt0-9`, as Electron's `WINDOWS_RESERVED_NAMES`
+/// (`canvas/scene-file.ts:528`); its superscript digits never survive [`slugify`].
+fn is_windows_device(slug: &str) -> bool {
+    match slug.split_at_checked(3) {
+        Some(("con" | "prn" | "aux" | "nul", "")) => true,
+        Some(("com" | "lpt", digit)) => digit.len() == 1 && digit.as_bytes()[0].is_ascii_digit(),
+        _ => false,
     }
 }
 

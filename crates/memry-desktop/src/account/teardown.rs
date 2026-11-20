@@ -4,8 +4,12 @@
 //! keychain secrets (the session's store holds exactly them: master key, device key and the three
 //! tokens; a keychain error still signs out and names the entries that stay), ends the open vault's sync session state, and empties `memry-config.json` `sync`
 //! (`store.set('sync', {})`, `:119`). Vault files, the outbox and the CRDT store stay: editing
-//! never depends on a session. The `integrity` reason (keeps the master key) and the Google
-//! Calendar disconnect (Step 29) are not here.
+//! never depends on a session. The Google Calendar disconnect (Step 29) is not here.
+//!
+//! The `integrity` reason (`repairDeviceKeys` when the device cannot sign again, `:83-93`) keeps
+//! the master key, makes no server call and keeps the vault's sync state: the queue, the sync
+//! state and the history stay for the next sign-in. `memry-config.json` `sync` empties as for
+//! `logout`.
 
 use memry_core::api::auth::AuthState;
 use memry_core::seams::secure_store::SecureStoreKey;
@@ -56,6 +60,13 @@ impl SignedOut {
     }
 }
 
+/// `TeardownReason` without `shutdown` (quit stops sync elsewhere).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Reason {
+    Logout,
+    Integrity,
+}
+
 impl AccountService {
     /// `sync:auth-logout` and `account:signOut`, one teardown. Runs after any key-changing
     /// operation in flight, never beside one.
@@ -64,7 +75,20 @@ impl AccountService {
         // and none starts until the teardown is done (the guard ends the term again on drop).
         let _term = self.epoch.end();
         let _op = self.key_op.lock().await;
-        tracing::info!(scope = "SessionTeardown", "session teardown started");
+        self.teardown(session, Reason::Logout).await
+    }
+
+    /// `performTeardown(reason)`. The caller holds `key_op` and has ended the account's term.
+    pub(super) async fn teardown(
+        &self,
+        session: &Session,
+        reason: Reason,
+    ) -> Result<SignedOut, AccountError> {
+        tracing::info!(
+            scope = "SessionTeardown",
+            ?reason,
+            "session teardown started"
+        );
         let stopping = session.clone();
         // The supervisor stops within `STOP_WAIT`; blocking, so off the async workers.
         if let Err(error) = tokio::task::spawn_blocking(move || stopping.detach_sync()).await {
@@ -80,7 +104,9 @@ impl AccountService {
         crate::session::lock(&self.phrase).take();
 
         let mut result = SignedOut::default();
-        if let Err(error) = self.end_session().await {
+        if reason == Reason::Integrity {
+            result.keychain_failures = self.end_session_keeping_master_key();
+        } else if let Err(error) = self.end_session().await {
             tracing::error!(scope = "SessionTeardown", "keychain clear failed: {error}");
             result.keychain_failures = self.undeletable_entries();
             if result.keychain_failures.is_empty() {
@@ -98,7 +124,8 @@ impl AccountService {
                 result.restore_risk = Some(fault);
             }
         }
-        if let Some(open) = session.current()
+        if reason == Reason::Logout
+            && let Some(open) = session.current()
             && let Err(error) = open.vault.clear_sync_session_state()
         {
             tracing::warn!(scope = "SessionTeardown", "vault sync state kept: {error}");
@@ -113,6 +140,30 @@ impl AccountService {
             "session teardown complete"
         );
         Ok(result)
+    }
+
+    /// The `integrity` keychain step: a setup in flight ends first (only its setup token goes),
+    /// then every secret but the master key, named when it stays.
+    fn end_session_keeping_master_key(&self) -> Vec<String> {
+        if matches!(
+            self.session.state(),
+            AuthState::SetupPending | AuthState::SetupExpired
+        ) && let Err(error) = self.session.abandon_setup()
+        {
+            tracing::warn!(scope = "SessionTeardown", "the setup did not end: {error}");
+        }
+        self.session
+            .sign_out_keeping_master_key()
+            .into_iter()
+            .map(|(key, error)| {
+                tracing::error!(
+                    scope = "SessionTeardown",
+                    "failed to delete keychain entry {}: {error}",
+                    account(key, None)
+                );
+                account(key, None)
+            })
+            .collect()
     }
 
     /// Deletes each entry on its own after a failed clear and names the ones that stay

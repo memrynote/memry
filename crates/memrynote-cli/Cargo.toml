@@ -1,0 +1,31 @@
+[package]
+name = "memrynote-cli"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "The memrynote command line: a port of apps/cli on the desktop services"
+
+[lib]
+name = "memrynote_cli"
+
+# A console-subsystem binary on Windows (the Rust default), so output reaches the terminal with
+# no console attach. The app ships it as its sidecar.
+[[bin]]
+name = "memrynote-cli"
+path = "src/main.rs"
+
+[dependencies]
+memry-desktop = { path = "../memry-desktop" }
+serde_json = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
+
+[build-dependencies]
+serde_json = { workspace = true }
+
+[dev-dependencies]
+regex = "1"
+tempfile = "3"

@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "ยังไม่มีคลังข้อมูล",
       "openVault": "เปิดคลังข้อมูล",
+      "createVault": "สร้างคลังข้อมูล",
+      "openFolderAsVault": "เปิดโฟลเดอร์เป็นคลังข้อมูล",
       "settings": "การตั้งค่า",
       "remove": "นำออก “",
       "removeVaultTitle": "นำ “{name}” ออกจากรายการหรือไม่?",

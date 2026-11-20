@@ -3,6 +3,7 @@ import { QrCode, KeyRound, AlertTriangle, Lock } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { memrynoteUrl } from '@/lib/memrynote-url'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'
@@ -20,7 +21,7 @@ import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
 
 const MEMRY_ICON_SRC = new URL('../../../../../src-tauri/icons/icon.png', import.meta.url).href
-const MEMRY_PRICING_URL = 'https://memrynote.com/pricing'
+const MEMRY_PRICING_URL = memrynoteUrl('/pricing', 'setup_wizard')
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {

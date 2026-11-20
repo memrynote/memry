@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Vai a Home",
     "goInbox": "Vai a Posta in arrivo",
-    "goJournal": "Vai a Diario",
     "goCalendar": "Vai a Calendario",
     "goTasks": "Vai ad Attività",
     "goGraph": "Vai a Grafo",

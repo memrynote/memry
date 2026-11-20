@@ -9,7 +9,7 @@ use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
     agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
-    journal, projects, settings, sticky_draft, tasks,
+    journal, notes, projects, settings, sticky_draft, task_activity, tasks,
 };
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
@@ -46,7 +46,8 @@ pub fn apply_inbound(
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types, `canvas`,
+///   it pushed anything. `note` (the same gate plus §6.8.1's reference
+///   union), `inbox`, the calendar types, `canvas`,
 ///   `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft` and the two
 ///   agent types are named
 ///   because each runs its desktop handler's rule instead.
@@ -81,9 +82,20 @@ pub(super) fn apply_record(
     {
         return Ok((outcome, None));
     }
+    // Activity rows are append-only: a live id is skipped, never merged
+    // (desktop's task-activity-handler.ts:55-56, chapter 06 §6.6.3), so a
+    // peer's copy of a `superseded` row this device holds is not re-queued.
+    if record.item_type == task_activity::ITEM_TYPE
+        && sync_items::load(conn, &record.item_type, &record.item_id)?
+            .is_some_and(|row| row.deleted_at.is_none() && row.payload.is_some())
+    {
+        return Ok((ApplyOutcome::Skipped, None));
+    }
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
+        // §6.3.1, then §6.8.1's union of `attachmentReferences` (note-handler.ts).
+        notes::ITEM_TYPE => notes::merge::apply_remote(conn, record, now_ms),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
@@ -175,10 +187,9 @@ fn apply_versioned(
 
 /// The merge's own vocabulary, in the pull's.
 ///
-/// `Merged`'s conflict set is deliberately dropped here. §6.5.3 and §6.5.4
-/// make the conflicts something a *caller* may show a user; §6.3.1's core
-/// obligation is that the core writes them nowhere, because desktop's
-/// `superseded` rows sync to every device as `task_activity`.
+/// `Merged`'s conflict set is dropped here; [`apply_record`] hands it to the
+/// applied-record feed instead, whose observers act on it after the page
+/// commits.
 pub(super) fn outcome(inbound: Inbound) -> ApplyOutcome {
     match inbound {
         Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,
