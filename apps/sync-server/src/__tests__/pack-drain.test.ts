@@ -5,10 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { createMemoryQueue } from './pack-queue-memory'
 import { BACKFILL_MAX_HOPS } from '../services/pack-backfill'
+import { compactOneRange } from '../services/pack-compaction'
 import { handlePackQueueMessage } from '../services/pack-consumer'
 import { reportBootstrapCoverage } from '../services/pack-coverage'
 import type { PackKindName } from '../services/pack-format'
 import type { PackCompactionMessageBody } from '../services/pack-queue'
+import { rollupKind } from '../services/pack-rollup'
 import { PACK_MIN_FILL_ROWS } from '../services/pack-sizing'
 
 /**
@@ -286,4 +288,36 @@ describe('the drain of a bootstrap-seen vault (#5230)', () => {
     }
     expect(Math.max(...deliveries.map((delivery) => delivery.subrequests))).toBeLessThan(1000)
   }, 300_000)
+
+  it('a snapshot rollup swaps beside a pack that starts in the second its run ends', async () => {
+    // #given: 19 snapshot packs of 256 at 20 snapshots a second, so a pack
+    // boundary splits a second; the longest run is 16 packs (4,096 entries)
+    // and the 17th pack starts in the second the 16th ends
+    seedVault('u-tie', 'v-tie', 5000)
+    while (
+      (
+        await compactOneRange(
+          harness.db,
+          storage,
+          { userId: 'u-tie', vaultId: 'v-tie' },
+          'crdt_snapshot'
+        )
+      ).built
+    ) {
+      // build every full window, no rollup between
+    }
+    expect(packs('v-tie', 'crdt_snapshot')).toBe(19)
+
+    // #when
+    const rollup = await rollupKind(
+      harness.db,
+      storage,
+      { userId: 'u-tie', vaultId: 'v-tie' },
+      'crdt_snapshot'
+    )
+
+    // #then: the overlap guard leaves the tie at the boundary alone
+    expect(rollup?.replaced).toBe(16)
+    expect(packs('v-tie', 'crdt_snapshot')).toBe(4)
+  }, 120_000)
 })

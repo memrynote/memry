@@ -518,11 +518,13 @@ export const replacePacks = (
 
 /**
  * The index swap (protocol 08 §8.12), one D1 batch: replacePacks over the
- * inputs while no other row holds the merged `min_cursor`, every kept entry
- * is still current (the §7.15 recheck), and no purge rewrite is pending that
- * the plan did not exclude, then the merged row. A purge after the plan took
- * a pack out of the listing that the run may span, and its rewrite would list
- * that range a second time (VERIFY-5283 V1). An object the
+ * inputs while no other listed pack starts inside the merged range, every
+ * kept entry is still current (the §7.15 recheck), and no purge rewrite is
+ * pending that the plan did not exclude, then the merged row. A purge after
+ * the plan took a pack out of the listing that the run may span: its rewrite
+ * either is still pending (the pending guard) or already listed its pack
+ * inside the range (the overlap guard), so neither lists the range twice
+ * (VERIFY-5283 V1, REVIEW-5298 P1). An object the
  * batch did not list is recorded for deletion at once (recordUnlisted).
  */
 const swapListing = async (
@@ -537,9 +539,12 @@ const swapListing = async (
     swap.kept.length > 0
       ? allLive(liveJoin(kind, scope, swap.kept), swap.kept.length)
       : { sql: '1', bind: [] }
+  // A snapshot pack may start in the second the run ends in (a created_at
+  // tie split across packs), so for snapshots the run's last second is open.
+  const end = kind === 'crdt_snapshot' ? '<' : '<='
   const { statements, recorded } = replacePacks(db, scope, kind, ids, swap.packId, {
     sql: `NOT EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ?
-        AND min_cursor = ? AND id NOT IN (SELECT value FROM json_each(?)))
+        AND min_cursor >= ? AND min_cursor ${end} ? AND id NOT IN (SELECT value FROM json_each(?)))
       AND NOT EXISTS (SELECT 1 FROM pack_replaced_objects WHERE user_id = ? AND vault_id = ?
         AND replaced_by = '${REWRITE_PENDING}' AND pack_key NOT IN (SELECT value FROM json_each(?)))
       AND ${current.sql}`,
@@ -548,6 +553,7 @@ const swapListing = async (
       scope.vaultId,
       kind,
       swap.minSortValue,
+      swap.maxSortValue,
       JSON.stringify(ids),
       scope.userId,
       scope.vaultId,

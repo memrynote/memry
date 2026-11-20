@@ -702,6 +702,35 @@ describe('pack work racing a purge on the other queue (VERIFY-5283 V1, V2)', () 
     expect(overlappingUpdateRanges()).toEqual([])
   })
 
+  it('a purge before the listing read, rewritten before the swap, fails the swap (REVIEW-5298 P1)', async () => {
+    // #given: DAY's body in 5 update packs; the purge rewrites 4 inline and
+    // leaves 1 pending, after the rollup read the pending set
+    const app = buildApp()
+    await packRounds(app, 0, 8)
+    let armed = false
+    let rewritten = false
+    const put = storage.put.bind(storage)
+    vi.spyOn(storage, 'put').mockImplementation((async (...args: Parameters<R2Bucket['put']>) => {
+      // The rollup's own PUT comes after its plan and before its swap.
+      if (armed && !rewritten) {
+        rewritten = true
+        await rewritePurgedPacks(harness.db, storage, SCOPE)
+      }
+      return put(...args)
+    }) as never)
+    beforeRead(listingRead, async () => {
+      await push(app, deleteSpec(DAY))
+      armed = true
+    })
+
+    // #when
+    await rollupKind(harness.db, storage, SCOPE, 'crdt_update')
+
+    // #then: the rewrite listed its pack, and the rollup did not list over it
+    expect(rewritten).toBe(true)
+    expect(overlappingUpdateRanges()).toEqual([])
+  })
+
   it('a compaction message whose deletion pass settles every pending rewrite is not redelivered', async () => {
     // #given: more rewrites pending than one pass takes, all past their grace
     const app = buildApp()
