@@ -93,8 +93,10 @@ impl Zips {
             }
             let raw = self.archives[archive_at]
                 .name_for_index(index)
+                .transpose()
+                .map_err(zip_error)?
                 .unwrap_or_default()
-                .to_owned();
+                .into_owned();
             // yauzl without `strictFileNames` reads `\` as `/`.
             let filepath = raw.replace('\\', "/");
             if filepath.ends_with('/') {
@@ -130,7 +132,7 @@ impl Zips {
                 let nested = self.read(at, MAX_SOURCE_BYTES.min(room)).map_err(|error| {
                     if error.kind() == io::ErrorKind::FileTooLarge && room < MAX_SOURCE_BYTES {
                         io::Error::other(format!(
-                            "Zip holds more than {} MB of nested zips",
+                            "Zip holds more than {} MB of nested zips. Extract the inner zips and pick them directly.",
                             MAX_NESTED_ZIP_BYTES / (1024 * 1024)
                         ))
                     } else {

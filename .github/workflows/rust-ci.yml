@@ -35,6 +35,7 @@ on:
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
       - '.github/actions/free-disk/**'
+      - '.github/actions/libsodium-dist/**'
       - '.github/actions/ort-static/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
@@ -145,7 +146,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -266,6 +267,11 @@ jobs:
         if: steps.cargo-cache.outcome == 'failure'
         run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
+      # libsodium-sys-stable downloads its MSVC archive without a retry on Windows (build.rs:405
+      # "Peer disconnected"); this caches it, fetches it with retries and sets SODIUM_DIST_DIR.
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
+
       # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
       # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
       # The test partitions need it too: on Windows every memry-tauri test links memry-ml
@@ -322,7 +328,7 @@ jobs:
         env:
           PARTITION: ${{ matrix.partition }}
           PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
-        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && matrix.part != 'checks' && matrix.part != 'models' && github.event_name == 'merge_group' }}
@@ -823,8 +829,8 @@ jobs:
       - name: Sync harness (memry-desktop)
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
         run: |
-          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachment_holds_harness -- -D warnings
-          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachment_holds_harness --no-fail-fast
+          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness -- -D warnings
+          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness --no-fail-fast
 
       - name: Line ceilings
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'

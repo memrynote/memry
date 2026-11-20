@@ -24,8 +24,11 @@
 //! user's text can be brought back. A locked note is refused by the seam (`Kept::Locked`,
 //! `note_locked`), as Electron's `assertNoteWritable` refuses it, before anything is written.
 //!
-//! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it) and a
-//! project property's task links (Step 21).
+//! With `plainChecklists` (Step 32h1) the template body's checkbox lines the note did not hold
+//! already are marked plain, so the editor keeps them as checklists
+//! (`markAddedChecklistLinesPlain(update.content, note.content)`).
+//!
+//! Not here, with its owner: a project property's task links (Step 21).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -35,6 +38,7 @@ use memry_core::domain::note_stats::header_tags as file_header_tags;
 use memry_core::markdown::frontmatter::{
     YamlMap, YamlValue, parse_markdown_note, serialize_updated_note,
 };
+use memry_core::markdown::shared::checklist_plain::mark_added_checklist_lines_plain;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
@@ -58,13 +62,16 @@ pub enum TemplateMode {
     Body,
 }
 
-/// `ApplyTemplateSchema`, the fields this step reads.
+/// `ApplyTemplateSchema`.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyTemplateInput {
     pub note_id: String,
     pub template_id: String,
     pub mode: TemplateMode,
+    #[serde(default)]
+    #[specta(optional)]
+    pub plain_checklists: bool,
 }
 
 /// The note's next file and what its record takes from it.
@@ -83,13 +90,16 @@ pub struct Applied {
 /// The text a note file's `text` (without a byte order mark) becomes with `template` applied in
 /// `mode`, for a note titled `title` whose record holds the property values `record`.
 /// `with_fields` holds the keys of the tags with fields, whose body `#tags` stay out of the
-/// header; `types` the property definitions' types, by name.
+/// header; `types` the property definitions' types, by name. With `plain_checklists` the
+/// checkbox lines the body gains are marked plain.
+#[allow(clippy::too_many_arguments)]
 pub fn applied(
     text: &str,
     title: &str,
     record: &Map<String, Value>,
     template: &TemplateView,
     mode: TemplateMode,
+    plain_checklists: bool,
     with_fields: &HashSet<String>,
     types: &HashMap<String, String>,
 ) -> Result<Applied, NotesError> {
@@ -98,7 +108,10 @@ pub fn applied(
         YamlValue::Map(map) => (**map).clone(),
         _ => YamlMap::new(),
     };
-    let body = template.body_for(title);
+    let mut body = template.body_for(title);
+    if plain_checklists {
+        body = mark_added_checklist_lines_plain(&body, &parsed.content);
+    }
     let full = mode == TemplateMode::Full;
     let before = file_header_tags(&reading);
     let add = HeaderTagEdit {
@@ -198,6 +211,7 @@ impl NotesService {
                         &listed.properties,
                         &template,
                         input.mode,
+                        input.plain_checklists,
                         &with_fields,
                         &types,
                     )?;

@@ -2,6 +2,7 @@ import { foldTag } from '@memry/shared/tag-fold'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core'
 import { createReactBlockSpec } from '@blocknote/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
 import {
   VIEW_BLOCK_LANGUAGE,
@@ -13,8 +14,9 @@ import {
   type ViewBlockDefinition,
   type ViewBlockLayout
 } from '@memry/shared/view-block'
-import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
+import { DEFAULT_COLUMNS, type ViewScope } from '@memry/contracts/folder-view-api'
 import { useT } from '@memry/i18n/renderer'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,18 +35,21 @@ import {
   type ChartPropertyOption
 } from '@/components/property-chart/use-chart-data'
 import { useFolderView, type NoteWithProperties } from '@/hooks/use-folder-view'
-import { useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { notesKeys, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { getViewDisplayName } from '@/lib/contract-display-names'
 import { evaluateFilter, isFilterEmpty } from '@/lib/filter-evaluator'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { sidebarItemForRow } from '@/lib/folder-row-navigation'
 import { Check, ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { sortNotes } from '@/lib/sort-notes'
 import type { EditorSchema } from './editor-schema'
+import { createUntitledViewFolder } from './new-view-folder'
 import { usePortalKeysPlugin, type PortalKeysEditor } from './portal/portal-keys-plugin'
 import { JournalChartBody, ViewBlockChartArea } from './view-block-chart'
 import {
+  NewNoteButton,
   OpenSourceButton,
   SourcePicker,
   ViewBlockNotice,
@@ -94,6 +99,12 @@ const freshViewBlocks = new Set<string>()
 
 /** Blocks this window just inserted with `/chart`; they open with the chart settings up. */
 const freshChartBlocks = new Set<string>()
+
+/**
+ * Blocks this window just inserted with `/new view`. Their folder is new, and
+ * main announces no folder creates, so the block refreshes the folder list.
+ */
+const freshViewFolders = new Set<string>()
 
 type TablePropertyTypes = NonNullable<React.ComponentProps<typeof FolderTableView>['propertyTypes']>
 
@@ -205,11 +216,13 @@ function ViewBlockHeader({
   chartSettingsOpen,
   folderView,
   layout,
-  chartProperties
+  chartProperties,
+  scope
 }: ViewBlockBodyProps & {
   folderView: FolderViewResult
   layout: ViewBlockLayout
   chartProperties: ChartPropertyOption[]
+  scope: ViewScope
 }) {
   const { views, activeView, availableProperties, builtInColumns } = folderView
   return (
@@ -259,6 +272,7 @@ function ViewBlockHeader({
           />
         </>
       ) : null}
+      <NewNoteButton scope={scope} />
       <OpenSourceButton definition={definition} />
     </div>
   )
@@ -358,11 +372,7 @@ export function ViewBlockBody(props: ViewBlockBodyProps): React.JSX.Element {
   return <FolderViewBlockBody {...props} scope={scope} />
 }
 
-function FolderViewBlockBody(
-  props: ViewBlockBodyProps & {
-    scope: Exclude<ReturnType<typeof viewBlockScope>, { kind: 'journal' }>
-  }
-): React.JSX.Element {
+function FolderViewBlockBody(props: ViewBlockBodyProps & { scope: ViewScope }): React.JSX.Element {
   const { definition, scope } = props
   const { t } = useT('notes')
   const { openSidebarItem } = useSidebarNavigation()
@@ -499,10 +509,14 @@ export function ViewBlockRenderer({
   const [chartSettingsOpen] = useState(() => freshChartBlocks.has(block.id))
   const frameRef = useRef<HTMLDivElement>(null)
 
+  const queryClient = useQueryClient()
   useEffect(() => {
     freshViewBlocks.delete(block.id)
     freshChartBlocks.delete(block.id)
-  }, [block.id])
+    if (freshViewFolders.delete(block.id)) {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    }
+  }, [block.id, queryClient])
 
   useClaimPresses(frameRef)
   usePortalKeysPlugin(editor)
@@ -624,6 +638,42 @@ export function getViewSlashMenuItem(
     title: labels.title,
     onItemClick: () => insertViewBlock(editor, STARTER_VIEW_DEFINITION, freshViewBlocks),
     aliases: ['view', 'query', 'base', 'database', 'saved view', 'embed view'],
+    group: labels.group,
+    subtext: labels.subtext
+  }
+}
+
+/**
+ * `/new view`: an `Untitled View` folder beside the note, and a view block over
+ * it. Notes made from the block's "New note" land in that folder, so the view
+ * organizes itself.
+ */
+export function getNewViewSlashMenuItem(
+  editor: EditorSchema['BlockNoteEditor'],
+  labels: { title: string; group: string; subtext: string; failed: string },
+  getNotePath: () => Promise<string | undefined>
+) {
+  const insert = async (): Promise<void> => {
+    try {
+      const path = await createUntitledViewFolder(await getNotePath(), labels.failed)
+      insertViewBlock(
+        editor,
+        {
+          source: { kind: 'folder', path },
+          layout: 'list',
+          order: [{ property: 'modified', direction: 'desc' }]
+        },
+        freshViewFolders
+      )
+    } catch (err) {
+      log.error('Failed to create the folder for a new view', err)
+      toast.error(extractErrorMessage(err, labels.failed))
+    }
+  }
+  return {
+    title: labels.title,
+    onItemClick: () => void insert(),
+    aliases: ['new view', 'new database', 'inline database', 'collection', 'new folder view'],
     group: labels.group,
     subtext: labels.subtext
   }

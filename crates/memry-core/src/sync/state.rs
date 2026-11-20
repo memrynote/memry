@@ -50,9 +50,11 @@ impl SyncState {
     }
 
     /// Whether reads continue from here. **Every state except `Offline`.**
-    /// The server does not gate `GET`, `HEAD` or `OPTIONS` either
-    /// (chapter 11 §11.4), so this is the client agreeing with the server
-    /// rather than compensating for it.
+    /// The server does not gate `GET`, `HEAD` or `OPTIONS` either, nor, since
+    /// #4716, the four `POST`s that only select (`/sync/pull`,
+    /// `/sync/records/pull`, `/sync/crdt/updates/batch`,
+    /// `/sync/attachments/presign-batch`; chapter 11 §11.4 on `main`), so this
+    /// is the client agreeing with the server rather than compensating for it.
     pub fn reads_continue(self) -> bool {
         self != SyncState::Offline
     }

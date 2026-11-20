@@ -4,15 +4,14 @@ import { renderWithProviders } from '@tests/utils/render'
 import type { UnsentNotesResult } from '@memry/contracts/ipc-sync-ops'
 import { UnsentNotesList } from './unsent-notes-list'
 
-const getUnsentNotes = vi.fn<() => Promise<UnsentNotesResult>>()
+const { getUnsentNotes } = vi.hoisted(() => ({
+  getUnsentNotes: vi.fn<() => Promise<UnsentNotesResult>>()
+}))
+
+vi.mock('@/services/sync-service', () => ({ syncService: { getUnsentNotes } }))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  const api = window.api as typeof window.api & {
-    syncOps?: { getUnsentNotes?: typeof getUnsentNotes }
-  }
-  api.syncOps = api.syncOps ?? {}
-  api.syncOps.getUnsentNotes = getUnsentNotes
 })
 
 describe('UnsentNotesList (#2647)', () => {
