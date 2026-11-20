@@ -3,14 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { compactOneRange } from './pack-compaction'
 import { packSha256 } from './pack-format'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
 import { rollupKind } from './pack-rollup'
 import { PACK_SETTLE_SECONDS } from './pack-sizing'
 
 /**
  * REVIEW-5277 P3: a pack object written before a listing batch that throws was
  * never recorded, so only the 1 h orphan sweep reached it, past the 900 s
- * purge deadline. A batch can also commit and lose its response, so the object
- * goes only when its own row is absent.
+ * purge deadline. A batch can also commit and lose its response, or commit
+ * after its error came back (#5247), so the object goes only through the
+ * deletion pass, and only while no row lists its key.
  */
 
 const USER = 'user-listing-batch'
@@ -61,13 +63,21 @@ const unlisted = (): string[] =>
     .pluck()
     .all() as string[]
 
-/** The next listing batch throws, after committing when `commits`. */
-const failNextBatch = (commits: boolean): void => {
+/**
+ * The next listing batch throws: after committing (`before`), never (`never`),
+ * or after its error reached the caller (`after`, run by the returned commit).
+ */
+const failNextBatch = (commits: 'before' | 'never' | 'after'): (() => Promise<void>) => {
   const batch = harness.db.batch.bind(harness.db)
+  let late: D1PreparedStatement[] = []
   vi.spyOn(harness.db, 'batch').mockImplementationOnce(async (statements) => {
-    if (commits) await batch(statements)
+    if (commits === 'before') await batch(statements)
+    if (commits === 'after') late = statements
     throw new Error('D1_ERROR: network')
   })
+  return async () => {
+    await batch(late)
+  }
 }
 
 const buildRecordPacks = async (count: number): Promise<void> => {
@@ -101,20 +111,37 @@ afterEach(() => {
 })
 
 describe('a listing batch that throws (REVIEW-5277 P3)', () => {
-  it('build: an uncommitted batch records its object and deletes it', async () => {
+  it('build: an uncommitted batch records its object and the deletion pass deletes it', async () => {
     await writeRecord(1)
-    failNextBatch(false)
+    failNextBatch('never')
 
     await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
 
     expect(listedKeys()).toEqual([])
     expect(unlisted()).toHaveLength(1)
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
     expect(await packKeys()).toEqual([])
+    expect(unlisted()).toEqual([])
+  })
+
+  // #5247: the catch read the row, found it absent and deleted the object; the
+  // commit then landed and listed a pack with no object.
+  it('build: a commit that lands after the error keeps its listed object', async () => {
+    await writeRecord(1)
+    const commit = failNextBatch('after')
+
+    await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
+    await commit()
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+
+    expect(listedKeys()).toHaveLength(1)
+    expect(await packKeys()).toEqual(listedKeys())
+    expect(unlisted()).toEqual([])
   })
 
   it('build: a committed batch keeps its listed object', async () => {
     await writeRecord(1)
-    failNextBatch(true)
+    failNextBatch('before')
 
     await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
 
@@ -123,21 +150,22 @@ describe('a listing batch that throws (REVIEW-5277 P3)', () => {
     expect(await packKeys()).toEqual(listedKeys())
   })
 
-  it('rollup: an uncommitted swap records the merged object and deletes it', async () => {
+  it('rollup: an uncommitted swap records the merged object and the deletion pass deletes it', async () => {
     await buildRecordPacks(8)
     const before = listedKeys().toSorted()
-    failNextBatch(false)
+    failNextBatch('never')
 
     await expect(rollupKind(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
 
     expect(listedKeys().toSorted()).toEqual(before)
     expect(unlisted()).toHaveLength(1)
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
     expect((await packKeys()).toSorted()).toEqual(before)
   })
 
   it('rollup: a committed swap keeps the merged object', async () => {
     await buildRecordPacks(8)
-    failNextBatch(true)
+    failNextBatch('before')
 
     await expect(rollupKind(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
 

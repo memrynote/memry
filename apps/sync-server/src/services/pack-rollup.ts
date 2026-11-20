@@ -4,23 +4,29 @@ import { createLogger } from '../lib/logger'
 import {
   extractEntry,
   openPack,
-  parsePack,
   type PackEntryPlan,
-  type PackEntryPlanMeta,
   type PackKindName,
   type PackedEntry
 } from './pack-format'
 import {
   ALWAYS,
   allLive,
+  packDocuments,
   packIndexInsert,
+  packKeyRange,
   packObjectKey,
   type Coverage,
   type Guard,
   type VaultScope
 } from './pack-index-write'
 import { recordsLive } from './pack-record-selection'
-import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import {
+  REWRITE_PENDING,
+  deleteUnlisted,
+  listingBatch,
+  recordUnlisted
+} from './pack-replaced-objects'
+import { liveIndexes, planOf, readPackObject } from './pack-repack'
 import { PACK_TARGET_BYTES, packCountBound } from './pack-sizing'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
@@ -73,11 +79,14 @@ const chains = (previous: ListedPack, next: ListedPack): boolean =>
  * chain and fit one pack by their listed counts. Longest, so tiny packs merge
  * before a full pack is rewritten. Empty when no two neighbours fit. An
  * `excluded` pack (one that could not be read) ends a run: merging across it
- * would list two packs over its range.
+ * would list two packs over its range. So does a `rewriting` min_cursor, the
+ * range of a pack waiting for its purge rewrite (protocol 08 §8.13), which
+ * lists its pack back there.
  */
 export const planRollup = (
   packs: readonly ListedPack[],
-  excluded: ReadonlySet<string> = new Set()
+  excluded: ReadonlySet<string> = new Set(),
+  rewriting: readonly number[] = []
 ): ListedPack[] => {
   let best: ListedPack[] = []
   for (let start = 0; start < packs.length; start++) {
@@ -89,6 +98,8 @@ export const planRollup = (
       const previous = run[run.length - 1]
       if (excluded.has(pack.id)) break
       if (previous && !chains(previous, pack)) break
+      if (previous && rewriting.some((min) => min >= previous.min_cursor && min <= pack.min_cursor))
+        break
       if (entries + pack.item_count > PACK_MAX_ENTRIES) break
       if (bytes + pack.byte_size > PACK_TARGET_BYTES) break
       entries += pack.item_count
@@ -101,7 +112,11 @@ export const planRollup = (
 }
 
 /** Live-entry join per kind: the same rows a build would pack today. */
-const liveJoin = (kind: PackKindName, scope: VaultScope, entries: readonly PackedEntry[]): Guard =>
+export const liveJoin = (
+  kind: PackKindName,
+  scope: VaultScope,
+  entries: readonly PackedEntry[]
+): Guard =>
   kind === 'record'
     ? recordsLive(scope, entries)
     : kind === 'crdt_snapshot'
@@ -141,16 +156,8 @@ const readInput = async (
   kind: PackKindName,
   pack: ListedPack
 ): Promise<Input | string> => {
-  try {
-    const object = await storage.get(pack.pack_key)
-    if (!object) return 'object missing'
-    const bytes = new Uint8Array(await object.arrayBuffer())
-    const parsed = await parsePack(bytes)
-    if (parsed.entries.some((entry) => entry.kind !== kind)) return 'entry of another kind'
-    return { pack, bytes, entries: parsed.entries }
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
-  }
+  const read = await readPackObject(storage, kind, pack.pack_key)
+  return typeof read === 'string' ? read : { pack, ...read }
 }
 
 const inputOf = (read: ReadonlyMap<string, Input>, pack: ListedPack): Input => {
@@ -182,35 +189,6 @@ const readInputs = async (
   }
   return failed
 }
-
-const liveIndexes = async (
-  db: D1Database,
-  scope: VaultScope,
-  kind: PackKindName,
-  entries: readonly PackedEntry[]
-): Promise<Set<number>> => {
-  const live = liveJoin(kind, scope, entries)
-  const rows = await db
-    .prepare(`SELECT e.key AS i ${live.sql}`)
-    .bind(...live.bind)
-    .all<{ i: number }>()
-  return new Set((rows.results ?? []).map((row) => row.i))
-}
-
-/** The plan that writes a packed entry into a new pack, its meta carried verbatim. */
-const planOf = (kind: PackKindName, entry: PackedEntry): PackEntryPlan => ({
-  kind,
-  id: entry.id,
-  sourceKey: entry.sourceKey,
-  sortKey: entry.sortKey,
-  sizeBytes: entry.length,
-  ...(entry.meta
-    ? {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the meta a build wrote into this index block, carried over verbatim
-        meta: entry.meta as PackEntryPlanMeta
-      }
-    : {})
-})
 
 export interface CollidingPack {
   pack: ListedPack
@@ -244,7 +222,7 @@ export const readCollidingPack = async (
   if (!pack) return null
   const input = await readInput(storage, kind, pack)
   if (typeof input === 'string') return input
-  const live = await liveIndexes(db, scope, kind, input.entries)
+  const live = await liveIndexes(db, liveJoin(kind, scope, input.entries))
   const kept = input.entries.filter((_, index) => live.has(index))
   return {
     pack,
@@ -310,7 +288,19 @@ export const rollupKind = async (
     .bind(scope.userId, scope.vaultId, kind)
     .all<ListedPack>()
   const packs = listed.results ?? []
-  let run = planRollup(packs)
+  const pending = await db
+    .prepare(
+      `SELECT pack_key FROM pack_replaced_objects
+       WHERE user_id = ? AND vault_id = ? AND replaced_by = '${REWRITE_PENDING}'`
+    )
+    .bind(scope.userId, scope.vaultId)
+    .all<{ pack_key: string }>()
+  const rewriting = (pending.results ?? []).flatMap(({ pack_key: key }) => {
+    const range = packKeyRange(key)
+    return range?.kind === kind ? [range.minSortValue] : []
+  })
+  const plan = (excluded: ReadonlySet<string> = new Set()) => planRollup(packs, excluded, rewriting)
+  let run = plan()
   // An unreadable input is excluded and the rollup re-planned over every listed
   // pack, so bad packs do not wedge the kind above its bound (VERIFY-5267 F4).
   // GETs stay within ROLLUP_MAX_INPUTS per rollup: once a re-plan would pass
@@ -322,7 +312,7 @@ export const rollupKind = async (
   const unreadIn = (list: readonly ListedPack[]) => list.filter((pack) => !read.has(pack.id))
   for (;;) {
     if (fetched + unreadIn(run).length > ROLLUP_MAX_INPUTS) {
-      run = planRollup(packs, new Set([...excluded, ...unreadIn(packs).map((pack) => pack.id)]))
+      run = plan(new Set([...excluded, ...unreadIn(packs).map((pack) => pack.id)]))
     }
     if (run.length === 0) {
       logger.warn('pack kind above its bound with no mergeable run', {
@@ -344,16 +334,18 @@ export const rollupKind = async (
       })
       excluded.add(pack.id)
     }
-    run = planRollup(packs, excluded)
+    run = plan(excluded)
   }
   let inputs = run.map((pack) => inputOf(read, pack))
 
   let entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
   let live = await liveIndexes(
     db,
-    scope,
-    kind,
-    entries.map(({ entry }) => entry)
+    liveJoin(
+      kind,
+      scope,
+      entries.map(({ entry }) => entry)
+    )
   )
   // A covered run whose entries all died still carries its range: merge it into
   // a neighbour instead of opening a coverage gap (protocol 08 §8.10).
@@ -381,9 +373,11 @@ export const rollupKind = async (
       entries = inputs.flatMap((input) => input.entries.map((entry) => ({ input, entry })))
       live = await liveIndexes(
         db,
-        scope,
-        kind,
-        entries.map(({ entry }) => entry)
+        liveJoin(
+          kind,
+          scope,
+          entries.map(({ entry }) => entry)
+        )
       )
     }
   }
@@ -557,7 +551,8 @@ const swapListing = async (
           maxSortValue: swap.maxSortValue,
           itemCount: swap.kept.length,
           byteSize: swap.payloadBytes,
-          coverage: swap.coverage
+          coverage: swap.coverage,
+          documents: packDocuments(kind, swap.kept)
         },
         recorded
       ),
@@ -573,7 +568,6 @@ const swapListing = async (
   )
   const results = await listingBatch<{ swapped: number; listed: number }>(
     db,
-    storage,
     scope,
     swap.kept.length > 0 ? { packId: swap.packId, packKey: swap.packKey } : null,
     statements
