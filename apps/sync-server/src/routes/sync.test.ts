@@ -1700,7 +1700,8 @@ describe('sync routes', () => {
             created_at: 111
           }
         ],
-        hasMore: true
+        hasMore: true,
+        floor: 2
       })
 
       const res = await app.request(
@@ -1721,6 +1722,7 @@ describe('sync routes', () => {
           }
         ],
         hasMore: true,
+        floor: 2,
         snapshotMeta: null
       })
       expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1', 3, 500)
@@ -1768,7 +1770,8 @@ describe('sync routes', () => {
                 created_at: 222
               }
             ],
-            hasMore: false
+            hasMore: false,
+            floor: 3
           }
         },
         snapshotMeta: {
@@ -1798,7 +1801,8 @@ describe('sync routes', () => {
                 createdAt: 222
               }
             ],
-            hasMore: false
+            hasMore: false,
+            floor: 3
           }
         },
         // Additive top-level key. A client that gets no `snapshotMeta` at all is

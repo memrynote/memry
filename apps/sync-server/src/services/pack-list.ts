@@ -1,4 +1,8 @@
-import { PackKindSchema, type PackListResponse } from '@memry/contracts/sync-api'
+import {
+  PACK_LIST_MAX_PACKS_PER_VAULT,
+  PackKindSchema,
+  type PackListResponse
+} from '@memry/contracts/sync-api'
 
 import {
   DEFAULT_PRESIGN_TTL_SECONDS,
@@ -33,6 +37,28 @@ import {
 // client downloads before deciding what to fetch, and small pages keep the
 // presign loop (one HMAC chain each) comfortably cheap.
 export const MAX_PACK_PAGE_LIMIT = 50
+
+// Fewer listed packs than §8.14's cap, so one more insert keeps the vault at or
+// below it. Compaction checks it before a build and again in its commit batch.
+export const roomGuard = (scope: {
+  userId: string
+  vaultId: string
+}): { sql: string; bind: unknown[] } => ({
+  sql: '(SELECT COUNT(*) FROM pack_index WHERE user_id = ? AND vault_id = ?) < ?',
+  bind: [scope.userId, scope.vaultId, PACK_LIST_MAX_PACKS_PER_VAULT]
+})
+
+export const roomForPack = async (
+  db: D1Database,
+  scope: { userId: string; vaultId: string }
+): Promise<boolean> => {
+  const room = roomGuard(scope)
+  const row = await db
+    .prepare(`SELECT ${room.sql} AS room`)
+    .bind(...room.bind)
+    .first<{ room: number }>()
+  return Boolean(row?.room)
+}
 
 interface PackIndexRow {
   id: string

@@ -126,7 +126,8 @@ A pack built before the delete is immutable and still carries the body. A delete
 a journal day is always `j<date>`. If that pack survived, a fresh device would apply the deleted
 body to the re-created day. So when the server purges a deleted note's body
 (`services/document-body-purge.ts`, protocol chapter 07 §7.15), it deletes every `crdt_snapshot`
-`pack_index` row and pack object of the vault and resets that kind's watermark. It drops all of
+`pack_index` row and pack object of the vault and resets that kind's watermark, and does the same
+for `crdt_update` when it deletes an update row. It drops all of
 them because the note's older revisions can sit in any pack built before its last snapshot write.
 Compaction rebuilds the set without the dead note. Until the rebuild finishes, a fresh device
 fetches those bodies item by item. A compaction run that selected the old snapshot before the
@@ -145,8 +146,9 @@ stays predictable.
 At-least-once queue delivery means every step has to tolerate re-running:
 
 1. Selection reads the watermark, so a crash re-selects the same range.
-2. The pack object key is deterministic from the range, so a retry PUTs identical bytes to the same
-   object, and an R2 put is idempotent.
+2. The pack object key is unique per build: it ends in the build's `pack_index` id, so no build
+   writes a key another build wrote, and a purge that deletes a dropped pack's object can never
+   delete a rebuild of the same range.
 3. `pack_index` carries `UNIQUE (user_id, vault_id, item_kind, min_cursor)`, so a duplicate insert
    is a no-op.
 4. The order is **object → D1 row → watermark**: `storage.put(packKey, built.bytes)`, then
@@ -155,14 +157,16 @@ At-least-once queue delivery means every step has to tolerate re-running:
    — harmless invisible bytes, since only a `pack_index` row makes a pack listable. Between the row
    and the watermark it costs an idempotent rebuild that lands on the UNIQUE constraint.
 
-One known residual: a window whose every source blob turned out to be a hole writes no pack and
-advances its watermark _without_ a `pack_index` row. If an earlier attempt of that same range
-crashed in the PUT-to-row window, the object at the deterministic key now has no row pointing at it
-and can never be listed — permanently dead bytes. Harmless today, and the concrete case a future
-sweep should cover. Such a sweep has to list the real key, which `packObjectKey` builds as
-`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>.pack` — the vault prefix is
-deliberate, so vault deletion's prefix purge already reaches these objects, and a sweep listing a
-bare `packs/<kind>/` prefix would match nothing.
+A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
+writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
+(`cleanupOrphanedPackObjects` in `services/cleanup.ts`): it lists the `packs/` prefix of every vault
+that has a `pack_index` or `pack_watermarks` row, and deletes an object only when it is older than
+an hour and no `pack_index` row has its key, rechecked in D1 right before the delete. The hour keeps
+it clear of a build still committing. It reads five list pages of 90 objects per tick and resumes
+from `pack_orphan_sweep` (migration 0022) on the next. The key is
+`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>_<packId>.pack`, `packId`
+being the build's `pack_index` id. The vault prefix is deliberate, so vault deletion's prefix purge
+reaches these objects too.
 
 ### Holes
 
@@ -185,7 +189,7 @@ plan order, so an unclaimed slot makes the next `writeEntry` throw and abort the
 the watermark moves. A window where _every_ candidate turned out to be a hole writes no pack and
 still advances the watermark, so it cannot loop.
 
-### `PACKED_KINDS` is `['crdt_snapshot', 'record']`
+### `PACKED_KINDS` is `['crdt_snapshot', 'record', 'crdt_update']`
 
 A record entry carries the pull item's signature, signer device id, operation, `deletedAt` and
 clock as its meta, so a client verifies it exactly as an item from `POST /sync/pull`. The meta
@@ -198,11 +202,28 @@ purged tombstone (`blob_key` empty), an unknown type, a row without signer metad
 corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_BYTES`. The
 watermark still moves past them.
 
-Each queue message builds one pack per kind, about 531 subrequests together, and a large vault
+Each queue message builds one pack per kind, about 542 subrequests together, and a large vault
 builds across invocations from its watermarks. The Rust core reader is a later step of
 [#5221](https://github.com/memrynote/memry/issues/5221).
 
-No server produces `crdt_update` entries yet.
+An update entry is one `crdt_updates` row: the document id as identity, empty `keyBytes`,
+`server_cursor` as sort key and watermark, and `{sequenceNum, signerDeviceId, createdAt}` as meta.
+Its payload is `update_data`, read from D1 in windows of about 4 MB, so an update build makes no R2
+GET per entry and takes up to `PACK_MAX_ENTRIES` = 4096 rows instead of 256. Rows pruned behind a
+snapshot (#2299) or purged with their document no longer exist and are never selected, and a row
+with a NULL `server_cursor` (written before migration 0011) stays on the update routes. The commit
+is guarded like the snapshot one: every packed update row must still exist and its document must
+not be dead, or the pack is discarded and the next run reselects.
+
+Both update routes answer a per-document `floor`, the highest purged sequence number, read in the
+same D1 batch as the updates. A reader applies a packed update only above it, so a pack downloaded
+before a purge never brings the deleted incarnation back. Whenever the purged document has any body
+row, update or snapshot, the same D1 batch drops every `crdt_update` pack of the vault and resets
+that kind's watermark: a snapshot that pruned the packed update rows leaves them only in the packs.
+
+A push nudge builds no update pack. The cron backfill builds one once the vault holds 256 unpacked
+update rows or the oldest is 24 hours old (`UPDATE_PACK_MIN_ROWS`, `UPDATE_PACK_MAX_WAIT_SECONDS`),
+and `findBacklogVaults` skips a vault below that fill. Without it every push listed a tiny pack.
 
 ### Entry meta per kind
 
@@ -269,7 +290,11 @@ any of it yet.
   without its body and older versions. The tombstone stays. Its ciphertext is gone from pack
   objects within 15 minutes, with a sweep that retries failed object deletes.
 - **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
-  a released reader's 1,000-pack walk never truncates.
+  a released reader's 1,000-pack walk never truncates. Compaction checks the cap before a build
+  and again in the batch that inserts the row, against the rows before it. A build deletes its
+  object only when its own `pack_index` row is absent after that batch (a guard refused it or a
+  concurrent build won), so a listed row always has its object. The cron backfill skips capped
+  vaults.
 
 ## Client Bootstrap Flow
 
