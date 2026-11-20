@@ -153,6 +153,11 @@ fn assert_source(source: &str) {
 }
 
 #[test]
+fn bear_importer_matches_the_typescript_importer() {
+    assert_source("bear");
+}
+
+#[test]
 fn markdown_importer_matches_the_typescript_importer() {
     assert_source("markdown");
 }
