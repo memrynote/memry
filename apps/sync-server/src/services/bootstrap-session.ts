@@ -234,6 +234,9 @@ export const verifyBootstrapSession = async (
  *                        indexed scan per page of 500.
  *   sync_manifest    x3   30 →   90/min. Paginated keyset scans since the
  *                        quick-wins pagination landed.
+ *   crdt_manifest    x3   30 →   90/min. Metadata-only keyset pages of
+ *                        1000 documents, one key read and one 3-statement
+ *                        batch each (#5232).
  *
  * Everything else (pushes, uploads, status, vaults, ws, presign issuance)
  * stays at its steady-state ceiling whether or not a valid token is present:
@@ -246,7 +249,8 @@ export const BOOTSTRAP_ELEVATION_MULTIPLIERS: Record<string, number> = {
   blob_download: 5,
   sync_pull: 3,
   sync_changes: 3,
-  sync_manifest: 3
+  sync_manifest: 3,
+  crdt_manifest: 3
 }
 
 const matchesRequestIdentity = (

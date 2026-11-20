@@ -1341,6 +1341,7 @@ signed-in account for sync, so another account's vaults never reach this account
 | `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
 | `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
 | `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
+| `GET /sync/crdt/manifest`              | down      | Body metadata for up to 1,000 notes per page: floor, snapshot revision, highest update        |
 | `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
 | `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
@@ -1365,12 +1366,18 @@ devices because push rejects a revoked signer, so everything signed under a revo
 accepted before revocation and must stay verifiable. Without them, a device revoked from Settings
 left its whole history unappliable on every install, failing with `No public key for signer`.
 
-The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
+The `/sync/crdt/*` routes other than the manifest are the only ones that carry a note body; the record feed above them
 moves metadata only. A device reads a body by applying the baseline from
 `GET /sync/crdt/snapshot/:noteId` and then replaying incrementals from `GET /sync/crdt/updates`.
 `POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
 request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
 per note and dominate a first-sync sweep's request count.
+
+`GET /sync/crdt/manifest` carries no body. It pages every document of the vault in id order, 1,000
+per request, and answers each document's purge floor, snapshot revision and sequence number, and
+highest stored update. A device that bootstraps from packs reads it to the last page after it holds
+the pack bytes, and checks each packed body against it before applying it. A server without the
+route answers 404, and the device asks `POST /sync/crdt/updates/batch` instead.
 
 ### Native OAuth on mobile
 
@@ -1654,7 +1661,7 @@ after those two migrate.
 
 ### CRDT rate limits
 
-The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
+The four CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`, `crdt_manifest`) key their buckets by
 **deviceId**, not by account. Body sync is device-local work: each device pulls the note bodies it
 does not already hold, so a second device on the same account is normal use rather than contention.
 Under the default per-user key the two devices split one budget, and a legitimate first sync on
@@ -1766,6 +1773,7 @@ touching the counter — see [Rate limiter mechanism](#rate-limiter-mechanism).
 | `sync_pull`       | 120/min      | ×3         | 360/min  | Up to 100 R2 reads per POST (`pullItems` caps concurrency at 25) |
 | `sync_changes`    | 60/min       | ×3         | 180/min  | One indexed scan per page of 500, refs only                      |
 | `sync_manifest`   | 30/min       | ×3         | 90/min   | Bounded indexed keyset scan per page                             |
+| `crdt_manifest`   | 30/min       | ×3         | 90/min   | One indexed key read and one 3-statement batch per page          |
 
 Everything else — every push, every upload, status, vaults, the socket, and presign issuance itself
 — stays at its steady-state ceiling whether or not a valid token is present. Bootstrap is a pull
