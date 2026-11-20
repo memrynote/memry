@@ -84,6 +84,8 @@ pub struct Reconciler {
     pub(super) folded: Option<HashMap<String, Vec<usize>>>,
     pub(super) limits: Limits,
     pub(super) held_adds: Vec<HeldAdd>,
+    /// Removed canvas paths waiting out their rename window, with when it ends (`canvas`).
+    pub(super) canvas_gone: Vec<(String, Instant)>,
     /// Rescans whose `Rescanned` waits for their deletes and held adds.
     pub(super) rescans: Vec<RescanReport>,
     pub(super) reported: Reported,
@@ -140,6 +142,7 @@ impl Reconciler {
             folded: None,
             limits: Limits::DEFAULT,
             held_adds: Vec::new(),
+            canvas_gone: Vec::new(),
             rescans: Vec::new(),
             reported: Reported::default(),
             new_files: NewFiles::Report,
@@ -182,6 +185,7 @@ impl Reconciler {
     pub fn clear(&mut self) {
         self.tracker.clear();
         self.held_adds.clear();
+        self.canvas_gone.clear();
         self.rescans.clear();
     }
 
@@ -300,6 +304,7 @@ impl Reconciler {
             self.reported.forget_tree(rel);
             return;
         }
+        self.track_canvas_gone(rel, now);
         let homes = match self.homes_gone_at(rel) {
             Ok(homes) => homes,
             Err(error) => return self.storage_failed(&error),
@@ -322,6 +327,7 @@ impl Reconciler {
         for pending in self.tracker.expired(now) {
             self.confirm_removed(pending);
         }
+        self.settle_canvas_gone(now);
         self.report_settled_rescans(now);
     }
 

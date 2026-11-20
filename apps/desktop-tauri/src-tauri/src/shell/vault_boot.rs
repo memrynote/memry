@@ -36,10 +36,10 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent, NoteFoldUpdatedEvent,
-    NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent,
-    VaultIndexRecoveredEvent, VaultListChangedEvent, VaultNoticesChangedEvent,
-    WriteBackFailureReason, announce_links, broadcast,
+    CanvasDeletedEvent, CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
+    NoteFoldUpdatedEvent, NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
+    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
+    VaultNoticesChangedEvent, WriteBackFailureReason, announce_links, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -293,8 +293,8 @@ fn register_task_defaults(app: &AppHandle<Wry>, session: &Session) {
     memry_desktop::tasks::defaults::register(session, store.inner().clone());
 }
 
-/// The canvas reconcile in the background of every open, as Electron's `reconcileCanvasFiles`
-/// (Step 30e2).
+/// The canvas reconcile in the background of every open, as Electron's `reconcileCanvasFiles`,
+/// and the canvas delete of a document removed outside the app (Step 30e2).
 fn register_canvas_reconcile(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -305,6 +305,20 @@ fn register_canvas_reconcile(app: &AppHandle<Wry>, session: &Session) {
         return;
     };
     memry_desktop::canvas::reconcile::register(session, store.inner().clone());
+    // A canvas document removed outside the app deletes its canvas (`trackExternalCanvasRemoval`).
+    // Managed by `register_vault_watcher`, which runs before this one.
+    let Some(tier) = app.try_state::<Arc<VaultTier>>() else {
+        tracing::error!(
+            scope = "CanvasWatch",
+            "no vault tier: a canvas document removed outside the app deletes nothing"
+        );
+        return;
+    };
+    let events = app.clone();
+    tier.set_canvas_gone(memry_desktop::canvas::watch::gone_hook(
+        store.inner().clone(),
+        Arc::new(move |id| broadcast(&events, CanvasDeletedEvent { id })),
+    ));
 }
 
 /// The chunked attachment uploads, ended with the vault and swept at its next open (14f-2).

@@ -114,6 +114,8 @@ mod canvas_folders;
 mod canvas_reconcile;
 #[path = "canvas_service.rs"]
 mod canvas_service;
+#[path = "canvas_watch.rs"]
+mod canvas_watch;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
