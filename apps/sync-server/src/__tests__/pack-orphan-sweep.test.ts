@@ -41,13 +41,23 @@ const listedKeys = (): string[] =>
 const failedThenBuilt = async (): Promise<void> => {
   await writeUpdate('note-a')
   advance((PACK_SETTLE_SECONDS + 1) * 1000)
+  // D1 goes away for the listing batch and its cleanup (REVIEW-5277 P3), as a
+  // Worker that dies after the PUT: the object is neither listed nor recorded.
   const failing = vi.spyOn(harness.db, 'batch').mockImplementationOnce(async () => {
     throw new Error('D1 unavailable')
   })
+  const prepare = harness.db.prepare.bind(harness.db)
+  const cleanup = vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+    if (sql.includes('pack_replaced_objects')) throw new Error('D1 unavailable')
+    return prepare(sql)
+  })
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
   await expect(compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).rejects.toThrow(
     'D1 unavailable'
   )
   failing.mockRestore()
+  cleanup.mockRestore()
+  logged.mockRestore()
   expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(true)
 }
 

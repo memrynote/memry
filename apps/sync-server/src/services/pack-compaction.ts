@@ -31,9 +31,19 @@ import {
   type RecordEntry,
   type RecordRow
 } from './pack-record-selection'
-import { loadSnapshotMeta, snapshotSelectionQuery, snapshotsLive } from './pack-snapshot-selection'
-import { rollupKind } from './pack-rollup'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import {
+  loadSnapshotMeta,
+  snapshotSelectionQuery,
+  snapshotsLive,
+  snapshotTieEnd
+} from './pack-snapshot-selection'
+import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
+import {
+  deleteReplacedPackObjects,
+  deleteUnlisted,
+  listingBatch,
+  recordUnlisted
+} from './pack-replaced-objects'
 import { PACK_TARGET_BYTES, packFillReady } from './pack-sizing'
 import {
   updateEntrySource,
@@ -62,10 +72,12 @@ const logger = createLogger('PackCompaction')
  *      key another build wrote, so a purge deleting a dropped pack's object
  *      can never delete a rebuild of the same range (REVIEW-5260)
  *   3. the pack_index row carries UNIQUE (user_id, vault_id, item_kind,
- *      min_cursor) -> a duplicate insert is a no-op
- *   4. order is pack PUT first, then D1 row, then watermark -> an orphan pack
- *      object (crash between 2 and 3) is harmless invisible bytes; a missing
- *      watermark row only causes an idempotent rebuild
+ *      min_cursor), so a range whose first row shares a listed pack's
+ *      min_cursor rolls that pack in (readCollidingPack)
+ *   4. order is pack PUT first, then one D1 batch with the row and the
+ *      watermark, which moves only with the row -> an object the batch did not
+ *      list is recorded and deleted (recordUnlisted); a crash before the batch
+ *      leaves invisible bytes for the orphan sweep
  *
  * ORPHAN DOCTRINE, hole-only windows: a window whose every source blob
  * vanished mid-flight still advances its watermark WITHOUT writing a
@@ -94,8 +106,11 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // SUBREQUEST ARITHMETIC (paid plan: 1000 subrequests per invocation):
 //   N R2 GETs (one per item blob, N ≤ 256)
 // + 1 R2 PUT  (the pack itself)
-// + 5 D1 round trips (watermark read, candidate select, duplicate check,
-//   pack_index insert, watermark upsert)
+// + 5 D1 round trips (listing-cap check, watermark read, candidate select,
+//   collision check, the listing batch). A range that collides with a listed
+//   pack adds one R2 GET and one D1 read (its live entries), and a snapshot
+//   tie it cannot roll in adds one D1 read and one watermark write instead of
+//   the build
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
 // => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
 // pack reads its entry meta in the selection query itself, so it costs
@@ -320,9 +335,9 @@ export interface PackBuildResult {
 }
 
 /**
- * Compact ONE range for one scope+kind end-to-end. Idempotent: re-running an
- * already-built range detects the existing pack_index row and only backfills
- * bookkeeping (never rewrites R2 bytes — packs are immutable once written).
+ * Compact ONE range for one scope+kind end-to-end. Idempotent: a committed
+ * range moved the watermark in the batch that listed it, so a rerun selects
+ * above it and never rewrites R2 bytes (packs are immutable once written).
  */
 export const compactOneRange = async (
   db: D1Database,
@@ -378,29 +393,59 @@ export const compactOneRange = async (
   }
 
   const minSortValue = selection.candidates[0].sortKey
-  const maxSortValue = selection.candidates[selection.candidates.length - 1].sortKey
-  const packId = crypto.randomUUID()
-  const packKey = packObjectKey(scope, kind, minSortValue, maxSortValue, packId)
-
-  // Idempotency gate: a row for this exact range means a previous attempt
-  // finished (or at least published). Never rewrite the object — immutability.
-  const existing = await db
-    .prepare(
-      'SELECT pack_key FROM pack_index WHERE user_id = ? AND vault_id = ? AND item_kind = ? AND min_cursor = ?'
+  // The watermark moves only with an applied pack_index insert (protocol 08
+  // §8.10). A listed pack holding this min_cursor would refuse it, so the build
+  // rolls that pack in, its rows first, and takes only the new rows that fit
+  // beside them. When none fit or the pack cannot be read, record and update
+  // builds hold the watermark: they sort on the unique server_cursor, so only
+  // a foreign row collides, and rows passed unpacked would be in no pack and
+  // in no gap (#5229 P6). Snapshot packs are a cache only and readers trust
+  // the manifest, not their coverage, so a snapshot build leaves the rest of
+  // the tie item by item and moves past it, once: later seconds still pack
+  // and the colliding pack is not downloaded again (D-P6-EXIT).
+  const prior = await readCollidingPack(db, storage, scope, kind, minSortValue)
+  const candidates =
+    prior === null || typeof prior === 'string'
+      ? selection.candidates
+      : fitBeside(prior, selection.candidates)
+  if (typeof prior === 'string' || candidates.length === 0) {
+    const context = {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind,
+      minSortValue,
+      reason: typeof prior === 'string' ? prior : 'listed pack full'
+    }
+    if (kind !== 'crdt_snapshot') {
+      logger.error(
+        'pack range collides with a listed pack it cannot roll in; watermark held',
+        context
+      )
+      return noop
+    }
+    logger.warn(
+      'snapshot tie collides with a listed pack it cannot roll in; left item by item',
+      context
     )
-    .bind(scope.userId, scope.vaultId, kind, minSortValue)
-    .first<{ pack_key: string }>()
-  if (existing) {
+    const tieEnd = await snapshotTieEnd(db, scope, minSortValue)
     await advanceWatermark(
       db,
       scope,
       kind,
-      selection.nextSortValue,
-      selection.nextTiebreak,
+      minSortValue,
+      tieEnd ?? selection.candidates[selection.candidates.length - 1].tiebreak,
       unchanged
     )
-    return { ...noop, built: false, packKey: existing.pack_key }
+    return noop
   }
+  const last = candidates[candidates.length - 1]
+  const maxSortValue = last.sortKey
+  const coverage: Coverage = selection.coverage && {
+    from: prior?.pack.cover_from ?? selection.coverage.from,
+    through: last.sortKey
+  }
+  const packId = crypto.randomUUID()
+  const packKey = packObjectKey(scope, kind, minSortValue, maxSortValue, packId)
 
   // Snapshot freshness metadata is read BEFORE any byte fetch. Order matters:
   // if a push lands mid-build it can now only make the fetched BYTES newer
@@ -415,14 +460,14 @@ export const compactOneRange = async (
     metaBySourceKey = await loadSnapshotMeta(
       db,
       scope,
-      selection.candidates.map((candidate) => candidate.sourceKey)
+      candidates.map((candidate) => candidate.sourceKey)
     )
   }
 
   // Plans carry everything known pre-fetch. Declared sizes come from D1 rows,
   // so openPack sizes its ONE buffer exactly here — before a single byte is
   // fetched — making peak memory knowable: buffer + one transient entry.
-  const plans: PackEntryPlan[] = selection.candidates.map((candidate) => {
+  const plans: PackEntryPlan[] = candidates.map((candidate) => {
     const plan: PackEntryPlan = {
       kind,
       id: candidate.id,
@@ -436,7 +481,8 @@ export const compactOneRange = async (
     return plan
   })
 
-  const pack = openPack(plans)
+  const pack = openPack([...(prior?.kept.map((entry) => entry.plan) ?? []), ...plans])
+  for (const entry of prior?.kept ?? []) await pack.writeEntry(entry.plan, entry.bytes)
 
   // Fetch source bytes verbatim, bounded concurrency, preserving order, and
   // stream each straight into the pack buffer. Every iteration releases its
@@ -461,7 +507,7 @@ export const compactOneRange = async (
     offset += window.length
     for (let j = 0; j < window.length; j++) {
       const plan = window[j]
-      const record = selection.candidates[first + j].record
+      const record = candidates[first + j].record
       const body = bodies[j]
       // A null body is a HOLE, not a failure: the blob was replaced/deleted
       // between selection and fetch (or is a dangling row). Membership is
@@ -543,14 +589,7 @@ export const compactOneRange = async (
   }
 
   if (writtenCount === 0) {
-    await advanceWatermark(
-      db,
-      scope,
-      kind,
-      selection.nextSortValue,
-      selection.nextTiebreak,
-      unchanged
-    )
+    await advanceWatermark(db, scope, kind, last.sortKey, last.tiebreak, unchanged)
     return { ...noop, holes }
   }
 
@@ -579,12 +618,19 @@ export const compactOneRange = async (
     sql: `(${current.sql}) AND (${room.sql}) AND (${unchanged.sql})`,
     bind: [...current.bind, ...room.bind, ...unchanged.bind]
   }
+  const replacing =
+    prior &&
+    replacePacks(db, scope, kind, [prior.pack.id], packId, {
+      sql: `(${guard.sql}) AND (${prior.current.sql})`,
+      bind: [...guard.bind, ...prior.current.bind]
+    })
   // The one object-delete rule (VERIFY-5260): the object goes only when this
   // build's own row is absent after the batch, whether the guard refused it
   // or a concurrent build of the range won. A listed row always has its object.
   const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
   // The watermark and its coverage anchor move only with this row (§8.10).
-  const [, , check] = await db.batch<{ listed: number }>([
+  const results = await listingBatch<{ listed: number }>(db, storage, scope, { packId, packKey }, [
+    ...(replacing?.statements ?? []),
     packIndexInsert(
       db,
       scope,
@@ -596,23 +642,24 @@ export const compactOneRange = async (
         maxSortValue,
         itemCount: built.entries.length,
         byteSize: built.payloadBytes,
-        coverage: selection.coverage
+        coverage
       },
-      guard
+      replacing?.recorded ?? guard
     ),
     watermarkUpsert(
       db,
       scope,
       kind,
-      selection.nextSortValue,
-      selection.nextTiebreak,
+      last.sortKey,
+      last.tiebreak,
       listed,
-      selection.coverage?.through ?? null
+      coverage?.through ?? null
     ),
+    recordUnlisted(db, scope, packId, packKey),
     db.prepare(`SELECT ${listed.sql} AS listed`).bind(...listed.bind)
   ])
-  if (!check.results?.[0]?.listed) {
-    await storage.delete(packKey)
+  if (!results[results.length - 1].results?.[0]?.listed) {
+    await deleteUnlisted(storage, packKey)
     logger.warn(
       'pack not listed (body purge or prune, listing cap, or a build that moved the watermark); discarded',
       {
@@ -696,23 +743,31 @@ export const compactVault = async (
   // Objects still due fail the message, so Queues redelivers it (max_retries 3,
   // no retry delay) inside the purge deadline instead of acking it. Builds this
   // message committed stay committed: a redelivery finds their watermarks moved
-  // and lists nothing twice. A build error is logged and kept as the cause.
-  if ((await deleteReplacedPackObjects(db, storage, scope)).pending) {
+  // and lists nothing twice. A build error is logged and kept as the cause,
+  // also when the pass itself throws (VERIFY-5267).
+  let passFailure: { error: unknown } | null = null
+  let pending = true
+  try {
+    pending = (await deleteReplacedPackObjects(db, storage, scope)).pending
+  } catch (error) {
+    passFailure = { error }
+  }
+  if (pending) {
     logger.error('replaced pack objects still due after the compaction message; redelivered', {
       userId: scope.userId,
       vaultId: scope.vaultId,
-      ...(failure
-        ? {
-            buildError:
-              failure.error instanceof Error ? failure.error.message : String(failure.error)
-          }
-        : {})
+      ...(passFailure ? { passError: errorMessage(passFailure.error) } : {}),
+      ...(failure ? { buildError: errorMessage(failure.error) } : {})
     })
-    throw new Error('replaced pack objects still due', failure ? { cause: failure.error } : {})
+    const cause = failure ?? passFailure
+    throw new Error('replaced pack objects still due', cause ? { cause: cause.error } : {})
   }
   if (failure) throw failure.error
   return results
 }
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
 
 /** A rollup failure leaves the listing as it was; the build still runs. */
 const rollupLogged = async (

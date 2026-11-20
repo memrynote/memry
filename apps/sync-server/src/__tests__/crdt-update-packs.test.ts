@@ -695,7 +695,9 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
   })
 
   // VERIFY-5260 V4: a row written before per-build keys keeps its
-  // `<min>_<max>.pack` key; the gate, the listing and the purge all take it as is.
+  // `<min>_<max>.pack` key; the build, the listing and the purge all take it as
+  // is. Its stand-in bytes cannot be rolled in, so the build lists nothing over
+  // it and holds the watermark (#5229 P6).
   it('a pack under the old range-only key is gated, listed and purged', async () => {
     const app = buildApp()
     await pushJournal(app, { [DEVICE_ID]: 1 })
@@ -710,7 +712,7 @@ describe('the purge drops crdt_update packs (#5228, protocol 08 §8.4.3)', () =>
       .run(USER_ID, VAULT_ID, oldKey, cursor! - 1, cursor, now())
     passFillWait()
 
-    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).packKey).toBe(oldKey)
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_update')).built).toBe(false)
     expect(updatePackCount()).toBe(1)
     const page = await request<PackListResponse>(app, '/sync/packs')
     expect(page.packs.map((pack) => pack.packKey)).toContain(oldKey)

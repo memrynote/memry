@@ -60,3 +60,73 @@ export const deleteReplacedPackObjects = async (
   if (doomed.length > 0) logger.info('replaced pack objects deleted', { count: doomed.length })
   return { deleted: doomed.length, pending: found.length === REPLACED_DELETE_BATCH }
 }
+
+/**
+ * Records the object `packId` was written under, due at once, unless its
+ * `pack_index` row exists after the batch (#5229). Runs at the end of the batch
+ * that tried to list it, so an object no row will ever list is deleted by the
+ * next deletion pass even when the delete below fails. It was never listed,
+ * so no reader holds a URL to it and it waits for no grace period.
+ */
+export const recordUnlisted = (
+  db: D1Database,
+  scope: VaultScope,
+  packId: string,
+  packKey: string
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `INSERT INTO pack_replaced_objects (pack_key, user_id, vault_id, replaced_by, removed_at)
+       SELECT ?, ?, ?, 'unlisted', 0 WHERE NOT EXISTS (SELECT 1 FROM pack_index WHERE id = ?)
+       ON CONFLICT (pack_key) DO NOTHING`
+    )
+    .bind(packKey, scope.userId, scope.vaultId, packId)
+
+/**
+ * Runs the D1 batch that tries to list `written` (null: the batch wrote no
+ * object). When the batch throws, the object is recorded as unlisted, best
+ * effort, and deleted at once only if a separate read finds its row absent: a
+ * batch can commit and still lose its response (REVIEW-5277 P3). Then the
+ * batch error is rethrown.
+ */
+export const listingBatch = async <T>(
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  written: { packId: string; packKey: string } | null,
+  statements: D1PreparedStatement[]
+): Promise<D1Result<T>[]> => {
+  try {
+    return await db.batch<T>(statements)
+  } catch (error) {
+    if (written) {
+      try {
+        await recordUnlisted(db, scope, written.packId, written.packKey).run()
+        const row = await db
+          .prepare('SELECT 1 AS listed FROM pack_index WHERE id = ?')
+          .bind(written.packId)
+          .first()
+        if (!row) await deleteUnlisted(storage, written.packKey)
+      } catch (cleanup) {
+        logger.error(
+          'pack object of a failed listing batch not recorded; left to the orphan sweep',
+          {
+            error: cleanup instanceof Error ? cleanup.message : String(cleanup)
+          }
+        )
+      }
+    }
+    throw error
+  }
+}
+
+/** Deletes an object recordUnlisted recorded; a failure leaves it to the deletion pass. */
+export const deleteUnlisted = async (storage: R2Bucket, packKey: string): Promise<void> => {
+  try {
+    await storage.delete(packKey)
+  } catch (error) {
+    logger.warn('unlisted pack object not deleted; the replaced-object pass retries it', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
