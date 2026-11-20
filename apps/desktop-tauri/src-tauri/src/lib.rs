@@ -98,6 +98,7 @@ fn register_stages() {
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();
+    shell::capture::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
     windows::sticky::register_stages();
