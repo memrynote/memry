@@ -500,6 +500,30 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     expect(row?.title).toBe('Apple')
   }, 20_000)
 
+  // The same rename made while the app is closed: vault open sees only the
+  // new spelling, and the changed file name marks it as the user's rename,
+  // not a folder spelling written by sync.
+  it('vault open takes an offline case-only file rename as a local edit', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n', { remote: false })
+    fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/Apple.md'))
+
+    await indexVault(vault.path)
+    await flushProjectionEvents()
+
+    const row = data.db
+      .select({
+        path: noteMetadata.path,
+        title: noteMetadata.title,
+        modifiedAt: noteMetadata.modifiedAt
+      })
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, 'n1'))
+      .get()
+    expect(row?.path).toBe('Docs/Apple.md')
+    expect(row?.title).toBe('Apple')
+    expect(row?.modifiedAt).not.toBe('2026-01-12T00:00:00.000Z')
+  })
+
   // Two remote notes whose paths differ only in case share one file here, so
   // the second write replaces the first body on disk (#5263). The file still
   // belongs to the row the disk spells: neither row is re-keyed onto the

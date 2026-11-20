@@ -31,6 +31,7 @@ import {
   deleteNoteFromCache,
   findCanonicalNoteForFile,
   findCanonicalNotePath,
+  isRemoteApplySpelling,
   type CanonicalNoteRef
 } from './note-sync'
 import {
@@ -49,7 +50,6 @@ import {
   checkForRename,
   clearAllPendingDeletes,
   hasPendingDeletes,
-  getPendingDelete,
   settleDeferredDeletes,
   discardDeferredDeletes,
   createDeferredDeletes,
@@ -219,19 +219,6 @@ async function isModifiedSince(absolutePath: string, indexedAt: string): Promise
 function isAppMoveEcho(vaultPath: string, relativePath: string): boolean {
   return (
     isAppFolderChange(relativePath) && findCanonicalNoteForFile(vaultPath, relativePath) !== null
-  )
-}
-
-/**
- * Whether a file whose row spells its path in another case is the remote-apply
- * shape (#5261): only the folder segments differ, and no unlink of the row's
- * path is pending. Sync wrote the row's spelling into a folder the disk spells
- * otherwise, and nothing was renamed.
- */
-function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: string): boolean {
-  return (
-    path.posix.basename(claimed.path) === path.posix.basename(relativePath) &&
-    getPendingDelete(claimed.id) === undefined
   )
 }
 

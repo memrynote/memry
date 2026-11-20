@@ -30,7 +30,8 @@ import {
   syncFileToCache,
   syncNoteStatToCache,
   moveFileInCache,
-  findCanonicalNoteForFile
+  findCanonicalNoteForFile,
+  isRemoteApplySpelling
 } from './note-sync'
 import { processRename } from './rename-tracker'
 import { flushProjectionEvents } from '../projections'
@@ -217,6 +218,11 @@ async function indexFile(
  *
  * A row the index does not hold moves in the data DB only, so the walk indexes
  * it as an exact-path row the index does not know.
+ *
+ * A file name that changed case is the user's rename made while the app was
+ * closed: it takes the exact-path code, which restamps the title and syncs it.
+ * A folder renamed by case offline looks the same as a folder sync spelled
+ * differently, and is re-keyed without a sync.
  */
 async function rekeyCaseVariantRow(
   db: ReturnType<typeof getIndexDatabase>,
@@ -225,7 +231,8 @@ async function rekeyCaseVariantRow(
   fileType: NonNullable<ReturnType<typeof getFileType>>
 ): Promise<void> {
   const claimed = findCanonicalNoteForFile(vaultPath, relativePath)
-  if (!claimed || claimed.path === relativePath) return
+  if (!claimed || claimed.path === relativePath || !isRemoteApplySpelling(claimed, relativePath))
+    return
   const indexed = getNoteCacheById(db, claimed.id)
   if (!indexed) {
     updateNoteMetadata(getDatabase(), claimed.id, { path: relativePath })

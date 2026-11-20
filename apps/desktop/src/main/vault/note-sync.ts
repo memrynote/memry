@@ -5,6 +5,7 @@
  * @module vault/note-sync
  */
 
+import { posix } from 'path'
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractAliases,
@@ -22,6 +23,7 @@ import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { extractDateFromPath, getNoteCacheByPath } from '@main/database/queries/notes'
 import { getDatabase, type IndexDb } from '../database'
 import { diskCaseOf, volumeIgnoresCase } from './disk-case'
+import { getPendingDelete } from './rename-tracker'
 import type { FileType } from '@memry/shared/file-types'
 import {
   isPersistableDefinitionType,
@@ -157,6 +159,20 @@ export function findCanonicalNoteForFile(
         localOnly: row.localOnly
       }
     : null
+}
+
+/**
+ * Whether a file whose row spells its path in another case is the remote-apply
+ * shape (#5261): only the folder segments differ, and no unlink of the row's
+ * path is pending. Sync wrote the row's spelling into a folder the disk spells
+ * otherwise, and nothing was renamed. A file name that changed case is the
+ * user's rename, which syncs.
+ */
+export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: string): boolean {
+  return (
+    posix.basename(claimed.path) === posix.basename(relativePath) &&
+    getPendingDelete(claimed.id) === undefined
+  )
 }
 
 /** The path the canonical row gives note `id`, or null when it has no row. */
