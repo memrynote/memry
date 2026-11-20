@@ -31,6 +31,8 @@ export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
         taskChecks: note.taskChecks,
         localOnly: note.localOnly,
         contentHash: note.contentHash,
+        // A new content hash supersedes a write still pending (sync/writeback-baseline.ts).
+        pendingWriteHash: null,
         wordCount: note.wordCount,
         characterCount: note.characterCount,
         snippet: note.snippet,
@@ -52,6 +54,9 @@ export function updateNoteCache(
     .update(noteCache)
     .set({
       indexedAt: new Date().toISOString(),
+      // A new content hash supersedes a write still pending, unless the caller
+      // sets both (sync/writeback-baseline.ts).
+      ...('contentHash' in updates ? { pendingWriteHash: null } : {}),
       ...updates
     })
     .where(eq(noteCache.id, id))

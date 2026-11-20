@@ -7,7 +7,7 @@ import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState, sweepExpired } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
-import { isOutsideEdit, writeWithBaseline } from './writeback-baseline'
+import { isOutsideEdit, recordUnchangedFile, writeWithBaseline } from './writeback-baseline'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
 import { readyWritebackConverter } from './converter-worker-bridge'
@@ -793,6 +793,7 @@ async function writebackExisting(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw)
     log.debug('Write-back is a no-op, skipping', { noteId })
     return
   }
@@ -963,6 +964,7 @@ async function writebackJournal(
 
   // No byte change → no write, no mtime churn, no snapshot, no downstream signal
   if (existingRaw !== null && fileContent === existingRaw) {
+    recordUnchangedFile(indexDb, noteId, cached, existingRaw)
     log.debug('Journal write-back is a no-op, skipping', { noteId, date })
     return
   }

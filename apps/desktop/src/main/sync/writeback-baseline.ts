@@ -7,13 +7,23 @@
  * The baseline is `note_cache.content_hash`, plus `pending_write_hash` while a
  * write-back's own bytes are on their way to disk.
  *
- * Invariant: the baseline only ever names bytes the doc holds, so the bytes
- * Memry wrote or read into the doc never read as an outside edit, and an edit
- * the doc lacks always does. Each writer of the baseline goes through here:
+ * Invariant: the baseline only names bytes the doc holds, so the bytes Memry
+ * wrote or read into the doc never read as an outside edit, and an edit the
+ * doc lacks always does. These writers go through here:
  * - The write-back records the bytes it writes before and after the write, so
- *   a crash between the file write and the hash update leaves them its own.
+ *   a crash between the file write and the hash update leaves them its own,
+ *   and records the file when the doc already serializes to it.
  * - A seed records the bytes it built the doc from, over any older hash.
- * - A reader that does not feed the doc keeps the baseline it finds.
+ * - A reader that does not feed the doc (the ingest backfill) keeps the
+ *   baseline it finds.
+ *
+ * Memry's other body writers (the note command, appended blocks, version
+ * restore, a rename's link rewrites, the watcher's ingest) still write the
+ * file, move the hash through the cache sync, and then feed the doc. A crash
+ * between the hash and the feed leaves the hash past bytes the doc lacks.
+ * Routing them through here is #5304. Any hash they move clears a pending
+ * write (`updateNoteCache`, `insertNoteCache`), so a stale pending hash never
+ * outlives the baseline it was written against.
  *
  * @module sync/writeback-baseline
  */
@@ -71,11 +81,26 @@ export function isOutsideEdit(
 }
 
 /**
- * The hash a reader that does not feed the doc (the ingest backfill after a
- * rename) records for the bytes it read: the baseline it found, or these bytes
- * when the note has none yet. Moving a baseline past bytes the doc never took
- * hides them from the write-back, which then writes the doc over them.
+ * Records the file a write-back left alone because the doc already serializes
+ * to it: those bytes are the doc's, whatever the baseline said before.
  */
-export function baselineAfterRead(baseline: Baseline | undefined, raw: string): string {
-  return baseline?.contentHash ?? generateContentHash(raw)
+export function recordUnchangedFile(
+  indexDb: IndexDb,
+  noteId: string,
+  baseline: Baseline,
+  raw: string
+): void {
+  if (baseline.contentHash === generateContentHash(raw) && !baseline.pendingWriteHash) return
+  recordBaseline(indexDb, noteId, raw)
+}
+
+/**
+ * The hash a reader that does not feed the doc (the ingest backfill after a
+ * rename) records for the bytes it measured: the baseline it found, or the
+ * measured hash when the note has none yet. Moving a baseline past bytes the
+ * doc never took hides them from the write-back, which then writes the doc
+ * over them.
+ */
+export function baselineAfterRead(baseline: Baseline | undefined, measuredHash: string): string {
+  return baseline?.contentHash ?? measuredHash
 }

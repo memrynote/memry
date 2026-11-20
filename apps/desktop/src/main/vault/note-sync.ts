@@ -144,11 +144,15 @@ export function findCanonicalNoteForFile(
   const exact = getNoteMetadataByPath(dataDb, relativePath)
   const candidates =
     exact || !volumeIgnoresCase(vaultPath) ? [] : listNoteMetadataByFoldedPath(dataDb, relativePath)
-  const row =
-    exact ?? candidates.find((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+  // The fold finds candidates; the disk proves which of them name this file. On
+  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
+  const onThisFile = candidates.filter(
+    (candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath
+  )
+  const row = exact ?? onThisFile[0]
   return row
     ? {
-        sharesFile: candidates.length > 1,
+        sharesFile: onThisFile.length > 1,
         id: row.id,
         path: row.path,
         title: row.title,
