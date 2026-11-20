@@ -48,6 +48,8 @@ mod embeddings;
 mod file_text;
 #[cfg(feature = "markdown")]
 mod fold;
+#[cfg(feature = "markdown")]
+mod folder_view;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]
@@ -55,6 +57,8 @@ mod image_embeddings;
 #[cfg(feature = "markdown")]
 mod objects;
 mod results;
+#[cfg(feature = "vec")]
+mod similarity;
 #[cfg(feature = "markdown")]
 mod tags;
 

@@ -41,6 +41,7 @@ use memry_core::api::vault::Vault;
 
 pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
+pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;
@@ -76,6 +77,10 @@ pub enum SessionError {
     /// may still hold this vault's databases. Reopening or repairing it now would race it.
     #[error("the vault at {0} is still held by a thread that did not stop; restart the app")]
     Held(String),
+    /// The folder a new vault was to be made in exists already: it appeared after the caller
+    /// picked the name, so it is someone else's and stays untouched.
+    #[error("A folder already exists at {0}")]
+    FolderExists(String),
 }
 
 impl CoreError for SessionError {
@@ -88,6 +93,7 @@ impl CoreError for SessionError {
             Self::SwitchInProgress => (FailureKind::Invalid, "switch_in_progress"),
             Self::AlreadyOpen => (FailureKind::Invalid, "vault_already_open"),
             Self::Held(_) => (FailureKind::Locked, "vault_held"),
+            Self::FolderExists(_) => (FailureKind::Invalid, "vault_folder_exists"),
         }
     }
 }

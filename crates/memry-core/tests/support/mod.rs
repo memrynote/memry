@@ -17,7 +17,10 @@
 //! drift that no gate can see is the failure mode the whole vector scheme exists
 //! to prevent.
 
+use std::ops::Deref;
+
 use ciborium::value::Value;
+use memry_core::storage::{Db, open_data};
 use serde_json::Value as Json;
 
 #[cfg(feature = "markdown")]
@@ -28,6 +31,36 @@ pub mod oracle;
 pub mod vector_compare;
 #[cfg(feature = "markdown")]
 pub mod yaml_json;
+
+/// A unique scratch directory, removed when it goes out of scope. `tempfile` names it:
+/// a name built from `std::process::id()` collides across test binaries on Windows, which
+/// recycles process ids, and a database left by the earlier run leaks in.
+pub fn scratch_dir(label: &str) -> tempfile::TempDir {
+    tempfile::Builder::new()
+        .prefix(&format!("memry-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+}
+
+/// A `data.db` in its own scratch directory. The database closes before the directory goes.
+pub struct ScratchDb {
+    db: Db,
+    _dir: tempfile::TempDir,
+}
+
+impl Deref for ScratchDb {
+    type Target = Db;
+
+    fn deref(&self) -> &Db {
+        &self.db
+    }
+}
+
+pub fn scratch_data_db(label: &str) -> ScratchDb {
+    let dir = scratch_dir(label);
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    ScratchDb { db, _dir: dir }
+}
 
 /// Loads a committed vector file by its name under
 /// `packages/contracts/test-vectors/`.
@@ -94,6 +127,9 @@ pub fn vector_file(name: &str) -> Json {
         }
         "block-edit" => {
             include_str!("../../../../packages/contracts/test-vectors/block-edit.json")
+        }
+        "chunk-holds" => {
+            include_str!("../../../../packages/contracts/test-vectors/chunk-holds.json")
         }
         "attachment-manifest" => {
             include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")

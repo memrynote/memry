@@ -8,12 +8,20 @@ Download the desktop app from **[memrynote.com/download/desktop](https://memryno
 The download page detects your platform and offers installers for:
 
 - **macOS** — Apple Silicon and Intel
-- **Windows** — the installer lets you choose the install location, so you can
-  install to a drive other than `C:`. Each release also ships a
-  `MemryNote-<version>-win.zip` on the
-  [GitHub releases page](https://github.com/memrynote/memry/releases) — unzip and
-  run `Memrynote.exe` directly if the installer fails on your machine
+- **Windows** — x64 and ARM64. The installer puts the app in `%LOCALAPPDATA%\MemryNote`
 - **Linux** — AppImage and `.deb`
+
+## System requirements
+
+| Platform | Requirement                                                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| macOS    | macOS 13 (Ventura) or later, on Apple Silicon or Intel                                                                     |
+| Windows  | Windows 10 version 1809 or later, on x64 or ARM64. The installer adds the Microsoft Edge WebView2 runtime if it is missing |
+| Linux    | x86-64 with glibc 2.35 or later and WebKitGTK 4.1, such as Ubuntu 22.04 or later                                           |
+
+The download page's **Windows** button gets the x64 installer, which Windows 11 on ARM also
+runs under emulation. Use the **Windows ARM64** link for the native build. An x64 install on an
+ARM64 PC moves to the ARM64 build by itself through an update.
 
 On macOS you can also install with [Homebrew](https://brew.sh):
 
@@ -21,11 +29,14 @@ On macOS you can also install with [Homebrew](https://brew.sh):
 brew install --cask memrynote/tap/memry
 ```
 
+The cask needs macOS 13 (Ventura) or later. On macOS 12, `brew upgrade` refuses the cask and
+stops with an error, so Homebrew keeps the version you already have installed.
+
 After installing, head to [First Run & Vault Setup](./first-run) to create your encrypted vault.
 
 ## Linux requirements and troubleshooting
 
-Linux builds target Ubuntu 22.04 or later on x86-64. Other distributions need compatible desktop libraries and glibc 2.35 or later. Run MemryNote in a graphical desktop session with an available Secret Service keyring, such as GNOME Keyring or KWallet.
+Linux builds target Ubuntu 22.04 or later on x86-64. Other distributions need compatible desktop libraries, glibc 2.35 or later and WebKitGTK 4.1 (`libwebkit2gtk-4.1`). Run MemryNote in a graphical desktop session with an available Secret Service keyring, such as GNOME Keyring or KWallet.
 
 If an AppImage cannot mount, check that your system has FUSE support. A container is not required to run on Ubuntu 22.04. Containers need their own display, browser, and keyring integration and are not equivalent to a desktop installation.
 

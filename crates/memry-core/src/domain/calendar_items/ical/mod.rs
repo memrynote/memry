@@ -20,9 +20,10 @@ pub mod vtimezone;
 use std::collections::{HashMap, HashSet};
 
 use parse::{
-    Component, IcalTime, NotACalendar, TimeZoneRef, parse_calendar, parse_duration, time_of,
+    Component, IcalTime, MAX_TZID_LEN, NotACalendar, TimeZoneRef, parse_calendar, parse_duration,
+    time_of,
 };
-use series::{Context, end_of, expand_series, overlaps, overrides_moved_into_window, to_instance};
+use series::{Context, expand_series, overrides_moved_into_window, place};
 use sha2::{Digest, Sha256};
 
 use super::projection::iso;
@@ -70,8 +71,8 @@ pub struct IcalFeed {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FeedError {
     NotACalendar,
-    /// Reading it would pass [`budget::MAX_STEPS`] or
-    /// [`budget::MAX_OUTPUT_BYTES`].
+    /// Reading it would pass [`budget::MAX_STEPS`],
+    /// [`budget::MAX_OUTPUT_BYTES`] or [`budget::MAX_INSTANCES_PER_READ`].
     TooLarge,
 }
 
@@ -97,6 +98,7 @@ pub struct IcalZones {
 }
 
 /// Every TZID and `X-WR-TIMEZONE` the text names, for the shell to resolve.
+/// A name past [`MAX_TZID_LEN`] is no zone and is left out.
 pub fn zone_ids(text: &str) -> Vec<String> {
     let Ok(root) = parse_calendar(text) else {
         return Vec::new();
@@ -104,7 +106,7 @@ pub fn zone_ids(text: &str) -> Vec<String> {
     let mut ids: Vec<String> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     let mut push = |id: String| {
-        if seen.insert(id.clone()) {
+        if id.len() <= MAX_TZID_LEN && seen.insert(id.clone()) {
             ids.push(id);
         }
     };
@@ -190,17 +192,36 @@ impl Resolver<'_> {
 
     /// `toInstant`, in epoch milliseconds (DATE → UTC midnight).
     fn instant_ms(&self, time: &IcalTime, unresolved: Option<&str>) -> i64 {
-        if time.is_date {
-            return time.date.days_since_epoch() * 86_400_000;
+        WallClock {
+            zone: self.zone_of(time, unresolved),
+            is_date: time.is_date,
         }
-        match self.zone_of(time, unresolved) {
-            None => time.wall_seconds() * 1_000,
-            Some(zone) => wall_to_utc_ms(zone, time.wall_seconds()),
+        .instant_ms(time.wall_seconds())
+    }
+}
+
+/// The wall clock of one time's zone, looked up once: a series turns each
+/// occurrence's wall seconds into an instant without resolving its zone again.
+#[derive(Clone, Copy)]
+struct WallClock<'z> {
+    /// `None` for UTC.
+    zone: Option<&'z CalendarZone>,
+    is_date: bool,
+}
+
+impl WallClock<'_> {
+    fn instant_ms(self, wall: i64) -> i64 {
+        if self.is_date {
+            return wall.div_euclid(86_400) * 86_400_000;
+        }
+        match self.zone {
+            None => wall * 1_000,
+            Some(zone) => wall_to_utc_ms(zone, wall),
         }
     }
 
-    fn to_wall(&self, utc_ms: i64, reference: &IcalTime, unresolved: Option<&str>) -> i64 {
-        match self.zone_of(reference, unresolved) {
+    fn wall_of(self, utc_ms: i64) -> i64 {
+        match self.zone {
             None => utc_ms.div_euclid(1_000),
             Some(zone) => (utc_ms + zone.offset_ms(utc_ms)).div_euclid(1_000),
         }
@@ -356,10 +377,7 @@ fn expand(
                 Some(rid) => key_for(uid, Some(&iso(resolver.instant_ms(&rid, unresolved)))),
                 None => key_for(uid, None),
             };
-            let end = end_of(event, &start, &resolver, unresolved);
-            if let Some(instance) = to_instance(event, &start, end.as_ref(), key, &context)
-                && overlaps(&instance, window)
-            {
+            if let Some(instance) = place(event, &start, key, &context, window) {
                 if !budget::emit(series::text_bytes(&instance)) {
                     return Vec::new();
                 }

@@ -16,6 +16,8 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::support;
+
 use memry_core::domain::search::{
     self, HitKind, INBOX_WATERMARK_KEY, MatchKind, NOTES_WATERMARK_KEY, Reindexed, SearchHit,
     inbox as fts_inbox, recents,
@@ -237,9 +239,8 @@ fn a_missing_inbox_watermark_forces_the_first_fill() {
 
 #[test]
 fn an_index_db_from_before_fts_inbox_migrates_in_place_and_is_filled() {
-    let dir = std::env::temp_dir().join(format!("memry-inbox-index-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("scratch dir");
-    let path = dir.join("index.db");
+    let dir = support::scratch_dir("inbox-index");
+    let path = dir.path().join("index.db");
     {
         let mut old = Connection::open(&path).expect("old index.db");
         migrations::run(&mut old, &INDEX_MIGRATIONS[..2]).expect("version 2");
@@ -272,8 +273,6 @@ fn an_index_db_from_before_fts_inbox_migrates_in_place_and_is_filled() {
         "the missing inbox watermark fills it"
     );
     assert_eq!(ids(&hits), ["c1"]);
-    drop(opened);
-    std::fs::remove_dir_all(&dir).expect("remove scratch dir");
 }
 
 #[test]
@@ -295,14 +294,14 @@ fn an_opened_capture_is_a_recent_until_it_is_deleted() {
     reindex(&data, &index, NOW);
     let hit = inbox(&data, &index, "kestrel").remove(0);
 
-    recents::record(&data, &hit, "kestrel", NOW).expect("record");
-    let listed = recents::list(&data).expect("list");
+    recents::record(&data, &hit, "kestrel", None, 10, NOW).expect("record");
+    let listed = recents::list(&data, 10).expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].hit.kind, HitKind::Inbox);
     assert_eq!(listed[0].hit.id, "c1");
 
     apply(&data, "c1", "{}", Some(NOW + 1_000), NOW + 1_000);
-    assert!(recents::list(&data).expect("list").is_empty());
+    assert!(recents::list(&data, 10).expect("list").is_empty());
 }
 
 /// `fts-inbox.ts:47-81`: `insertFtsInboxItem` (delete then insert, one

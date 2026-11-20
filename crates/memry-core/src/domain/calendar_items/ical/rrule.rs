@@ -299,7 +299,11 @@ fn candidates(rule: &Rule, start: i64, index: i64) -> Vec<i64> {
         }
     };
     // Charged before anything is built: BYHOUR, BYMINUTE and BYSECOND lists
-    // multiply, and a hostile rule's product does not fit in memory.
+    // multiply, and a hostile rule's product does not fit in memory. A period
+    // with no day builds none, so it is charged nothing.
+    if days.is_empty() {
+        return Vec::new();
+    }
     let per_day = [&rule.by_hour, &rule.by_minute, &rule.by_second]
         .iter()
         .fold(1_usize, |n, list| n.saturating_mul(list.len().max(1)));
@@ -323,28 +327,37 @@ fn split_time(seconds: i64) -> (u32, u32, u32) {
     (h, m, s)
 }
 
-/// BYHOUR / BYMINUTE / BYSECOND expand the start's time of day.
+/// BYHOUR / BYMINUTE / BYSECOND expand the start's time of day. The product
+/// is charged before it is built; empty once the bound is spent.
 fn times(rule: &Rule, time: i64) -> Vec<i64> {
     let (h, m, s) = split_time(time);
-    let hours = if rule.by_hour.is_empty() {
-        vec![h]
+    let (h, m, s) = ([h], [m], [s]);
+    let hours: &[u32] = if rule.by_hour.is_empty() {
+        &h
     } else {
-        rule.by_hour.clone()
+        &rule.by_hour
     };
-    let minutes = if rule.by_minute.is_empty() {
-        vec![m]
+    let minutes: &[u32] = if rule.by_minute.is_empty() {
+        &m
     } else {
-        rule.by_minute.clone()
+        &rule.by_minute
     };
-    let seconds = if rule.by_second.is_empty() {
-        vec![s]
+    let seconds: &[u32] = if rule.by_second.is_empty() {
+        &s
     } else {
-        rule.by_second.clone()
+        &rule.by_second
     };
-    let mut out = Vec::new();
-    for hour in &hours {
-        for minute in &minutes {
-            for second in &seconds {
+    let len = hours
+        .len()
+        .saturating_mul(minutes.len())
+        .saturating_mul(seconds.len());
+    if !super::budget::step(len) {
+        return Vec::new();
+    }
+    let mut out = Vec::with_capacity(len);
+    for hour in hours {
+        for minute in minutes {
+            for second in seconds {
                 out.push(i64::from(*hour) * 3_600 + i64::from(*minute) * 60 + i64::from(*second));
             }
         }

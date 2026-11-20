@@ -1,4 +1,5 @@
 import { foldTag } from '@memry/shared/tag-fold'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { getI18n } from 'react-i18next'
 /**
  * NotePage Component
@@ -68,7 +69,12 @@ import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { NoteSimilarNotes } from '@/components/note/similar-notes'
-import { useNoteMutations, useNoteLinksQuery, useNoteTagsQuery } from '@/hooks/use-notes-query'
+import {
+  notesKeys,
+  useNoteMutations,
+  useNoteLinksQuery,
+  useNoteTagsQuery
+} from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
 import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
@@ -79,7 +85,15 @@ import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import { notesService, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
+import {
+  getNoteListItem,
+  notesService,
+  onNoteDeleted,
+  onNoteMoved,
+  onNoteRenamed,
+  type Note
+} from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { journalDayTab } from '@/lib/memry-links'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
@@ -629,37 +643,58 @@ export function NotePage({ noteId }: NotePageProps) {
     setIsDeleted(false)
   }
 
-  // Listen for note deletion events
+  // A deleted note marks its tab (strikethrough); a renamed one retitles it. A delete or rename
+  // before the listeners went live sent its event to nobody: once they are live, the note's
+  // row is read again, which opens nothing (`notes_get` would count another `note_opened`).
+  // A delete, rename or move that arrives during the read is newer than its answer.
   useEffect(() => {
     if (!noteId) return undefined
-
-    const handleDeleted = (event: { id: string }) => {
-      if (event.id === noteId) {
-        setIsDeleted(true)
-        // Mark tab as deleted with strikethrough (using entityId)
-        setTabDeleted(noteId, true)
-      }
+    let live = true
+    let changes = 0
+    const markDeleted = (): void => {
+      setIsDeleted(true)
+      setTabDeleted(noteId, true)
     }
-
-    const unsubDeleted = onNoteDeleted(handleDeleted)
-
+    const stop = subscribeToEvents(
+      [
+        (listening) =>
+          onNoteDeleted((event) => {
+            if (event.id !== noteId) return
+            changes += 1
+            markDeleted()
+          }, listening),
+        (listening) =>
+          onNoteRenamed((event) => {
+            if (event.id !== noteId) return
+            changes += 1
+            updateTabTitleByEntityId(noteId, event.newTitle)
+          }, listening),
+        (listening) =>
+          onNoteMoved((event) => {
+            if (event.id === noteId) changes += 1
+          }, listening)
+      ],
+      () => {
+        const asked = changes
+        getNoteListItem(noteId)
+          .then((item) => {
+            if (!live || changes !== asked) return
+            if (!item) return markDeleted()
+            updateTabTitleByEntityId(noteId, item.title)
+            queryClient.setQueryData<Note | null>(notesKeys.note(noteId), (cached) =>
+              cached && (cached.title !== item.title || cached.path !== item.path)
+                ? { ...cached, title: item.title, path: item.path }
+                : cached
+            )
+          })
+          .catch((readError: unknown) => log.warn('the note was not read again', readError))
+      }
+    )
     return () => {
-      unsubDeleted()
+      live = false
+      stop()
     }
-  }, [noteId, setTabDeleted])
-
-  // Listen for sync-driven rename events to update tab title
-  useEffect(() => {
-    if (!noteId) return undefined
-
-    const unsub = onNoteRenamed((event) => {
-      if (event.id === noteId) {
-        updateTabTitleByEntityId(noteId, event.newTitle)
-      }
-    })
-
-    return unsub
-  }, [noteId, updateTabTitleByEntityId])
+  }, [noteId, setTabDeleted, updateTabTitleByEntityId, queryClient])
 
   // ============================================================================
   // Tags - Convert between string[] and Tag[]
@@ -709,6 +744,22 @@ export function NotePage({ noteId }: NotePageProps) {
     }))
     // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
   }, [note?.headerTags, tagColorMap, tagIconMap])
+
+  // The editor shows a tag as a chip only when it is in this list, and reads it once, when it
+  // binds. The index adds the body's `#tags` to `note.tags` on its own schedule, so a note just
+  // added to the vault would open with plain `#tag` text; the journal page passes the same union.
+  // Folded by `foldTag`, header spelling first, as Electron's `mergeTagLists` builds the index list.
+  const editorTags = useMemo(() => {
+    const byKey = new Map<string, string>()
+    for (const tag of [
+      ...(note?.tags ?? []),
+      ...extractInlineTagsFromMarkdown(editorInitialContent)
+    ]) {
+      const key = foldTag(tag)
+      if (!byKey.has(key)) byKey.set(key, tag)
+    }
+    return [...byKey.values()]
+  }, [note?.tags, editorInitialContent])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((tagInfo) => ({
@@ -2008,7 +2059,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
                     initialHighlight={initialHighlight}
                     initialAnchorId={initialAnchorId}
-                    noteTags={note.tags}
+                    noteTags={editorTags}
                     onInlineTagsChange={handleInlineTagsChange}
                     tagColorMap={tagColorMap}
                     tagIconMap={tagIconMap}

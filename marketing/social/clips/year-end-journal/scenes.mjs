@@ -17,11 +17,7 @@ export async function setup({ page }) {
     await page.waitForTimeout(300)
   }
   await page.getByRole('button', { name: 'Thursday, December 31' }).last().click()
-  await page
-    .getByRole('heading', { name: 'Thursday, December 31' })
-    .or(page.getByText('Thursday, December 31'))
-    .first()
-    .waitFor()
+  await page.getByText('Thursday, December 31').first().waitFor()
   await closeOtherTabs(page, 'Journal')
   await page.getByText("New Year's Eve dinner").waitFor()
   await settle(page, 900, 620)
@@ -76,7 +72,7 @@ export const checks = [
     () => {
       // The running app's vault copy (agent-app's state file, in the slot's TMPDIR).
       const { vaultPath } = JSON.parse(
-        fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app.json'), 'utf8')
+        fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app-tauri.json'), 'utf8')
       )
       const file = fs.readFileSync(path.join(vaultPath, 'journal/2026-12-31.md'), 'utf8')
       const missing = [

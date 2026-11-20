@@ -27,23 +27,30 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  # Applies the path filter that used to sit on `pull_request`, in a job, so the workflow always runs
-  # and the gate always reports. Pushes keep their own `paths`; every other event outputs true.
-  changes:
-    name: Changed paths
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Besides CodeQL it
+  # is the only job: it detects changed paths, then runs the work or skips it. A job with no work steps run
+  # still passes, so a PR that touches no protected path reports green. Every trigger runs it, so
+  # PRs into main and pushes also see this name; main requires no checks.
+  gate:
+    name: Security CI gate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # The scan checkout takes under a minute; the headroom is for a slow GitHub fetch.
+    timeout-minutes: 20
+    env:
+      BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.before }}
     permissions:
       contents: read
       pull-requests: read
-    outputs:
-      run: ${{ steps.paths.outputs.changed }}
     steps:
-      - name: Checkout
+      # The paths action lives in the repo, so a minimal checkout comes first. The full checkout
+      # below runs only when the pull request touches a protected path.
+      - name: Checkout the paths action
         uses: actions/checkout@v6
         with:
           sparse-checkout: .github
 
+      # Replaces the `pull_request` path filter: a filtered workflow never runs, so a required
+      # gate would never report. Every event other than `pull_request` outputs true.
       - name: Detect changed paths
         id: paths
         uses: ./.github/actions/paths-changed
@@ -52,17 +59,24 @@ jobs:
           include: '.'
           exclude: '^apps/(docs|landing)/'
 
-  secret-scan:
-    name: Secret scan
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group') }}
-    runs-on: ubuntu-latest
-    # The checkout takes under a minute; the headroom is for a slow GitHub fetch.
-    timeout-minutes: 20
-    env:
-      BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.before }}
+      # The secret scan runs on pull requests, pushes and the merge queue; the dependency review on
+      # pull requests only. Neither runs on schedule or dispatch, as before.
+      - name: Select the checks
+        id: select
+        env:
+          CHANGED: ${{ steps.paths.outputs.changed }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          scan=false; review=false
+          if [ "$CHANGED" = true ]; then
+            case "$EVENT" in
+              pull_request) scan=true; review=true ;;
+              push|merge_group) scan=true ;;
+            esac
+          fi
+          echo "scan=$scan" >> "$GITHUB_OUTPUT"
+          echo "review=$review" >> "$GITHUB_OUTPUT"
 
-    steps:
       # The scan diffs the checked-out commit against BASE_REF, so it needs two commits, not the
       # history. `fetch-depth: 0` fetched every branch and tag, about 2 GB of tree plus the history
       # of the marketing media, and took 2 to 10+ minutes; it exceeded the 10-minute timeout twice
@@ -72,6 +86,7 @@ jobs:
       # because the scanner filters those extensions before it reads a file. The scan diffs with
       # `--no-renames` so git never fetches blobs to detect renames.
       - name: Checkout
+        if: steps.select.outputs.scan == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
@@ -90,39 +105,76 @@ jobs:
             !*.webm
 
       - name: Fetch scan base
+        if: steps.select.outputs.scan == 'true'
         run: git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE_REF"
 
       - name: Setup Node.js
+        if: steps.select.outputs.scan == 'true'
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
 
       - name: Test secret scanner rules
+        if: steps.select.outputs.scan == 'true'
         run: node --test scripts/check-staged-secrets.test.mjs
 
       - name: Scan changed files for secrets
+        if: steps.select.outputs.scan == 'true'
         run: node scripts/check-staged-secrets.mjs --changed "$BASE_REF"
 
-  dependency-review:
-    name: Dependency review
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && github.event_name == 'pull_request' }}
+      # Reads the pull request through the API, so it needs no checkout. It runs after a failed
+      # scan too, so one run reports both.
+      - name: Review dependency changes
+        if: ${{ !cancelled() && steps.select.outputs.review == 'true' }}
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          # extract-zip 2.0.1 has no patched release. It is a dev-only transitive dependency of
+          # @wdio/utils (@puppeteer/browsers), which only uses it to unpack browser downloads
+          # the Tauri e2e harness never makes (#3520). Remove these when extract-zip is fixed.
+          allow-ghsas: GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3
+
+  # Not in the merge queue: the PR head was analysed already and nothing requires a merge-group
+  # analysis (#5035). The weekly schedule analyses the default branch. It is a separate job: it is
+  # slow, and the gate must not wait for it. It detects changed paths itself for the same reason.
+  codeql:
+    name: CodeQL
+    if: ${{ github.event_name != 'merge_group' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     permissions:
+      actions: read
       contents: read
       pull-requests: read
-
+      security-events: write
     steps:
-      - name: Checkout
+      # The paths action lives in the repo, so a minimal checkout comes first. The full checkout
+      # below runs only when the pull request touches a protected path.
+      - name: Checkout the paths action
         uses: actions/checkout@v6
-        with: &lean-checkout
+        with:
+          sparse-checkout: .github
+
+      # Replaces the `pull_request` path filter: a filtered workflow never runs, so a required
+      # gate would never report. Every event other than `pull_request` outputs true.
+      - name: Detect changed paths
+        id: paths
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          include: '.'
+          exclude: '^apps/(docs|landing)/'
+
+      - name: Checkout
+        if: steps.paths.outputs.changed == 'true'
+        uses: actions/checkout@v6
+        with:
           # Bounded checkout: a blob filter plus sparse patterns, no history. Of the ~2 GB of blobs,
           # ~1.6 GB is marketing/ media that no job reads; a full-tree checkout took 2 to 22 minutes
           # in a busy hour and consumed the job timeout. marketing/ keeps only the file types
           # lint and format cover (the later patterns win); a new text type there that a job
-          # must read goes in this list. Media elsewhere stays: builds need it. The Secret scan job
-          # in security-ci.yml deliberately keeps its own list (every media extension, repo-wide).
+          # must read goes in this list. Media elsewhere stays: builds need it. The secret scan in
+          # security-ci.yml deliberately keeps its own list (every media extension, repo-wide).
           fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
@@ -146,56 +198,13 @@ jobs:
             /marketing/**/*.css
             /marketing/**/*.html
 
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          # extract-zip 2.0.1 has no patched release. It is a dev-only transitive dependency of
-          # @wdio/utils (@puppeteer/browsers), which only uses it to unpack browser downloads
-          # the Tauri e2e harness never makes (#3520). Remove these when extract-zip is fixed.
-          allow-ghsas: GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3
-
-  codeql:
-    name: CodeQL
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with: *lean-checkout
-
       - name: Initialize CodeQL
+        if: steps.paths.outputs.changed == 'true'
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
 
       - name: Perform CodeQL analysis
+        if: steps.paths.outputs.changed == 'true'
         uses: github/codeql-action/analyze@v4
-
-  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
-  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
-  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
-  gate:
-    name: Security CI gate
-    needs: [changes, secret-scan, dependency-review]
-    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    steps:
-      - name: Fail when a needed job failed or was cancelled
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-          DETECT_RESULT: ${{ needs.changes.result }}
-        run: |
-          echo "needed job results: $RESULTS"
-          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
-          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
-          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

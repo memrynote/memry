@@ -1,0 +1,84 @@
+//! Voice transcription settings: the local Whisper model (`model`), the OpenAI key (`key`), and
+//! whether a voice memo can be recorded now (`readiness`), as Electron's
+//! `apps/desktop/src/main/inbox/voice-transcription-settings.ts`, and the local engine that
+//! transcribes (`engine`, whisper.cpp in the worker). The OpenAI engine arrives with Stage C of
+//! Step 24 (#3541).
+
+pub mod engine;
+pub mod key;
+pub mod model;
+
+#[cfg(test)]
+mod tests;
+
+use serde::Serialize;
+use serde_json::{Map, Value};
+
+/// `VoiceTranscriptionSettings.provider`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum VoiceProvider {
+    Local,
+    OpenAi,
+}
+
+impl VoiceProvider {
+    /// The provider of a stored `voiceTranscription` group. Core fills the group's defaults, so
+    /// anything but `openai` is the default `local`, as Electron's spread over its defaults.
+    pub fn of_group(group: &Map<String, Value>) -> Self {
+        match group.get("provider").and_then(Value::as_str) {
+            Some("openai") => Self::OpenAi,
+            _ => Self::Local,
+        }
+    }
+}
+
+/// Why a recording cannot start (`VoiceRecordingReadiness.reason`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "kebab-case")]
+pub enum VoiceNotReady {
+    MissingModel,
+    MissingApiKey,
+}
+
+/// `VoiceRecordingReadiness`. `message` is English, as Electron's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceRecordingReadiness {
+    pub ready: bool,
+    pub provider: VoiceProvider,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub reason: Option<VoiceNotReady>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub message: Option<String>,
+}
+
+/// `getVoiceRecordingReadiness`: the local provider needs the downloaded model, the OpenAI
+/// provider a stored key. `has_key` is asked only for OpenAI, so a locked keychain never blocks
+/// local recording.
+pub fn readiness<E>(
+    provider: VoiceProvider,
+    model_downloaded: bool,
+    has_key: impl FnOnce() -> Result<bool, E>,
+) -> Result<VoiceRecordingReadiness, E> {
+    let blocked = match provider {
+        VoiceProvider::Local if model_downloaded => None,
+        VoiceProvider::Local => Some((
+            VoiceNotReady::MissingModel,
+            "Download Whisper Small in Settings to record voice memos.",
+        )),
+        VoiceProvider::OpenAi if has_key()? => None,
+        VoiceProvider::OpenAi => Some((
+            VoiceNotReady::MissingApiKey,
+            "Add your OpenAI API key in Settings to record voice memos.",
+        )),
+    };
+    Ok(VoiceRecordingReadiness {
+        ready: blocked.is_none(),
+        provider,
+        reason: blocked.map(|(reason, _)| reason),
+        message: blocked.map(|(_, message)| message.to_owned()),
+    })
+}

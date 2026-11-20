@@ -34,6 +34,12 @@ describe('environment scripts', () => {
   })
 })
 
+describe('bench scripts', () => {
+  it('runs the launch bench against the Tauri app', () => {
+    assert.equal(rootPackage.scripts['bench:launch'], 'node scripts/launch-bench.mjs')
+  })
+})
+
 describe('sandbox vault script', () => {
   it('runs the CLI generator under Electron so the shared better-sqlite3 build stays put', () => {
     const cliPackage = JSON.parse(
@@ -76,5 +82,15 @@ describe('native warm-up scripts', () => {
 
   it('keeps predev on the stamp-aware guard', () => {
     assert.match(desktopPackage.scripts.predev, /ensure-native\.sh electron/)
+  })
+})
+
+describe('seed scripts', () => {
+  it('seeds the bench vault through cargo xtask, from crates/ where the alias lives', () => {
+    assert.equal(rootPackage.scripts.seed1k, 'cd crates && cargo xtask seed bench')
+    assert.match(
+      readFileSync(new URL('../crates/.cargo/config.toml', import.meta.url), 'utf8'),
+      /^xtask = "run -p xtask --"$/m
+    )
   })
 })
