@@ -363,6 +363,7 @@ mod guards;
 mod journal;
 mod locks;
 mod perf;
+mod place;
 mod reconcile;
 mod schedule;
 mod triggers;

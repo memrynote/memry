@@ -369,4 +369,21 @@ mod tests {
         // Electron's journal format migration sends no note event.
         assert_eq!(outgoing(renamed(MoveKind::JournalFormat)), None);
     }
+
+    /// A pulled place or frontmatter the write-back gave the file (#5309) is a `sync`
+    /// `notes:updated`, and pulled tags are `notes:tags-changed` (Electron `applyUpsert`).
+    #[test]
+    fn a_pulled_change_sends_a_sync_update_and_its_tags() {
+        assert_eq!(
+            outgoing(changed(ChangeSource::Sync)),
+            Some(Outgoing::Updated {
+                note_id: "n".into(),
+                source: NoteEventSource::Sync,
+            })
+        );
+        let tags = Applied::TagsPulled {
+            note_id: "n".into(),
+        };
+        assert_eq!(outgoing(tags), Some(Outgoing::TagsChanged));
+    }
 }

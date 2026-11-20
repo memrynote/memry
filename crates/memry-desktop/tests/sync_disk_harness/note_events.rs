@@ -114,3 +114,39 @@ async fn a_pulled_property_reaches_the_file_and_sends_updated() {
     b.env.facts_until(|fact| updated(fact, &note));
     until_holds(&b.env, FILE, "status: done");
 }
+
+/// The moved, retagged file is the app's own write: B's watcher, consumer and index read it
+/// without taking the old title or tags back into the record, so the next syncs leave A with
+/// the pulled ones. Red when B's read of `Renamed.md` (or of the gone `n.md`) pushes `n` or no
+/// tags.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pulled_rename_and_tags_are_not_pushed_back() {
+    let server = Server::start();
+    let mut b = Disk::new(&server).await;
+    let note = b.note.clone();
+    let a = changed_on_a(&server, &b, |a| {
+        let writer = a.core.notes_writer(a.store.clone()).unwrap();
+        writer.rename(note.clone(), "Renamed".into()).unwrap();
+        writer
+            .set_tags(note.clone(), vec!["remote".into()])
+            .unwrap();
+    })
+    .await;
+
+    until_holds(&b.env, "Renamed.md", "remote");
+    // Everything the watcher saw of the move and the write is read before the probe.
+    b.env.watcher_live();
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    for _ in 0..2 {
+        a.sync().await;
+    }
+    for core in [&a.core, &*b.env.core()] {
+        let record = core.note_files().placed(&note).unwrap().expect("a live note");
+        assert_eq!(record.title, "Renamed");
+        assert_eq!(record.tags, ["remote"]);
+    }
+    assert!(!b.path().exists(), "the old file is not made again");
+    filed(&b.env, &note, "Renamed.md");
+}
