@@ -99,7 +99,7 @@ the `x-memry-client` header: the refusal is the core's decision, and iOS reports
 one marketing version across its builds. The first page of every run refetches
 by id each `(type, id)` another core build recorded and nobody tried within the
 last hour, desktop's `CORRUPT_ITEM_COOLDOWN_MS`, and stamps it as tried
-(`crates/memry-core/src/sync/pull.rs:245`,
+(`crates/memry-core/src/sync/pull.rs:352-353`,
 `crates/memry-core/src/sync/refused_items.rs:98-124`). It reads only the
 requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:81-129`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
@@ -485,6 +485,34 @@ What an older build does with it depends on whether it keeps unknown keys:
   that push wins the document gate on a newer device, the absent key applies as
   `null` and the duration is lost on that task. Nothing else is corrupted.
 
+**Next occurrence (#3538).** Completing an open repeating task creates the
+next occurrence under a new random task id, on desktop
+(`packages/domain-tasks/src/repeat-completion.ts:96`) and in the core
+(`crates/memry-core/src/domain/tasks/lifecycle.rs:162`). Two devices that
+complete the same occurrence before syncing each create one, and both survive
+the merge. An undo tombstones only the occurrence its own completion created
+(`crates/memry-core/src/domain/tasks/batch.rs:283-285`).
+
+**Series end day (#3538).** The core reads `endDate` as an end **day**. An
+occurrence due on or before that day is in the series
+(`crates/memry-core/src/domain/recurrence.rs:97`, `:121`), and a completion
+creates the next occurrence only up to the end day's local midnight
+(`recurrence.rs:145-147`). Both rules hold in every time zone. Desktop reads
+`endDate` with `new Date`, as UTC midnight of the end day
+(`packages/domain-tasks/src/repeat-completion.ts:28`), and compares local
+instants against it (`packages/domain-tasks/src/parsing/recurrence.ts:132`,
+`:184`). West of UTC, the end day's occurrence falls after UTC midnight, so
+desktop ends the series one occurrence early. East of UTC, a completion made on
+the end day before UTC midnight still creates the next occurrence: in Auckland
+(UTC+13), completing the 03-10 occurrence of a series that ends 03-11 at 09:30
+on 03-11 creates the 03-11 occurrence, and the core creates none. Under UTC the
+two agree. The vectors are
+`packages/contracts/test-vectors/task-completion-spawn.json`
+(`packages/contracts/scripts/vectors/task-completion-spawn.ts`, generated under
+`TZ=UTC`; the `end-date-complete-on-end-day` row completes on the end day),
+verified by `packages/contracts/src/__tests__/task-completion-spawn.test.ts`
+and `crates/memry-core/tests/task_completion_spawn_vectors.rs`.
+
 **`fields` is not one of the sixteen, and chapter 06 §6.3 never merges it.** It is a
 versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
 
@@ -530,7 +558,7 @@ joins the map on every apply path and heals by chapter 06 §6.11
 (`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
 `crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
-`crates/memry-core/src/domain/tasks/lifecycle.rs:35`), pinned by
+`crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.
 
 ### 13.7.4 `project` — `:239-253`

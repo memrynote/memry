@@ -26,7 +26,7 @@ use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::driver::{DriverConfig, DriverParts, SyncDriver};
+use memry_core::sync::driver::{ApplyObserver, DriverConfig, DriverParts, SyncDriver};
 use memry_core::sync::engine::{MAX_PAGES_PER_PASS, PassReport};
 use memry_core::sync::first_sync::FirstSyncLimits;
 use memry_core::sync::server_vault;
@@ -54,9 +54,26 @@ pub struct FakeServer {
     added_devices: Mutex<Vec<(String, u8)>>,
     /// `GET /auth/devices` answers 503 while set.
     devices_down: AtomicBool,
+    /// Routes whose requests are recorded and never answered.
+    hung: Mutex<Vec<&'static str>>,
 }
 
 impl FakeServer {
+    /// A server holding nothing, whose peer signs with [`PEER_SEED`].
+    pub fn new() -> Arc<Self> {
+        let (_, peer_secret) = sodium::sign_seed_keypair(&[PEER_SEED; 32]).expect("a keypair");
+        Arc::new(Self {
+            records: Mutex::default(),
+            pages: Mutex::default(),
+            calls: Mutex::default(),
+            peer_secret: peer_secret.to_vec(),
+            markers: Mutex::default(),
+            added_devices: Mutex::default(),
+            devices_down: AtomicBool::new(false),
+            hung: Mutex::default(),
+        })
+    }
+
     /// Holds `payload` live as the peer's `item_type` record `id`.
     pub fn put(&self, item_type: &str, id: &str, payload: Json) {
         self.seal(item_type, id, payload, None);
@@ -90,7 +107,6 @@ impl FakeServer {
     }
 
     /// Queues one feed page of `deleted` ids and no refs.
-    #[cfg(feature = "markdown")]
     pub fn deleted_page(&self, deleted: &[&str], next_cursor: &str, has_more: bool) {
         self.pages.lock().unwrap().push_back(
             json!({"items": [], "deleted": deleted, "hasMore": has_more,
@@ -106,6 +122,12 @@ impl FakeServer {
             .lock()
             .unwrap()
             .push((id.to_owned(), seed));
+    }
+
+    /// Records every request to `route` from now on and never answers it.
+    #[cfg(feature = "markdown")]
+    pub fn hang(&self, route: &'static str) {
+        self.hung.lock().unwrap().push(route);
     }
 
     /// Fails `GET /auth/devices` until called with `false`.
@@ -147,6 +169,19 @@ impl FakeServer {
             .unwrap()
             .iter()
             .map(|call| call.url.clone())
+            .collect()
+    }
+
+    /// The route and the `X-Memry-Vault-Id` of every request, in order.
+    pub fn vault_headers(&self) -> Vec<(String, Option<String>)> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|call| {
+                let vault = call.headers.get("x-memry-vault-id").cloned();
+                (route_of(&call.url).to_owned(), vault)
+            })
             .collect()
     }
 
@@ -328,6 +363,15 @@ struct Routes(Arc<FakeServer>);
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.0.calls.lock().unwrap().push(request.clone());
+        let hung = self
+            .0
+            .hung
+            .lock()
+            .unwrap()
+            .contains(&route_of(&request.url));
+        if hung {
+            std::future::pending::<()>().await;
+        }
         let (status, body) = self.0.answer(&request);
         Ok(HttpResponse {
             status,
@@ -369,6 +413,44 @@ impl Reachability for Network {
     }
 }
 
+/// A signed-in session of this device (`server-device-1`) over `server`, and its secure store.
+pub fn session_on(server: &Arc<FakeServer>) -> (Arc<AuthSession>, Arc<FakeSecureStore>) {
+    let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(
+            json!({"sub": "user-1", "device_id": DEVICE, "type": "access",
+                        "exp": 9_999_999_999u64}),
+        ),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, own_secret.to_vec())
+        .expect("the signing key");
+    let session = Arc::new(
+        AuthSession::new(
+            Arc::new(Routes(Arc::clone(server))),
+            store.clone(),
+            "https://sync.example.com".to_owned(),
+            "desktop".to_owned(),
+            DeviceDescriptor {
+                name: "Desk".to_owned(),
+                platform: DevicePlatform::Macos,
+                form_factor: None,
+                os_version: None,
+                app_version: "1.0.0".to_owned(),
+                vault_id: None,
+            },
+            None,
+        )
+        .expect("a session"),
+    );
+    (session, store)
+}
+
 /// One desktop vault, its driver and the server it syncs with.
 pub struct Desktop {
     pub db: Db,
@@ -403,60 +485,34 @@ impl Desktop {
         })
         .expect("seed");
 
-        let (_, peer_secret) = sodium::sign_seed_keypair(&[12u8; 32]).expect("a keypair");
-        let server = Arc::new(FakeServer {
-            records: Mutex::default(),
-            pages: Mutex::default(),
-            calls: Mutex::default(),
-            peer_secret: peer_secret.to_vec(),
-            markers: Mutex::default(),
-            added_devices: Mutex::default(),
-            devices_down: AtomicBool::new(false),
-        });
-        Self::drive(db, server, declaration).await
+        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
     }
 
     /// The app restarted: a new driver over the same `data.db` and server.
     #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {
         let Self { db, server, .. } = self;
-        Self::drive(db, server, declaration).await
+        Self::drive(db, server, declaration, Vec::new()).await
     }
 
-    async fn drive(db: Db, server: Arc<FakeServer>, declaration: Declaration) -> Self {
-        let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
-        let store = FakeSecureStore::new();
-        store.put_text(
-            SecureStoreKey::AccessToken,
-            &jwt(
-                json!({"sub": "user-1", "device_id": DEVICE, "type": "access",
-                        "exp": 9_999_999_999u64}),
-            ),
-        );
-        store
-            .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
-            .expect("the master key");
-        store
-            .set(SecureStoreKey::DeviceSigningKey, own_secret.to_vec())
-            .expect("the signing key");
-        let session = Arc::new(
-            AuthSession::new(
-                Arc::new(Routes(Arc::clone(&server))),
-                store,
-                "https://sync.example.com".to_owned(),
-                "desktop".to_owned(),
-                DeviceDescriptor {
-                    name: "Desk".to_owned(),
-                    platform: DevicePlatform::Macos,
-                    form_factor: None,
-                    os_version: None,
-                    app_version: "1.0.0".to_owned(),
-                    vault_id: None,
-                },
-                None,
-            )
-            .expect("a session"),
-        );
+    /// The app restarted, and `observers` hear the new driver from its open on.
+    #[cfg(feature = "markdown")]
+    pub async fn reopen_observed(
+        self,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
+        let Self { db, server, .. } = self;
+        Self::drive(db, server, declaration, observers).await
+    }
+
+    async fn drive(
+        db: Db,
+        server: Arc<FakeServer>,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
+        let (session, _) = session_on(&server);
         let network = Arc::new(Network::default());
         let driver = SyncDriver::open(DriverParts {
             db: db.clone(),
@@ -471,6 +527,7 @@ impl Desktop {
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),
+            observers,
         })
         .await
         .expect("the driver");

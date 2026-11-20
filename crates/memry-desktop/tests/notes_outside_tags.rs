@@ -22,7 +22,7 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use vault_env::{Env, QUIET, env, indexed};
 
-fn opened() -> (Env, Arc<dyn SecureStore>) {
+pub(crate) fn opened() -> (Env, Arc<dyn SecureStore>) {
     opened_with(true)
 }
 
@@ -42,7 +42,7 @@ fn opened_with(index: bool) -> (Env, Arc<dyn SecureStore>) {
 }
 
 /// The record's `tags`, as its payload holds them.
-fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
+pub(crate) fn record_tags(e: &Env, item_type: &'static str, id: &str) -> Vec<String> {
     let id = id.to_owned();
     let payload: String = e
         .core()
@@ -98,7 +98,7 @@ fn edited_outside(e: &mut Env, id: &str, rel: &str, text: &str) {
 
 /// Waits until the index measured the bytes the note's row names, the base a day's edit is
 /// read against.
-fn measured(e: &Env, id: &str) {
+pub(crate) fn measured(e: &Env, id: &str) {
     let search = e.session.current().expect("open").search;
     until("the file measured", || {
         let row = e.core().note_files().by_id(id).unwrap().expect("a row");

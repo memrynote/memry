@@ -108,18 +108,20 @@ fn push(feed: &mut AppliedFeed, item_type: &str, item_id: &str, outcome: Applied
 /// The winner and the loser of one decided field. A value the side did not
 /// send is `null`.
 fn conflict(decided: field_merge::FieldConflict) -> FieldConflict {
+    // Absent is not `null` here (Electron compares `JSON.stringify` of each).
+    let local_lost = decided.local_value != decided.merged_value;
     let winning = decided.merged_value.unwrap_or(Json::Null);
-    let local = decided.local_value.unwrap_or(Json::Null);
-    let losing = if local == winning {
-        decided.remote_value.unwrap_or(Json::Null)
+    let losing = if local_lost {
+        decided.local_value.unwrap_or(Json::Null)
     } else {
-        local
+        decided.remote_value.unwrap_or(Json::Null)
     };
     FieldConflict {
         field: decided.field,
         losing,
         winning,
         merged_clock: serde_json::to_value(&decided.merged_clock).unwrap_or(Json::Null),
+        local_lost,
     }
 }
 

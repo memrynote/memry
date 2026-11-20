@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Aucun coffre pour l'instant",
       "openVault": "Ouvrir un coffre",
+      "createVault": "Créer le coffre",
+      "openFolderAsVault": "Ouvrir un dossier comme coffre",
       "settings": "Paramètres",
       "remove": "Retirer «",
       "removeVaultTitle": "Retirer « {name} » de la liste ?",

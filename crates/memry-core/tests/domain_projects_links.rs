@@ -133,7 +133,8 @@ fn an_event_and_a_file_link_through_the_links_array_only() {
                 &json!(NOW_ISO)
             )
         );
-        assert_eq!(payload["clock"], json!({"device-a": 4}));
+        // Create, two links; the repeated link writes nothing (RCA-STATUSNOOP).
+        assert_eq!(payload["clock"], json!({"device-a": 3}));
         assert!(payload["fieldClocks"].get("links").is_none());
         assert_eq!(outbox_count(conn, "proj-l"), 1, "collapsed per item");
         assert_eq!(outbox_count(conn, "file-1"), 0, "no note write for a file");

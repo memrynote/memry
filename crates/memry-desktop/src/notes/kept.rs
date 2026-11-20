@@ -306,14 +306,14 @@ impl NotesService {
             .recorded(open, note_id)?
             .ok_or_else(|| NotesError::NotFound(note_id.to_owned()))?;
         let settings = open.vault.app_settings(self.store.clone()).ok();
-        // No file is read, so no author's spelling is restored and no embed of it resolved,
-        // as a day's held body is written (`journal::write`).
+        // No file is there, so no author's spelling is restored, no embed of it resolved and
+        // no mark mapped against it, as a day's held body is written (`journal::write`).
         let embeds = Resolved::of_markdown(&open.path, &open.vault.note_files(), "", &row.path);
         let read = open.vault.write_back().body(
             &converter_for(settings.as_ref()),
             note_id,
             &row.path,
-            "",
+            None,
             &embeds,
         )?;
         let body = match read {
