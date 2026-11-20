@@ -50,6 +50,7 @@ pub mod tags;
 pub mod tags_retag;
 pub mod telemetry;
 pub mod templates;
+pub mod terminal_command;
 pub mod unsplash;
 pub mod updater;
 pub mod vault;

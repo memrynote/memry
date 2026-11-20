@@ -4423,6 +4423,7 @@ dependencies = [
 name = "memrynote-cli"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "memry-desktop",
  "regex",
  "serde_json",
