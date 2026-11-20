@@ -91,6 +91,7 @@ change. Both are pinned by
 | POST   | `/sync/crdt/updates`          | append updates for one document                            | `:1139` |
 | GET    | `/sync/crdt/updates`          | pull updates for one document: `note_id`, `since`, `limit` | `:1140` |
 | POST   | `/sync/crdt/updates/batch`    | pull updates for up to 100 documents                       | `:1141` |
+| GET    | `/sync/crdt/manifest`         | body metadata for up to 1,000 documents: `cursor`, `limit` | `:1434` |
 | POST   | `/sync/crdt/snapshot`         | write one snapshot                                         | `:1142` |
 | POST   | `/sync/crdt/snapshot/batch`   | write up to 50 snapshots                                   | `:1143` |
 | GET    | `/sync/crdt/snapshot/:noteId` | read the snapshot                                          | `:1144` |
@@ -177,6 +178,40 @@ server that predates it omits the key.
 0 and `limit` an integer 1 to 100 defaulting to 100.
 Response: `{ notes: { <noteId>: { updates, hasMore } } }`, keyed by id — which
 is why the single form's flat shape above is worth stating separately.
+
+**`GET /sync/crdt/manifest`** (#5232, additive) — query `cursor` and `limit`,
+both optional. Response `{ documents: [...], nextCursor }`
+(`CrdtManifestResponseSchema`, `packages/contracts/src/sync-api.ts:910`). It
+carries no ciphertext. Each document is
+`{ noteId, floor, snapshot, maxSequenceNum }`
+(`CrdtManifestDocumentSchema`, `:894`):
+
+- `floor` is the document's highest purged sequence number (§7.4, §7.15), 0
+  when it was never purged.
+- `snapshot` is `{ revision, sequenceNum }` of its stored snapshot, the same
+  `revision` token `snapshotMeta` and `GET /sync/crdt/snapshot` answer (§7.5),
+  or `null` when it has none.
+- `maxSequenceNum` is its highest stored update, 0 when it stores none (a
+  snapshot can prune them all, §7.7).
+
+The answer lists every document of the vault that holds an update row or a
+snapshot row, and every document with a `floor` above 0, in ascending
+`noteId` (`apps/sync-server/src/services/crdt-manifest.ts:12-21`). `limit` is
+an integer from 1, default and ceiling `CRDT_MANIFEST_PAGE_LIMIT` = 1000
+(`packages/contracts/src/sync-api.ts:886`); a larger value is capped. A
+`cursor` is the previous page's `nextCursor`, opaque to the client, and
+`nextCursor` is `null` on the last page, so a vault of `n` documents reads in
+`ceil(n / 1000)` requests. A malformed `cursor` or `limit` answers 400.
+
+A page reads its key range first and then the documents in it with one D1
+batch (`apps/sync-server/src/services/crdt-manifest.ts:66`), so one
+document's `floor`, `snapshot` and `maxSequenceNum` are one consistent read: a
+purge or snapshot write that commits between the two reads shows up whole.
+Pages are separate reads. A page can come back empty with a `nextCursor` when
+the documents of its range were purged in between, and the reader follows the
+cursor. Every read uses the `(user_id, vault_id, note_id)` index of its table.
+Chapter 08 §8.4.3 and §8.10 say how a pack reader uses the answer, and what it
+does when the server answers 404.
 
 **Byte budget** (#3278). Both update reads also stop at 8 MiB of raw update
 bytes per response (`CRDT_PULL_BYTE_BUDGET`,
@@ -561,6 +596,12 @@ device-local work (`apps/sync-server/src/routes/sync.ts:582-620`):
 | `crdt_push`       | 300 per 60 s (`:583-585`) |
 | `crdt_pull`       | 600 per 60 s (`:605-607`) |
 | `crdt_batch_pull` | 30 per 60 s (`:616-618`)  |
+| `crdt_manifest`   | 30 per 60 s (`:795-801`)  |
+
+A bootstrap session raises `crdt_pull` and `crdt_batch_pull` five times and
+`crdt_manifest` three times (`BOOTSTRAP_ELEVATION_MULTIPLIERS`,
+`apps/sync-server/src/services/bootstrap-session.ts`). The 14 manifest pages
+of a 13,527-document vault fit one window without it.
 
 ### 7.10.1 The client push outbox (#2298)
 

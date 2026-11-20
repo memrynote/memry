@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import {
+  CRDT_MANIFEST_PAGE_LIMIT,
   CrdtSnapshotBaseRevisionSchema,
   CrdtSnapshotCoversThroughSchema,
   PullRequestSchema,
@@ -68,6 +69,7 @@ import {
   type SnapshotBatchOutcome,
   type SnapshotClaim
 } from '../services/crdt'
+import { getCrdtManifestPage } from '../services/crdt-manifest'
 import { enqueuePackCompaction } from '../services/pack-compaction'
 import { listPacks } from '../services/pack-list'
 import { resolveR2PresignConfig } from '../services/r2-presign'
@@ -787,6 +789,17 @@ const crdtBatchPullRateLimit = createRateLimiter({
   getElevatedLimits: bootstrapRateLimitElevation
 })
 
+// One page answers up to 1,000 documents, so a 13,527-document vault reads in
+// 14 pages; 30/min runs them back to back with room for a retry, and a
+// bootstrap session triples it (BOOTSTRAP_ELEVATION_MULTIPLIERS).
+const crdtManifestRateLimit = createRateLimiter({
+  keyPrefix: 'crdt_manifest',
+  maxRequests: 30,
+  windowSeconds: 60,
+  identifier: deviceIdentifier,
+  getElevatedLimits: bootstrapRateLimitElevation
+})
+
 const CrdtBatchPullSchema = z.object({
   notes: z
     .array(
@@ -1041,6 +1054,34 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
   // clients read this response through an unvalidated TypeScript cast, so the
   // extra key is ignored.
   return c.json({ notes: response, snapshotMeta: batchResult.snapshotMeta })
+}
+
+/**
+ * GET /sync/crdt/manifest (#5232, protocol 07 §7.4.1): per document its floor,
+ * snapshot revision and highest stored update, metadata only, so a pack reader
+ * answers the chapter 08 §8.4.3 and §8.10 checks in ceil(n / 1000) requests.
+ */
+const handleCrdtManifest = async (c: Context<AppContext>): Promise<Response> => {
+  const endpoint = getRequestPath(c)
+  const cursor = c.req.query('cursor')
+  const limitParam = c.req.query('limit')
+
+  if (cursor !== undefined && !NoteIdSchema.safeParse(cursor).success) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+  }
+  const limit = limitParam === undefined ? CRDT_MANIFEST_PAGE_LIMIT : Number(limitParam)
+  if (!Number.isInteger(limit) || limit < 1) {
+    logQueryValidationFailure('crdt', endpoint, 'Invalid limit value')
+  }
+
+  const page = await getCrdtManifestPage(
+    c.env.DB,
+    c.get('userId')!,
+    c.get('vaultId')!,
+    cursor ?? '',
+    Math.min(limit, CRDT_MANIFEST_PAGE_LIMIT)
+  )
+  return c.json(page)
 }
 
 const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response> => {
@@ -1390,6 +1431,7 @@ const crdtSync = new Hono<AppContext>()
 crdtSync.post('/updates', crdtPushRateLimit, handleCrdtUpdatePush)
 crdtSync.get('/updates', crdtPullRateLimit, handleCrdtUpdatePull)
 crdtSync.post('/updates/batch', crdtBatchPullRateLimit, handleCrdtBatchPull)
+crdtSync.get('/manifest', crdtManifestRateLimit, handleCrdtManifest)
 crdtSync.post('/snapshot', crdtPushRateLimit, handleCrdtSnapshotPush)
 crdtSync.post('/snapshot/batch', crdtPushRateLimit, handleCrdtSnapshotBatchPush)
 crdtSync.get('/snapshot/:noteId', crdtPullRateLimit, handleCrdtSnapshotPull)
