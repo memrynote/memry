@@ -90,6 +90,8 @@ mod items;
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
+mod shared_apply;
+
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
     http: Arc<HttpClient>,

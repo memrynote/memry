@@ -204,9 +204,9 @@ fn packed_base64(update: &[u8], secret_key: &[u8]) -> String {
     BASE64.encode(packed)
 }
 
-/// The refs page, the metadata page, the bootstrap 501 that precedes them,
-/// and an old server's 404 for `GET /sync/packs` (#3252), which falls back to
-/// the item-granular bodies pass.
+/// The bootstrap 501, an old server's 404 for the record packs listing
+/// (#5232), the refs page, the metadata page, and the same 404 for the
+/// snapshot listing (#3252), which falls back to the item-granular bodies pass.
 ///
 /// Chapter 10 §10.12: a deployment with no bootstrap key answers 501 and the
 /// client says nothing about it. Scripting it here is the honest default — the
@@ -219,6 +219,7 @@ fn first_sync_script(
     vec![
         devices_response(public_key),
         error_response(501, "BOOTSTRAP_UNAVAILABLE", "no bootstrap key"),
+        error_response(404, "NOT_FOUND", "no pack route"),
         response(200, &changes_page(modified_at)),
         response(
             200,

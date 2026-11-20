@@ -99,7 +99,7 @@ impl PullLoop {
     /// Tells the observers what an apply committed
     /// ([`crate::sync::driver::observer::Observers::applied`]).
     /// Called after the commit, never inside it: an observer reads the row.
-    pub(super) async fn tell(&self, feed: AppliedFeed) {
+    pub(crate) async fn tell(&self, feed: AppliedFeed) {
         if let Some(observers) = &self.observers {
             observers.applied(feed).await;
         }

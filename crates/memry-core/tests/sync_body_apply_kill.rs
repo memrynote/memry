@@ -124,12 +124,11 @@ fn update_script(since: i64) -> Vec<String> {
 
 fn scratch(label: &str) -> PathBuf {
     // Kept on disk: the database outlives this function.
-    let dir = tempfile::Builder::new()
+    tempfile::Builder::new()
         .prefix(&format!("memry-body-kill-{label}-"))
         .tempdir()
         .expect("create the scratch directory")
-        .keep();
-    dir
+        .keep()
 }
 
 fn count(db: &Db, sql: &'static str) -> i64 {

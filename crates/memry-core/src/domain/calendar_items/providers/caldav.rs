@@ -26,8 +26,7 @@ use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
 use crate::storage::nested_tx;
-use crate::storage::repositories::instants;
-use crate::storage::repositories::{Change, sync_items};
+use crate::storage::repositories::{Change, instants, sync_items};
 use crate::sync::outbox;
 
 /// `normalizeCaldavServerUrl`: `https://` added when missing, no query or

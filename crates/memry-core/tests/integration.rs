@@ -513,6 +513,8 @@ mod sync_project_nested_arrays;
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
 mod sync_realtime_run;
+#[path = "sync_record_packs.rs"]
+mod sync_record_packs;
 #[path = "sync_refused_items.rs"]
 mod sync_refused_items;
 #[cfg(feature = "markdown")]

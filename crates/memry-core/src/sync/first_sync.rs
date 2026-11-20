@@ -52,22 +52,22 @@ use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
 use crate::protocol::http::SYNC_TYPES_HEADER;
-use crate::storage::Db;
-use crate::storage::nested_tx;
-use crate::storage::repositories::sync_items;
+use crate::storage::{Db, nested_tx};
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::feed_restart;
 use super::first_sync_store::{
     metadata_left_behind, owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids,
-    write_meta,
+    record_ref, write_meta,
 };
 use super::note_body_feed;
-use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
+use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport, RecordPackReport};
 
 mod body_pass;
 mod open_session;
+mod reconcile;
+mod record_packs;
 mod refs_page;
 mod window;
 use open_session::OpenSession;
@@ -83,6 +83,10 @@ pub use body_pass::{
 /// `meta` keys, data-model §A.2's reserved list.
 pub const META_FIRST_SYNC_COMPLETED: &str = "first_sync.completed";
 pub const META_FIRST_SYNC_WINDOW_START: &str = "first_sync.window_start";
+/// Set once the record pack phase ended: `1` when record packs were applied,
+/// so the manifest reconcile is due, `0` when none were.
+pub const META_FIRST_SYNC_RECORD_PACKS: &str = "first_sync.record_packs";
+pub use reconcile::META_FIRST_SYNC_RECONCILED;
 
 /// How far back "recent" reaches, in milliseconds. Thirty days.
 ///
@@ -186,6 +190,14 @@ pub struct FirstSyncReport {
     pub tombstones: usize,
     pub metadata_applied: usize,
     pub metadata_corrupt: usize,
+    /// Records taken from `record` packs (chapter 08 §8.4.2).
+    pub record_packs: RecordPackReport,
+    /// Items the manifest reconcile pulled by id (§8.10).
+    pub reconcile_pulled: usize,
+    /// Pack-held rows the reconcile found deleted on the server and removed.
+    pub reconcile_removed: usize,
+    /// Requests the reconcile sent: the manifest plus its pulls.
+    pub reconcile_requests: usize,
     pub packs: PackBootstrapReport,
     pub bodies: BodyPullReport,
     /// The window boundary this run used, epoch milliseconds.
@@ -325,7 +337,13 @@ impl FirstSync {
             })
             .await?;
 
+        // Records first (#5232): packs, then the feed from where they end,
+        // then the manifest decides, so the note list fills before any body.
+        let record_packs_used = self.record_packs_pass(report).await?;
         self.refs_pass(report).await?;
+        if record_packs_used {
+            self.reconcile(report).await?;
+        }
         self.metadata_pass(report).await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
         // leaves its rows `metadata-only`. A row held corrupt or refused does too,
@@ -400,12 +418,11 @@ impl FirstSync {
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                     for reference in &refs {
-                        sync_items::upsert_metadata_only(
+                        record_ref(
                             &txn,
                             &reference.item_type,
                             &reference.item_id,
                             reference.modified_at,
-                            None,
                         )?;
                         // A body this device seeded with no clock and no pull
                         // ever signed (the Inbox, `projects::ensure_inbox`; a
