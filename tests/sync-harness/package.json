@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build:worker": "tsx scripts/build-worker.ts",
-    "build:core": "cd ../../crates && cargo build -p memry-cli",
+    "build:core": "tsx scripts/build-core.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

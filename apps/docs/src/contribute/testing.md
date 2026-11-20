@@ -443,6 +443,9 @@ feature-scoped and avoid catch-all test files.
   90% for statements, branches, functions, and lines.
 - **Sync harness** — `tests/sync-harness` uses the same Vitest major as the sync server so
   encrypted sync E2E helpers stay on the same runner behavior as Worker tests.
+  `pnpm test:sync-harness` also builds the Rust core device (`crates/memry-cli`), so it needs
+  the Rust toolchain pinned by `crates/rust-toolchain.toml`. Without cargo, the core zero-loss
+  scenario skips locally with a warning. In CI, a missing toolchain fails the run.
 - **PRs** — include the relevant coverage command output when raising or defending a
   threshold change.
 

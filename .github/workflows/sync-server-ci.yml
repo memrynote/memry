@@ -13,6 +13,7 @@ on:
       - 'crates/memry-core/**'
       - 'crates/memry-cli/**'
       - 'crates/Cargo.*'
+      - 'crates/rust-toolchain.toml'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
       # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
@@ -37,6 +38,7 @@ on:
       - 'crates/memry-core/**'
       - 'crates/memry-cli/**'
       - 'crates/Cargo.*'
+      - 'crates/rust-toolchain.toml'
       # The attachment client is exercised against the real Worker by the
       # integration spec below, so a client-side change must re-run this job.
       # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the

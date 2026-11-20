@@ -25,6 +25,11 @@ import type { LocalVaultState } from './zero-loss-oracle/index.js'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 const BINARY = process.env.MEMRY_CLI_BIN ?? path.join(ROOT, 'crates/target/debug/memry')
+/** The command that builds `BINARY`. */
+export const BUILD_CORE_COMMAND = 'pnpm --filter @memry/sync-harness build:core'
+
+/** Whether the core device can run here. */
+export const coreBinaryExists = (): boolean => fs.existsSync(BINARY)
 /** A run that outlives this is hung: it is killed and the test fails. */
 const RUN_DEADLINE_MS = 90_000
 
@@ -46,6 +51,8 @@ export interface CoreOracleState extends LocalVaultState {
   payloads: Record<string, string>
   /** Each body's merged Yjs state vector, in hex. */
   stateVectors: Record<string, string>
+  /** Each body's full state as one v1 update, in hex: it carries the delete set. */
+  bodyStates: Record<string, string>
   /** Documents the device still owes a body pull. */
   owed: string[]
 }
@@ -79,13 +86,14 @@ export class CoreDevice {
   ) {}
 
   async start(): Promise<void> {
-    if (!fs.existsSync(BINARY)) {
-      throw new Error(`${BINARY} is missing: run pnpm --filter @memry/sync-harness build:core`)
+    if (!coreBinaryExists()) {
+      throw new Error(`${BINARY} is missing: run ${BUILD_CORE_COMMAND}`)
     }
     const bucket = await this.server.getR2Bucket()
     this.proxy = http.createServer((req, res) => {
       this.handle(bucket, req, res).catch((error: unknown) => {
         res.statusCode = 502
+        res.setHeader('content-type', 'text/plain')
         res.end(String(error))
       })
     })
@@ -117,7 +125,7 @@ export class CoreDevice {
     if (options.resume) args.push('--resume')
     const requests: string[] = []
     const { code, signal, stdout, stderr } = await this.exec(args, (kill) => {
-      this.run = { requests, killAt: options.killAt ?? null, kill }
+      this.run = { requests, killAt: options.killAt ? { ...options.killAt } : null, kill }
     })
     this.run = null
     const killed = signal === 'SIGKILL'

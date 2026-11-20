@@ -94,17 +94,35 @@ export class SimulatedServer {
   }
 
   /**
-   * Run the Worker's scheduled handler.
-   *
-   * The pack pipeline (#1839) reaches vaults two ways: the queue consumer and
-   * the cron backfill. The backfill is the one a harness can drive without a
-   * Queues binding, so this is how an E2E gets real packs built by the real
-   * Worker against the real D1 ledger.
+   * Run the Worker's scheduled handler. Since #5278 its pack backfill only
+   * enqueues; `deliverPackBackfill` runs the builds.
    */
   async triggerScheduled(cron = '0 */6 * * *'): Promise<void> {
     if (!this.mf) throw new Error('Server not started')
     const worker = await this.mf.getWorker()
     await worker.scheduled({ cron })
+  }
+
+  /**
+   * Delivers one pack backfill message (#5278) to the Worker's queue handler.
+   * The cron only enqueues backfill messages, and the harness binds no queue,
+   * so the harness plays the queue: each call is one consumer invocation that
+   * builds until the kind drains or its budget ends.
+   */
+  async deliverPackBackfill(userId: string, vaultId: string, kind: string): Promise<void> {
+    if (!this.mf) throw new Error('Server not started')
+    const worker = await this.mf.getWorker()
+    const result = await worker.queue('memry-pack-backfill-dev', [
+      {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        attempts: 1,
+        body: { userId, vaultId, backfill: { kind, hop: 0 } }
+      }
+    ])
+    if (result.outcome !== 'ok' || result.retryBatch.retry) {
+      throw new Error(`pack backfill ${kind} failed: ${JSON.stringify(result)}`)
+    }
   }
 
   async getD1(): Promise<D1Database> {

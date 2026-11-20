@@ -6,7 +6,9 @@ import { SimulatedDevice } from '../src/simulated-device.js'
 import { createTestDevice } from '../src/test-auth.js'
 import { deriveVaultKey, encryptCrdtPacked, initCrypto } from '../src/crypto.js'
 import {
+  BUILD_CORE_COMMAND,
   CoreDevice,
+  coreBinaryExists,
   R2_PRESIGN_BINDINGS,
   type CoreOracleState,
   type CoreRun,
@@ -69,21 +71,38 @@ const sealed = (author: Author, noteId: string, bytes: Uint8Array): string =>
     encryptCrdtPacked(bytes, author.vaultKey, noteId, author.identity.signingSecretKey)
   ).toString('base64')
 
-/** Appends `text` to a note's body and pushes the edit as one update. */
-const edit = async (author: Author, noteId: string, text: string): Promise<void> => {
+/** Changes a note's body and pushes the change as one update. */
+const change = async (
+  author: Author,
+  noteId: string,
+  apply: (text: Y.Text) => void
+): Promise<void> => {
   let doc = author.docs.get(noteId)
   if (!doc) {
     doc = new Y.Doc()
     author.docs.set(noteId, doc)
   }
-  const before = Y.encodeStateVector(doc)
-  doc.getText('harness').insert(doc.getText('harness').length, text)
-  const update = Y.encodeStateAsUpdate(doc, before)
+  const updates: Uint8Array[] = []
+  const collect = (update: Uint8Array) => updates.push(update)
+  doc.on('update', collect)
+  apply(doc.getText('harness'))
+  doc.off('update', collect)
   await post(author.identity, '/sync/crdt/updates', {
     noteId,
-    updates: [sealed(author, noteId, update)]
+    updates: [sealed(author, noteId, Y.mergeUpdates(updates))]
   })
 }
+
+/** Appends `text` to a note's body. */
+const edit = (author: Author, noteId: string, text: string): Promise<void> =>
+  change(author, noteId, (body) => body.insert(body.length, text))
+
+/**
+ * Deletes the first `count` chars of a note's body. A deletion adds no clock to
+ * the state vector, so only the decoded text shows that it was lost.
+ */
+const trim = (author: Author, noteId: string, count: number): Promise<void> =>
+  change(author, noteId, (body) => body.delete(0, count))
 
 const snapshot = (author: Author, noteId: string): Promise<void> =>
   post(author.identity, '/sync/crdt/snapshot', {
@@ -107,11 +126,14 @@ const packKinds = async (): Promise<Record<string, number>> => {
   return Object.fromEntries(results.map((row) => [row.item_kind, row.n]))
 }
 
-/** Runs the cron until it packs nothing more. */
-const settlePacks = async (): Promise<Record<string, number>> => {
+/** Runs the cron and the backfill messages it would enqueue until nothing more is packed. */
+const settlePacks = async (identity: DeviceIdentity): Promise<Record<string, number>> => {
   let kinds = await packKinds()
   for (let tick = 0; tick < 10; tick++) {
     await server.triggerScheduled()
+    for (const kind of ['crdt_snapshot', 'record', 'crdt_update']) {
+      await server.deliverPackBackfill(identity.userId, 'default', kind)
+    }
     const next = await packKinds()
     if (JSON.stringify(next) === JSON.stringify(kinds)) break
     kinds = next
@@ -162,11 +184,13 @@ const seedVault = async (): Promise<{ author: Author; packs: Record<string, numb
       await edit(author, id, `after the snapshot ${i}`)
     }
   }
+  // The last update of a note with no snapshot is a deletion, held in an update pack.
+  await trim(author, notes[15], 3)
   await pushRecords(author, [await author.device.deleteItem(doomed)])
   author.docs.delete(doomed)
 
   await backdate()
-  await settlePacks()
+  await settlePacks(identity)
 
   // After the packs: the tail and the window pulls carry these.
   const late: string[] = []
@@ -176,13 +200,14 @@ const seedVault = async (): Promise<{ author: Author; packs: Record<string, numb
     late.map((id) => author.device.getItem(id)!)
   )
   for (const id of late) await edit(author, id, 'written after the packs')
+  await trim(author, late[0], 4)
   await edit(author, notes[0], ' edited after the packs')
   await edit(author, notes[12], ' edited after the packs')
   await pushRecords(author, [await author.device.deleteItem(notes[20])])
   author.docs.delete(notes[20])
   // The delete purges the packs holding that body (scoped purge, #5254); the cron rebuilds
   // the backdated range and leaves the young rows above to the routes.
-  const packs = await settlePacks()
+  const packs = await settlePacks(identity)
   return { author, packs }
 }
 
@@ -200,9 +225,15 @@ const stateVectorText = (vector: Map<number, number> | undefined): string =>
     .map(([client, clock]) => `${client}:${clock}`)
     .join(',')
 
-const digest = (content: unknown, vector: Map<number, number> | undefined): string =>
+interface Body {
+  text: string
+  vector: Map<number, number>
+}
+
+/** A record's payload and its body's text and state vector; no body digests as an empty one. */
+const digest = (content: unknown, body: Body | undefined): string =>
   createHash('sha256')
-    .update(`${JSON.stringify(content)}\n${stateVectorText(vector)}`)
+    .update(`${JSON.stringify(content)}\n${body?.text ?? ''}\n${stateVectorText(body?.vector)}`)
     .digest('hex')
 
 const authorDigests = (author: Author): DeviceDigests => {
@@ -210,7 +241,13 @@ const authorDigests = (author: Author): DeviceDigests => {
   for (const item of author.device.getAllItems().values()) {
     if (item.operation === 'delete') continue
     const doc = author.docs.get(item.id)
-    digests[item.id] = digest(item.content, doc && Y.decodeStateVector(Y.encodeStateVector(doc)))
+    digests[item.id] = digest(
+      item.content,
+      doc && {
+        text: doc.getText('harness').toJSON(),
+        vector: Y.decodeStateVector(Y.encodeStateVector(doc))
+      }
+    )
   }
   return { label: 'author', digests }
 }
@@ -218,16 +255,32 @@ const authorDigests = (author: Author): DeviceDigests => {
 const coreDigests = (state: CoreOracleState): DeviceDigests => {
   const digests: Record<string, string> = {}
   for (const [id, payload] of Object.entries(state.payloads)) {
+    const update = state.bodyStates[id]
     const vector = state.stateVectors[id]
-    digests[id] = digest(
-      JSON.parse(payload),
-      vector === undefined ? undefined : Y.decodeStateVector(Buffer.from(vector, 'hex'))
-    )
+    let body: Body | undefined
+    if (update !== undefined && vector !== undefined) {
+      const doc = new Y.Doc()
+      Y.applyUpdate(doc, Buffer.from(update, 'hex'))
+      body = {
+        text: doc.getText('harness').toJSON(),
+        vector: Y.decodeStateVector(Buffer.from(vector, 'hex'))
+      }
+    }
+    digests[id] = digest(JSON.parse(payload), body)
   }
   return { label: 'core', digests }
 }
 
-describe(
+// A machine without the Rust toolchain still runs the TypeScript scenarios. CI
+// never skips: there a missing binary fails `CoreDevice.start`.
+const coreRuns = coreBinaryExists() || Boolean(process.env.CI)
+if (!coreRuns) {
+  process.stderr.write(
+    `\nWARNING: the core device (memry-cli) is not built, so the core zero-loss scenario (#5232) SKIPS. Install the Rust toolchain and run ${BUILD_CORE_COMMAND}.\n\n`
+  )
+}
+
+;(coreRuns ? describe : describe.skip)(
   'Sync Harness — a core bootstrap from packs under the zero-loss oracle (#5232)',
   {
     timeout: 300_000
@@ -324,6 +377,23 @@ describe(
       ]
       expect(bodyPacks(runs[2])).toHaveLength(2)
       expect(bodyPacks(runs[3])).toEqual([])
+    })
+
+    it('a bootstrap killed after the body settle and in the route pass resumes to the whole vault', async () => {
+      // The bootstrap close is the first request after the body apply, the
+      // settle and the spill removal; the update pull is the route pass of the
+      // body loop after the first sync.
+      const runs = await bootstrapUnderOracle('killed-late', [
+        { path: '/sync/bootstrap/close', n: 1 },
+        { path: '/sync/crdt/updates', n: 1 }
+      ])
+      expect(runs.slice(0, 2).map((run) => run.killed)).toEqual([true, true])
+      // The packs were applied and settled before the first kill: no resume
+      // downloads one again or rereads the body manifest.
+      for (const run of runs.slice(1)) {
+        expect(run.requests.filter((p) => p.startsWith('/__r2/'))).toEqual([])
+        expect(run.requests.filter((p) => p.startsWith('/sync/crdt/manifest'))).toEqual([])
+      }
     })
   }
 )

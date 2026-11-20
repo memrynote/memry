@@ -210,16 +210,18 @@ async fn body_coverage(db: &Db) -> Result<(u64, u64), StorageError> {
 }
 
 /// The oracle's `LocalVaultState`, plus what its semantic check digests: each
-/// live record's stored payload and each body's merged state vector, and the
-/// documents still owed a body.
+/// live record's stored payload, each body's merged state vector and full
+/// state update, and the documents still owed a body.
 pub async fn oracle_state(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let db = cli.open_vault(vault)?;
     let (records, payloads) = db.call(|conn| read_records(conn)).await?;
     let mut bodies = db.call(|conn| read_bodies(conn)).await?;
     let mut state_vectors = BTreeMap::new();
+    let mut body_states = BTreeMap::new();
     for doc_id in bodies.keys() {
-        let vector = open_body(&db, doc_id)?.state_vector()?;
-        state_vectors.insert(doc_id.clone(), format_hex(&vector));
+        let body = open_body(&db, doc_id)?;
+        state_vectors.insert(doc_id.clone(), format_hex(&body.state_vector()?));
+        body_states.insert(doc_id.clone(), format_hex(&body.encode_state()?));
     }
     let owed = db.call(|conn| body_debt::owed(conn)).await?;
     for doc_id in &owed {
@@ -232,6 +234,7 @@ pub async fn oracle_state(cli: &Cli, vault: &str) -> Result<(), CliError> {
             "bodies": bodies,
             "payloads": payloads,
             "stateVectors": state_vectors,
+            "bodyStates": body_states,
             "owed": owed,
         })
     );
