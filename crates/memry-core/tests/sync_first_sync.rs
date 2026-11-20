@@ -304,10 +304,23 @@ async fn a_first_sync_fills_yjs_updates_so_extract_text_returns_the_body() {
 
     // FR-028: determinate, and never above one.
     let seen = progress.seen();
-    assert!(seen.iter().all(|p| p.completed <= p.total));
     assert!(
         seen.iter()
-            .any(|p| p.phase == memry_core::sync::first_sync::FirstSyncPhase::Bodies)
+            .all(|p| p.total.is_none_or(|total| p.completed <= total))
+    );
+    // #5233: counted in live notes, records before bodies, then done.
+    let ticks: Vec<_> = seen
+        .iter()
+        .map(|p| (p.phase, p.completed, p.total))
+        .collect();
+    assert_eq!(
+        ticks,
+        vec![
+            (FirstSyncPhase::Records, 0, Some(1)),
+            (FirstSyncPhase::Records, 1, Some(1)),
+            (FirstSyncPhase::Bodies, 1, Some(1)),
+            (FirstSyncPhase::Done, 1, Some(1)),
+        ]
     );
 }
 
@@ -847,6 +860,32 @@ async fn a_first_sync_that_fails_mid_run_still_closes_its_bootstrap_session() {
     );
 }
 
+#[tokio::test]
+async fn a_dropped_guard_closes_the_open_session() {
+    // A run dropped before its own close (the shell's task cancelled, a
+    // panic) must not hold the server's bootstrap slot for an hour.
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+                .to_string(),
+        ),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+    assert!(bootstrap.open(1_000).await.elevated());
+
+    drop(bootstrap.close_on_drop());
+
+    for _ in 0..100 {
+        if !transport.calls_to("/sync/bootstrap/close").is_empty() {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    assert_eq!(transport.calls_to("/sync/bootstrap/close").len(), 1);
+}
+
 #[test]
 fn a_replayed_update_is_skipped_rather_than_re_applied() {
     // §7.9's replay rule, at the storage layer: the same sequence twice is a
@@ -1210,13 +1249,13 @@ async fn a_resumed_bodies_pass_counts_finished_documents_and_pulls_them_no_more(
         "the finished document was pulled again"
     );
     assert_eq!(resumed.calls_to("/sync/crdt/updates/batch").len(), 1);
-    let bodies_progress: Vec<(u64, u64)> = progress
+    let bodies_progress: Vec<(u64, Option<u64>)> = progress
         .seen()
         .iter()
         .filter(|p| p.phase == FirstSyncPhase::Bodies)
         .map(|p| (p.completed, p.total))
         .collect();
-    assert_eq!(bodies_progress, vec![(1, 2), (2, 2)]);
+    assert_eq!(bodies_progress, vec![(1, Some(2)), (2, Some(2))]);
 }
 
 #[tokio::test]

@@ -573,7 +573,7 @@ replays (§7.9). A page asked from above the cursor is never used. The page move
 document and is dropped once applied. Without a trusted answer, the document
 pages through the single-document route as before. A resumed first sync counts
 the settled documents as done before its first body request
-(`crates/memry-core/src/sync/first_sync/body_pass.rs:186-193`).
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:205-221`).
 
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark

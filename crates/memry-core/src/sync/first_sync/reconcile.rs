@@ -32,7 +32,7 @@ use crate::storage::nested_tx;
 use super::super::apply::{self, Pending};
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
 use super::super::pull::{MAX_PULL_IDS, PullLoop};
-use super::{FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport};
+use super::{FirstSync, FirstSyncError, FirstSyncReport};
 use super::{now_ms, sqlite_failed};
 
 /// Set when the reconcile finished, so a resumed first sync does not pull
@@ -75,8 +75,6 @@ impl FirstSync {
         let held = self.db.call(|conn| held_rows(conn)).await?;
         let plan = plan(&listed, &held, &self.pull);
 
-        let total = (plan.pull.len() + plan.stale.len()) as u64;
-        let mut done = 0u64;
         let forget = plan.forget;
         self.db
             .call(move |conn| forget_cursors(conn, &forget))
@@ -86,23 +84,13 @@ impl FirstSync {
             report.reconcile_requests += 1;
             report.reconcile_pulled += page.applied + page.deleted + page.skipped;
             report.metadata_corrupt += page.corrupt;
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
+            self.records_progress(true).await?;
         }
         for chunk in plan.stale.chunks(MAX_PULL_IDS) {
             let ids: Vec<String> = chunk.iter().map(|row| row.item_id.clone()).collect();
             self.pull.fetch_ids(&ids).await?;
             report.reconcile_requests += 1;
-            done += chunk.len() as u64;
-            self.progress.progress(FirstSyncProgress {
-                phase: FirstSyncPhase::Metadata,
-                completed: done,
-                total,
-            });
+            self.records_progress(true).await?;
         }
         report.reconcile_removed += self.remove_unanswered(plan.stale).await?;
         self.db

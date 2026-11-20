@@ -81,11 +81,13 @@ use crate::sync::socket_run::TerminalLatch;
 
 mod attachment_fetch;
 mod attachments_io;
+mod drain;
 mod inbox_attachments;
 mod pass;
 mod realtime;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
+pub use drain::BodyDrainSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
 pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
@@ -114,18 +116,16 @@ impl From<BodyPullError> for SyncError {
     }
 }
 
-/// Which pass a first sync is in, data-model §C.3 and FR-028.
+/// Which part of the vault is arriving, data-model §C.3 and FR-028.
 ///
 /// A mirror of [`FirstSyncPhase`] rather than a derive on it: the internal type
 /// is free to gain a pass, and the day it does, this enum's absence of one is a
 /// compile error here rather than a silent new case on the FFI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum SyncPhase {
-    /// `GET /sync/changes` to the end of the feed.
-    Refs,
-    /// `POST /sync/pull`, newest first.
-    Metadata,
-    /// `GET /sync/crdt/updates` for the recent window.
+    /// Note records: what a shell shows as "Downloading notes".
+    Records,
+    /// Note bodies: what a shell shows as "Downloading note content".
     Bodies,
     Done,
 }
@@ -133,21 +133,22 @@ pub enum SyncPhase {
 impl From<FirstSyncPhase> for SyncPhase {
     fn from(phase: FirstSyncPhase) -> Self {
         match phase {
-            FirstSyncPhase::Refs => SyncPhase::Refs,
-            FirstSyncPhase::Metadata => SyncPhase::Metadata,
+            FirstSyncPhase::Records => SyncPhase::Records,
             FirstSyncPhase::Bodies => SyncPhase::Bodies,
             FirstSyncPhase::Done => SyncPhase::Done,
         }
     }
 }
 
-/// FR-028's determinate progress. `completed` is never above `total`, so a
-/// shell renders a fraction without guarding against one above 1.
+/// FR-028's determinate progress, in live notes and journals of the vault
+/// (#5233). `completed` is never above `total`, so a shell renders a fraction
+/// without guarding against one above 1. `total` is `None` while the vault's
+/// total is not known yet, early in the records phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct SyncProgress {
     pub phase: SyncPhase,
     pub completed: u64,
-    pub total: u64,
+    pub total: Option<u64>,
 }
 
 /// Where progress goes.
@@ -161,7 +162,7 @@ pub trait SyncProgressListener: Send + Sync {
 }
 
 /// Adapts the foreign listener onto the core's internal sink.
-struct ForeignProgress(Arc<dyn SyncProgressListener>);
+pub(super) struct ForeignProgress(pub(super) Arc<dyn SyncProgressListener>);
 
 impl ProgressSink for ForeignProgress {
     fn progress(&self, progress: FirstSyncProgress) {
@@ -183,7 +184,18 @@ impl ProgressSink for ForeignProgress {
 pub struct FirstSyncSummary {
     pub refs_recorded: u32,
     pub tombstones: u32,
+    /// Records the metadata pass applied. With record packs this is often 0:
+    /// the packs and the reconcile applied them (the two counts below).
     pub metadata_applied: u32,
+    /// Record pack entries applied (chapter 08 §8.4.2).
+    pub record_pack_entries: u32,
+    /// Items the manifest reconcile pulled by id (§8.10).
+    pub reconcile_pulled: u32,
+    /// Documents the body pack phase proved current.
+    pub pack_bodies_settled: u32,
+    /// Documents still owed a body when the run ended: the shell's
+    /// [`VaultSync::drain_bodies`] pulls them.
+    pub bodies_owed: u32,
     pub metadata_corrupt: u32,
     pub bodies: u32,
     pub updates: u32,
@@ -231,6 +243,10 @@ impl From<FirstSyncReport> for FirstSyncSummary {
             refs_recorded: count(report.refs_recorded),
             tombstones: count(report.tombstones),
             metadata_applied: count(report.metadata_applied),
+            record_pack_entries: count(report.record_packs.entries_applied),
+            reconcile_pulled: count(report.reconcile_pulled),
+            pack_bodies_settled: count(report.body_packs.settled),
+            bodies_owed: count(report.bodies_owed),
             metadata_corrupt: count(report.metadata_corrupt),
             bodies: count(report.bodies.documents),
             updates: count(report.bodies.updates),
@@ -353,8 +369,10 @@ impl VaultSync {
             .is_some())
     }
 
-    /// The first sync: refs to the end, then metadata newest first, then bodies
-    /// for the recent window (data-model §C.3, FR-028).
+    /// The first sync: note records for the whole vault, then bodies from packs
+    /// for the whole vault (data-model §C.3, FR-028, #5233). With partial pack
+    /// coverage it pulls the owed bodies of the recent window and leaves the
+    /// rest owed for [`Self::drain_bodies`].
     ///
     /// **`async`, and that is contract, not detail** (spec-defect 90). It is
     /// tens of network round trips — a no-op pass over a ninety-four-note vault
@@ -442,12 +460,12 @@ impl VaultSync {
 
     /// One note's body, on demand (chapter 07 §7.8 – §7.11).
     ///
-    /// **This is not an extra.** [`Self::first_sync`] pulls bodies only for the
-    /// recent window — chapter 10 §10.6.1 mandates the windowing and FR-028
-    /// says "older content on demand" — so a note outside it arrives with its
+    /// **This is not an extra.** With partial pack coverage, [`Self::first_sync`]
+    /// leaves the bodies outside the recent window owed until
+    /// [`Self::drain_bodies`] reaches them (chapter 10 §10.6.1), and FR-028
+    /// says "older content on demand": a note opened before then has its
     /// metadata and no body, and [`crate::api::notes::Notes::read`] answers
-    /// `NoteBody { present: false }`. Without this call that note could never
-    /// become readable, which is spec-defect 136 one layer down.
+    /// `NoteBody { present: false }`. This call makes it readable now.
     ///
     /// **`async`**, and one document rather than the whole feed: a handful of
     /// round trips, not tens.

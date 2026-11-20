@@ -50,7 +50,7 @@ struct StoreNotes: NotesReading {
 
 /// A scripted pull. The network is the only thing substituted.
 final class StoreFiller: VaultFilling, @unchecked Sendable {
-    enum Call: Equatable, Sendable { case gate, first, body(String) }
+    enum Call: Equatable, Sendable { case gate, first, drain, body(String) }
 
     private let store: VaultStore
     private let complete: Bool
@@ -59,6 +59,9 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
     private let ticks: [SyncProgress]
     private let calls = Mutex<[Call]>([])
     private let summary: FirstSyncSummary
+    /// Each drain round's answer and its ticks, in order. Past the end, a
+    /// round with nothing owed.
+    private let rounds = Mutex<[(ticks: [SyncProgress], answer: Result<BodyDrainSummary, any Error>)]>([])
 
     /// The progress closure `firstSync` was last handed, kept so a test can
     /// drive a tick that arrives **after** the run ended. That is not a
@@ -73,7 +76,8 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
         fills: Int = 0,
         ticks: [SyncProgress] = [],
         failure: (any Error)? = nil,
-        summary: FirstSyncSummary = .none
+        summary: FirstSyncSummary = .none,
+        rounds: [(ticks: [SyncProgress], answer: Result<BodyDrainSummary, any Error>)] = []
     ) {
         self.store = store
         complete = alreadyComplete
@@ -81,6 +85,7 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
         self.ticks = ticks
         self.failure = failure
         self.summary = summary
+        self.rounds.withLock { $0 = rounds }
     }
 
     var history: [Call] { calls.withLock { $0 } }
@@ -108,6 +113,18 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
         return summary
     }
 
+    func drainBodies(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> BodyDrainSummary {
+        calls.withLock { $0.append(.drain) }
+        let next = rounds.withLock { $0.isEmpty ? nil : $0.removeFirst() }
+        guard let next else { return .round(0, remaining: 0) }
+        for tick in next.ticks {
+            await MainActor.run { progress(tick) }
+        }
+        return try next.answer.get()
+    }
+
     func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         calls.withLock { $0.append(.body(noteId)) }
         if let failure { throw failure }
@@ -118,19 +135,27 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
 extension FirstSyncSummary {
     /// A clean run that brought nothing back.
     static let none = FirstSyncSummary(
-        refsRecorded: 0, tombstones: 0, metadataApplied: 0, metadataCorrupt: 0,
+        refsRecorded: 0, tombstones: 0, metadataApplied: 0, recordPackEntries: 0, reconcilePulled: 0,
+        packBodiesSettled: 0, bodiesOwed: 0, metadataCorrupt: 0,
         bodies: 0, updates: 0, bodiesStopped: 0, windowStartMs: 0, elevated: false
     )
 
     static func applied(_ count: UInt32, corrupt: UInt32 = 0, stopped: UInt32 = 0) -> FirstSyncSummary {
         FirstSyncSummary(
-            refsRecorded: count, tombstones: 0, metadataApplied: count, metadataCorrupt: corrupt,
+            refsRecorded: count, tombstones: 0, metadataApplied: count, recordPackEntries: 0, reconcilePulled: 0,
+            packBodiesSettled: 0, bodiesOwed: 0, metadataCorrupt: corrupt,
             bodies: count, updates: count, bodiesStopped: stopped, windowStartMs: 0, elevated: false
         )
     }
 }
 
-private func tick(_ phase: SyncPhase, _ done: UInt64, _ total: UInt64) -> SyncProgress {
+extension BodyDrainSummary {
+    static func round(_ documents: UInt32, remaining: UInt32) -> BodyDrainSummary {
+        BodyDrainSummary(documents: documents, requests: documents, remaining: remaining, elevated: false)
+    }
+}
+
+private func tick(_ phase: SyncPhase, _ done: UInt64, _ total: UInt64?) -> SyncProgress {
     SyncProgress(phase: phase, completed: done, total: total)
 }
 
@@ -198,7 +223,7 @@ struct VaultFillTests {
         await fill.begin()
         #expect(fill.phase == .filled)
         #expect(fill.banner == .none)
-        #expect(filler.history == [.gate, .first])
+        #expect(filler.history == [.gate, .first, .drain])
 
         // And only now is there anything to list.
         await browse.reload()
@@ -223,7 +248,7 @@ struct VaultFillTests {
 
         #expect(fill.phase == .filled)
         // `firstSync` was never called, and the store is untouched.
-        #expect(filler.history == [.gate])
+        #expect(filler.history == [.gate, .drain])
         #expect(store.current.isEmpty)
     }
 
@@ -237,7 +262,7 @@ struct VaultFillTests {
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
         #expect(fill.phase == .filled)
-        #expect(filler.history == [.gate])
+        #expect(filler.history == [.gate, .drain])
     }
 
     @Test("progress ticks reach the screen as a determinate fraction")
@@ -245,7 +270,7 @@ struct VaultFillTests {
         let filler = StoreFiller(
             store: VaultStore(),
             fills: 3,
-            ticks: [tick(.refs, 1, 4), tick(.metadata, 2, 4), tick(.bodies, 4, 4)],
+            ticks: [tick(.records, 1, nil), tick(.records, 2, 4), tick(.bodies, 4, 4)],
             summary: .applied(3)
         )
         let fill = VaultFillViewModel(filler: filler)
@@ -309,7 +334,7 @@ struct VaultFillTests {
         // the run has already ended. Without the guard in `report(_:)` this
         // puts the progress bar back and hides the reason.
         let late = try #require(filler.escapedProgress)
-        late(tick(.metadata, 1, 2))
+        late(tick(.records, 1, 2))
         guard case .failed = fill.phase else {
             Issue.record("a late tick moved the screen off its failure")
             return
@@ -322,7 +347,7 @@ struct VaultFillTests {
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
         await fill.begin()
-        #expect(filler.history == [.gate, .first])
+        #expect(filler.history == [.gate, .first, .drain])
     }
 
     /// `metadataCorrupt` and `bodiesStopped` are not failures and the core's
@@ -349,11 +374,11 @@ struct VaultFillTests {
         #expect(browse.phase == .empty)
 
         let ticks = [
-            tick(.refs, 1, 1),
-            tick(.metadata, 100, 1200), tick(.metadata, 200, 1200), tick(.metadata, 300, 1200),
-            tick(.metadata, 400, 1200), tick(.metadata, 500, 1200), tick(.metadata, 600, 1200),
-            tick(.metadata, 1200, 1200),
-            tick(.bodies, 3, 500),
+            tick(.records, 0, nil),
+            tick(.records, 100, 1200), tick(.records, 200, 1200), tick(.records, 300, 1200),
+            tick(.records, 400, 1200), tick(.records, 500, 1200), tick(.records, 600, 1200),
+            tick(.records, 1200, 1200),
+            tick(.bodies, 3, 1200),
         ]
         let filler = HeldFiller(store: store, fills: 40, ticks: ticks)
         let fill = VaultFillViewModel(filler: filler)
@@ -367,10 +392,11 @@ struct VaultFillTests {
         }
         #expect(filler.isHeld)
 
-        #expect(fill.banner == .none, "a running first sync shows nothing over the vault")
+        #expect(fill.banner == .none, "a running first sync shows no banner over the vault")
+        #expect(fill.strip == tick(.bodies, 3, 1200), "only the thin strip, with the vault's counts")
         #expect(fill.isPending)
-        // A bump per pass, every 500 items of metadata, and its last item.
-        #expect(fill.landed == 5)
+        // A bump per phase, every 500 records, and the last record.
+        #expect(fill.landed == 4)
         await browse.refresh()
         guard case let .ready(outline) = browse.phase else {
             Issue.record("the notes that landed mid-run were not listed")
@@ -383,8 +409,9 @@ struct VaultFillTests {
         filler.finish()
         await run.value
         #expect(fill.banner == .none)
+        #expect(fill.strip == nil, "the strip goes when the run ends")
         #expect(!fill.isPending, "the passes held for the run go now")
-        #expect(fill.landed == 6, "the end of the run re-reads the lists once more")
+        #expect(fill.landed == 5, "the end of the run re-reads the lists once more")
     }
 }
 
@@ -410,7 +437,7 @@ struct SyncProgressRelayTests {
         let returned = DispatchSemaphore(value: 0)
 
         DispatchQueue.global().async {
-            relay.progress(progress: tick(.metadata, 7, 94))
+            relay.progress(progress: tick(.records, 7, 94))
             returned.signal()
         }
 

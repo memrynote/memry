@@ -91,22 +91,30 @@ fn mark(name: &str, fields: Json) {
     println!("{line}");
 }
 
-/// Marks `records` once the metadata pass has applied every record.
+/// Marks `records` when the records phase ends, as iOS's `the first sync is
+/// pulling bodies` line does: every record pass is over (#5233).
 #[derive(Default)]
 struct Progress {
-    phase: Mutex<Option<SyncPhase>>,
+    /// The phase last seen, and the documents its last records tick held.
+    state: Mutex<(Option<SyncPhase>, u64)>,
 }
 
 impl SyncProgressListener for Progress {
     fn progress(&self, progress: SyncProgress) {
-        let mut phase = self.phase.lock().unwrap_or_else(|p| p.into_inner());
-        if *phase != Some(progress.phase) {
-            mark("phase", json!({ "phase": format!("{:?}", progress.phase) }));
-            *phase = Some(progress.phase);
+        let mut state = self.state.lock().unwrap_or_else(|p| p.into_inner());
+        let (phase, documents) = &mut *state;
+        if *phase == Some(progress.phase) {
+            if progress.phase == SyncPhase::Records {
+                *documents = progress.completed;
+            }
+            return;
         }
-        if progress.phase == SyncPhase::Metadata && progress.completed >= progress.total {
-            mark("records", json!({ "applied": progress.completed }));
+        if *phase == Some(SyncPhase::Records) {
+            mark("records", json!({ "documents": *documents }));
         }
+        mark("phase", json!({ "phase": format!("{:?}", progress.phase) }));
+        *phase = Some(progress.phase);
+        *documents = progress.completed;
     }
 }
 
@@ -136,6 +144,10 @@ pub async fn bootstrap(
         "firstSync",
         json!({
             "metadataApplied": summary.metadata_applied,
+            "recordPackEntries": summary.record_pack_entries,
+            "reconcilePulled": summary.reconcile_pulled,
+            "packBodiesSettled": summary.pack_bodies_settled,
+            "bodiesOwed": summary.bodies_owed,
             "metadataCorrupt": summary.metadata_corrupt,
             "bodies": summary.bodies,
             "bodiesStopped": summary.bodies_stopped,

@@ -82,12 +82,13 @@ type Downloaded = (PackSummary, Result<Vec<u8>, String>);
 impl PackBootstrap {
     /// Lists, downloads and applies every `record` pack, then answers where
     /// the record tail starts. Errors only on local storage failure; a
-    /// network or pack failure is a gap in the report.
+    /// network or pack failure is a gap in the report. `on_progress` gets the
+    /// note and journal entries of the packs applied so far in this run.
     pub async fn run_records(
         &self,
         pull: &PullLoop,
         now_s: i64,
-        on_progress: &(dyn Fn(u64, u64) + Send + Sync),
+        on_progress: &(dyn Fn(u64) + Send + Sync),
     ) -> Result<RecordPackReport, PullError> {
         let mut report = RecordPackReport::default();
         let mut done: Vec<DonePack> = self
@@ -119,9 +120,8 @@ impl PackBootstrap {
             .filter(|pack| !done.iter().any(|held| held.id == pack.id))
             .cloned()
             .collect();
-        let total: u64 = todo.iter().map(|pack| pack.item_count).sum();
-        let mut seen = 0u64;
-        on_progress(seen, total);
+        let mut documents = 0u64;
+        on_progress(documents);
 
         let mut queue = todo.into_iter();
         let mut relisted: Option<Vec<PackSummary>> = None;
@@ -165,7 +165,6 @@ impl PackBootstrap {
                 joined.map_err(|error| crate::api::errors::StorageError::Failed {
                     what: format!("a record pack download did not finish: {error}"),
                 })?;
-            seen += pack.item_count;
             let parsed = bytes.and_then(|bytes| {
                 parse_pack(&bytes)
                     .map(|parsed| (bytes, parsed.entries))
@@ -179,7 +178,6 @@ impl PackBootstrap {
                     report
                         .fallback_reasons
                         .push(format!("pack {}: {reason}", pack.id));
-                    on_progress(seen, total);
                     continue;
                 }
             };
@@ -195,7 +193,8 @@ impl PackBootstrap {
             });
             self.write_record_progress(&done, unusable_below).await?;
             report.packs_applied += 1;
-            on_progress(seen, total);
+            documents += entries.iter().filter(|entry| is_document(entry)).count() as u64;
+            on_progress(documents);
         }
 
         report.used = !done.is_empty();
@@ -292,6 +291,12 @@ pub(super) async fn download(http: &HttpClient, url: &str) -> Result<Vec<u8>, St
 enum Rebuilt {
     Item(Json),
     Unusable,
+}
+
+/// A `note` or `journal` record entry (`type:id`, §8.4).
+fn is_document(entry: &PackEntry) -> bool {
+    entry.kind == PackKind::Record
+        && matches!(entry.id.split_once(':'), Some(("note" | "journal", _)))
 }
 
 fn item_type_of(item: &Json) -> &str {

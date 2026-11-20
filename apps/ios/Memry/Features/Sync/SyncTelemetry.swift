@@ -49,7 +49,7 @@ enum SyncTelemetry {
             result: .success,
             metrics: TelemetryMetrics(
                 durationMs: durationMs(since: start),
-                itemCount: Double(summary.metadataApplied)
+                itemCount: Double(summary.recordsApplied)
             )
         )
     }
@@ -102,5 +102,13 @@ enum SyncTelemetry {
 
     private static func durationMs(since start: ContinuousClock.Instant) -> Double {
         ((ContinuousClock.now - start) / .milliseconds(1)).rounded()
+    }
+}
+
+extension FirstSyncSummary {
+    /// Records the run applied, whichever path brought them: record packs,
+    /// the manifest reconcile, or the metadata pass.
+    var recordsApplied: UInt32 {
+        metadataApplied + recordPackEntries + reconcilePulled
     }
 }

@@ -133,7 +133,7 @@ async fn seed_packs(db: &Db, dir: &Path, download: bool) -> BodyPackReport {
     ));
     PackBootstrap::new(http, db.clone(), pull)
         .with_spill_dir(dir.join("spill"))
-        .run_bodies(1_000, &|_, _| {})
+        .run_bodies(1_000)
         .await
         .expect("the pack bootstrap")
 }

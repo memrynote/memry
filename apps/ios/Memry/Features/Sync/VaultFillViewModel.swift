@@ -29,6 +29,14 @@ import Observation
 // apply. Their cursors did not advance, so a later run retries them. A vault
 // that returns some of them is a vault the screen must say something about
 // rather than render as complete.
+//
+// **The drain (#5233).** With partial pack coverage the first sync leaves
+// bodies owed. After it, and after a gate that answered "already complete",
+// `.draining` asks the core for rounds while the app is in the foreground, a
+// round pulled something and some are still owed. A round that pulled nothing
+// with bodies still owed (a 429, a lost network) pauses the drain, and the
+// next foreground resumes it. The vault's passes are not held for it: a round
+// holds the core's pass gate for one bounded round.
 
 @MainActor
 @Observable
@@ -41,8 +49,13 @@ final class VaultFillViewModel {
         /// the first one — which is a real state on a slow first round trip
         /// and is rendered as words rather than as a bar at zero.
         case filling(SyncProgress?)
-        /// This device has everything the window covers. `summary` is `nil`
-        /// when the gate answered "already complete" and nothing ran.
+        /// The first sync is over and owed bodies are being pulled, round
+        /// after round, while the app is in the foreground. The payload is
+        /// the last tick of this drain, or `nil` before the first one.
+        case draining(SyncProgress?)
+        /// The first sync is over and no drain is running. Bodies may still be
+        /// owed, when the app left the foreground, a round pulled nothing or
+        /// failed, or the screen went away.
         case filled
         /// The pull threw. **Whatever arrived first is still there**, so this
         /// is rendered beside the vault's contents and never in place of them.
@@ -75,6 +88,15 @@ final class VaultFillViewModel {
     let filler: any VaultFilling
 
     private var hasRun = false
+    /// Set by the scene. The drain asks for a round only while it is true.
+    private var isForeground = true
+    /// A round answered that nothing is owed. A foreground after that starts
+    /// no new drain.
+    private var drained = false
+    /// The running drain. Owned here, not by whichever caller started it, so
+    /// the scene's changes neither cancel it nor start a second one, and
+    /// ``leave()`` ends it when the screen goes away.
+    private var drainTask: Task<Void, Never>?
 
     init(filler: any VaultFilling) {
         self.filler = filler
@@ -87,15 +109,27 @@ final class VaultFillViewModel {
     var isPending: Bool {
         switch phase {
         case .checking, .filling: true
-        case .filled, .failed: false
+        case .draining, .filled, .failed: false
         }
     }
 
-    /// `.checking` and `.filling` show nothing: the run continues in the
-    /// background and the vault's contents fill in as it lands.
+    /// The progress strip above the contents, or `nil` for none: while the
+    /// first sync or the drain runs, once its first tick has a count to show.
+    /// A drain with nothing owed sends no tick, so it never flashes a strip.
+    var strip: SyncProgress? {
+        switch phase {
+        case let .filling(progress), let .draining(progress):
+            progress.flatMap { $0.phase == .done ? nil : $0 }
+        case .checking, .filled, .failed: nil
+        }
+    }
+
+    /// `.checking`, `.filling` and `.draining` show no banner: the run
+    /// continues in the background and the vault's contents fill in as it
+    /// lands.
     var banner: Banner {
         switch phase {
-        case .checking, .filling: .none
+        case .checking, .filling, .draining: .none
         case .filled: incomplete.map(Banner.incomplete) ?? .none
         case let .failed(error): .failure(error)
         }
@@ -129,6 +163,7 @@ final class VaultFillViewModel {
             if try await filler.isFirstSyncComplete() {
                 Log.sync.info("this vault has already had its first sync")
                 phase = .filled
+                await drain(showing: nil)
                 return
             }
         } catch {
@@ -151,17 +186,90 @@ final class VaultFillViewModel {
         await run()
     }
 
+    /// The scene's phase, from the vault scope. Back in the foreground, a
+    /// drain that the background, a round that pulled nothing, or a failed
+    /// round paused continues while bodies are owed.
+    func sceneChanged(active: Bool) async {
+        isForeground = active
+        guard active, hasRun else { return }
+        await drain(showing: nil)
+    }
+
+    /// The vault screen went away: the drain asks for no further round. The
+    /// round in flight finishes in the core (no `rust_future_cancel`).
+    func leave() {
+        drainTask?.cancel()
+    }
+
+    /// Starts the drain, or joins the one running, and returns when it ends.
+    /// `showing` is the tick the strip keeps until the drain's first one, so
+    /// the strip does not fade out and back in between the first sync and
+    /// the drain.
+    private func drain(showing carried: SyncProgress?) async {
+        if drainTask == nil {
+            guard case .filled = phase, isForeground, !drained else { return }
+            phase = .draining(carried)
+            drainTask = Task { await drainRounds() }
+        }
+        await drainTask?.value
+    }
+
+    /// Owed bodies, one bounded round at a time, until none is owed, a round
+    /// pulls nothing (the rest are backing off, or the network is gone), the
+    /// app leaves the foreground, the screen goes away (``leave()``), or a
+    /// round fails. Only "none owed" ends it for good; every other stop is a
+    /// pause the next foreground resumes. A failure is quiet: the bodies stay
+    /// owed and the next foreground or the note view pulls them, so it is a
+    /// log line, not a banner over the vault.
+    private func drainRounds() async {
+        var pulled = 0
+        while isForeground, !Task.isCancelled {
+            do {
+                let round = try await filler.drainBodies { [weak self] progress in
+                    self?.reportDrain(progress)
+                }
+                pulled += Int(round.documents)
+                if round.remaining == 0 {
+                    drained = true
+                    Log.sync.notice("the body drain ended")
+                    break
+                }
+                if round.documents == 0 {
+                    // Asking again at once would spin on documents that are
+                    // backing off or a network that is gone.
+                    Log.sync.notice("the body drain paused", .count(Int(round.remaining)))
+                    break
+                }
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.sync.error("a body drain round did not finish", .code(mapped.code))
+                break
+            }
+        }
+        if pulled > 0 { Log.sync.notice("the body drain pulled", .count(pulled)) }
+        phase = .filled
+        drainTask = nil
+    }
+
+    /// A drain tick, already on this actor. Guarded like ``report(_:)``.
+    private func reportDrain(_ progress: SyncProgress) {
+        guard case .draining = phase else { return }
+        phase = .draining(progress)
+    }
+
     private func run() async {
         phase = .filling(nil)
         let start = ContinuousClock.now
         Log.sync.notice("a first sync started")
+        var carried: SyncProgress?
         do {
             let summary = try await filler.firstSync { [weak self] progress in
                 self?.report(progress)
             }
             SyncTelemetry.bootstrapInteractive(summary, since: start)
             self.summary = summary
-            Log.sync.notice("a first sync finished", .count(Int(summary.metadataApplied)))
+            Log.sync.notice("a first sync finished", .count(Int(summary.recordsApplied)))
+            carried = strip
             phase = .filled
         } catch {
             let mapped = ErrorMapping.userFacing(error)
@@ -171,6 +279,7 @@ final class VaultFillViewModel {
         let elapsed = UInt64(max(0, (ContinuousClock.now - start) / .milliseconds(1)))
         Log.sync.notice("the first sync ran for", .milliseconds(elapsed))
         landed += 1
+        await drain(showing: carried)
     }
 
     /// One tick from the core, already hopped to this actor by
@@ -180,39 +289,43 @@ final class VaultFillViewModel {
     /// just before the run threw can arrive after `.failed` is on screen;
     /// without this guard it would put the progress bar back and hide the
     /// reason. Nothing outside a running pull may move this screen.
+    ///
+    /// The `Done` tick keeps the last count on the strip: on a partially
+    /// covered vault the drain continues that count, and a strip hidden at
+    /// `Done` would fade out and back in.
     private func report(_ progress: SyncProgress) {
         guard case let .filling(previous) = phase else { return }
         if previous?.phase != progress.phase { Self.logReached(progress) }
-        phase = .filling(progress)
-        if landedAgain(after: previous, progress) { landed += 1 }
+        let landedAgain = landedAgain(after: previous, progress)
+        phase = .filling(progress.phase == .done ? previous : progress)
+        if landedAgain { landed += 1 }
     }
 
-    /// Metadata applied in one re-read of the lists. A tick lands a hundred
+    /// Records applied in one re-read of the lists. A tick lands a hundred
     /// items, and re-reading a vault of thousands on each would hold the core
     /// queue the screens read through.
     static let landedStride: UInt64 = 500
 
-    /// A new pass (the refs pass files deletes), every `landedStride` items
-    /// of metadata, and its last item. Bodies change no list row.
+    /// A new phase, every `landedStride` records, and the last record.
+    /// Bodies change no list row.
     private func landedAgain(after previous: SyncProgress?, _ progress: SyncProgress) -> Bool {
         if previous?.phase != progress.phase {
             landedThrough = 0
             return true
         }
-        guard progress.phase == .metadata,
+        guard progress.phase == .records,
               progress.completed >= landedThrough + Self.landedStride || progress.completed == progress.total
         else { return false }
         landedThrough = progress.completed
         return true
     }
 
-    /// One diagnostic line per pass, not per tick: the bodies pass alone
-    /// ticks hundreds of times.
+    /// One diagnostic line per phase, not per tick. `scripts/bootstrap-bench`
+    /// reads "the first sync is pulling bodies" as its records mark.
     private static func logReached(_ progress: SyncProgress) {
-        let total = LogDetail.count(Int(progress.total))
+        let total = LogDetail.count(Int(progress.total ?? progress.completed))
         switch progress.phase {
-        case .refs: Log.sync.notice("the first sync is reading refs", total)
-        case .metadata: Log.sync.notice("the first sync is pulling metadata", total)
+        case .records: Log.sync.notice("the first sync is pulling records", total)
         case .bodies: Log.sync.notice("the first sync is pulling bodies", total)
         case .done: Log.sync.notice("the first sync is finishing", total)
         }
