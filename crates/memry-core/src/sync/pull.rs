@@ -433,7 +433,9 @@ impl PullLoop {
             // §5.14's breaker, all three conditions or none.
             let yielded = report.applied + report.deleted + report.skipped + report.expired;
             report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
-            let at_head = !report.has_more && !report.refused;
+            // A refused page at the head is still the head: the cursor moves past it, so a
+            // run from cursor 0 ends there and the next run's markers apply (§5.12.3).
+            let at_head = !report.has_more;
 
             // §5.11: only now, and in the transaction that lands the bodies.
             let advanced = page.next_cursor.clone().or(cursor);

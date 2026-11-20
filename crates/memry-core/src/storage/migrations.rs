@@ -230,6 +230,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "canvases",
         sql: include_str!("migrations/data/0036_canvases.sql"),
     },
+    Migration {
+        version: 37,
+        name: "task_links",
+        sql: include_str!("migrations/data/0037_task_links.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -422,6 +427,8 @@ mod saved_filter_inbox_tests;
 mod sequence_tests;
 #[cfg(test)]
 mod step_forward_tests;
+#[cfg(test)]
+mod task_links_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

@@ -58,6 +58,9 @@ unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
 # reader's jsdom (`services/file_text/html`). Everything else parses with the htmlparser2 port.
 html5ever = "0.40.1"
+# Zip exports (Google Keep Takeout), read the way yauzl did: stored and deflated entries only, no
+# legacy decoders. 9.0.5 is the first release past GHSA-m665-v7pm-7grj and the 9.0.0 advisories.
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
 # The large-file viewer's scans (`large_file/`): newlines with memchr, an ASCII case-folding
@@ -165,9 +168,12 @@ test-hooks = []
 # Tests against the real sync server on miniflare: tests/sync_harness.rs. Needs node and
 # `pnpm install` (tests/sync-harness).
 harness = []
+# Named crash points in the Electron vault import (`electron_import::vault_db::crash`): the
+# crate's own tests turn it on; no app build does.
+import-crash-points = []
 
 [dev-dependencies]
-memry-desktop = { path = ".", features = ["test-hooks"] }
+memry-desktop = { path = ".", features = ["test-hooks", "import-crash-points"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }
@@ -212,6 +218,10 @@ path = "tests/export_untrusted.rs"
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[test]]
+name = "electron_vault_import"
+path = "tests/electron_vault_import.rs"
 
 [[test]]
 name = "obsidian_task_local_zone"

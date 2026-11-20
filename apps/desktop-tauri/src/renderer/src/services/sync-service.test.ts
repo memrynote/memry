@@ -11,21 +11,58 @@ const channel = vi.hoisted(() => ({
   answer: null as Promise<void> | null
 }))
 
-vi.mock('../../../generated/bindings', () => ({
-  events: {
-    syncItemSyncedEvent: {
-      listen: async (handler: (received: { payload: Payload }) => void) => {
-        await channel.answer
-        channel.handlers.push(handler)
-        return () => {
-          channel.handlers = channel.handlers.filter((h) => h !== handler)
+const mocks = vi.hoisted(() => ({
+  commands: {
+    syncGetStatus: vi.fn(),
+    syncTrigger: vi.fn(),
+    syncGetHistory: vi.fn(),
+    syncPause: vi.fn(),
+    syncResume: vi.fn(),
+    syncGetNoteSyncState: vi.fn()
+  },
+  listeners: new Map<string, (event: { payload: unknown }) => void>()
+}))
+
+vi.mock('../../../generated/bindings', () => {
+  const event = (name: string) => ({
+    listen: vi.fn(async (handler: (event: { payload: unknown }) => void) => {
+      await channel.answer
+      mocks.listeners.set(name, handler)
+      return () => mocks.listeners.delete(name)
+    })
+  })
+  return {
+    commands: mocks.commands,
+    events: {
+      syncStatusChangedEvent: event('status'),
+      syncInitialSyncProgressEvent: event('progress'),
+      syncQueueClearedEvent: event('queue-cleared'),
+      syncClockSkewWarningEvent: event('clock-skew'),
+      syncSecurityWarningEvent: event('security-warning'),
+      syncCertificatePinFailedEvent: event('pin-failed'),
+      syncItemSyncedEvent: {
+        listen: async (handler: (received: { payload: Payload }) => void) => {
+          await channel.answer
+          channel.handlers.push(handler)
+          return () => {
+            channel.handlers = channel.handlers.filter((h) => h !== handler)
+          }
         }
       }
     }
   }
-}))
+})
 
-import { onSyncedRecords } from './sync-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncedRecords,
+  onSyncStatusChanged,
+  syncService
+} from './sync-service'
 
 const page = (...items: Payload['items']) => {
   for (const handler of channel.handlers) handler({ payload: { operation: 'pull', items } })
@@ -128,5 +165,144 @@ describe('onSyncedRecords', () => {
 
     expect(onListening).toHaveBeenCalledTimes(1)
     expect(callback).not.toHaveBeenCalled()
+  })
+})
+
+describe('sync-service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.listeners.clear()
+  })
+
+  it('answers Sync Now in the contract union, keeping the blocked reason', async () => {
+    mocks.commands.syncTrigger
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false, reason: 'offline', error: null })
+
+    await expect(syncService.triggerSync()).resolves.toEqual({ success: true })
+    await expect(syncService.triggerSync()).resolves.toEqual({ success: false, reason: 'offline' })
+  })
+
+  it('delivers a status event with the absent fields Rust sent as null left undefined', async () => {
+    const received = vi.fn()
+    onSyncStatusChanged(received)
+    await vi.waitFor(() => expect(mocks.listeners.has('status')).toBe(true))
+
+    mocks.listeners.get('status')?.({
+      payload: {
+        status: 'error',
+        pendingCount: 3,
+        lastSyncAt: null,
+        error: 'boom',
+        errorCategory: 'server_error',
+        offlineSince: null
+      }
+    })
+
+    expect(received).toHaveBeenCalledWith({
+      status: 'error',
+      pendingCount: 3,
+      lastSyncAt: undefined,
+      error: 'boom',
+      errorCategory: 'server_error',
+      offlineSince: undefined
+    })
+  })
+
+  it('delivers initial sync progress without a null item type', async () => {
+    const received = vi.fn()
+    onInitialSyncProgress(received)
+    await vi.waitFor(() => expect(mocks.listeners.has('progress')).toBe(true))
+
+    mocks.listeners.get('progress')?.({
+      payload: { phase: 'notes', totalItems: 10, processedItems: 4, currentItemType: null }
+    })
+
+    expect(received).toHaveBeenCalledWith({ phase: 'notes', totalItems: 10, processedItems: 4 })
+  })
+
+  // `sync-context.test.tsx` mocks this module, so the wrappers' event names are proved only here.
+  it.each([
+    {
+      wrapper: 'onSyncStatusChanged',
+      subscribe: onSyncStatusChanged,
+      event: 'status',
+      payload: {
+        status: 'error',
+        pendingCount: 2,
+        lastSyncAt: 1_700_000_000_000,
+        error: 'boom',
+        errorCategory: 'server_error',
+        offlineSince: 1_700_000_001_000
+      }
+    },
+    {
+      wrapper: 'onInitialSyncProgress',
+      subscribe: onInitialSyncProgress,
+      event: 'progress',
+      payload: { phase: 'tasks', totalItems: 10, processedItems: 4, currentItemType: 'task' }
+    },
+    {
+      wrapper: 'onQueueCleared',
+      subscribe: onQueueCleared,
+      event: 'queue-cleared',
+      payload: { itemCount: 7, duration: 420 }
+    },
+    {
+      wrapper: 'onClockSkewWarning',
+      subscribe: onClockSkewWarning,
+      event: 'clock-skew',
+      payload: { localTime: 1_700_000_000_000, serverTime: 1_700_000_900_000, skewSeconds: 900 }
+    },
+    {
+      wrapper: 'onSecurityWarning',
+      subscribe: onSecurityWarning,
+      event: 'security-warning',
+      payload: {
+        itemId: 'n1',
+        itemType: 'note',
+        signerDeviceId: 'd1',
+        reason: 'signature_verification_failed',
+        attemptCount: 2,
+        permanent: false
+      }
+    },
+    {
+      wrapper: 'onCertificatePinFailed',
+      subscribe: onCertificatePinFailed,
+      event: 'pin-failed',
+      payload: { hostname: 'sync.example', actualHash: 'aa', expectedHashes: ['bb', 'cc'] }
+    }
+  ])('$wrapper listens to its own event and hands the payload on', async (row) => {
+    const received = vi.fn()
+    row.subscribe(received)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect([...mocks.listeners.keys()]).toEqual([row.event])
+    mocks.listeners.get(row.event)?.({ payload: row.payload })
+
+    expect(received).toHaveBeenCalledOnce()
+    expect(received).toHaveBeenCalledWith(row.payload)
+  })
+
+  // Tauri's `listen` goes live only when main answers it; a status sent before then reached
+  // nobody, so the provider reads the status again from `onListening` (#4270).
+  it('runs the status onListening only once its listener is live', async () => {
+    let release = (): void => undefined
+    channel.answer = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const onListening = vi.fn()
+    onSyncStatusChanged(vi.fn(), onListening)
+
+    await vi.advanceTimersByTimeAsync(150)
+    expect(mocks.listeners.has('status')).toBe(false)
+    expect(onListening).not.toHaveBeenCalled()
+
+    release()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(mocks.listeners.has('status')).toBe(true)
+    expect(onListening).toHaveBeenCalledOnce()
   })
 })

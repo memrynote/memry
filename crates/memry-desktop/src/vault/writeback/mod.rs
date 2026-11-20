@@ -122,8 +122,11 @@
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
 //! the document holds it once the consumer fed it. A body write sets the day's `date` in its
-//! frontmatter, in place, and never writes the day's tags (`journal`). A file the note has no
-//! row or no file for is not created: the note records create files (Step 13).
+//! frontmatter, in place, and never writes the day's tags (`journal`).
+//!
+//! A note or day no row names (a record pulled from another device) gets its first file from
+//! its pass, once its body is here, under a free name and never over a file (`unfiled`). A row
+//! that names a missing file gets none: the removal is the user's.
 
 #[cfg(feature = "e2e")]
 mod debug;
@@ -134,6 +137,7 @@ mod reconcile;
 mod schedule;
 #[cfg(test)]
 mod tests;
+mod unfiled;
 
 #[cfg(feature = "e2e")]
 pub use debug::WriteBackDebug;
