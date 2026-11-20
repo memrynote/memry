@@ -499,6 +499,7 @@ fn an_applied_template_answers_the_note_and_sends_an_external_notes_updated() {
         note_id: id.clone(),
         template_id: "meeting-notes".into(),
         mode: TemplateMode::Full,
+        plain_checklists: false,
     };
     let call = notes_apply_template(f.app.handle().clone(), input);
     let note = tauri::async_runtime::block_on(call).unwrap();
@@ -523,6 +524,7 @@ fn an_applied_template_answers_the_note_and_sends_an_external_notes_updated() {
         note_id: id,
         template_id: "gone".into(),
         mode: TemplateMode::Body,
+        plain_checklists: false,
     };
     let call = notes_apply_template(f.app.handle().clone(), gone);
     let error = tauri::async_runtime::block_on(call).unwrap_err();

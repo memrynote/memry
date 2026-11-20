@@ -4,6 +4,8 @@
  * serves them. Maps and sets become sorted JSON objects and arrays, marks get
  * one key order, and `undefined` results become `null`.
  */
+import * as Y from 'yjs'
+
 import { liftImagesOutOfTextBlocks } from '../../../../../packages/editor-schema/src/lift-images'
 import {
   buildCommentPayload,
@@ -23,6 +25,11 @@ import {
   rejectCriticMark,
   resolveCriticMark
 } from '../../../../../packages/shared/src/critic-markup/transforms'
+import {
+  CRITIC_MARKUP_MARKS_ARRAY,
+  readCriticMarkupMarksFromYDoc,
+  writeCriticMarkupMarksToYDoc
+} from '../../../../../packages/shared/src/critic-markup/yjs'
 import {
   createSentinelAllocator,
   decodeWritingMarkers,
@@ -79,6 +86,48 @@ function fromMap(map: WritingSentinelMap): SentinelObject {
   return out
 }
 
+/** Object keys sorted at every depth: the Rust reads a Yjs map back in key order. */
+function sortedKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedKeys)
+  if (typeof value !== 'object' || value === null) return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, item]) => [key, sortedKeys(item)])
+  )
+}
+
+/**
+ * The marks root after each writer wrote its marks on its own replica of
+ * `base`, and every replica merged. Writer `i` has client id `10 + i`, so the
+ * merge order of concurrent inserts is fixed. `changed[i]` says whether writer
+ * `i` produced an update at all.
+ */
+function yjsWrite(base: unknown[], writes: CriticMarkupMark[][]) {
+  const origin = new Y.Doc()
+  origin.clientID = 1
+  origin.getArray(CRITIC_MARKUP_MARKS_ARRAY).insert(0, base)
+  const start = Y.encodeStateAsUpdate(origin)
+  const merged = new Y.Doc()
+  merged.clientID = 2
+  Y.applyUpdate(merged, start)
+  const changed = writes.map((marks, index) => {
+    const replica = new Y.Doc()
+    replica.clientID = 10 + index
+    Y.applyUpdate(replica, start)
+    const before = Y.encodeStateAsUpdate(replica)
+    replica.transact(() => writeCriticMarkupMarksToYDoc(replica, marks))
+    const after = Y.encodeStateAsUpdate(replica)
+    Y.applyUpdate(merged, after)
+    return Buffer.compare(Buffer.from(before), Buffer.from(after)) !== 0
+  })
+  return {
+    changed,
+    elements: sortedKeys(merged.getArray(CRITIC_MARKUP_MARKS_ARRAY).toArray()),
+    marks: readCriticMarkupMarksFromYDoc(merged).map(canonMark)
+  }
+}
+
 /** `undefined` is not JSON; the Rust side reads `null` as `None`. */
 function orNull<T>(value: T | undefined): T | null {
   return value === undefined ? null : value
@@ -109,6 +158,7 @@ export const CRITIC_FNS = {
     canonTransform(resolveCriticMark(plainText, marks, id)),
   'critic.deleteCriticMark': (plainText: string, marks: CriticMarkupMark[], id: string) =>
     canonTransform(deleteCriticMark(plainText, marks, id)),
+  'critic.yjsWrite': yjsWrite,
 
   'writing.decodeWritingMarkers': (markdown: string) => {
     const decoded = decodeWritingMarkers(markdown)

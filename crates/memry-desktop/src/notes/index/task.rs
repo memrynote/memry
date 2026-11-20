@@ -23,15 +23,17 @@ use crate::vault::watch::VaultEvent;
 pub type Progress = Box<dyn FnMut(IndexProgress) + Send>;
 
 /// The open's build, as the task tells it. Owed from the open, and again at the walk's end, to
-/// the end of the pass that reports it (stopped or failed included), or until a reindex took
-/// it.
+/// the end of the pass that reports it (stopped or failed included), or of the reindexes that
+/// took it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenBuild {
     /// Owed again: the walk ended after a pass had taken it.
     Owed,
     /// A step of the pass that reports it.
     Step(IndexProgress),
-    Ended,
+    /// `walked`: the pass ran after the walk's `Indexed`, so the rows hold every note the walk
+    /// offered. A pass before it (a failed watcher's, a lag's) ends the build all the same.
+    Ended { walked: bool },
 }
 pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
 type Reply = reply::Sender<Result<Backfilled, IndexError>>;
@@ -127,9 +129,14 @@ struct Owed {
     /// A pass, for the property rows' types alone.
     retype: bool,
     walk: Walk,
+    /// The walk's `Indexed` was seen; a lag that lost it leaves this unset for the open.
+    indexed: bool,
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
     report: bool,
+    /// Every note's tags are owed definitions (the open's sweep), until a mint for them all
+    /// succeeded: a pass that failed, or whose mint did, leaves it to the next.
+    sweep: bool,
     due: Option<Instant>,
     failures: u32,
     /// The notes an app write asked measured that were left to a pass: `landed` is told when
@@ -271,19 +278,24 @@ impl Indexer {
         let mut owed = Owed {
             links: Some(LinkChanges::default()),
             report: true,
+            sweep: true,
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
         while !cancel.is_cancelled() {
             if owed.walked() && !waiting.is_empty() {
-                // A reindex reports through its own callback, which refreshes the list.
-                if std::mem::take(&mut owed.report) {
-                    report(OpenBuild::Ended);
-                }
+                // A reindex reports through its own callback, which refreshes the list. The
+                // open's build ends after it, once the rows hold every note.
+                let carried = std::mem::take(&mut owed.report);
                 for (progress, answer) in waiting.drain(..) {
                     // The asker may have gone; the work is done either way.
                     let _ = answer
                         .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
+                }
+                if carried {
+                    report(OpenBuild::Ended {
+                        walked: owed.indexed,
+                    });
                 }
             }
             let next = owed.next();
@@ -322,7 +334,7 @@ impl Indexer {
                     let steps = carried.then_some(&step as &dyn Fn(IndexProgress));
                     self.work(&mut owed, cancel, steps, announce, landed, defined);
                     if carried {
-                        report(OpenBuild::Ended);
+                        report(OpenBuild::Ended { walked: owed.indexed });
                     }
                 }
             }
@@ -350,6 +362,8 @@ impl Indexer {
                 if !std::mem::replace(&mut owed.report, true) {
                     report(OpenBuild::Owed);
                 }
+                owed.sweep = true;
+                owed.indexed = true;
                 owed.end_walk();
             }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {
@@ -388,8 +402,6 @@ impl Indexer {
         owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
-        // The open's pass mints for every note, a later one for the files it read.
-        let sweep = report.is_some();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let mut progress = |step| {
             if let Some(report) = report
@@ -413,10 +425,14 @@ impl Indexer {
                 announce,
             )
         });
+        // The sweep mints for every note, a later pass for the files it read.
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
-            self.define_tags((!sweep).then(|| pass.written.clone()), defined);
+            let only = (!owed.sweep).then(|| pass.written.clone());
+            if self.define_tags(only, defined) {
+                owed.sweep = false;
+            }
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
@@ -471,8 +487,9 @@ impl Indexer {
         });
         if let Ok(pass) = &outcome
             && pass.reindexed
+            && self.define_tags(None, defined)
         {
-            self.define_tags(None, defined);
+            owed.sweep = false;
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);

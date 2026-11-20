@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Đi tới Trang chủ",
     "goInbox": "Đi tới Hộp thư đến",
-    "goJournal": "Đi tới Nhật ký",
     "goCalendar": "Đi tới Lịch",
     "goTasks": "Đi tới Công việc",
     "goGraph": "Đi tới Đồ thị",

@@ -4,7 +4,7 @@
  * English ships in out/main/tessdata. Every other language is downloaded from
  * the sync server on demand into userData/ocr-languages, never synced. OCR
  * reads a downloaded file only once its sha256 matched the one this build pins
- * (ocr-language-data.ts) in this run: right after the download, or when the
+ * (@memry/contracts/ocr-language-data) in this run: right after the download, or when the
  * first pass of a run checks the file an earlier run left.
  *
  * `syncOcrLanguages` converges the folder on the choice: it deletes data of
@@ -30,7 +30,7 @@ import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getStoredOcrLanguages, setStoredOcrLanguages } from '../store'
-import { OCR_LANGUAGE_DATA } from './ocr-language-data'
+import { OCR_LANGUAGE_DATA } from '@memry/contracts/ocr-language-data'
 import type { OcrLanguageSet } from './ocr-protocol'
 
 const logger = createLogger('OcrLanguages')

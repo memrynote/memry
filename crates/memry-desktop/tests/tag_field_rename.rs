@@ -92,6 +92,11 @@ impl Vault {
 /// An open vault holding `files`, its first walk done and every `Phone` read by the index, with
 /// `person` listing Phone (a text definition) and the field rename resumed at every open.
 fn opened(files: &[(&str, &str)]) -> Vault {
+    opened_with(files, Arc::new(|| {}))
+}
+
+/// [`opened`], with `finished` run after each resume that ran.
+fn opened_with(files: &[(&str, &str)], finished: Arc<dyn Fn() + Send + Sync>) -> Vault {
     let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
     let mut e = env(|s| {
         *store.lock().unwrap() = Some(s.clone());
@@ -100,10 +105,11 @@ fn opened(files: &[(&str, &str)]) -> Vault {
     for (path, text) in files {
         e.write(path, text);
     }
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
     let store = store.into_inner().unwrap().unwrap();
     let notes = NotesService::new(e.tier.clone(), store.clone());
-    register_resume(&notes, &e.session, Arc::new(|| {}));
+    register_resume(&notes, &index, &e.session, finished);
     e.open();
     e.facts_until(indexed);
     let vault = Vault { e, notes, store };
@@ -801,6 +807,67 @@ fn a_locked_note_is_left_and_holds_the_rename_until_its_unlock() {
         },
     );
     assert!(unlocked.unwrap().changed);
+    done.recv_timeout(WAIT)
+        .expect("the unlock resumes the rename");
+    assert_eq!(keys(&vault, "Elif.md"), ["tags", "Email", "Mobile"]);
+    assert!(!vault.job());
+}
+
+/// An open whose index has not read the vault yet (the first open after an import, a rebuilt
+/// `index.db`): the resume waits for the open's index build, so it finds the locked note, which
+/// keeps its field and the job (`field-rename.ts:173`), and the unlock finishes it.
+#[test]
+fn a_locked_note_holds_the_rename_an_open_resumes_on_an_index_that_had_not_read_it() {
+    let (resumed, resumes) = mpsc::channel();
+    let finished = Arc::new(move || {
+        let _ = resumed.send(());
+    });
+    let mut vault = opened_with(&[("Ahmet.md", AHMET), ("Elif.md", ELIF)], finished);
+    let elif = vault.id("Elif.md");
+    locks::set(
+        &vault.open(),
+        &vault.notes,
+        TargetKind::Note,
+        &elif,
+        true,
+        || {},
+    )
+    .unwrap();
+    let renamed = rename(&vault, "Phone", "Mobile").unwrap();
+    assert_eq!((renamed.notes, renamed.skipped_locked), (1, 1));
+    assert!(vault.job(), "the locked note holds the job");
+
+    std::thread::sleep(QUIET);
+    vault.e.close();
+    vault.e.drain();
+    // `index.db` is derived: the next open builds it again from the files.
+    let core = vault.e.vault.join(".memry/core");
+    for name in ["index.db", "index.db-wal", "index.db-shm"] {
+        match std::fs::remove_file(core.join(name)) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => panic!("{name}: {error}"),
+            _ => {}
+        }
+    }
+    vault.e.open();
+    resumes
+        .recv_timeout(WAIT)
+        .expect("the open resumes the rename");
+    assert!(vault.job(), "the locked note still holds the job");
+    assert_eq!(vault.e.read("Elif.md"), ELIF);
+
+    let (unlocked, done) = mpsc::channel();
+    let open = vault.open();
+    let changed = locks::set(
+        &open,
+        &vault.notes,
+        TargetKind::Note,
+        &elif,
+        false,
+        move || {
+            unlocked.send(()).unwrap();
+        },
+    );
+    assert!(changed.unwrap().changed);
     done.recv_timeout(WAIT)
         .expect("the unlock resumes the rename");
     assert_eq!(keys(&vault, "Elif.md"), ["tags", "Email", "Mobile"]);

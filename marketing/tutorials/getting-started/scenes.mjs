@@ -395,7 +395,8 @@ export const after = {
 }
 
 const vaultPath = () =>
-  JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app.json'), 'utf8')).vaultPath
+  JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app-tauri.json'), 'utf8'))
+    .vaultPath
 
 const readAll = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

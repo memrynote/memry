@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Önceki kasa",
           "description": "Kenar çubuğundaki önceki kasaya geç"
+        },
+        "todayJournal": {
+          "label": "Bugünün günlüğü",
+          "description": "Günlüğü bugünün kaydında aç"
         }
       },
       "tabs": {
@@ -2431,7 +2435,8 @@
         "vault-binding": "Bu cihazın anahtarları geri yüklendi ama bu kasa henüz hesabınızla eşitlenecek şekilde ayarlanmadı. Eşitleme menüsünden nasıl eşitleneceğini seçin.",
         "vault-foreign": "Bu cihazın anahtarları geri yüklendi ama bu kasa başka bir hesaba ait. Bu cihazda yerel olarak kalır.",
         "entitlement": "Bu cihazın anahtarları geri yüklendi ama eşitleme için etkin bir Eşitleme planı gerekiyor.",
-        "unavailable": "Bu cihazın anahtarları geri yüklendi ama eşitleme başlatılamadı. Yeniden denenecek; denemezse Memry'yi yeniden başlatın."
+        "unavailable": "Bu cihazın anahtarları geri yüklendi ama eşitleme başlatılamadı. Yeniden denenecek; denemezse Memry'yi yeniden başlatın.",
+        "unavailable-restart": "Bu cihazın anahtarları geri yüklendi ama eşitleme başlatılamadı. Memry'yi yeniden başlatın; eşitleme yine başlamazsa çıkış yapıp tekrar giriş yapın."
       }
     },
     "pagesSettingsAiInlineSection": {

@@ -283,7 +283,7 @@ async fn opens_the_checkout_page_with_the_token_in_the_hash() {
         }))
         .await
         .unwrap();
-    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly#token=tok.sig";
+    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=tok.sig";
     assert!(result.success);
     assert_eq!(result.checkout_url.as_deref(), Some(url));
     assert_eq!(*f.browser.opened.lock().unwrap(), vec![url.to_owned()]);
@@ -465,7 +465,8 @@ async fn a_reconcile_failure_ends_the_loop_and_keeps_the_session() {
 }
 
 /// The checkout URL carries a token valid for ten minutes and the portal URL a Paddle session:
-/// a browser that cannot open them leaves neither in the log, whatever its error says.
+/// a browser that cannot open them leaves neither in the log. This holds the log lines; an
+/// opener's own error cannot name the URL because `OpenFailed` carries no text.
 #[test]
 fn a_browser_that_cannot_open_logs_neither_the_token_nor_the_portal_url() {
     let runtime = tokio::runtime::Builder::new_current_thread()
