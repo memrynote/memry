@@ -38,6 +38,27 @@ export const packObjectKey = (
   // Lives under the vault prefix, so vault deletion's prefix purge reaches it.
   `${scope.userId}/vaults/${scope.vaultId}/packs/${kind}/${minSortValue}_${maxSortValue}_${packId}.pack`
 
+/** The kind and range packObjectKey wrote into `key`, or null for any other key. */
+export const packKeyRange = (
+  key: string
+): { kind: PackKindName; minSortValue: number; maxSortValue: number } | null => {
+  const match = /\/packs\/(record|crdt_snapshot|crdt_update)\/(\d+)_(\d+)_[^/]+\.pack$/.exec(key)
+  if (!match) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the pattern admits only the three kind names
+  const kind = match[1] as PackKindName
+  return { kind, minSortValue: Number(match[2]), maxSortValue: Number(match[3]) }
+}
+
+/**
+ * The `pack_index.documents` value of a pack holding `entries` (protocol 08
+ * §8.13): the distinct document ids of a body pack, which the purge reads to
+ * find the packs that hold a deleted document. Null for a record pack.
+ */
+export const packDocuments = (
+  kind: PackKindName,
+  entries: ReadonlyArray<{ id: string }>
+): string[] | null => (kind === 'record' ? null : [...new Set(entries.map((entry) => entry.id))])
+
 export interface PackIndexRow {
   id: string
   kind: PackKindName
@@ -47,6 +68,8 @@ export interface PackIndexRow {
   itemCount: number
   byteSize: number
   coverage: Coverage
+  /** packDocuments of the pack's entries: every document whose bytes the object holds. */
+  documents: readonly string[] | null
 }
 
 /**
@@ -62,8 +85,8 @@ export const packIndexInsert = (
 ): D1PreparedStatement =>
   db
     .prepare(
-      `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at, cover_from, cover_through)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql}
+      `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at, cover_from, cover_through, documents)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ${guard.sql}
        ON CONFLICT (user_id, vault_id, item_kind, min_cursor) DO NOTHING`
     )
     .bind(
@@ -79,6 +102,7 @@ export const packIndexInsert = (
       Math.floor(Date.now() / 1000),
       row.coverage?.from ?? null,
       row.coverage?.through ?? null,
+      row.documents ? JSON.stringify(row.documents) : null,
       ...guard.bind
     )
 
@@ -101,7 +125,8 @@ export const insertPackIndexRow = async (
     maxSortValue,
     itemCount,
     byteSize,
-    coverage: null
+    coverage: null,
+    documents: null
   }).run()
 }
 

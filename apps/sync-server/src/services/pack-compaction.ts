@@ -1,8 +1,4 @@
-import { PACK_MAX_ENTRIES } from '@memry/contracts/pack-format'
-import {
-  PACK_LIST_MAX_PACKS_PER_VAULT,
-  type CrdtUpdatePackEntryMeta
-} from '@memry/contracts/sync-api'
+import { PACK_LIST_MAX_PACKS_PER_VAULT } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../lib/logger'
 import {
@@ -15,6 +11,7 @@ import {
   ALWAYS,
   advanceWatermark,
   allLive,
+  packDocuments,
   packIndexInsert,
   packObjectKey,
   watermarkUnchanged,
@@ -23,36 +20,13 @@ import {
   type VaultScope
 } from './pack-index-write'
 import { roomForPack, roomGuard } from './pack-list'
-import {
-  isSelectedRecordVersion,
-  recordEntryOf,
-  recordRowShedInPlace,
-  recordSelectionQuery,
-  type RecordEntry,
-  type RecordRow
-} from './pack-record-selection'
-import {
-  loadSnapshotMeta,
-  snapshotSelectionQuery,
-  snapshotsLive,
-  snapshotTieEnd
-} from './pack-snapshot-selection'
+import { isSelectedRecordVersion, recordRowShedInPlace } from './pack-record-selection'
+import { loadSnapshotMeta, snapshotsLive, snapshotTieEnd } from './pack-snapshot-selection'
 import { fitBeside, readCollidingPack, replacePacks, rollupKind } from './pack-rollup'
-import {
-  deleteUnlisted,
-  listingBatch,
-  recordUnlisted,
-  withReplacedObjectPasses
-} from './pack-replaced-objects'
-import { PACK_TARGET_BYTES, packFillReady } from './pack-sizing'
-import {
-  updateEntrySource,
-  updateMetaOf,
-  updateSelectionQuery,
-  updatesLive,
-  type EntrySource,
-  type UpdateRow
-} from './pack-update-selection'
+import { withReplacedObjectPasses } from './pack-message-passes'
+import { deleteUnlisted, listingBatch, recordUnlisted } from './pack-replaced-objects'
+import { selectCandidates } from './pack-selection'
+import { updateEntrySource, updatesLive, type EntrySource } from './pack-update-selection'
 
 const logger = createLogger('PackCompaction')
 
@@ -98,37 +72,8 @@ const logger = createLogger('PackCompaction')
 // PACK_HARD_MAX_BYTES remains as a documented tuning guard so nobody can
 // raise the target back into isolate-unsafe territory without confronting it.
 // A single oversized item cannot push past either because such items are
-// excluded from packs entirely (see MAX_PACKED_ITEM_BYTES).
+// excluded from packs entirely (MAX_PACKED_ITEM_BYTES, pack-selection.ts).
 export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
-
-// Max items per pack build.
-//
-// SUBREQUEST ARITHMETIC (paid plan: 1000 subrequests per invocation):
-//   N R2 GETs (one per item blob, N ≤ 256)
-// + 1 R2 PUT  (the pack itself)
-// + 5 D1 round trips (listing-cap check, watermark read, candidate select,
-//   collision check, the listing batch). A range that collides with a listed
-//   pack adds one R2 GET and one D1 read (its live entries), and a snapshot
-//   tie it cannot roll in adds one D1 read and one watermark write instead of
-//   the build
-// + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
-// => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
-// pack reads its entry meta in the selection query itself, so it costs
-// ~262. An update pack makes no R2 GET: its bytes come from D1 in ⌈24MB/4MB⌉
-// reads, ~11. compactVault builds one pack per kind per queue message
-// (max_batch_size 1), ~542 together with ~350 of rollups (compactVault), and a large vault drains across
-// invocations: each push nudges one more pack per kind, and the cron backfill
-// continues from the watermark.
-// A full retry doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
-// compaction has always been a paid-plan background job by construction.
-export const PACK_MAX_ITEMS = 256
-
-// Items larger than this never enter packs (they stay item-granular tail):
-// the largest legal record payload is ~7MB of JSON text (5MB decoded
-// encryptedData inflated by base64 + envelope), and snapshots cap at 5MB.
-// Excluding anything near that bound keeps one item from dominating a pack
-// and keeps memory during the bounded-concurrency fetch predictable.
-export const MAX_PACKED_ITEM_BYTES = 8 * 1024 * 1024
 
 // Simultaneous source-blob GETs while building one pack. Mirrors the pull
 // path's R2_CONCURRENCY reasoning: bounded windows keep connection pressure
@@ -143,185 +88,9 @@ export const PACK_FETCH_CONCURRENCY = 16
  * exactly as a pulled item. Released readers drop record packs before
  * download (§8.11). A `crdt_update` entry is one update row with
  * `{sequenceNum, signerDeviceId, createdAt}` as its meta (§8.4.3), read from
- * D1 with no R2 GET, so an update build is not bound by PACK_MAX_ITEMS.
+ * D1 with no R2 GET, so an update build is not bound by PACK_MAX_ITEMS (pack-selection.ts).
  */
 export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record', 'crdt_update']
-
-export interface WatermarkRow {
-  last_sort_value: number
-  last_sort_tiebreak: string
-  /** cover_through of the kind's newest pack: the next pack's cover_from. NULL: cache only. */
-  covered_through: number | null
-}
-
-export interface PackSelection {
-  candidates: Array<{
-    sortKey: number
-    tiebreak: string
-    id: string
-    sourceKey: string
-    sizeBytes: number
-    /** Record entries: the pull-item meta and the content hash of the same D1 row. */
-    record?: RecordEntry
-    update?: CrdtUpdatePackEntryMeta
-  }>
-  /** Progress marker AFTER the last candidate (composite, exclusive). */
-  nextSortValue: number
-  nextTiebreak: string
-  /** False while the window is below its minimum fill (pack-sizing.ts): build nothing, move nothing. */
-  ready: boolean
-  /** The next pack's coverage when it lists, or null for a cache-only pack. */
-  coverage: Coverage
-  /** The watermark this selection read: every write it commits is guarded on it (watermarkUnchanged). */
-  watermark: WatermarkRow
-}
-
-/**
- * Read the composite progress marker for a scope+kind. Everything strictly
- * BELOW it (row-value comparison on (sort_value, tiebreak)) is already packed
- * or deliberately skipped; everything above is eligible.
- */
-export const readWatermark = async (
-  db: D1Database,
-  scope: VaultScope,
-  kind: PackKindName
-): Promise<WatermarkRow> => {
-  const row = await db
-    .prepare(
-      'SELECT last_sort_value, last_sort_tiebreak, covered_through FROM pack_watermarks WHERE user_id = ? AND vault_id = ? AND item_kind = ?'
-    )
-    .bind(scope.userId, scope.vaultId, kind)
-    .first<WatermarkRow>()
-  // A kind with no watermark has packed nothing, so its first range starts at 0.
-  return (
-    row ?? {
-      last_sort_value: 0,
-      last_sort_tiebreak: '',
-      covered_through: kind === 'record' ? 0 : null
-    }
-  )
-}
-
-/**
- * Select up to PACK_MAX_ITEMS un-packed rows ordered ascending, capped so the
- * projected payload stays within PACK_TARGET_BYTES (itself far below
- * PACK_HARD_MAX_BYTES).
- *
- * Ordering keys: records use server_cursor (strictly monotonic per user, so
- * no ties), as do updates; snapshots use created_at epoch seconds, which TIE
- * heavily — the tiebreak column (note_id / type:id) makes progress exact via a
- * row-value comparison instead of skipping or looping on tie groups.
- */
-export const selectCandidates = async (
-  db: D1Database,
-  scope: VaultScope,
-  kind: PackKindName
-): Promise<PackSelection> => {
-  const watermark = await readWatermark(db, scope, kind)
-
-  const query =
-    kind === 'record'
-      ? recordSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
-      : kind === 'crdt_update'
-        ? updateSelectionQuery(scope, watermark, PACK_MAX_ENTRIES)
-        : snapshotSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
-
-  const rows = await db
-    .prepare(query.sql)
-    .bind(...query.bind)
-    .all<
-      {
-        sort_key: number
-        tiebreak: string
-        blob_key: string
-        size_bytes: number
-        row_time: number | null
-      } & Partial<RecordRow> &
-        Partial<UpdateRow>
-    >()
-
-  const candidates: PackSelection['candidates'] = []
-  let bytes = 0
-  let bytesFull = false
-  for (const row of rowList(rows)) {
-    if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
-    const record =
-      kind === 'record'
-        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the record query selects every RecordRow column
-          recordEntryOf(scope, row as typeof row & RecordRow)
-        : undefined
-    if (record === null) continue
-    const update =
-      kind === 'crdt_update'
-        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the update query selects every UpdateRow column
-          updateMetaOf(row as typeof row & UpdateRow)
-        : undefined
-    if (bytes + row.size_bytes > PACK_TARGET_BYTES) {
-      bytesFull = true
-      break
-    }
-    bytes += row.size_bytes
-    candidates.push({
-      sortKey: row.sort_key,
-      tiebreak: row.tiebreak,
-      id: row.tiebreak,
-      sourceKey: row.blob_key,
-      sizeBytes: row.size_bytes,
-      ...(record ? { record } : {}),
-      ...(update ? { update } : {})
-    })
-  }
-
-  const ready = packFillReady(rowList(rows), bytesFull, Math.floor(Date.now() / 1000))
-  const last = candidates[candidates.length - 1]
-  // A record range chains from the previous pack's cover_through, so rows a
-  // window omitted fall inside the next range and record ranges tile (protocol
-  // 08 §8.10). Body packs stay cache-only until step 07: snapshots still select
-  // on created_at, not server_cursor.
-  const coverage: Coverage =
-    last && kind === 'record' && watermark.covered_through !== null
-      ? { from: watermark.covered_through, through: last.sortKey }
-      : null
-  if (!last) {
-    // Nothing selectable above the watermark. Only advance when the scan
-    // actually saw rows (an all-oversized window must progress past itself);
-    // an empty scan means "nothing to do" and the watermark must stay put —
-    // writing 0 here would reset progress and force pointless re-scans.
-    const scanned = rowList(rows)
-    return {
-      ready,
-      coverage,
-      watermark,
-      candidates,
-      nextSortValue: scanned.length > 0 ? maxScannedSortKey(scanned) : watermark.last_sort_value,
-      nextTiebreak:
-        scanned.length > 0
-          ? maxScannedTiebreakAt(scanned, maxScannedSortKey(scanned))
-          : watermark.last_sort_tiebreak
-    }
-  }
-  return {
-    ready,
-    coverage,
-    watermark,
-    candidates,
-    nextSortValue: last.sortKey,
-    nextTiebreak: last.tiebreak
-  }
-}
-
-const rowList = <T>(result: { results?: T[] }): T[] => result.results ?? []
-
-const maxScannedSortKey = (rows: Array<{ sort_key: number }>): number =>
-  rows.reduce((max, row) => Math.max(max, row.sort_key), 0)
-
-const maxScannedTiebreakAt = (
-  rows: Array<{ sort_key: number; tiebreak: string }>,
-  sortKey: number
-): string =>
-  rows
-    .filter((row) => row.sort_key === sortKey)
-    .reduce((max, row) => (row.tiebreak > max ? row.tiebreak : max), '')
 
 export interface PackBuildResult {
   built: boolean
@@ -593,10 +362,12 @@ export const compactOneRange = async (
     }
   }
 
-  // Invariant: the watermark never passes a row the shed will drop on a later
-  // tick. The shed empties a tombstone in place at its cursor, so a hole for it
-  // would never be revisited; abandon the range and let the next run read the
-  // row as it then is (REVIEW-5253, VERIFY-5253).
+  // Invariant: the watermark never passes a row the shed would empty under the
+  // current retention. The shed empties a tombstone in place at its cursor, so
+  // a hole for it would never be revisited; abandon the range and let the next
+  // run read the row as it then is (REVIEW-5253, VERIFY-5253). A row whose
+  // retention grows meanwhile is not emptied: the shed rechecks expiry in the
+  // write (cleanup.ts).
   if (await recordRowShedInPlace(db, scope, missingRecords)) {
     logger.info('record row shed during a build; range abandoned', {
       userId: scope.userId,
@@ -618,9 +389,10 @@ export const compactOneRange = async (
   // is no second full-size allocation anywhere in this flow.
   await storage.put(packKey, built.bytes)
 
-  // A note delete purges its body rows and drops every body pack of the vault
-  // (#2986, protocol 07 §7.15). One that commits after this run selected would
-  // leave the deleted body in this pack, so the row and the watermark commit
+  // A note delete purges its body rows and rewrites each body pack that
+  // holds the note (#2986, protocol 07 §7.15, 08 §8.13). One that commits after this run
+  // selected would not find this pack and would leave the deleted body in it,
+  // so the row (with the documents it holds) and the watermark commit
   // together and only while every packed body row still exists with the packed
   // version. Otherwise the next run reselects.
   const current =
@@ -647,7 +419,7 @@ export const compactOneRange = async (
   // or a concurrent build of the range won. A listed row always has its object.
   const listed = { sql: 'EXISTS (SELECT 1 FROM pack_index WHERE id = ?)', bind: [packId] }
   // The watermark and its coverage anchor move only with this row (§8.10).
-  const results = await listingBatch<{ listed: number }>(db, storage, scope, { packId, packKey }, [
+  const results = await listingBatch<{ listed: number }>(db, scope, { packId, packKey }, [
     ...(replacing?.statements ?? []),
     packIndexInsert(
       db,
@@ -660,7 +432,8 @@ export const compactOneRange = async (
         maxSortValue,
         itemCount: built.entries.length,
         byteSize: built.payloadBytes,
-        coverage
+        coverage,
+        documents: packDocuments(kind, built.entries)
       },
       replacing?.recorded ?? guard
     ),
@@ -736,7 +509,8 @@ export const compactVault = async (
   scope: VaultScope
 ): Promise<PackBuildResult[]> => {
   const results: PackBuildResult[] = []
-  // Deletion passes before and after the builds (withReplacedObjectPasses).
+  // The purge rewrite pass, then deletion passes before and after the builds
+  // (withReplacedObjectPasses).
   await withReplacedObjectPasses(db, storage, scope, 'compaction message', async () => {
     // Rollup first: at the listing cap it is what makes room for the build
     // (protocol 08 §8.14). One rollup per kind per message, only above the bound.
@@ -746,7 +520,9 @@ export const compactVault = async (
     // whose build listed a pack rolls up once more, so the message ends with the
     // kind at or under its bound (§8.14). Budget, of 1000 subrequests: three
     // rollups 3 x 72 = 216, two builds ~269 + ~262, two more rollups 2 x 72 = 144,
-    // two replaced-object deletions 2 x 3 = 6: ~897.
+    // two replaced-object deletions 2 x 4 = 8, four purge rewrites at worst
+    // 4 x 10 + 1 = 41 (a GET, two attempts of a live read, PUT, batch and
+    // unlisted delete, and a kind reset): ~940.
     for (const kind of PACKED_KINDS.filter((k) => k !== 'crdt_update')) {
       const result = await compactOneRange(db, storage, scope, kind)
       results.push(result)
