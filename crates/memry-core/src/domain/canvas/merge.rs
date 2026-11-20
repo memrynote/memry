@@ -32,6 +32,7 @@ use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
@@ -59,7 +60,7 @@ pub fn apply_remote(
         return Ok(Inbound::Skipped);
     };
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let local = sync_items::load(&tx, ITEM_TYPE, &record.item_id)?
         .and_then(|row| Some((row.payload?, row.deleted_at.is_none())))
         .and_then(|(raw, live)| Some((StoredPayload::parse(&raw).ok()?, live)));
@@ -149,7 +150,7 @@ fn write_conflict_copy(
 }
 
 fn finish(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {

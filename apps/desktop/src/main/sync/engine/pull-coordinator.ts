@@ -377,6 +377,7 @@ export class PullCoordinator {
       // before #2294. A crash in between re-pulls the page, and the rows that
       // already committed come back identical and skip.
       if (!cursorCommitted) this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
+      this.ctx.lockProgress++
       cursor = nextCursor
       hasMore = changes.hasMore
 
@@ -486,6 +487,7 @@ export class PullCoordinator {
         listedCursor
       )
       runState.pulledCount += pageResult.settled
+      this.ctx.lockProgress++
       runState.totalConflictsResolved += pageResult.conflicts
       postCommitWork ||= pageResult.postCommitWork === true
       cursorCommitted ||= pageResult.cursorCommitted === true

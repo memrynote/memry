@@ -28,6 +28,8 @@ use crate::api::errors::StorageError;
 /// read, short enough that a genuinely stuck writer surfaces.
 pub const BUSY_TIMEOUT_MS: u64 = 5_000;
 
+const STATEMENT_CACHE_CAPACITY: usize = 64;
+
 /// A single SQLite database the core owns.
 ///
 /// Cheap to clone: every clone shares the one connection and the one mutex.
@@ -131,6 +133,10 @@ fn configure(conn: &Connection) -> Result<(), StorageError> {
         .map_err(|err| StorageError::Failed {
             what: format!("could not set synchronous: {err}"),
         })?;
+
+    // The record apply reuses its hot statements through `prepare_cached`
+    // (#5231); rusqlite's default of 16 would evict them between items.
+    conn.set_prepared_statement_cache_capacity(STATEMENT_CACHE_CAPACITY);
 
     conn.pragma_update(None, "foreign_keys", true)
         .map_err(|err| StorageError::Failed {

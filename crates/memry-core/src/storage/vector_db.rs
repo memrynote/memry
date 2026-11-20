@@ -15,6 +15,7 @@ use crate::api::errors::StorageError;
 use crate::storage::connection::Db;
 use crate::storage::index_db;
 use crate::storage::migrations::{self, VECTOR_MIGRATIONS};
+use crate::storage::nested_tx;
 
 /// One stored vector: 256 little-endian `f32`, unit length.
 pub const VECTOR_BYTES: usize = 1024;
@@ -140,7 +141,7 @@ impl<'c> VectorStore<'c> {
                 ),
             });
         }
-        let tx = self.conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(self.conn).map_err(failed)?;
         tx.execute(
             "DELETE FROM note_vectors WHERE note_id = ?1",
             [&state.note_id],
@@ -186,7 +187,7 @@ impl<'c> VectorStore<'c> {
     /// Removes the notes' state, vectors and attempt rows. Absent notes are not
     /// an error.
     pub fn prune(&self, note_ids: &[String]) -> Result<(), StorageError> {
-        let tx = self.conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(self.conn).map_err(failed)?;
         for note_id in note_ids {
             tx.execute("DELETE FROM note_vectors WHERE note_id = ?1", [note_id])
                 .map_err(failed)?;

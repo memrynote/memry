@@ -47,6 +47,7 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, note_body_feed};
 
 use super::errors::CrdtError;
@@ -487,7 +488,7 @@ fn store_pushed_snapshot(
     pushed: PushedSnapshot<'_>,
     now_ms: i64,
 ) -> Result<(i64, usize), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(failed)?;
+    let txn = nested_tx::begin(conn).map_err(failed)?;
 
     let existing = update_log::snapshot(&txn, Namespace::Server, doc_id)
         .map_err(crdt_to_storage)?

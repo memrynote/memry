@@ -799,8 +799,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * a single doc is opened or a single snapshot downloaded.
    *
    * `null` means "decide nothing from a probe" and every note in the chunk then
-   * takes the unconditional path this method fronts — an old server, or a chunk
-   * where a probe could not possibly save anything.
+   * takes the unconditional path this method fronts — an old server.
    *
    * Deliberately NOT available to `applyCrdtIncrementals`: see the comment on
    * `snapshotBaselineSkip`.
@@ -812,13 +811,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     cost: CrdtPullCost
   ): Promise<CrdtBatchPullResponse | null> {
     if (this.snapshotMetaUnsupported) return null
-    // No watermark for any note in the chunk means nothing can match, so every
-    // note would fall through to a fetch anyway and the probe would be a request
-    // spent to learn nothing. Reached on a genuinely cold vault — a first sync,
-    // or a store rebuilt or quarantined under this one — and it costs exactly
-    // what it cost before this feature existed. `hydrateWatermarks` has already
-    // run, so a relaunch over an existing store is NOT cold here.
-    if (!noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))) return null
+    // Sent on a cold chunk too (#5234): `snapshotMeta` names the notes the
+    // server holds no snapshot for, and each of those is a snapshot GET saved.
+    // A fresh bootstrap measured 62 of 100 GETs answering `{ snapshot: null }`.
 
     const result = await withRetry(
       () => {
@@ -958,6 +953,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       // Notes whose baseline the probe proved redundant, mapped to the `since`
       // to resume from in place of the one a baseline would have produced.
       const skipBaseline = new Map<string, number>()
+      // Notes the server answered for and holds no snapshot of: nothing to
+      // download, watermark or not.
+      const snapshotless = new Set<string>()
       // Notes still needing the open + baseline + apply path below.
       const activeNoteIds: string[] = []
       const settledByProbe: string[] = []
@@ -965,6 +963,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       for (const noteId of noteIds) {
         const skipSince = this.snapshotBaselineSkip(noteId, probe?.snapshotMeta)
         const probed = probe?.notes[noteId]
+        if (probed && probe?.snapshotMeta && !probe.snapshotMeta[noteId]) snapshotless.add(noteId)
         // A note the server left out of its own probe response told us nothing
         // about its updates, so it takes the full path regardless.
         if (skipSince !== null && probed) {
@@ -992,7 +991,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           notes: noteIds.length,
           settledByProbe: settledByProbe.length,
           baselinesSkipped: skipBaseline.size,
-          baselinesFetched: activeNoteIds.length - skipBaseline.size
+          snapshotless: snapshotless.size
         })
       }
 
@@ -1020,6 +1019,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         await this.applyProbedNotes(
           activeNoteIds.slice(i, i + applySize),
           skipBaseline,
+          snapshotless,
           token,
           vaultKey,
           signal,
@@ -1063,6 +1063,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   private async applyProbedNotes(
     noteIds: string[],
     skipBaseline: Map<string, number>,
+    snapshotless: ReadonlySet<string>,
     token: string,
     vaultKey: Uint8Array,
     signal: AbortSignal,
@@ -1113,15 +1114,19 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
       const resumeFrom = new Map<string, number>()
       for (const noteId of opened) {
-        const since = skipBaseline.get(noteId)
+        // With no server snapshot, a GET answers `{ snapshot: null }` and the
+        // walk starts at 0, so start it at 0 without the GET.
+        const fromZero = snapshotless.has(noteId) ? 0 : undefined
         const vector = crdtProvider.getStateVector(noteId)
         if (!vector) continue
         if (!isEmptyStateVector(vector)) {
+          const since = skipBaseline.get(noteId) ?? fromZero
           if (since !== undefined) resumeFrom.set(noteId, since)
           continue
         }
         if (this.lastAppliedSequence.has(noteId)) this.forgetWatermark(noteId)
         if (crdtProvider.hasPersistence()) oweUnsyncedFileBody(noteId)
+        if (fromZero !== undefined) resumeFrom.set(noteId, fromZero)
       }
 
       // The snapshot GETs run ahead of the apply, which still takes one note
@@ -1141,8 +1146,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         if (skipSince !== undefined) {
           // The GET this whole change exists to avoid. The doc already holds
           // this exact snapshot blob and everything the server pruned behind
-          // it, so resuming from the watermark is the same `since` a download
-          // would have produced.
+          // it, or the server holds no snapshot at all, so resuming here is
+          // the same `since` a download would have produced.
           sinceMap.set(noteId, skipSince)
           continue
         }
@@ -1212,6 +1217,17 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             retryOn429: false
           }
         ).then((r) => r.value)
+
+        // A snapshot pushed since the probe pruned the updates at or below it,
+        // so a walk that skipped the baseline as snapshotless is missing them.
+        // Never settled or seeded: owed, and the next pass downloads it.
+        for (const noteId of snapshotless) {
+          if (!resumeFrom.has(noteId) || !sinceMap.has(noteId)) continue
+          if (!result.snapshotMeta?.[noteId]) continue
+          sinceMap.delete(noteId)
+          sawUnmerged.add(noteId)
+          this.owePendingPull(noteId)
+        }
 
         const signerIds = new Set<string>()
         let batchUpdateChars = 0

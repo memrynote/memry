@@ -66,10 +66,12 @@ const log = createLogger('SyncEngine')
 // subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
 const MAX_SYNC_ENGINE_LISTENERS = 10
 
-// A sync run legitimately spans many paged requests plus retry backoff, so
-// this sits far above SYNC_REQUEST_TIMEOUT_MS × the retry budget. A lock held
-// longer than this is leaked (a never-settling non-HTTP await): left alone it
-// makes periodicPull skip forever, and only an app restart recovers.
+// How long a lock may be held with no progress of its own: no committed pull
+// slice or page, no answered push batch (`SyncContext.lockProgress`, #5234).
+// Far above SYNC_REQUEST_TIMEOUT_MS × the retry budget, so a lock this quiet
+// is leaked (a never-settling non-HTTP await): left alone it makes
+// periodicPull skip forever, and only an app restart recovers. Not a bound on
+// the run: a fresh bootstrap's record pull applies pages for longer.
 export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 
 // Floor between two pulls issued by the 60s tick while the socket has been
@@ -118,7 +120,9 @@ export class SyncEngine extends SyncEventEmitter {
    * close-during-initial-sync), so a fresh engine means a fresh latch.
    */
   private cancelRequested = false
-  private syncLockAcquiredAt: number | null = null
+  /** When `ctx.lockProgress` last moved while the lock was held. */
+  private syncLockProgressAt: number | null = null
+  private syncLockProgressMark: number | null = null
   private activeLockRelease: (() => void) | null = null
   // The socket generation the previous pull tick observed, and when the tick
   // last actually pulled. Both are instance state re-armed with the interval —
@@ -171,6 +175,7 @@ export class SyncEngine extends SyncEventEmitter {
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',
       syncing: false,
+      lockProgress: 0,
       fullSyncActive: false,
       abortController: null,
       inFlightSync: null,
@@ -846,7 +851,8 @@ export class SyncEngine extends SyncEventEmitter {
     if (this.ctx.syncing) return { refused: 'busy' }
     if (this.stateManager.isPaused()) return { refused: 'paused' }
     this.ctx.syncing = true
-    this.syncLockAcquiredAt = Date.now()
+    this.syncLockProgressAt = Date.now()
+    this.syncLockProgressMark = this.ctx.lockProgress
 
     let release!: () => void
     const prev = this.syncLock
@@ -899,11 +905,18 @@ export class SyncEngine extends SyncEventEmitter {
   // the release risks a brief overlap if the zombie sync later resumes —
   // accepted over sync staying dead until restart.
   private recoverStaleSyncLock(): void {
-    if (!this.ctx.syncing || this.syncLockAcquiredAt === null) return
-    const heldForMs = Date.now() - this.syncLockAcquiredAt
-    if (heldForMs < SYNC_LOCK_STALE_MS) return
+    if (!this.ctx.syncing || this.syncLockProgressAt === null) return
+    if (this.ctx.lockProgress !== this.syncLockProgressMark) {
+      this.syncLockProgressMark = this.ctx.lockProgress
+      this.syncLockProgressAt = Date.now()
+      return
+    }
+    const idleForMs = Date.now() - this.syncLockProgressAt
+    if (idleForMs < SYNC_LOCK_STALE_MS) return
 
-    log.error('Sync lock held past stale threshold — force releasing', { heldForMs })
+    log.error('Sync lock held with no progress past stale threshold — force releasing', {
+      idleForMs
+    })
     this.ctx.abortController?.abort()
     this.ctx.fullSyncActive = false
     this.ctx.inFlightSync = null
@@ -918,7 +931,8 @@ export class SyncEngine extends SyncEventEmitter {
   private releaseLock(): void {
     this.ctx.syncing = false
     this.ctx.abortController = null
-    this.syncLockAcquiredAt = null
+    this.syncLockProgressAt = null
+    this.syncLockProgressMark = null
     this.activeLockRelease = null
     if (this.ctx.state === 'syncing') {
       this.stateManager.setState(this.ctx.deps.network.online ? 'idle' : 'offline')

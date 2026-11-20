@@ -732,7 +732,11 @@ whole history. Rows it already holds at the same or a newer clock change nothing
 `cursorSkipRepair` sync-state key tracks the repair: `pending:<cursor>` after the reset, `done` after
 a pull delivered. An interrupted repair resumes from the persisted cursor on the next full sync, so a
 page the pull refuses every time costs one pass, not one per sync. A device with no cursor yet pulls
-from 0 anyway and records `done` without a reset.
+from 0 anyway and records `done` without a reset, at the start of its first full sync and before
+any await. Recording it later let a fresh device skip the record: a pull the socket's `connected`
+scheduled while the bootstrap session opened took the lock, the repair was refused, and a quit
+mid-bootstrap relaunched into a re-pull from 0 of a feed only this build had ever read. The full
+sync now also marks itself active before it opens the session, so that pull is never scheduled.
 
 The server fix has to be live before a desktop build runs the repair: a repair pull that races a
 peer push on an old Worker can skip the range again and still record `done`.
@@ -891,9 +895,12 @@ waking from sleep is already on the fast cadence.
 
 Three guards keep a wedged sync from lasting until restart. Every sync HTTP request carries a
 60-second abort timeout, so a black-holed socket (suspend/resume, NAT teardown) surfaces as a
-retryable network error instead of pinning the sync lock forever. If the lock is still held after
-15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the in-flight run,
-and lets the next pull proceed. Skipped periodic pulls log `Periodic pull skipped` with the
+retryable network error instead of pinning the sync lock forever. If the lock is still held with no
+progress for 15 minutes anyway, a watchdog on the periodic tick force-releases it, aborts the
+in-flight run, and lets the next pull proceed. Progress is the lock holder's own work only: a
+pull slice or page that commits, or a push batch the server answers (`SyncContext.lockProgress`).
+A fresh device's record pull that applies a page every few seconds keeps the lock however long the
+vault takes, and local edits or socket frames never keep a hung pull alive. Skipped periodic pulls log `Periodic pull skipped` with the
 blocking flags, which is the first thing to look for when a device shows stale data.
 
 ### Socket items
@@ -1452,9 +1459,18 @@ and the peer's edits never reach the note (#2511). An empty document therefore d
 and downloads the baseline. A note the probe finishes is never opened, so an unchanged note still
 costs no download.
 
+A note the probe answered for and that is absent from a present `snapshotMeta` has no server
+snapshot at all. It skips the GET whether or not it has a watermark, and a note with no watermark or
+an empty document walks its incrementals from 0. That is the `since` a GET answering
+`{ snapshot: null }` produced. The probe runs on a cold chunk too, so a fresh bootstrap spends no GET
+on these notes (#5234). Another device can snapshot the note after the probe, which prunes the
+updates the walk starts from. Every apply round's `snapshotMeta` is checked for that case. A note
+that gained a snapshot is not settled and not seeded, and it is owed a pull. The next pass downloads
+the snapshot.
+
 Everything else falls through to a fetch: an absent `snapshotMeta` key (an older server), a note the
-server left out of the response, and any note this session holds no merged revision for. A missed
-skip costs one request; a wrong skip costs a note body.
+server left out of the response, and any note with a server snapshot that this session holds no
+merged revision for. A missed skip costs one request; a wrong skip costs a note body.
 
 The bookkeeping — `{ appliedSequence, snapshotRevision }` per note, the **snapshot watermark** — is
 persisted **inside the per-vault CRDT store**, so the warm path survives an app restart and a fresh
@@ -1818,8 +1834,13 @@ resume window, every relaunch was refused and the rest of the sync ran at steady
 about a fifth of the elevated speed (one production user hit the 409 eighteen times). The window
 reads the server's own `devices.created_at`, not anything the client sends, and a re-registration
 already earns a new device row, so it grants no elevation a new sign-in would not. The per-user cap
-of two concurrent sessions still applies. Desktop opens a session only when its own `LAST_CURSOR`
-is unset, so the window does not change what desktop does.
+of two concurrent sessions still applies. Desktop opens a session while its first sync is pending:
+the `bootstrapPending` sync-state key is written at the first full sync of a device with no
+`LAST_CURSOR` and deleted once a pull delivers to the head of the feed. A relaunch that finds it
+resumes from the persisted cursor, opens a session and asks for packs again, so a quit during packs
+or the record pull costs the pages already read, not the elevation. The server judges the resume
+window from the device's registration: when `POST /sync/bootstrap` answers 409, desktop deletes the
+key and syncs as steady state from the next run. Builds that predate the key ignore it.
 
 After the window, any `GET /sync/changes` page that delivers an item spends eligibility, including
 one that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)

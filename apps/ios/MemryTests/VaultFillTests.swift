@@ -341,7 +341,7 @@ struct VaultFillTests {
     /// bar and never the notes already on the phone. While the run is still
     /// going, the screen holds a strip rather than a replacement, and the
     /// list on screen re-reads into the notes that landed.
-    @Test("a run that has not finished shows its notes under a progress strip")
+    @Test("a run that has not finished shows its notes with nothing over them")
     func aRunningFillShowsItsNotes() async throws {
         let store = VaultStore()
         let browse = VaultBrowseViewModel(reader: StoreNotes(store: store))
@@ -367,7 +367,7 @@ struct VaultFillTests {
         }
         #expect(filler.isHeld)
 
-        #expect(fill.banner == .progress(tick(.bodies, 3, 500)))
+        #expect(fill.banner == .none, "a running first sync shows nothing over the vault")
         #expect(fill.isPending)
         // A bump per pass, every 500 items of metadata, and its last item.
         #expect(fill.landed == 5)

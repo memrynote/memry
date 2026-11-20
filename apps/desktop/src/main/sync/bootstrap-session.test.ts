@@ -24,6 +24,7 @@ vi.mock('./http-client', () => ({
   getFromServer: vi.fn()
 }))
 
+import { SyncServerError } from '@memry/sync-client/http-errors'
 import { postToServer } from './http-client'
 
 const postMock = vi.mocked(postToServer)
@@ -66,8 +67,7 @@ describe('bootstrap session manager', () => {
     const result = await openBootstrapSession(getAccessToken)
 
     // #then
-    expect(result).not.toBeNull()
-    expect(result?.tailCursor).toBe(42)
+    expect(result).toMatchObject({ tailCursor: 42 })
     expect(getBootstrapTokenHeaders()['X-Memry-Bootstrap-Token']).toBe('tok-open')
     expect(getBootstrapElevationFactor()).toBe(5)
     expect(seen.at(-1)).toBe(5)
@@ -86,6 +86,13 @@ describe('bootstrap session manager', () => {
     // #then — no throw, no state, steady-state factor
     expect(result).toBeNull()
     expect(getBootstrapTokenHeaders()).toEqual({})
+    expect(getBootstrapElevationFactor()).toBe(1)
+  })
+
+  it('reports a device the server no longer deems fresh (409)', async () => {
+    postMock.mockRejectedValueOnce(new SyncServerError('conflict', 409, 'BOOTSTRAP_NOT_ELIGIBLE'))
+
+    expect(await openBootstrapSession(getAccessToken)).toBe('ineligible')
     expect(getBootstrapElevationFactor()).toBe(1)
   })
 

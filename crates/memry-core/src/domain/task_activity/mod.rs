@@ -37,6 +37,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::tasks::TASK_ACTIVITY_RETENTION_DAYS;
 use crate::storage::repositories::schema::Object;
 use crate::sync::outbox;
@@ -366,7 +367,7 @@ fn in_transaction<T>(
     if !conn.is_autocommit() {
         return write(conn);
     }
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = write(&transaction)?;
     transaction.commit().map_err(failed)?;
     Ok(value)

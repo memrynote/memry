@@ -1,6 +1,20 @@
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
-import { openPack, type PackEntryMeta, type PackEntryPlan, type PackKindName } from './pack-format'
+import {
+  openPack,
+  type PackEntryMeta,
+  type PackEntryPlan,
+  type PackEntryPlanMeta,
+  type PackKindName
+} from './pack-format'
+import {
+  isSelectedRecordVersion,
+  recordEntryOf,
+  recordRowShedInPlace,
+  recordSelectionQuery,
+  type RecordEntry,
+  type RecordRow
+} from './pack-record-selection'
 
 const logger = createLogger('PackCompaction')
 
@@ -62,9 +76,13 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // + 5 D1 round trips (watermark read, candidate select, duplicate check,
 //   pack_index insert, watermark upsert)
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
-// => ~269 subrequests per full 256-item pack (~27% of the ceiling). Two kinds
-// compacted back-to-back in one invocation still fit (~540), and a full retry
-// doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
+// => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
+// pack reads its entry meta in the selection query itself, so it costs
+// ~262. compactVault builds one pack per kind per queue message
+// (max_batch_size 1), ~531 together, and a large vault drains across
+// invocations: each push nudges one more pack per kind, and the cron backfill
+// continues from the watermark.
+// A full retry doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
 // compaction has always been a paid-plan background job by construction.
 export const PACK_MAX_ITEMS = 256
 
@@ -81,27 +99,14 @@ export const MAX_PACKED_ITEM_BYTES = 8 * 1024 * 1024
 // unaffected — this only shapes concurrency, not budget.
 export const PACK_FETCH_CONCURRENCY = 16
 
-/** Kinds whose sources live in R2 and are packed today. */
 /**
- * Kinds the vault sweep and the cron backfill actually build packs for.
- *
- * `record` is deliberately ABSENT even though `compactOneRange` supports it.
- * A record pack entry is exactly the R2 payload blob
- * (`{dataNonce, encryptedData, encryptedKey, keyNonce}`), while the Ed25519
- * signature, signer device id, vector clock, operation and deleted_at live in
- * the `sync_items` D1 row and reach a client only through `POST /sync/pull`.
- * The index block carries none of them, so a client cannot verify a packed
- * record without skipping signature verification — unacceptable in an E2E
- * vault. Building them anyway would mint immutable R2 objects that no client
- * can ever read, and packs are never rewritten, so those bytes would be dead
- * forever. Records still bootstrap through the item-granular pull, which
- * already pages them; the snapshot axis is where the per-note GET floor was.
- *
- * Re-enabling needs the signature/signer/clock/operation carried in the entry
- * meta (the meta field is free-form JSON, so that is additive, not a format
- * break) plus a client apply path that verifies them. Tracked separately.
+ * Kinds the vault sweep and the cron backfill build packs for. A `record`
+ * entry carries the pull item's signature, signer, clock, operation and
+ * deletion state as its meta (protocol 08 §8.4.2), so a client verifies it
+ * exactly as a pulled item. Released readers drop record packs before
+ * download (§8.11). `crdt_update` waits for its writer (#5228).
  */
-export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot']
+export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record']
 
 export interface VaultScope {
   userId: string
@@ -120,6 +125,8 @@ export interface PackSelection {
     id: string
     sourceKey: string
     sizeBytes: number
+    /** Record entries: the pull-item meta and the content hash of the same D1 row. */
+    record?: RecordEntry
   }>
   /** Progress marker AFTER the last candidate (composite, exclusive). */
   nextSortValue: number
@@ -168,22 +175,7 @@ export const selectCandidates = async (
 
   const query =
     kind === 'record'
-      ? {
-          sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes
-                FROM sync_items
-                WHERE user_id = ? AND vault_id = ?
-                  AND (server_cursor > ? OR (server_cursor = ? AND (item_type || ':' || item_id) > ?))
-                ORDER BY server_cursor ASC, tiebreak ASC
-                LIMIT ?`,
-          bind: [
-            scope.userId,
-            scope.vaultId,
-            watermark.last_sort_value,
-            watermark.last_sort_value,
-            watermark.last_sort_tiebreak,
-            PACK_MAX_ITEMS
-          ]
-        }
+      ? recordSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
       : {
           // A deleted note keeps its snapshot row, and a packed body lands on a
           // fresh device before the tombstone that deletes it. A note id with
@@ -211,19 +203,27 @@ export const selectCandidates = async (
   const rows = await db
     .prepare(query.sql)
     .bind(...query.bind)
-    .all<{
-      sort_key: number
-      tiebreak: string
-      blob_key: string
-      size_bytes: number
-      dead?: number
-    }>()
+    .all<
+      {
+        sort_key: number
+        tiebreak: string
+        blob_key: string
+        size_bytes: number
+        dead?: number
+      } & Partial<RecordRow>
+    >()
 
   const candidates: PackSelection['candidates'] = []
   let bytes = 0
   for (const row of rowList(rows)) {
     if (row.dead) continue
     if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
+    const record =
+      kind === 'record'
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the record query selects every RecordRow column
+          recordEntryOf(scope, row as typeof row & RecordRow)
+        : undefined
+    if (record === null) continue
     if (bytes + row.size_bytes > PACK_TARGET_BYTES) break
     bytes += row.size_bytes
     candidates.push({
@@ -231,7 +231,8 @@ export const selectCandidates = async (
       tiebreak: row.tiebreak,
       id: row.tiebreak,
       sourceKey: row.blob_key,
-      sizeBytes: row.size_bytes
+      sizeBytes: row.size_bytes,
+      ...(record ? { record } : {})
     })
   }
 
@@ -344,7 +345,7 @@ export const compactOneRange = async (
   // client's freshness check entirely. Looked up in one batched pass,
   // best-effort: a missed lookup leaves meta empty and the client falls back
   // to the item GET.
-  let metaBySourceKey: Map<string, PackEntryMeta> | null = null
+  let metaBySourceKey: Map<string, PackEntryPlanMeta> | null = null
   if (kind === 'crdt_snapshot') {
     metaBySourceKey = await loadSnapshotMeta(
       db,
@@ -364,7 +365,7 @@ export const compactOneRange = async (
       sortKey: candidate.sortKey,
       sizeBytes: candidate.sizeBytes
     }
-    const meta = metaBySourceKey?.get(candidate.sourceKey)
+    const meta = candidate.record?.meta ?? metaBySourceKey?.get(candidate.sourceKey)
     if (meta) plan.meta = meta
     return plan
   })
@@ -376,13 +377,21 @@ export const compactOneRange = async (
   // source references (`body`, `bytes` go out of scope) after the copy —
   // payload bytes are never retained twice, so peak stays at the pack buffer
   // plus ONE transient blob rather than payload + assembled copy.
+  const holeLog = (plan: PackEntryPlan) => ({
+    userId: scope.userId,
+    vaultId: scope.vaultId,
+    kind,
+    id: plan.id
+  })
   const holes: string[] = []
+  const missingRecords: PackEntryPlan[] = []
   let writtenCount = 0
   for (let i = 0; i < plans.length; i += PACK_FETCH_CONCURRENCY) {
     const window = plans.slice(i, i + PACK_FETCH_CONCURRENCY)
     const bodies = await Promise.all(window.map((plan) => storage.get(plan.sourceKey)))
     for (let j = 0; j < window.length; j++) {
       const plan = window[j]
+      const record = selection.candidates[i + j].record
       const body = bodies[j]
       // A null body is a HOLE, not a failure: the blob was replaced/deleted
       // between selection and fetch (or is a dangling row). Membership is
@@ -392,8 +401,10 @@ export const compactOneRange = async (
         // skipEntry, not a bare `continue`: the writer claims slots in strict
         // plan order, so an unclaimed slot makes the NEXT writeEntry throw and
         // abort the whole range before the watermark moves.
+        logger.warn('pack entry source is missing; hole', { ...holeLog(plan), reason: 'not found' })
         pack.skipEntry(plan)
         holes.push(plan.id)
+        if (record) missingRecords.push(plan)
         continue
       }
       const bytes = new Uint8Array(await body.arrayBuffer())
@@ -404,6 +415,7 @@ export const compactOneRange = async (
       // an aborted or truncated write can leave a 0-byte object behind, and a
       // row declaring size_bytes 0 slips past the drift guard below (0 === 0).
       if (bytes.byteLength === 0) {
+        logger.warn('pack entry source is empty; hole', { ...holeLog(plan), reason: 'empty' })
         pack.skipEntry(plan)
         holes.push(plan.id)
         continue
@@ -427,9 +439,37 @@ export const compactOneRange = async (
         holes.push(plan.id)
         continue
       }
+      // A record's meta and payload must be one version (protocol 08 §8.4.2).
+      // The meta and content_hash came from one row read, and the payload is
+      // that version only when it hashes to that content_hash (the push stores
+      // exactly the bytes it hashed). A push that replaced the row after
+      // selection fails here or 404s above, and its new row sits at a higher
+      // cursor, so the tail serves it.
+      if (record && !(await isSelectedRecordVersion(bytes, record))) {
+        logger.warn('record payload is not the selected version; hole', {
+          ...holeLog(plan),
+          reason: 'content hash mismatch'
+        })
+        pack.skipEntry(plan)
+        holes.push(plan.id)
+        continue
+      }
       await pack.writeEntry(plan, bytes)
       writtenCount++
     }
+  }
+
+  // Invariant: the watermark never passes a row the shed will drop on a later
+  // tick. The shed empties a tombstone in place at its cursor, so a hole for it
+  // would never be revisited; abandon the range and let the next run read the
+  // row as it then is (REVIEW-5253, VERIFY-5253).
+  if (await recordRowShedInPlace(db, scope, missingRecords)) {
+    logger.info('record row shed during a build; range abandoned', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind
+    })
+    return { ...noop, holes }
   }
 
   if (writtenCount === 0) {

@@ -47,8 +47,8 @@ One index record:
 | `kind`         | uint8          | `PackKindCode` — `record` 0, `crdt_snapshot` 1, `crdt_update` 2                       |
 | `idLen`+id     | uint16 + bytes | UTF-8 identity a client matches on: `type:id` for records, the note id for CRDT kinds |
 | `keyLen`+key   | uint16 + bytes | The source R2 key — provenance, and the per-item fallback address                     |
-| `sortKey`      | int64          | `server_cursor` for records; `created_at` epoch seconds for CRDT kinds                |
-| `metaLen`+meta | uint16 + bytes | UTF-8 JSON, or empty. For snapshots: `{sequenceNum, revision}`                        |
+| `sortKey`      | int64          | `server_cursor` for records and updates; `created_at` epoch seconds for snapshots     |
+| `metaLen`+meta | uint16 + bytes | UTF-8 JSON, or empty. Per kind: see [entry meta](#entry-meta-per-kind)                |
 | `offset`       | uint64         | Entry start **within the payload region** (add the 8-byte header for a file offset)   |
 | `length`       | uint64         | Entry byte length                                                                     |
 | `sha256`       | 32             | Digest of this entry's payload bytes                                                  |
@@ -167,43 +167,58 @@ bare `packs/<kind>/` prefix would match nothing.
 ### Holes
 
 A slot in the selection whose bytes cannot be used is a **hole**: it is skipped, and it produces no
-index record at all. Three conditions make a hole, and all three mean the same thing to a client —
-the item was never in this pack, so fetch it individually.
+index record at all. Four conditions make a hole. What a hole means to a client depends on the
+kind. A record row the writer cannot pack is omitted, the record range still spans it, and the
+cursor-exact manifest reconcile (chapter 08 §8.10) pulls it. A lost snapshot ends a body range
+only while its row still points at the key that 404'd; a row replaced since then sits at a higher
+cursor.
 
 | Condition                     | Why it is a hole rather than a failure                                                                                                                                                                                                                                                                                                           |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Source blob returns null      | Replaced or deleted between selection and fetch, or a dangling row. Not an error — the pack is a cache of a moving target.                                                                                                                                                                                                                       |
 | Zero-length blob              | Real ciphertext is never empty (XChaCha20 always carries a MAC), but an aborted write can leave a 0-byte object, and a row declaring `size_bytes` 0 slips past the drift check below (`0 === 0`). The writer rejects an empty entry, and that throw would escape before the watermark moved — so the range would re-select and re-throw forever. |
 | Declared-vs-actual size drift | The blob was replaced under a stable key after selection sized the buffer. Copying it would overrun or misalign the layout.                                                                                                                                                                                                                      |
+| Record payload hash mismatch  | A record's bytes do not hash to the `content_hash` of the row its meta came from, so meta and payload would be two versions. A push that replaced the row moved it to a higher cursor, where the tail serves it.                                                                                                                                 |
 
 Holes are skipped through `skipEntry`, never a bare `continue`: the writer claims slots in strict
 plan order, so an unclaimed slot makes the next `writeEntry` throw and abort the whole range before
 the watermark moves. A window where _every_ candidate turned out to be a hole writes no pack and
 still advances the watermark, so it cannot loop.
 
-### `PACKED_KINDS` is `['crdt_snapshot']` only
+### `PACKED_KINDS` is `['crdt_snapshot', 'record']`
 
-`compactOneRange` supports `record`, and the format has a `record` kind code, but the pipeline
-deliberately does not build record packs.
+A record entry carries the pull item's signature, signer device id, operation, `deletedAt` and
+clock as its meta, so a client verifies it exactly as an item from `POST /sync/pull`. The meta
+comes from `recordMetaFromColumns` in `services/sync.ts`, the function the pull builds its items
+from, and the selection query reads it in the same row read as `blob_key` and `content_hash`.
+Tombstones are packed while their payload exists.
 
-A record pack entry is exactly the R2 payload blob — `{dataNonce, encryptedData, encryptedKey,
-keyNonce}` and nothing else. The Ed25519 **signature**, the signer device id, the vector clock, the
-operation and `deleted_at` all live in the `sync_items` D1 row and reach a client only through
-`POST /sync/pull`. The index block carries none of them. A client could therefore not verify a
-packed record without skipping signature verification, which is unacceptable in an end-to-end
-encrypted vault where the server is untrusted. Building them anyway would mint immutable R2 objects
-no client can ever read, and packs are never rewritten — those bytes would be dead forever.
+The writer leaves out a row that the pull would not serve as an item, or that no reader accepts: a
+purged tombstone (`blob_key` empty), an unknown type, a row without signer metadata or with a
+corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_BYTES`. The
+watermark still moves past them.
 
-Records keep bootstrapping through the item-granular pull, which already pages them. The snapshot
-axis is where the per-note GET floor actually was.
+Each queue message builds one pack per kind, about 531 subrequests together, and a large vault
+builds across invocations from its watermarks. The Rust core reader is a later step of
+[#5221](https://github.com/memrynote/memry/issues/5221).
 
-Re-enabling record packs needs the signature, signer, clock and operation carried in the entry meta
-— the meta field is free-form JSON, so that is additive rather than a format break — plus a client
-apply path that verifies them. Tracked as
-[#1852](https://github.com/memrynote/memry/issues/1852).
+No server produces `crdt_update` entries yet.
 
-`crdt_update` is reserved and never produced: updates live in D1 rows, not R2 objects, so there is
-no small-object GET floor there to kill.
+### Entry meta per kind
+
+Chapter 08 §8.4 of `docs/protocol` is normative; this is the summary.
+
+| Kind            | `metaBytes`                                                                                                                  |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `record`        | `RecordPackEntryMetaSchema`: the `/sync/pull` item without `id`, `type` and `blob`. Meta plus payload rebuild the pull item. |
+| `crdt_snapshot` | `{sequenceNum, revision}`                                                                                                    |
+| `crdt_update`   | `CrdtUpdatePackEntryMetaSchema`: `{sequenceNum, signerDeviceId, createdAt}`. The payload is the stored packed envelope.      |
+
+A record entry with no meta, which is what a record pack built before this contract holds, is
+unusable on its own and the item stays on `POST /sync/pull`. Released desktop and iOS builds skip
+`record` and `crdt_update` packs at listing time, so a server can list them without breaking those
+builds. A client advances a document's update cursor across packed updates only while their
+sequence numbers are consecutive, and pulls the rest from the server at the first gap.
 
 ## Coverage Semantics a Client Must Respect
 
@@ -226,6 +241,35 @@ blob is still the source of truth at that ordering value.
 Two packs can also share a `maxCursor`: a same-second group larger than the byte target is split
 across packs. Any client bookkeeping keyed on `maxCursor` has to treat such a tie group as a unit —
 see the watermark rule below.
+
+### The coverage contract (not built yet)
+
+Chapter 08 §8.10 to §8.14 define the contract steps 04 to 07 of #5221 build. No server sends
+any of it yet.
+
+- **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,
+  for every kind. The first `GET /sync/packs` page states, per kind, `packedThrough` and
+  `coveredThrough`. A body pack holds every needed row whose cursor is in its range, and no needed
+  row sits in `(packedThrough, coveredThrough]`. A record row the writer cannot pack (a lost blob,
+  an oversize entry) is left out while the range still spans it, so record ranges tile. Selecting snapshots by `server_cursor` removes the
+  same-second under-coverage above. `minCursor` and `maxCursor` keep their old meaning for
+  released readers.
+- **Tail start.** A reader chains its usable packs of each kind from 0. If the chain reaches
+  `packedThrough`, that kind is covered through `coveredThrough`. Otherwise it is covered only to
+  the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, a pack that a
+  rollup took out of the listing, or a lost snapshot only lowers the start, and a reader should
+  read the feed across such a gap instead (one page for a lost snapshot). Record packs can miss
+  rows, so the reader reads the manifest after the pack bytes. The check is cursor-exact: it
+  pulls every listed item it lacks or holds at another `server_cursor` (a record entry's sort
+  key), pulls every item when the manifest has no cursors, and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
+  the pack bytes.
+- **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
+  the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.
+- **Scoped purge.** A deleted note's packs leave the listing in the purge batch and are rewritten
+  without its body and older versions. The tombstone stays. Its ciphertext is gone from pack
+  objects within 15 minutes, with a sweep that retries failed object deletes.
+- **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
+  a released reader's 1,000-pack walk never truncates.
 
 ## Client Bootstrap Flow
 

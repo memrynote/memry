@@ -59,6 +59,110 @@ fn pack_container_layout_matches_the_crate_constants() {
     );
 }
 
+/// Chapter 08 §8.4.2 and §8.4.3, as far as the decoded index reaches without
+/// a record or kind 2 reader in this crate: identity, `sortKey`, `keyBytes` and
+/// meta of every entry an `entryContract` names. Signature and decrypt checks
+/// run in the reference verifier (`pack-container.test.ts`).
+#[test]
+fn pack_entry_contract_vectors() {
+    let vectors = vector_file("pack-container");
+    let cases = vectors["cases"].as_array().expect("cases");
+    let mut checked = 0;
+
+    for case in cases.iter().filter(|c| c.get("entryContract").is_some()) {
+        let name = str_field(case, "name");
+        let contract = &case["entryContract"];
+        let parsed = pack::parse_pack(&hex_field(case, "packHex"))
+            .unwrap_or_else(|error| panic!("{name}: the pack was refused: {error}"));
+
+        let records = contract["records"]
+            .as_array()
+            .map_or(&[][..], Vec::as_slice);
+        let record_entries = parsed
+            .entries
+            .iter()
+            .filter(|e| e.kind == PackKind::Record)
+            .count();
+        assert_eq!(record_entries, records.len(), "{name}: record entry count");
+        for want in records.iter().filter(|r| r.get("pullItem").is_some()) {
+            let id = str_field(want, "id");
+            let entry = parsed
+                .entries
+                .iter()
+                .find(|e| e.kind == PackKind::Record && e.id == id)
+                .unwrap_or_else(|| panic!("{name}: no record entry {id}"));
+            let pull = &want["pullItem"];
+            // `type:id` splits at the FIRST colon: no record type holds one.
+            let (item_type, item_id) = entry.id.split_once(':').expect("type:id");
+            assert_eq!(item_type, str_field(pull, "type"), "{name}: type");
+            assert_eq!(item_id, str_field(pull, "id"), "{name}: id");
+            assert_eq!(
+                entry.sort_key,
+                want["sortKey"].as_i64().expect("sortKey"),
+                "{name}: sortKey"
+            );
+            // keyBytes is the row's sync_items.blob_key (§8.4.2).
+            assert_eq!(
+                entry.source_key,
+                str_field(want, "sourceKey"),
+                "{name}: record keyBytes"
+            );
+            let mut meta = pull.as_object().expect("pullItem").clone();
+            for key in ["id", "type", "blob"] {
+                meta.remove(key);
+            }
+            assert_eq!(
+                entry.meta.as_ref(),
+                Some(&serde_json::Value::Object(meta)),
+                "{name}: meta is the pull item minus id, type, blob"
+            );
+            checked += 1;
+        }
+
+        let updates: Vec<_> = parsed
+            .entries
+            .iter()
+            .filter(|e| e.kind == PackKind::CrdtUpdate)
+            .collect();
+        for entry in &updates {
+            // An update has no R2 object, so keyBytes is empty (§8.4.3).
+            assert_eq!(entry.source_key, "", "{name}: kind 2 keyBytes");
+            let meta = entry.meta.as_ref().expect("kind 2 meta");
+            assert!(
+                meta["sequenceNum"].as_u64().is_some_and(|n| n >= 1),
+                "{name}"
+            );
+            assert!(
+                meta["signerDeviceId"]
+                    .as_str()
+                    .is_some_and(|s| !s.is_empty()),
+                "{name}"
+            );
+            assert!(meta["createdAt"].as_u64().is_some(), "{name}");
+        }
+        let wanted = contract["updates"]
+            .as_array()
+            .map_or(&[][..], Vec::as_slice);
+        // `zip` stops at the shorter side, so an entry dropped on either side
+        // must fail here first. Plan cases carry entries with no expectations.
+        if contract.get("updatePlans").is_none() {
+            assert_eq!(updates.len(), wanted.len(), "{name}: kind 2 entry count");
+        }
+        for (entry, want) in updates.iter().zip(wanted) {
+            assert_eq!(entry.id, str_field(want, "noteId"), "{name}: noteId");
+            assert_eq!(
+                entry.sort_key,
+                want["sortKey"].as_i64().expect("sortKey"),
+                "{name}: sortKey"
+            );
+            assert_eq!(entry.meta.as_ref(), want.get("meta"), "{name}: meta");
+            checked += 1;
+        }
+    }
+
+    assert!(checked >= 7, "entryContract cases went missing: {checked}");
+}
+
 #[test]
 fn pack_container_vectors() {
     let vectors = vector_file("pack-container");
