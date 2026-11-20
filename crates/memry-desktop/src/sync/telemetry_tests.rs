@@ -240,6 +240,7 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
                 losing: json!("a"),
                 winning: json!("b"),
                 merged_clock: json!({}),
+                local_lost: true,
             }],
         }]);
         let names: Vec<(String, Option<String>)> = service

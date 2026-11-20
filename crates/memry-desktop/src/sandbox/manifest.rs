@@ -174,7 +174,10 @@ impl TemplateInfo {
 
 fn check_size(bytes: &[u8]) -> Result<(), SandboxError> {
     if bytes.len() > MAX_TEMPLATE_BYTES {
-        return Err(SandboxError::TooLarge(bytes.len()));
+        return Err(SandboxError::TooLarge(format!(
+            "{} bytes, over the {MAX_TEMPLATE_BYTES} byte limit",
+            bytes.len()
+        )));
     }
     Ok(())
 }
