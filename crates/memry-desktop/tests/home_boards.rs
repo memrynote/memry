@@ -360,13 +360,21 @@ fn reconcile_never_prunes_for_a_ref_this_build_refuses() {
     let dir = folder(&env, &board.id);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("abc-photo."), b"electron's").unwrap();
+    // Win32 strips a trailing `.` or space from a file name, so on Windows the file is stored as
+    // `abc-photo`; elsewhere the name is kept as written.
+    let stored = if cfg!(windows) {
+        "abc-photo"
+    } else {
+        "abc-photo."
+    };
+    assert_eq!(names(&dir), vec![stored.to_owned()]);
     for reference in [
         format!(".memry/home-covers/{}/abc-photo.", board.id),
         ".memry/home-covers/other-board/a.png".to_owned(),
     ] {
         set_ref(&env, &board.id, json!({ "ref": reference }));
         env.boards.reconcile(None).unwrap();
-        assert_eq!(names(&dir), vec!["abc-photo.".to_owned()], "{reference}");
+        assert_eq!(names(&dir), vec![stored.to_owned()], "{reference}");
     }
     set_ref(
         &env,
@@ -375,6 +383,31 @@ fn reconcile_never_prunes_for_a_ref_this_build_refuses() {
     );
     env.boards.reconcile(None).unwrap();
     assert!(names(&dir).is_empty(), "a link cover owns no file");
+}
+
+#[test]
+fn a_refused_ref_never_prunes_the_file_win32_stores_under_its_name() {
+    let env = env();
+    let board = create(&env, "Work");
+    let dir = folder(&env, &board.id);
+    fs::create_dir_all(&dir).unwrap();
+    // The names Win32 stores for an Electron cover written as `abc-photo.` (trailing `.` and
+    // spaces stripped), written as such on every platform, beside a stale file.
+    fs::write(dir.join("abc-photo"), b"electron's").unwrap();
+    fs::write(dir.join("old.png"), b"stale").unwrap();
+    let all = vec!["abc-photo".to_owned(), "old.png".to_owned()];
+    for name in ["abc-photo.", "abc-photo ", "abc-photo. ."] {
+        let reference = format!(".memry/home-covers/{}/{name}", board.id);
+        set_ref(&env, &board.id, json!({ "ref": reference }));
+        env.boards.reconcile(Some(&board.id)).unwrap();
+        assert_eq!(names(&dir), all, "{name:?}");
+    }
+
+    // The valid ref of that stored name keeps it and prunes only the stale file.
+    let reference = format!(".memry/home-covers/{}/abc-photo", board.id);
+    set_ref(&env, &board.id, json!({ "ref": reference }));
+    env.boards.reconcile(Some(&board.id)).unwrap();
+    assert_eq!(names(&dir), vec!["abc-photo".to_owned()]);
 }
 
 #[test]
