@@ -313,6 +313,14 @@ write-back that replaces it. A merge that fails falls back to the seed, and the
 note's unmerged flag routes that push to the non-pruning update endpoint. An editor open still
 seeds too, which is the open fork in #2544.
 
+The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
+vault file only when the server answered with no snapshot and no updates for
+it, the pass merged cleanly, and the document is still open and empty. When
+the doc cache closes a document mid-pass, the provider refuses the updates the
+pass fetched, and the document still reads empty. A seed at that point would
+land beside the server body and duplicate it (#5286). The pull owes the note
+instead, and the retry merges the server body.
+
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
 version restore, appended blocks, a template, a rename's link and embed
 rewrites) reaches the note's document through `feedExternalEditToCrdt`. In

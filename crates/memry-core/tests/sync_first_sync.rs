@@ -821,6 +821,41 @@ fn first_sync(
     FirstSync::new(pull, bodies, db.clone()).with_progress(progress)
 }
 
+#[tokio::test]
+async fn a_first_sync_that_fails_mid_run_still_closes_its_bootstrap_session() {
+    // #5281: an early error return used to skip the close, so the session
+    // held one of the user's two slots until it expired.
+    let db = scratch_db("close-on-error");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+                .to_string(),
+        ),
+        error_response(400, "VALIDATION_ERROR", "the change feed refused"),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+
+    let failed = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_bootstrap(bootstrap)
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+
+    assert!(failed.is_err(), "the change feed failure fails the run");
+    let close = transport.calls_to("/sync/bootstrap/close");
+    assert_eq!(close.len(), 1);
+    assert_eq!(
+        close[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("boot-token")
+    );
+}
+
 #[test]
 fn a_replayed_update_is_skipped_rather_than_re_applied() {
     // §7.9's replay rule, at the storage layer: the same sequence twice is a

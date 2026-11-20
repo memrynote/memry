@@ -6,7 +6,8 @@
  * `POST /sync/crdt/updates/batch` already says which notes have one
  * (`snapshotMeta`). This spec drives `pullCrdtForNotes`, the seam the record
  * pull and the sweep call, over the real HTTP client, the real crypto and real
- * Yjs documents, and reads what it asked the server for.
+ * Yjs documents, and reads what it asked the server for. It also pins that a
+ * note the server holds a body for is never seeded from markdown (#5286).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
@@ -106,9 +107,19 @@ async function seedAccount(publicKey: Uint8Array): Promise<{ token: string }> {
   return { token: await server.createAccessToken(userId, deviceId) }
 }
 
+type MemoryProvider = CrdtProvider & {
+  text(noteId: string): string
+  /** Notes whose doc the cache is closing: updates are refused, the doc stays empty. */
+  closing: Set<string>
+  /** Notes seeded from markdown. */
+  seeded: string[]
+}
+
 /** Real Y.Docs in memory: what the coordinator opens, applies into and reads back. */
-function memoryProvider(): CrdtProvider & { text(noteId: string): string } {
+function memoryProvider(): MemoryProvider {
   const docs = new Map<string, Y.Doc>()
+  const closing = new Set<string>()
+  const seeded: string[] = []
   const provider = {
     storeId: null,
     inactiveDocCapacity: 32,
@@ -122,7 +133,7 @@ function memoryProvider(): CrdtProvider & { text(noteId: string): string } {
     closeIfInactive: async () => false,
     applyRemoteUpdate: (noteId: string, update: Uint8Array) => {
       const doc = docs.get(noteId)
-      if (!doc) return false
+      if (!doc || closing.has(noteId)) return false
       Y.applyUpdate(doc, update)
       return true
     },
@@ -130,11 +141,16 @@ function memoryProvider(): CrdtProvider & { text(noteId: string): string } {
       const doc = docs.get(noteId)
       return doc ? Y.encodeStateVector(doc) : null
     },
-    seedFromMarkdownPublic: async () => {},
+    seedFromMarkdownPublic: async (noteId: string) => {
+      seeded.push(noteId)
+      docs.get(noteId)?.getText('body').insert(0, 'markdown. ')
+    },
     recordWholeBodyMerged: () => {},
-    text: (noteId: string) => docs.get(noteId)?.getText('body').toJSON() ?? ''
+    text: (noteId: string) => docs.get(noteId)?.getText('body').toJSON() ?? '',
+    closing,
+    seeded
   }
-  return provider as unknown as CrdtProvider & { text(noteId: string): string }
+  return provider as unknown as MemoryProvider
 }
 
 describe('CRDT body pull against a real sync server', () => {
@@ -256,5 +272,110 @@ describe('CRDT body pull against a real sync server', () => {
     expect(snapshotGets()).toEqual([noteId])
     expect(provider.text(noteId)).toBe('early. late.')
     expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
+  }, 60_000)
+
+  // #5286: a fresh device seeded 31 notes from markdown whose updates the
+  // server returned, because the doc cache closed each doc mid-pass and the
+  // closing doc refused the updates. The seed would push beside the server
+  // body and duplicate it.
+  const closeDocOn = (provider: MemoryProvider, noteId: string, method: string, limit?: number) => {
+    afterResponse.hook = async (request) => {
+      const body = request.body as { limit?: number } | undefined
+      if (request.method !== method || !request.path.startsWith('/sync/crdt/updates')) return
+      if (limit !== undefined && body?.limit !== limit) return
+      afterResponse.hook = null
+      provider.closing.add(noteId)
+    }
+  }
+
+  it('never seeds an update-only note whose doc closed mid-pass on the single-note pull', async () => {
+    const noteId = `closed-single-${randomUUID().slice(0, 8)}`
+    await pushUpdate(noteId, 'server one. ')
+    await pushUpdate(noteId, 'server two.')
+
+    const provider = memoryProvider()
+    const coordinator = coordinatorOver(provider)
+    closeDocOn(provider, noteId, 'GET')
+    try {
+      await coordinator.pullCrdtForNote(noteId)
+    } finally {
+      afterResponse.hook = null
+    }
+
+    expect(provider.seeded).toEqual([])
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    expect(coordinator.drainPendingPulls()).toContain(noteId)
+
+    provider.closing.delete(noteId)
+    await coordinator.pullCrdtForNote(noteId)
+
+    expect(provider.seeded).toEqual([])
+    expect(provider.text(noteId)).toBe('server one. server two.')
+  }, 60_000)
+
+  it('never seeds an update-only note whose doc closed mid-pass on the batch pull', async () => {
+    const noteId = `closed-batch-${randomUUID().slice(0, 8)}`
+    await pushUpdate(noteId, 'server one. ')
+    await pushUpdate(noteId, 'server two.')
+
+    const provider = memoryProvider()
+    const coordinator = coordinatorOver(provider)
+    closeDocOn(provider, noteId, 'POST', 100)
+    try {
+      await coordinator.pullCrdtForNotes([noteId])
+    } finally {
+      afterResponse.hook = null
+    }
+
+    expect(provider.seeded).toEqual([])
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    expect(coordinator.drainPendingPulls()).toContain(noteId)
+
+    provider.closing.delete(noteId)
+    await coordinator.pullCrdtForNotes([noteId])
+
+    expect(provider.seeded).toEqual([])
+    expect(provider.text(noteId)).toBe('server one. server two.')
+  }, 60_000)
+
+  it('never seeds or settles a note whose server updates wait on a missing base', async () => {
+    for (const mode of ['single', 'batch'] as const) {
+      const noteId = `pending-${mode}-${randomUUID().slice(0, 8)}`
+      const author = new Y.Doc()
+      author.getText('body').insert(0, 'lost base. ')
+      const base = Y.encodeStateVector(author)
+      author.getText('body').insert(11, 'orphan delta.')
+      const orphan = encryptCrdtUpdate(
+        Y.encodeStateAsUpdate(author, base),
+        vaultKey,
+        noteId,
+        signing.privateKey
+      )
+      await paced(() =>
+        postToServer(
+          '/sync/crdt/updates',
+          { noteId, updates: [Buffer.from(orphan).toString('base64')] },
+          token
+        )
+      )
+
+      const provider = memoryProvider()
+      const coordinator = coordinatorOver(provider)
+      if (mode === 'single') await coordinator.pullCrdtForNote(noteId)
+      else await coordinator.pullCrdtForNotes([noteId])
+
+      expect(provider.seeded).toEqual([])
+      expect(provider.text(noteId)).toBe('')
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    }
+  }, 60_000)
+
+  it('still seeds a note the server holds no body for', async () => {
+    const noteId = `bodyless-${randomUUID().slice(0, 8)}`
+    const provider = memoryProvider()
+    await coordinatorOver(provider).pullCrdtForNote(noteId)
+    await coordinatorOver(provider).pullCrdtForNotes([`${noteId}-b`])
+
+    expect(provider.seeded).toEqual([noteId, `${noteId}-b`])
   }, 60_000)
 })
