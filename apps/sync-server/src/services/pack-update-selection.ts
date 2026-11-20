@@ -30,8 +30,9 @@ export const BODY_ROW_DEAD = `(EXISTS (${NOTE_RECORD_ROWS} AND r.deleted_at IS N
 /**
  * Update rows above the watermark, ascending `server_cursor`. Within one
  * document that is ascending `sequence_num` (protocol 07 §7.17). The cursor is
- * unique per user, so `note_id` as tiebreak never decides; it keeps the
- * watermark shape the other kinds use.
+ * unique per user, so the scan is a bare `server_cursor > ?` that rides the
+ * partial (user_id, vault_id, server_cursor) index from 0011 with no sort;
+ * `note_id` comes back as the tiebreak only to name the entry.
  */
 export const updateSelectionQuery = (
   scope: VaultScope,
@@ -42,19 +43,30 @@ export const updateSelectionQuery = (
           length(update_data) AS size_bytes, sequence_num, signer_device_id, created_at,
           ${BODY_ROW_DEAD} AS dead
         FROM crdt_updates s
-        WHERE user_id = ? AND vault_id = ?
-          AND (server_cursor > ? OR (server_cursor = ? AND note_id > ?))
-        ORDER BY server_cursor ASC, note_id ASC
+        WHERE user_id = ? AND vault_id = ? AND server_cursor > ?
+        ORDER BY server_cursor ASC
         LIMIT ?`,
-  bind: [
-    scope.userId,
-    scope.vaultId,
-    watermark.last_sort_value,
-    watermark.last_sort_value,
-    watermark.last_sort_tiebreak,
-    limit
-  ]
+  bind: [scope.userId, scope.vaultId, watermark.last_sort_value, limit]
 })
+
+/**
+ * Minimum fill (#5228, protocol 08 §8.14): an update pack is built only once
+ * the vault holds UPDATE_PACK_MIN_ROWS unpacked update rows, or its oldest
+ * unpacked row is UPDATE_PACK_MAX_WAIT_SECONDS old. Without it every push
+ * would list one tiny pack, and the vault would pass the listing cap.
+ */
+export const UPDATE_PACK_MIN_ROWS = 256
+export const UPDATE_PACK_MAX_WAIT_SECONDS = 24 * 60 * 60
+
+export const updateFillReady = (
+  scanned: ReadonlyArray<{ created_at?: number }>,
+  nowSeconds: number
+): boolean =>
+  scanned.length >= UPDATE_PACK_MIN_ROWS ||
+  scanned.some(
+    (row) =>
+      row.created_at !== undefined && row.created_at <= nowSeconds - UPDATE_PACK_MAX_WAIT_SECONDS
+  )
 
 export interface UpdateRow {
   sequence_num: number
