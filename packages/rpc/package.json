@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@memry/contracts": "workspace:*",
-    "zod": "^4.3.4"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"
