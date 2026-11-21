@@ -112,6 +112,17 @@ fn service(
     key: Option<&str>,
     model: Option<&str>,
 ) -> Arc<VoiceService> {
+    notifying(dir, endpoint, key, model, Arc::default())
+}
+
+/// [`service`], recording each memo it announces to the embedding lane in `notified`.
+fn notifying(
+    dir: &Path,
+    endpoint: &str,
+    key: Option<&str>,
+    model: Option<&str>,
+    notified: Arc<Mutex<Vec<String>>>,
+) -> Arc<VoiceService> {
     let keychain = Arc::new(Keychain::default());
     if let Some(key) = key {
         keychain
@@ -129,6 +140,7 @@ fn service(
         LocalEngine::new(&paths, dir.join("ggml-small.bin"), limits),
         OpenAiKey::new(keychain, None),
         OpenAi::new(client(), endpoint, model),
+        Arc::new(move |item_id| notified.lock().unwrap().push(item_id.to_owned())),
     )
 }
 
@@ -447,15 +459,25 @@ async fn a_failure_is_stored_on_the_memo_and_a_retry_completes_it() {
         (200, "Second try."),
     ])
     .await;
-    let voice = service(dir.path(), &endpoint, Some("sk-test"), None);
+    let notified = Arc::<Mutex<Vec<String>>>::default();
+    let voice = notifying(
+        dir.path(),
+        &endpoint,
+        Some("sk-test"),
+        None,
+        notified.clone(),
+    );
     let memo = memo(b"RIFFaudio", "wav");
-    let openai = settings(VoiceProvider::OpenAi, MemoNameMode::Transcript, None);
+    let mut openai = settings(VoiceProvider::OpenAi, MemoNameMode::Transcript, None);
+    // The lane embeds a transcript whatever `audioSearch` says, so both outcomes announce.
+    openai.audio_search = false;
 
     let failed = memo.transcribe(&voice, openai.clone()).await;
     assert_eq!(failed.error.as_deref(), Some(openai::RATE_LIMITED));
     let payload = memo.payload();
     assert_eq!(payload["transcriptionStatus"], "failed");
     assert_eq!(payload["processingError"], openai::RATE_LIMITED);
+    assert_eq!(*notified.lock().unwrap(), std::slice::from_ref(&memo.id));
 
     let retried = voice
         .retry_transcription(
@@ -471,6 +493,10 @@ async fn a_failure_is_stored_on_the_memo_and_a_retry_completes_it() {
     assert_eq!(payload["transcriptionStatus"], "complete");
     assert_eq!(payload["processingError"], Value::Null);
     assert_eq!(payload["title"], "Second try.");
+    assert_eq!(
+        *notified.lock().unwrap(),
+        [memo.id.clone(), memo.id.clone()]
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
