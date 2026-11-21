@@ -55,16 +55,16 @@ fn queued(conn: &Connection) -> Vec<Vec<u8>> {
 
 /// The revive of a build before #5351: the tombstone cleared and the edit
 /// authored on the deleted body, under the device's own client id.
-fn shipped_revive(conn: &mut Connection, text: &str) -> Vec<u8> {
+fn shipped_revive(conn: &mut Connection, day_id: &str, text: &str) -> Vec<u8> {
     let captured = Arc::new(Mutex::new(Vec::new()));
     let sink = Arc::clone(&captured);
     let doc = DocumentRegistry::new(
         "device-b",
         Arc::new(move |_, bytes: &[u8]| sink.lock().unwrap().push(bytes.to_vec())),
     )
-    .get_or_open(DAY_ID)
+    .get_or_open(day_id)
     .unwrap();
-    for blob in update_log::load_plan(conn, DAY_ID).unwrap().blobs() {
+    for blob in update_log::load_plan(conn, day_id).unwrap().blobs() {
         doc.apply_durable_update(blob).unwrap();
     }
     body_edit::apply(
@@ -78,10 +78,10 @@ fn shipped_revive(conn: &mut Connection, text: &str) -> Vec<u8> {
     .unwrap();
     let update = captured.lock().unwrap().concat();
     assert_eq!(captured.lock().unwrap().len(), 1);
-    update_log::append_local_update(conn, DAY_ID, &update, 3).unwrap();
+    update_log::append_local_update(conn, day_id, &update, 3).unwrap();
     conn.execute(
         "UPDATE sync_items SET deleted_at = NULL WHERE item_id = ?1",
-        [DAY_ID],
+        [day_id],
     )
     .unwrap();
     update
@@ -91,17 +91,21 @@ fn shipped_revive(conn: &mut Connection, text: &str) -> Vec<u8> {
 /// purges seq 1), and revives it as a shipped build did (server seq 2).
 /// Answers the two server updates.
 fn author(db: &Db) -> (Vec<u8>, Vec<u8>) {
-    db.call_blocking(|c| {
+    author_day(db, DAY, DAY_ID)
+}
+
+fn author_day(db: &Db, day: &'static str, day_id: &'static str) -> (Vec<u8>, Vec<u8>) {
+    db.call_blocking(move |c| {
         let edit = BlockEdit::InsertParagraph {
             after_block_id: None,
             text: "Deleted words.".into(),
             new_block_id: "b-old".into(),
         };
-        body::edit_day(c, DAY, &edit, "device-b", 1).unwrap();
+        body::edit_day(c, day, &edit, "device-b", 1).unwrap();
         let old = queued(c).concat();
-        assert!(journal::delete_day(c, DAY, "device-b", 2).unwrap());
+        assert!(journal::delete_day(c, day, "device-b", 2).unwrap());
         c.execute("DELETE FROM outbox", []).unwrap();
-        Ok((old, shipped_revive(c, "Back again.")))
+        Ok((old, shipped_revive(c, day_id, "Back again.")))
     })
     .unwrap()
 }
@@ -238,6 +242,47 @@ fn a_day_revived_after_5351_is_no_candidate() {
         body::edit_day(c, DAY, &edit("New.", "b-new"), "device-b", 3).unwrap();
         c.execute("DELETE FROM outbox", []).unwrap();
         assert!(revive_heal::candidates(c).unwrap().is_empty());
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_day_with_no_verdict_waits_behind_the_days_not_yet_read() {
+    let db = scratch("no-verdict");
+    let (_purged, new) = author(&db);
+    author_day(&db, "2099-06-16", "j2099-06-16");
+    let entry = json!({ "sequenceNum": 2, "data": BASE64.encode(&new),
+                        "signerDeviceId": "device-b", "createdAt": 1_760_000_000 });
+    let transport = FakeTransport::new(vec![
+        response(200, &json!({ "snapshot": null }).to_string()),
+        // A snapshot claimed after the read above pruned the rows below it:
+        // the pending body proves nothing.
+        response(
+            200,
+            &json!({ "updates": [entry], "hasMore": false,
+                     "snapshotMeta": { "sequenceNum": 1, "revision": "r1" } })
+            .to_string(),
+        ),
+        response(429, &json!({ "error": "rate limited" }).to_string()),
+    ]);
+    let healed = revive_heal::run(&db, &body_pull(&db, Arc::clone(&transport)))
+        .await
+        .unwrap();
+    assert_eq!(healed, 0);
+    assert_eq!(transport.call_count(), 3, "the 429 ends the step");
+    db.call_blocking(|c| {
+        assert!(queued(c).is_empty());
+        let due: Vec<String> = revive_heal::candidates(c)
+            .unwrap()
+            .into_iter()
+            .map(|(_, id)| id)
+            .collect();
+        assert_eq!(
+            due,
+            ["j2099-06-16", DAY_ID],
+            "no verdict, read again after the rest"
+        );
         Ok(())
     })
     .unwrap();

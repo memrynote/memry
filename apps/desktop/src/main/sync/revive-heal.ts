@@ -22,12 +22,15 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { syncTombstoneClocks } from '@memry/db-schema/schema/sync-tombstone-clocks'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from '../lib/logger'
+import { NetworkError, RateLimitError, SyncServerError } from '@memry/sync-client/http-errors'
 import { decryptCrdtUpdate } from './crdt-encrypt'
-import { fetchCrdtSnapshot, getFromServer } from './http-client'
+import { getFromServer, type CrdtSnapshotMeta, type CrdtSnapshotResponse } from './http-client'
 
 const log = createLogger('ReviveHeal')
 
 const MARKER_PREFIX = 'sync.reviveHeal:'
+/** When a candidate was last read without a verdict; it then waits behind the others. */
+const TRIED_PREFIX = 'sync.reviveHealTried:'
 const MAX_PAGES = 50
 /** Notes judged per run; the rest wait for the next run. */
 const MAX_NOTES_PER_RUN = 50
@@ -65,15 +68,21 @@ export function judgeRevivedBody(
   }
 }
 
-function candidates(deps: ReviveHealDeps): string[] {
-  const judged = new Set(
-    deps.db
-      .select({ key: syncState.key })
+function markers(db: DrizzleDb, prefix: string): Map<string, number> {
+  return new Map(
+    db
+      .select({ key: syncState.key, updatedAt: syncState.updatedAt })
       .from(syncState)
-      .where(like(syncState.key, `${MARKER_PREFIX}%`))
+      .where(like(syncState.key, `${prefix}%`))
       .all()
-      .map((row) => row.key.slice(MARKER_PREFIX.length))
+      .map((row) => [row.key.slice(prefix.length), row.updatedAt?.getTime() ?? 0])
   )
+}
+
+/** Never tried first, then the longest untried, so no-verdict notes do not block the rest. */
+function candidates(deps: ReviveHealDeps): string[] {
+  const judged = markers(deps.db, MARKER_PREFIX)
+  const tried = markers(deps.db, TRIED_PREFIX)
   return deps.db
     .select({ itemId: syncTombstoneClocks.itemId })
     .from(syncTombstoneClocks)
@@ -81,38 +90,68 @@ function candidates(deps: ReviveHealDeps): string[] {
     .all()
     .map((row) => row.itemId)
     .filter((id) => !judged.has(id) && deps.isNoteSyncable(id) && !deps.hasQueuedChange(id))
+    .toSorted((a, b) => (tried.get(a) ?? 0) - (tried.get(b) ?? 0))
 }
 
-function mark(db: DrizzleDb, noteId: string, verdict: ReviveHealVerdict): void {
-  const key = `${MARKER_PREFIX}${noteId}`
-  const updatedAt = new Date()
+function write(db: DrizzleDb, key: string, value: string, updatedAt: Date): void {
   db.insert(syncState)
-    .values({ key, value: verdict, updatedAt })
-    .onConflictDoUpdate({ target: syncState.key, set: { value: verdict, updatedAt } })
+    .values({ key, value, updatedAt })
+    .onConflictDoUpdate({ target: syncState.key, set: { value, updatedAt } })
     .run()
 }
 
+function mark(db: DrizzleDb, noteId: string, verdict: ReviveHealVerdict): void {
+  write(db, `${MARKER_PREFIX}${noteId}`, verdict, new Date())
+  db.delete(syncState)
+    .where(eq(syncState.key, `${TRIED_PREFIX}${noteId}`))
+    .run()
+}
+
+// Strictly increasing, so two notes tried in one millisecond keep their order.
+let lastTriedAt = 0
+function markTried(db: DrizzleDb, noteId: string): void {
+  lastTriedAt = Math.max(Date.now(), lastTriedAt + 1)
+  write(db, `${TRIED_PREFIX}${noteId}`, 'tried', new Date(lastTriedAt))
+}
+
+/** A failure every later read of this run would repeat: a 429, no network, or a refused session. */
+const endsTheRun = (error: unknown): boolean =>
+  error instanceof RateLimitError ||
+  error instanceof NetworkError ||
+  (error instanceof SyncServerError && (error.statusCode === 401 || error.statusCode === 403))
+
 /** Judges the candidates and queues the full state of each the server holds pending. */
-export async function runReviveHeal(deps: ReviveHealDeps): Promise<number> {
+export async function runReviveHeal(deps: ReviveHealDeps, signal?: AbortSignal): Promise<number> {
   let healed = 0
   for (const noteId of candidates(deps).slice(0, MAX_NOTES_PER_RUN)) {
+    if (signal?.aborted) break
     let server: Uint8Array[] | null
     try {
       server = await deps.readServerBody(noteId)
     } catch (error) {
       log.warn('Server body of a revived note could not be read', { noteId, error })
+      if (endsTheRun(error)) break
+      markTried(deps.db, noteId)
       continue
     }
-    if (!server) continue
+    if (signal?.aborted) break
+    if (!server) {
+      markTried(deps.db, noteId)
+      continue
+    }
     // Re-checked after the read: an edit queued meanwhile is pushed first.
     if (!deps.isNoteSyncable(noteId) || deps.hasQueuedChange(noteId)) continue
-    let verdict: ReviveHealVerdict
+    let local: Uint8Array | null
     try {
-      verdict = judgeRevivedBody(server, await deps.readLocalState(noteId))
+      local = await deps.readLocalState(noteId)
     } catch (error) {
-      log.warn('Revived body could not be judged', { noteId, error })
-      verdict = 'unhealable'
+      // A torn-down provider or a locked database: no verdict, a later run retries.
+      log.warn('Local state of a revived note could not be read', { noteId, error })
+      markTried(deps.db, noteId)
+      continue
     }
+    if (signal?.aborted) break
+    const verdict = judgeRevivedBody(server, local)
     if (verdict === 'healed') {
       deps.enqueueFullState(noteId)
       healed++
@@ -132,9 +171,15 @@ interface ServerBodyAccess {
 interface UpdatesPage {
   updates: Array<{ sequenceNum: number; data: string; signerDeviceId: string }>
   hasMore: boolean
+  /** `null` with no snapshot; absent from a server before #2299. */
+  snapshotMeta?: CrdtSnapshotMeta | null
 }
 
-/** The snapshot, then every update above it, each verified and opened. */
+/**
+ * The snapshot, then every update above it, each verified and opened. `null`
+ * when the body cannot be judged: a snapshot or update that does not open, a
+ * log longer than the page cap, or a snapshot that changed between the reads.
+ */
 export function createServerBodyReader(
   access: ServerBodyAccess
 ): (noteId: string) => Promise<Uint8Array[] | null> {
@@ -148,9 +193,17 @@ export function createServerBodyReader(
     }
     const body: Uint8Array[] = []
     let since = 0
-    const snapshot = await fetchCrdtSnapshot(noteId, token)
-    if (snapshot) {
-      const opened = await open(snapshot.snapshot, snapshot.signerDeviceId)
+    const snapshot = await getFromServer<CrdtSnapshotResponse>(
+      `/sync/crdt/snapshot/${encodeURIComponent(noteId)}`,
+      token
+    )
+    const revision = snapshot.snapshot ? (snapshot.revision ?? null) : null
+    if (snapshot.snapshot) {
+      if (!snapshot.signerDeviceId) return null
+      const opened = await open(
+        new Uint8Array(Buffer.from(snapshot.snapshot, 'base64')),
+        snapshot.signerDeviceId
+      )
       if (!opened) return null
       body.push(opened)
       since = snapshot.sequenceNum
@@ -160,6 +213,9 @@ export function createServerBodyReader(
         `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
         token
       )
+      // A snapshot claimed after the read above pruned the rows it covers, so
+      // a healthy body would read as pending.
+      if ((result.snapshotMeta?.revision ?? null) !== revision) return null
       for (const entry of result.updates) {
         if (entry.sequenceNum <= since) continue
         const opened = await open(
@@ -177,16 +233,19 @@ export function createServerBodyReader(
 }
 
 let timer: NodeJS.Timeout | null = null
+let abort: AbortController | null = null
 let running = false
 
 /** Runs at sync start and every ten minutes, each time only once a full sync delivered this session. */
 function start(deps: ReviveHealDeps, isCaughtUpWithServer: () => boolean): void {
   stop()
+  const controller = new AbortController()
+  abort = controller
   const run = async (): Promise<void> => {
-    if (running || !isCaughtUpWithServer()) return
+    if (running || controller.signal.aborted || !isCaughtUpWithServer()) return
     running = true
     try {
-      const healed = await runReviveHeal(deps)
+      const healed = await runReviveHeal(deps, controller.signal)
       if (healed > 0) log.info('Re-pushed revived bodies', { healed })
     } catch (error) {
       log.warn('Revive heal run failed', { error })
@@ -202,6 +261,8 @@ function start(deps: ReviveHealDeps, isCaughtUpWithServer: () => boolean): void 
 function stop(): void {
   if (timer) clearInterval(timer)
   timer = null
+  abort?.abort()
+  abort = null
 }
 
 export const reviveHealRunner = { start, stop }

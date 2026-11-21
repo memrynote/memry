@@ -12,8 +12,9 @@ use super::{BodyPull, BodyPullError, BodyPullReport, MAX_PAGES_PER_DOCUMENT, Pac
 
 impl BodyPull {
     /// The snapshot, then every update above it, each opened. `None` when the
-    /// body cannot be judged: an entry that does not open, or a log longer
-    /// than [`MAX_PAGES_PER_DOCUMENT`] pages. Adds the requests it sent.
+    /// body cannot be judged: an entry that does not open, a log longer than
+    /// [`MAX_PAGES_PER_DOCUMENT`] pages, or a snapshot that changed between
+    /// the reads. Adds the requests it sent.
     pub(crate) async fn read_server_body(
         &self,
         doc_id: &str,
@@ -40,6 +41,7 @@ impl BodyPull {
             .await?;
         let mut blobs = Vec::new();
         let mut since = 0;
+        let mut revision = None;
         if let Some(encoded) = body.get("snapshot").and_then(Json::as_str) {
             let signer = body.get("signerDeviceId").and_then(Json::as_str);
             let Some(snapshot) = self.open(doc_id, signer, encoded) else {
@@ -50,9 +52,20 @@ impl BodyPull {
                 .get("sequenceNum")
                 .and_then(Json::as_i64)
                 .unwrap_or_default();
+            revision = body.get("revision").and_then(Json::as_str);
         }
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
             let page = self.fetch_page(doc_id, since, report).await?;
+            // A snapshot claimed after the read above pruned the rows it
+            // covers, so a healthy body would read as pending.
+            if page
+                .snapshot_meta
+                .as_ref()
+                .map(|meta| meta.revision.as_str())
+                != revision
+            {
+                return Ok(None);
+            }
             for entry in &page.updates {
                 if entry.sequence_num <= since {
                     continue;

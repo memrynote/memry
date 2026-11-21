@@ -16,7 +16,9 @@
 //! applied tombstone purge the body and move it to a new epoch, §7.16), with
 //! nothing of it still queued, and not judged before. Judging it reads the
 //! server's body into a scratch document. Each verdict is kept under
-//! `sync.revive_heal:<id>`, so a document is read and pushed at most once.
+//! `sync.revive_heal:<id>`, so a document is read and pushed at most once. A
+//! read that reaches no verdict stamps `sync.revive_heal_tried:<id>`, and the
+//! document waits behind those not yet read.
 
 use std::sync::Arc;
 
@@ -34,6 +36,7 @@ use super::first_sync_store::write_meta;
 use super::outbox::{self, Change};
 
 const MARKER_PREFIX: &str = "sync.revive_heal:";
+const TRIED_PREFIX: &str = "sync.revive_heal_tried:";
 
 /// What the heal decided for one document, kept as its marker's value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,7 +60,8 @@ impl Verdict {
     }
 }
 
-/// Every candidate as `(item_type, id)`.
+/// Every candidate as `(item_type, id)`, the ones never read first, then the
+/// longest unread.
 pub fn candidates(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
     select(conn, None)
 }
@@ -66,6 +70,7 @@ fn select(conn: &Connection, only: Option<&str>) -> Result<Vec<(String, String)>
     let mut statement = conn
         .prepare_cached(
             "SELECT item.item_type, item.item_id FROM sync_items AS item
+             LEFT JOIN meta AS tried ON tried.key = ?3 || item.item_id
              WHERE item.item_type IN ('note', 'journal')
                AND item.deleted_at IS NULL
                AND (?1 IS NULL OR item.item_id = ?1)
@@ -75,11 +80,11 @@ fn select(conn: &Connection, only: Option<&str>) -> Result<Vec<(String, String)>
                                WHERE e.doc_id = item.item_id AND e.epoch > 0)
                AND NOT EXISTS (SELECT 1 FROM outbox AS o WHERE o.item_id = item.item_id)
                AND NOT EXISTS (SELECT 1 FROM meta AS m WHERE m.key = ?2 || item.item_id)
-             ORDER BY item.item_id",
+             ORDER BY COALESCE(CAST(tried.value AS INTEGER), 0), item.item_id",
         )
         .map_err(failed)?;
     statement
-        .query_map(params![only, MARKER_PREFIX], |row| {
+        .query_map(params![only, MARKER_PREFIX, TRIED_PREFIX], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })
         .map_err(failed)?
@@ -89,9 +94,9 @@ fn select(conn: &Connection, only: Option<&str>) -> Result<Vec<(String, String)>
 
 /// Judges every candidate within [`BODY_REQUEST_BUDGET`] requests and queues
 /// the full state of each the server holds pending. Answers how many it
-/// queued. A request failure leaves the document for a later pass, and a
-/// failure every later request would repeat ends the step; neither stops the
-/// push that follows.
+/// queued. A request failure leaves the document for a later pass behind the
+/// others, and a failure every later request would repeat ends the step;
+/// neither stops the push that follows.
 pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<usize, StorageError> {
     let due = db.call(|conn| candidates(conn)).await?;
     let mut requests = 0;
@@ -102,10 +107,13 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<usize, StorageError> {
         }
         let server = match body_pull.read_server_body(&doc_id, &mut requests).await {
             Ok(Some(server)) => server,
-            Ok(None) => continue,
             Err(BodyPullError::Storage { source }) => return Err(source),
             Err(BodyPullError::Api { source }) if ends_the_step(&source) => break,
-            Err(BodyPullError::Api { .. }) => continue,
+            Ok(None) | Err(BodyPullError::Api { .. }) => {
+                db.call(move |conn| mark_tried(conn, &doc_id, now_ms()))
+                    .await?;
+                continue;
+            }
         };
         let verdict = db
             .call(move |conn| settle(conn, &item_type, &doc_id, &server, now_ms()))
@@ -118,7 +126,8 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<usize, StorageError> {
 }
 
 /// Decides one document against the server body read for it, in one
-/// transaction. `None` when it stopped being a candidate during the read.
+/// transaction. `None` when it stopped being a candidate during the read, or
+/// when it could not be judged now.
 fn settle(
     conn: &Connection,
     item_type: &str,
@@ -140,11 +149,30 @@ fn settle(
         Err(CrdtError::Storage { source }) => return Err(source),
         // Bytes that do not decode or apply cannot be judged; a push of
         // them would not help either.
-        Err(_) => Verdict::Unhealable,
+        Err(CrdtError::Undecodable { .. } | CrdtError::NotApplicable { .. }) => Verdict::Unhealable,
+        // Transient (`DocumentBusy`): a later pass judges it.
+        Err(CrdtError::DocumentBusy { .. }) => {
+            mark_tried(&txn, doc_id, now_ms)?;
+            txn.commit().map_err(failed)?;
+            return Ok(None);
+        }
     };
     write_meta(&txn, &format!("{MARKER_PREFIX}{doc_id}"), verdict.marker())?;
+    txn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{TRIED_PREFIX}{doc_id}")],
+    )
+    .map_err(failed)?;
     txn.commit().map_err(failed)?;
     Ok(Some(verdict))
+}
+
+fn mark_tried(conn: &Connection, doc_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    write_meta(
+        conn,
+        &format!("{TRIED_PREFIX}{doc_id}"),
+        &now_ms.to_string(),
+    )
 }
 
 /// The verdict, with the local full state to push when it is `Healed`.

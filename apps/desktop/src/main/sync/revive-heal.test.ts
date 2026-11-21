@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
+import { RateLimitError } from '@memry/sync-client/http-errors'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb } from '../../test/helpers/test-data-db'
-import { runReviveHeal, type ReviveHealDeps } from './revive-heal'
+import { getFromServer, type CrdtSnapshotMeta, type CrdtSnapshotResponse } from './http-client'
+import { createServerBodyReader, runReviveHeal, type ReviveHealDeps } from './revive-heal'
+
+vi.mock('./http-client', () => ({ getFromServer: vi.fn() }))
+vi.mock('./crdt-encrypt', () => ({ decryptCrdtUpdate: (packed: Uint8Array) => packed }))
 
 const DAY = 'j2099-06-15'
 
@@ -81,5 +86,104 @@ describe('runReviveHeal', () => {
     deps.readLocalState = async () => null
     expect(await runReviveHeal(deps)).toBe(0)
     expect(queued).toHaveLength(0)
+  })
+
+  it('retries a note whose local state could not be read, and judges nothing from the failure', async () => {
+    deps.readLocalState = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('provider torn down'))
+      .mockResolvedValue(Y.encodeStateAsUpdate(shipped.author))
+    expect(await runReviveHeal(deps)).toBe(0)
+    expect(await runReviveHeal(deps)).toBe(1)
+    expect(queued).toHaveLength(1)
+  })
+
+  it('pushes and marks nothing once the run is aborted', async () => {
+    const controller = new AbortController()
+    deps.readServerBody = vi.fn(async () => {
+      controller.abort()
+      return [shipped.revived]
+    })
+    expect(await runReviveHeal(deps, controller.signal)).toBe(0)
+    expect(queued).toHaveLength(0)
+    deps.readServerBody = vi.fn(async () => [shipped.revived])
+    expect(await runReviveHeal(deps)).toBe(1)
+  })
+
+  it('reads the notes left out of a run of no verdicts on the next run', async () => {
+    for (let day = 1; day <= 50; day++) {
+      recordTombstoneClock(db, 'journal', `j2000-01-${String(day).padStart(2, '0')}`, { b: 1 })
+    }
+    // 51 candidates; DAY sorts last.
+    deps.readServerBody = vi.fn(async (noteId: string) =>
+      noteId === DAY ? [shipped.revived] : null
+    )
+    expect(await runReviveHeal(deps)).toBe(0)
+    expect(deps.readServerBody).not.toHaveBeenCalledWith(DAY)
+    expect(await runReviveHeal(deps)).toBe(1)
+  })
+
+  it('ends the run on a 429', async () => {
+    recordTombstoneClock(db, 'journal', 'j2099-06-16', { 'device-b': 2 })
+    deps.readServerBody = vi.fn(async () => {
+      throw new RateLimitError(30)
+    })
+    expect(await runReviveHeal(deps)).toBe(0)
+    expect(deps.readServerBody).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('createServerBodyReader', () => {
+  const read = createServerBodyReader({
+    getAccessToken: async () => 'token',
+    getVaultKey: async () => new Uint8Array(32),
+    getDevicePublicKey: async () => new Uint8Array(32)
+  })
+  const update = Buffer.from([1, 2, 3]).toString('base64')
+  interface Page {
+    updates: Array<{ sequenceNum: number; data: string; signerDeviceId: string }>
+    hasMore: boolean
+    snapshotMeta: CrdtSnapshotMeta | null
+  }
+  const serve = (snapshot: CrdtSnapshotResponse, page: Page): void => {
+    vi.mocked(getFromServer).mockImplementation(async (path: string) =>
+      path.startsWith('/sync/crdt/snapshot/') ? snapshot : page
+    )
+  }
+
+  it('reads the snapshot and the updates above it', async () => {
+    serve(
+      { snapshot: update, sequenceNum: 4, signerDeviceId: 'b', revision: 'r1' },
+      {
+        updates: [{ sequenceNum: 5, data: update, signerDeviceId: 'b' }],
+        hasMore: false,
+        snapshotMeta: { sequenceNum: 4, revision: 'r1', signerDeviceId: 'b' }
+      }
+    )
+    expect(await read(DAY)).toHaveLength(2)
+  })
+
+  it('gives no body when a snapshot lands between the reads', async () => {
+    serve(
+      { snapshot: null, sequenceNum: 0, signerDeviceId: null },
+      {
+        updates: [{ sequenceNum: 5, data: update, signerDeviceId: 'b' }],
+        hasMore: false,
+        snapshotMeta: { sequenceNum: 4, revision: 'r1', signerDeviceId: 'b' }
+      }
+    )
+    expect(await read(DAY)).toBeNull()
+  })
+
+  it('gives no body for a snapshot without a signer', async () => {
+    serve(
+      { snapshot: update, sequenceNum: 4, signerDeviceId: null, revision: 'r1' },
+      {
+        updates: [],
+        hasMore: false,
+        snapshotMeta: { sequenceNum: 4, revision: 'r1', signerDeviceId: 'b' }
+      }
+    )
+    expect(await read(DAY)).toBeNull()
   })
 })
