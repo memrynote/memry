@@ -469,6 +469,17 @@ pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, StorageError> {
     Ok(removed)
 }
 
+/// Drops a purged document's queued body updates (chapter 07 §7.15.1, #5379):
+/// pushed after the delete, they land on the server's dead document and come
+/// back with a later revive of the id. Record rows are left alone.
+pub(crate) fn drop_document_updates(tx: &Connection, item_id: &str) -> Result<usize, StorageError> {
+    tx.execute(
+        "DELETE FROM outbox WHERE item_id = ?1 AND op = ?2",
+        params![item_id, OP_CRDT_UPDATE],
+    )
+    .map_err(failed)
+}
+
 /// Records a rejection against rows that stay queued: one attempt, the
 /// truncated reason, and the earliest time to try again.
 ///

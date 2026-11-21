@@ -53,7 +53,7 @@ use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::clock::{ClockOrder, VectorClock, compare};
-use super::{body_debt, delete_keep, journal_day_merge, settings_merge, store};
+use super::{body_debt, delete_keep, journal_day_merge, outbox, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -284,6 +284,9 @@ fn apply_tombstone(
         // The body debt goes with the body: a pull owed before the delete
         // would bring the server's surviving log back (#2297).
         body_debt::settle(&txn, item_id)?;
+        // After `delete_keep::keep`, which reads the queue to decide what text
+        // this device never pushed (#5379).
+        outbox::drop_document_updates(&txn, item_id)?;
         update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
     } else {
         0
@@ -351,6 +354,7 @@ fn apply_untyped_tombstone(
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }
     body_debt::settle(&txn, item_id)?;
+    outbox::drop_document_updates(&txn, item_id)?;
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;
