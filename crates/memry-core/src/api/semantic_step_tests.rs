@@ -9,8 +9,8 @@ use rusqlite::Connection;
 use yrs::{ReadTxn as _, XmlElementPrelim, XmlFragment as _, XmlOut, XmlTextPrelim};
 
 use super::*;
+use crate::crdt::epoch::HeldBody;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
-use crate::crdt::update_log;
 use crate::domain::notes::{self, NewNote};
 use crate::semantic::fakes::{Cdn, Scratch, Wifi, files, manifest};
 use crate::semantic::{DIMENSION, Embed, Loader, Threads, Vector, truncate_renormalize};
@@ -256,7 +256,9 @@ fn append_body(conn: &Connection, id: &str, seq: i64, text: &str) {
         })
         .unwrap();
     let update = last.lock().unwrap().clone();
-    update_log::append_server_update(conn, id, seq, &update, now_ms()).unwrap();
+    HeldBody::never_purged(conn, id)
+        .and_then(|held| held.append_server_update(seq, &update, now_ms()))
+        .unwrap();
 }
 
 fn long_body() -> String {

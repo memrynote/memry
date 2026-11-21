@@ -30,6 +30,8 @@ pub(in crate::sync) struct Probed {
 #[derive(Debug)]
 pub(in crate::sync) struct ProbeAnswer {
     pub(in crate::sync) since: i64,
+    /// The body's epoch when the page was asked for (#5356).
+    pub(in crate::sync) epoch: i64,
     pub(in crate::sync) page: UpdatePage,
 }
 
@@ -57,7 +59,7 @@ impl BodyPull {
             // first sync can tell it is still empty without re-pulling it.
             let cursor = self.stored_cursor(doc_id).await?;
             notes.push(json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }));
-            cursors.insert(doc_id.clone(), cursor);
+            cursors.insert(doc_id.clone(), (cursor, self.body_epoch(doc_id).await?));
         }
         if notes.is_empty() {
             return Ok(HashMap::new());
@@ -77,7 +79,7 @@ impl BodyPull {
         // answer there could hide a snapshot that pruned past the cursor.
         let metas = body.get("snapshotMeta").filter(|metas| metas.is_object());
         let mut probed = HashMap::new();
-        for (doc_id, cursor) in cursors {
+        for (doc_id, (cursor, epoch)) in cursors {
             let page = read_update_page(&body, &doc_id);
             let since = cursor.unwrap_or(0);
             // A note the server left out of `notes` reads as an empty page,
@@ -124,7 +126,7 @@ impl BodyPull {
                 Probed {
                     meta: page.snapshot_meta.clone(),
                     current,
-                    answer: trusted.then_some(ProbeAnswer { since, page }),
+                    answer: trusted.then_some(ProbeAnswer { since, epoch, page }),
                 },
             );
         }

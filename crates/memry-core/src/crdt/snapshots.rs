@@ -50,6 +50,7 @@ use crate::storage::Db;
 use crate::storage::nested_tx;
 use crate::sync::{body_debt, note_body_feed};
 
+use super::epoch::{self, HeldBody};
 use super::errors::CrdtError;
 use super::registry::Document;
 use super::update_log::{self, Namespace};
@@ -209,6 +210,8 @@ pub enum SnapshotError {
 /// entry built.
 pub(super) struct Prepared {
     pub(super) doc_id: String,
+    /// The body's epoch before the request (#5356).
+    epoch: i64,
     state: Vec<u8>,
     pub(super) payload: Json,
 }
@@ -308,7 +311,7 @@ impl SnapshotPusher {
         // The claim is read before the log check and the encode (#2299): the
         // log only grows, so the state then holds every body at or below it.
         let owed_id = document.id().to_owned();
-        let (owed, covers_through, base_revision) = self
+        let (owed, covers_through, base_revision, epoch) = self
             .db
             .call(move |conn| {
                 let base = update_log::snapshot(conn, Namespace::Server, &owed_id)
@@ -318,6 +321,7 @@ impl SnapshotPusher {
                     body_debt::is_owed(conn, &owed_id)?,
                     note_body_feed::covers_through(conn, &owed_id)?,
                     base,
+                    epoch::read(conn, &owed_id).map_err(crdt_to_storage)?,
                 ))
             })
             .await?;
@@ -358,6 +362,7 @@ impl SnapshotPusher {
         }
         Ok(Ok(Prepared {
             doc_id,
+            epoch,
             state,
             payload,
         }))
@@ -390,11 +395,17 @@ impl SnapshotPusher {
             .and_then(Json::as_str)
             .map(str::to_owned);
 
-        let Prepared { doc_id, state, .. } = prepared;
-        let (sequence_num, pruned) = self
+        let Prepared {
+            doc_id,
+            epoch,
+            state,
+            ..
+        } = prepared;
+        let stored = self
             .db
             .call(move |conn| {
                 let pushed = PushedSnapshot {
+                    epoch,
                     state: &state,
                     answered,
                     revision: revision.as_deref(),
@@ -402,6 +413,11 @@ impl SnapshotPusher {
                 store_pushed_snapshot(conn, &doc_id, pushed, now_ms)
             })
             .await?;
+        // #5356: purged during the request, by a delete or a revive. The state
+        // pushed is the purged body's, and the new body owes a pull.
+        let Some((sequence_num, pruned)) = stored else {
+            return Ok(SnapshotOutcome::Refused(Refusal::Purged));
+        };
 
         Ok(SnapshotOutcome::Pushed {
             sequence_num,
@@ -474,9 +490,11 @@ pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
 /// One transaction. A kill between the two would otherwise leave a pruned log
 /// with no snapshot, which is the one shape that loses body state.
 ///
-/// Returns the watermark written and how many rows were pruned.
+/// Returns the watermark written and how many rows were pruned, or `None`,
+/// storing nothing and owing a pull, when the body moved off `epoch`.
 /// What the push response answered for the bytes it stored.
 struct PushedSnapshot<'a> {
+    epoch: i64,
     state: &'a [u8],
     answered: Option<i64>,
     revision: Option<&'a str>,
@@ -487,8 +505,13 @@ fn store_pushed_snapshot(
     doc_id: &str,
     pushed: PushedSnapshot<'_>,
     now_ms: i64,
-) -> Result<(i64, usize), StorageError> {
+) -> Result<Option<(i64, usize)>, StorageError> {
     let txn = nested_tx::begin(conn).map_err(failed)?;
+    let Some(body) = HeldBody::check(&txn, doc_id, pushed.epoch).map_err(crdt_to_storage)? else {
+        body_debt::owe(&txn, doc_id)?;
+        txn.commit().map_err(failed)?;
+        return Ok(None);
+    };
 
     let existing = update_log::snapshot(&txn, Namespace::Server, doc_id)
         .map_err(crdt_to_storage)?
@@ -496,15 +519,8 @@ fn store_pushed_snapshot(
     let watermark = stable_watermark(existing, pushed.answered);
 
     // §7.13.4: the revision the server answered, never an invented token.
-    update_log::put_server_snapshot(
-        &txn,
-        doc_id,
-        pushed.state,
-        watermark,
-        pushed.revision,
-        now_ms,
-    )
-    .map_err(crdt_to_storage)?;
+    body.put_server_snapshot(pushed.state, watermark, pushed.revision, now_ms)
+        .map_err(crdt_to_storage)?;
 
     let pruned = txn
         .execute(
@@ -514,7 +530,7 @@ fn store_pushed_snapshot(
         .map_err(failed)?;
 
     txn.commit().map_err(failed)?;
-    Ok((watermark, pruned))
+    Ok(Some((watermark, pruned)))
 }
 
 fn crdt_to_storage(error: CrdtError) -> StorageError {

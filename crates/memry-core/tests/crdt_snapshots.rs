@@ -22,6 +22,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::snapshots::{
     Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer,
@@ -215,7 +216,9 @@ async fn the_watermark_does_not_move_on_a_second_snapshot_and_the_prune_follows_
     }
     db.call_blocking(move |conn| {
         for (seq, update) in &rows {
-            update_log::append_server_update(conn, NOTE, *seq, update, 1).expect("append");
+            HeldBody::never_purged(conn, NOTE)
+                .and_then(|held| held.append_server_update(*seq, update, 1))
+                .expect("append");
         }
         Ok(())
     })
@@ -406,11 +409,11 @@ async fn a_resident_document_behind_its_log_refuses_the_snapshot_push() {
         .encode_state_as_update_v1(&StateVector::default());
     let logged = landed.clone();
     db.call_blocking(move |conn| {
-        update_log::append_server_update(conn, NOTE, 1, &logged, 1).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, &logged, 1))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     })
     .expect("a feed landing");
 
@@ -433,4 +436,65 @@ async fn a_resident_document_behind_its_log_refuses_the_snapshot_push() {
         matches!(pushed, SnapshotOutcome::Pushed { .. }),
         "{pushed:?}"
     );
+}
+
+/// Purges the document while it seals: after the pusher read the epoch and
+/// before the request (#5356).
+struct PurgingSealer {
+    db: Db,
+}
+
+impl SnapshotSealer for PurgingSealer {
+    fn seal_snapshot(&self, doc_id: &str, state: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        let id = doc_id.to_owned();
+        self.db
+            .call_blocking(move |conn| {
+                update_log::purge_in(conn, &id).map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+            })
+            .expect("purge");
+        Ok(state.to_vec())
+    }
+}
+
+/// #5356: a snapshot pushed across a purge is the purged body's state. It is
+/// not stored as the new body's server snapshot, and the new body owes a pull.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_snapshot_pushed_across_a_purge_is_not_stored_for_the_new_body() {
+    let db = scratch_db("purged-push");
+    let (_registry, document) = open_document(NOTE);
+    document
+        .apply_durable_update(&update_with_a_foreign_root())
+        .expect("apply");
+    let transport =
+        FakeTransport::new(vec![response(200, &json!({"sequenceNum": 12}).to_string())]);
+    let http = Arc::new(HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    ));
+    let outcome = SnapshotPusher::new(
+        http,
+        db.clone(),
+        Arc::new(PurgingSealer { db: db.clone() }),
+        Declaration::subscribed(),
+    )
+    .push(&document, SnapshotGate::clean(), 1_000)
+    .await
+    .expect("push");
+
+    assert_eq!(outcome, SnapshotOutcome::Refused(Refusal::Purged));
+    let (stored, owed) = db
+        .call_blocking(|conn| {
+            let stored = update_log::snapshot(conn, Namespace::Server, NOTE)
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })?
+                .is_some();
+            Ok((stored, memry_core::sync::body_debt::is_owed(conn, NOTE)?))
+        })
+        .expect("read");
+    assert!(!stored, "no snapshot of the purged body");
+    assert!(owed, "the new body owes a pull");
 }

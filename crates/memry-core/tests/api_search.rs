@@ -15,8 +15,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::search::BacklinkOrder;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::tag_admin;
 use memry_core::storage::{Db, open_data};
@@ -65,7 +66,8 @@ fn write_note(db: &Db, id: &str, title: &str, body: &str) {
         };
         notes::create(conn, &note, DEVICE, NOW)?;
         if !body.is_empty() {
-            update_log::append_server_update(conn, id, 1, &body_update(id, body), NOW)
+            HeldBody::never_purged(conn, id)
+                .and_then(|held| held.append_server_update(1, &body_update(id, body), NOW))
                 .expect("the body update");
         }
         Ok(())
@@ -311,7 +313,8 @@ fn write_linking_note(db: &Db, id: &str, title: &str, target: &str) {
             emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
-        update_log::append_server_update(conn, id, 1, &link_update(id, target, target), NOW)
+        HeldBody::never_purged(conn, id)
+            .and_then(|held| held.append_server_update(1, &link_update(id, target, target), NOW))
             .expect("the body update");
         Ok(())
     })
@@ -382,7 +385,8 @@ fn a_literal_wiki_link_in_a_synced_body_is_a_backlink() {
     );
     write_note(&db, "code", "Code", "");
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "code", 1, &code_update("code", "[[Other]]"), NOW)
+        HeldBody::never_purged(conn, "code")
+            .and_then(|held| held.append_server_update(1, &code_update("code", "[[Other]]"), NOW))
             .expect("the body update");
         Ok(())
     })
@@ -531,7 +535,9 @@ fn removing_a_link_removes_the_backlink() {
             emoji: None,
         };
         notes::create(conn, &note, DEVICE, NOW)?;
-        update_log::append_server_update(conn, "source", 1, &link, NOW).expect("the body");
+        HeldBody::never_purged(conn, "source")
+            .and_then(|held| held.append_server_update(1, &link, NOW))
+            .expect("the body");
         Ok(())
     })
     .expect("the write");
@@ -549,7 +555,9 @@ fn removing_a_link_removes_the_backlink() {
     // The user deletes the paragraph the link was in.
     let removal = removal_update("source", &[link]);
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "source", 2, &removal, NOW).expect("the removal");
+        HeldBody::never_purged(conn, "source")
+            .and_then(|held| held.append_server_update(2, &removal, NOW))
+            .expect("the removal");
         Ok(())
     })
     .expect("the write");

@@ -17,8 +17,9 @@
 
 use std::sync::{Arc, Mutex};
 
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::journal_ops::reads::{self, JournalBodyState};
 use memry_core::domain::journal_rules::{is_same_day_in_other_year, same_day_month_days};
 use memry_core::domain::search;
@@ -101,7 +102,9 @@ fn pulled_blocks(
         })
         .expect("a write transaction");
     let update = captured.lock().expect("lock")[0].clone();
-    update_log::append_server_update(conn, &doc_id, 1, &update, NOW).expect("append");
+    HeldBody::never_purged(conn, &doc_id)
+        .and_then(|held| held.append_server_update(1, &update, NOW))
+        .expect("append");
 }
 
 fn dates(conn: &Connection, date: &str, today: &str) -> Vec<String> {

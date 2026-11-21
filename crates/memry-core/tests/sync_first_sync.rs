@@ -26,6 +26,7 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, error_response, response};
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{DocumentRegistry, extract_text};
@@ -521,11 +522,11 @@ async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherw
     // This device is already at sequence 5 with a snapshot at revision
     // `rev-1`, which is what the server is about to advertise.
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("5"), 1)
     })
     .expect("seed");
@@ -706,11 +707,11 @@ async fn a_snapshot_whose_revision_is_not_held_is_taken_even_below_the_cursor() 
     let (public_key, secret_key) =
         memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("10"), 1)
     })
     .expect("seed");
@@ -893,8 +894,12 @@ fn a_replayed_update_is_skipped_rather_than_re_applied() {
     let db = scratch_db("replay");
     let update = body_update("once");
     db.call_blocking(|conn| {
-        update_log::append_server_update(conn, NOTE, 1, &update, 1).expect("first");
-        update_log::append_server_update(conn, NOTE, 1, b"different", 2).expect("second");
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .expect("first");
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, b"different", 2))
+            .expect("second");
         Ok(())
     })
     .expect("append");
@@ -1264,11 +1269,11 @@ async fn a_probe_showing_nothing_new_and_the_held_snapshot_sends_no_pull() {
     let (public_key, _secret) =
         memry_core::crypto::sodium::sign_seed_keypair(&[43u8; 32]).expect("keypair");
     db.call_blocking(|conn| {
-        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
-            |error| memry_core::api::errors::StorageError::Failed {
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.put_server_snapshot(b"unused", 4, Some("rev-1"), 1))
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
-            },
-        )?;
+            })?;
         store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("5"), 1)
     })
     .expect("seed");

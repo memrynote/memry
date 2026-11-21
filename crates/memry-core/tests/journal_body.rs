@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, extract_text, update_log};
 use memry_core::domain::journal;
@@ -196,14 +197,11 @@ fn a_day_desktop_created_is_edited_under_its_own_id() {
     let db = open("remote");
     db.call_blocking(|conn| {
         sync_items::apply_remote(conn, &remote_day("legacy-journal-id", DAY), NOW)?;
-        update_log::append_server_update(
-            conn,
-            "legacy-journal-id",
-            1,
-            &one_paragraph("desk-1", "From desktop"),
-            NOW,
-        )
-        .expect("the server update");
+        HeldBody::never_purged(conn, "legacy-journal-id")
+            .and_then(|held| {
+                held.append_server_update(1, &one_paragraph("desk-1", "From desktop"), NOW)
+            })
+            .expect("the server update");
 
         let outcome = body::edit_day(conn, DAY, &append("From the phone", "b2"), DEVICE, NOW + 1)
             .expect("the edit");
@@ -269,7 +267,8 @@ fn a_no_op_edit_writes_nothing_and_creates_nothing() {
     let db = open("noop");
     db.call_blocking(|conn| {
         // A body pulled before its record: the day has no entry yet.
-        update_log::append_server_update(conn, "j2026-04-16", 1, &one_paragraph("b1", "Same"), NOW)
+        HeldBody::never_purged(conn, "j2026-04-16")
+            .and_then(|held| held.append_server_update(1, &one_paragraph("b1", "Same"), NOW))
             .expect("the server update");
         let unchanged = body::edit_day(conn, DAY, &stay_put("b1"), DEVICE, NOW).expect("the no-op");
         assert_eq!(

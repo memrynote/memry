@@ -43,6 +43,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{Document, DocumentRegistry, extract_text};
@@ -450,7 +451,9 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
     let update = edit_the_body(&db, &document, "still typing");
     // A server update too, so the purge has something in each namespace.
     db.call_blocking(|conn| {
-        update_log::append_server_update(conn, NOTE, 1, &update, NOW).map_err(storage_failure)?;
+        HeldBody::never_purged(conn, NOTE)
+            .and_then(|held| held.append_server_update(1, &update, NOW))
+            .map_err(storage_failure)?;
         memry_core::sync::store::write_cursor(
             conn,
             &memry_core::sync::body_pull::crdt_cursor_scope(NOTE),

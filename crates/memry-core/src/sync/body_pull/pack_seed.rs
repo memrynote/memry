@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use crate::api::errors::StorageError;
 
-use super::log_writes::{Baseline, Freshness, PackRun, pack_freshness};
+use super::log_writes::{Baseline, BodyEpochs, Freshness, PackRun, pack_freshness};
 use super::{BodyPull, BodyPullError, CrdtCipher, PackedUpdate};
 
 /// Pack entries seeded per transaction. A chunk holds at most this many
@@ -64,10 +64,13 @@ impl BodyPull {
     ///
     /// The freshness gate is desktop's `shouldApply`: a cursor at or above the
     /// snapshot's `sequenceNum` already absorbed it, and an equal `revision`
-    /// is the same blob (§7.5, compared for equality only).
+    /// is the same blob (§7.5, compared for equality only). A document whose
+    /// body moved off its epoch in `epochs` is `Stale`: its new body is newer
+    /// (#5356).
     pub async fn seed_pack_chunk(
         &self,
         entries: &[PackEntrySeed<'_>],
+        epochs: &BodyEpochs,
     ) -> Result<Vec<PackSeed>, BodyPullError> {
         let keys: Vec<(String, i64, String)> = entries
             .iter()
@@ -120,7 +123,7 @@ impl BodyPull {
                 revision: entry.revision.to_owned(),
             });
         }
-        let stored = self.store_baselines(baselines).await?;
+        let stored = self.store_baselines(baselines, epochs).await?;
         for (at, stored) in placed.into_iter().zip(stored) {
             if !stored {
                 outcome[at] = PackSeed::Stale;
@@ -135,10 +138,12 @@ impl BodyPull {
     /// sequence order. A run stops at its first update that does not open
     /// (§7.9's stop-at-gap): the updates before it are stored with their
     /// cursor and the document keeps its route pull from there. Answers the
-    /// updates stored and the documents whose run stopped short.
+    /// updates stored and the documents whose run stopped short, a run whose
+    /// body moved off its epoch in `epochs` among them (#5356).
     pub async fn seed_pack_updates(
         &self,
         entries: &[PackUpdateSeed<'_>],
+        epochs: &BodyEpochs,
     ) -> Result<(usize, HashSet<String>), BodyPullError> {
         let owned: Vec<(usize, String, String, Vec<u8>)> = entries
             .iter()
@@ -188,7 +193,7 @@ impl BodyPull {
         }
         let wanted: Vec<usize> = runs.iter().map(|(_, run)| run.len()).collect();
         let doc_ids: Vec<String> = runs.iter().map(|(doc_id, _)| doc_id.clone()).collect();
-        let stored = self.store_pack_runs(runs).await?;
+        let stored = self.store_pack_runs(runs, epochs).await?;
         let mut applied = 0;
         for ((doc_id, wanted), stored) in doc_ids.into_iter().zip(wanted).zip(stored) {
             applied += stored;
