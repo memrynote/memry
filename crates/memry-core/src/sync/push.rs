@@ -52,6 +52,7 @@ use crate::storage::repositories::projectors::agent::is_sealed_pending;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
+mod pre_push_hook;
 
 use super::crypto_batch::off_runtime;
 use super::engine::PushWave;
@@ -60,6 +61,7 @@ use super::outbox::{self, Batch, Collapsed, OutboxRow};
 use super::store;
 use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
+pub use pre_push_hook::{HoldDecision, MAX_HOLD_DEFERRALS, PrePushHook};
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
 pub const PUSH_BATCH_SIZE: usize = 100;
@@ -157,6 +159,7 @@ pub struct PushCoordinator {
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
+    pre_push: pre_push_hook::PrePushHooks,
 }
 
 impl PushCoordinator {
@@ -177,6 +180,7 @@ impl PushCoordinator {
             at_rest: AtRestKey::default(),
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
+            pre_push: Default::default(),
         }
     }
 
@@ -211,13 +215,16 @@ impl PushCoordinator {
         let mut report = PushReport::default();
         // Documents whose batch was deferred in this wave: one try per wave.
         let mut deferred_docs: Vec<String> = Vec::new();
+        // Record rows a pre-push hook deferred in this wave: one try per wave.
+        let mut waiting = pre_push_hook::WaveDeferrals::default();
         for _ in 0..MAX_PUSH_ITERATIONS {
             let ceiling = self.batch_ceiling();
             let now = now_ms();
             let skip = self.skipped_docs(&deferred_docs).await?;
+            let rows = waiting.rows.clone();
             let Some(batch) = self
                 .db
-                .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip))
+                .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip, &rows))
                 .await?
             else {
                 break;
@@ -229,7 +236,10 @@ impl PushCoordinator {
                         deferred_docs.push(doc_id);
                     }
                 }
-                Batch::Records { items } => self.push_records(items, &mut report).await?,
+                Batch::Records { items } => {
+                    let items = self.pre_push.admit(items, &mut waiting).await;
+                    self.push_records(items, &mut report).await?
+                }
             }
         }
         report.batch_ceiling = self.batch_ceiling();
@@ -312,7 +322,9 @@ impl PushCoordinator {
                 let (item_type, op) = (item.row.item_type.as_str(), item.row.op.as_str());
                 if reason == REASON_DELETE_WINS
                     && ((item_type == property_admin::ITEM_TYPE && op == outbox::OP_UPSERT)
-                        || (op == outbox::OP_CREATE && manifest::REUPLOADED.contains(&item_type)))
+                        || (op == outbox::OP_CREATE
+                            && manifest::REUPLOADED.contains(&item_type)
+                            && !manifest::PROBED.contains(&item_type)))
                 {
                     deleted_there.push((item.row.item_type.clone(), key));
                 }
@@ -483,7 +495,9 @@ fn local_failure(error: StorageError) -> ApiError {
 /// and this refusal is the only delete it will ever see. A user's create is a `create`, which the
 /// server re-creates over the marker. And for the manifest check's re-upload, a `create` of a
 /// [`manifest::REUPLOADED`] type: kept live, the row would be re-pushed every 30 minutes for
-/// ever. Acked in the same transaction, so the local record never outlives its outbox row.
+/// ever. Not a [`manifest::PROBED`] type, whose `create` is also the user's own (a journal day, a
+/// bookmark re-add): the manifest check asks the server about such a row again, and a delete it
+/// names stops the re-upload. Acked in the same transaction, so the local record never outlives its outbox row.
 ///
 /// A change queued while the refused push was in flight is the user's newer edit, create or
 /// delete: the record stays as it is and that row is pushed next.

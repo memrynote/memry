@@ -10,7 +10,9 @@
 //! (`packages/sync-client/src/item-handlers/home-page-handler.ts:145-155`), and
 //! [`merge`] applies a peer's.
 
+pub mod cover;
 pub mod merge;
+pub mod widgets;
 
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde_json::{Value, json};
@@ -164,6 +166,41 @@ pub fn delete(
     Ok(true)
 }
 
+/// `reorderHomePages`: the board at index `i` of `ids` takes position `i`.
+/// A board already there, or one that is not live, is left alone, so a no-op
+/// reorder queues nothing. Each moved board ticks its clock and `updatedAt`
+/// and queues its push, all in one transaction. Answers the moved ids.
+pub fn reorder(
+    conn: &Connection,
+    ids: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let mut moved = Vec::new();
+    for (index, id) in ids.iter().enumerate() {
+        let position = u32::try_from(index).map_err(|_| StorageError::Invalid {
+            what: "too many home boards to reorder".to_owned(),
+        })?;
+        let Some(board) = get(&tx, id)? else {
+            continue;
+        };
+        if board.position == f64::from(position) {
+            continue;
+        }
+        let stored = live(&tx, ITEM_TYPE, id, "home board")?;
+        let changes = vec![
+            ("position", Change::Set(json!(position))),
+            ("updatedAt", Change::set(iso(now_ms)?)),
+        ];
+        desktop_records::edit(&tx, ITEM_TYPE, id, &stored, changes, device_id, now_ms)?;
+        outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, id), now_ms)?;
+        moved.push(id.clone());
+    }
+    tx.commit().map_err(failed)?;
+    Ok(moved)
+}
+
 /// One live board by id.
 pub fn get(conn: &Connection, id: &str) -> Result<Option<HomePage>, StorageError> {
     conn.query_row(
@@ -253,5 +290,7 @@ fn number(position: f64) -> Result<Value, StorageError> {
     Ok(json!(position))
 }
 
+#[cfg(test)]
+mod board_tests;
 #[cfg(test)]
 mod tests;

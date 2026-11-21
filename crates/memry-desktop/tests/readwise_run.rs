@@ -52,9 +52,9 @@ use tokio_util::sync::CancellationToken;
 
 use memry_desktop::readwise::limiter::RequestLimiter;
 
-#[path = "readwise_run_after.rs"]
+#[path = "readwise_run/after.rs"]
 mod after;
-#[path = "readwise_run_claim.rs"]
+#[path = "readwise_run/claim.rs"]
 mod claim;
 #[path = "readwise_run_gate.rs"]
 mod gate;

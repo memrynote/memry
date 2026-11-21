@@ -30,7 +30,9 @@
     "test:e2e:harness": "node --test e2e/harness/*.test.mjs",
     "keychain:purge-e2e": "node e2e/scripts/purge-e2e-keychain.mjs",
     "test:keychain-tools": "node --test e2e/harness/keychain-cleanup.test.mjs e2e/scripts/*.test.mjs",
-    "check:test-hooks": "node e2e/scripts/check-test-hooks-mapped.mjs"
+    "check:test-hooks": "node e2e/scripts/check-test-hooks-mapped.mjs",
+    "generate:export-icons": "node scripts/generate-export-icons.mjs",
+    "check:export-icons": "node scripts/generate-export-icons.mjs --check"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.140",

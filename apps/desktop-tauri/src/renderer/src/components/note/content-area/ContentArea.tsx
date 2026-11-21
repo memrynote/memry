@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { withShortcutLabels } from './editor-shortcut-labels'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -53,6 +54,7 @@ import {
 import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { notesService, onNoteMoved, onNoteRenamed } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { typingHoldOf } from '@/sync/typing-hold'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
@@ -75,7 +77,7 @@ import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callo
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
-import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
+import { getChartSlashMenuItem, getNewViewSlashMenuItem, getViewSlashMenuItem } from './view-block'
 import { isFromWhiteboard } from './whiteboard-events'
 import { buildTableContent, type TableSize } from './slash-menu-utils'
 import { TableSizePicker } from './table-size-picker'
@@ -683,8 +685,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const forget = (event: { id: string }): void => {
       if (noteLookupRef.current?.noteId === event.id) noteLookupRef.current = null
     }
-    const offs = [onNoteMoved(forget), onNoteRenamed(forget)]
-    return () => offs.forEach((off) => off())
+    // A lookup made before these listen may hold a path or title changed before they went live.
+    return subscribeToEvents(
+      [(live) => onNoteMoved(forget, live), (live) => onNoteRenamed(forget, live)],
+      () => {
+        noteLookupRef.current = null
+      }
+    )
   }, [])
 
   // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
@@ -742,7 +749,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         checkListItem: t('editor.content.todoPlaceholder')
       },
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
-      dictionary: { ...coreEn, ai: aiEn } as any,
+      dictionary: withShortcutLabels({ ...coreEn, ai: aiEn }) as any,
       // Dropping a block on another block's left or right edge puts the two
       // side by side, the way Notion does; anywhere else is BlockNote's own
       // drop cursor.
@@ -3065,7 +3072,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     if (!aiEnabled || !aiError) return undefined
     const onKeyDown = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key === 'j') {
         e.preventDefault()
         reportAIUnavailableRef.current()
       }
@@ -3566,6 +3573,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/new view` makes a folder beside the note and a view over it.
+                  const newViewItem = inCell
+                    ? null
+                    : getNewViewSlashMenuItem(
+                        editor,
+                        {
+                          title: t('editor.viewBlock.newViewTitle'),
+                          group: t('editor.viewBlock.group'),
+                          subtext: t('editor.viewBlock.newViewSubtext'),
+                          failed: t('editor.viewBlock.newViewFailed')
+                        },
+                        fetchNotePath
+                      )
                   // `/portal` and `/search portal`: live windows onto other notes.
                   const portalItems = inCell
                     ? []
@@ -3682,6 +3702,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...(newViewItem ? [{ ...newViewItem, id: 'new_view' }] : []),
                     ...portalItems,
                     ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),

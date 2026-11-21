@@ -141,3 +141,32 @@ async fn a_due_snapshot_after_an_unread_feed_stays_requested() {
     assert_eq!(snapshots_sent(&desktop), 0);
     assert!(desktop.driver.snapshots_due(later + 300_000), "asked again");
 }
+
+/// A pause cuts the snapshot request in flight, as Electron's abort does, and
+/// the document asks again: the snapshot may be the only path its rejected
+/// rows have to the server (REVIEW-4892 item 1).
+#[tokio::test]
+async fn a_pause_cuts_a_snapshot_push_in_flight_and_the_snapshot_stays_requested() {
+    let desktop = Desktop::open(&["note"], |_| Ok(())).await;
+    queue_body_update(&desktop.db, "doc000000001", "an edit");
+    desktop.pass().await;
+    desktop.server.hang("/sync/crdt/snapshot");
+    desktop.server.hang("/sync/crdt/snapshot/batch");
+
+    let later = now_ms() + 300_000;
+    let pause = async {
+        while snapshots_sent(&desktop) == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        desktop.driver.pause();
+    };
+    let (round, ()) = tokio::time::timeout(std::time::Duration::from_secs(60), async {
+        tokio::join!(desktop.driver.push_due_snapshots(later), pause)
+    })
+    .await
+    .expect("the pause cut the request in flight");
+
+    assert_eq!((round.pushed, round.requeued, round.dropped), (0, 1, 0));
+    desktop.driver.resume();
+    assert!(desktop.driver.snapshots_due(later + 300_000), "asked again");
+}

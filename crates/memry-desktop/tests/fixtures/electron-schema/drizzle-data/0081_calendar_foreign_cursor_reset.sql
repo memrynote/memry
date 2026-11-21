@@ -1,0 +1,14 @@
+-- Pull every Google and CalDAV calendar in full once more (#4069).
+--
+-- Before this release a calendar source arriving from another device carried
+-- that device's sync cursor, and this device adopted it. Listing from a peer's
+-- token returns only what changed since the peer pulled, so a calendar this
+-- device had purged, or never pulled, stayed missing most of its events. It
+-- also undid 0080: this device cleared its cursor and a peer sent its own back.
+-- Nothing tells an adopted cursor from this device's own.
+--
+-- Data-only and row-preserving: the cursor is a cache of pull progress. The
+-- next pass lists each calendar's window again and upserts events by id, so
+-- nothing is duplicated. The sync handler no longer adopts a peer's cursor, so
+-- this reset holds.
+UPDATE `calendar_sources` SET `sync_cursor` = NULL WHERE `provider` IN ('google', 'caldav') AND `kind` = 'calendar';

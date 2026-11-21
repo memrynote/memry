@@ -209,6 +209,11 @@ impl PullLoop {
         &self.http
     }
 
+    /// The keys a delete's signer resolves under ([`PullLoop::with_signer_keys`]).
+    pub(crate) fn signer_keys(&self) -> Option<&dyn SignerKeys> {
+        self.signer_keys.as_deref()
+    }
+
     /// This device's clock id (chapter 01 §1.5), so a diverged canvas can keep
     /// the local drawing as a conflict copy instead of being recorded corrupt.
     pub fn with_clock_device(mut self, device_id: &str) -> Self {
@@ -227,6 +232,11 @@ impl PullLoop {
     pub fn with_vault(mut self, vault_id: &str) -> Self {
         self.vault_id = Some(vault_id.to_owned());
         self
+    }
+
+    /// The vault [`PullLoop::with_vault`] selected.
+    pub fn vault_id(&self) -> Option<&str> {
+        self.vault_id.as_deref()
     }
 
     /// Drains up to `max_pages` pages, stopping at the end of the feed or at
@@ -275,10 +285,14 @@ impl PullLoop {
     /// ([`super::hardening::orphans`]), now that the deletes and moves pushed
     /// before it have all landed. An orphan-repair failure is logged, not
     /// returned: the pages have committed, and the next delivering run
-    /// repairs again.
+    /// repairs again. The run's signer misses end here, so a fetch after it
+    /// (the manifest check) looks a missing signer up again.
     pub async fn end_run(&self, total: &PullReport, repairing: bool) -> Result<(), PullError> {
         if total.refused || total.has_more {
             return Ok(());
+        }
+        if let Some(keys) = &self.signer_keys {
+            keys.forget_absent();
         }
         if repairing {
             self.db
@@ -347,7 +361,7 @@ impl PullLoop {
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
         self.retry_refused().await;
         if let Some(keys) = &self.signer_keys {
-            keys.begin_run();
+            keys.forget_absent();
         }
         self.page(true).await
     }
@@ -424,7 +438,9 @@ impl PullLoop {
             // §5.14's breaker, all three conditions or none.
             let yielded = report.applied + report.deleted + report.skipped + report.expired;
             report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
-            let at_head = !report.has_more && !report.refused;
+            // A refused page at the head is still the head: the cursor moves past it, so a
+            // run from cursor 0 ends there and the next run's markers apply (§5.12.3).
+            let at_head = !report.has_more;
 
             // §5.11: only now, and in the transaction that lands the bodies.
             let advanced = page.next_cursor.clone().or(cursor);

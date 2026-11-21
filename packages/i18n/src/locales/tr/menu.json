@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Ana sayfaya git",
     "goInbox": "Gelen kutusuna git",
-    "goJournal": "Günlüğe git",
     "goCalendar": "Takvime git",
     "goTasks": "Görevlere git",
     "goGraph": "Grafiğe git",

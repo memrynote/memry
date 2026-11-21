@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Ir a Inicio",
     "goInbox": "Ir a la Bandeja de entrada",
-    "goJournal": "Ir al Diario",
     "goCalendar": "Ir al Calendario",
     "goTasks": "Ir a Tareas",
     "goGraph": "Ir al Grafo",

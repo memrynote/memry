@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ainda não há cofres",
       "openVault": "Abrir cofre",
+      "createVault": "Criar cofre",
+      "openFolderAsVault": "Abrir pasta como cofre",
       "settings": "Configurações",
       "remove": "Remover “",
       "removeVaultTitle": "Remover “{name}” da lista?",
