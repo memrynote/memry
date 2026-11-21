@@ -116,8 +116,15 @@ impl Harness {
     }
 }
 
-pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Harness {
+/// The `ring` provider as the process default, as the shell installs it at boot
+/// (`install_crypto_provider`). [`serve`] calls it; a test that builds the app's HTTP client
+/// without a server calls it first, since nextest runs each test in a process of its own.
+pub fn install_provider() {
     let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
+pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> Harness {
+    install_provider();
     let key = KeyPair::generate().expect("key pair");
     let cert = CertificateParams::new(HOSTS.map(str::to_owned).to_vec())
         .expect("params")

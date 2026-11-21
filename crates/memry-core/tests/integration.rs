@@ -39,6 +39,8 @@ mod api_search_cjk;
 #[cfg(feature = "markdown")]
 #[path = "api_search_file_text.rs"]
 mod api_search_file_text;
+#[path = "api_sticky_store.rs"]
+mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
@@ -49,6 +51,8 @@ mod api_sync_pass;
 mod api_task_conformance;
 #[path = "api_task_location_options.rs"]
 mod api_task_location_options;
+#[path = "api_task_store.rs"]
+mod api_task_store;
 #[path = "api_task_tree.rs"]
 mod api_task_tree;
 #[path = "api_tasks.rs"]
@@ -63,8 +67,14 @@ mod api_vault_sync;
 mod attachment_cache;
 #[path = "attachment_download.rs"]
 mod attachment_download;
+#[path = "attachment_holds.rs"]
+mod attachment_holds;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
+#[path = "attachment_plan.rs"]
+mod attachment_plan;
+#[path = "attachment_stream.rs"]
+mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
@@ -91,6 +101,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "body_tags_reindex.rs"]
+mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
@@ -171,6 +183,10 @@ mod domain_file_tags;
 mod domain_folders;
 #[path = "domain_inbox_attachments.rs"]
 mod domain_inbox_attachments;
+#[path = "domain_inbox_ingest.rs"]
+mod domain_inbox_ingest;
+#[path = "domain_inbox_jobs.rs"]
+mod domain_inbox_jobs;
 #[path = "domain_inbox_queries.rs"]
 mod domain_inbox_queries;
 #[path = "domain_inbox_sync.rs"]
@@ -205,10 +221,14 @@ mod domain_note_positions;
 mod domain_note_tasks;
 #[path = "domain_notes.rs"]
 mod domain_notes;
+#[path = "domain_project_note_property.rs"]
+mod domain_project_note_property;
 #[path = "domain_projects.rs"]
 mod domain_projects;
 #[path = "domain_projects_links.rs"]
 mod domain_projects_links;
+#[path = "domain_projects_statuses.rs"]
+mod domain_projects_statuses;
 #[path = "domain_projects_write.rs"]
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
@@ -235,14 +255,24 @@ mod domain_search_snippet;
 mod domain_tag_categories;
 #[path = "domain_task_activity.rs"]
 mod domain_task_activity;
+#[path = "domain_task_links.rs"]
+mod domain_task_links;
 #[path = "domain_task_settings.rs"]
 mod domain_task_settings;
+#[path = "domain_task_superseded.rs"]
+mod domain_task_superseded;
 #[path = "domain_task_views.rs"]
 mod domain_task_views;
 #[path = "domain_tasks.rs"]
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_list.rs"]
+mod domain_tasks_list;
+#[path = "domain_tasks_spawn.rs"]
+mod domain_tasks_spawn;
+#[path = "domain_tasks_update.rs"]
+mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
 mod domain_tasks_write;
 #[path = "domain_template_legacy.rs"]
@@ -252,8 +282,13 @@ mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
 #[cfg(feature = "markdown")]
+#[path = "driver_observers.rs"]
+mod driver_observers;
+#[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
+#[path = "driver_vault_header.rs"]
+mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
 #[path = "editor_compaction.rs"]
@@ -284,6 +319,8 @@ mod header_tags;
 mod header_tags_untrusted;
 #[path = "http_client.rs"]
 mod http_client;
+#[path = "inbox_seed_sync.rs"]
+mod inbox_seed_sync;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]
@@ -340,6 +377,8 @@ mod markdown_doc_vectors;
 mod markdown_fail_closed;
 #[path = "markdown_frontmatter_edit.rs"]
 mod markdown_frontmatter_edit;
+#[path = "markdown_frontmatter_language.rs"]
+mod markdown_frontmatter_language;
 #[path = "markdown_frontmatter_vectors.rs"]
 mod markdown_frontmatter_vectors;
 #[path = "markdown_layer_blocks_vectors.rs"]
@@ -400,6 +439,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// Folder views read the note index of files, desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "folder_view.rs"]
+mod folder_view;
 // `note_properties` is desktop only (`markdown`).
 #[cfg(feature = "markdown")]
 #[path = "property_reads_load.rs"]
@@ -422,6 +465,8 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "scratch_dirs.rs"]
+mod scratch_dirs;
 #[path = "search_body_cache.rs"]
 mod search_body_cache;
 #[path = "session_refresh_errors.rs"]
@@ -453,12 +498,21 @@ mod sync_hardening_orphans;
 mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
+#[cfg(feature = "markdown")]
+#[path = "sync_list_fields_union.rs"]
+mod sync_list_fields_union;
+#[cfg(feature = "markdown")]
+#[path = "sync_note_attachment_union.rs"]
+mod sync_note_attachment_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
 mod sync_outbox;
 #[path = "sync_pack_bootstrap.rs"]
 mod sync_pack_bootstrap;
+#[cfg(feature = "markdown")]
+#[path = "sync_project_nested_arrays.rs"]
+mod sync_project_nested_arrays;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
@@ -473,6 +527,9 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[cfg(feature = "markdown")]
+#[path = "sync_task_conflicts.rs"]
+mod sync_task_conflicts;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]

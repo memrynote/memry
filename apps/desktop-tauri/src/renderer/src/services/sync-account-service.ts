@@ -5,6 +5,7 @@ import type {
   SessionExpiredEvent
 } from '@memry/contracts/ipc-events'
 import type {
+  RepairDeviceKeysResult,
   ResolveVaultBindingResult,
   VaultBindingChoice,
   VaultBindingState
@@ -24,6 +25,9 @@ export const syncAccountService = {
       success,
       ...(keychainWarning ? { keychainWarning } : {})
     })),
+
+  /** Restores the device id when the account still lists this device's key, else signs out keeping the master key and the queue. */
+  repairDeviceKeys: (): Promise<RepairDeviceKeysResult> => commands.syncRepairDeviceKeys(),
 
   getVaultBinding: (): Promise<VaultBindingState> => commands.syncGetVaultBinding(),
 

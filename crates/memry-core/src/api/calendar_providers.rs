@@ -128,7 +128,8 @@ impl VaultCalendar {
     }
 
     /// A 200 for a refresh: the mirror follows the feed. A body that does
-    /// not parse is recorded as `not_a_calendar` and returned as that error.
+    /// not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+    /// recorded as that code and returned as that error.
     pub fn feed_record_fetch(
         &self,
         source_id: String,

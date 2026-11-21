@@ -1,0 +1,44 @@
+{
+  "name": "vault-path",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{tmp}/appdata/memry-config.json",
+        "name": "File",
+        "noteCount": 0,
+        "taskCount": 0,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true
+      }
+    ]
+  },
+  "files": {
+    "vault/.memry": "not a folder"
+  },
+  "steps": [
+    {
+      "argv": ["locale", "list"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/appdata/memry-config.json", "locale", "list"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/appdata/memry-config.json/sub", "--json", "locale", "list"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/appdata/memry-config.json", "bogus"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/appdata/memry-config.json", "notes", "list"]
+    },
+    {
+      "argv": ["--vault", "{vault}", "locale", "list"]
+    },
+    {
+      "argv": ["--vault", "{tmp}/appdata/../vault", "locale"]
+    },
+    {
+      "argv": ["vault", "list"]
+    }
+  ]
+}

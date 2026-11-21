@@ -39,7 +39,7 @@ mod collapse;
 mod probe;
 pub use claim::{claim, crdt_docs};
 pub use collapse::{Collapsed, collapse_records};
-pub use probe::queued_for;
+pub use probe::{RecordStats, queued_for, record_stats};
 
 /// The three `op` spellings data-model §A.2 defines, and `create`.
 pub const OP_UPSERT: &str = "upsert";
@@ -411,15 +411,17 @@ impl Batch {
 ///
 /// One batch is either one document's CRDT updates or a run of record rows,
 /// never both: they go to different routes, and §A.2's ordering puts every
-/// CRDT row ahead of every record row within a pass. `skip_docs` is [`claim`]'s.
+/// CRDT row ahead of every record row within a pass. `skip_docs` and
+/// `skip_rows` are [`claim`]'s.
 pub fn next_batch(
     conn: &Connection,
     now_ms: i64,
     limit: usize,
     skip_docs: &[String],
+    skip_rows: &[i64],
 ) -> Result<Option<Batch>, StorageError> {
     let limit = limit.max(1);
-    let rows = claim(conn, now_ms, limit, skip_docs)?;
+    let rows = claim(conn, now_ms, limit, skip_docs, skip_rows)?;
     let Some(head) = rows.first() else {
         return Ok(None);
     };

@@ -303,7 +303,10 @@ pub(super) fn body_says(
     let body = if body_is_empty(&document)? {
         // No document yet: the note's text is the `content` it was created with
         // (chapter 12 §12.2 carve-out A), until something seeds a document from it.
-        created_content(conn, item_type, note_id)?
+        match created_content(conn, item_type, note_id)? {
+            Some(content) => content,
+            None => return Ok(Evidence::Unknown),
+        }
     } else {
         let options = SerializeOptions {
             note_path: Some(path),
@@ -323,17 +326,25 @@ pub(super) fn body_says(
     })
 }
 
-/// The `content` of the record's stored payload: the text it was created with.
+/// The `content` of the record's stored payload: the text it was created with, empty when the
+/// payload has none. `None` when there is no payload to read or it does not parse: what the
+/// note was created with is then not known, so it is never taken for empty (#4326).
 pub(super) fn created_content(
     conn: &Connection,
     item_type: &str,
     note_id: &str,
-) -> Result<String, StorageError> {
-    let payload = sync_items::push_payload(conn, item_type, note_id)?;
-    let content = payload
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .and_then(|payload| payload.get("content")?.as_str().map(str::to_owned));
-    Ok(content.unwrap_or_default())
+) -> Result<Option<String>, StorageError> {
+    let Some(raw) = sync_items::push_payload(conn, item_type, note_id)? else {
+        return Ok(None);
+    };
+    let Ok(Value::Object(payload)) = serde_json::from_str::<Value>(&raw) else {
+        return Ok(None);
+    };
+    Ok(match payload.get("content") {
+        None | Some(Value::Null) => Some(String::new()),
+        Some(Value::String(content)) => Some(content.clone()),
+        Some(_) => None,
+    })
 }
 
 /// Whether a new note id may be minted beside Electron's database: the import

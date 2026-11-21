@@ -344,17 +344,25 @@ pub fn time_of(property: &Property) -> Option<IcalTime> {
     parse_time(first, property)
 }
 
-/// Every value of a multi-valued EXDATE / RDATE line.
-pub fn times_of(property: &Property) -> Vec<IcalTime> {
+/// Every value of a multi-valued EXDATE / RDATE line, read as it is walked.
+pub fn times_of(property: &Property) -> impl Iterator<Item = IcalTime> + '_ {
     property
         .value
         .split(',')
         .filter_map(|value| parse_time(value, property))
-        .collect()
 }
 
+/// The longest TZID a time keeps. Zone names are under 80 bytes (IANA's
+/// longest is 32, Outlook's display names about 60); a longer one reads as a
+/// zone nobody defines, that is floating, so no value or occurrence copies or
+/// hashes it.
+pub const MAX_TZID_LEN: usize = 255;
+
 fn parse_time(raw: &str, property: &Property) -> Option<IcalTime> {
+    // A `VALUE=PERIOD` value is `start/end` or `start/duration`; the start is
+    // the time.
     let raw = raw.trim();
+    let raw = raw.split_once('/').map_or(raw, |(start, _)| start);
     let date_part = raw.get(..8)?;
     let date = CivilDate::new(
         date_part.get(..4)?.parse().ok()?,
@@ -379,8 +387,12 @@ fn parse_time(raw: &str, property: &Property) -> Option<IcalTime> {
     let digits = time.trim_end_matches(['Z', 'z']);
     let zone = if utc {
         TimeZoneRef::Utc
-    } else if let Some(tzid) = property.param("TZID") {
-        TimeZoneRef::Named(tzid.trim_start_matches('/').to_owned())
+    } else if let Some(tzid) = property
+        .param("TZID")
+        .map(|id| id.trim_start_matches('/'))
+        .filter(|id| id.len() <= MAX_TZID_LEN)
+    {
+        TimeZoneRef::Named(tzid.to_owned())
     } else {
         TimeZoneRef::Floating
     };
@@ -447,6 +459,14 @@ mod tests {
         assert_eq!(event.text("DESCRIPTION").as_deref(), Some("a, b\nc"));
         let start = time_of(event.first("DTSTART").expect("dtstart")).expect("time");
         assert_eq!(start.zone, TimeZoneRef::Named("America/New_York".into()));
+        assert_eq!((start.hour, start.minute), (9, 0));
+    }
+
+    #[test]
+    fn a_utc_period_reads_as_utc() {
+        let rdate = Property::from_line("RDATE;VALUE=PERIOD:20260310T090000Z/PT1H").expect("line");
+        let start = time_of(&rdate).expect("time");
+        assert_eq!(start.zone, TimeZoneRef::Utc);
         assert_eq!((start.hour, start.minute), (9, 0));
     }
 

@@ -196,6 +196,23 @@ async fn the_interactive_mark_is_once_per_window_and_abandon_closes_it_silently(
     assert_eq!(service.queue_depth(), 2, "at most once a minute");
 }
 
+/// A vault download's window starts when the download call did, before the vault's supervisor
+/// existed, so time-to-interactive covers making the folder.
+#[tokio::test(start_paused = true)]
+async fn a_window_begun_earlier_measures_from_its_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let service = service(&dir, true);
+    let started = Instant::now();
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    let metrics = BootstrapMetrics::new(Some(Arc::clone(&service)));
+    metrics.begin_since(BootstrapSource::VaultDownload, started);
+    metrics.mark_interactive();
+
+    let queued = service.queued();
+    let duration = queued[0].metrics.as_ref().and_then(|m| m.duration_ms);
+    assert!(duration.is_some_and(|ms| ms >= 5_000.0), "{duration:?}");
+}
+
 /// The supervisor reports a failed pass as `sync_error` and a merged record as
 /// `conflict_resolved`, and nothing at all while telemetry is off.
 #[tokio::test(start_paused = true)]
@@ -209,8 +226,12 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
         let supervisor = rig.start().await;
         settle().await;
         let observers = lock(&rig.backend.driver.observers).clone();
-        assert_eq!(observers.len(), 1, "one observer per driver");
-        observers[0].records_applied(&[AppliedRecord {
+        let telemetry: Vec<_> = observers
+            .iter()
+            .filter(|observer| observer.name() == "conflict-telemetry")
+            .collect();
+        assert_eq!(telemetry.len(), 1, "one telemetry observer per driver");
+        telemetry[0].records_applied(&[AppliedRecord {
             item_type: "task".into(),
             item_id: "t1".into(),
             outcome: AppliedOutcome::Updated,
@@ -219,6 +240,7 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
                 losing: json!("a"),
                 winning: json!("b"),
                 merged_clock: json!({}),
+                local_lost: true,
             }],
         }]);
         let names: Vec<(String, Option<String>)> = service

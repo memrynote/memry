@@ -1,0 +1,105 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3538-task-superseded-id",
+    "oracle": "apps/desktop/scripts/task-superseded-oracle (Electron src/main/tasks/activity-log.ts taskSupersededActivityId run in place)",
+    "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md §6.6.3",
+    "caseCount": 10
+  },
+  "cases": [
+    {
+      "name": "two devices",
+      "taskId": "task-1",
+      "field": "title",
+      "mergedClock": {
+        "device-a": 2,
+        "device-b": 1
+      },
+      "expected": "tac_5131b69ebe87f304cb43"
+    },
+    {
+      "name": "key order does not change the id",
+      "taskId": "task-1",
+      "field": "title",
+      "mergedClock": {
+        "device-b": 1,
+        "device-a": 2
+      },
+      "expected": "tac_5131b69ebe87f304cb43"
+    },
+    {
+      "name": "an offline component",
+      "taskId": "task-1",
+      "field": "title",
+      "mergedClock": {
+        "_offline": 1,
+        "device-b": 1
+      },
+      "expected": "tac_0237d2a9f060cbba806f"
+    },
+    {
+      "name": "keys sort by code unit",
+      "taskId": "task-1",
+      "field": "priority",
+      "mergedClock": {
+        "a": 3,
+        "_offline": 2,
+        "B": 1
+      },
+      "expected": "tac_d9b955f45d94effa1668"
+    },
+    {
+      "name": "one device",
+      "taskId": "task-1",
+      "field": "dueDate",
+      "mergedClock": {
+        "device-a": 1
+      },
+      "expected": "tac_bfab4f5b4445e804f108"
+    },
+    {
+      "name": "an empty clock",
+      "taskId": "task-1",
+      "field": "title",
+      "mergedClock": {},
+      "expected": "tac_53ad300f2bdc3bb4f7b8"
+    },
+    {
+      "name": "a large counter",
+      "taskId": "task-1",
+      "field": "description",
+      "mergedClock": {
+        "device-a": 4294967296,
+        "device-b": 9007199254740991
+      },
+      "expected": "tac_126d80a2642ac9b05bed"
+    },
+    {
+      "name": "generated ids",
+      "taskId": "k3x9m2p7q8r4s5t6",
+      "field": "repeatConfig",
+      "mergedClock": {
+        "0f8fad5b-d9cb-469f-a165-70867728950e": 7,
+        "7c9e6679-7425-40de-944b-e07fc1f90ae7": 5
+      },
+      "expected": "tac_e898d8b144ece1f780b6"
+    },
+    {
+      "name": "the separator splits task and field (1 of 2)",
+      "taskId": "a b",
+      "field": "c",
+      "mergedClock": {
+        "device-a": 1
+      },
+      "expected": "tac_5607879c47bf58c716ed"
+    },
+    {
+      "name": "the separator splits task and field (2 of 2)",
+      "taskId": "a",
+      "field": "b c",
+      "mergedClock": {
+        "device-a": 1
+      },
+      "expected": "tac_4da132d7d22aedb95610"
+    }
+  ]
+}

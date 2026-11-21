@@ -15,6 +15,8 @@ mod os_drag;
 mod reveal;
 mod shell;
 mod shell_integrations;
+mod sticky;
+mod sync;
 mod updater;
 pub mod vault_writeback;
 mod window;

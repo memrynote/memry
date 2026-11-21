@@ -431,7 +431,8 @@ pub fn apply_pull(
         let Ok(root) = parse_calendar(&object.data) else {
             continue;
         };
-        // An object too large to expand is skipped like one that does not parse.
+        // Skipped like an object that does not parse; Electron warns
+        // (`caldav-mirror.ts:70-71`). The href can name the event: log a hash.
         let Ok(instances) = expand_calendar_events(
             &root,
             window,
@@ -439,6 +440,8 @@ pub fn apply_pull(
             &key,
             zones,
         ) else {
+            let href = hex::encode(&Sha256::digest(object.href.as_bytes())[..6]);
+            eprintln!("memry calendar: CalDAV object {href} too large to read; skipped");
             continue;
         };
         // Objects a Memry item is bound to flow back into that item; only the

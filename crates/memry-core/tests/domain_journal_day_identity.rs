@@ -411,7 +411,7 @@ fn a_days_file_is_fed_and_read_back_as_a_notes() {
                 &converter,
                 DAY,
                 PATH,
-                "First words\n",
+                Some("First words\n"),
                 &embeds,
             ))
         })

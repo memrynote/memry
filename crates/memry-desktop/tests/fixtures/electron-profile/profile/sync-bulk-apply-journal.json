@@ -1,0 +1,20 @@
+{
+  "writtenAt": 1736071200000,
+  "entries": [
+    {
+      "absolutePath": "/memry-fixture/vault/notes/Replayed one.md",
+      "content": "# Replayed one\n\nArrived by sync.\n",
+      "sha256": "8dea03e85b029a0ab60fe122ed3eaf5701f263e497251843e63e651c3ac9a04f"
+    },
+    {
+      "absolutePath": "/memry-fixture/vault/notes/Replayed two.md",
+      "content": "# Replayed two\n\nAlso arrived.\n",
+      "sha256": "4c64d6f06b1131e311cce9b022d1258c150e046fbd31d6e2f02f292629e456e4"
+    },
+    {
+      "absolutePath": "/memry-fixture/vault/notes/Torn.md",
+      "content": "# Torn\n\nContent.\n",
+      "sha256": "923b805711041e23a99f07e146591c500261d1c289f62a9d39f8581ceb8a10ca"
+    }
+  ]
+}

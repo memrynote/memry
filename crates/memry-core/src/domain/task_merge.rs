@@ -18,7 +18,8 @@
 //! **The merge rule itself is [`crate::sync::field_merge`] and is not restated
 //! here**: it is pinned byte for byte by the `field-merge` vector class, and a
 //! second copy of the rule is a second thing to get wrong. What this module
-//! adds is the storage around it.
+//! adds is the storage around it, and the keys each type carries beside its
+//! field list ([`carried`], §6.7.1 and §6.7.2).
 //!
 //! Three obligations, and the first is the load-bearing one.
 //!
@@ -38,6 +39,8 @@
 //!   `next_field_clocks` refuses the reserved device id outright, which is
 //!   §6.6 made structural rather than remembered.
 
+mod carried;
+
 use std::collections::BTreeMap;
 
 use rusqlite::{Connection, params};
@@ -55,6 +58,8 @@ use crate::sync::field_merge::{
     resolve_clock_conflict,
 };
 use crate::sync::hardening::requeue;
+
+pub(crate) use carried::Carry;
 
 /// What §6.3.1's document-level gate decided about one inbound record.
 ///
@@ -159,15 +164,22 @@ pub(crate) fn with_clock(
     Ok(payload.merge(&[("clock", Change::Set(as_json(clock)?))]))
 }
 
-/// [`apply_remote`] for either field-merged type (§6.8).
+/// [`apply_remote`] for either field-merged type (§6.8): `fields` by §6.3,
+/// and `carried`, the keys outside the field list, by `carry` on both of
+/// §6.3.1's branches (a task's lists §6.7.1, a project's arrays §6.7.2).
 pub(crate) fn apply_remote_merged(
     conn: &Connection,
     record: &InboundRecord,
     fields: &[&str],
+    carried: &[&str],
+    carry: Carry,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     let (local, remote, merged_clock) = match document_gate(conn, record)? {
-        Gate::Wholesale => return wholesale(conn, record, now_ms),
+        Gate::Wholesale => {
+            let kept = carried::keep_local(conn, record, carried, carry)?;
+            return wholesale(conn, kept.as_ref().unwrap_or(record), now_ms);
+        }
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Merge {
             local,
@@ -185,9 +197,8 @@ pub(crate) fn apply_remote_merged(
     );
 
     // §6.3 step 8: a winner of `undefined` leaves the column untouched, which
-    // a missing key in `merged` expresses. A field outside `fields` is not
-    // merged at all (§6.7), so the local value survives — including `tags` and
-    // the two link arrays on a task.
+    // a missing key in `merged` expresses. A field outside `fields` and
+    // `carried` is not merged at all (§6.7), so the local value survives.
     let mut changes: Vec<(&str, Change)> = fields
         .iter()
         .filter_map(|field| {
@@ -197,6 +208,14 @@ pub(crate) fn apply_remote_merged(
                 .map(|value| (*field, Change::Set(value.clone())))
         })
         .collect();
+    changes.extend(carried::concurrent_changes(
+        conn,
+        record,
+        carried,
+        carry,
+        local.object(),
+        remote.object(),
+    )?);
     changes.push(("clock", Change::Set(as_json(&merged_clock)?)));
     changes.push((
         "fieldClocks",
@@ -206,7 +225,7 @@ pub(crate) fn apply_remote_merged(
     write_merged(conn, record, &changes, now_ms)?;
     Ok(Inbound::Merged {
         conflicted_fields: result.conflicted_fields,
-        conflicts: Vec::new(),
+        conflicts: result.conflicts,
     })
 }
 
@@ -423,7 +442,7 @@ mod tests {
         let parsed = clocks.as_object().expect("an object");
         assert_eq!(parsed["title"], json!({"device-a": 1, "device-b": 1}));
         // `modifiedAt` and `tags` are outside `TASK_SYNCABLE_FIELDS` (§6.7),
-        // so neither gets a clock — and an unlisted field is not merged at all.
+        // so neither gets a clock.
         assert!(!parsed.contains_key("modifiedAt"));
         assert!(!parsed.contains_key("tags"));
     }

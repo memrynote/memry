@@ -11,10 +11,13 @@ mod adopt;
 pub mod binding;
 pub mod device;
 mod devices;
+#[cfg(feature = "e2e")]
+pub mod e2e_bootstrap;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
+mod repair;
 pub mod session_events;
 mod teardown;
 pub mod vault_directory;
@@ -24,6 +27,7 @@ pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
+pub use repair::KeyRepair;
 pub use teardown::SignedOut;
 
 use std::sync::{Arc, Mutex};
@@ -38,6 +42,7 @@ use zeroize::Zeroizing;
 
 use crate::error::{CoreError, FailureKind};
 use crate::registry::config::{AppConfig, ConfigError};
+use crate::session::at_rest_key::AtRestKeys;
 
 /// Why an account call failed. Messages never carry a phrase, a key or a token.
 #[derive(Debug, thiserror::Error)]
@@ -94,6 +99,11 @@ pub enum AccountError {
     DeleteSignedOut,
     #[error("the vault list could not be saved: {0}")]
     VaultList(String),
+    /// A vault id that cannot name a folder (`account_admin::segment`).
+    #[error("The account vault's id is not valid")]
+    InvalidVaultId,
+    #[error("Could not create the vault folder: {0}")]
+    VaultDownload(String),
 }
 
 impl From<SecureStoreError> for AccountError {
@@ -142,6 +152,8 @@ impl CoreError for AccountError {
             Self::DeleteOpenVault => (FailureKind::Invalid, "vault_is_open"),
             Self::DeleteSignedOut => (FailureKind::Auth, "signed_out"),
             Self::VaultList(_) => (FailureKind::Storage, "vault_list_unwritable"),
+            Self::InvalidVaultId => (FailureKind::Invalid, "invalid_vault_id"),
+            Self::VaultDownload(_) => (FailureKind::Storage, "vault_download_failed"),
         }
     }
 }
@@ -190,9 +202,71 @@ pub struct AccountService {
     oauth: Mutex<Option<oauth::OAuthAttempt>>,
     /// One Google start or Cancel at a time: a start ends the attempt before it.
     oauth_start: tokio::sync::Mutex<()>,
+    /// Cancels asked for, counted before each waits for `oauth_start`.
+    oauth_cancels: std::sync::atomic::AtomicU64,
     /// One vault directory refresh at a time, and when the last one read the account's list
     /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+    /// The open vault's at-rest key, over the same keychain; sign-out clears it.
+    at_rest_keys: Arc<AtRestKeys>,
+    /// Which signed-in account a write that waits on the network started under.
+    epoch: AccountEpoch,
+    /// One vault download at a time, from the registry lookup to the registered folder: two
+    /// downloads of one vault would both miss the registry and make two folders bound to it.
+    downloads: Mutex<()>,
+}
+
+/// The signed-in account's term on this install, ended by each sign-out (#4783). A write that
+/// started under one account and waited on the network across a sign-out (the vault list cache,
+/// a binding) lands nowhere, so the next account never sees the last one's data. The keychain
+/// cannot tell: a refused sign-out leaves the last account's tokens behind.
+#[derive(Clone, Default)]
+struct AccountEpoch(Arc<Mutex<Term>>);
+
+#[derive(Default)]
+struct Term {
+    id: u64,
+    /// Sign-outs running. The session reads `Registered` until `/auth/logout` returns (offline:
+    /// until the transport times out), so no new term starts before the teardown is done.
+    sign_outs: u32,
+}
+
+impl AccountEpoch {
+    fn current(&self) -> u64 {
+        crate::session::lock(&self.0).id
+    }
+
+    /// The term a new write starts under; `None` while a sign-out runs.
+    fn open(&self) -> Option<u64> {
+        let term = crate::session::lock(&self.0);
+        (term.sign_outs == 0).then_some(term.id)
+    }
+
+    /// Sign-out: waits for a write in progress, so it lands before the teardown clears, and
+    /// refuses new terms until the returned guard drops, which ends the term again.
+    fn end(&self) -> SignOutTerm {
+        let mut term = crate::session::lock(&self.0);
+        term.id += 1;
+        term.sign_outs += 1;
+        SignOutTerm(self.clone())
+    }
+
+    /// Runs `write` while `epoch` is still current, `None` after a sign-out ended it.
+    fn write_if<T>(&self, epoch: u64, write: impl FnOnce() -> T) -> Option<T> {
+        let current = crate::session::lock(&self.0);
+        (current.id == epoch).then(write)
+    }
+}
+
+/// A running sign-out ([`AccountEpoch::end`]).
+struct SignOutTerm(AccountEpoch);
+
+impl Drop for SignOutTerm {
+    fn drop(&mut self) {
+        let mut term = crate::session::lock(&self.0.0);
+        term.id += 1;
+        term.sign_outs -= 1;
+    }
 }
 
 /// The core's sign-out marker (#4767), beside `memry-config.json`. Electron writes no such file,
@@ -223,6 +297,7 @@ impl AccountService {
                     .into_owned(),
             ),
         )?);
+        let at_rest_keys = AtRestKeys::new(Arc::clone(&store));
         let service = Self {
             linking: linking::Linking::new(session.device_approver()),
             session,
@@ -235,7 +310,11 @@ impl AccountService {
             key_op: tokio::sync::Mutex::new(()),
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
+            oauth_cancels: std::sync::atomic::AtomicU64::new(0),
             directory: tokio::sync::Mutex::new(None),
+            at_rest_keys,
+            epoch: AccountEpoch::default(),
+            downloads: Mutex::new(()),
         };
         service.restore();
         Ok(service)
@@ -246,9 +325,26 @@ impl AccountService {
         &self.session
     }
 
+    /// The session's at-rest key owner, shared by sync and the agent (#3545 D3).
+    pub fn at_rest_keys(&self) -> Arc<AtRestKeys> {
+        Arc::clone(&self.at_rest_keys)
+    }
+
     /// The session shared, for the sync backend of each open vault.
     pub fn shared_session(&self) -> Arc<AuthSession> {
         Arc::clone(&self.session)
+    }
+
+    /// The signed-in account's term, for a write that waits on the network (billing's plan
+    /// answers); `None` signed out or while a sign-out runs.
+    pub fn term(&self) -> Option<u64> {
+        self.signed_in_epoch()
+    }
+
+    /// Runs `write` while `term` is still the account's, `None` after any sign-out (the IPC one or
+    /// a repair's) ended it.
+    pub fn write_in_term<T>(&self, term: u64, write: impl FnOnce() -> T) -> Option<T> {
+        self.epoch.write_if(term, write)
     }
 
     /// A launch probe; a locked keychain leaves the session signed out until the next probe.
@@ -259,6 +355,22 @@ impl AccountService {
                 "the session could not be restored: {error}"
             );
         }
+        // A marker that cannot be read refuses the restore; one a sign-in could not remove
+        // refuses the next launch's.
+        if let Some(fault) = self.session.take_sign_out_marker_fault() {
+            tracing::warn!(scope = "Account", "{fault}");
+        }
+    }
+
+    /// The account's term when signed in, read before the state so a sign-out between the two
+    /// ends it; `None` signed out or while a sign-out runs.
+    fn signed_in_epoch(&self) -> Option<u64> {
+        let epoch = self.epoch.open()?;
+        matches!(
+            self.session.state(),
+            AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
+        )
+        .then_some(epoch)
     }
 
     /// `POST /auth/otp/request`, then the code's lifetime in seconds. A sign-in in flight ends

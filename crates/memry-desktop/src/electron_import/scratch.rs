@@ -255,17 +255,30 @@ fn verify_store(dir: &Path) -> Result<Vec<TornFile>, ImportError> {
     Ok(torn)
 }
 
-/// The probe for a running Electron. Zero-sized: nothing is held after [`ProfileLock::probe`].
-pub struct ProfileLock;
+/// Proof that the probe found no running Electron: only [`ProfileLock::probe`] makes one. A
+/// running Electron holds these locks for its whole life, so a reader that takes a
+/// `&ProfileLock` (the vault import does) cannot be called without the probe, and calls
+/// [`ProfileLock::recheck`] around its own reads. Nothing is held: taking LevelDB's lock would
+/// mean opening the profile's files for writing.
+#[derive(Debug)]
+pub struct ProfileLock {
+    dirs: Vec<PathBuf>,
+}
 
 impl ProfileLock {
     /// Fails with [`ImportError::ProfileInUse`] when another process holds the LOCK file of the
     /// localStorage store or of any CRDT store. The file is opened read-only and released at once.
-    pub fn probe(profile: &ElectronProfile) -> Result<(), ImportError> {
-        profile
-            .leveldb_dirs()
-            .iter()
-            .try_for_each(|dir| Self::probe_dir(dir))
+    pub fn probe(profile: &ElectronProfile) -> Result<Self, ImportError> {
+        let lock = Self {
+            dirs: profile.leveldb_dirs(),
+        };
+        lock.recheck()?;
+        Ok(lock)
+    }
+
+    /// Probes the same directories again: Electron may have started since [`Self::probe`].
+    pub fn recheck(&self) -> Result<(), ImportError> {
+        self.dirs.iter().try_for_each(|dir| Self::probe_dir(dir))
     }
 
     pub fn probe_dir(dir: &Path) -> Result<(), ImportError> {
