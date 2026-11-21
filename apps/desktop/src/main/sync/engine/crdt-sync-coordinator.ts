@@ -111,8 +111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * and merging its server body would let the write-back re-create it.
    */
   private hasNoteRow: (noteId: string) => boolean
-  /** The last body pull found no access token or vault key; see `isSignedOut`. */
-  private signedOut = false
+  /** The last body pull that had a token found no vault key; see `isVaultKeyMissing`. */
+  private vaultKeyMissing = false
 
   constructor(
     ctx: SyncContext,
@@ -1426,20 +1426,31 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   }
 
   /**
-   * This device cannot pull as its user: the last body pull found no access
-   * token (the session expired) or no vault key. An editor waiting on its
-   * server body then shows the vault file read-only with a sign-in notice
-   * (#5342), and the pull owed meanwhile merges once the user signs in.
+   * No body pull can run as this user until they sign in again: the session
+   * ended (`hasSessionEnded`). A refresh that failed for any other reason
+   * (offline, a 5xx, a rejection still in backoff) leaves the session alive.
+   * An editor waiting on its server body shows the vault file read-only with
+   * a sign-in notice (#5342), and the pull owed meanwhile merges after sign-in.
    */
   isSignedOut(): boolean {
-    return this.signedOut
+    return this.ctx.deps.hasSessionEnded?.() === true
+  }
+
+  /**
+   * The last body pull that had a token found no vault key, as with a locked
+   * keychain. Signing in does not fix that, so its editors get their own
+   * read-only notice (#5342).
+   */
+  isVaultKeyMissing(): boolean {
+    return this.vaultKeyMissing
   }
 
   private async pullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
     const token = await this.ctx.deps.getAccessToken()
-    const vaultKey = token ? await this.ctx.deps.getVaultKey() : null
-    this.signedOut = !token || !vaultKey
-    return token && vaultKey ? { token, vaultKey } : null
+    if (!token) return null
+    const vaultKey = await this.ctx.deps.getVaultKey()
+    this.vaultKeyMissing = !vaultKey
+    return vaultKey ? { token, vaultKey } : null
   }
 
   /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */

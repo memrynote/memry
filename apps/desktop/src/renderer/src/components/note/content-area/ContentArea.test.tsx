@@ -295,6 +295,10 @@ vi.mock('@/contexts/sync-context', () => ({
   useSyncOptional: vi.fn(() => null)
 }))
 
+vi.mock('@/contexts/auth-context', () => ({
+  useAuthOptional: vi.fn(() => null)
+}))
+
 vi.mock('@/hooks/use-wiki-link-hover', () => ({
   useWikiLinkHover: vi.fn(() => contentAreaMocks.wikiHover)
 }))
@@ -460,6 +464,8 @@ import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSyncOptional } from '@/contexts/sync-context'
+import { useAuthOptional } from '@/contexts/auth-context'
+import type { CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
 import { useEditorSync } from './hooks'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
@@ -2992,16 +2998,17 @@ describe('ContentArea', () => {
 
   describe('waiting for its server body (#5290)', () => {
     const yjs = (): typeof contentAreaMocks.yjsState & {
-      remoteWait?: 'merging' | 'stuck' | 'signed-out' | null
+      remoteWait?: CrdtRemoteBodyWait | null
     } => contentAreaMocks.yjsState
 
     afterEach(() => {
       yjs().isReady = true
       yjs().remoteWait = null
       vi.mocked(useSyncOptional).mockReturnValue(null)
+      vi.mocked(useAuthOptional).mockReturnValue(null)
     })
 
-    function waitOn(remoteWait: 'merging' | 'stuck' | 'signed-out', status: string): void {
+    function waitOn(remoteWait: CrdtRemoteBodyWait, status: string): void {
       yjs().isReady = false
       yjs().remoteWait = remoteWait
       vi.mocked(useSyncOptional).mockReturnValue({ state: { status } } as never)
@@ -3019,7 +3026,8 @@ describe('ContentArea', () => {
     it.each([
       { remoteWait: 'stuck' as const, status: 'idle', notice: /Waiting for sync/ },
       { remoteWait: 'merging' as const, status: 'offline', notice: /Offline/ },
-      { remoteWait: 'signed-out' as const, status: 'error', notice: /Signed out/ }
+      { remoteWait: 'signed-out' as const, status: 'error', notice: /Signed out/ },
+      { remoteWait: 'vault-locked' as const, status: 'error', notice: /encryption key/ }
     ])(
       'shows the file read-only, unbound and unsaved, when $remoteWait and $status',
       ({ remoteWait, status, notice }) => {
@@ -3038,5 +3046,15 @@ describe('ContentArea', () => {
         })
       }
     )
+
+    it('goes back to the loading state once the window is signed in again (#5342)', () => {
+      waitOn('signed-out', 'idle')
+      vi.mocked(useAuthOptional).mockReturnValue({ state: { status: 'authenticated' } } as never)
+
+      render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+      expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
   })
 })

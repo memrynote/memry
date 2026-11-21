@@ -193,6 +193,7 @@
     "remoteBodyStuck": "等待同步 — 在此笔记的同步内容到达前为只读",
     "remoteBodyOffline": "离线 — 在此笔记同步前为只读",
     "remoteBodySignedOut": "已退出登录 — 在你登录且此笔记同步前为只读",
+    "remoteBodyVaultLocked": "无法读取此保险库的加密密钥 — 在此笔记同步前为只读",
     "taskRemoval": {
       "title": "{count, plural, other {已从此笔记中移除 # 个任务}}",
       "description": "{count, plural, other {保留在任务中，还是从所有位置删除？}}",

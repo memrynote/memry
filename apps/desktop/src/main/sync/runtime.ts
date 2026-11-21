@@ -133,6 +133,7 @@ import {
 import type { AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
+  hasSessionEnded,
   refreshAccessToken,
   retrieveToken,
   setOnTokenRefreshed
@@ -766,6 +767,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
+        hasSessionEnded: () => hasSessionEnded(),
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'sync engine'),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
@@ -867,7 +869,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       crdtProvider.setRemoteBodyQuery({
         hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
-        signedOut: () => engine.isCrdtPullSignedOut()
+        signedOut: () => engine.isCrdtPullSignedOut(),
+        vaultLocked: () => engine.isCrdtPullVaultKeyMissing()
       })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may

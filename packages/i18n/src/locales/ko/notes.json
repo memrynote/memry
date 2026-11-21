@@ -193,6 +193,7 @@
     "remoteBodyStuck": "동기화 대기 중 — 동기화된 내용이 도착할 때까지 읽기 전용입니다",
     "remoteBodyOffline": "오프라인 — 이 노트가 동기화될 때까지 읽기 전용입니다",
     "remoteBodySignedOut": "로그아웃됨 — 로그인하고 이 노트가 동기화될 때까지 읽기 전용입니다",
+    "remoteBodyVaultLocked": "이 보관함의 암호화 키를 읽을 수 없습니다 — 이 노트가 동기화될 때까지 읽기 전용입니다",
     "taskRemoval": {
       "title": "{count, plural, other {이 노트에서 작업 #개가 제거됨}}",
       "description": "{count, plural, other {작업 페이지에 남겨 두시겠습니까, 아니면 모든 곳에서 삭제하시겠습니까?}}",

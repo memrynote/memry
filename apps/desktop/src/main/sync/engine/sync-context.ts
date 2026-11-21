@@ -14,6 +14,8 @@ export interface SyncEngineDeps {
   network: NetworkMonitor
   ws: WebSocketManager
   getAccessToken: () => Promise<string | null>
+  /** The session can never refresh again without a new sign-in; see `token-manager.hasSessionEnded`. */
+  hasSessionEnded?: () => boolean
   getVaultKey: () => Promise<Uint8Array | null>
   getSigningKeys: () => Promise<{
     secretKey: Uint8Array

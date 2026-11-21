@@ -193,6 +193,7 @@
     "remoteBodyStuck": "Warte auf Synchronisierung — schreibgeschützt, bis der synchronisierte Inhalt der Notiz da ist",
     "remoteBodyOffline": "Offline — schreibgeschützt, bis die Notiz synchronisiert ist",
     "remoteBodySignedOut": "Abgemeldet — schreibgeschützt, bis du dich anmeldest und die Notiz synchronisiert ist",
+    "remoteBodyVaultLocked": "Der Schlüssel dieses Tresors ist nicht lesbar — schreibgeschützt, bis die Notiz synchronisiert ist",
     "taskRemoval": {
       "title": "{count, plural, one {Aufgabe aus dieser Notiz entfernt} other {# Aufgaben aus dieser Notiz entfernt}}",
       "description": "{count, plural, one {Soll sie in Aufgaben bleiben oder überall gelöscht werden?} other {Sollen sie in Aufgaben bleiben oder überall gelöscht werden?}}",
