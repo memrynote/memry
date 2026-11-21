@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Syncing — this note's contents may still be on their way",
+    "remoteBodyStuck": "Waiting for sync — read-only until this note's synced contents arrive",
+    "remoteBodyOffline": "Offline — read-only until this note syncs",
     "taskRemoval": {
       "title": "{count, plural, one {Task removed from this note} other {# tasks removed from this note}}",
       "description": "{count, plural, one {Keep it in Tasks, or delete it everywhere?} other {Keep them in Tasks, or delete them everywhere?}}",

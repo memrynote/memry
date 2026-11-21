@@ -43,6 +43,8 @@ import {
   onCrdtStateChanged,
   onCrdtProviderReset,
   onCrdtProviderReady,
+  onCrdtDocLoaded,
+  onCrdtDocStuck,
   onCrdtWriteBackFailed
 } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
@@ -178,6 +180,8 @@ export const api = {
   onCrdtStateChanged,
   onCrdtProviderReset,
   onCrdtProviderReady,
+  onCrdtDocLoaded,
+  onCrdtDocStuck,
   onCrdtWriteBackFailed,
   ...syncEvents,
   ...updaterEvents,

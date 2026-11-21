@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Eşitleniyor — bu notun içeriği hâlâ yolda olabilir",
+    "remoteBodyStuck": "Eşitleme bekleniyor — bu notun eşitlenmiş içeriği gelene kadar salt okunur",
+    "remoteBodyOffline": "Çevrimdışı — bu not eşitlenene kadar salt okunur",
     "taskRemoval": {
       "title": "{count, plural, one {Görev bu nottan kaldırıldı} other {# görev bu nottan kaldırıldı}}",
       "description": "{count, plural, one {Görevler sayfasında kalsın mı, yoksa her yerden silinsin mi?} other {Görevler sayfasında kalsınlar mı, yoksa her yerden silinsinler mi?}}",

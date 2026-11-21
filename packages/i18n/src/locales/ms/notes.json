@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Menyegerakkan — kandungan nota ini mungkin masih dalam perjalanan",
+    "remoteBodyStuck": "Menunggu penyegerakan — baca sahaja sehingga kandungan nota yang disegerakkan tiba",
+    "remoteBodyOffline": "Luar talian — baca sahaja sehingga nota ini disegerakkan",
     "taskRemoval": {
       "title": "{count, plural, one {Tugas dialih keluar daripada nota ini} other {# tugas dialih keluar daripada nota ini}}",
       "description": "{count, plural, one {Kekalkan tugas ini dalam Tugas, atau padamkannya di semua tempat?} other {Kekalkan tugas ini dalam Tugas, atau padamkannya di semua tempat?}}",

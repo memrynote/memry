@@ -463,6 +463,28 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       expect(mergeRemoteCrdtForNote).toHaveBeenCalledWith('n1')
     })
 
+    it('crdt:open-doc tells the editor a doc still waits for the server body (#5290)', async () => {
+      const provider = getCrdtProvider()
+      await provider.init()
+      syncEngine.current = { mergeRemoteCrdtForNote: vi.fn(async () => true) }
+      vi.spyOn(provider, 'openForEditor').mockResolvedValue(new Y.Doc())
+      const awaiting = vi.spyOn(provider, 'remoteBodyWait').mockReturnValue('merging')
+
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true,
+        awaitingRemote: 'merging'
+      })
+      awaiting.mockReturnValue('stuck')
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true,
+        awaitingRemote: 'stuck'
+      })
+      awaiting.mockReturnValue(null)
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true
+      })
+    })
+
     it('crdt:open-doc with no sync runtime opens without a merge', async () => {
       const provider = getCrdtProvider()
       await provider.init()

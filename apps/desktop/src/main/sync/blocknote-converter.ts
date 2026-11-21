@@ -633,12 +633,19 @@ export function applyFragmentSeed(
   fragment: Y.XmlFragment
 ): boolean {
   const ok = blocksToYFragment(prepared.blocks, fragment)
-  if (ok && fragment.doc) {
-    writeCriticMarkupMarksToYDoc(fragment.doc, prepared.marks)
-    writeLinkReferencesToYDoc(fragment.doc, prepared.definitions, prepared.usages)
-    applyWritingSeed(fragment, prepared.writingSentinels, prepared.writing)
-  }
+  if (ok) applyFragmentSideChannels(prepared, fragment)
   return ok
+}
+
+/** The side-channel half of `applyFragmentSeed`, for a fragment that already holds the blocks. */
+export function applyFragmentSideChannels(
+  prepared: PreparedFragmentSeed,
+  fragment: Y.XmlFragment
+): void {
+  if (!fragment.doc) return
+  writeCriticMarkupMarksToYDoc(fragment.doc, prepared.marks)
+  writeLinkReferencesToYDoc(fragment.doc, prepared.definitions, prepared.usages)
+  applyWritingSeed(fragment, prepared.writingSentinels, prepared.writing)
 }
 
 async function seedFragment(

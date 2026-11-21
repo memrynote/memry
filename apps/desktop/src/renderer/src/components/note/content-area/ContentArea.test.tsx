@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { useSyncExternalStore } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
@@ -459,6 +459,8 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useSyncOptional } from '@/contexts/sync-context'
+import { useEditorSync } from './hooks'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -2986,5 +2988,54 @@ describe('ContentArea', () => {
     fireEvent.keyDown(screen.getByRole('application'), { key: 'Backspace' })
 
     expect(clickSpy).toHaveBeenCalledTimes(1)
+  })
+
+  describe('waiting for its server body (#5290)', () => {
+    const yjs = (): typeof contentAreaMocks.yjsState & {
+      remoteWait?: 'merging' | 'stuck' | null
+    } => contentAreaMocks.yjsState
+
+    afterEach(() => {
+      yjs().isReady = true
+      yjs().remoteWait = null
+      vi.mocked(useSyncOptional).mockReturnValue(null)
+    })
+
+    function waitOn(remoteWait: 'merging' | 'stuck', status: string): void {
+      yjs().isReady = false
+      yjs().remoteWait = remoteWait
+      vi.mocked(useSyncOptional).mockReturnValue({ state: { status } } as never)
+    }
+
+    it('shows the loading state while the merge is under way online', () => {
+      waitOn('merging', 'idle')
+
+      render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+      expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+      expect(screen.queryByText('editor.remoteBodyStuck')).not.toBeInTheDocument()
+    })
+
+    it.each([
+      { remoteWait: 'stuck' as const, status: 'idle', notice: /Waiting for sync/ },
+      { remoteWait: 'merging' as const, status: 'offline', notice: /Offline/ }
+    ])(
+      'shows the file read-only, unbound and unsaved, when $remoteWait and $status',
+      ({ remoteWait, status, notice }) => {
+        waitOn(remoteWait, status)
+        vi.mocked(useEditorSync).mockClear()
+
+        render(<ContentArea noteId="note-1" initialContent="# File" onMarkdownChange={vi.fn()} />)
+
+        expect(screen.getByRole('status')).toHaveTextContent(notice)
+        expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+        expect(vi.mocked(useEditorSync).mock.lastCall?.[0]).toMatchObject({
+          initialContent: '# File',
+          yjsFragment: undefined,
+          onMarkdownChange: undefined,
+          onContentChange: undefined
+        })
+      }
+    )
   })
 })

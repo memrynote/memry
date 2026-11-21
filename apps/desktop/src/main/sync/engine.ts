@@ -489,6 +489,11 @@ export class SyncEngine extends SyncEventEmitter {
     return this.crdtSync.pullCrdtForNote(noteId)
   }
 
+  /** See `CrdtPullLedger.isBodyPullStuck`. */
+  isCrdtBodyPullStuck(noteId: string): boolean {
+    return this.crdtSync.isBodyPullStuck(noteId)
+  }
+
   /**
    * `true` when this device knows it has not merged the server's state for this
    * note — an unverifiable signer, a failed or aborted pass, or a pull that is
@@ -996,6 +1001,11 @@ export class SyncEngine extends SyncEventEmitter {
         if (!this.stateManager.isPaused()) {
           this.scheduleSync(() => this.reconnectSync(offlineDurationMs))
         }
+        // An editor that opened offline waits on a merge no pull would retry,
+        // for a note the server never saw (#5290).
+        void this.ctx.deps.crdtProvider?.resumeWaitingEditorDocs().catch((error: unknown) => {
+          log.warn('Retrying the merge of waiting editor docs failed', { error })
+        })
       })().finally(() => {
         if (this.networkReconnectAbortController === reconnectAbortController) {
           this.networkReconnectAbortController = null

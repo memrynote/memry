@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Sinkronizacija – sadržaj ove bilješke možda još stiže",
+    "remoteBodyStuck": "Čeka se sinkronizacija — samo za čitanje dok ne stigne sinkronizirani sadržaj bilješke",
+    "remoteBodyOffline": "Izvan mreže — samo za čitanje dok se bilješka ne sinkronizira",
     "taskRemoval": {
       "title": "{count, plural, =1 {Zadatak uklonjen iz ove bilješke} one {# zadatak uklonjen iz ove bilješke} few {# zadatka uklonjena iz ove bilješke} other {# zadataka uklonjeno iz ove bilješke}}",
       "description": "{count, plural, =1 {Zadržati ga u Zadacima ili ga izbrisati posvuda?} one {Zadržati ih u Zadacima ili ih izbrisati posvuda?} few {Zadržati ih u Zadacima ili ih izbrisati posvuda?} other {Zadržati ih u Zadacima ili ih izbrisati posvuda?}}",

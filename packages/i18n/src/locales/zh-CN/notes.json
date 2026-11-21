@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "正在同步——此笔记的内容可能仍在传输中",
+    "remoteBodyStuck": "等待同步 — 在此笔记的同步内容到达前为只读",
+    "remoteBodyOffline": "离线 — 在此笔记同步前为只读",
     "taskRemoval": {
       "title": "{count, plural, other {已从此笔记中移除 # 个任务}}",
       "description": "{count, plural, other {保留在任务中，还是从所有位置删除？}}",

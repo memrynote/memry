@@ -310,8 +310,28 @@ seed from the vault file only when the server has none, because for a note the
 server has never seen, the vault file is the only copy of the body (#2594). A
 vault file that differs from the merged body is kept as a version by the
 write-back that replaces it. A merge that fails falls back to the seed, and the
-note's unmerged flag routes that push to the non-pruning update endpoint. An editor open still
-seeds too, which is the open fork in #2544.
+note's unmerged flag routes that push to the non-pruning update endpoint.
+
+An editor open of an empty document seeds from the vault file only for a
+local-only note or a note the server provably holds nothing for (#5290).
+Otherwise, while its merge has not completed or the note still has an
+unmerged remote body, the document stays empty and waits (`awaitingMerge`).
+An update Yjs parks as pending structs does not end the wait; the document has
+to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
+`awaitingRemote: 'merging'` and the renderer keeps its loading state until
+main broadcasts `crdt:doc-loaded`. A seeded push of a waiting note pushes
+nothing. The waiting document is never seeded from the file
+(D-UNMERGED-OPEN-EXIT-2). A note whose body pull fails three times with an
+answer from the server (an unresolvable signer, pending structs, a server
+error; never offline, 429 or 401) counts as stuck, about three minutes with the
+pull backoff; the count is kept in memory too, so it progresses when the debt
+table is unavailable. Main then broadcasts `crdt:doc-stuck`. While a note is
+stuck, or the device is offline, the editor shows the vault file read-only
+with a notice, with no binding and no saves. The pull that later merges the
+body, or a pull that proves the server holds nothing, ends the wait, and the
+editor binds. A reconnect retries the merge of every waiting editor document
+(`resumeWaitingEditorDocs`), which is how a note the server never saw seeds
+after an offline open.
 
 The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
 vault file only when the server answered with no snapshot and no updates for
@@ -344,6 +364,16 @@ document cannot take the edit is marked in the `crdt_owed_file_bodies` table
 and given a full-state outbox row (#2646). The marker means the vault file is
 ahead of the document. A main-process edit never writes it with a store, and
 never for a large-file-class body.
+
+The body replace behind those feeds (`replaceDocBody`) builds the new body in a
+separate document and keeps the blocks it leaves unchanged at the start and the
+end, with their Yjs items (`fragment-reconcile.ts`). A peer edit inside those
+blocks that arrives after the feed still lands. Only the changed stretch is
+replaced, so when the file and a peer both changed the same block, one side is
+lost (#5319). The first open of a loaded, non-empty document in a session also
+ingests a vault file edited outside Memry before the open resolves, through the
+write-back's outside-edit path, so a pull waiting on the same open merges into
+the fed body instead of overwriting the file.
 
 With a store, a pull writes it for a document the store never held: an emptied
 or new store, as after a store epoch reset (#3277). The pull checks the empty
