@@ -239,6 +239,14 @@ interface ActiveDoc {
   localOnly: boolean
   closing?: boolean
   /**
+   * Set by `purge` before it awaits anything. `onDocUpdate` neither stores,
+   * queues nor broadcasts an edit to a doc being purged, whatever its source
+   * (an editor keystroke, a body save's feed): it would land an old-generation
+   * row after the purge dropped the rest (#5359). A plain `close` leaves this
+   * unset and keeps the edits that reach it, so the flush still persists them.
+   */
+  purging?: boolean
+  /**
    * Opened unseeded with no store, and neither a remote update, a seed nor
    * `takeFileAfterMerge` has reached it yet. A body fed into such a doc shares
    * no Yjs items with the server body (#2536, #2646). An editor bound to it
@@ -1397,7 +1405,10 @@ export class CrdtProvider {
     clearOwedFileBody(noteId)
 
     const entry = this.docs.get(noteId)
-    if (entry) entry.pendingSnapshotBytes = 0
+    if (entry) {
+      entry.purging = true
+      entry.pendingSnapshotBytes = 0
+    }
 
     await this.close(noteId)
     await this.persistence?.clearDocument(noteId).catch((err: unknown) => {
@@ -2247,6 +2258,14 @@ export class CrdtProvider {
   private onDocUpdate(noteId: string, update: Uint8Array, origin: unknown): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    if (entry.purging) {
+      log.warn('Dropping an update to a doc being purged', {
+        noteId,
+        origin: isIpcOrigin(origin) ? `ipc:${origin.windowId}` : String(origin),
+        bytes: update.byteLength
+      })
+      return
+    }
 
     this.touchDoc(entry)
     // Both counters stay honest for a local-only note. accumulatedBytes drives
