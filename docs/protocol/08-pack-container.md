@@ -274,10 +274,10 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   and floor tables, inside an `INSERT OR IGNORE` that takes none for an ignored
   retry (`apps/sync-server/src/services/crdt.ts:143-151`). A snapshot takes an
   existing number or a lower one: without a claim the union's current maximum
-  (`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260`, `:336`), with
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:277-285`, `:389`), with
   a claim its covered watermark, the highest update the claim covers
-  (`:138-146`, `:152-156`, `:334-335`). A claimed watermark starts at the
-  existing snapshot row or 0 and never reads the floor (`:283`, `:311-312`), so
+  (`:163-171`, `:352-357`, `:387-388`). A claimed watermark starts at the
+  existing snapshot row or 0 and never reads the floor (`:329`, `:357`), so
   after a purge a claimed snapshot can number below the floor (#5248). So a
   document's updates above any baseline are numbered `baseline + 1`,
   `baseline + 2`, and so on, and a snapshot's number is never a lower bound for
@@ -334,14 +334,14 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   document, so the same batch drops every `crdt_update` pack of the vault and
   resets that kind's pack watermark (`packKindReset`,
   `apps/sync-server/src/services/pack-replaced-objects.ts:32`, called at
-  `apps/sync-server/src/services/document-body-purge.ts:146-149`); without the
+  `apps/sync-server/src/services/document-body-purge.ts:155-158`); without the
   reset, compaction never packs the other documents of a dropped pack again.
   Keying that drop on update rows alone is not enough: a snapshot that claims
   the packed updates prunes their rows (#2299), and the packs still hold them
-  (`apps/sync-server/src/services/document-body-purge.ts:98-102`). The purge
+  (`apps/sync-server/src/services/document-body-purge.ts:100-104`). The purge
   does this in the D1 batch that deletes the body rows, so the removal and the
   delete commit together
-  (`apps/sync-server/src/services/document-body-purge.ts:93-176`). A
+  (`apps/sync-server/src/services/document-body-purge.ts:95-185`). A
   compaction run that selected the rows before the purge fails its
   commit-time recheck (`updatesCurrent`,
   `apps/sync-server/src/services/pack-update-selection.ts`). The drop shipped
@@ -662,9 +662,9 @@ anchor of 0, so the rebuild tiles from 0
 `(created_at, note_id)` watermark
 (`apps/sync-server/src/services/pack-selection.ts:118`); a snapshot written
 in the watermark's second with a smaller `note_id`, including every rewrite,
-which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:128`),
+which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:153`),
 sorted below it and stayed item-granular forever. `server_cursor` is strictly
-increasing and moves on every rewrite (`:128`), so no committed row can sort
+increasing and moves on every rewrite (`:153`), so no committed row can sort
 below a watermark it was not selected under.
 
 **Where the tail starts.** A reader computes, for each kind that bounds its
@@ -897,7 +897,7 @@ coverage ranges chain, and writes one pack that replaces them:
   the purged body: in the batch that deletes the body rows it makes due at once
   every replaced object of each body kind the document has rows of, except an
   object waiting for its purge rewrite (§8.13), and deletes them before it
-  returns (`apps/sync-server/src/services/document-body-purge.ts:136-145`). A
+  returns (`apps/sync-server/src/services/document-body-purge.ts:145-154`). A
   reader that listed one of them meets a 404 (below). A failed delete stays
   due. A message whose last pass leaves objects due fails, so the queue
   redelivers it; builds it committed stay committed.
@@ -923,7 +923,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   `apps/sync-server/src/services/pack-index-write.ts:57`). Builds, rollups and
   purge rewrites all record it. `record` packs carry NULL. The purge finds a
   document's packs with `json_each` over that column
-  (`apps/sync-server/src/services/document-body-purge.ts:33-35`).
+  (`apps/sync-server/src/services/document-body-purge.ts:35-36`).
 - **Packs written before migration 0024.** Their `documents` is NULL, so the
   server cannot tell which documents they hold. While the vault lists such a
   pack of a body kind and the document has rows of that kind (for
@@ -936,7 +936,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   also deletes the listing row of each pack whose `documents` names the
   document. It records the pack's object in `pack_replaced_objects` as a
   pending rewrite: `replaced_by = 'rewrite'`, `removed_at` the purge time
-  (`apps/sync-server/src/services/document-body-purge.ts:150-165`). Other
+  (`apps/sync-server/src/services/document-body-purge.ts:159-174`). Other
   packs keep their rows and objects. Every statement rechecks that the
   document is dead, so a re-create that commits first keeps its packs.
 - **Rewrite.** Each pending object is rewritten as a rollup of one pack
@@ -973,7 +973,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   deleted unlisted (§8.10, **Unlisted objects**).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
-  of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:195-196`).
+  of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:204-205`).
   Every compaction message and every backfill message of the vault runs the
   same rewrite pass before its first deletion pass (`withReplacedObjectPasses`,
   `apps/sync-server/src/services/pack-message-passes.ts:50`, `:54`). When rewrites or
@@ -1027,7 +1027,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
 - **Snapshot source objects.** The purge deletes the document's
   `crdt_snapshots` objects, which are not pack objects, best effort: a failed
   delete is logged and leaves unreachable objects
-  (`apps/sync-server/src/services/document-body-purge.ts:200-216`). The 900 s
+  (`apps/sync-server/src/services/document-body-purge.ts:209-225`). The 900 s
   bound covers pack objects only.
 - **A purge that fails.** The purge runs after the push that deleted the
   document commits, and its failure never fails the push (chapter 07 §7.15).

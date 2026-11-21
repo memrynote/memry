@@ -11,8 +11,9 @@ export const DOCUMENT_ITEM_TYPES: ReadonlySet<string> = new Set(['note', 'journa
 
 // A document is dead while a note or journal record for its id is deleted and
 // none is live. Every statement re-checks it, so a re-create that commits
-// between the delete and the purge keeps its body.
-const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault_id = ?
+// between the delete and the purge keeps its body. The snapshot write refuses
+// a dead document with it (#5367). Bind: user, vault, note, twice.
+export const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault_id = ?
       AND r.item_type IN ('note', 'journal') AND r.item_id = ? AND r.deleted_at IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND r.vault_id = ?
       AND r.item_type IN ('note', 'journal') AND r.item_id = ? AND r.deleted_at IS NULL)`
@@ -45,7 +46,8 @@ const HOLDS = `documents IS NOT NULL
  *
  * Per document, in one transaction: the highest sequence number is kept in
  * `crdt_sequence_floors`, so the re-created body numbers on from it and a device
- * still holding the old cursor does not skip it; storage is refunded; the rows
+ * still holding the old cursor does not skip it, with the tombstone's feed
+ * cursor, which fences late snapshot pushes (#5367); storage is refunded; the rows
  * are deleted. A pack is immutable and holds many documents, so per body kind
  * (protocol 08 §8.13):
  *
@@ -108,18 +110,25 @@ export const purgeDeletedDocumentBodies = async (
       return [
         db
           .prepare(
-            `INSERT INTO crdt_sequence_floors (user_id, vault_id, note_id, floor)
-             SELECT ?, ?, ?, m FROM (
+            // `purge_cursor` is the tombstone's feed cursor (#5367): a claimed
+            // snapshot below it never read the delete (crdt-snapshot-write.ts).
+            `INSERT INTO crdt_sequence_floors (user_id, vault_id, note_id, floor, purge_cursor)
+             SELECT ?, ?, ?, COALESCE(m, 0), t FROM (
                SELECT MAX(sequence_num) AS m FROM (
                  SELECT sequence_num FROM crdt_updates WHERE ${BODY_ROWS}
                  UNION ALL
                  SELECT sequence_num FROM crdt_snapshots WHERE ${BODY_ROWS}
                )
+             ), (
+               SELECT MAX(server_cursor) AS t FROM sync_items WHERE user_id = ? AND vault_id = ?
+                 AND item_type IN ('note', 'journal') AND item_id = ? AND deleted_at IS NOT NULL
              )
-             WHERE m IS NOT NULL AND ${DEAD}
-             ON CONFLICT (user_id, vault_id, note_id) DO UPDATE SET floor = MAX(floor, excluded.floor)`
+             WHERE (m IS NOT NULL OR t IS NOT NULL) AND ${DEAD}
+             ON CONFLICT (user_id, vault_id, note_id) DO UPDATE SET floor = MAX(floor, excluded.floor),
+               purge_cursor = MAX(COALESCE(purge_cursor, excluded.purge_cursor),
+                                  COALESCE(excluded.purge_cursor, purge_cursor))`
           )
-          .bind(...body, ...body, ...body, ...dead),
+          .bind(...body, ...body, ...body, ...body, ...dead),
         db
           .prepare(
             `UPDATE users SET storage_used = MAX(0, storage_used
