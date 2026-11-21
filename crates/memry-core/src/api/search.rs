@@ -307,6 +307,13 @@ impl Search {
         self.index.read_blocking(note_properties::usage)
     }
 
+    /// [`note_properties::values_named`].
+    pub fn property_values(&self, name: &str) -> Result<Vec<(String, String)>, StorageError> {
+        let name = name.to_owned();
+        self.index
+            .read_blocking(move |index| note_properties::values_named(index, &name))
+    }
+
     /// [`note_properties::named`].
     pub fn notes_with_property(&self, name: &str) -> Result<Vec<NoteWithProperty>, StorageError> {
         let index = self.index.clone();
