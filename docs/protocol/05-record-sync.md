@@ -870,10 +870,10 @@ is the only read of `changes.deleted`, which joins the pull request, and only
 what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:823`)
 and attested markers (`pull-coordinator.ts:908`) apply. Rust core page pull:
 `crates/memry-core/src/sync/pull.rs:412-425` counts and logs the uncovered
-ids and `:434` applies none. The core's first sync refs pass
-(`crates/memry-core/src/sync/first_sync.rs:429-435`) still records a bare
-tombstone (§5.12.2) for every `deleted` id; #5340 tracks moving it to this
-rule.
+ids and `:434` applies none. The core's first sync refs pass pulls each page's
+`deleted` ids before its cursor moves and applies only what that pull verified
+(`crates/memry-core/src/sync/first_sync.rs:418-428`), so a bare id records
+nothing (#5340).
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are

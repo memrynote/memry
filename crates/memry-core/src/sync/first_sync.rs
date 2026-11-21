@@ -70,7 +70,7 @@ mod record_packs;
 mod refs_page;
 mod window;
 use open_session::OpenSession;
-use refs_page::{read_refs_page, reference_now};
+use refs_page::read_refs_page;
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -393,9 +393,9 @@ impl FirstSync {
                 path.push_str("&cursor=");
                 path.push_str(cursor);
             }
-            // Without `purged_tombstones`: this pass applies every `deleted` id
-            // untyped and cannot tell a marker's id from a signed tombstone's
-            // (chapter 05 §5.12.3). Electron's run from cursor 0 skips markers too.
+            // Without `purged_tombstones`: a marker's id reaches this pass only
+            // as a `deleted` id, which the pull below resolves (chapter 05
+            // §5.12.3). Electron's run from cursor 0 skips markers too.
             let declared = self
                 .pull
                 .declaration()
@@ -415,11 +415,22 @@ impl FirstSync {
             let recorded = page.refs.len();
             let tombstones = page.deleted.len();
 
+            // §5.12.1 (#5340): an id in `deleted` is not a delete. It only names
+            // an id to pull, and only the verified typed delete or attested
+            // marker the pull returns deletes, before the cursor moves past it.
+            // A bare id deletes and records nothing, as in Electron
+            // (`changes-page.ts:38`). A chunk that was not a pull envelope
+            // reopens the feed re-read, so its deletes are not skipped for good.
+            let missed = if page.deleted.is_empty() {
+                false
+            } else {
+                self.pull.fetch_ids(&page.deleted).await?.dropped_pages > 0
+            };
+
             // Durable **before** the cursor advances, in one transaction, so
             // a kill here resumes at this page rather than past it.
             let stored = next.clone();
             let refs = page.refs;
-            let deleted = page.deleted;
             self.db
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
@@ -445,18 +456,8 @@ impl FirstSync {
                         )
                         .map_err(sqlite_failed)?;
                     }
-                    // §5.12.1: an id in `deleted` may have no type on the
-                    // wire, and the refs-only pass has no envelope to read one
-                    // from. Marking every row for that id, and filing a bare
-                    // tombstone when there is none, is idempotent and is what
-                    // stops pass two resurrecting it.
-                    for item_id in &deleted {
-                        store::apply_untyped_tombstone(
-                            &txn,
-                            item_id,
-                            reference_now(&refs, item_id),
-                            reference_now(&refs, item_id),
-                        )?;
+                    if missed {
+                        feed_restart::reopen_cursor_skip_repair(&txn)?;
                     }
                     // The refs pass serves no bodies (#2299).
                     note_body_feed::rearm_legacy_pull(&txn)?;
