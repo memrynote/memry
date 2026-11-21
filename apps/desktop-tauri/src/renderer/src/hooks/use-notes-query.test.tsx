@@ -44,7 +44,6 @@ const mocks = vi.hoisted(() => ({
     renamed: [] as NoteHandler[],
     moved: [] as MovedHandler[],
     linksChanged: [] as ((event: { sourceIds: string[]; targetIds: string[] }) => void)[],
-    external: [] as NoteHandler[],
     dropped: [] as EmptyHandler[],
     indexProgress: [] as ((progress: number) => void)[],
     journal: [] as EmptyHandler[],
@@ -54,36 +53,38 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: mocks.notesService,
+  // Live at once for `useNote`; the list groups, which also wait on this one, never re-read.
   onNoteCreated: (callback: EmptyHandler) => {
     mocks.handlers.created.push(callback)
     return vi.fn()
   },
-  onNoteUpdated: (callback: NoteHandler) => {
+  onNoteUpdated: (callback: NoteHandler, live?: () => void) => {
     mocks.handlers.updated.push(callback)
+    live?.()
     return vi.fn()
   },
-  onNoteDeleted: (callback: NoteHandler) => {
+  onNoteDeleted: (callback: NoteHandler, live?: () => void) => {
     mocks.handlers.deleted.push(callback)
+    live?.()
     return vi.fn()
   },
-  onNoteRenamed: (callback: NoteHandler) => {
+  onNoteRenamed: (callback: NoteHandler, live?: () => void) => {
     mocks.handlers.renamed.push(callback)
+    live?.()
     return vi.fn()
   },
-  onNoteMoved: (callback: MovedHandler) => {
+  onNoteMoved: (callback: MovedHandler, live?: () => void) => {
     mocks.handlers.moved.push(callback)
+    live?.()
     return vi.fn()
   },
   onNoteLinksChanged: (callback: (event: { sourceIds: string[]; targetIds: string[] }) => void) => {
     mocks.handlers.linksChanged.push(callback)
     return vi.fn()
   },
-  onNoteExternalChange: (callback: NoteHandler) => {
-    mocks.handlers.external.push(callback)
-    return vi.fn()
-  },
-  onNoteEventsDropped: (callback: EmptyHandler) => {
+  onNoteEventsDropped: (callback: EmptyHandler, live?: () => void) => {
     mocks.handlers.dropped.push(callback)
+    live?.()
     return vi.fn()
   }
 }))

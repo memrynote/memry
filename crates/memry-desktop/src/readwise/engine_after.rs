@@ -66,7 +66,7 @@ impl Run<'_> {
             state: self.state,
             client: &self.engine.client,
             limiter: self.engine.reader_limiter.clone(),
-            token: self.token,
+            token: self.credential,
             signal: &self.signal,
             started,
             root: &options.root_folder,

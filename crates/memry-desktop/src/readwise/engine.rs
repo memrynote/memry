@@ -130,7 +130,7 @@ impl Engine {
         let mut run = Run {
             engine: self,
             library,
-            token,
+            credential: token,
             observer,
             signal,
             state: &state,
@@ -201,7 +201,7 @@ enum Written {
 struct Run<'a> {
     engine: &'a Engine,
     library: &'a Library,
-    token: &'a str,
+    credential: &'a str,
     observer: &'a dyn RunObserver,
     signal: CancellationToken,
     state: &'a RunState,
@@ -270,7 +270,7 @@ impl Run<'_> {
         if ids.is_empty() {
             return Ok(books);
         }
-        let mut pages = self.engine.client.export_books(self.token, ids);
+        let mut pages = self.engine.client.export_books(self.credential, ids);
         while let Some(page) = self.library.runtime.block_on(pages.next(&self.signal))? {
             books.extend(page);
         }
@@ -337,7 +337,10 @@ impl Run<'_> {
 
         // 2. What changed.
         let after = (!full).then_some(cursor.as_deref()).flatten();
-        let mut pages = self.engine.client.export_pages(self.token, after, true);
+        let mut pages = self
+            .engine
+            .client
+            .export_pages(self.credential, after, true);
         let mut exported: Vec<ReadwiseBook> = Vec::new();
         loop {
             match self.library.runtime.block_on(pages.next(&self.signal)) {

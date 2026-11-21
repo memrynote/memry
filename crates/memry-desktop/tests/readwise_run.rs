@@ -52,15 +52,15 @@ use tokio_util::sync::CancellationToken;
 
 use memry_desktop::readwise::limiter::RequestLimiter;
 
-#[path = "readwise_run_after.rs"]
+#[path = "readwise_run/after.rs"]
 mod after;
-#[path = "readwise_run_claim.rs"]
+#[path = "readwise_run/claim.rs"]
 mod claim;
-#[path = "readwise_run_gate.rs"]
+#[path = "readwise_run/gate.rs"]
 mod gate;
-#[path = "readwise_run_schedule.rs"]
+#[path = "readwise_run/schedule.rs"]
 mod schedule;
-#[path = "readwise_run_sync_view.rs"]
+#[path = "readwise_run/sync_view.rs"]
 mod sync_view;
 
 use editor_window::Window;

@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ancora nessun vault",
       "openVault": "Apri vault",
+      "createVault": "Crea vault",
+      "openFolderAsVault": "Apri cartella come vault",
       "settings": "Impostazioni",
       "remove": "Rimuovi “",
       "removeVaultTitle": "Rimuovere “{name}” dalla lista?",

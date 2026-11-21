@@ -1303,6 +1303,32 @@ fn a_malformed_mark_is_dropped_exactly_as_the_reference_drops_it() {
     assert_eq!(ids, ["keep"], "only the well-formed mark survives");
 }
 
+/// Two devices editing one mark offline leave two copies of its id; the first
+/// valid copy wins, as in the reference reader (protocol 12.5.1).
+#[test]
+fn duplicate_ids_read_as_the_first_valid_copy() {
+    let copy = |kind: &str, body: &str| {
+        mark(&[
+            ("id", Any::String("c1".into())),
+            ("kind", Any::String(kind.into())),
+            ("visibleText", Any::String("x".into())),
+            ("body", Any::String(body.into())),
+            ("start", Any::Number(0.0)),
+            ("end", Any::Number(1.0)),
+        ])
+    };
+    let marks = vec![
+        copy("highlight", "invalid"),
+        copy("comment", "first"),
+        copy("comment", "second"),
+    ];
+
+    let comments = memry_core::crdt::comments::extract_comments(&opened(&comments_doc(marks)))
+        .expect("comments");
+    let bodies: Vec<_> = comments.iter().map(|c| c.body.as_deref()).collect();
+    assert_eq!(bodies, [Some("first")]);
+}
+
 /// All four kinds the reference accepts, and nothing invented alongside them.
 #[test]
 fn the_four_kinds_are_the_four_the_reference_accepts() {

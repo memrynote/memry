@@ -1,0 +1,1220 @@
+{
+  "source": "bear",
+  "cases": [
+    {
+      "name": "backup",
+      "sources": [
+        "export.bear2bk"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "shared image.png",
+          "size": 11,
+          "sha256": "7f47b756761a46e6d4a4d96f0d8a4448f8449235009d1f3ad1493f5c773c19e8"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "report $v1.pdf",
+          "size": 13,
+          "sha256": "932d2676c1e461ba50d559bba416fbc6af8da1f74309ae81370c615223d0e349"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "script.exe",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "café.png",
+          "size": 12,
+          "sha256": "8ea05847c47ebd307810daeea5633eeef60978078c0ed56ab969f8cf21772aa7"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Note A",
+          "folder": "Bear",
+          "tags": [
+            "a/b/c",
+            "café",
+            "my_tag",
+            "spaced_out_tag",
+            "topLevel",
+            "work/projects"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-06-01T12:00:00.000Z",
+          "content": "# Note A\n\nIntro with #[my tag]# and #[  spaced   out tag ]# plus #work/projects and #a/b/c.\n## Heading is not a tag\n#topLevel tag at line start, email a#b is not a tag, and #café too.\nSee also [[Late heading]] and [ghost](bear://x-callback-url/open-note?id=NOPE).\nPrefixed param [[Just text #trash-tag]]\n\n![shared image](attachments/note-1/shared%20image.png)\n![shared image again](attachments/note-1/shared%20image.png)\n<!-- file:{\"url\":\"attachments/note-1/report $v1.pdf\",\"name\":\"report $v1.pdf\",\"size\":13,\"mimeType\":\"application/pdf\"} -->\n[plain link](assets/report%20$v1.pdf)\n![run me](assets/script.exe)\n![gone](assets/missing.png)\n![hash](assets/a%23b.png)\n![accent](attachments/note-1/café.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Late heading",
+          "folder": "Bear/Archived",
+          "tags": [
+            "tag-with-dash_and_underscore"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2023-11-14T22:13:20.123Z",
+          "content": "\r\n  First line  \r\nbody #tag-with-dash_and_underscore\r\n- [ ] a task\r\n# Late heading\r\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "Just text #trash-tag",
+          "folder": "Bear/Trash",
+          "tags": [
+            "trash-tag"
+          ],
+          "properties": [],
+          "created": null,
+          "modified": "2024-01-02T03:04:05.000Z",
+          "content": "Just text #trash-tag\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "Broken info",
+          "folder": "Bear",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 5,
+          "total": 5,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 4,
+        "attachments": 3,
+        "skipped": 2,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "unsupported attachment type .exe",
+            "count": 1
+          },
+          {
+            "reason": "No text.md found",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "two-zips",
+      "sources": [
+        "export.bear2bk",
+        "more.zip"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 5,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.bear.scanning",
+            "message": "Scanning Bear export…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "shared image.png",
+          "size": 11,
+          "sha256": "7f47b756761a46e6d4a4d96f0d8a4448f8449235009d1f3ad1493f5c773c19e8"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "report $v1.pdf",
+          "size": 13,
+          "sha256": "932d2676c1e461ba50d559bba416fbc6af8da1f74309ae81370c615223d0e349"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "script.exe",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "café.png",
+          "size": 12,
+          "sha256": "8ea05847c47ebd307810daeea5633eeef60978078c0ed56ab969f8cf21772aa7"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 0,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Note A",
+          "folder": "Bear",
+          "tags": [
+            "a/b/c",
+            "café",
+            "my_tag",
+            "spaced_out_tag",
+            "topLevel",
+            "work/projects"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2024-06-01T12:00:00.000Z",
+          "content": "# Note A\n\nIntro with #[my tag]# and #[  spaced   out tag ]# plus #work/projects and #a/b/c.\n## Heading is not a tag\n#topLevel tag at line start, email a#b is not a tag, and #café too.\nSee also [[Note B from the second zip]] and [ghost](bear://x-callback-url/open-note?id=NOPE).\nPrefixed param [[Just text #trash-tag]]\n\n![shared image](attachments/note-1/shared%20image.png)\n![shared image again](attachments/note-1/shared%20image.png)\n<!-- file:{\"url\":\"attachments/note-1/report $v1.pdf\",\"name\":\"report $v1.pdf\",\"size\":13,\"mimeType\":\"application/pdf\"} -->\n[plain link](assets/report%20$v1.pdf)\n![run me](assets/script.exe)\n![gone](assets/missing.png)\n![hash](assets/a%23b.png)\n![accent](attachments/note-1/café.png)"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 6,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note A",
+            "params": {
+              "title": "Note A"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Note B from the second zip",
+          "folder": "Bear/Archived",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2023-11-14T22:13:20.123Z",
+          "content": "# Note B from the second zip\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Note B",
+            "params": {
+              "title": "Note B"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 2,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "Just text #trash-tag",
+          "folder": "Bear/Trash",
+          "tags": [
+            "trash-tag"
+          ],
+          "properties": [],
+          "created": null,
+          "modified": "2024-01-02T03:04:05.000Z",
+          "content": "Just text #trash-tag\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 3,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Trashed",
+            "params": {
+              "title": "Trashed"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 3,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "Broken info",
+          "folder": "Bear",
+          "tags": [],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 4,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Broken info",
+            "params": {
+              "title": "Broken info"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Extra",
+            "params": {
+              "title": "Extra"
+            }
+          },
+          "imported": 4,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-5",
+          "title": "Extra",
+          "folder": "Bear",
+          "tags": [
+            "extra"
+          ],
+          "properties": [],
+          "created": null,
+          "modified": null,
+          "content": "# Extra\nBack to [[Note A]] #extra\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Extra",
+            "params": {
+              "title": "Extra"
+            }
+          },
+          "imported": 5,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 5,
+          "total": 6,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Extra",
+            "params": {
+              "title": "Extra"
+            }
+          },
+          "imported": 5,
+          "attachments": 3,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 6,
+          "total": 6,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 5,
+        "attachments": 3,
+        "skipped": 2,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "unsupported attachment type .exe",
+            "count": 1
+          },
+          {
+            "reason": "No text.md found",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

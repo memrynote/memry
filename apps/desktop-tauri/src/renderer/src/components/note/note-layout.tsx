@@ -151,6 +151,12 @@ export function NoteLayout({
         maxWidth: fullWidth ? '100%' : contentWidth ? `calc(${contentWidth} + 12rem)` : '64rem'
       }
 
+  // Full width keeps only the gutters something is drawn in, in px because both
+  // are px-sized at every font size: 72px at the start holds the block side menu
+  // (20px fold chevron + 24px drag handle + 24px plus), 56px at the end the
+  // outline panel (16px inset + 24px lines + connector).
+  const canvasGutter = fullWidth ? 'ps-[72px] pe-[56px]' : 'px-24'
+
   const rootStyle: CSSProperties & Record<'--note-chrome-height', string> = {
     '--note-chrome-height': hasChrome ? '2.25rem' : '0px'
   }
@@ -185,9 +191,10 @@ export function NoteLayout({
             className={cn(
               'mx-auto w-full pb-10 min-h-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
               cover ? 'pt-6' : hasChrome ? 'pt-15' : 'pt-6',
+              canvasGutter,
               showGridRail
-                ? 'grid items-start gap-x-12 px-24 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1 max-[920px]:px-8'
-                : 'px-24 flex flex-col'
+                ? 'grid items-start gap-x-12 [grid-template-columns:minmax(0,var(--note-layout-content-track))_20rem] max-[920px]:max-w-[var(--note-layout-content-max)] max-[920px]:grid-cols-1'
+                : 'flex flex-col'
             )}
             style={canvasStyle}
           >

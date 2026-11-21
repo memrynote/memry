@@ -38,6 +38,15 @@ export async function expandTagsSection(page: Page): Promise<void> {
     await page
       .locator('button[aria-label^="Tags section, expanded"]')
       .waitFor({ state: 'visible', timeout: 5_000 })
+    // The rows stay mounted while collapsed and the section grows over a CSS transition, so they
+    // move until it ends: a click aimed at a row mid-transition presses one row and releases on
+    // the next, and no `click` fires.
+    const contentId = await trigger.getAttribute('aria-controls')
+    await page.waitForFunction(
+      (id: string) => document.getElementById(id)?.getAnimations().length === 0,
+      contentId,
+      { timeout: 5_000 }
+    )
   }
 }
 
