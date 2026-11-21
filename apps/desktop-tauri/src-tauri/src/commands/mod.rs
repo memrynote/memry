@@ -48,6 +48,7 @@ pub mod sync_account;
 pub mod tag_schema;
 pub mod tags;
 pub mod tags_retag;
+pub mod task_writes;
 pub mod tasks;
 pub mod telemetry;
 pub mod templates;

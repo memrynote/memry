@@ -89,6 +89,48 @@ pub fn complete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Completion, StorageError> {
+    complete_with(
+        conn,
+        task_id,
+        local_now,
+        &Completing::default(),
+        device_id,
+        now_ms,
+    )
+}
+
+/// How [`complete_with`] completes. The default is [`complete`]'s: open subtasks close with
+/// the task, a repeating task rolls, and `completedAt` is `now_ms`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Completing {
+    /// Close the task's open subtasks too. Desktop's `tasks:complete` does not.
+    pub subtasks: bool,
+    /// Roll a repeating task to its next occurrence. Off is desktop's `recordOnly`: a
+    /// completion recorded from elsewhere closes the task and leaves its series alone.
+    pub roll: bool,
+    /// The `completedAt` to stamp, an ISO instant; `None` is `now_ms`.
+    pub completed_at: Option<String>,
+}
+
+impl Default for Completing {
+    fn default() -> Self {
+        Self {
+            subtasks: true,
+            roll: true,
+            completed_at: None,
+        }
+    }
+}
+
+/// [`complete`] as `how` says.
+pub fn complete_with(
+    conn: &Connection,
+    task_id: &str,
+    local_now: LocalDateTime,
+    how: &Completing,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Completion, StorageError> {
     let mut batch = Batch::open(conn, device_id, now_ms)?;
     let task = load_live(batch.conn(), task_id)?;
     let statuses = ProjectStatuses::load(batch.conn(), task.project_id())?;
@@ -99,9 +141,12 @@ pub fn complete(
         });
     }
 
-    let series = series_of(&task);
+    let series = if how.roll { series_of(&task) } else { None };
 
-    let at = json!(iso(now_ms)?);
+    let at = match &how.completed_at {
+        Some(at) => json!(at),
+        None => json!(iso(now_ms)?),
+    };
     let done = done_status(&task, &statuses);
     let mut changes = vec![("statusId", done), ("completedAt", at.clone())];
     if series.is_some() {
@@ -109,7 +154,12 @@ pub fn complete(
     }
     batch.edit(task_id, changes)?;
 
-    for subtask_id in descendant_ids(batch.conn(), task_id)? {
+    let subtasks = if how.subtasks {
+        descendant_ids(batch.conn(), task_id)?
+    } else {
+        Vec::new()
+    };
+    for subtask_id in subtasks {
         let subtask = load_live(batch.conn(), &subtask_id)?;
         if subtask.is_completed() {
             continue;

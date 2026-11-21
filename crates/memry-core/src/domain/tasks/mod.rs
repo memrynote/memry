@@ -88,12 +88,12 @@ pub use batch::{Prior, Removed, TaskWrite, undo, write_fields};
 pub use bulk::*;
 pub use create::{TaskDetails, create_detailed, duplicate};
 pub use fields::*;
-pub use lifecycle::{Completion, NextOccurrence, complete, uncomplete};
+pub use lifecycle::{Completing, Completion, NextOccurrence, complete, complete_with, uncomplete};
 pub use model::{StatusKind, TASK_ID_LEN, new_task_id, status_kind};
 pub use structure::{
     SubtaskDisposal, delete_with_subtasks, reorder, set_parent, set_project, set_status,
 };
-pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal};
+pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal, create_refusal};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "task";

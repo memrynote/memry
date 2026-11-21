@@ -402,6 +402,8 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_writes.rs"]
+mod task_writes;
 #[path = "tasks_service.rs"]
 mod tasks_service;
 #[path = "telemetry_flush.rs"]

@@ -25,6 +25,10 @@ use crate::domain::{task_links, task_settings};
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
 
+mod writes;
+
+pub use writes::NewDesktopTask;
+
 /// Built by [`crate::api::vault::Vault::task_store`].
 pub struct TaskStore {
     db: Db,
