@@ -223,8 +223,8 @@ impl SyncDriver {
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let observers = Arc::new(Observers::default());
-        for listener in listeners {
-            observers.register(listener);
+        for listener in &listeners {
+            observers.register(Arc::clone(listener));
         }
         let declaration = config.declaration.clone();
 
@@ -306,7 +306,11 @@ impl SyncDriver {
         }
         let tasks = Arc::new(TasksPhase::new(db.clone()));
         engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
-        observers.register(SupersededObserver::new(db.clone(), device_id.clone()));
+        observers.register(SupersededObserver::new(
+            db.clone(),
+            device_id.clone(),
+            listeners,
+        ));
 
         let driver = Self {
             engine,

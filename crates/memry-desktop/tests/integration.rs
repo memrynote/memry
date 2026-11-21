@@ -130,6 +130,12 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_files.rs"]
+mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -423,6 +429,8 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "tasks_service.rs"]
+mod tasks_service;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]
