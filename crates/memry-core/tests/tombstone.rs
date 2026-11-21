@@ -47,7 +47,7 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{Document, DocumentRegistry, extract_text};
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -82,16 +82,21 @@ fn storage_failure(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-/// A cipher that refuses everything.
+/// A cipher that opens only a delete, to an empty payload.
 ///
-/// §5.12 and §13.7.2: a tombstone's body is **never decoded**, so a cipher
-/// that cannot open anything is enough to drive the whole delete path. If the
-/// delete ever reaches a parser this test stops compiling its way around the
-/// problem and fails outright.
-struct NeverOpens;
+/// §5.12 and §13.7.2: a tombstone's body is **never applied**, so a delete
+/// that opens to nothing is enough to drive the whole delete path (§5.14
+/// verifies it first). If the delete ever reaches a parser this test fails
+/// outright.
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -141,7 +146,7 @@ async fn deliver_the_delete(db: &Db, live: bool) -> PullReport {
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.
@@ -241,7 +246,7 @@ fn edit_the_body(db: &Db, document: &Document, text: &str) -> Vec<u8> {
 struct Resolution {
     /// The record tier's verdict.
     record_deleted_at: Option<i64>,
-    /// Whether the delete left the stored payload alone (§5.12: never decoded).
+    /// Whether the delete left the stored payload alone (§5.12: never applied).
     record_has_payload: bool,
     /// The projection the body-pull window is chosen from.
     projected_deleted_at: Option<i64>,
@@ -380,7 +385,7 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
     );
     assert!(
         a_state.record_has_payload,
-        "§5.12: the delete never decoded the body, so the stored payload is \
+        "§5.12: the delete never applied a body, so the stored payload is \
          exactly the bytes that were already there"
     );
 }

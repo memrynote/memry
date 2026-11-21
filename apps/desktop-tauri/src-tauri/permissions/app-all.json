@@ -43,6 +43,7 @@
           "calendar_discover_provider_calendars",
           "calendar_eventkit_request_access",
           "calendar_refresh_ics",
+          "calendar_refresh_provider",
           "calendar_subscribe_ics",
           "calendar_unsubscribe_ics",
           "canvas_create",

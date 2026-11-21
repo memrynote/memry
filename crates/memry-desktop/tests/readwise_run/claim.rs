@@ -9,6 +9,7 @@
 //! | two installs: one pulls; a dead holder is never taken over by itself  | `sync-service.takeover.test.ts:370`, `:434` |
 //! | an idle device drops its token and run state once the claim moves      | `sync-service.takeover.test.ts:460`, `:477` |
 //! | with sync off a stale claim never stops a run                          | `sync-service.takeover.test.ts:424`        |
+//! | a claim that cannot be read stops the run before its first book       | none (`release.rs` fails closed)           |
 
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -18,17 +19,18 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::api::settings::Settings;
 use memry_desktop::readwise::claim::{Claim, clear_claim, write_claim};
 use memry_desktop::readwise::release::ClaimGate;
+use memry_desktop::readwise::run_types::RunGate;
 use memry_desktop::readwise::token::{ReadwiseToken, TOKEN_SERVICE};
 use memry_desktop::seams::secure_store::GenericSecrets;
 
 use super::*;
 
-const TOKEN: &str = "token";
+pub(super) const TOKEN: &str = "token";
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 
 /// One install's keychain.
 #[derive(Default)]
-struct Keychain(Mutex<HashMap<(String, String), Vec<u8>>>);
+pub(super) struct Keychain(Mutex<HashMap<(String, String), Vec<u8>>>);
 
 impl GenericSecrets for Keychain {
     fn get_secret(
@@ -91,7 +93,7 @@ fn engine(v: &Vault, gate: &Arc<ClaimGate>, clock: &Arc<AtomicI64>) -> Engine {
     let now = Arc::clone(clock);
     Engine::new(
         v._server.client(),
-        Arc::clone(gate) as Arc<dyn memry_desktop::readwise::run_types::RunGate>,
+        Arc::clone(gate) as Arc<dyn RunGate>,
         Arc::new(move || now.load(Ordering::SeqCst)),
         Arc::new(|| Ok(chrono_tz::UTC)),
     )
@@ -136,10 +138,30 @@ impl Device {
         self.v.library.store().links(None).unwrap().len()
     }
 
+    fn files(&self) -> usize {
+        vault_files(&self.v)
+    }
+
     fn indexed(&self) -> usize {
         let store = self.v.library.store();
         store.highlights_between("0000", "9999").unwrap().len()
     }
+}
+
+/// The Markdown files in the vault: what a run that wrote a note leaves behind.
+pub(super) fn vault_files(v: &Vault) -> usize {
+    fn count(dir: &std::path::Path) -> usize {
+        fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| !path.file_name().unwrap().to_string_lossy().starts_with('.'))
+            .map(|path| match path.is_dir() {
+                true => count(&path),
+                false => usize::from(path.extension().is_some_and(|ext| ext == "md")),
+            })
+            .sum()
+    }
+    count(&v.e.vault)
 }
 
 /// Memry sync delivered `id`'s claim to every device.
@@ -247,7 +269,7 @@ fn two_installs_one_pulls_and_a_dead_holder_is_taken_over_only_when_asked() {
             run.claim_lost,
             "a month later B still does not pull: {run:?}"
         );
-        assert_eq!(b.notes(), 0);
+        assert_eq!((b.notes(), b.files()), (0, 0));
     }
 
     // The user takes over on B: the claim moves, the token is pasted again, B pulls.
@@ -301,4 +323,34 @@ fn with_sync_off_a_stale_claim_never_stops_a_run() {
     assert_eq!(a.notes(), 1);
     assert!(!a.gate.release_if_claimed_elsewhere().unwrap());
     assert!(a.has_token());
+}
+
+#[test]
+fn a_claim_that_cannot_be_read_stops_the_run_before_its_first_book() {
+    let a = device(Some("dev-a"), two_highlights());
+    deliver("dev-a", "Desk Mac", &[&a]);
+    let db = a.v.library.open.vault.db_handle();
+    db.call_blocking(|conn| {
+        conn.execute(
+            "UPDATE sync_items SET payload = '{' WHERE item_type = 'settings'",
+            [],
+        )
+        .unwrap();
+        Ok(())
+    })
+    .unwrap();
+    assert!(Claim::read(&a.v.library.store()).is_err());
+
+    assert!(a.gate.claim_lost(), "an unreadable claim stops the run");
+    a.gate.on_claim_lost();
+    assert!(a.has_token(), "the release cannot read the claim either");
+    // The run's own options read fails on the same group; either way nothing is written.
+    let run = a
+        .engine
+        .run(&a.v.library, TOKEN, &Unobserved, &CancellationToken::new());
+    assert!(
+        run.is_err() || run.as_ref().is_ok_and(|run| run.claim_lost),
+        "{run:?}"
+    );
+    assert_eq!((a.notes(), a.files()), (0, 0));
 }

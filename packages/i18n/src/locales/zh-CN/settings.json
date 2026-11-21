@@ -1398,6 +1398,7 @@
       "selectModel": "选择一个模型",
       "apiKey": "API 密钥",
       "apiKeyDescription": "存储在本地，仅发送给提供商",
+      "apiKeyKeychainDescription": "存储在系统钥匙串中，仅发送给提供商",
       "apiKeyPlaceholder": "输入 {provider} API 密钥",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本地服务器地址",

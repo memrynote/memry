@@ -49,6 +49,9 @@ pub enum ConnectCode {
     NotCaldav,
     NoCalendars,
     OutdatedDevices,
+    // A refresh that failed (`refreshCaldav`'s `sync_failed`); a plain comment, because a doc
+    // comment on a variant breaks the generated union across lines.
+    SyncFailed,
 }
 
 impl ConnectCode {
@@ -60,6 +63,7 @@ impl ConnectCode {
             Self::NotCaldav => "not_caldav",
             Self::NoCalendars => "no_calendars",
             Self::OutdatedDevices => "outdated_devices",
+            Self::SyncFailed => "sync_failed",
         }
     }
 }
@@ -165,6 +169,7 @@ async fn propfind(
             depth: Some(depth),
             body: Some(propfind_body(props)),
             follow: true,
+            headers: Vec::new(),
         })
         .await?;
     Ok(entries(&reply))
@@ -218,6 +223,7 @@ async fn service_root(transport: &Transport, server: &Url) -> Url {
                 depth: None,
                 body,
                 follow: false,
+                headers: Vec::new(),
             })
             .await;
         let Ok(reply) = reply else { continue };
