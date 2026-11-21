@@ -350,15 +350,42 @@ land beside the server body and duplicate it (#5286). The pull owes the note
 instead, and the retry merges the server body.
 
 Builds before that fix pushed such seeds, and the duplicates they made stay in
-the synced body. A read-only scan (`crdt-seed-duplicates.ts`) counts them once
-per launch, ten minutes after the first full sync settles. It reads every
-document in the store without compacting it. A document counts as forked when
-its fragment holds two live top-level items that both have no left and no right
-origin, which means two devices each wrote the first content into an empty
-body. It counts as duplicated when one of those items' text equals or contains
-the other's. A paragraph repeated inside one body never counts. The note ids go
-to the local log at info level, and a warn line with the counts only reaches
-the incident report and shipped logs. The scan repairs nothing (#5289).
+the synced body. Desktop repairs them (`crdt-seed-duplicates.ts`, #5289). Once
+per launch, ten minutes after a full sync that delivered its pull and left no
+note body owed (nothing queued or backed off to pull, no legacy sweep pending,
+online), it reads every document in the store without compacting it. A failed
+sync, or one that still owes bodies, schedules nothing. When the timer fires,
+the store must still be the one that sync settled and no body may be owed;
+otherwise nothing is read, and the next settled sync schedules again. A document counts as
+forked when its fragment holds two live top-level items that both have no left
+and no right origin, which means two devices each wrote the first content into
+an empty body. It counts as duplicated when one of those items' text equals or
+contains the other's. A paragraph repeated inside one body never counts. Two
+devices that imported the same file into a note, or created the same day's
+journal from one template, before either synced also count as duplicated.
+
+The repair changes only an exact duplicate: the fragment holds exactly two live
+items, both such roots, and their block trees are equal in node names,
+attributes other than the block `id`, and text with its marks. A copy that
+differs by one block, carries extra text, or was edited afterwards is kept, and
+so is every duplicated body that is not exact, and every document that holds
+an update still waiting for one it depends on, since that update may edit the
+second copy. The repair opens the document,
+checks it again, and deletes the second root in fragment order as a local
+transaction (origin `seed-duplicate-repair`). It is stored and pushed like any
+edit, and it schedules no file write-back. The editor and the markdown
+serializer show only the first root, so the note's text does not change. Yjs
+orders concurrent roots the same way on every device, so two devices repairing
+at once delete the same item and converge on one copy. A per-note marker in the
+store meta (`seedDuplicateRepairedAt`), written only after the delete is in the
+store, keeps the repair to once per note: a
+copy that comes back later stays. A purge drops the marker with the note. The
+repaired and kept note ids go to the local log at info level, and a warn line
+with the counts only reaches the incident report and shipped logs.
+
+The repair has one residual risk: an edit another device (iOS, which runs no
+repair) makes inside the second copy at the same time as the repair is deleted
+with that copy.
 
 A main-process body edit (the agent note tool, `notes.update`, inbox filing, a
 version restore, appended blocks, a template, a rename's link and embed
