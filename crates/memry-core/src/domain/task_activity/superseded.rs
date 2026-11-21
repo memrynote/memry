@@ -23,7 +23,7 @@
 
 use std::sync::Arc;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension as _};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -31,7 +31,7 @@ use crate::api::errors::StorageError;
 use crate::domain::tasks::{self, valid_item_id};
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
-use crate::sync::driver::observer::{AppliedRecord, ApplyObserver};
+use crate::sync::driver::observer::{AppliedOutcome, AppliedRecord, ApplyObserver};
 use crate::sync::field_merge::canonical_json;
 
 use super::{
@@ -113,15 +113,23 @@ pub fn record_superseded(
 }
 
 /// Records a `superseded` row for every task field this device lost in a
-/// committed page. Registered by the desktop sync driver.
+/// committed page, then tells `listeners` each task whose activity log grew in
+/// the page: those rows, and every pulled `task_activity` row (Electron's
+/// `task-activity-handler.ts:76` emits `task-activity:created` for each).
+/// Registered by the desktop sync driver.
 pub struct SupersededObserver {
     db: Db,
     device_id: String,
+    listeners: Vec<Arc<dyn ApplyObserver>>,
 }
 
 impl SupersededObserver {
-    pub fn new(db: Db, device_id: String) -> Arc<Self> {
-        Arc::new(Self { db, device_id })
+    pub fn new(db: Db, device_id: String, listeners: Vec<Arc<dyn ApplyObserver>>) -> Arc<Self> {
+        Arc::new(Self {
+            db,
+            device_id,
+            listeners,
+        })
     }
 }
 
@@ -136,11 +144,28 @@ impl ApplyObserver for SupersededObserver {
             .filter(|record| record.item_type == tasks::ITEM_TYPE)
             .filter(|record| record.conflicts.iter().any(|c| c.local_lost))
             .collect();
-        if lost.is_empty() {
+        let pulled: Vec<&str> = batch
+            .iter()
+            .filter(|record| record.item_type == ITEM_TYPE)
+            .filter(|record| {
+                matches!(
+                    record.outcome,
+                    AppliedOutcome::Created | AppliedOutcome::Updated
+                )
+            })
+            .map(|record| record.item_id.as_str())
+            .collect();
+        if lost.is_empty() && pulled.is_empty() {
             return;
         }
         let now_ms = now_ms();
-        let written = self.db.call_blocking(|conn| {
+        let grew = self.db.call_blocking(|conn| {
+            let mut grew: Vec<String> = Vec::new();
+            let mut add = |task_id: &str| {
+                if !grew.iter().any(|id| id == task_id) {
+                    grew.push(task_id.to_owned());
+                }
+            };
             for record in lost {
                 for conflict in record.conflicts.iter().filter(|c| c.local_lost) {
                     let field = LostField {
@@ -151,20 +176,49 @@ impl ApplyObserver for SupersededObserver {
                         merged_clock: &conflict.merged_clock,
                     };
                     // One bad row must not drop the rest of the page's.
-                    if let Err(error) = record_superseded(conn, &field, &self.device_id, now_ms) {
-                        eprintln!(
+                    match record_superseded(conn, &field, &self.device_id, now_ms) {
+                        Ok(Some(_)) => add(&record.item_id),
+                        Ok(None) => {}
+                        Err(error) => eprintln!(
                             "memry-core: could not record that task {} lost its `{}` edit: {error}",
                             record.item_id, conflict.field
-                        );
+                        ),
                     }
                 }
             }
-            Ok(())
+            for id in pulled {
+                match task_of(conn, id) {
+                    Ok(Some(task_id)) => add(&task_id),
+                    Ok(None) => {}
+                    Err(error) => eprintln!(
+                        "memry-core: could not read the task of pulled activity row {id}: {error}"
+                    ),
+                }
+            }
+            Ok(grew)
         });
-        if let Err(error) = written {
-            eprintln!("memry-core: could not record the superseded task edits: {error}");
+        match grew {
+            Ok(grew) if !grew.is_empty() => {
+                for listener in &self.listeners {
+                    listener.task_activity_created(&grew);
+                }
+            }
+            Ok(_) => {}
+            Err(error) => {
+                eprintln!("memry-core: could not record the superseded task edits: {error}");
+            }
         }
     }
+}
+
+/// The task of activity row `id`, `None` when no row holds it.
+fn task_of(conn: &Connection, id: &str) -> rusqlite::Result<Option<String>> {
+    conn.query_row(
+        "SELECT task_id FROM task_activity WHERE id = ?1",
+        [id],
+        |row| row.get(0),
+    )
+    .optional()
 }
 
 fn now_ms() -> i64 {

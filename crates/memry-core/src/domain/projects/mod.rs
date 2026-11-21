@@ -355,7 +355,10 @@ pub fn apply_remote(
 }
 
 /// One live status by id, in any live project.
-fn status_by_id(conn: &Connection, status_id: &str) -> Result<Option<Status>, StorageError> {
+pub(crate) fn status_by_id(
+    conn: &Connection,
+    status_id: &str,
+) -> Result<Option<Status>, StorageError> {
     conn.query_row(
         "SELECT s.id, s.project_id, s.name, s.color, s.position, COALESCE(s.is_default, 0),
                 COALESCE(s.is_done, 0), s.created_at

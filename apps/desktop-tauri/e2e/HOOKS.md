@@ -22,7 +22,7 @@ Electron suite.
 | `bootstrapSyncDevice`                       | `e2e_bootstrap_sync_device`               | Step 17 (#3534) |
 | `setNetworkOnlineForTests`                  | `e2e_set_network_online`                  | Step 17 (#3534) |
 | `resetVaultDirectoryThrottle`               | `e2e_reset_vault_directory_throttle`      | Step 17 (#3534) |
-| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 14 (#3531) |
+| `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 17 (#3534) |
 | `seedCalendarProjection`                    | `e2e_seed_calendar_projection`            | Step 29 (#3546) |
 | `getCrdtDocMarkdown`                        | `e2e_get_crdt_doc_body`                   | Step 17 (#3534) |
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |

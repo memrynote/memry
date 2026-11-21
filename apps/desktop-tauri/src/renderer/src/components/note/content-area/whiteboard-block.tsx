@@ -97,8 +97,14 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
         setBoard((current) => {
           if (current.status !== 'ready') return { status: 'ready', canvas, revision: 0 }
           // A rename, or bytes this board already shows, needs no fresh editor.
-          const { scene, unreadable } = current.canvas
-          if (scene === canvas.scene && unreadable === canvas.unreadable) return current
+          const { scene, sha256, unreadable } = current.canvas
+          if (
+            scene === canvas.scene &&
+            sha256 === canvas.sha256 &&
+            unreadable === canvas.unreadable
+          ) {
+            return current
+          }
           return { status: 'ready', canvas, revision: current.revision + 1 }
         })
       } catch (err) {
@@ -326,6 +332,7 @@ export function WhiteboardBlockRenderer({ block }: { block: WhiteboardNode }): R
             ref={editorRef}
             canvasId={ready.canvas.id}
             initialScene={ready.canvas.scene}
+            initialSha256={ready.canvas.sha256}
             embed={{ editing }}
           />
         </React.Suspense>
