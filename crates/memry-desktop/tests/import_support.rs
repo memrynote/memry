@@ -167,6 +167,10 @@ impl ImportSink for RecordingSink {
         }));
         Ok(())
     }
+
+    fn finish(&self) {
+        self.push(json!({ "op": "finish" }));
+    }
 }
 
 /// The generator's `noteRecord`.

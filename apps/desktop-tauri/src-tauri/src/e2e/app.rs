@@ -1,3 +1,4 @@
+use memry_desktop::config::RuntimeConfig;
 use memry_desktop::e2e::control;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
@@ -20,6 +21,8 @@ pub struct E2eAppInfo {
     pub version: String,
     pub build_kind: &'static str,
     pub webdriver_port: u16,
+    /// The server the app syncs with, the control file's `syncServerUrl` when it set one.
+    pub sync_server_url: Option<String>,
 }
 
 /// What the harness compares with the control file it wrote.
@@ -35,6 +38,9 @@ pub fn e2e_app_info<R: Runtime>(app: AppHandle<R>) -> Result<E2eAppInfo, Command
         version: app.package_info().version.to_string(),
         build_kind: "e2e",
         webdriver_port: control::webdriver_port(&env),
+        sync_server_url: app
+            .try_state::<RuntimeConfig>()
+            .map(|config| config.sync_server_url.clone()),
     })
 }
 

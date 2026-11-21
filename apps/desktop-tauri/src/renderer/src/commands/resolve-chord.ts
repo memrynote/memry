@@ -12,6 +12,7 @@ import { chordAllowedInInput, matchesShortcut } from '@/hooks/use-keyboard-short
 /** Everything about the world that decides whether a keystroke means a command. */
 export interface KeydownEnv {
   isMac: boolean
+  isLinux: boolean
   /** Settings → Shortcuts is recording a chord. */
   isRecording: boolean
   /** Hint mode or a vault switch holds the keyboard. */
@@ -85,7 +86,7 @@ export function resolveChord(e: KeyboardEvent, env: KeydownEnv, phase: KeyPhase)
     const yieldsToFolder = override === undefined && COMMAND_META[id].owner === 'fold'
     const chords: { chord: ShortcutBinding; inInput: InInputPolicy; primary: boolean }[] = [
       {
-        chord: override ?? resolvePlatformBinding(spec.default, env.isMac),
+        chord: override ?? resolvePlatformBinding(spec.default, env.isMac, env.isLinux),
         inInput: spec.inInput ?? 'chord',
         primary: true
       }

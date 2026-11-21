@@ -244,7 +244,9 @@ fn index_note(
     let before = links::rows(index, id)?;
     #[cfg(feature = "markdown")]
     let refs_before = super::block_refs::usage_rows(index, id)?;
-    index_note_rows(data, names, index, id, now_ms, full, done)?;
+    body_tags::replaced_as_one(data, || {
+        index_note_rows(data, names, index, id, now_ms, full, done)
+    })?;
     done.links.note(id, &before, &links::rows(index, id)?);
     #[cfg(feature = "markdown")]
     {

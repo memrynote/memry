@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Zatiaľ žiadne trezory",
       "openVault": "Otvoriť trezor",
+      "createVault": "Vytvoriť trezor",
+      "openFolderAsVault": "Otvoriť priečinok ako trezor",
       "settings": "Nastavenia",
       "remove": "Odstrániť",
       "removeVaultTitle": "Odstrániť „{name}“ zo zoznamu?",

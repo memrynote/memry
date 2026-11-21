@@ -444,7 +444,10 @@ fn picked_files_over_the_total_input_cap_refuse_the_run_before_mapping() {
     let (result, writes, _) = run(&paths);
 
     let error = result.expect_err("two files over the total cap refuse the run");
-    assert!(error.to_string().contains("MB"), "{error}");
+    assert_eq!(
+        error.to_string(),
+        "The picked Roam files hold more than 128 MB. Import fewer files at a time."
+    );
     assert!(writes.is_empty());
 }
 
@@ -463,6 +466,32 @@ fn many_tiny_children_are_charged_per_entry_against_the_budget() {
 fn an_unclosed_embed_run_drops_templates_in_linear_steps() {
     // Each `{{embed:` once restarted a scan to the end: 14.5 s at 40 KB in release.
     let text = format!("{}}}}}", "{{embed:".repeat(5_000));
+
+    assert_steps_at_most(
+        "bytes scanned dropping templates",
+        template_bytes_scanned,
+        4 * text.len(),
+        || assert_eq!(scrub_markup(&text), text),
+    );
+}
+
+#[test]
+fn a_run_of_open_braces_before_one_close_drops_templates_in_linear_steps() {
+    // Every `{{` start shares the one `}` after the run: finding it per start is quadratic.
+    let text = format!("{}}}x", "{".repeat(10_000));
+
+    assert_steps_at_most(
+        "bytes scanned dropping templates",
+        template_bytes_scanned,
+        4 * text.len(),
+        || assert_eq!(scrub_markup(&text), text),
+    );
+}
+
+#[test]
+fn a_run_of_open_pairs_before_a_single_close_drops_templates_in_linear_steps() {
+    // Each `{{x` start fails on the same `}x`, so the starts must share that `}`.
+    let text = format!("{}}}x", "{{x".repeat(4_000));
 
     assert_steps_at_most(
         "bytes scanned dropping templates",

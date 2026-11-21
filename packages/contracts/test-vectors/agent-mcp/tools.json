@@ -1,0 +1,3370 @@
+{
+  "meta": {
+    "generator": "apps/desktop/scripts/generate-agent-mcp-vectors.ts",
+    "oracle": "apps/desktop/src/main/agent/mcp/tools/schemas.ts (TOOL_SCHEMAS, READ_TOOL_NAMES, WRITE_TOOL_NAMES) listed by @modelcontextprotocol/sdk McpServer tools/list",
+    "note": "`inputSchema` is what Electron sends external MCP clients. `class` write means the call needs a turn grant and the user’s approval.",
+    "regenerate": "pnpm --filter @memry/desktop vectors:agent-mcp"
+  },
+  "tools": [
+    {
+      "name": "vault_search_notes",
+      "class": "read",
+      "description": "Full-text search across notes and filed files; returns id, title, snippet, folder_path, file_type. A file_type other than \"markdown\" (pdf/image/audio/video) is a filed file, not a note. PDFs and images match on the text read out of them on this device, and a note matches on the visible text of the HTML blocks it embeds. Pass file_types to restrict the search, e.g. [\"markdown\"] for notes only; omitted returns every file type. Each hit carries sync, as vault_read_note describes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 50
+          },
+          "folder_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file_types": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "pdf",
+                "image",
+                "audio",
+                "video"
+              ]
+            }
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_read_note",
+      "class": "read",
+      "description": "Read a markdown note by id; returns full markdown content + metadata. For a filed pdf or image, returns extracted_text instead: the text read on this device (the PDF text layer, else OCR), one entry per page, with status \"extracting\" | \"done\" | \"failed\", page_count and pages_read. Pages come in chunks of about 100 KB; pass next_page as from_page to continue. A markdown note that embeds PDFs, images or HTML blocks adds attachment_text, the text read from each ({ file, text }; the visible text for an HTML block), about 100 KB at most. Errors with VALIDATION for a filed audio or video file. To look at an image or a PDF page, use vault_view_file. sync says whether the note's latest text reached the server: state \"pending\" (changes waiting on this device, since waiting_since), \"sent\" (a push has no answer yet), \"confirmed\" (the server stored the last body push, at body_confirmed_at), \"not_recorded\" (nothing waiting, no confirmed push recorded yet), \"rejected\" (the server refused the latest push), \"local_only\" or \"not_syncing\". After a write, read again until state is \"confirmed\" and body_confirmed_at is later than the write.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "from_page": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_view_file",
+      "class": "read",
+      "description": "Look at an image, or one page of a PDF, from the vault. Returns the picture as image content (PNG, or JPEG when large) with its long edge at most 1568 px, plus JSON that says what was sent: file, width and height, the source size for an image, and page and page_count for a PDF. Pass the id of a filed image or PDF (file_type \"image\" or \"pdf\"); page picks the PDF page, default 1, one page per call. For an image or PDF a markdown note embeds, pass the note id and the file name as attachment: the name after attachments/<note id>/ in the note, or attachment_text[].file from vault_read_note. In Memry chat with a local or OpenAI-compatible provider, a model that cannot take images gets a text notice instead of the picture.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attachment": {
+            "type": "string",
+            "minLength": 1
+          },
+          "page": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_folder",
+      "class": "read",
+      "description": "List the sub-folders and notes in a folder, addressed by path (as returned in folder_path/path fields); omit path for the vault root. Paths are vault-relative with no leading slash (\"projects/active\"); a leading slash is also accepted. A folder that does not exist fails with NOT_FOUND. recursive includes every nested level instead of direct children only. Returns at most 1000 notes. Each note entry carries file_type; a filed pdf/image/audio/video file lists as kind \"file\", not \"note\". Each note entry carries sync, as vault_read_note describes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recursive": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_current_note",
+      "class": "read",
+      "description": "Return the note currently open in the originating renderer window, or null.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_tasks",
+      "class": "read",
+      "description": "List tasks, optionally filtered. status is \"open\" (not completed), \"completed\", or a status id from vault_list_statuses; omitted, completed tasks are excluded. due_before is an ISO date; tag matches one tag name. Returns id, title, status label, due, project id, and tags.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "project_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "due_before": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 200
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_task",
+      "class": "read",
+      "description": "Read a task by id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_projects",
+      "class": "read",
+      "description": "List all projects with task counts and linked note/file/event counts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_project",
+      "class": "read",
+      "description": "Read a project by id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_statuses",
+      "class": "read",
+      "description": "List statuses for a project.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_journal_entry",
+      "class": "read",
+      "description": "Return the journal entry for an ISO date or null. It carries sync, as vault_read_note describes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_journal_entries",
+      "class": "read",
+      "description": "List journal entry summaries within a date range (inclusive). Each carries sync, as vault_read_note describes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_inbox_items",
+      "class": "read",
+      "description": "List inbox items (unread first by default).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "unread_only": {
+            "type": "boolean"
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_inbox_item",
+      "class": "read",
+      "description": "Read an inbox item by id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_get_tags",
+      "class": "read",
+      "description": "List all tags with usage counts, color, icon, sort order, and the tag category they belong to (category_id and category_name, both null when uncategorized).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_list_canvases",
+      "class": "read",
+      "description": "List spatial canvases with how many notes/tasks/events sit on each. Canvases live in folders, so two can share a title — each entry carries its folder and the folder-qualified path (\"Work/Plan\") that names it unambiguously. Never returns scene geometry.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_read_canvas",
+      "class": "read",
+      "description": "Read one canvas: title, the entities on it (with titles), and any text written on it. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Returns no scene geometry — use vault_add_canvas_item to change what is on it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_read_canvas_elements",
+      "class": "read",
+      "description": "Read the SHAPES on a canvas: every element with its id, type, position, size, text, colors, arrow bindings and frame. This is the read to use before drawing — an element id from here is what vault_draw_on_canvas binds an arrow to and what vault_edit_canvas_elements changes. Cards carry entity_type/entity_id. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Use vault_read_canvas instead when you only need to know WHICH notes/tasks/events are on it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_desktop_read",
+      "class": "read",
+      "description": "Run an allowlisted read-only desktop API operation through the memrynote window. A note in the reply that is a filed pdf/image/audio/video file comes back as its metadata with contentOmitted: true; its contentAccess field says which tool reads the content. A reply whose JSON is over 100 KB in UTF-8 bytes comes back as { truncated, totalBytes, message, partial }, and message says what to call instead. `args` are the positional arguments; vault_desktop_describe returns each operation's argument schema, and a call that does not match it is refused with the field, the expected type and the allowed values. Calendar examples: calendar.listEvents with args [{}], calendar.getRange with args [{\"startAt\":\"2026-05-14T00:00:00.000Z\",\"endAt\":\"2026-06-15T00:00:00.000Z\"}].",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "notes.get",
+              "notes.getByPath",
+              "notes.getFile",
+              "notes.resolveByTitle",
+              "notes.resolveWikiTarget",
+              "notes.previewByTitle",
+              "notes.list",
+              "notes.getTags",
+              "notes.getLinks",
+              "notes.getFolders",
+              "notes.exists",
+              "notes.getPropertyDefinitions",
+              "notes.listAttachments",
+              "notes.getFolderConfig",
+              "notes.getFolderTemplate",
+              "notes.getVersions",
+              "notes.getVersion",
+              "notes.getPositions",
+              "notes.getAllPositions",
+              "notes.getLocalOnlyCount",
+              "notes.getCalendarPropertyNames",
+              "tasks.get",
+              "tasks.list",
+              "tasks.getSubtasks",
+              "tasks.getProject",
+              "tasks.listProjects",
+              "tasks.listStatuses",
+              "tasks.getTags",
+              "tasks.getStats",
+              "tasks.getToday",
+              "tasks.getUpcoming",
+              "tasks.getOverdue",
+              "tasks.getLinkedTasks",
+              "tasks.listProjectLinks",
+              "tasks.listProjectContents",
+              "tasks.listForItem",
+              "inbox.get",
+              "inbox.list",
+              "inbox.previewLink",
+              "inbox.getSuggestions",
+              "inbox.getTags",
+              "inbox.getSnoozed",
+              "inbox.getStats",
+              "inbox.getJobs",
+              "inbox.getPatterns",
+              "inbox.getStaleThreshold",
+              "inbox.listArchived",
+              "inbox.getFilingHistory",
+              "journal.getEntry",
+              "journal.getHeatmap",
+              "journal.getMonthEntries",
+              "journal.getYearStats",
+              "journal.getDayContext",
+              "journal.getAllTags",
+              "journal.getStreak",
+              "properties.get",
+              "templates.list",
+              "templates.get",
+              "savedFilters.list",
+              "bookmarks.get",
+              "bookmarks.list",
+              "bookmarks.isBookmarked",
+              "bookmarks.listByType",
+              "bookmarks.getByItem",
+              "tags.getNotesByTag",
+              "tags.getAllWithCounts",
+              "tags.listCategories",
+              "folderView.getConfig",
+              "folderView.getViews",
+              "folderView.listWithProperties",
+              "folderView.getAvailableProperties",
+              "folderView.getFolderSuggestions",
+              "folderView.folderExists",
+              "reminders.get",
+              "reminders.list",
+              "reminders.getUpcoming",
+              "reminders.getDue",
+              "reminders.getForTarget",
+              "reminders.countPending",
+              "calendar.getEvent",
+              "calendar.listEvents",
+              "calendar.getRange",
+              "settings.get",
+              "settings.getJournalSettings",
+              "settings.getAISettings",
+              "settings.getVoiceTranscriptionSettings",
+              "settings.getVoiceModelStatus",
+              "settings.getVoiceRecordingReadiness",
+              "settings.getVoiceTranscriptionOpenAIKeyStatus",
+              "settings.getAIModelStatus",
+              "settings.getTabSettings",
+              "settings.getNoteEditorSettings",
+              "settings.getGeneralSettings",
+              "settings.getEditorSettings",
+              "settings.getTaskSettings",
+              "settings.getKeyboardSettings",
+              "settings.getSyncSettings",
+              "settings.getBackupSettings",
+              "settings.getGraphSettings",
+              "settings.getCalendarSettings",
+              "settings.getFeaturesSettings",
+              "settings.getInboxSettings",
+              "search.query",
+              "search.quick",
+              "search.getStats",
+              "search.getReasons",
+              "search.getAllTags",
+              "graph.getData",
+              "graph.getLocal",
+              "homePages.list",
+              "homePages.get",
+              "vault.getAll",
+              "vault.getStatus",
+              "vault.getConfig",
+              "vault.listAccount",
+              "canvas.list",
+              "canvas.getAsset",
+              "canvas.listAssets",
+              "canvas.libraryList"
+            ]
+          },
+          "args": {
+            "default": [],
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_desktop_describe",
+      "class": "read",
+      "description": "Look up how to call a desktop API operation before calling it through vault_desktop_read or vault_desktop_write. With operation, returns a summary of what it does, its tool, whether it needs approval, its parameters in call order and args_schema: the JSON Schema (draft 2020-12) of the args array, with every type, required key, allowed value and default. Without operation, lists every operation with its tool and call shape; a trailing ? marks an optional argument.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "notes.get",
+              "notes.getByPath",
+              "notes.getFile",
+              "notes.resolveByTitle",
+              "notes.resolveWikiTarget",
+              "notes.previewByTitle",
+              "notes.list",
+              "notes.getTags",
+              "notes.getLinks",
+              "notes.getFolders",
+              "notes.exists",
+              "notes.getPropertyDefinitions",
+              "notes.listAttachments",
+              "notes.getFolderConfig",
+              "notes.getFolderTemplate",
+              "notes.getVersions",
+              "notes.getVersion",
+              "notes.getPositions",
+              "notes.getAllPositions",
+              "notes.getLocalOnlyCount",
+              "notes.getCalendarPropertyNames",
+              "tasks.get",
+              "tasks.list",
+              "tasks.getSubtasks",
+              "tasks.getProject",
+              "tasks.listProjects",
+              "tasks.listStatuses",
+              "tasks.getTags",
+              "tasks.getStats",
+              "tasks.getToday",
+              "tasks.getUpcoming",
+              "tasks.getOverdue",
+              "tasks.getLinkedTasks",
+              "tasks.listProjectLinks",
+              "tasks.listProjectContents",
+              "tasks.listForItem",
+              "inbox.get",
+              "inbox.list",
+              "inbox.previewLink",
+              "inbox.getSuggestions",
+              "inbox.getTags",
+              "inbox.getSnoozed",
+              "inbox.getStats",
+              "inbox.getJobs",
+              "inbox.getPatterns",
+              "inbox.getStaleThreshold",
+              "inbox.listArchived",
+              "inbox.getFilingHistory",
+              "journal.getEntry",
+              "journal.getHeatmap",
+              "journal.getMonthEntries",
+              "journal.getYearStats",
+              "journal.getDayContext",
+              "journal.getAllTags",
+              "journal.getStreak",
+              "properties.get",
+              "templates.list",
+              "templates.get",
+              "savedFilters.list",
+              "bookmarks.get",
+              "bookmarks.list",
+              "bookmarks.isBookmarked",
+              "bookmarks.listByType",
+              "bookmarks.getByItem",
+              "tags.getNotesByTag",
+              "tags.getAllWithCounts",
+              "tags.listCategories",
+              "folderView.getConfig",
+              "folderView.getViews",
+              "folderView.listWithProperties",
+              "folderView.getAvailableProperties",
+              "folderView.getFolderSuggestions",
+              "folderView.folderExists",
+              "reminders.get",
+              "reminders.list",
+              "reminders.getUpcoming",
+              "reminders.getDue",
+              "reminders.getForTarget",
+              "reminders.countPending",
+              "calendar.getEvent",
+              "calendar.listEvents",
+              "calendar.getRange",
+              "settings.get",
+              "settings.getJournalSettings",
+              "settings.getAISettings",
+              "settings.getVoiceTranscriptionSettings",
+              "settings.getVoiceModelStatus",
+              "settings.getVoiceRecordingReadiness",
+              "settings.getVoiceTranscriptionOpenAIKeyStatus",
+              "settings.getAIModelStatus",
+              "settings.getTabSettings",
+              "settings.getNoteEditorSettings",
+              "settings.getGeneralSettings",
+              "settings.getEditorSettings",
+              "settings.getTaskSettings",
+              "settings.getKeyboardSettings",
+              "settings.getSyncSettings",
+              "settings.getBackupSettings",
+              "settings.getGraphSettings",
+              "settings.getCalendarSettings",
+              "settings.getFeaturesSettings",
+              "settings.getInboxSettings",
+              "search.query",
+              "search.quick",
+              "search.getStats",
+              "search.getReasons",
+              "search.getAllTags",
+              "graph.getData",
+              "graph.getLocal",
+              "homePages.list",
+              "homePages.get",
+              "vault.getAll",
+              "vault.getStatus",
+              "vault.getConfig",
+              "vault.listAccount",
+              "canvas.list",
+              "canvas.getAsset",
+              "canvas.listAssets",
+              "canvas.libraryList",
+              "notes.create",
+              "notes.update",
+              "notes.rename",
+              "notes.move",
+              "notes.delete",
+              "notes.createFolder",
+              "notes.renameFolder",
+              "notes.deleteFolder",
+              "notes.createPropertyDefinition",
+              "notes.updatePropertyDefinition",
+              "notes.ensurePropertyDefinition",
+              "notes.addPropertyOption",
+              "notes.addStatusOption",
+              "notes.removePropertyOption",
+              "notes.renamePropertyOption",
+              "notes.updateOptionColor",
+              "notes.deletePropertyDefinition",
+              "notes.uploadAttachment",
+              "notes.deleteAttachment",
+              "notes.setFolderConfig",
+              "notes.restoreVersion",
+              "notes.deleteVersion",
+              "notes.reorder",
+              "notes.importFiles",
+              "notes.setLocalOnly",
+              "notes.setCalendarPropertyVisibility",
+              "notes.applyTemplate",
+              "notes.exportPdf",
+              "notes.exportHtml",
+              "tasks.create",
+              "tasks.update",
+              "tasks.delete",
+              "tasks.complete",
+              "tasks.uncomplete",
+              "tasks.archive",
+              "tasks.unarchive",
+              "tasks.move",
+              "tasks.reorder",
+              "tasks.duplicate",
+              "tasks.convertToSubtask",
+              "tasks.convertToTask",
+              "tasks.createProject",
+              "tasks.updateProject",
+              "tasks.deleteProject",
+              "tasks.archiveProject",
+              "tasks.reorderProjects",
+              "tasks.linkProjectItem",
+              "tasks.unlinkProjectItem",
+              "tasks.setProjectLinkPinned",
+              "tasks.setProjectHomeNote",
+              "tasks.captureUrlToProject",
+              "tasks.importFilesToProject",
+              "tasks.createStatus",
+              "tasks.updateStatus",
+              "tasks.deleteStatus",
+              "tasks.reorderStatuses",
+              "tasks.bulkComplete",
+              "tasks.bulkDelete",
+              "tasks.bulkMove",
+              "tasks.bulkArchive",
+              "inbox.captureText",
+              "inbox.captureLink",
+              "inbox.captureImage",
+              "inbox.captureVoice",
+              "inbox.captureClip",
+              "inbox.capturePdf",
+              "inbox.update",
+              "inbox.archive",
+              "inbox.file",
+              "inbox.trackSuggestion",
+              "inbox.convertToNote",
+              "inbox.convertToTask",
+              "inbox.convertToEvent",
+              "inbox.convertToReminder",
+              "inbox.linkToNote",
+              "inbox.addTag",
+              "inbox.removeTag",
+              "inbox.snooze",
+              "inbox.unsnooze",
+              "inbox.markViewed",
+              "inbox.bulkFile",
+              "inbox.bulkArchive",
+              "inbox.bulkTag",
+              "inbox.bulkSnooze",
+              "inbox.fileAllStale",
+              "inbox.retryTranscription",
+              "inbox.retryMetadata",
+              "inbox.setStaleThreshold",
+              "inbox.unarchive",
+              "inbox.deletePermanent",
+              "inbox.undoFile",
+              "inbox.undoArchive",
+              "journal.createEntry",
+              "journal.updateEntry",
+              "journal.deleteEntry",
+              "properties.set",
+              "properties.rename",
+              "templates.create",
+              "templates.update",
+              "templates.delete",
+              "templates.duplicate",
+              "savedFilters.create",
+              "savedFilters.update",
+              "savedFilters.delete",
+              "savedFilters.reorder",
+              "bookmarks.create",
+              "bookmarks.delete",
+              "bookmarks.toggle",
+              "bookmarks.reorder",
+              "bookmarks.bulkDelete",
+              "bookmarks.bulkCreate",
+              "tags.pinNoteToTag",
+              "tags.unpinNoteFromTag",
+              "tags.renameTag",
+              "tags.updateTagColor",
+              "tags.deleteTag",
+              "tags.removeTagFromNote",
+              "tags.mergeTag",
+              "tags.updateTagIcon",
+              "tags.createCategory",
+              "tags.renameCategory",
+              "tags.deleteCategory",
+              "tags.reorder",
+              "folderView.setConfig",
+              "folderView.setView",
+              "folderView.deleteView",
+              "reminders.create",
+              "reminders.update",
+              "reminders.delete",
+              "reminders.dismiss",
+              "reminders.snooze",
+              "reminders.bulkDismiss",
+              "calendar.createEvent",
+              "calendar.updateEvent",
+              "calendar.deleteEvent",
+              "settings.set",
+              "settings.setJournalSettings",
+              "settings.setAISettings",
+              "settings.setVoiceTranscriptionSettings",
+              "settings.setTabSettings",
+              "settings.setNoteEditorSettings",
+              "settings.setGeneralSettings",
+              "settings.setEditorSettings",
+              "settings.setTaskSettings",
+              "settings.setKeyboardSettings",
+              "settings.resetKeyboardSettings",
+              "settings.setSyncSettings",
+              "settings.setBackupSettings",
+              "settings.setGraphSettings",
+              "settings.setCalendarSettings",
+              "settings.setFeaturesSettings",
+              "settings.setInboxSettings",
+              "search.rebuildIndex",
+              "search.addReason",
+              "search.clearReasons",
+              "homePages.create",
+              "homePages.update",
+              "homePages.delete",
+              "homePages.reorder",
+              "vault.switch",
+              "vault.reindex",
+              "vault.updateConfig",
+              "vault.downloadRemote",
+              "canvas.create",
+              "canvas.delete"
+            ]
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "memry_help_search",
+      "class": "read",
+      "description": "Search Memry's user guide for how to use a feature. Use it when the user asks how to do something in Memry or whether Memry supports something. The guide is in English, so search with English feature words (\"note calendar date\", \"pdf annotation\"). Returns the best matching sections with a snippet; read one with memry_help_read.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "memry_help_read",
+      "class": "read",
+      "description": "Read a page of the Memry user guide, or one section of it with its subsections, by the page and section a memry_help_search result returned.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "string",
+            "minLength": 1
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_note",
+      "class": "write",
+      "description": "Create a new note. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. The reply lists the folders the call created in created_folders. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_markdown": {
+            "type": "string"
+          },
+          "folder_path": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "content_markdown"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_rename_note",
+      "class": "write",
+      "description": "Rename a note. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_note",
+      "class": "write",
+      "description": "Delete a note. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_folder",
+      "class": "write",
+      "description": "Create a note folder. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_rename_folder",
+      "class": "write",
+      "description": "Rename a note folder. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "old_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "new_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "old_path",
+          "new_path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_folder",
+      "class": "write",
+      "description": "Delete a note folder and its contents. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_task",
+      "class": "write",
+      "description": "Create a new task. Without project_id it goes to the Inbox project. status_id takes an id from vault_list_statuses. due_date and due are aliases (due_date wins), as are description and notes. source_note_id links the task back to the note it came from. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "status_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{2}:\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_repeating": {
+            "type": "boolean"
+          },
+          "repeat_config": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "due",
+                  "completion"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "linked_note_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "source_note_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_task",
+      "class": "write",
+      "description": "Delete a task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_complete_task",
+      "class": "write",
+      "description": "Complete a task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_uncomplete_task",
+      "class": "write",
+      "description": "Reopen a completed task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_archive_task",
+      "class": "write",
+      "description": "Archive a task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_unarchive_task",
+      "class": "write",
+      "description": "Unarchive a task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_move_task",
+      "class": "write",
+      "description": "Move a task between projects/statuses/parents. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_project_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target_status_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "task_id",
+          "position"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_reorder_tasks",
+      "class": "write",
+      "description": "Reorder tasks. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "required": [
+          "task_ids",
+          "positions"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_duplicate_task",
+      "class": "write",
+      "description": "Duplicate a task with subtasks. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_convert_task_to_subtask",
+      "class": "write",
+      "description": "Convert a task into a subtask. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parent_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "task_id",
+          "parent_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_convert_subtask_to_task",
+      "class": "write",
+      "description": "Convert a subtask back to a top-level task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_project",
+      "class": "write",
+      "description": "Create a task project. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "color": {
+            "default": "#6366f1",
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statuses": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                "color": {
+                  "default": "#6b7280",
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress",
+                    "done"
+                  ]
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "order"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_project",
+      "class": "write",
+      "description": "Update a task project. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statuses": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                "color": {
+                  "default": "#6b7280",
+                  "type": "string",
+                  "pattern": "^#[0-9a-fA-F]{6}$"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "in_progress",
+                    "done"
+                  ]
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "type",
+                "order"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_project",
+      "class": "write",
+      "description": "Delete a task project. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_archive_project",
+      "class": "write",
+      "description": "Archive a task project. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_reorder_projects",
+      "class": "write",
+      "description": "Reorder task projects. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "required": [
+          "project_ids",
+          "positions"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_status",
+      "class": "write",
+      "description": "Create a project status. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "color": {
+            "default": "#6b7280",
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "is_done": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project_id",
+          "name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_status",
+      "class": "write",
+      "description": "Update a project status. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "is_default": {
+            "type": "boolean"
+          },
+          "is_done": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_status",
+      "class": "write",
+      "description": "Delete a project status. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_reorder_statuses",
+      "class": "write",
+      "description": "Reorder project statuses. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "required": [
+          "status_ids",
+          "positions"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_journal_entry",
+      "class": "write",
+      "description": "Create or return existing journal entry for date. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "content_markdown": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "content_markdown"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_journal_entry",
+      "class": "write",
+      "description": "Update or create a journal entry. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "content_markdown": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "properties": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_journal_entry",
+      "class": "write",
+      "description": "Delete a journal entry. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_add_to_inbox",
+      "class": "write",
+      "description": "Append a new inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "title",
+          "content"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_inbox_item",
+      "class": "write",
+      "description": "Update an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 50000
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_snooze_inbox_item",
+      "class": "write",
+      "description": "Snooze an inbox item until an ISO datetime. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "snooze_until": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "id",
+          "snooze_until"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_archive_inbox_item",
+      "class": "write",
+      "description": "Archive an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_unarchive_inbox_item",
+      "class": "write",
+      "description": "Unarchive an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_delete_inbox_item",
+      "class": "write",
+      "description": "Permanently delete an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_add_inbox_tag",
+      "class": "write",
+      "description": "Add a tag to an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "tag"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_remove_inbox_tag",
+      "class": "write",
+      "description": "Remove a tag from an inbox item. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "tag"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_note",
+      "class": "write",
+      "description": "Update note body. Checkbox lines you add are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents; then they become tasks and the reply lists them in created_tasks. Create tasks with vault_create_task. Replies with the note as stored: title, folder_path, tags, properties, body_bytes and body_sha256 (UTF-8 body as the file stores it, which ends with a newline), plus tags_added and tags_removed when inline #tags in the body changed the tag set. Requires user approval with diff preview.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "append",
+              "prepend",
+              "replace"
+            ]
+          },
+          "content_markdown": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "content_markdown"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_add_html_artifact",
+      "class": "write",
+      "description": "Append a self-contained HTML artifact (diagram, chart, interactive explanation) to an existing markdown note identified by `id` (the note id, not an artifact name). It is saved as a note attachment and rendered inline in a sandboxed iframe. Write one complete HTML document with inline CSS/JS. It cannot read the vault, the note, or sibling files; external scripts/styles/fonts load only over https (e.g. a CDN). Do not use alert/confirm/prompt. Keep it compact and readable in light and dark themes. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID of the existing note to append the artifact to, exactly as returned by a vault read/search tool. Not a name for the artifact."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "Artifact title, used as the file name."
+          },
+          "html": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 524288
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "html"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_update_task",
+      "class": "write",
+      "description": "Update task fields; absent fields are left alone. status \"completed\" or \"open\" completes or reopens the task and ignores every other field in that call, so send field edits separately. Any other status, or status_id, is a status id from vault_list_statuses. due_date/due and description/notes are aliases. Requires user approval with before/after preview.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{2}:\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_repeating": {
+            "type": "boolean"
+          },
+          "repeat_config": {
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "due",
+                  "completion"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          },
+          "linked_note_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_add_tag",
+      "class": "write",
+      "description": "Add a tag to a note or task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "task"
+            ]
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "tag"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_remove_tag",
+      "class": "write",
+      "description": "Remove a tag from a note or task. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "note",
+              "task"
+            ]
+          },
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "tag"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_move_to_folder",
+      "class": "write",
+      "description": "Move a note to a folder. The reply lists the folders the call created in created_folders. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "folder_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "folder_path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_bulk_tag_notes",
+      "class": "write",
+      "description": "Add and/or remove tags on up to 100 notes in one call. Replies with a results list, one entry per id: ok, or the error that note hit. A failure on one note does not stop the rest. Requires one user approval for the whole batch.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "add": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "remove": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_bulk_move_notes",
+      "class": "write",
+      "description": "Move up to 100 notes to one folder. The reply lists the folders the call created in created_folders. Replies with a results list, one entry per id. A failure on one note does not stop the rest. Requires one user approval for the whole batch.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "folder_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "ids",
+          "folder_path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_copy_notes",
+      "class": "write",
+      "description": "Copy up to 100 markdown notes into one folder of this vault. Each copy gets a new id and keeps the title, body and tags; custom properties are not copied, and links to the original are not rewritten. The originals stay where they are. The reply lists the folders the call created in created_folders. Replies with a results list, one entry per id with the new id. A failure on one note does not stop the rest. Requires one user approval for the whole batch.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "folder_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "ids",
+          "folder_path"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_insert_at_cursor",
+      "class": "write",
+      "description": "Insert text and [[wiki-links]] to other notes at the cursor of the note open in the editor. Use note_link with a note id from vault_search_notes; the link shows that note's title. Fails when the note is not open in an editor, so call vault_get_current_note first. Does not write the file directly: the editor saves the change like a keystroke. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id of the note open in the editor, from vault_get_current_note."
+          },
+          "items": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "const": "note_link"
+                    },
+                    "note_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "note_id"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "items"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_add_canvas_item",
+      "class": "write",
+      "description": "Put existing notes/tasks/events on a canvas as cards. Applies to the open editor when the user has that canvas open. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "canvas_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "items": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "enum": [
+                    "note",
+                    "task",
+                    "calendar_event"
+                  ]
+                },
+                "entity_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "entity_type",
+                "entity_id"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "canvas_id",
+          "items"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_remove_canvas_item",
+      "class": "write",
+      "description": "Remove an entity's card from a canvas, clearing any arrows bound to it. The note/task/event itself is not deleted. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "canvas_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "note",
+              "task",
+              "calendar_event"
+            ]
+          },
+          "entity_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "canvas_id",
+          "entity_type",
+          "entity_id"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_create_canvas",
+      "class": "write",
+      "description": "Create an empty spatial canvas and return its id. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_draw_on_canvas",
+      "class": "write",
+      "description": "Draw on a canvas: rectangles, ellipses, diamonds, text, arrows, lines, freedraw, frames, images and embeds. Element fields are Excalidraw's own skeleton fields in camelCase (strokeColor, backgroundColor, fillStyle, strokeWidth, strokeStyle, roughness, opacity, roundness, fontSize, points, ...), so a shape is e.g. {\"type\":\"rectangle\",\"x\":0,\"y\":0,\"width\":240,\"height\":120,\"backgroundColor\":\"#ffec99\",\"label\":{\"text\":\"Chapter 1\"}}. Give an element a \"ref\" to point arrows at it or put it in a frame within the same call; bind to something already on the canvas with {\"elementId\":\"...\"} from vault_read_canvas_elements. An arrow with start and end is a REAL binding — it follows the shapes when the user drags them: {\"type\":\"arrow\",\"start\":{\"ref\":\"a\"},\"end\":{\"elementId\":\"...\"},\"endArrowhead\":\"arrow\",\"label\":{\"text\":\"leads to\"}}. Coordinates are scene coordinates; x/y default to 0, so read the canvas first and place relative to what is there. To put a note/task/event on the canvas use vault_add_canvas_item — this tool cannot mint entity cards. Images need a fileId already attached to the canvas. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "canvas_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "elements": {
+            "minItems": 1,
+            "maxItems": 300,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "rectangle",
+                    "ellipse",
+                    "diamond",
+                    "text",
+                    "arrow",
+                    "line",
+                    "freedraw",
+                    "frame",
+                    "image",
+                    "embeddable"
+                  ]
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                "strokeColor": {
+                  "type": "string",
+                  "pattern": "^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+                },
+                "fillStyle": {
+                  "type": "string",
+                  "enum": [
+                    "hachure",
+                    "cross-hatch",
+                    "solid",
+                    "zigzag"
+                  ]
+                },
+                "strokeWidth": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 20
+                },
+                "strokeStyle": {
+                  "type": "string",
+                  "enum": [
+                    "solid",
+                    "dashed",
+                    "dotted"
+                  ]
+                },
+                "roughness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "roundness": {
+                  "type": "string",
+                  "enum": [
+                    "sharp",
+                    "round"
+                  ]
+                },
+                "angle": {
+                  "type": "number"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "link": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                "fontSize": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 200
+                },
+                "fontFamily": {
+                  "type": "string",
+                  "enum": [
+                    "hand-drawn",
+                    "normal",
+                    "code",
+                    "lilita"
+                  ]
+                },
+                "textAlign": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "center",
+                    "right"
+                  ]
+                },
+                "verticalAlign": {
+                  "type": "string",
+                  "enum": [
+                    "top",
+                    "middle",
+                    "bottom"
+                  ]
+                },
+                "label": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2000
+                    },
+                    "fontSize": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 200
+                    },
+                    "fontFamily": {
+                      "type": "string",
+                      "enum": [
+                        "hand-drawn",
+                        "normal",
+                        "code",
+                        "lilita"
+                      ]
+                    },
+                    "textAlign": {
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "center",
+                        "right"
+                      ]
+                    },
+                    "verticalAlign": {
+                      "type": "string",
+                      "enum": [
+                        "top",
+                        "middle",
+                        "bottom"
+                      ]
+                    },
+                    "strokeColor": {
+                      "type": "string",
+                      "pattern": "^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                "start": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "elementId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "end": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "elementId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "startArrowhead": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "arrow",
+                    "bar",
+                    "dot",
+                    "triangle",
+                    "triangle_outline",
+                    "diamond",
+                    "diamond_outline",
+                    "circle",
+                    "circle_outline",
+                    "crowfoot_one",
+                    "crowfoot_many",
+                    "crowfoot_one_or_many"
+                  ]
+                },
+                "endArrowhead": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "arrow",
+                    "bar",
+                    "dot",
+                    "triangle",
+                    "triangle_outline",
+                    "diamond",
+                    "diamond_outline",
+                    "circle",
+                    "circle_outline",
+                    "crowfoot_one",
+                    "crowfoot_many",
+                    "crowfoot_one_or_many"
+                  ]
+                },
+                "points": {
+                  "minItems": 2,
+                  "maxItems": 500,
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                },
+                "pressures": {
+                  "maxItems": 500,
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "children": {
+                  "maxItems": 200,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "fileId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "canvas_id",
+          "elements"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_edit_canvas_elements",
+      "class": "write",
+      "description": "Move, restyle, retext or delete elements already on a canvas, by element id from vault_read_canvas_elements. Absent fields are left alone; {\"delete\":true} removes the element and clears any arrow bound to it. Works on entity cards too (move and restyle them), except their text, which lives in the note. Takes the canvas id or its folder-qualified name (\"Work/Plan\") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Requires user approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "canvas_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "edits": {
+            "minItems": 1,
+            "maxItems": 300,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "elementId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "delete": {
+                  "type": "boolean"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "width": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                "height": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                "strokeColor": {
+                  "type": "string",
+                  "pattern": "^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+                },
+                "backgroundColor": {
+                  "type": "string",
+                  "pattern": "^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|transparent)$"
+                },
+                "fillStyle": {
+                  "type": "string",
+                  "enum": [
+                    "hachure",
+                    "cross-hatch",
+                    "solid",
+                    "zigzag"
+                  ]
+                },
+                "strokeWidth": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 20
+                },
+                "strokeStyle": {
+                  "type": "string",
+                  "enum": [
+                    "solid",
+                    "dashed",
+                    "dotted"
+                  ]
+                },
+                "roughness": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "roundness": {
+                  "type": "string",
+                  "enum": [
+                    "sharp",
+                    "round"
+                  ]
+                },
+                "angle": {
+                  "type": "number"
+                },
+                "locked": {
+                  "type": "boolean"
+                },
+                "link": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 20000
+                },
+                "fontSize": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 200
+                },
+                "fontFamily": {
+                  "type": "string",
+                  "enum": [
+                    "hand-drawn",
+                    "normal",
+                    "code",
+                    "lilita"
+                  ]
+                },
+                "textAlign": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "center",
+                    "right"
+                  ]
+                },
+                "verticalAlign": {
+                  "type": "string",
+                  "enum": [
+                    "top",
+                    "middle",
+                    "bottom"
+                  ]
+                },
+                "startArrowhead": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "arrow",
+                    "bar",
+                    "dot",
+                    "triangle",
+                    "triangle_outline",
+                    "diamond",
+                    "diamond_outline",
+                    "circle",
+                    "circle_outline",
+                    "crowfoot_one",
+                    "crowfoot_many",
+                    "crowfoot_one_or_many"
+                  ]
+                },
+                "endArrowhead": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "arrow",
+                    "bar",
+                    "dot",
+                    "triangle",
+                    "triangle_outline",
+                    "diamond",
+                    "diamond_outline",
+                    "circle",
+                    "circle_outline",
+                    "crowfoot_one",
+                    "crowfoot_many",
+                    "crowfoot_one_or_many"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "elementId"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "canvas_id",
+          "edits"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "vault_desktop_write",
+      "class": "write",
+      "description": "Run an allowlisted desktop CRUD mutation. `args` are the positional arguments of the operation; a call with more arguments than the operation takes is refused, so put options inside its input object. A write whose reply carries no record gets a `stored` field read back after the write. properties.set(entityId, properties) replaces the entity's whole property record: a property left out is deleted, except the legacy id, title, created and modified keys, which are kept unless the call names them (null deletes one). The reply lists the stored `properties` and the names it `removed`. Checkbox lines that a note, journal or template write, notes.applyTemplate, inbox.convertToNote or notes.importFiles adds are stored as plain checkboxes, marked {check}, unless the owner turned on task conversion for agents. Requires user approval. Replies follow the vault_desktop_read rules for filed files and replies over 100 KB. vault_desktop_describe returns each operation's argument schema; a call that does not match it is refused before approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": [
+              "notes.create",
+              "notes.update",
+              "notes.rename",
+              "notes.move",
+              "notes.delete",
+              "notes.createFolder",
+              "notes.renameFolder",
+              "notes.deleteFolder",
+              "notes.createPropertyDefinition",
+              "notes.updatePropertyDefinition",
+              "notes.ensurePropertyDefinition",
+              "notes.addPropertyOption",
+              "notes.addStatusOption",
+              "notes.removePropertyOption",
+              "notes.renamePropertyOption",
+              "notes.updateOptionColor",
+              "notes.deletePropertyDefinition",
+              "notes.uploadAttachment",
+              "notes.deleteAttachment",
+              "notes.setFolderConfig",
+              "notes.restoreVersion",
+              "notes.deleteVersion",
+              "notes.reorder",
+              "notes.importFiles",
+              "notes.setLocalOnly",
+              "notes.setCalendarPropertyVisibility",
+              "notes.applyTemplate",
+              "notes.exportPdf",
+              "notes.exportHtml",
+              "tasks.create",
+              "tasks.update",
+              "tasks.delete",
+              "tasks.complete",
+              "tasks.uncomplete",
+              "tasks.archive",
+              "tasks.unarchive",
+              "tasks.move",
+              "tasks.reorder",
+              "tasks.duplicate",
+              "tasks.convertToSubtask",
+              "tasks.convertToTask",
+              "tasks.createProject",
+              "tasks.updateProject",
+              "tasks.deleteProject",
+              "tasks.archiveProject",
+              "tasks.reorderProjects",
+              "tasks.linkProjectItem",
+              "tasks.unlinkProjectItem",
+              "tasks.setProjectLinkPinned",
+              "tasks.setProjectHomeNote",
+              "tasks.captureUrlToProject",
+              "tasks.importFilesToProject",
+              "tasks.createStatus",
+              "tasks.updateStatus",
+              "tasks.deleteStatus",
+              "tasks.reorderStatuses",
+              "tasks.bulkComplete",
+              "tasks.bulkDelete",
+              "tasks.bulkMove",
+              "tasks.bulkArchive",
+              "inbox.captureText",
+              "inbox.captureLink",
+              "inbox.captureImage",
+              "inbox.captureVoice",
+              "inbox.captureClip",
+              "inbox.capturePdf",
+              "inbox.update",
+              "inbox.archive",
+              "inbox.file",
+              "inbox.trackSuggestion",
+              "inbox.convertToNote",
+              "inbox.convertToTask",
+              "inbox.convertToEvent",
+              "inbox.convertToReminder",
+              "inbox.linkToNote",
+              "inbox.addTag",
+              "inbox.removeTag",
+              "inbox.snooze",
+              "inbox.unsnooze",
+              "inbox.markViewed",
+              "inbox.bulkFile",
+              "inbox.bulkArchive",
+              "inbox.bulkTag",
+              "inbox.bulkSnooze",
+              "inbox.fileAllStale",
+              "inbox.retryTranscription",
+              "inbox.retryMetadata",
+              "inbox.setStaleThreshold",
+              "inbox.unarchive",
+              "inbox.deletePermanent",
+              "inbox.undoFile",
+              "inbox.undoArchive",
+              "journal.createEntry",
+              "journal.updateEntry",
+              "journal.deleteEntry",
+              "properties.set",
+              "properties.rename",
+              "templates.create",
+              "templates.update",
+              "templates.delete",
+              "templates.duplicate",
+              "savedFilters.create",
+              "savedFilters.update",
+              "savedFilters.delete",
+              "savedFilters.reorder",
+              "bookmarks.create",
+              "bookmarks.delete",
+              "bookmarks.toggle",
+              "bookmarks.reorder",
+              "bookmarks.bulkDelete",
+              "bookmarks.bulkCreate",
+              "tags.pinNoteToTag",
+              "tags.unpinNoteFromTag",
+              "tags.renameTag",
+              "tags.updateTagColor",
+              "tags.deleteTag",
+              "tags.removeTagFromNote",
+              "tags.mergeTag",
+              "tags.updateTagIcon",
+              "tags.createCategory",
+              "tags.renameCategory",
+              "tags.deleteCategory",
+              "tags.reorder",
+              "folderView.setConfig",
+              "folderView.setView",
+              "folderView.deleteView",
+              "reminders.create",
+              "reminders.update",
+              "reminders.delete",
+              "reminders.dismiss",
+              "reminders.snooze",
+              "reminders.bulkDismiss",
+              "calendar.createEvent",
+              "calendar.updateEvent",
+              "calendar.deleteEvent",
+              "settings.set",
+              "settings.setJournalSettings",
+              "settings.setAISettings",
+              "settings.setVoiceTranscriptionSettings",
+              "settings.setTabSettings",
+              "settings.setNoteEditorSettings",
+              "settings.setGeneralSettings",
+              "settings.setEditorSettings",
+              "settings.setTaskSettings",
+              "settings.setKeyboardSettings",
+              "settings.resetKeyboardSettings",
+              "settings.setSyncSettings",
+              "settings.setBackupSettings",
+              "settings.setGraphSettings",
+              "settings.setCalendarSettings",
+              "settings.setFeaturesSettings",
+              "settings.setInboxSettings",
+              "search.rebuildIndex",
+              "search.addReason",
+              "search.clearReasons",
+              "homePages.create",
+              "homePages.update",
+              "homePages.delete",
+              "homePages.reorder",
+              "vault.switch",
+              "vault.reindex",
+              "vault.updateConfig",
+              "vault.downloadRemote",
+              "canvas.create",
+              "canvas.delete"
+            ]
+          },
+          "args": {
+            "default": [],
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false
+      }
+    }
+  ]
+}

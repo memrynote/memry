@@ -79,11 +79,12 @@ mod tier;
 mod walked;
 
 pub use body::EMPTIED_SETTLE;
+pub(crate) use body::writing_of;
 pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
 pub(crate) use tier::Hold;
-pub use tier::VaultTier;
+pub use tier::{Taken, VaultTier};
 
 use run::{AfterWalk, Consumer, inbox};
 

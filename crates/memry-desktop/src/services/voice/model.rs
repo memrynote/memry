@@ -10,13 +10,14 @@
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
+use super::engine::LocalEngine;
 use crate::embedding::download::{Abort, DownloadError, HUB_HOST, ModelSource, PinnedFile};
 use crate::embedding::service::{ModelProgress, Phase};
 
@@ -48,10 +49,11 @@ pub struct VoiceModelStatus {
 pub struct VoiceModel {
     source: ModelSource,
     pin: PinnedFile,
-    downloading: AtomicBool,
+    /// Downloads in flight; the model is loading while any is.
+    downloading: AtomicUsize,
     /// Ends a download in flight: the app quits.
     cancel: CancellationToken,
-    /// The last download's failure, cleared by the next success.
+    /// The last download's failure, cleared when the next download starts or succeeds.
     error: Mutex<Option<String>>,
 }
 
@@ -71,7 +73,7 @@ impl VoiceModel {
         Self {
             source: ModelSource::new(host, REPO, REVISION, dir, vec![file.clone()]),
             pin: file,
-            downloading: AtomicBool::new(false),
+            downloading: AtomicUsize::new(0),
             cancel: CancellationToken::new(),
             error: Mutex::new(None),
         }
@@ -92,29 +94,37 @@ impl VoiceModel {
             && fs::metadata(self.model_path()).is_ok_and(|meta| meta.len() == self.pin.size)
     }
 
-    /// `getVoiceModelStatus`. The engine that loads the model arrives with Stage B of Step 24,
-    /// so `loaded` stays false; `loading` covers the download, as Electron's covers its load.
-    pub fn status(&self) -> VoiceModelStatus {
+    /// `getVoiceModelStatus`: `loaded` while the worker that loaded the model runs, `loading`
+    /// during the download and the load, and the newest failure: a download clears every
+    /// earlier one when it starts, as each of Electron's progress phases rewrites its one
+    /// `error` (`voice-model.ts:308-318`).
+    pub fn status(&self, engine: &LocalEngine) -> VoiceModelStatus {
         VoiceModelStatus {
             name: MODEL_NAME.to_owned(),
             downloaded: self.downloaded(),
-            loaded: false,
-            loading: self.downloading.load(Ordering::SeqCst),
-            error: self
-                .error
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .clone(),
+            loaded: engine.loaded(),
+            loading: self.downloading.load(Ordering::SeqCst) > 0 || engine.loading(),
+            error: engine.error().or_else(|| {
+                self.error
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .clone()
+            }),
         }
     }
 
     /// `downloadVoiceModel`: fetches and verifies the file, then writes the marker, reporting
     /// Electron's progress phases (`downloading`, `loading` at 95, then `ready` or `error`).
+    /// Starting clears `engine`'s last failure and the last download's; success clears both
+    /// again, since a concurrent call can fail in between.
     pub async fn download(
         &self,
+        engine: &LocalEngine,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<(), DownloadError> {
-        self.downloading.store(true, Ordering::SeqCst);
+        engine.clear_error();
+        *self.error.lock().unwrap_or_else(PoisonError::into_inner) = None;
+        let in_flight = InFlight::enter(&self.downloading);
         let abort = Abort {
             cancel: self.cancel.clone(),
             deadline: Instant::now() + DOWNLOAD_DEADLINE,
@@ -127,11 +137,12 @@ impl VoiceModel {
             }),
             Err(error) => Err(error),
         };
-        self.downloading.store(false, Ordering::SeqCst);
+        drop(in_flight);
         let mut last_error = self.error.lock().unwrap_or_else(PoisonError::into_inner);
         match &outcome {
             Ok(()) => {
                 *last_error = None;
+                engine.clear_error();
                 progress(ModelProgress::new(
                     Phase::Ready,
                     100,
@@ -166,6 +177,22 @@ impl VoiceModel {
         temp.push(".tmp");
         fs::write(&temp, marker.to_string())?;
         fs::rename(&temp, &path)
+    }
+}
+
+/// Counts one download in flight until it ends or its future is dropped.
+struct InFlight<'a>(&'a AtomicUsize);
+
+impl<'a> InFlight<'a> {
+    fn enter(count: &'a AtomicUsize) -> Self {
+        count.fetch_add(1, Ordering::SeqCst);
+        Self(count)
+    }
+}
+
+impl Drop for InFlight<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
     }
 }
 

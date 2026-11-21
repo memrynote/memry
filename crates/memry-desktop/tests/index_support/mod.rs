@@ -5,6 +5,10 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::frontmatter::split_frontmatter_block;
+use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{
@@ -110,6 +114,8 @@ pub fn seeded(count: usize) -> (Env, Arc<dyn SecureStore>, Vec<(String, String)>
     e.open();
     let core = e.core();
     let writer = core.notes_writer(store.clone()).unwrap();
+    let feed = core.external_feed(store.clone()).unwrap();
+    let converter = Converter::new(CalloutTypes::new(Vec::new()));
     let rows = e.tier.rows();
     let session = rows.session_for(&core).unwrap();
     let mut notes = Vec::new();
@@ -118,6 +124,20 @@ pub fn seeded(count: usize) -> (Env, Arc<dyn SecureStore>, Vec<(String, String)>
         let id = writer
             .create(format!("Note {i}"), Some(format!("f{}", i % 10)))
             .unwrap();
+        // The document holds the file's text, as an indexed vault's does, so a write-back pass
+        // over the note (the open's reconcile lists notes while this loop still makes them)
+        // finds the file current instead of writing an empty body over it.
+        let split = split_frontmatter_block(&text);
+        let input = FeedInput {
+            note_id: &id,
+            markdown: split.body,
+            note_path: Some(&path),
+            writing: None,
+            frontmatter: split.block,
+            embeds: None,
+        };
+        let fed = feed.seed_body_if_empty(&converter, input).unwrap();
+        assert_eq!(fed, FeedOutcome::Fed, "{path}");
         let hash = content_hash(&text);
         // Both hashes name the file, as an indexed vault's rows do, so the open walk reads
         // nothing: what is measured below is the index alone.
@@ -174,17 +194,21 @@ pub fn with_reporting_task(
         open,
         facts,
         crate::device_key::with_device_key(),
-        report,
+        &|build| {
+            if let OpenBuild::Step(step) = build {
+                report(step);
+            }
+        },
         test,
     );
 }
 
-/// [`with_reporting_task`] whose task reads records under `store`.
+/// [`with_task`] whose task reads records under `store` and tells `report` the open's build.
 pub fn with_task_under(
     open: &OpenVault,
     facts: Receiver<Applied>,
     store: Arc<dyn SecureStore>,
-    report: &(dyn Fn(IndexProgress) + Sync),
+    report: &(dyn Fn(OpenBuild) + Sync),
     test: impl FnOnce(&TaskHandle),
 ) {
     let indexer = Indexer::new(open, store);
@@ -198,11 +222,7 @@ pub fn with_task_under(
                     inbox,
                     &cancel,
                     TaskEvents {
-                        report: &|build| {
-                            if let OpenBuild::Step(step) = build {
-                                report(step);
-                            }
-                        },
+                        report,
                         announce: &|_| {},
                         landed: &|_| {},
                         defined: &|| {},
