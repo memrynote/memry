@@ -6,7 +6,7 @@ use memry_desktop::sync::status::SyncStatus;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
-use super::broadcast;
+use super::{TaskActivityCreatedEvent, broadcast};
 
 /// Sends the typed event of one supervisor event.
 pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
@@ -29,6 +29,16 @@ pub fn broadcast_sync_event<R: Runtime>(app: &AppHandle<R>, event: &SyncEvent) {
                     .collect(),
             },
         ),
+        SyncEvent::TaskActivityCreated(task_ids) => {
+            for task_id in task_ids {
+                broadcast(
+                    app,
+                    TaskActivityCreatedEvent {
+                        task_id: task_id.clone(),
+                    },
+                );
+            }
+        }
         SyncEvent::QueueCleared {
             item_count,
             duration_ms,

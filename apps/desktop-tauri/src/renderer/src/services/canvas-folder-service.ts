@@ -1,10 +1,9 @@
 /**
  * Canvas Folder Service
  *
- * Renderer-side access to the canvas folder IPC surface
- * (window.api.canvasFolder). Mirrors canvas-service: a lazy forwarder over the
- * generated RPC client plus thin event-subscription wrappers returning
- * unsubscribe closures.
+ * The canvas folder commands of Step 30e1 (`commands/canvas_folders.rs`) in the shapes of
+ * Electron's `canvasFolder:*` channels. A refusal rejects with its `errors:canvasFolder.*` key
+ * as the message, which `extractErrorMessage` translates, as Electron's handler did.
  */
 
 import type {
@@ -14,28 +13,36 @@ import type {
   CanvasFolderUpdatedEvent,
   CanvasFolderDeletedEvent
 } from '@memry/rpc/canvas-folder'
-import { createWindowApiForwarder } from './window-api-forwarder'
+import { commands, events } from '../../../generated/bindings'
+import { subscribeToEvent } from './tauri-event'
 
 export type { CanvasFolder }
 
-export const canvasFolderService: CanvasFolderClientAPI = createWindowApiForwarder(
-  () => window.api.canvasFolder
-)
+export const canvasFolderService: CanvasFolderClientAPI = {
+  list: () => commands.canvasFolderList(),
+  create: ({ parent, name }) => commands.canvasFolderCreate(parent ?? null, name),
+  rename: ({ path, name }) => commands.canvasFolderRename(path, name),
+  move: ({ path, parent }) => commands.canvasFolderMove(path, parent),
+  setIcon: ({ path, icon }) => commands.canvasFolderSetIcon(path, icon),
+  delete: ({ path }) => commands.canvasFolderDelete(path)
+}
 
 export function onCanvasFolderCreated(
   callback: (event: CanvasFolderCreatedEvent) => void
 ): () => void {
-  return window.api.onCanvasFolderCreated(callback)
+  return subscribeToEvent(events.canvasFolderCreatedEvent, callback)
 }
 
 export function onCanvasFolderUpdated(
   callback: (event: CanvasFolderUpdatedEvent) => void
 ): () => void {
-  return window.api.onCanvasFolderUpdated(callback)
+  return subscribeToEvent(events.canvasFolderUpdatedEvent, ({ folder, previousPath }) =>
+    callback(previousPath ? { folder, previousPath } : { folder })
+  )
 }
 
 export function onCanvasFolderDeleted(
   callback: (event: CanvasFolderDeletedEvent) => void
 ): () => void {
-  return window.api.onCanvasFolderDeleted(callback)
+  return subscribeToEvent(events.canvasFolderDeletedEvent, callback)
 }
