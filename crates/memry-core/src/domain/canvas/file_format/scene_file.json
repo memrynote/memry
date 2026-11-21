@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "id": "cnv_1",
+    "createdAt": 1731900000000,
+    "updatedAt": 1731900000123
+  },
+  "cases": [
+    {
+      "name": "empty",
+      "scene": "",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "blank",
+      "scene": "   \n",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "not_json",
+      "scene": "{\"elements\": [",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"elements\": [",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "minimal",
+      "scene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"https://excalidraw.com\",\"elements\":[],\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"files\":{}}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"https://excalidraw.com\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {\n    \"viewBackgroundColor\": \"#ffffff\"\n  },\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"https://excalidraw.com\",\"elements\":[],\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"https://excalidraw.com\",\"elements\":[],\"appState\":{\"viewBackgroundColor\":\"#ffffff\"},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "head_keys_missing",
+      "scene": "{\"elements\":[{\"id\":\"a\",\"x\":1}]}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [\n    {\n      \"id\": \"a\",\n      \"x\": 1\n    }\n  ],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"id\":\"a\",\"x\":1}],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"id\":\"a\",\"x\":1}],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "head_keys_null",
+      "scene": "{\"type\":null,\"version\":null,\"source\":null,\"elements\":null,\"appState\":null,\"files\":null}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "sidecar_replaced",
+      "scene": "{\"memry\":{\"id\":\"old\",\"createdAt\":1,\"updatedAt\":2},\"elements\":[],\"zeta\":1,\"alpha\":{\"b\":2,\"a\":1}}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {},\n  \"alpha\": {\n    \"b\": 2,\n    \"a\": 1\n  },\n  \"zeta\": 1\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{},\"alpha\":{\"b\":2,\"a\":1},\"zeta\":1}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{},\"alpha\":{\"b\":2,\"a\":1},\"zeta\":1}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "unknown_keys_sorted",
+      "scene": "{\"memryAssets\":{\"f1\":{\"attachmentId\":\"x\"}},\"Zed\":true,\"_under\":null,\"élan\":1,\"éclair\":2,\"emoji😀\":3,\"a\":4,\"files\":{\"f1\":{\"mimeType\":\"image/png\",\"dataURL\":\"memry-file://x\"}}}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {\n    \"f1\": {\n      \"mimeType\": \"image/png\",\n      \"dataURL\": \"memry-file://x\"\n    }\n  },\n  \"Zed\": true,\n  \"_under\": null,\n  \"a\": 4,\n  \"emoji😀\": 3,\n  \"memryAssets\": {\n    \"f1\": {\n      \"attachmentId\": \"x\"\n    }\n  },\n  \"éclair\": 2,\n  \"élan\": 1\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{\"f1\":{\"mimeType\":\"image/png\",\"dataURL\":\"memry-file://x\"}},\"Zed\":true,\"_under\":null,\"a\":4,\"emoji😀\":3,\"memryAssets\":{\"f1\":{\"attachmentId\":\"x\"}},\"éclair\":2,\"élan\":1}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{\"f1\":{\"mimeType\":\"image/png\",\"dataURL\":\"memry-file://x\"}},\"Zed\":true,\"_under\":null,\"a\":4,\"emoji😀\":3,\"memryAssets\":{\"f1\":{\"attachmentId\":\"x\"}},\"éclair\":2,\"élan\":1}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "numbers",
+      "scene": "{\"elements\":[{\"x\":0.1,\"y\":-0,\"w\":1e21,\"h\":1e-7,\"a\":123.456,\"b\":-5,\"c\":1.5e300,\"d\":100.0,\"e\":2e-6,\"f\":9007199254740993,\"g\":0.000001}]}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [\n    {\n      \"x\": 0.1,\n      \"y\": 0,\n      \"w\": 1e+21,\n      \"h\": 1e-7,\n      \"a\": 123.456,\n      \"b\": -5,\n      \"c\": 1.5e+300,\n      \"d\": 100,\n      \"e\": 0.000002,\n      \"f\": 9007199254740992,\n      \"g\": 0.000001\n    }\n  ],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"x\":0.1,\"y\":0,\"w\":1e+21,\"h\":1e-7,\"a\":123.456,\"b\":-5,\"c\":1.5e+300,\"d\":100,\"e\":0.000002,\"f\":9007199254740992,\"g\":0.000001}],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"x\":0.1,\"y\":0,\"w\":1e+21,\"h\":1e-7,\"a\":123.456,\"b\":-5,\"c\":1.5e+300,\"d\":100,\"e\":0.000002,\"f\":9007199254740992,\"g\":0.000001}],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "strings",
+      "scene": "{\"elements\":[{\"text\":\"Yağmur ışık İstanbul\\n\\t\\\"q\\\" \\\\ \\u0001 \\u001f \\u007f \\u2028 \\u2029 😀 \\ud83d\\ude00\"}]}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [\n    {\n      \"text\": \"Yağmur ışık İstanbul\\n\\t\\\"q\\\" \\\\ \\u0001 \\u001f      😀 😀\"\n    }\n  ],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"text\":\"Yağmur ışık İstanbul\\n\\t\\\"q\\\" \\\\ \\u0001 \\u001f      😀 😀\"}],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"text\":\"Yağmur ışık İstanbul\\n\\t\\\"q\\\" \\\\ \\u0001 \\u001f      😀 😀\"}],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "integer_like_keys",
+      "scene": "{\"elements\":[],\"appState\":{\"2\":\"b\",\"10\":\"c\",\"1\":\"a\",\"x\":\"d\",\"01\":\"e\"},\"9\":\"top\",\"files\":{}}",
+      "file": "{\n  \"9\": \"top\",\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {\n    \"1\": \"a\",\n    \"2\": \"b\",\n    \"10\": \"c\",\n    \"x\": \"d\",\n    \"01\": \"e\"\n  },\n  \"files\": {}\n}",
+      "strippedFile": "{\"9\":\"top\",\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\",\"x\":\"d\",\"01\":\"e\"},\"files\":{}}",
+      "strippedScene": "{\"9\":\"top\",\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{\"1\":\"a\",\"2\":\"b\",\"10\":\"c\",\"x\":\"d\",\"01\":\"e\"},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "nested",
+      "scene": "{\"elements\":[{\"id\":\"r\",\"type\":\"rectangle\",\"customData\":{\"entityType\":\"note\",\"entityId\":\"n1\"},\"boundElements\":[{\"id\":\"arrow\",\"type\":\"arrow\"}],\"groupIds\":[],\"points\":[[0,0],[10.5,-3.25]]},{\"id\":\"arrow\",\"type\":\"arrow\",\"memryBinding\":{\"source\":\"r\"},\"startBinding\":null}],\"appState\":{\"gridSize\":null,\"zoom\":{\"value\":1}},\"files\":{}}",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [\n    {\n      \"id\": \"r\",\n      \"type\": \"rectangle\",\n      \"customData\": {\n        \"entityType\": \"note\",\n        \"entityId\": \"n1\"\n      },\n      \"boundElements\": [\n        {\n          \"id\": \"arrow\",\n          \"type\": \"arrow\"\n        }\n      ],\n      \"groupIds\": [],\n      \"points\": [\n        [\n          0,\n          0\n        ],\n        [\n          10.5,\n          -3.25\n        ]\n      ]\n    },\n    {\n      \"id\": \"arrow\",\n      \"type\": \"arrow\",\n      \"memryBinding\": {\n        \"source\": \"r\"\n      },\n      \"startBinding\": null\n    }\n  ],\n  \"appState\": {\n    \"gridSize\": null,\n    \"zoom\": {\n      \"value\": 1\n    }\n  },\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"id\":\"r\",\"type\":\"rectangle\",\"customData\":{\"entityType\":\"note\",\"entityId\":\"n1\"},\"boundElements\":[{\"id\":\"arrow\",\"type\":\"arrow\"}],\"groupIds\":[],\"points\":[[0,0],[10.5,-3.25]]},{\"id\":\"arrow\",\"type\":\"arrow\",\"memryBinding\":{\"source\":\"r\"},\"startBinding\":null}],\"appState\":{\"gridSize\":null,\"zoom\":{\"value\":1}},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[{\"id\":\"r\",\"type\":\"rectangle\",\"customData\":{\"entityType\":\"note\",\"entityId\":\"n1\"},\"boundElements\":[{\"id\":\"arrow\",\"type\":\"arrow\"}],\"groupIds\":[],\"points\":[[0,0],[10.5,-3.25]]},{\"id\":\"arrow\",\"type\":\"arrow\",\"memryBinding\":{\"source\":\"r\"},\"startBinding\":null}],\"appState\":{\"gridSize\":null,\"zoom\":{\"value\":1}},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "top_level_array",
+      "scene": "[1,2]",
+      "file": "{\n  \"0\": 1,\n  \"1\": 2,\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"0\":1,\"1\":2,\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"0\":1,\"1\":2,\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    },
+    {
+      "name": "top_level_number",
+      "scene": "5",
+      "file": "{\n  \"type\": \"excalidraw\",\n  \"version\": 2,\n  \"source\": \"memry\",\n  \"memry\": {\n    \"id\": \"cnv_1\",\n    \"createdAt\": 1731900000000,\n    \"updatedAt\": 1731900000123\n  },\n  \"elements\": [],\n  \"appState\": {},\n  \"files\": {}\n}",
+      "strippedFile": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "strippedScene": "{\"type\":\"excalidraw\",\"version\":2,\"source\":\"memry\",\"elements\":[],\"appState\":{},\"files\":{}}",
+      "meta": {
+        "id": "cnv_1",
+        "createdAt": 1731900000000,
+        "updatedAt": 1731900000123
+      }
+    }
+  ],
+  "metaCases": [
+    {
+      "content": "{\"memry\":{\"id\":\"x\",\"createdAt\":5,\"updatedAt\":6}}",
+      "meta": {
+        "id": "x",
+        "createdAt": 5,
+        "updatedAt": 6
+      }
+    },
+    {
+      "content": "{\"memry\":{\"id\":\"\",\"createdAt\":5}}",
+      "meta": null
+    },
+    {
+      "content": "{\"memry\":{\"id\":7}}",
+      "meta": null
+    },
+    {
+      "content": "{\"memry\":{\"id\":\"y\",\"createdAt\":\"5\",\"updatedAt\":6.9}}",
+      "meta": {
+        "id": "y",
+        "createdAt": "now",
+        "updatedAt": 6.9
+      }
+    },
+    {
+      "content": "not json",
+      "meta": null
+    },
+    {
+      "content": "{}",
+      "meta": null
+    }
+  ]
+}

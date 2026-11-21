@@ -2,3 +2,4 @@ dist
 src-tauri/gen/
 src-tauri/resources/pdfium/
 src-tauri/binaries/
+eventkit/bin/

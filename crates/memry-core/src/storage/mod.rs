@@ -19,6 +19,7 @@
 
 pub mod connection;
 pub mod guard;
+pub mod import;
 pub mod index_db;
 pub mod migrations;
 pub(crate) mod pool;

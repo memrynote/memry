@@ -8,13 +8,15 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_desktop::embedding::MAX_CONSECUTIVE_FAILURES;
-use memry_desktop::embedding::service::{EmbeddingService, Timing};
+use memry_desktop::embedding::download::Abort;
+use memry_desktop::embedding::service::{EmbeddingService, ModelLoader, Timing};
 use memry_desktop::embedding::worker::WorkerModel;
 use memry_desktop::services::file_text::WorkerPaths;
 use memry_ml_worker::MODEL_REPO;
+use tokio_util::sync::CancellationToken;
 
 /// The service over the stub, its model cache holding the stub's one pinned file.
 fn stub_service(
@@ -121,5 +123,71 @@ fn a_worker_that_dies_under_each_recording_never_stops_text() {
         .expect("text still embeds");
     assert_eq!(vector.len(), 256);
     assert_eq!(service.embed_audio(&memo).map(|v| v.len()), Some(3));
+    model.stop();
+}
+
+/// A worker that answers NaNs to a text breaks the protocol: the model is dropped with the child
+/// and the failure counts toward the breaker (`failProcess`, embeddings.ts:820-835).
+#[test]
+fn a_worker_that_answers_nans_drops_the_model_and_counts_the_failure() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let (service, model) = stub_service(&runtime, &cache);
+
+    for attempt in 0..MAX_CONSECUTIVE_FAILURES {
+        assert_eq!(
+            service.embed("nan, a note long enough to embed"),
+            None,
+            "attempt {attempt}"
+        );
+        let status = service.status();
+        assert!(!status.loaded, "attempt {attempt}: the model was dropped");
+        assert!(status.error.is_some(), "attempt {attempt}");
+    }
+    assert!(
+        !service.load(),
+        "five protocol failures in a row stop loads until the user resets the failure"
+    );
+    model.stop();
+}
+
+/// The recording handles one `WorkerModel` hands out never repeat, across the engines it loads:
+/// an engine reloaded after a text crash must not reuse a handle a caller still holds.
+#[test]
+fn recording_handles_never_repeat_across_reloaded_engines() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let (_, model) = stub_service(&runtime, &cache);
+    let abort = Abort {
+        cancel: CancellationToken::new(),
+        deadline: Instant::now() + Duration::from_secs(60),
+    };
+    let memo = cache.path().join("memo.wav");
+
+    let mut first = model.load(&abort, &|_| {}).expect("first engine");
+    let held = first.open_audio(&memo).expect("opened").recording;
+    let mut second = model.load(&abort, &|_| {}).expect("reloaded engine");
+    let reopened = second.open_audio(&memo).expect("opened").recording;
+    assert_ne!(held, reopened);
+    model.stop();
+}
+
+/// A recording the worker dies on at open, again and again, never pauses the worker for text:
+/// the audio encoder's breaker bounds those crashes, so the supervisor's crash bound leaves them
+/// out (`recordEncoderFailure('audio')`, embeddings.ts:830-832).
+#[test]
+fn recordings_that_kill_the_worker_at_open_never_pause_it_for_text() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let (service, model) = stub_service(&runtime, &cache);
+    let hostile = cache.path().join("crash-open.wav");
+
+    for attempt in 0..MAX_CONSECUTIVE_FAILURES {
+        assert_eq!(service.embed_audio(&hostile), None, "attempt {attempt}");
+    }
+    let vector = service
+        .embed("a note long enough to embed")
+        .expect("text still embeds");
+    assert_eq!(vector.len(), 256);
     model.stop();
 }

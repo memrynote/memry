@@ -79,11 +79,12 @@ mod tier;
 mod walked;
 
 pub use body::EMPTIED_SETTLE;
+pub(crate) use body::writing_of;
 pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]
 pub(crate) use tier::Hold;
-pub use tier::VaultTier;
+pub use tier::{Taken, VaultTier};
 
 use run::{AfterWalk, Consumer, inbox};
 
@@ -111,6 +112,10 @@ pub enum ChangeSource {
     /// The user's save in the editor (`notes:update`, `vault::app_edit`'s `Save`): its body,
     /// its header tags or its icon. Electron sends it as an `internal` `notes:updated`.
     Save,
+    /// The write-back gave the file a change pulled from another device: its place or its
+    /// frontmatter (`vault::writeback::place`). Electron's `applyUpsert` sends it as a `sync`
+    /// `notes:updated`, on which an open editor does not remount.
+    Sync,
 }
 
 /// What moved a note's file, for the note event it sends.
@@ -175,4 +180,7 @@ pub enum Applied {
     /// for an outside writer's text that landed in a file the app had replaced, once a version
     /// holds it ([`crate::vault::late_writes`]).
     OutsideEditKept { note_id: String, path: String },
+    /// The write-back wrote pulled header tags into the note's file (`notes:tags-changed`, as
+    /// Electron's `applyUpsert` sends it when the pulled tags differ).
+    TagsPulled { note_id: String },
 }

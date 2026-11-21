@@ -101,16 +101,22 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "body_tags_reindex.rs"]
+mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
+#[path = "calendar_feed_untrusted.rs"]
+mod calendar_feed_untrusted;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ical_vectors.rs"]
 mod calendar_ical_vectors;
 #[path = "calendar_provider_push.rs"]
 mod calendar_provider_push;
+#[path = "calendar_schema.rs"]
+mod calendar_schema;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
 #[path = "calendar_source_purge.rs"]
@@ -215,10 +221,14 @@ mod domain_note_positions;
 mod domain_note_tasks;
 #[path = "domain_notes.rs"]
 mod domain_notes;
+#[path = "domain_project_note_property.rs"]
+mod domain_project_note_property;
 #[path = "domain_projects.rs"]
 mod domain_projects;
 #[path = "domain_projects_links.rs"]
 mod domain_projects_links;
+#[path = "domain_projects_statuses.rs"]
+mod domain_projects_statuses;
 #[path = "domain_projects_write.rs"]
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
@@ -245,14 +255,22 @@ mod domain_search_snippet;
 mod domain_tag_categories;
 #[path = "domain_task_activity.rs"]
 mod domain_task_activity;
+#[path = "domain_task_links.rs"]
+mod domain_task_links;
 #[path = "domain_task_settings.rs"]
 mod domain_task_settings;
+#[path = "domain_task_superseded.rs"]
+mod domain_task_superseded;
 #[path = "domain_task_views.rs"]
 mod domain_task_views;
 #[path = "domain_tasks.rs"]
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_list.rs"]
+mod domain_tasks_list;
+#[path = "domain_tasks_spawn.rs"]
+mod domain_tasks_spawn;
 #[path = "domain_tasks_update.rs"]
 mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
@@ -263,6 +281,9 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[cfg(feature = "markdown")]
+#[path = "driver_observers.rs"]
+mod driver_observers;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
@@ -356,6 +377,8 @@ mod markdown_doc_vectors;
 mod markdown_fail_closed;
 #[path = "markdown_frontmatter_edit.rs"]
 mod markdown_frontmatter_edit;
+#[path = "markdown_frontmatter_language.rs"]
+mod markdown_frontmatter_language;
 #[path = "markdown_frontmatter_vectors.rs"]
 mod markdown_frontmatter_vectors;
 #[path = "markdown_layer_blocks_vectors.rs"]
@@ -416,6 +439,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// Folder views read the note index of files, desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "folder_view.rs"]
+mod folder_view;
 // `note_properties` is desktop only (`markdown`).
 #[cfg(feature = "markdown")]
 #[path = "property_reads_load.rs"]
@@ -466,6 +493,8 @@ mod sync_first_sync;
 mod sync_hardening_ledgers;
 #[path = "sync_hardening_orphans.rs"]
 mod sync_hardening_orphans;
+#[path = "sync_hardening_probe.rs"]
+mod sync_hardening_probe;
 #[cfg(feature = "markdown")]
 #[path = "sync_hardening_purged.rs"]
 mod sync_hardening_purged;
@@ -474,12 +503,18 @@ mod sync_hardening_repairs;
 #[cfg(feature = "markdown")]
 #[path = "sync_list_fields_union.rs"]
 mod sync_list_fields_union;
+#[cfg(feature = "markdown")]
+#[path = "sync_note_attachment_union.rs"]
+mod sync_note_attachment_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
 mod sync_outbox;
 #[path = "sync_pack_bootstrap.rs"]
 mod sync_pack_bootstrap;
+#[cfg(feature = "markdown")]
+#[path = "sync_project_nested_arrays.rs"]
+mod sync_project_nested_arrays;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
@@ -494,6 +529,9 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[cfg(feature = "markdown")]
+#[path = "sync_task_conflicts.rs"]
+mod sync_task_conflicts;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]

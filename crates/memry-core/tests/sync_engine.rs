@@ -345,7 +345,8 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
     let pull = loop_for(transport, db.clone(), cipher.clone());
 
     let report = pull.pull_page().await.expect("the page");
-    assert_eq!(report.deleted, 2);
+    // Neither id was ever live here, so both count as skipped (S17-5).
+    assert_eq!((report.deleted, report.skipped), (0, 2));
     assert_eq!(report.corrupt, 0);
     assert!(!report.refused);
     // §5.8 (#3037): a note tombstone is opened only for `bodyStateVector`,
@@ -453,7 +454,8 @@ async fn an_incremental_first_page_applies_inline_items_and_pulls_only_the_rest(
 
     let report = pull.pull_first_page().await.expect("the page");
     assert_eq!(report.applied, 2);
-    assert_eq!(report.deleted, 1);
+    // `note-gone` was never live here, so its tombstone counts as skipped (S17-5).
+    assert_eq!((report.deleted, report.skipped), (0, 1));
     assert_eq!(report.corrupt, 1);
     assert!(!report.refused);
     assert_eq!(stored_cursor(&db).as_deref(), Some("20"));

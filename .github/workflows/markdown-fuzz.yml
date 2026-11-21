@@ -48,7 +48,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -182,6 +181,9 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.os }}
+
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
 
       # doc_to_markdown misses its budget today (#3600); the numbers are the
       # record, so the step reports and does not fail. Set MEMRY_PERF_ENFORCE=1

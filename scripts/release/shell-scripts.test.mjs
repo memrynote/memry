@@ -187,7 +187,12 @@ describe(
   'sign-macos-bundle.sh',
   { skip: process.platform !== 'darwin' && 'needs PlistBuddy' },
   () => {
-    it('gives the app entitlements to the main binary and the bundle only', () =>
+    const eventkitEntitlements = path.resolve(
+      here,
+      '../../apps/desktop-tauri/eventkit/entitlements.plist'
+    )
+
+    it('gives the app entitlements to the main binary and the bundle only, and the EventKit helper calendars only', () =>
       inTemp((dir) => {
         const app = path.join(dir, 'MemryNote.app')
         const files = {
@@ -196,6 +201,7 @@ describe(
             '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
           'Contents/MacOS/MemryNote': 'bin',
           'Contents/MacOS/memry-ml-worker': 'bin',
+          'Contents/MacOS/memry-eventkit': 'bin',
           'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
         }
         for (const [rel, body] of Object.entries(files)) {
@@ -212,6 +218,7 @@ describe(
         const signing = '--force --timestamp --options runtime'
         assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-ml-worker`,
+          `codesign ${signing} --entitlements ${eventkitEntitlements} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-eventkit`,
           `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/Resources/pdfium/libpdfium.dylib`,
           `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}/Contents/MacOS/MemryNote`,
           `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}`,
@@ -220,3 +227,15 @@ describe(
       }))
   }
 )
+
+it('the EventKit helper entitlements grant calendars and nothing else', () => {
+  const plist = readFileSync(
+    path.resolve(here, '../../apps/desktop-tauri/eventkit/entitlements.plist'),
+    'utf8'
+  )
+  assert.deepEqual(
+    [...plist.matchAll(/<key>([^<]+)<\/key>\s*<true\/>/g)].map((match) => match[1]),
+    ['com.apple.security.personal-information.calendars']
+  )
+  assert.equal([...plist.matchAll(/<key>/g)].length, 1)
+})

@@ -35,6 +35,7 @@ on:
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
       - '.github/actions/free-disk/**'
+      - '.github/actions/libsodium-dist/**'
       - '.github/actions/ort-static/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
@@ -47,6 +48,11 @@ on:
   # none of them; a SHA a scheduled run already finished is skipped.
   schedule:
     - cron: '41 */6 * * *'
+    # Daily cache warm: runs the `checks` leg of each OS the merge queue runs, and saves its cargo cache,
+    # so merge groups and PRs restore a warm cache. It is also a normal scheduled run (a post-merge run
+    # of the SHA when no earlier scheduled run passed it). The cron string is matched in the concurrency
+    # group and in the plan job's WARM; scripts/ci-tier.test.mjs checks that they agree.
+    - cron: '27 3 * * *'
 
 permissions:
   contents: read
@@ -55,7 +61,7 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && '-schedule') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && (github.event.schedule == '27 3 * * *' && '-schedule-warm' || '-schedule')) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
   # A push run of feat/tauri-v2 finishes (#5035): after a merge the queue tested it runs only plan and
   # gate (post-merge.sh), and a full run, after a cache-key change, saves the caches PRs restore. A
   # cancelled one saved none, and the next push had to run every leg again. A burst stays bounded: a
@@ -96,6 +102,7 @@ jobs:
       macos: ${{ steps.tier.outputs.macos }}
       linux_arm64: ${{ steps.tier.outputs.rust_linux_arm64 }}
       legs: ${{ steps.matrix.outputs.legs }}
+      warm: ${{ steps.matrix.outputs.warm }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       # The CI definitions and the Rust sources, whose `#[cfg(<os>)] mod` declarations tell the tier
@@ -120,7 +127,8 @@ jobs:
           post-merge: 'true'
 
       # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (#5035): the scheduled
-      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing.
+      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing. The
+      # daily cache-warm run (WARM) adds the `checks` leg of each merge-queue OS to either.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -130,10 +138,12 @@ jobs:
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
           POST_MERGE: ${{ steps.tier.outputs.post_merge }}
+          WARM: ${{ github.event_name == 'schedule' && github.event.schedule == '27 3 * * *' }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" --arg warm "$WARM" \
             -f .github/actions/ci-tier/rust-legs.jq)
           echo "legs=$legs" >> "$GITHUB_OUTPUT"
+          echo "warm=$WARM" >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
@@ -145,18 +155,27 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
     needs: plan
-    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
+    if: ${{ !cancelled() && (needs.plan.outputs.post_merge != 'covered' || needs.plan.outputs.warm == 'true') && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
     # Each macOS leg runs every step in one job. With a cold cargo cache the Intel leg ran past 65
     # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
     # nextest suite alone is 11 of build and 24 of run (run 43766971845). A timed-out run saves no
     # cache, so the next run starts cold again. Warm, the Apple Silicon leg takes about 57 minutes.
-    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 90 || 65 }}
+    # windows-11-arm is cold on every run (no cache restores there) and compiles BoringSSL (btls-sys,
+    # for `services/web_fetch`) from scratch in each of the job's first cargo steps, about 6 minutes
+    # apiece. Run 44756156023 reached the Electron profile step after 46 minutes, run 44749865321
+    # (before the dependency) after 22: the job needs about 70 minutes.
+    # The ubuntu-22.04 `checks` leg runs cold too (no cargo cache restores). On a slow runner it took
+    # 59 to 62 minutes before the dependency (runs 44796943385, 44794576070, 44793743432). BoringSSL
+    # builds six times in it, about a minute each, so the slow-runner run that the merge queue ejected
+    # (44796950078) was on course for 63 to 67 minutes of 65.
+    # The windows-2022 leg stays at 65: its slowest run with BoringSSL took 59 minutes (44769358824).
+    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks')) && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
@@ -243,8 +262,11 @@ jobs:
           toolchain: '1.98.1'
           components: rustfmt, clippy
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
+      # The repo's cache cap is 10 GB and the `checks` entries are 2.5-3.3 GB each, so each OS has one
+      # entry and only its `checks` leg saves it: every other partition restores it and writes nothing.
+      # macOS legs (`all`) restore and never save: their 2.5 GB would not fit the cap beside the rest.
+      # A checks leg saves on push, dispatch, the daily warm run and PRs into main. A tiered PR (base
+      # not main) and a merge-queue run restore what those saved and write nothing.
       - name: Cache cargo
         id: cargo-cache
         uses: Swatinem/rust-cache@v2
@@ -256,15 +278,22 @@ jobs:
           workspaces: crates
           # The image in the key: rust-cache keys on job id + OS + arch only, so main's ubuntu-latest
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
-          # The two test partitions build the same binaries and share one entry.
-          key: ${{ matrix.os }}-${{ matrix.part }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          # No partition in the key: tests and models restore the entry their OS's checks leg saved.
+          key: ${{ matrix.os }}-checks
+          save-if: ${{ matrix.part == 'checks' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+          # The warm run exists to save: a flaky step must not lose its entry.
+          cache-on-failure: ${{ needs.plan.outputs.warm == 'true' }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
       - name: Drop a partial cargo cache
         if: steps.cargo-cache.outcome == 'failure'
         run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+
+      # libsodium-sys-stable downloads its MSVC archive without a retry on Windows (build.rs:405
+      # "Peer disconnected"); this caches it, fetches it with retries and sets SODIUM_DIST_DIR.
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
 
       # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
       # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
@@ -322,7 +351,7 @@ jobs:
         env:
           PARTITION: ${{ matrix.partition }}
           PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
-        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit -p xtask -p memrynote-cli --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
 
       - name: Upload the JUnit report (merge queue)
         if: ${{ !cancelled() && matrix.part != 'checks' && matrix.part != 'models' && github.event_name == 'merge_group' }}
@@ -813,18 +842,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
-      - name: Install the sync harness
+      - name: Install the sync harness and the agent MCP client
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
         working-directory: .
-        run: pnpm install --frozen-lockfile --filter "@memry/sync-harness..." --filter "@memry/sync-server..."
+        run: pnpm install --frozen-lockfile --filter "@memry/sync-harness..." --filter "@memry/sync-server..." --filter "@memry/agent-mcp-client"
 
       - name: Sync harness (memry-desktop)
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
         run: |
-          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachment_holds_harness -- -D warnings
-          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachment_holds_harness --no-fail-fast
+          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness -- -D warnings
+          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --test attachments_harness --test attachment_holds_harness --no-fail-fast
+
+      # The official TypeScript MCP client (tests/agent-mcp-client) against the agent MCP server
+      # (crates/memry-desktop/tests/agent_mcp_client.rs, ignored where node is not installed).
+      - name: Agent MCP client (memry-desktop)
+        if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
+        run: cargo nextest run -p memry-desktop --test agent_mcp_client --run-ignored only --no-fail-fast
 
       - name: Line ceilings
         if: matrix.part != 'tests' && matrix.part != 'models' && runner.os == 'Linux'
@@ -986,7 +1020,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts

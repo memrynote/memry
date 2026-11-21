@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Coffre précédent",
           "description": "Passer au coffre précédent dans la barre latérale"
+        },
+        "todayJournal": {
+          "label": "Journal du jour",
+          "description": "Ouvrir le journal sur l'entrée du jour"
         }
       },
       "tabs": {
@@ -2431,7 +2435,8 @@
         "vault-binding": "Les clés de cet appareil sont restaurées, mais ce coffre n'est pas encore configuré pour se synchroniser avec votre compte. Choisissez comment le synchroniser depuis le menu de synchronisation.",
         "vault-foreign": "Les clés de cet appareil sont restaurées, mais ce coffre appartient à un autre compte. Il reste local sur cet appareil.",
         "entitlement": "Les clés de cet appareil sont restaurées, mais la synchronisation nécessite une formule Sync active.",
-        "unavailable": "Les clés de cet appareil sont restaurées, mais la synchronisation n'a pas pu démarrer. Elle réessaiera ; redémarrez Memry si ce n'est pas le cas."
+        "unavailable": "Les clés de cet appareil sont restaurées, mais la synchronisation n'a pas pu démarrer. Elle réessaiera ; redémarrez Memry si ce n'est pas le cas.",
+        "unavailable-restart": "Les clés de cet appareil sont restaurées, mais la synchronisation n'a pas pu démarrer. Redémarrez Memry ; si la synchronisation ne démarre toujours pas, déconnectez-vous puis reconnectez-vous."
       }
     },
     "pagesSettingsAiInlineSection": {

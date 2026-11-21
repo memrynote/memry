@@ -6,7 +6,9 @@ use std::time::Duration;
 
 use tokio::sync::broadcast;
 
-use super::VaultTier;
+use memry_core::api::vault::Vault;
+
+use super::{OwedFiles, Taken, VaultTier};
 use crate::editor::versions::close_step;
 use crate::session::Session;
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
@@ -26,6 +28,25 @@ impl VaultTier {
                 note_id,
                 "no vault is open: the file is written on the next open"
             ),
+        }
+    }
+
+    /// [`Self::schedule`] for a note a pull changed: its pass also gives its file the record's
+    /// place and frontmatter (`vault::writeback::place`). `title_before` is the note's title
+    /// before the pull ([`memry_core::sync::driver::observer::AppliedRecord::title_before`]).
+    pub fn schedule_pulled(&self, note_id: &str, title_before: Option<&str>) {
+        if let Some(open) = self.current() {
+            open.pass.mark_pulled(note_id, title_before);
+        }
+        self.schedule(note_id);
+    }
+
+    /// Takes the file `note_id` owes ([`super::owed`]) when `vault` is the open one, and schedules
+    /// its write-back.
+    pub fn take_owed_file(&self, vault: &Arc<Vault>, note_id: &str) -> Taken {
+        match self.current() {
+            Some(open) if Arc::ptr_eq(&open.view.vault, vault) => open.owed.take(note_id),
+            _ => Taken::NotOwed,
         }
     }
 
@@ -78,8 +99,18 @@ impl VaultTier {
     }
 }
 
-/// The write-back's reconcile, once a walk ended.
-pub(super) fn after_walk(pass: &Arc<Pass>, writeback: &Arc<WriteBack>) -> AfterWalk {
-    let (pass, writeback) = (pass.clone(), writeback.clone());
-    Box::new(move |theirs, stopped| reconcile(&pass, &writeback, theirs, stopped))
+/// The write-back's reconcile once a walk ended, then the take of every owed file whose body was
+/// pulled meanwhile: the walk read every file first, so a take reads the row it recorded.
+pub(super) fn after_walk(
+    pass: &Arc<Pass>,
+    writeback: &Arc<WriteBack>,
+    owed: &Arc<OwedFiles>,
+) -> AfterWalk {
+    let (pass, writeback, owed) = (pass.clone(), writeback.clone(), owed.clone());
+    Box::new(move |theirs, stopped| {
+        reconcile(&pass, &writeback, theirs, stopped);
+        if !stopped() {
+            owed.sweep();
+        }
+    })
 }

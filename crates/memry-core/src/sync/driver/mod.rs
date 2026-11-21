@@ -10,8 +10,9 @@
 //!
 //! What it adds over the engine:
 //!
-//! - **Pause.** A paused driver runs no pass and no first sync; the caller
-//!   persists the flag (`meta` `sync.paused`, the supervisor's).
+//! - **Pause** ([`pause`]). A paused driver runs no pass and no first sync,
+//!   and the pass in flight ends at its next request; the caller persists the
+//!   flag (`meta` `sync.paused`, the supervisor's).
 //! - **The seeds.** The tag seed and the lock seed are registered here; the
 //!   caller adds its own (desktop's property definitions).
 //! - **The server vault id** ([`super::server_vault`]) on every request. An
@@ -35,12 +36,14 @@
 
 mod bodies;
 mod cipher;
+#[cfg(feature = "markdown")]
+mod lock_seed;
 pub mod observer;
+mod pause;
 pub mod progress;
 mod repairs;
 mod snapshots;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use zeroize::Zeroizing;
@@ -54,6 +57,7 @@ use crate::crdt::SnapshotPusher;
 use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
+use crate::domain::task_activity::superseded::SupersededObserver;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
@@ -62,6 +66,7 @@ use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
+use pause::PauseSwitch;
 
 use super::admission::CrdtAdmission;
 use super::body_pull::BodyPull;
@@ -79,9 +84,11 @@ use super::push::PushCoordinator;
 use super::socket::{HintSink, RealtimeClient};
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
+#[cfg(feature = "markdown")]
+use lock_seed::VaultLockSeed;
 pub use observer::{
-    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
-    Observers, SecurityWarning,
+    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, CorruptItem,
+    FieldConflict, Observers, SecurityWarning,
 };
 use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 pub use snapshots::SnapshotRound;
@@ -140,6 +147,8 @@ pub struct DriverParts {
     pub seeds: Vec<Arc<dyn PassSeed>>,
     /// The vault's one pass gate (`api::sync::pass_gate`).
     pub pass_gate: Arc<tokio::sync::Mutex<()>>,
+    /// Hear every page applied from the open on, its re-pull included.
+    pub observers: Vec<Arc<dyn ApplyObserver>>,
 }
 
 /// The first sync's parts, built once and run under the pass gate.
@@ -161,16 +170,17 @@ pub struct SyncDriver {
     tokens: Arc<TokenManager>,
     server_vault: String,
     cipher: Arc<DirectoryCipher>,
-    observers: Arc<Observers>,
     /// The `tasks` progress, the seed registered after every other.
     tasks: Arc<TasksPhase>,
-    paused: AtomicBool,
+    pause: PauseSwitch,
     /// The 30-minute manifest check ([`super::hardening::manifest`]).
     manifest: ManifestCheck,
     /// The snapshot pusher and the gate's last pull ([`snapshots`]).
     snapshots: Arc<PassSnapshots>,
     snapshot_requests: Arc<SnapshotRequests>,
     admission: Arc<CrdtAdmission>,
+    /// The observers every pull tells, for the body step's `bodies_settled`.
+    observers: Arc<Observers>,
 }
 
 impl SyncDriver {
@@ -186,6 +196,7 @@ impl SyncDriver {
             config,
             seeds,
             pass_gate,
+            observers: listeners,
         } = parts;
         let server_vault = db
             .call(|conn| super::server_vault::bound(conn))
@@ -193,7 +204,11 @@ impl SyncDriver {
             .ok_or_else(|| StorageError::Failed {
                 what: "this vault is bound to no server vault; bind it before syncing".into(),
             })?;
-        let http = session.http();
+        let pause = PauseSwitch::default();
+        let http = Arc::new(pause.client(
+            &session.http(),
+            Arc::clone(&session.tokens) as Arc<dyn TokenProvider>,
+        ));
         let master_key = Zeroizing::new(session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
         let directory = device_directory(&http).await?;
@@ -208,6 +223,9 @@ impl SyncDriver {
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let observers = Arc::new(Observers::default());
+        for listener in &listeners {
+            observers.register(Arc::clone(listener));
+        }
         let declaration = config.declaration.clone();
 
         let pull_loop = || {
@@ -288,6 +306,11 @@ impl SyncDriver {
         }
         let tasks = Arc::new(TasksPhase::new(db.clone()));
         engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
+        observers.register(SupersededObserver::new(
+            db.clone(),
+            device_id.clone(),
+            listeners,
+        ));
 
         let driver = Self {
             engine,
@@ -303,22 +326,16 @@ impl SyncDriver {
             tokens: Arc::clone(&session.tokens),
             server_vault: server_vault.clone(),
             cipher,
-            observers,
             tasks,
-            paused: AtomicBool::new(false),
+            pause,
             manifest: ManifestCheck::default(),
             snapshots,
             snapshot_requests,
             admission,
+            observers,
         };
         driver.repull_unknown_signers().await?;
         Ok(driver)
-    }
-
-    /// Adds an observer of every page applied from now on, after those
-    /// already registered.
-    pub fn register_observer(&self, observer: Arc<dyn ApplyObserver>) {
-        self.observers.register(observer);
     }
 
     /// One pass ([`SyncEngine::run_pass`]); `None` while paused.
@@ -411,16 +428,6 @@ impl SyncDriver {
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
     }
 
-    /// Stops passes and first syncs until [`SyncDriver::resume`]. A pass
-    /// already running finishes.
-    pub fn pause(&self) {
-        self.paused.store(true, Ordering::SeqCst);
-    }
-
-    pub fn resume(&self) {
-        self.paused.store(false, Ordering::SeqCst);
-    }
-
     pub fn status(&self) -> DriverStatus {
         DriverStatus {
             state: self.engine.state(),
@@ -450,7 +457,9 @@ impl SyncDriver {
         if pass.pushed_items > 0 {
             rows.push((HistoryKind::Push, pass.pushed_items, None));
         }
-        for error in [&pass.pull_error, &pass.push_error].into_iter().flatten() {
+        // A request a pause cut is not a failure.
+        let errors = [&pass.pull_error, &pass.push_error].into_iter().flatten();
+        for error in errors.filter(|error| !error.is_cancelled()) {
             rows.push((HistoryKind::Error, 0, Some(error.to_string())));
         }
         if rows.is_empty() {
@@ -507,10 +516,6 @@ impl SyncDriver {
     /// The session's tokens, which the realtime socket refreshes through.
     pub fn token_provider(&self) -> Arc<dyn TokenProvider> {
         Arc::clone(&self.tokens) as Arc<dyn TokenProvider>
-    }
-
-    fn is_paused(&self) -> bool {
-        self.paused.load(Ordering::SeqCst)
     }
 
     /// Re-pulls, under the pass gate and over the directory `open` just
@@ -571,30 +576,5 @@ impl SyncDriver {
                 self.cipher.keep_missed(ids);
             }
         }
-    }
-}
-
-/// Gives each lock written before Step 16 its record (Electron's
-/// `seedUnclocked`, [`crate::domain::vault_locks::seed_unsynced`]). Registered
-/// only for a declaration that subscribes `vault_lock`: without it the device
-/// never pulls a peer's edit of the lock, so its pushes would tick only its own
-/// clock.
-#[cfg(feature = "markdown")]
-struct VaultLockSeed {
-    db: Db,
-    device_id: String,
-}
-
-#[cfg(feature = "markdown")]
-#[async_trait::async_trait]
-impl PassSeed for VaultLockSeed {
-    async fn seed(&self) -> Result<(), StorageError> {
-        let device_id = self.device_id.clone();
-        self.db
-            .call(move |conn| {
-                crate::domain::vault_locks::seed_unsynced(conn, &device_id, super::pull::now_ms())
-            })
-            .await?;
-        Ok(())
     }
 }

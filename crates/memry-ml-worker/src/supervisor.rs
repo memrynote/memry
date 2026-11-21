@@ -4,11 +4,16 @@
 //! pauses the worker for [`Limits::crash_cooldown`]. Ports `apps/desktop/src/main/file-text/
 //! ocr-engine.ts:23-167` and the call timeout of `pdf-host.ts:23-24,109-136`.
 //!
-//! Lock order: the state lock, then a child's pending map. The stdout reader takes the pending
-//! map alone and the state lock alone, never one inside the other, so a call that holds the
-//! state lock while it waits for `Ready` is answered. A child's stdin lock is taken with no other
-//! lock held: a write blocks while the child reads nothing (a hung op), and the timeout kill,
-//! [`Supervisor::stop`] and the idle exit must still get the state lock to end it.
+//! One op runs at a time: the child answers in order, so a call sent behind another would wait in
+//! the child and spend its own timeout there, and a slow but healthy op would get the next call's
+//! child killed. A call takes the turn lock before it starts the child or sends, and holds it
+//! until its answer or its timeout.
+//!
+//! Lock order: the turn lock, then the state lock, then a child's pending map. The stdout reader
+//! takes the pending map alone and the state lock alone, never one inside the other. A start
+//! waits for `Ready` without the state lock, so [`Supervisor::stop`] ends a child that never gets
+//! ready. A child's stdin lock is taken with no other lock but the turn held: the timeout kill,
+//! [`Supervisor::stop`] and the idle exit must still get the state lock to end a blocked write.
 
 mod child;
 
@@ -24,8 +29,8 @@ use std::time::{Duration, Instant};
 use self::child::{forward_stderr, read_replies, watch_idle};
 use crate::frame::{FrameError, write_frame};
 use crate::op::{Request, Response};
-use crate::priority;
 use crate::serve::READY_ID;
+use crate::{lifetime, priority};
 /// The child parses untrusted files, so it gets none of the app's environment but these. Windows
 /// loads system DLLs through `SystemRoot`.
 const INHERITED_ENV: &[&str] = if cfg!(windows) { &["SystemRoot"] } else { &[] };
@@ -145,6 +150,8 @@ struct Shared {
     limits: Limits,
     clock: Arc<dyn Clock>,
     exits: Option<ExitObserver>,
+    /// Held by the one call in progress (module doc).
+    turn: Mutex<()>,
     state: Mutex<State>,
 }
 
@@ -203,6 +210,7 @@ impl Supervisor {
                 limits,
                 clock,
                 exits: None,
+                turn: Mutex::new(()),
                 state: Mutex::new(State::default()),
             }),
         }
@@ -245,27 +253,32 @@ impl Supervisor {
         leasing: bool,
     ) -> Result<(Response, Option<Lease>), WorkerError> {
         let shared = &self.shared;
+        let _turn = lock(&shared.turn);
+        if pinned.is_none() {
+            start_if_needed(shared)?;
+        }
         let (reply, id, generation, stdin, pending, lease) = {
             let mut state = lock(&shared.state);
             let now = shared.clock.now();
-            if let Some(generation) = pinned {
-                if current(&mut state, generation).is_none() {
-                    return Err(WorkerError::NotOpen);
-                }
-            } else {
-                if let Some(until) = state.paused_until {
-                    if now < until {
-                        return Err(WorkerError::Paused);
+            let generation = match pinned {
+                Some(generation) => generation,
+                // Ended (or stopped) between its `Ready` and this call: an exit, so the
+                // embedding breaker counts it as a crash.
+                None => match &state.running {
+                    Some(running) => running.generation,
+                    None => {
+                        return Err(WorkerError::Exited(
+                            "the worker ended right after it started".into(),
+                        ));
                     }
-                    state.paused_until = None;
-                }
-                if state.running.is_none() {
-                    start(shared, &mut state)?;
-                }
+                },
+            };
+            if current(&mut state, generation).is_none() {
+                return Err(WorkerError::NotOpen);
             }
             state.next_id = state.next_id.checked_add(1).unwrap_or(1);
             let id = state.next_id;
-            let running = state.running.as_mut().expect("running above");
+            let running = current(&mut state, generation).expect("current above");
             let (tx, rx) = mpsc::channel();
             lock(&running.pending).insert(id, tx);
             running.last_used = now;
@@ -368,7 +381,77 @@ impl Drop for Supervisor {
     }
 }
 
-fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
+/// Starts a child unless one runs or the worker is paused, and waits for its `Ready` without the
+/// state lock. A child that exits before `Ready` counts as a crash (`ocr-engine.ts:126-137`); one
+/// that hangs past [`Limits::start_timeout`] counts too, where Electron counts only the exit. One
+/// [`Supervisor::stop`] ends meanwhile does not.
+fn start_if_needed(shared: &Arc<Shared>) -> Result<(), WorkerError> {
+    let (generation, ready) = {
+        let mut state = lock(&shared.state);
+        if let Some(until) = state.paused_until {
+            if shared.clock.now() < until {
+                return Err(WorkerError::Paused);
+            }
+            state.paused_until = None;
+        }
+        if state.running.is_some() {
+            return Ok(());
+        }
+        spawn(shared, &mut state)?
+    };
+    let failure = match ready.recv_timeout(shared.limits.start_timeout) {
+        Ok(Ok(Response::Ready)) => None,
+        Ok(Ok(other)) => Some(WorkerError::Protocol(format!(
+            "expected Ready, got {}",
+            other.name()
+        ))),
+        Ok(Err(error)) => Some(error),
+        Err(RecvTimeoutError::Timeout) => Some(WorkerError::Start(
+            "the worker did not start in time".into(),
+        )),
+        Err(RecvTimeoutError::Disconnected) => {
+            Some(WorkerError::Exited("the worker closed its output".into()))
+        }
+    };
+    let Some(error) = failure else {
+        let pid = lock(&shared.state).running.as_ref().map(|r| r.child.id());
+        tracing::info!(scope = "MlWorker", pid, "worker started");
+        let weak = Arc::downgrade(shared);
+        let tick = shared
+            .limits
+            .idle_exit
+            .clamp(Duration::from_millis(10), Duration::from_secs(1));
+        thread::Builder::new()
+            .name("ml-worker-idle".into())
+            .spawn(move || watch_idle(weak, generation, tick))
+            .map_err(|error| WorkerError::Start(error.to_string()))?;
+        return Ok(());
+    };
+    let taken = {
+        let mut state = lock(&shared.state);
+        let taken = state.running.take_if(|r| r.generation == generation);
+        if taken.is_some() {
+            record_crash(shared, &mut state);
+        }
+        taken
+    };
+    // Gone from the state already: stopped while it started, and the stop reaped it.
+    let Some(running) = taken else {
+        return Err(WorkerError::Stopped);
+    };
+    let exited = matches!(error, WorkerError::Exited(_));
+    let status = reap(running.child);
+    if exited {
+        report_exit(shared, ExitPhase::Starting, status);
+    }
+    Err(error)
+}
+
+/// Spawns a child and puts it in the state before its `Ready`; the receiver gets the `Ready`.
+fn spawn(
+    shared: &Arc<Shared>,
+    state: &mut State,
+) -> Result<(u64, mpsc::Receiver<Reply>), WorkerError> {
     let mut command = Command::new(&shared.program);
     command
         .args(&shared.args)
@@ -397,6 +480,12 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
     let mut child = command
         .spawn()
         .map_err(|error| WorkerError::Start(format!("{}: {error}", shared.program.display())))?;
+    if let Err(error) = lifetime::bind_to_app(&child) {
+        tracing::warn!(
+            scope = "MlWorker",
+            "could not tie the worker to the app's lifetime: {error}"
+        );
+    }
     if let Err(error) = priority::lower(&child) {
         tracing::debug!(
             scope = "MlWorker",
@@ -422,33 +511,6 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
         .spawn(move || forward_stderr(stderr))
         .map_err(|error| WorkerError::Start(error.to_string()))?;
 
-    let failure = match ready_rx.recv_timeout(shared.limits.start_timeout) {
-        Ok(Ok(Response::Ready)) => None,
-        Ok(Ok(other)) => Some(WorkerError::Protocol(format!(
-            "expected Ready, got {}",
-            other.name()
-        ))),
-        Ok(Err(error)) => {
-            // Exited before it was ready: counts as a crash (`ocr-engine.ts:126-137`).
-            record_crash(shared, state);
-            Some(error)
-        }
-        Err(RecvTimeoutError::Timeout) => Some(WorkerError::Start(
-            "the worker did not start in time".into(),
-        )),
-        Err(RecvTimeoutError::Disconnected) => {
-            Some(WorkerError::Exited("the worker closed its output".into()))
-        }
-    };
-    if let Some(error) = failure {
-        let exited = matches!(error, WorkerError::Exited(_));
-        let status = reap(child);
-        if exited {
-            report_exit(shared, ExitPhase::Starting, status);
-        }
-        return Err(error);
-    }
-    tracing::info!(scope = "MlWorker", pid = child.id(), "worker started");
     state.running = Some(Running {
         child,
         stdin: Arc::new(Mutex::new(stdin)),
@@ -457,16 +519,7 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
         last_used: shared.clock.now(),
         leases: 0,
     });
-    let weak = Arc::downgrade(shared);
-    let tick = shared
-        .limits
-        .idle_exit
-        .clamp(Duration::from_millis(10), Duration::from_secs(1));
-    thread::Builder::new()
-        .name("ml-worker-idle".into())
-        .spawn(move || watch_idle(weak, generation, tick))
-        .map_err(|error| WorkerError::Start(error.to_string()))?;
-    Ok(())
+    Ok((generation, ready_rx))
 }
 
 /// Kills the running child when it is `generation` (any child for `None`) and fails its calls.

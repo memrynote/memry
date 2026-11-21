@@ -1,0 +1,1046 @@
+[
+  {
+    "name": "article, cover saved",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category",
+      "images": [
+        [
+          "https://m.media-amazon.com/images/I/cover.jpg",
+          "attachments/rw-1a2b3c.jpg"
+        ]
+      ],
+      "fullText": "  # Full text  \n\n"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234,
+        "cover": "attachments/rw-1a2b3c.jpg"
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": "# Full text"
+    }
+  },
+  {
+    "name": "article, cover missing",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "email, cover saved",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "email",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category",
+      "images": [
+        [
+          "https://m.media-amazon.com/images/I/cover.jpg",
+          "attachments/rw-1a2b3c.jpg"
+        ]
+      ]
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "email",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n![](attachments/rw-1a2b3c.jpg)\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=4849d8dd -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "child",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": "p1"
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": null
+  },
+  {
+    "name": "empty parent id",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": ""
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "feed",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "feed",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": null
+  },
+  {
+    "name": "has a book",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category",
+      "bookExternalIds": [
+        "doc1"
+      ]
+    },
+    "out": null
+  },
+  {
+    "name": "bare",
+    "document": {
+      "id": "doc2"
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "flat",
+      "fullText": "   "
+    },
+    "out": {
+      "folder": "Readwise",
+      "title": "Untitled",
+      "frontmatter": {
+        "readwise_url": "https://read.readwise.io/read/doc2"
+      },
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=7bbffa80 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [],
+      "fullText": null
+    }
+  },
+  {
+    "name": "integer-like tag keys",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "1": {
+          "name": "one"
+        },
+        "2": {
+          "name": null
+        },
+        "4294967294": {
+          "name": ""
+        },
+        "b": {
+          "name": "b"
+        },
+        "a": {},
+        "01": {
+          "name": ""
+        },
+        "4294967295": {
+          "name": ""
+        },
+        "-1": {
+          "name": ""
+        },
+        "B": {
+          "name": "B"
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "one",
+          "2",
+          "4294967294",
+          "b",
+          "a",
+          "01",
+          "4294967295",
+          "-1"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published seconds",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 1761000000,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2025-10-20",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published millis",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 1761000000123,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2025-10-20",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published fraction",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 1761000000.9,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2025-10-20",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published negative",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": -86400.5,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "1969-12-30",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published out of range",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 9000000000000000,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published extended year",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 8640000000000000,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "+275760-09",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published zero",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": 0,
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "1970-01-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "published blank",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "   ",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "word count zero and fraction",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "  ",
+      "word_count": 0,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "published_date": "2026-10-01",
+        "word_count": 0
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "word count fraction",
+    "document": {
+      "id": "doc1",
+      "url": "https://read.readwise.io/read/doc1",
+      "title": "Why notes compound",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": "Article",
+      "location": "new",
+      "tags": {
+        "focus": {
+          "name": "focus"
+        },
+        "Big Idea": {
+          "name": ""
+        }
+      },
+      "site_name": "example.com",
+      "word_count": 12.5,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "Readwise/Reader",
+      "title": "Why notes compound",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "category": "article",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "tags": [
+          "focus",
+          "Big Idea"
+        ],
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 12.5
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  },
+  {
+    "name": "no url, blank title",
+    "document": {
+      "id": "doc1",
+      "url": "",
+      "title": "  ",
+      "author": " Jane Doe ",
+      "source": "Reader RSS",
+      "category": null,
+      "location": "new",
+      "tags": null,
+      "site_name": "example.com",
+      "word_count": 1234,
+      "published_date": "2026-10-01",
+      "summary": "A summary #tag",
+      "image_url": "https://m.media-amazon.com/images/I/cover.jpg",
+      "source_url": "https://example.com/post",
+      "notes": "My note\r\n\r\n\r\nmore",
+      "parent_id": null
+    },
+    "options": {
+      "root": "R/",
+      "folderLayout": "by-category"
+    },
+    "out": {
+      "folder": "R/Reader",
+      "title": "Untitled",
+      "frontmatter": {
+        "author": "Jane Doe",
+        "source": "Reader RSS",
+        "source_url": "https://example.com/post",
+        "readwise_url": "https://read.readwise.io/read/doc1",
+        "site_name": "example.com",
+        "published_date": "2026-10-01",
+        "word_count": 1234
+      },
+      "section": "<!-- readwise:start -->\n\n## Document note\n\nMy note\n\nmore\n\n## Summary\n\nA summary #​tag\n\n## Highlights\n\n<!-- readwise:end v1 last=1970-01-01T00:00:00.000Z hash=8c2c60e9 -->",
+      "last": "1970-01-01T00:00:00.000Z",
+      "imageUrls": [
+        "https://m.media-amazon.com/images/I/cover.jpg"
+      ],
+      "fullText": null
+    }
+  }
+]

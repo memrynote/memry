@@ -167,7 +167,9 @@ impl Tasks {
                 icon: Some(draft.icon.as_deref()),
                 statuses: statuses.as_deref(),
             };
-            projects::update(conn, &id, &edit, &device, now_ms())?.acknowledge();
+            if let Some(written) = projects::update(conn, &id, &edit, &device, now_ms())? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -175,7 +177,9 @@ impl Tasks {
     pub fn set_project_archived(&self, id: String, archived: bool) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_archived(conn, &id, archived, &device, now_ms())?.acknowledge();
+            if let Some(written) = projects::set_archived(conn, &id, archived, &device, now_ms())? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -221,8 +225,11 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_home_note(conn, &id, note_id.as_deref(), &device, now_ms())?
-                .acknowledge();
+            if let Some(written) =
+                projects::set_home_note(conn, &id, note_id.as_deref(), &device, now_ms())?
+            {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -246,15 +253,16 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::link(
+            if let Some(written) = projects::link(
                 conn,
                 &id,
                 link_type(&item_type)?,
                 &item_id,
                 &device,
                 now_ms(),
-            )?
-            .acknowledge();
+            )? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -267,15 +275,16 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::unlink(
+            if let Some(written) = projects::unlink(
                 conn,
                 &id,
                 link_type(&item_type)?,
                 &item_id,
                 &device,
                 now_ms(),
-            )?
-            .acknowledge();
+            )? {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
@@ -288,8 +297,11 @@ impl Tasks {
     ) -> Result<(), StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            projects::set_link_pinned(conn, &id, &item_id, pinned, &device, now_ms())?
-                .acknowledge();
+            if let Some(written) =
+                projects::set_link_pinned(conn, &id, &item_id, pinned, &device, now_ms())?
+            {
+                written.acknowledge();
+            }
             Ok(())
         })
     }
