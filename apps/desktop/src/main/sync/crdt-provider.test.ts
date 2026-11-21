@@ -334,6 +334,7 @@ import { listCrdtBodyDebts } from './engine/crdt-body-debts'
 import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
+import { enqueueJournalDelete, initializeJournalCrdt } from '../journal/runtime-effects'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 mocks.vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-vault-'))
@@ -1259,6 +1260,46 @@ describe('CrdtProvider', () => {
 
     expect(enqueue).toHaveBeenCalledTimes(1)
     open.mockRestore()
+  })
+
+  // #5353: the server purges a deleted day's body (chapter 07 §7.15), so a
+  // fresh device sees only what this device pushes after the delete. Driven
+  // through the real journal delete and re-create effects.
+  it('starts a new body for a journal day deleted and written again', async () => {
+    const dayId = 'j2026-05-01'
+    let fileText = 'old text'
+    mocks.markdownToYFragment.mockImplementation(
+      async (_content: string, fragment: Y.XmlFragment) => {
+        fragment.insert(0, [new Y.XmlText(fileText)])
+        return true
+      }
+    )
+    const singleton = getCrdtProvider()
+    await singleton.init(queue as never, pushSnapshot)
+    createWindow(1)
+    await initializeJournalCrdt(dayId, '2026-05-01', [])
+    await singleton.open(dayId, 1)
+
+    await enqueueJournalDelete(dayId, '2026-05-01')
+    queue.enqueue.mockClear()
+    pushSnapshot.mockClear()
+    fileText = 'new text'
+    await initializeJournalCrdt(dayId, '2026-05-01', [])
+    singleton.updateMeta(dayId, { date: '2026-05-01' })
+    await singleton.close(dayId)
+
+    const fresh = new Y.Doc()
+    for (const [id, state] of pushSnapshot.mock.calls) {
+      if (id === dayId) Y.applyUpdate(fresh, state)
+    }
+    for (const [id, update] of queue.enqueue.mock.calls as Array<[string, Uint8Array]>) {
+      if (id === dayId) Y.applyUpdate(fresh, update)
+    }
+    const body = fresh.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+    expect(fresh.store.pendingStructs).toBeNull()
+    expect(body).toContain('new text')
+    expect(body).not.toContain('old text')
+    expect(fresh.getMap('meta').get('date')).toBe('2026-05-01')
   })
 
   describe('purging the doc of a note the user deleted', () => {
