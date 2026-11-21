@@ -72,7 +72,7 @@ impl ReadwiseCategory {
 }
 
 /// Whether the user wants a category's books synced; `None` takes the default.
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 pub struct CategorySwitches {
     pub books: Option<bool>,
     pub articles: Option<bool>,

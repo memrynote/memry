@@ -350,6 +350,10 @@ name = "readwise_client"
 path = "tests/readwise_client.rs"
 
 [[test]]
+name = "readwise_run"
+path = "tests/readwise_run.rs"
+
+[[test]]
 name = "watch_perf"
 path = "tests/watch_perf.rs"
 
