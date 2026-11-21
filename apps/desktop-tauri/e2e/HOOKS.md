@@ -24,10 +24,10 @@ Electron suite.
 | `resetVaultDirectoryThrottle`               | `e2e_reset_vault_directory_throttle`      | Step 17 (#3534) |
 | `getCrdtPendingCount`                       | `e2e_crdt_pending_count`                  | Step 14 (#3531) |
 | `seedCalendarProjection`                    | `e2e_seed_calendar_projection`            | Step 29 (#3546) |
-| `getCrdtDocMarkdown`                        | none, see Hooks without a command         | Step 14 (#3531) |
+| `getCrdtDocMarkdown`                        | `e2e_get_crdt_doc_body`                   | Step 17 (#3534) |
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |
 | `getWritebackDebugState`                    | `e2e_writeback_debug_state`               | Step 14 (#3531) |
-| `getCrdtMarkdownSourceState`                | none, see Hooks without a command         | Step 14 (#3531) |
+| `getCrdtMarkdownSourceState`                | `e2e_get_crdt_markdown_source`            | Step 17 (#3534) |
 | `simulateCrdtTeardownForTests`              | `sync_logout` (the real teardown)         | Step 19 (#3536) |
 | `seedGoogleCalendarTokens`                  | `e2e_seed_google_calendar_tokens`         | Step 29 (#3546) |
 | `getGooglePushChannelProbe`                 | `e2e_google_push_channel_probe`           | Step 29 (#3546) |
@@ -61,12 +61,13 @@ Electron suite.
 | `listCrdtStoreDirsForTests`                 | none: the store is `data.db`; see below   | Step 17 (#3534) |
 | `restartSyncRuntimeForTests`                | `e2e_restart_sync_runtime`                | Step 17 (#3534) |
 
-## Hooks without a command
+## Open document reads
 
-`getCrdtDocMarkdown` and `getCrdtMarkdownSourceState` read Electron's shared document as
-markdown and the author's bytes kept beside it. The Tauri app keeps the author's spelling
-without a separate restore step, so a spec asserts on the note file the write-back saved: it
-reads the file (`fs`, `e2e_vault_read_file`) after waiting on `e2e_writeback_debug_state`.
+`e2e_get_crdt_doc_body` and `e2e_get_crdt_markdown_source` (`src-tauri/src/e2e/editor.rs`) read
+the document of a note a window holds open: its markdown, and the author's bytes kept beside it
+with the house style it serializes to now. Both answer null once no window holds the note, as
+Electron's provider did after the editor unmounted, so a spec polls them for null after closing a
+tab. `harness/note-sync-helpers.ts` wraps them (`getCrdtDocBodyById`, `getCrdtMarkdownSourceById`).
 
 ## Debug handles
 

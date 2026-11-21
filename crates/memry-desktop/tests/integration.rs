@@ -36,6 +36,12 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent_mcp_http.rs"]
+mod agent_mcp_http;
+#[path = "agent_mcp_parts.rs"]
+mod agent_mcp_parts;
 #[path = "agent_store.rs"]
 mod agent_store;
 #[path = "ai_catalog.rs"]
