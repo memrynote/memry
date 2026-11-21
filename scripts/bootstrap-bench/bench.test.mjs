@@ -10,7 +10,7 @@ import zlib from 'node:zlib'
 
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { busyMs, endpointOf, formatReport, limiterOf, maxInFlight, summarize } from './metrics.mjs'
-import { assertAllowedUpstream, startProxy } from './proxy.mjs'
+import { assertAllowedUpstream, isAllowedR2, startProxy, throughProxy } from './proxy.mjs'
 import {
   bodyDebt,
   existingDbs,
@@ -421,6 +421,78 @@ describe('proxy guards', () => {
     } finally {
       await proxy.close()
       upstream.close()
+    }
+  })
+
+  it('refuses a percent-encoded path, which the Worker would decode to a write', async () => {
+    const seen = []
+    const upstream = http.createServer((req, res) => {
+      seen.push(`${req.method} ${req.url}`)
+      res.end('{}')
+    })
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
+    try {
+      for (const route of ['/%73ync/push', '/sync/%70ush', '/sync/crdt/snapshot/note%2D1']) {
+        const status = (await fetch(`${proxy.url}${route}`, { method: 'POST', body: '{}' })).status
+        assert.equal(status, 403, route)
+      }
+      const read = await fetch(`${proxy.url}/sync/crdt/updates?note_id=a%2Fb`)
+      assert.equal(read.status, 200)
+      assert.deepEqual(seen, ['GET /sync/crdt/updates?note_id=a%2Fb'])
+    } finally {
+      await proxy.close()
+      upstream.close()
+    }
+  })
+
+  it('forwards /__r2/ only as GET or HEAD to an R2 host', async () => {
+    const seen = []
+    const upstream = http.createServer((req, res) => {
+      seen.push(`${req.method} ${req.url}`)
+      res.end('{}')
+    })
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const port = upstream.address().port
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${port}` })
+    const send = async (method, url) =>
+      (await fetch(throughProxy(proxy.url, url), { method })).status
+    try {
+      for (const method of ['POST', 'PUT', 'DELETE']) {
+        assert.equal(await send(method, `http://127.0.0.1:${port}/sync/push`), 403, method)
+      }
+      for (const url of [
+        'https://sync-staging.memrynote.com/sync/push',
+        'https://example.com/r2/p1',
+        'https://r2.cloudflarestorage.com.example.net/p1'
+      ]) {
+        assert.equal(await send('GET', url), 403, url)
+      }
+      assert.equal(await send('GET', `http://127.0.0.1:${port}/r2/p1`), 200)
+      assert.equal(await send('HEAD', `http://127.0.0.1:${port}/r2/p1`), 200)
+      assert.deepEqual(seen, ['GET /r2/p1', 'HEAD /r2/p1'])
+    } finally {
+      await proxy.close()
+      upstream.close()
+    }
+  })
+
+  it('sends /__r2/ only to R2 and the line probe on a remote upstream', () => {
+    const staging = 'https://sync-staging.memrynote.com'
+    for (const allowed of [
+      'https://acct.r2.cloudflarestorage.com/bucket/p1?X-Amz-Signature=a',
+      'https://acct.eu.r2.cloudflarestorage.com/bucket/p1',
+      'https://speed.cloudflare.com/__down?bytes=1'
+    ]) {
+      assert.equal(isAllowedR2(staging, allowed), true, allowed)
+    }
+    for (const refused of [
+      'https://sync-staging.memrynote.com/sync/push',
+      'http://127.0.0.1:8787/sync/push',
+      'https://r2.cloudflarestorage.com.example.net/p1',
+      'https://evilr2.cloudflarestorage.com/p1'
+    ]) {
+      assert.equal(isAllowedR2(staging, refused), false, refused)
     }
   })
 

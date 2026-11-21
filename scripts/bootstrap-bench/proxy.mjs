@@ -9,7 +9,9 @@
 // are out of the benchmark's scope.
 //
 // The benchmark only reads the vault: the proxy answers every write under
-// /sync/ with 403 itself and never forwards it. It keeps the type and
+// /sync/ with 403 itself and never forwards it. It refuses a path with a `%`
+// too, since the Worker decodes `/%73ync/push` to `/sync/push`, and no shell
+// encodes a path. `/__r2/` takes only GET and HEAD, to R2 or the line probe. It keeps the type and
 // operation of each refused push item, and the `hasMore` of each feed page.
 //
 // What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
@@ -58,7 +60,22 @@ export function assertAllowedUpstream(upstream) {
   }
 }
 
+const LOOPBACK = new Set(['127.0.0.1', 'localhost'])
+const LINE_PROBE_HOST = 'speed.cloudflare.com'
+
+/**
+ * Whether `/__r2/` may fetch `url`: R2's S3 endpoint and the line probe, or
+ * the loopback upstream itself when it runs locally.
+ */
+export function isAllowedR2(upstream, url) {
+  const { hostname } = new URL(url)
+  if (hostname.endsWith('.r2.cloudflarestorage.com') || hostname === LINE_PROBE_HOST) return true
+  const upstreamHost = new URL(upstream).hostname
+  return LOOPBACK.has(upstreamHost) && hostname === upstreamHost
+}
+
 export function isWriteRoute(method, pathname) {
+  if (pathname.includes('%')) return true
   if (!pathname.startsWith('/sync/') || method === 'GET' || method === 'HEAD') return false
   return !(method === 'POST' && READ_POSTS.has(pathname))
 }
@@ -167,7 +184,10 @@ export async function startProxy({ upstream, port = 0 }) {
     }
     req.on('data', (chunk) => (entry.reqBytes += chunk.length))
 
-    if (!isR2 && isWriteRoute(req.method, target.pathname)) {
+    const refuse = isR2
+      ? !(req.method === 'GET' || req.method === 'HEAD') || !isAllowedR2(upstream, target.href)
+      : isWriteRoute(req.method, target.pathname)
+    if (refuse) {
       const chunks = []
       req.on('data', (chunk) => chunks.push(chunk))
       req.on('end', () => {
