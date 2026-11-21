@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import {
   bundledPackSha256,
   OCR_DATA,
   pdfiumTarget,
+  sidecarBuild,
   sidecarFile,
   SIDECARS
 } from './build-sidecars.mjs'
@@ -31,6 +34,21 @@ describe('build-sidecars', () => {
     assert.deepEqual(
       SIDECARS.map(({ bin }) => `binaries/${bin}`),
       RELEASE_CONFIG.bundle.externalBin
+    )
+  })
+
+  it('builds a sidecar from crates/ so its .cargo/config.toml applies', () => {
+    const { cwd, args } = sidecarBuild(
+      'memry-ml-worker',
+      'memry-ml-worker',
+      'x86_64-pc-windows-msvc'
+    )
+    assert.equal(cwd, fileURLToPath(new URL('../../../crates', import.meta.url)))
+    assert.ok(!args.includes('--manifest-path'))
+    assert.ok(existsSync(join(cwd, '.cargo/config.toml')))
+    assert.match(
+      readFileSync(join(cwd, '.cargo/config.toml'), 'utf8'),
+      /CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded"/
     )
   })
 

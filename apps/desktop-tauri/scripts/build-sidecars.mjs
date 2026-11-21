@@ -58,9 +58,21 @@ export function bundledPackSha256(ocrSource) {
   return pin[1]
 }
 
-function run(command, args) {
+/**
+ * A sidecar's release cargo build. It runs from `crates/` so `crates/.cargo/config.toml` applies:
+ * its `[env]` gives whisper.cpp the static VC runtime (`/MT`) the worker links, and a build from
+ * the repo root fails to link on Windows x64 with LNK2038 and LNK2005 (crates/AGENTS.md, whisper.cpp).
+ */
+export function sidecarBuild(crate, bin, triple) {
+  return {
+    cwd: join(ROOT, 'crates'),
+    args: ['build', '-p', crate, '--bin', bin, '--release', '--target', triple]
+  }
+}
+
+function run(command, args, cwd = ROOT) {
   console.log(`$ ${command} ${args.join(' ')}`)
-  const result = spawnSync(command, args, { cwd: ROOT, stdio: 'inherit' })
+  const result = spawnSync(command, args, { cwd, stdio: 'inherit' })
   if (result.status !== 0)
     throw new Error(`${command} exited with ${result.status ?? result.signal}`)
 }
@@ -79,18 +91,8 @@ function main(argv) {
   const binaries = join(TAURI_DIR, 'binaries')
   mkdirSync(binaries, { recursive: true })
   for (const { crate, bin } of SIDECARS) {
-    run('cargo', [
-      'build',
-      '--manifest-path',
-      'crates/Cargo.toml',
-      '-p',
-      crate,
-      '--bin',
-      bin,
-      '--release',
-      '--target',
-      triple
-    ])
+    const build = sidecarBuild(crate, bin, triple)
+    run('cargo', build.args, build.cwd)
     const built = join(ROOT, 'crates/target', triple, 'release', `${bin}${exe(triple)}`)
     copyFileSync(built, join(binaries, sidecarFile(bin, triple)))
   }
