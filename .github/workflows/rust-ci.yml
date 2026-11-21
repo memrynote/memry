@@ -1045,6 +1045,9 @@ jobs:
       - name: Entity table is current
         run: pnpm --filter @memry/article-extract entities --check
 
+      - name: Inbox metadata vectors are current
+        run: node scripts/generate-metadata-vectors.mjs --check
+
   swift-bindings-fresh:
     name: Generated Swift bindings are current
     needs: plan
