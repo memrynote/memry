@@ -332,8 +332,8 @@ enum ErrorMapping {
         case .BootstrapUnavailable:
             copy("api.bootstrapUnavailable", "Memry is syncing the ordinary way.",
                  nil, .retryLater, visible: false)
-        case let .Status(status, _, _):
-            statusCopy(status)
+        case let .Status(status, code, _):
+            statusCopy(status, code)
         case .MalformedResponse:
             copy("api.malformedResponse", "Memry could not read the server's answer.",
                  "Nothing was changed. Updating Memry may fix it.")
@@ -359,8 +359,8 @@ enum ErrorMapping {
 
     /// The one arm of `ApiError` that needs the status to decide, because the
     /// two readings are opposite and a single sentence would be wrong for one.
-    private static func statusCopy(_ status: UInt16) -> UserFacingError {
-        status >= 500 || status == 408 ? serverFault : serverRefusal
+    private static func statusCopy(_ status: UInt16, _ code: String?) -> UserFacingError {
+        status >= 500 || status == 408 ? serverFault : serverRefusal(status, code)
     }
 
     /// A 5xx or a 408. Transient, and saying so is honest. Same rule as
@@ -371,16 +371,6 @@ enum ErrorMapping {
         "The Memry server could not handle that request.",
         "Nothing was lost. Try again in a few minutes.",
         .retryLater
-    )
-
-    /// Any other non-2xx, which in practice means a 4xx the client has no
-    /// specific policy for. It must **not** read as transient: a permanently
-    /// rejected record wedges the outbox and retries forever, so "try again"
-    /// here would describe a loop as a fix.
-    private static let serverRefusal = copy(
-        "api.statusRefused",
-        "The Memry server refused that request.",
-        "Repeating it will not change the answer. Updating Memry may fix it."
     )
 
     static func userFacing(_ error: AuthError) -> UserFacingError {
