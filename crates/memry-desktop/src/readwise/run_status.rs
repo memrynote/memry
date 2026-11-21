@@ -47,10 +47,11 @@ pub fn kind_code(kind: ReadwiseErrorKind) -> &'static str {
 }
 
 /// `classifyRunFailure`: the failure a run ended with, as the status shows it. `None` for a run
-/// that never started because another one was running.
+/// that never started because another one was running or the pull gate held it back
+/// (`classifyRunFailure` returns null for a `ReadwisePullGateError`).
 pub fn classify(error: &RunError) -> Option<RunFailure> {
     match error {
-        RunError::AlreadyRunning => None,
+        RunError::AlreadyRunning | RunError::Gate(_) => None,
         RunError::Readwise(error) => Some(RunFailure {
             kind: error.kind().map_or("unexpected", kind_code),
             detail: None,

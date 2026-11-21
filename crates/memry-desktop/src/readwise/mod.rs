@@ -49,6 +49,7 @@ pub mod limiter;
 pub mod options;
 pub mod plan_append;
 pub mod plan_note;
+pub mod pull_gate;
 pub mod reader;
 pub mod reader_notes;
 pub mod reader_sync;
