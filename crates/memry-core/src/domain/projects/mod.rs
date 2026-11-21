@@ -78,20 +78,22 @@ use super::tasks::Inbound;
 pub use contents::{
     LinkedEvent, LinkedFile, LinkedNote, ProjectContents, ProjectRef, contents, projects_for_item,
 };
-pub use delete::{TaskDisposition, delete};
-pub(crate) use links::keep_markdown_members;
+pub use delete::{TaskDisposition, delete, delete_leaving_notes};
 pub use links::{
     LinkItemType, PROJECT_PROPERTY_KEY, ProjectLink, link, links, set_link_pinned, unlink,
 };
+pub(crate) use links::{is_markdown_note, keep_markdown_members};
 pub use note_property::sync_links_from_property;
-pub use propagate::{PropagationTargets, project_names, renamed, targets, without_name};
+pub use propagate::{
+    NameEdit, PropagationTargets, project_names, renamed, targets, with_name, without_name,
+};
 pub use status_list::{StatusInput, StatusType};
 pub use statuses::{
     NewStatus, StatusPatch, create_status, delete_status, reorder_statuses, update_status,
 };
 pub use write::{
     DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, create, ensure_inbox, reorder,
-    seed_unclocked, set_archived, set_home_note, update,
+    seed_unclocked, set_archived, set_home_note, update, update_leaving_notes,
 };
 
 /// The `(type, _)` half of every key this module reads and writes.

@@ -28,7 +28,7 @@ use crate::storage::Db;
 mod project_writes;
 mod writes;
 
-pub use project_writes::{ProjectRefusal, StoredProject};
+pub use project_writes::{NoteNames, ProjectRefusal, StoredProject};
 pub use writes::NewDesktopTask;
 
 /// Built by [`crate::api::vault::Vault::task_store`].

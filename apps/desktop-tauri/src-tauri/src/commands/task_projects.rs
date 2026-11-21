@@ -2,19 +2,43 @@
 //! and `import-files`), each one call of `memry_desktop::tasks::service::TasksService`. A refusal
 //! stays Electron's envelope; a broken `tasks-api.ts` bound and a storage failure reject with the
 //! `CommandError`. Each landed write sends the events the service lists
-//! ([`super::tasks::announce`]).
+//! ([`super::tasks::announce`]); a link, unlink, rename or delete also writes the linked markdown
+//! notes' files, in Electron's order ([`ProjectWrite::finish`]).
 
+use memry_desktop::error::CoreError;
 use memry_desktop::tasks::project_contract::{
     ProjectContentsView, ProjectCreateInput, ProjectLinkItemInput, ProjectLinkView,
     ProjectListForItemInput, ProjectListView, ProjectMutation, ProjectRefView, ProjectReorderInput,
     ProjectSetHomeNoteInput, ProjectSetLinkPinnedInput, ProjectUpdateInput,
     ProjectWithStatusesView,
 };
+use memry_desktop::tasks::project_notes::ProjectWrite;
+use memry_desktop::tasks::service::TasksService;
 use tauri::{AppHandle, Runtime};
 
 use super::error::CommandError;
-use super::notes::open_vault;
-use super::tasks::{run, write};
+use super::notes::{open_vault, service};
+use super::tasks::{announce, run, write};
+
+/// [`write`] for a project write that leaves linked notes to the property writer.
+async fn write_notes<R, E, F>(
+    app: AppHandle<R>,
+    command: &'static str,
+    work: F,
+) -> Result<ProjectMutation, CommandError>
+where
+    R: Runtime,
+    E: CoreError,
+    F: FnOnce(&TasksService) -> Result<ProjectWrite, E> + Send + 'static,
+{
+    let notes = service(&app)?;
+    let open = open_vault(&app)?;
+    run(app, command, move |tasks, app| {
+        let write = work(tasks)?;
+        Ok::<_, E>(write.finish(&notes, &open, |written| announce(app, written)))
+    })
+    .await
+}
 
 #[tauri::command]
 #[specta::specta]
@@ -43,7 +67,7 @@ pub async fn tasks_project_update<R: Runtime>(
     app: AppHandle<R>,
     input: ProjectUpdateInput,
 ) -> Result<ProjectMutation, CommandError> {
-    write(app, "tasks_project_update", move |tasks| {
+    write_notes(app, "tasks_project_update", move |tasks| {
         tasks.update_project(input)
     })
     .await
@@ -55,7 +79,7 @@ pub async fn tasks_project_delete<R: Runtime>(
     app: AppHandle<R>,
     id: String,
 ) -> Result<ProjectMutation, CommandError> {
-    write(app, "tasks_project_delete", move |tasks| {
+    write_notes(app, "tasks_project_delete", move |tasks| {
         tasks.delete_project(&id)
     })
     .await
@@ -99,7 +123,7 @@ pub async fn tasks_project_link_item<R: Runtime>(
     app: AppHandle<R>,
     input: ProjectLinkItemInput,
 ) -> Result<ProjectMutation, CommandError> {
-    write(app, "tasks_project_link_item", move |tasks| {
+    write_notes(app, "tasks_project_link_item", move |tasks| {
         tasks.link_project_item(input)
     })
     .await
@@ -111,7 +135,7 @@ pub async fn tasks_project_unlink_item<R: Runtime>(
     app: AppHandle<R>,
     input: ProjectLinkItemInput,
 ) -> Result<ProjectMutation, CommandError> {
-    write(app, "tasks_project_unlink_item", move |tasks| {
+    write_notes(app, "tasks_project_unlink_item", move |tasks| {
         tasks.unlink_project_item(input)
     })
     .await

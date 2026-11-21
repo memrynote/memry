@@ -4,6 +4,7 @@
 //! events in `commands-projects.ts`'s order.
 
 use memry_core::domain::note_files::NoteFileStat;
+use memry_core::domain::projects::{self, LinkItemType};
 use memry_desktop::tasks::project_contract::{
     ProjectCreateInput, ProjectLinkItemInput, ProjectReorderInput, ProjectSetHomeNoteInput,
     ProjectSetLinkPinnedInput, ProjectUpdateInput,
@@ -115,7 +116,8 @@ fn project_create_and_update_land_with_their_clocks_queued_and_announced() {
         .update_project(input::<ProjectUpdateInput>(json!({
             "id": id, "name": "Orchard", "description": null
         })))
-        .unwrap();
+        .unwrap()
+        .written;
     assert!(updated.mutation.success);
     assert_eq!(updated.mutation.project.unwrap().project.name, "Orchard");
     assert_eq!(updated.events, [TaskEvent::ProjectUpdated(id.clone())]);
@@ -149,12 +151,17 @@ fn project_writes_refuse_with_electrons_messages_and_queue_nothing() {
     let missing = "no-such-project";
     let refusals = [
         f.service
-            .update_project(input(json!({ "id": missing, "name": "X" }))),
+            .update_project(input(json!({ "id": missing, "name": "X" })))
+            .map(|w| w.written),
         f.service.archive_project(missing),
         f.service.archive_project(&inbox),
-        f.service.delete_project(&inbox),
-        f.service.link_project_item(link(missing, "file", "f1")),
-        f.service.unlink_project_item(link(missing, "file", "f1")),
+        f.service.delete_project(&inbox).map(|w| w.written),
+        f.service
+            .link_project_item(link(missing, "file", "f1"))
+            .map(|w| w.written),
+        f.service
+            .unlink_project_item(link(missing, "file", "f1"))
+            .map(|w| w.written),
         f.service
             .set_project_link_pinned(input::<ProjectSetLinkPinnedInput>(
                 json!({ "projectId": missing, "itemId": "f1", "pinned": true }),
@@ -233,7 +240,7 @@ fn project_delete_tombstones_its_tasks_and_announces_each_after_the_project() {
     let kept = f.new_task(&other, json!({ "title": "Kept" }));
     f.pushed();
 
-    let written = f.service.delete_project(&f.project).unwrap();
+    let written = f.service.delete_project(&f.project).unwrap().written;
 
     assert!(written.mutation.success);
     assert_eq!(
@@ -271,7 +278,7 @@ fn project_delete_tombstones_its_tasks_and_announces_each_after_the_project() {
         "every task is tombstoned for sync before its project"
     );
 
-    let gone = f.service.delete_project("no-such-project").unwrap();
+    let gone = f.service.delete_project("no-such-project").unwrap().written;
     assert!(
         gone.mutation.success,
         "deleting a missing project succeeds, as Electron's"
@@ -335,7 +342,8 @@ fn links_pins_and_the_home_note_reach_the_project_payload_and_announce_it() {
     let linked = f
         .service
         .link_project_item(link(&p, "calendar_event", "ev1"))
-        .unwrap();
+        .unwrap()
+        .written;
     assert_eq!(linked.events, [TaskEvent::ProjectUpdated(p.clone())]);
     let links = f.service.project_links(&p).unwrap();
     assert_eq!(links.len(), 1);
@@ -382,7 +390,8 @@ fn links_pins_and_the_home_note_reach_the_project_payload_and_announce_it() {
     let unlinked = f
         .service
         .unlink_project_item(link(&p, "calendar_event", "ev1"))
-        .unwrap();
+        .unwrap()
+        .written;
     assert_eq!(unlinked.events, [TaskEvent::ProjectUpdated(p.clone())]);
     assert!(f.service.project_links(&p).unwrap().is_empty());
     assert!(
@@ -403,8 +412,15 @@ fn project_contents_list_only_the_notes_whose_file_the_vault_can_open() {
         .unwrap()
         .create("Plan".to_owned(), None)
         .unwrap();
-    f.service
-        .link_project_item(link(&f.project, "note", &note))
+    // Core's link writes the record itself; the service leaves a markdown note to the property
+    // writer, which this vault without a session has not.
+    let (project, linked) = (f.project.clone(), note.clone());
+    f.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            projects::link(conn, &project, LinkItemType::Note, &linked, "device", 1)
+                .map(|written| written.map(|w| w.acknowledge()))
+        })
         .unwrap();
     let refs = f
         .service

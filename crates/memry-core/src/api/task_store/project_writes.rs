@@ -2,6 +2,9 @@
 //! core's [`projects`] write: one transaction per project write with its outbox row and its field
 //! clocks ticked. A write that changes linked markdown notes or the project's tasks writes each
 //! of them through its own type's path, after or before the project as [`projects`] orders them.
+//! A linked markdown note's `project` names are the exception: desktop writes them into the
+//! note's file through its property writer, so these writes answer them as [`NoteNames`] and
+//! leave the note's record to that writer.
 
 use rusqlite::{Connection, params};
 
@@ -10,8 +13,8 @@ use crate::api::errors::StorageError;
 use crate::api::tasks_write::{after, now_ms, source_notes};
 use crate::domain::notes::failed;
 use crate::domain::projects::{
-    self, LinkItemType, NewProject, Project, ProjectContents, ProjectEdit, ProjectLink, ProjectRef,
-    ProjectSummary, Status, TaskDisposition,
+    self, LinkItemType, NameEdit, NewProject, Project, ProjectContents, ProjectEdit, ProjectLink,
+    ProjectRef, ProjectSummary, Status, TaskDisposition,
 };
 use crate::domain::tasks::{self, Removed, TaskWrite};
 use crate::storage::repositories::{StoredPayload, instants, sync_items};
@@ -35,6 +38,16 @@ pub struct StoredProject {
 }
 
 type Answer<T> = Result<Result<T, ProjectRefusal>, StorageError>;
+type ProjectAndStatuses = (StoredProject, Vec<Status>);
+
+/// The linked markdown notes a landed project write leaves for desktop's property writer, and
+/// what it does to each note's `project` names (`writeNames`, `propagateProjectRename`,
+/// `propagateProjectDelete`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoteNames {
+    pub note_ids: Vec<String>,
+    pub edit: NameEdit,
+}
 
 impl TaskStore {
     /// `tasks:project-list` (`getProjectsWithStats`): the projects that are not archived, in
@@ -83,17 +96,32 @@ impl TaskStore {
     }
 
     /// `tasks:project-update` (`updateProject` with `reconcileProjectStatuses`); a rename
-    /// rewrites every linked markdown note (core's pass, after the project write).
+    /// answers the linked markdown notes it renames in ([`NoteNames`]).
     pub fn update_project(
         &self,
         id: &str,
         edit: ProjectEdit<'_>,
-    ) -> Answer<(StoredProject, Vec<Status>)> {
-        self.live_write(id, move |conn, device, now| {
-            projects::update(conn, id, &edit, device, now)?.map(|written| written.acknowledge());
-            Ok(Ok(()))
-        })
-        .and_then(|landed| self.then_read(id, landed))
+    ) -> Answer<(ProjectAndStatuses, Option<NoteNames>)> {
+        let landed = self.live_write(id, move |conn, device, now| {
+            let before = projects::targets(conn, id)?;
+            projects::update_leaving_notes(conn, id, &edit, device, now)?
+                .map(|written| written.acknowledge());
+            Ok(Ok(before.and_then(|before| {
+                let to = edit.name.filter(|name| *name != before.name)?;
+                Some(NoteNames {
+                    note_ids: before.note_ids,
+                    edit: NameEdit::Rename {
+                        from: before.name,
+                        to: to.to_owned(),
+                    },
+                })
+            })))
+        })?;
+        let notes = match landed {
+            Ok(notes) => notes,
+            Err(refusal) => return Ok(Err(refusal)),
+        };
+        Ok(self.then_read(id, Ok(()))?.map(|project| (project, notes)))
     }
 
     /// `tasks:project-archive` (`archiveProject`). Archiving an archived project keeps its first
@@ -110,19 +138,21 @@ impl TaskStore {
 
     /// `tasks:project-delete` (`deleteProject`): every live task of the project is deleted
     /// (parents first), then the project is tombstoned and its name leaves each linked markdown
-    /// note. Answers the task deletions with their last payloads, after [`after`]'s bookkeeping.
-    /// A project no vault holds deletes nothing and still succeeds, as desktop's does.
-    pub fn delete_project(&self, id: &str) -> Answer<TaskWrite> {
+    /// note ([`NoteNames`]). Answers the task deletions with their last payloads, after
+    /// [`after`]'s bookkeeping. A project no vault holds deletes nothing and still succeeds, as
+    /// desktop's does.
+    pub fn delete_project(&self, id: &str) -> Answer<(TaskWrite, Option<NoteNames>)> {
         self.project_write(move |conn, device, now| {
-            let Some(project) = projects::get(conn, id)? else {
-                return Ok(Ok(TaskWrite::default()));
+            let Some(targets) = projects::targets(conn, id)? else {
+                return Ok(Ok((TaskWrite::default(), None)));
             };
-            if project.is_inbox {
+            if projects::get(conn, id)?.is_some_and(|project| project.is_inbox) {
                 return Ok(Err(ProjectRefusal::Inbox));
             }
             let before = source_notes(conn)?;
             let removed = live_tasks(conn, id)?;
-            projects::delete(conn, id, TaskDisposition::Delete, device, now)?.acknowledge();
+            projects::delete_leaving_notes(conn, id, TaskDisposition::Delete, device, now)?
+                .acknowledge();
             let mut write = TaskWrite::default();
             for task in removed {
                 if !is_live(conn, &task.task_id)? {
@@ -131,7 +161,11 @@ impl TaskStore {
                 }
             }
             after(conn, &write, &before, device, now);
-            Ok(Ok(write))
+            let notes = NoteNames {
+                note_ids: targets.note_ids,
+                edit: NameEdit::Remove(targets.name),
+            };
+            Ok(Ok((write, Some(notes))))
         })
     }
 
@@ -157,30 +191,38 @@ impl TaskStore {
         })
     }
 
-    /// `tasks:project-link-item` (`linkProjectItem`): a markdown note through its `project`
-    /// property and a mirrored `links` entry, anything else through `links` alone.
+    /// `tasks:project-link-item` (`linkProjectItem`): a markdown note is answered as the
+    /// [`NoteNames`] its `project` property takes (its file is its membership, and its links
+    /// follow the property), anything else is linked through `links` alone.
     pub fn link_project_item(
         &self,
         id: &str,
         item_type: LinkItemType,
         item_id: &str,
-    ) -> Answer<()> {
+    ) -> Answer<Option<NoteNames>> {
         self.live_write(id, move |conn, device, now| {
+            if let Some(notes) = markdown_names(conn, id, item_type, item_id, NameEdit::Add)? {
+                return Ok(Ok(Some(notes)));
+            }
             projects::link(conn, id, item_type, item_id, device, now)?.map(|w| w.acknowledge());
-            Ok(Ok(()))
+            Ok(Ok(None))
         })
     }
 
-    /// `tasks:project-unlink-item` (`unlinkProjectItem`).
+    /// `tasks:project-unlink-item` (`unlinkProjectItem`), a markdown note as in
+    /// [`Self::link_project_item`].
     pub fn unlink_project_item(
         &self,
         id: &str,
         item_type: LinkItemType,
         item_id: &str,
-    ) -> Answer<()> {
+    ) -> Answer<Option<NoteNames>> {
         self.live_write(id, move |conn, device, now| {
+            if let Some(notes) = markdown_names(conn, id, item_type, item_id, NameEdit::Remove)? {
+                return Ok(Ok(Some(notes)));
+            }
             projects::unlink(conn, id, item_type, item_id, device, now)?.map(|w| w.acknowledge());
-            Ok(Ok(()))
+            Ok(Ok(None))
         })
     }
 
@@ -268,6 +310,26 @@ impl TaskStore {
         }
         Ok(self.project(id)?.ok_or(ProjectRefusal::NotFound))
     }
+}
+
+/// The names a link or unlink gives `item_id` when it is a markdown note (`isMarkdownNote`).
+fn markdown_names(
+    conn: &Connection,
+    project_id: &str,
+    item_type: LinkItemType,
+    item_id: &str,
+    edit: fn(String) -> NameEdit,
+) -> Result<Option<NoteNames>, StorageError> {
+    if item_type != LinkItemType::Note || !projects::is_markdown_note(conn, item_id)? {
+        return Ok(None);
+    }
+    let Some(project) = projects::get(conn, project_id)? else {
+        return Ok(None);
+    };
+    Ok(Some(NoteNames {
+        note_ids: vec![item_id.to_owned()],
+        edit: edit(project.name),
+    }))
 }
 
 fn with_statuses(

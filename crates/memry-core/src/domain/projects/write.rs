@@ -259,6 +259,23 @@ pub fn update(
     now_ms: i64,
 ) -> Result<Option<Durable<String>>, StorageError> {
     let before = require_live(conn, project_id)?;
+    let written = update_leaving_notes(conn, project_id, edit, device_id, now_ms)?;
+    if let Some(name) = edit.name.filter(|name| *name != before.name) {
+        links::propagate_rename(conn, project_id, &before.name, name, device_id, now_ms)?;
+    }
+    Ok(written)
+}
+
+/// [`update`] without the rename reaching the linked notes: for a shell that rewrites each
+/// note itself through its own property writer ([`super::targets`], [`super::NameEdit`]).
+pub fn update_leaving_notes(
+    conn: &Connection,
+    project_id: &str,
+    edit: &ProjectEdit<'_>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<Durable<String>>, StorageError> {
+    require_live(conn, project_id)?;
     let mut changes: Vec<(&'static str, Change)> = Vec::new();
     if let Some(name) = edit.name {
         valid_name(name)?;
@@ -288,11 +305,7 @@ pub fn update(
         changes.push(("statuses", Change::Set(Value::Array(next))));
     }
 
-    let written = edit_project(conn, project_id, changes, device_id, now_ms)?;
-    if let Some(name) = edit.name.filter(|name| *name != before.name) {
-        links::propagate_rename(conn, project_id, &before.name, name, device_id, now_ms)?;
-    }
-    Ok(written)
+    edit_project(conn, project_id, changes, device_id, now_ms)
 }
 
 /// Archives the project, or unarchives it with `false` (`archiveProject`,

@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use memry_core::api::errors::StorageError;
-use memry_core::api::task_store::ProjectRefusal;
+use memry_core::api::task_store::{NoteNames, ProjectRefusal};
 use memry_core::api::vault::Vault;
 use memry_core::domain::projects::{
     LinkItemType, NewProject, ProjectEdit, StatusInput, StatusType,
@@ -18,6 +18,7 @@ use super::project_contract::{
     ProjectSetHomeNoteInput, ProjectSetLinkPinnedInput, ProjectStatusInput, ProjectUpdateInput,
     ProjectWithStatusesView,
 };
+use super::project_notes::{NoteWrite, ProjectWrite};
 use super::service::{TaskEvent, TaskWritten, TasksService, invalid};
 use super::writes::deleted;
 use crate::shell::file_open::Resolution;
@@ -72,12 +73,9 @@ impl TasksService {
         })
     }
 
-    /// `tasks:project-update`: metadata and statuses in one write; a rename reaches every
-    /// linked markdown note.
-    pub fn update_project(
-        &self,
-        input: ProjectUpdateInput,
-    ) -> Result<ProjectWritten, StorageError> {
+    /// `tasks:project-update`: metadata and statuses in one write; a rename then reaches every
+    /// linked markdown note's file ([`ProjectWrite::finish`]).
+    pub fn update_project(&self, input: ProjectUpdateInput) -> Result<ProjectWrite, StorageError> {
         let statuses = input.statuses.as_deref().map(status_inputs).transpose()?;
         let edit = ProjectEdit {
             name: input.name.as_deref(),
@@ -87,24 +85,35 @@ impl TasksService {
             statuses: statuses.as_deref(),
         };
         Ok(match self.store.update_project(&input.id, edit)? {
-            Ok(project) => updated(&input.id, Some(project.into())),
-            Err(refusal) => TaskWritten::quiet(refused(refusal, INBOX_ARCHIVE)),
+            Ok((project, notes)) => ProjectWrite {
+                written: updated(&input.id, Some(project.into())),
+                notes: notes.map_or(NoteWrite::None, NoteWrite::Propagation),
+            },
+            Err(refusal) => {
+                ProjectWrite::without_notes(TaskWritten::quiet(refused(refusal, INBOX_ARCHIVE)))
+            }
         })
     }
 
     /// `tasks:project-delete`: the project's tasks go with it. `tasks:project-deleted`, then a
     /// `tasks:deleted` (and its tags-changed) for each task, as `deleteProject` publishes them.
-    pub fn delete_project(&self, id: &str) -> Result<ProjectWritten, StorageError> {
+    /// The name then leaves every linked markdown note's file ([`ProjectWrite::finish`]).
+    pub fn delete_project(&self, id: &str) -> Result<ProjectWrite, StorageError> {
         Ok(match self.store.delete_project(id)? {
-            Ok(write) => {
+            Ok((write, notes)) => {
                 let mut events = vec![TaskEvent::ProjectDeleted(id.to_owned())];
                 events.extend(deleted(&write, &[]));
-                TaskWritten {
-                    mutation: ProjectMutation::ok(None),
-                    events,
+                ProjectWrite {
+                    written: TaskWritten {
+                        mutation: ProjectMutation::ok(None),
+                        events,
+                    },
+                    notes: notes.map_or(NoteWrite::None, NoteWrite::Propagation),
                 }
             }
-            Err(refusal) => TaskWritten::quiet(refused(refusal, INBOX_DELETE)),
+            Err(refusal) => {
+                ProjectWrite::without_notes(TaskWritten::quiet(refused(refusal, INBOX_DELETE)))
+            }
         })
     }
 
@@ -136,28 +145,28 @@ impl TasksService {
         })
     }
 
-    /// `tasks:project-link-item`.
+    /// `tasks:project-link-item`; a markdown note through its file ([`NoteWrite::Membership`]).
     pub fn link_project_item(
         &self,
         input: ProjectLinkItemInput,
-    ) -> Result<ProjectWritten, StorageError> {
+    ) -> Result<ProjectWrite, StorageError> {
         let kind = link_type(&input.item_type)?;
         let landed = self
             .store
             .link_project_item(&input.project_id, kind, &input.item_id)?;
-        Ok(acked(&input.project_id, landed))
+        Ok(membership(&input.project_id, landed))
     }
 
-    /// `tasks:project-unlink-item`.
+    /// `tasks:project-unlink-item`, a markdown note as in [`Self::link_project_item`].
     pub fn unlink_project_item(
         &self,
         input: ProjectLinkItemInput,
-    ) -> Result<ProjectWritten, StorageError> {
+    ) -> Result<ProjectWrite, StorageError> {
         let kind = link_type(&input.item_type)?;
         let landed = self
             .store
             .unlink_project_item(&input.project_id, kind, &input.item_id)?;
-        Ok(acked(&input.project_id, landed))
+        Ok(membership(&input.project_id, landed))
     }
 
     /// `tasks:project-set-link-pinned`.
@@ -253,6 +262,18 @@ fn acked(id: &str, landed: Result<(), ProjectRefusal>) -> ProjectWritten {
     match landed {
         Ok(()) => updated(id, None),
         Err(refusal) => TaskWritten::quiet(refused(refusal, INBOX_ARCHIVE)),
+    }
+}
+
+fn membership(id: &str, landed: Result<Option<NoteNames>, ProjectRefusal>) -> ProjectWrite {
+    match landed {
+        Ok(notes) => ProjectWrite {
+            written: updated(id, None),
+            notes: notes.map_or(NoteWrite::None, NoteWrite::Membership),
+        },
+        Err(refusal) => {
+            ProjectWrite::without_notes(TaskWritten::quiet(refused(refusal, INBOX_ARCHIVE)))
+        }
     }
 }
 
