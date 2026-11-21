@@ -6,6 +6,7 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata, canvases } from '@memry/db-schema/data-schema'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { markPullCompleted, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
 import {
   createTestDataDb,
@@ -213,9 +214,12 @@ describe('vault watcher', () => {
     mockWatch.mockReset()
 
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
+    // A device that has pulled: a folder it finds is synced at once (#5255).
+    markPullCompleted()
   })
 
   afterEach(async () => {
+    resetSyncDecision()
     await closeActivityLog()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()

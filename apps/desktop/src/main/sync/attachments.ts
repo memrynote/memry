@@ -214,6 +214,13 @@ export interface AttachmentSyncDeps {
   getReusableAttachmentIds?: (noteId: string, filePath: string) => string[]
   /** The open vault; an upload reads only files inside it. */
   getVaultPath: () => string | null
+  /**
+   * Called right before a downloaded file appears at its path. The vault
+   * watcher must read that write as this download, not as an edit: a binary
+   * note's file read as an edit ticks the note's clock and uploads the bytes
+   * the server already holds (#5255).
+   */
+  beforeFileLands?: (filePath: string) => void
   fetchFn?: FetchFn
 }
 
@@ -916,6 +923,7 @@ export class AttachmentSyncService {
         }
 
         try {
+          this.deps.beforeFileLands?.(destPath)
           await rename(partialPath, destPath)
         } catch (renameErr) {
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })

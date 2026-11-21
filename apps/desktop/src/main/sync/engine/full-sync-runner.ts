@@ -447,6 +447,9 @@ export class FullSyncRunner {
       }
       pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
+        // Before the seed: a folder found after this point has no remote row
+        // left to arrive, so it is pushed at once (folder-config-effects).
+        markPullCompleted()
         this.bootstrapPullSucceeded = true
         // Without a CRDT store there is no body phase to wait for.
         if (this.ctx.deps.crdtProvider == null) {
@@ -517,7 +520,6 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
-      if (pullDelivered) markPullCompleted()
       // The seed-duplicate repair (#5289) runs only when every body the server
       // holds is merged here, so a body still downloading is never judged.
       const provider = this.ctx.deps.crdtProvider

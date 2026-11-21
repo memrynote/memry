@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { markPullCompleted, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ vi.mock('../sync/local-mutations', () => ({
 import {
   backfillFolderConfigs,
   syncFolderConfigCreate,
+  syncFolderConfigDiscovered,
   syncFolderConfigDelete,
   syncFolderConfigRename
 } from './folder-config-effects'
@@ -52,6 +54,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  resetSyncDecision()
   testDb.close()
 })
 
@@ -107,8 +110,45 @@ describe('syncFolderConfigRename', () => {
   })
 })
 
+describe('a folder found on disk', () => {
+  // A fresh device's pull writes notes into folders whose rows the server
+  // holds. Pushed as creates, they merged with the remote rows and every one
+  // was pushed back (#5255).
+  it('before the first pull, gets a clock-less row and queues nothing', async () => {
+    mocks.folders = [{ path: 'Projects', icon: null }]
+
+    syncFolderConfigDiscovered('Work')
+    expect(await backfillFolderConfigs()).toBe(1)
+
+    expect(paths().toSorted()).toEqual(['Projects', 'Work'])
+    expect(
+      testDb.db
+        .select()
+        .from(folderConfigs)
+        .all()
+        .map((r) => r.clock)
+    ).toEqual([null, null])
+    expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalled()
+  })
+
+  it('after the first pull, is queued at once', () => {
+    markPullCompleted()
+
+    syncFolderConfigDiscovered('Work')
+
+    expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('folder_config', 'Work')
+  })
+
+  it('made in the app before the first pull is queued at once', () => {
+    syncFolderConfigCreate('Work')
+
+    expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('folder_config', 'Work')
+  })
+})
+
 describe('backfillFolderConfigs', () => {
   it('queues folders that exist on disk but have no row, and is a no-op after', async () => {
+    markPullCompleted()
     mocks.folders = [
       { path: 'Projects', icon: null },
       { path: 'Projects/2026', icon: null }
