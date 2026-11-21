@@ -22,7 +22,7 @@ use memry_core::crdt::update_log;
 use memry_core::crdt::{DocumentRegistry, extract_text};
 use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpack};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::http::{ClientIdentity, HttpClient, Sleeper};
 use memry_core::protocol::pack::PACK_HEADER_SIZE;
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::transport::{
@@ -48,6 +48,9 @@ pub const NOW_MS: i64 = 1_800_000_000_000;
 const VAULT_KEY: [u8; 32] = [3u8; 32];
 const SIGNER: &str = "device-a";
 const R2: &str = "https://r2.example/packs/";
+/// The rest of a `crdt_manifest` window when a relaunch walks into it: past
+/// the client's ordinary 30 s retry ceiling, inside the 60 s window.
+pub const MANIFEST_RETRY_AFTER_S: u64 = 45;
 
 fn keypair() -> &'static (Vec<u8>, Vec<u8>) {
     static KEYS: OnceLock<(Vec<u8>, Vec<u8>)> = OnceLock::new();
@@ -361,6 +364,11 @@ pub struct Server {
     pub manifest_page: usize,
     /// Documents a manifest read misses, as one created behind its cursor.
     pub manifest_misses: HashSet<String>,
+    /// Manifest requests one rate-limit window answers before a `429` with
+    /// `Retry-After: MANIFEST_RETRY_AFTER_S`, as `crdt_manifest`'s limiter
+    /// (`apps/sync-server/src/routes/sync.ts`). A sleep ends the window.
+    pub manifest_window: Option<usize>,
+    manifest_in_window: usize,
     /// A URL substring whose request never answers: the process is killed
     /// while it waits.
     pub hang: Option<String>,
@@ -389,6 +397,8 @@ impl Server {
             manifest: Manifest::Served,
             manifest_page: 1000,
             manifest_misses: HashSet::new(),
+            manifest_window: None,
+            manifest_in_window: 0,
             hang: None,
             corrupt: HashSet::new(),
             gone: HashSet::new(),
@@ -556,6 +566,18 @@ impl Server {
             return Some(response(200, &self.listing(offset).to_string()));
         }
         if url.contains("/sync/crdt/manifest") {
+            if self
+                .manifest_window
+                .is_some_and(|window| self.manifest_in_window >= window)
+            {
+                return Some(Ok(HttpResponse {
+                    status: 429,
+                    headers: [("retry-after".to_owned(), MANIFEST_RETRY_AFTER_S.to_string())]
+                        .into(),
+                    body: br#"{"error":{"code":"RATE_LIMITED"}}"#.to_vec(),
+                }));
+            }
+            self.manifest_in_window += 1;
             return Some(self.body_manifest(url));
         }
         if url.contains("/sync/crdt/updates/batch") {
@@ -653,6 +675,7 @@ pub struct Routes {
     pub server: Mutex<Server>,
     calls: Mutex<Vec<String>>,
     pub hung: Notify,
+    slept: Mutex<Vec<u64>>,
 }
 
 impl Routes {
@@ -661,7 +684,13 @@ impl Routes {
             server: Mutex::new(server),
             calls: Mutex::new(Vec::new()),
             hung: Notify::new(),
+            slept: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Every retry wait the client asked for, in milliseconds.
+    pub fn slept(&self) -> Vec<u64> {
+        self.slept.lock().unwrap().clone()
     }
 
     pub fn calls(&self) -> Vec<String> {
@@ -702,6 +731,15 @@ impl Transport for Routes {
         Err(TransportError::Failed {
             what: "no sockets".to_owned(),
         })
+    }
+}
+
+/// The client's retry waits take no time and end the rate-limit window.
+#[async_trait::async_trait]
+impl Sleeper for Routes {
+    async fn sleep_ms(&self, ms: u64) {
+        self.slept.lock().unwrap().push(ms);
+        self.server.lock().unwrap().manifest_in_window = 0;
     }
 }
 
@@ -748,11 +786,14 @@ pub fn scratch(label: &str) -> (Db, PathBuf) {
 }
 
 fn http(routes: &Arc<Routes>) -> Arc<HttpClient> {
-    Arc::new(HttpClient::new(
-        Arc::clone(routes) as Arc<dyn Transport>,
-        "https://sync.example",
-        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
-    ))
+    Arc::new(
+        HttpClient::new(
+            Arc::clone(routes) as Arc<dyn Transport>,
+            "https://sync.example",
+            ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+        )
+        .with_sleeper(Arc::clone(routes) as Arc<dyn Sleeper>),
+    )
 }
 
 fn body_pull(db: &Db, http: &Arc<HttpClient>) -> Arc<BodyPull> {

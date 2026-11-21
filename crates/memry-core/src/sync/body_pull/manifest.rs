@@ -24,7 +24,8 @@ impl BodyPull {
     /// Every page from no `cursor` until `nextCursor` is `null`. `None` when
     /// the read stops short: a 404 from a server before the route, any failed
     /// or malformed page, a document listed twice, or a cursor that does not
-    /// move. A short read answers nothing (§8.4.3).
+    /// move. A short read answers nothing (§8.4.3), so a rate-limited page
+    /// waits out `Retry-After` and is asked again (#5349).
     pub(in crate::sync) async fn read_body_manifest(
         &self,
         requests: &mut usize,
@@ -38,7 +39,7 @@ impl BodyPull {
                 path.push_str(&query_encode(cursor));
             }
             *requests += 1;
-            let request = self.request("GET", &path).retry(RetryPolicy::polled());
+            let request = self.request("GET", &path).retry(RetryPolicy::walk());
             let Ok(body) = self.http.send_json::<Json>(request).await else {
                 return Ok(None);
             };
