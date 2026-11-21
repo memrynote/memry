@@ -25,6 +25,9 @@ enum SyncTelemetry {
     static func passFailed(_ error: any Error, since start: ContinuousClock.Instant) {
         guard !(error is CancellationError) else { return }
         let mapped = ErrorMapping.userFacing(error)
+        let failure = failure(for: error, retryable: mapped.recourse != .blocked)
+        Log.sync.error("sync pass failed", .code(mapped.code))
+        if let status = failure.httpStatus { Log.sync.error("sync pass failed with status", .status(status)) }
         Telemetry.shared.track(
             .syncError,
             surface: .sync,
@@ -34,7 +37,7 @@ enum SyncTelemetry {
             errorCode: mapped.code,
             dimension: (.transport, "record"),
             metrics: TelemetryMetrics(durationMs: durationMs(since: start)),
-            failure: failure(for: error, retryable: mapped.recourse != .blocked)
+            failure: failure
         )
     }
 
@@ -68,13 +71,13 @@ enum SyncTelemetry {
         switch apiError(error) {
         case let .Status(status, code, _)?:
             if (100 ... 599).contains(status) { failure.httpStatus = Int(status) }
-            failure.serverCode = serverCode(code)
+            failure.serverCode = ErrorMapping.serverCode(code)
         case let .Unauthorized(code, _)?:
             failure.httpStatus = 401
-            failure.serverCode = serverCode(code)
+            failure.serverCode = ErrorMapping.serverCode(code)
         case let .PaymentRequired(code, _)?:
             failure.httpStatus = 402
-            failure.serverCode = serverCode(code)
+            failure.serverCode = ErrorMapping.serverCode(code)
         case .RateLimited?:
             failure.httpStatus = 429
         default:
@@ -88,16 +91,6 @@ enum SyncTelemetry {
         if case let .Api(source) = error as? SyncError { return source }
         if case let .Api(source) = error as? AuthError { return source }
         return nil
-    }
-
-    /// The contract's `SERVER_ERROR_CODE` (`^[A-Z][A-Z0-9_]{0,63}$`). Anything
-    /// else is dropped: one bad field makes the server reject the whole batch.
-    private static func serverCode(_ code: String?) -> String? {
-        guard let code, let first = code.unicodeScalars.first, code.unicodeScalars.count <= 64,
-              ("A" ... "Z").contains(first),
-              code.unicodeScalars.allSatisfy({ ("A" ... "Z").contains($0) || ("0" ... "9").contains($0) || $0 == "_" })
-        else { return nil }
-        return code
     }
 
     private static func durationMs(since start: ContinuousClock.Instant) -> Double {

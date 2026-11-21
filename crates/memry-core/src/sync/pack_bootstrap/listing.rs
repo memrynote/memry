@@ -25,6 +25,8 @@ pub struct PackSummary {
     pub kind: PackKind,
     pub max_cursor: i64,
     pub item_count: u64,
+    /// `byteSize`: the payload region, which sizes the GET's deadline.
+    pub byte_size: Option<u64>,
     pub url: String,
     pub expires_at: i64,
     /// `(coverFrom, coverThrough]` on the `server_cursor` axis (§8.10).
@@ -122,6 +124,7 @@ pub fn listed_pack(pack: &Json, now_s: i64) -> Option<PackSummary> {
         kind,
         max_cursor: pack.get("maxCursor").and_then(Json::as_i64)?,
         item_count: pack.get("itemCount").and_then(Json::as_u64).unwrap_or(0),
+        byte_size: pack.get("byteSize").and_then(Json::as_u64),
         url: pack.get("url").and_then(Json::as_str)?.to_owned(),
         expires_at: pack.get("expiresAt").and_then(Json::as_i64)?,
         cover: cover_from.zip(cover_through),
