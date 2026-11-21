@@ -350,7 +350,8 @@ export class DownloadQueue {
    * Attachment ids in flight, then queued in the order takeNext starts them, so
    * the service fetches their manifests in one batch (#5329). Downloads that
    * started together are included: with three in flight, the first one's batch
-   * covers the other two.
+   * covers the other two. The service leaves out ids whose manifest it already
+   * handed to a download.
    */
   private upcomingAttachmentIds(): string[] {
     const queued = this.queue.toSorted(compareItems)

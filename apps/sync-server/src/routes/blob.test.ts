@@ -57,6 +57,7 @@ const { blobRateLimiterOptions } = vi.hoisted(() => ({
     keyPrefix: string
     maxRequests: number
     windowSeconds: number
+    cost?: (c: unknown) => Promise<number> | number
   }>
 }))
 
@@ -810,6 +811,15 @@ describe('blob routes', () => {
       // #then — the #1829 download queue paces against this exact bucket key
       // and window; only the numeric ceiling is allowed to move.
       expect(optionsFor('blob_download')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+    })
+
+    it('charges a manifest batch one blob_download token per distinct id', async () => {
+      const batch = blobRateLimiterOptions.find((o) => o.keyPrefix === 'blob_download' && o.cost)
+      const costOf = (body: unknown) => batch!.cost!({ req: { json: async () => body } })
+
+      expect(batch).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+      expect(await costOf({ attachmentIds: ['a', 'b', 'a', 'c'] })).toBe(3)
+      expect(await costOf({ attachmentIds: [] })).toBe(1)
     })
 
     it('gives chunk_upload room for concurrent large-file uploads', () => {

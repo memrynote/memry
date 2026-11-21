@@ -7,14 +7,12 @@ const log = createLogger('AttachmentDownloadPrefetch')
 
 /** An old server has no batch route; stop asking it for this long. */
 const UNSUPPORTED_COOLDOWN_MS = 10 * 60_000
-/** A prefetched manifest no download claimed in this long is dropped. */
+/** Prefetched manifests, taken ids and unarmed hashes older than this are dropped. */
 const PREFETCH_TTL_MS = 10 * 60_000
 
-interface Prefetched {
-  manifest: EncryptedAttachmentManifest
-  /** Ciphertext hashes of its chunks, so one presign call covers it too. */
-  chunkHashes: string[]
-  fetchedAt: number
+interface PresignFetch {
+  hashes: Set<string>
+  done: Promise<void>
 }
 
 export interface AttachmentDownloadPrefetchDeps {
@@ -25,17 +23,27 @@ export interface AttachmentDownloadPrefetchDeps {
 /**
  * Shares download metadata across queued attachment downloads (#5329). A fresh
  * device downloads every attachment, and one manifest GET plus one presign call
- * per attachment made 2,128 of a 2,767-request bootstrap. The first download
- * that needs a manifest fetches it together with the manifests of up to 99
- * downloads queued behind it, and the first one that needs chunk URLs presigns
- * the chunks of those downloads as well.
+ * per attachment made 2,128 of a 2,767-request bootstrap.
+ *
+ * The first download that needs a manifest fetches it together with the
+ * manifests of up to 99 downloads queued behind it. Presigned chunk URLs live in
+ * one cache keyed by chunk hash. A chunk with no live URL arms a presign call
+ * over the caller's own uncovered chunks first, then over the chunks of other
+ * downloads that have no URL yet, up to 1024. Every call adds to the cache.
  */
 export class AttachmentDownloadPrefetch {
-  private readonly prefetched = new Map<string, Prefetched>()
+  private readonly prefetched = new Map<
+    string,
+    { manifest: EncryptedAttachmentManifest; fetchedAt: number }
+  >()
   private readonly inflight = new Map<string, Promise<void>>()
+  /** Ids a download took a manifest for; a later batch leaves them out. */
+  private readonly taken = new Map<string, number>()
+  /** Chunk hashes of batched downloads that have no URL yet, with when they were added. */
+  private readonly unarmed = new Map<string, number>()
+  private readonly urls = new Map<string, { url: string; expiresAtMs: number }>()
+  private readonly presignFetches = new Set<PresignFetch>()
   private unsupportedUntil = 0
-  private shared: PresignedUrlWindow | null = null
-  private sharedFetch: Promise<PresignedUrlWindow | null> | null = null
 
   constructor(private readonly deps: AttachmentDownloadPrefetchDeps) {}
 
@@ -56,40 +64,72 @@ export class AttachmentDownloadPrefetch {
     await this.inflight.get(attachmentId)
     const entry = this.prefetched.get(attachmentId)
     this.prefetched.delete(attachmentId)
+    this.taken.set(attachmentId, Date.now())
     if (!entry || Date.now() - entry.fetchedAt > PREFETCH_TTL_MS) return null
     return entry.manifest
   }
 
   /**
-   * A presigned window holding `hash`. `pendingHashes` (this transfer's
-   * remaining chunks) go first, so the transfer gets the URLs it got before;
-   * the chunks of prefetched downloads fill the rest of the call's 1024.
+   * A live presigned URL for chunk `hash`, or null when presigning failed and
+   * the caller takes the proxied path. `pendingHashes` are the caller's chunks
+   * still to download; the call that arms `hash` covers all of them it can.
    */
-  async presignWindow(
+  async presignedUrl(
     hash: string,
     pendingHashes: string[],
     fetchWindow: (chunkHashes: string[]) => Promise<PresignedUrlWindow | null>
-  ): Promise<PresignedUrlWindow | null> {
-    while (this.sharedFetch) await this.sharedFetch
-    if (this.shared && Date.now() < this.shared.expiresAtMs && this.shared.urls.has(hash)) {
-      return this.shared
+  ): Promise<string | null> {
+    const cached = this.cachedUrl(hash)
+    if (cached) return cached
+    const running = [...this.presignFetches].find((f) => f.hashes.has(hash))
+    if (running) {
+      await running.done
+      const armed = this.cachedUrl(hash)
+      if (armed) return armed
     }
-    const hashes = new Set(pendingHashes.slice(0, PRESIGN_BATCH_CAP))
-    for (const entry of this.prefetched.values()) {
-      for (const h of entry.chunkHashes) {
-        if (hashes.size >= PRESIGN_BATCH_CAP) break
-        hashes.add(h)
-      }
+
+    this.pruneExpired(Date.now())
+    const hashes = new Set([hash])
+    for (const h of [...pendingHashes, ...this.unarmed.keys()]) {
+      if (hashes.size >= PRESIGN_BATCH_CAP) break
+      if (!this.covered(h)) hashes.add(h)
     }
-    const fetch = fetchWindow([...hashes])
-    this.sharedFetch = fetch
+    const fetch: PresignFetch = {
+      hashes,
+      done: (async () => {
+        const window = await fetchWindow([...hashes])
+        for (const [h, url] of window?.urls ?? []) {
+          this.urls.set(h, { url, expiresAtMs: window!.expiresAtMs })
+          this.unarmed.delete(h)
+        }
+      })()
+    }
+    this.presignFetches.add(fetch)
     try {
-      const window = await fetch
-      if (window) this.shared = window
-      return window
+      await fetch.done
     } finally {
-      this.sharedFetch = null
+      this.presignFetches.delete(fetch)
     }
+    return this.cachedUrl(hash)
+  }
+
+  /** Drops a URL the store rejected, so the next lookup presigns it again. */
+  forget(hash: string): void {
+    this.urls.delete(hash)
+  }
+
+  private cachedUrl(hash: string): string | null {
+    const entry = this.urls.get(hash)
+    if (!entry) return null
+    if (Date.now() < entry.expiresAtMs) return entry.url
+    this.urls.delete(hash)
+    return null
+  }
+
+  private covered(hash: string): boolean {
+    if (this.cachedUrl(hash)) return true
+    for (const f of this.presignFetches) if (f.hashes.has(hash)) return true
+    return false
   }
 
   private startBatch(
@@ -98,10 +138,11 @@ export class AttachmentDownloadPrefetch {
     postBatch: (attachmentIds: string[]) => Promise<Response>
   ): void {
     if (Date.now() < this.unsupportedUntil) return
+    this.pruneExpired(Date.now())
     const ids = new Set([first])
     for (const id of upcoming) {
       if (ids.size >= ATTACHMENT_MANIFEST_BATCH_CAP) break
-      if (!this.prefetched.has(id) && !this.inflight.has(id)) ids.add(id)
+      if (!this.prefetched.has(id) && !this.inflight.has(id) && !this.taken.has(id)) ids.add(id)
     }
     if (ids.size < 2) return
     const batch = this.fetchBatch([...ids], postBatch)
@@ -126,23 +167,21 @@ export class AttachmentDownloadPrefetch {
         })
         return
       }
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- response.json returns any; the asserted type is the wire contract (AttachmentManifestBatchResponseSchema), and each manifest is signature-verified before use
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- response.json returns any; each manifest is signature-verified before use, so a wrong shape fails there
       const body = (await response.json()) as {
         manifests: Record<string, EncryptedAttachmentManifest>
       }
       const fetchedAt = Date.now()
-      this.pruneExpired(fetchedAt)
       for (const id of ids) {
         const manifest = body.manifests[id]
         if (!manifest) continue
-        let chunkHashes: string[] = []
+        this.prefetched.set(id, { manifest, fetchedAt })
         try {
-          chunkHashes = await this.deps.chunkHashesOf(manifest)
+          for (const h of await this.deps.chunkHashesOf(manifest)) this.unarmed.set(h, fetchedAt)
         } catch (err) {
           // The download verifies the manifest again and reports the failure.
           log.debug('prefetched manifest did not verify', { attachmentId: id, err })
         }
-        this.prefetched.set(id, { manifest, chunkHashes, fetchedAt })
       }
     } catch (err) {
       log.warn('manifest batch failed; fetching these manifests one by one', {
@@ -158,5 +197,8 @@ export class AttachmentDownloadPrefetch {
     for (const [id, entry] of this.prefetched) {
       if (now - entry.fetchedAt > PREFETCH_TTL_MS) this.prefetched.delete(id)
     }
+    for (const [id, at] of this.taken) if (now - at > PREFETCH_TTL_MS) this.taken.delete(id)
+    for (const [h, at] of this.unarmed) if (now - at > PREFETCH_TTL_MS) this.unarmed.delete(h)
+    for (const [h, entry] of this.urls) if (now >= entry.expiresAtMs) this.urls.delete(h)
   }
 }

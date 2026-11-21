@@ -94,7 +94,7 @@ const blobUploadLimit = createRateLimiter({
 // bucket. 600 matches the crdt_pull ceiling and is still trivial load per
 // request (one indexed D1 row + one R2 read). Only the number may change here:
 // the key prefix and 60s window are a contract with the client's pacing.
-const blobDownloadLimit = createRateLimiter({
+const blobDownloadBucket = {
   keyPrefix: 'blob_download',
   maxRequests: 600,
   windowSeconds: 60,
@@ -102,6 +102,22 @@ const blobDownloadLimit = createRateLimiter({
   // The client pacer multiplies its own 150/min by the granted factor, so the
   // widened ceiling stays a safety margin rather than the shaping force.
   getElevatedLimits: bootstrapRateLimitElevation
+}
+const blobDownloadLimit = createRateLimiter(blobDownloadBucket)
+
+/**
+ * `blob_download` charged one token per requested id: a manifest batch does
+ * the R2 reads of that many single manifest GETs (#5329). An unparseable body
+ * costs one token and the route answers 400.
+ */
+const manifestBatchLimit = createRateLimiter({
+  ...blobDownloadBucket,
+  cost: async (c) => {
+    const parsed = AttachmentManifestBatchRequestSchema.safeParse(
+      await c.req.json().catch(() => null)
+    )
+    return parsed.success ? new Set(parsed.data.attachmentIds).size : 1
+  }
 })
 
 // 300/min (was 100): chunks are ~1MB, so 100/min capped uploads at ~100MB/min
@@ -896,10 +912,11 @@ blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) =>
 /**
  * The manifests of up to 100 attachments in one call (#5329). A fresh device
  * downloads every attachment, and one GET per manifest was most of its requests.
+ * It spends one `blob_download` token per id, like the GETs it replaces.
  * Each manifest is returned exactly as the single GET returns it; an id with no
  * stored manifest is left out, so the client fetches it alone and sees the 404.
  */
-blob.post('/attachments/manifests/batch', blobDownloadLimit, async (c) => {
+blob.post('/attachments/manifests/batch', manifestBatchLimit, async (c) => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
   const parsed = AttachmentManifestBatchRequestSchema.safeParse(await c.req.json())
