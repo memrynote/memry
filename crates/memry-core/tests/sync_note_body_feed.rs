@@ -541,8 +541,9 @@ async fn a_snapshot_ref_is_fetched_unless_its_revision_is_held() {
     assert!(owed(&db).is_empty());
 }
 
-/// #2297, §7.17.1 and §7.15: bodies of a note this page deletes cost no
-/// request and are dropped, and so are bodies of a note deleted here before.
+/// #2297, §7.17.1 and §7.15: bodies of a note this page deletes with a typed
+/// delete cost no request and are dropped, and so are bodies of a note
+/// deleted here before.
 #[tokio::test]
 async fn bodies_of_a_deleted_note_are_dropped() {
     let db = scratch_db("deleted");
@@ -567,8 +568,12 @@ async fn bodies_of_a_deleted_note_are_dropped() {
                     12,
                 ),
             ),
-            // §5.12: the deleted id goes to `/sync/pull` with the page.
-            response(200, &json!({"items": []}).to_string()),
+            // §5.12: the deleted id goes to `/sync/pull` with the page, and
+            // the server answers it with the note's signed delete.
+            response(
+                200,
+                &json!({"items": [typed_delete(NOTE_A, "note")]}).to_string(),
+            ),
         ],
     )
     .await;
@@ -830,15 +835,7 @@ async fn a_deleted_tag_sharing_a_note_id_does_not_drop_the_note_body() {
     seed_cursor(&db, "10");
     hold(&db, NOTE_A, "0");
     let update = an_update("kept");
-    let tag_tombstone = json!({
-        "id": NOTE_A,
-        "type": "tag_definition",
-        "operation": "delete",
-        "deletedAt": 5,
-        "signature": "AAAA",
-        "signerDeviceId": "device-b",
-        "blob": {"encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA", "dataNonce": "AAAA"},
-    });
+    let tag_tombstone = typed_delete(NOTE_A, "tag_definition");
 
     pull(
         &db,
@@ -857,4 +854,46 @@ async fn a_deleted_tag_sharing_a_note_id_does_not_drop_the_note_body() {
     .await;
 
     assert_eq!(stored_sequences(&db, NOTE_A), [1]);
+}
+
+/// §5.12.1 (#5340): an id in `deleted` with no typed item deletes nothing, so
+/// its note stays alive and the page's body entry for it lands, as Electron
+/// fetches it (`apps/desktop/src/main/sync/engine/note-body-feed.ts:168-176`).
+#[tokio::test]
+async fn a_bare_deleted_id_does_not_drop_its_note_body() {
+    let db = scratch_db("bare-deleted");
+    seed_cursor(&db, "10");
+    hold(&db, NOTE_A, "0");
+    let update = an_update("still here");
+
+    pull(
+        &db,
+        vec![
+            response(
+                200,
+                &body_page(
+                    vec![update_entry(NOTE_A, 11, 1, Some(&update))],
+                    &[NOTE_A],
+                    11,
+                ),
+            ),
+            response(200, &json!({ "items": [] }).to_string()),
+        ],
+    )
+    .await;
+
+    assert_eq!(stored_sequences(&db, NOTE_A), [1]);
+}
+
+/// A signed delete of `item_type` for `id`, as the server answers a deleted id.
+fn typed_delete(id: &str, item_type: &str) -> Json {
+    json!({
+        "id": id,
+        "type": item_type,
+        "operation": "delete",
+        "deletedAt": 5,
+        "signature": "AAAA",
+        "signerDeviceId": "device-b",
+        "blob": {"encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA", "dataNonce": "AAAA"},
+    })
 }
