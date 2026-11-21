@@ -9,13 +9,14 @@
  * renders the fallback glyph.
  *
  * The first subscriber triggers the load and wires `CustomIconsUpdatedEvent`,
- * which every local add, rename and delete sends. A peer's icon is listed at
- * the next load until the sync step sends the event when it applies one.
+ * which every local add, rename and delete sends, and the custom icons sync
+ * pulls.
  */
 
 import { useCallback, useSyncExternalStore } from 'react'
 import { events, type CustomIconView } from '../../../generated/bindings'
 import { customIconsService } from '@/services/custom-icons-service'
+import { withSyncedRecords } from '@/services/sync-service'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { toMemryFileUrl, toWebviewUrl } from './memry-file-url'
 import { createLogger } from './logger'
@@ -63,9 +64,11 @@ function start(): void {
   firstLoad = load()
   // App-lifetime subscription: the library is global, so there is no unmount
   // edge at which dropping it would be correct.
-  subscribeToEvent(events.customIconsUpdatedEvent, () => {
-    void load()
-  })
+  withSyncedRecords(
+    (live) => subscribeToEvent(events.customIconsUpdatedEvent, () => void load(), live),
+    ['custom_icon'],
+    () => void load()
+  )
 }
 
 function subscribe(listener: () => void): () => void {

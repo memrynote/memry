@@ -66,7 +66,10 @@ use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 
 mod body_pass;
+mod open_session;
 mod refs_page;
+mod window;
+use open_session::OpenSession;
 use refs_page::{read_refs_page, reference_now};
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
@@ -143,11 +146,12 @@ pub enum FirstSyncPhase {
 /// FR-028's determinate progress.
 ///
 /// `total` is never below `completed`, so a shell can render a fraction
-/// without guarding against one above 1. §10.11: progress is measured against
-/// the tail cursor and the client's own cursor, neither of which a bootstrap
-/// session affects — so the numbers survive Q10.2's mid-run fallback
-/// unchanged, and the only observable difference is that the run takes
-/// longer.
+/// without guarding against one above 1. §10.11: progress counts the items
+/// each pass has handled, never a server cursor (a per-user sequence over
+/// every vault and edit, `apps/sync-server/migrations/0001_baseline.sql:189-192`).
+/// A bootstrap session changes no count, so the numbers survive Q10.2's
+/// mid-run fallback unchanged, and the only observable difference is that the
+/// run takes longer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FirstSyncProgress {
     pub phase: FirstSyncPhase,
@@ -282,15 +286,30 @@ impl FirstSync {
         let mut report = FirstSyncReport::default();
 
         // §10.5: this cannot fail in any way a caller must handle.
-        let tail_cursor = match &self.bootstrap {
-            Some(bootstrap) => {
-                let opened = bootstrap.open(now_ms / 1_000).await;
-                report.elevated = opened.elevated();
-                opened.tail_cursor
-            }
-            None => 0,
-        };
+        if let Some(bootstrap) = &self.bootstrap {
+            report.elevated = bootstrap.open(now_ms / 1_000).await.elevated();
+        }
 
+        // Close on every exit after the open, so a failed or cancelled run
+        // frees its slot (#5281). A close failure is logged by the client and
+        // never fails the run.
+        let session = OpenSession(self.bootstrap.clone());
+        let passes = self.passes(now_ms, &mut report).await;
+        session.close().await;
+        passes?;
+        self.progress.progress(FirstSyncProgress {
+            phase: FirstSyncPhase::Done,
+            completed: 1,
+            total: 1,
+        });
+        Ok(report)
+    }
+
+    async fn passes(
+        &self,
+        now_ms: i64,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
         report.window_start = self.window_start(now_ms).await?;
 
         // The refs pass reads the feed from the start under this declaration,
@@ -305,8 +324,8 @@ impl FirstSync {
             })
             .await?;
 
-        self.refs_pass(tail_cursor, &mut report).await?;
-        self.metadata_pass(&mut report).await?;
+        self.refs_pass(report).await?;
+        self.metadata_pass(report).await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
         // leaves its rows `metadata-only`. A row held corrupt or refused does too,
         // and a re-read does not fix it.
@@ -324,20 +343,12 @@ impl FirstSync {
             report.packs = packs.run(now_ms / 1_000).await?;
             self.progress.packs(Some(&report.packs));
         }
-        self.bodies_pass(report.window_start, &mut report).await?;
+        self.bodies_pass(report.window_start, report).await?;
 
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
             .await?;
-        if let Some(bootstrap) = &self.bootstrap {
-            bootstrap.close().await;
-        }
-        self.progress.progress(FirstSyncProgress {
-            phase: FirstSyncPhase::Done,
-            completed: 1,
-            total: 1,
-        });
-        Ok(report)
+        Ok(())
     }
 
     /// Pass one: `GET /sync/changes` to the end.
@@ -346,11 +357,7 @@ impl FirstSync {
     /// pass two's job, and separating them is the whole point of the
     /// windowing: on a large vault the refs pass is twenty calls and gives
     /// the client the complete inventory it needs to order everything else.
-    async fn refs_pass(
-        &self,
-        tail_cursor: i64,
-        report: &mut FirstSyncReport,
-    ) -> Result<(), FirstSyncError> {
+    async fn refs_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
         loop {
             let cursor = self
                 .db
@@ -399,6 +406,20 @@ impl FirstSync {
                             reference.modified_at,
                             None,
                         )?;
+                        // A body this device seeded with no clock and no pull
+                        // ever signed (the Inbox, `projects::ensure_inbox`; a
+                        // tag mint, `tag_mint::define_used`) is not the
+                        // server's: pass two fetches the server's over it (a
+                        // local record with no clock takes the remote
+                        // wholesale, §6.3.1) rather than the seed being clocked
+                        // and pushed over the user's own (#3538).
+                        txn.execute(
+                            "UPDATE sync_items SET payload_state = 'metadata-only'
+                              WHERE item_type = ?1 AND item_id = ?2 AND clock IS NULL
+                                AND signer_device_id IS NULL AND payload IS NOT NULL",
+                            rusqlite::params![reference.item_type, reference.item_id],
+                        )
+                        .map_err(sqlite_failed)?;
                     }
                     // §5.12.1: an id in `deleted` may have no type on the
                     // wire, and the refs-only pass has no envelope to read one
@@ -425,17 +446,19 @@ impl FirstSync {
             report.refs_recorded += recorded;
             report.tombstones += tombstones;
 
-            let seen = next.as_deref().and_then(|c| c.parse::<u64>().ok());
+            // The feed has no item total (chapter 05 `RecordChangesResponse`),
+            // so while it has more the estimate is one more page, as Electron's
+            // `initial-sync-progress.ts:13` does.
+            let listed = (report.refs_recorded + report.tombstones) as u64;
+            let ahead = if page.has_more {
+                u64::from(PULL_PAGE_LIMIT)
+            } else {
+                0
+            };
             self.progress.progress(FirstSyncProgress {
                 phase: FirstSyncPhase::Refs,
-                completed: seen.unwrap_or(report.refs_recorded as u64),
-                // §10.4's `tailCursor` when a session supplied one; otherwise
-                // the tail is not knowable until the feed says `hasMore:
-                // false`, and reporting the cursor against itself is the
-                // honest answer rather than an invented denominator.
-                total: seen
-                    .unwrap_or(report.refs_recorded as u64)
-                    .max(tail_cursor.max(0) as u64),
+                completed: listed,
+                total: listed + ahead,
             });
 
             if !page.has_more {
@@ -507,27 +530,6 @@ impl FirstSync {
                 .await?,
         );
         Ok(())
-    }
-
-    /// The window boundary, chosen once and remembered.
-    async fn window_start(&self, now_ms: i64) -> Result<i64, FirstSyncError> {
-        // No window has no boundary to slide, so there is nothing to remember.
-        let Some(window_ms) = self.limits.recent_window_ms else {
-            return Ok(i64::MIN);
-        };
-        if let Some(stored) = self
-            .db
-            .call(|conn| read_meta(conn, META_FIRST_SYNC_WINDOW_START))
-            .await?
-            .and_then(|text| text.parse::<i64>().ok())
-        {
-            return Ok(stored);
-        }
-        let chosen = now_ms - window_ms;
-        self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_WINDOW_START, &chosen.to_string()))
-            .await?;
-        Ok(chosen)
     }
 
     /// §10.11 rule 1 and 2, applied at the one place a request is built: renew

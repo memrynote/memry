@@ -349,3 +349,72 @@ fn every_answer_is_disabled_while_ai_is_off() {
         json!({ "status": "disabled", "groups": [], "ungrouped": [], "missing": [] })
     );
 }
+
+/// The ids of every result `word` finds, of any group.
+fn result_ids(f: &Fixture, word: &str) -> Vec<String> {
+    let response = invoke(f, "search_query", json!({ "input": { "text": word } })).unwrap();
+    response["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|group| group["results"].as_array().unwrap().iter())
+        .map(|item| item["id"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+fn store_vector(f: &Fixture, id: &str, stored: Vec<f32>) {
+    let search = f.mocked.session().current().unwrap().search;
+    let note = search.embeddable_note(id).unwrap().unwrap();
+    search
+        .store_note_embeddings(&note, Some("hash"), vec![stored.clone()], stored)
+        .unwrap();
+}
+
+fn similar(f: &Fixture, note: &str) -> Value {
+    invoke(f, "notes_get_similar", json!({ "noteId": note })).unwrap()
+}
+
+#[test]
+fn a_deleted_note_leaves_the_similar_list() {
+    let f = opened();
+    assert_eq!(
+        similar(&f, &f.ids.alpha)["notes"][0]["id"],
+        f.ids.beta.as_str()
+    );
+
+    std::fs::remove_file(f.mocked.vault.join("beta.md")).unwrap();
+    until("the deleted note left the search index", || {
+        note_id(&f.mocked, "tomatoes").is_none()
+    });
+    assert_eq!(
+        similar(&f, &f.ids.alpha),
+        json!({ "status": "ready", "notes": [] })
+    );
+}
+
+#[test]
+fn a_journal_day_is_a_similar_note_titled_with_its_date() {
+    let f = opened();
+    std::fs::create_dir_all(f.mocked.vault.join("journal")).unwrap();
+    std::fs::write(
+        f.mocked.vault.join("journal/2025-03-03.md"),
+        "Planned the quarterly roadmap with apricots.\n",
+    )
+    .unwrap();
+    until("the journal day reached the search index", || {
+        result_ids(&f, "apricots").len() == 1
+    });
+    let day = result_ids(&f, "apricots").remove(0);
+    store_vector(&f, &day, vector(1.0, 6, 0.1));
+
+    let answer = similar(&f, &f.ids.alpha);
+    let found = answer["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|note| note["id"] == day.as_str())
+        .unwrap_or_else(|| panic!("the day is similar: {answer}"))
+        .clone();
+    assert_eq!(found["title"], "2025-03-03");
+    assert_eq!(found["path"], "journal/2025-03-03.md");
+}

@@ -197,13 +197,16 @@ impl FileTextRunner {
 
     /// A failed job, or a finished one with parts it could not read, under another app version
     /// or a day after it last ran. An `updated_at` that does not parse is never a day old, as
-    /// `Date.parse` gives `NaN`.
+    /// `Date.parse` gives `NaN`. A job that failed for want of OCR waits for a build with OCR: a
+    /// day changes nothing for it.
     fn is_due_for_retry(&self, job: &FileTextJob, file: &TextFile) -> Result<bool, String> {
         if job.status == FileTextJobStatus::Pending {
             return Ok(false);
         }
         let aged = memry_core::storage::repositories::instants::to_epoch_ms(&job.updated_at)
-            .is_some_and(|at| (self.deps.now_ms)() - at >= RETRY_FAILED_AFTER_MS);
+            .is_some_and(|at| (self.deps.now_ms)() - at >= RETRY_FAILED_AFTER_MS)
+            && !(self.deps.recognize.is_none()
+                && job.error.as_deref() == Some(super::extract::OCR_UNAVAILABLE));
         if job.app_version == self.deps.app_version && !aged {
             return Ok(false);
         }

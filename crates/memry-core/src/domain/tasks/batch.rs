@@ -26,12 +26,7 @@ use crate::sync::{outbox, versioned};
 use super::super::notes::{clock_in, failed, insert_local, tombstone_local};
 use super::create::seeded;
 use super::model::{find_live, new_task_id};
-use super::{ITEM_TYPE, edit_merged_in};
-
-/// The fields outside `TASK_SYNCABLE_FIELDS` a task write may change. They
-/// merge by no field clock (§6.7), but they are still user data an undo
-/// restores.
-const UNCLOCKED_FIELDS: [&str; 3] = ["tags", "linkedNoteIds", "linkedCanvasIds"];
+use super::{ITEM_TYPE, UNCLOCKED_LISTS, edit_merged_in};
 
 /// What one task looked like before a write changed it: each changed field
 /// with its **prior** value (`null` when the key was absent or null).
@@ -326,8 +321,11 @@ pub fn write_fields(
 }
 
 /// The entries of a `fields` map an edit changes, each with its prior plain
-/// value (`null` when absent): the undo of `fields` touches only these, so it
-/// never overwrites an entry a later local or peer edit wrote (§6.11.3).
+/// value (`null` when absent): the undo of `fields` touches only these. An
+/// entry the edit did not change keeps any later local or peer value; a later
+/// edit to an entry the edit did change is overwritten, as by any undo
+/// (desktop's undo, `use-undoable-task-actions.ts:379`, checks no clock either)
+/// (§6.11.3).
 fn fields_cut(before: Option<&Value>, after: &Value) -> Value {
     let old = versioned::read_map(before).unwrap_or_default();
     let new = versioned::read_map(Some(after)).unwrap_or_default();
@@ -349,8 +347,9 @@ fn fields_cut(before: Option<&Value>, after: &Value) -> Value {
 /// The prior values of the `fields` entries a write changed (`null` for one
 /// that was absent), as [`Batch::edit`] recorded them, laid over the
 /// stored map as a new local edit: each of those entries that differs gets
-/// one fresh stamp, and every other entry is left alone, so a later local or
-/// peer entry survives. Writing the old entries back verbatim would restore
+/// one fresh stamp, so it overwrites a later edit to that entry, and every
+/// other entry is left alone, so a later local or peer value there survives.
+/// Writing the old entries back verbatim would restore
 /// their old `t` stamps, which lose to every peer that saw the edit (§6.11.3).
 fn restamped(stored: &Object, prior: &Value) -> Result<Value, StorageError> {
     let patch = prior.as_object().cloned().unwrap_or_default();
@@ -365,7 +364,7 @@ fn restamped(stored: &Object, prior: &Value) -> Result<Value, StorageError> {
 fn restorable_field(field: &str) -> Result<&'static str, StorageError> {
     TASK_SYNCABLE_FIELDS
         .iter()
-        .chain(UNCLOCKED_FIELDS.iter())
+        .chain(UNCLOCKED_LISTS.iter())
         .copied()
         .find(|known| *known == field)
         .ok_or_else(|| StorageError::Invalid {

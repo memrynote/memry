@@ -9,6 +9,7 @@ use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
@@ -28,6 +29,14 @@ pub trait SyncPasses: Send + Sync {
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport>;
     /// A socket hint's pass; `None` while paused or when the hint was dropped.
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport>;
+    /// Whether this vault has not finished a first sync on this device.
+    async fn needs_first_sync(&self) -> Result<bool, SyncError>;
+    /// The first sync, its progress told to `progress`, then passes to the feed head. Answers
+    /// the last pass, with the rows every pass pushed; `None` while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError>;
     /// The vault's realtime socket: hints to `sink`, `on_connected` at each open, terminal
     /// closes latched in `latch`.
     fn realtime(
@@ -40,8 +49,6 @@ pub trait SyncPasses: Send + Sync {
     fn resume(&self);
     fn set_entitled(&self, entitled: bool);
     fn server_clock(&self) -> Option<ServerClock>;
-    /// Hears every committed page from now on.
-    fn observe(&self, observer: Arc<dyn ApplyObserver>);
     /// Whether a requested snapshot is due (chapter 07 §7.13.3).
     fn snapshots_due(&self, _now_ms: i64) -> bool {
         false
@@ -59,6 +66,17 @@ impl SyncPasses for SyncDriver {
     }
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
         SyncDriver::wake(self, cursor).await
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        SyncDriver::needs_first_sync(self).await
+    }
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        Ok(SyncDriver::first_sync(self, progress)
+            .await?
+            .and_then(|outcome| last_with_every_push(outcome.passes)))
     }
     fn realtime(
         &self,
@@ -88,9 +106,6 @@ impl SyncPasses for SyncDriver {
     fn server_clock(&self) -> Option<ServerClock> {
         SyncDriver::server_clock(self)
     }
-    fn observe(&self, observer: Arc<dyn ApplyObserver>) {
-        self.register_observer(observer);
-    }
     fn snapshots_due(&self, now_ms: i64) -> bool {
         SyncDriver::snapshots_due(self, now_ms)
     }
@@ -106,13 +121,31 @@ impl SyncPasses for SyncDriver {
     }
 }
 
+/// The first sync's last catch-up pass, with the rows and push time of all of them: Electron's
+/// full sync pushes once and tells queue-cleared with every row it sent
+/// (`full-sync-runner.ts:453`).
+pub(super) fn last_with_every_push(passes: Vec<PassReport>) -> Option<PassReport> {
+    let pushed_items = passes.iter().map(|pass| pass.pushed_items).sum();
+    let push_ms = passes.iter().map(|pass| pass.push_ms).sum();
+    passes.into_iter().last().map(|mut last| {
+        last.pushed |= pushed_items > 0;
+        last.pushed_items = pushed_items;
+        last.push_ms = push_ms;
+        last
+    })
+}
+
 #[async_trait::async_trait]
 pub trait SyncBackend: Send + Sync {
     /// The account side of the gate, read at each start attempt.
     async fn auth_facts(&self) -> AuthFacts;
-    /// A driver for the open vault. Fails offline (it fetches the device directory) and on a
-    /// vault bound to no server vault; the supervisor retries on the next trigger.
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError>;
+    /// A driver for the open vault, which `observers` hear from its open on. Fails offline (it
+    /// fetches the device directory) and on a vault bound to no server vault; the supervisor
+    /// retries on the next trigger.
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError>;
     /// The server refused the session's refresh token for good. Answered from the session's
     /// tokens, so a refused refresh during [`SyncBackend::open`] counts too.
     fn refresh_refused(&self) -> bool;
@@ -128,6 +161,8 @@ pub struct VaultSyncBackend {
     reachability: Arc<dyn Reachability>,
     seeds: Vec<Arc<dyn PassSeed>>,
     account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    /// Heard by every driver this backend opens, after the supervisor's own.
+    observers: Vec<Arc<dyn ApplyObserver>>,
     keys: Arc<AtRestKeys>,
     /// Sync's hold on the at-rest key while a driver is open.
     guard: Arc<Mutex<Option<AtRestKeyGuard>>>,
@@ -155,10 +190,36 @@ impl VaultSyncBackend {
             reachability,
             seeds,
             account,
+            observers: Vec::new(),
             keys,
             guard: Arc::default(),
             closes: Arc::default(),
         }
+    }
+
+    /// Adds `observer` to every driver this backend opens (`sync::disk`).
+    pub fn with_observer(mut self, observer: Arc<dyn ApplyObserver>) -> Self {
+        self.observers.push(observer);
+        self
+    }
+}
+
+/// The account facts the gate reads, with the master key read from `store` (blocking). The key it
+/// hands back is zeroed on drop.
+pub fn read_auth_facts(
+    signed_in: bool,
+    recovery_confirmed: bool,
+    store: &dyn SecureStore,
+) -> AuthFacts {
+    let key = store
+        .get(SecureStoreKey::MasterKey)
+        .map(|key| key.map(Zeroizing::new).is_some());
+    AuthFacts {
+        signed_in,
+        key_verified: matches!(key, Ok(true)),
+        recovery_confirmed,
+        // Locked, denied or failed: the key may be there, the keychain did not answer.
+        keychain_unavailable: key.is_err(),
     }
 }
 
@@ -166,25 +227,24 @@ impl VaultSyncBackend {
 impl SyncBackend for VaultSyncBackend {
     async fn auth_facts(&self) -> AuthFacts {
         let (signed_in, recovery_confirmed) = (self.account)();
-        // The keychain can block on an access prompt: off the async workers, and the key it
-        // hands back is zeroed on drop.
+        // The keychain can block on an access prompt: off the async workers.
         let store = Arc::clone(&self.store);
-        let key = tokio::task::spawn_blocking(move || {
-            store
-                .get(SecureStoreKey::MasterKey)
-                .map(|key| key.map(Zeroizing::new).is_some())
+        tokio::task::spawn_blocking(move || {
+            read_auth_facts(signed_in, recovery_confirmed, store.as_ref())
         })
-        .await;
-        AuthFacts {
+        .await
+        .unwrap_or(AuthFacts {
             signed_in,
-            key_verified: matches!(key, Ok(Ok(true))),
+            key_verified: false,
             recovery_confirmed,
-            // Locked, denied or failed: the key may be there, the keychain did not answer.
-            keychain_unavailable: matches!(key, Ok(Err(_))),
-        }
+            keychain_unavailable: false,
+        })
     }
 
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         let vault = Arc::clone(&self.vault);
         let keys = Arc::clone(&self.keys);
         let held = Arc::clone(&self.guard);
@@ -215,6 +275,10 @@ impl SyncBackend for VaultSyncBackend {
                 Arc::clone(&self.reachability),
                 DriverConfig::desktop(),
                 self.seeds.clone(),
+                observers
+                    .into_iter()
+                    .chain(self.observers.iter().cloned())
+                    .collect(),
             )
             .await
             .inspect_err(|_| self.close())?;

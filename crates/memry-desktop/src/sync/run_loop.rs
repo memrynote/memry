@@ -16,6 +16,7 @@ use tokio::time::Instant;
 
 use super::backend::{SyncBackend, SyncPasses};
 use super::error_category::SyncErrorCategory;
+use super::events::{OnSyncEvent, ProgressEvents};
 use super::gate::{self, AuthFacts, Entitlement, GateDecision, SyncStartGate};
 use super::realtime::SocketEnd;
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
@@ -27,6 +28,8 @@ use crate::shell::power::PowerEvent;
 
 #[path = "run_loop_pass.rs"]
 mod pass;
+#[path = "run_loop_pause.rs"]
+mod paused;
 #[path = "run_loop_realtime.rs"]
 mod realtime;
 
@@ -57,6 +60,7 @@ pub(super) struct Loop {
     gate: Arc<SyncStartGate>,
     db: Db,
     on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    on_event: OnSyncEvent,
     power: Option<broadcast::Receiver<PowerEvent>>,
     keychain_recovered: Option<broadcast::Receiver<()>>,
     telemetry: Option<Arc<crate::telemetry::Service>>,
@@ -73,6 +77,8 @@ pub(super) struct Loop {
     opened: bool,
     decision: GateDecision,
     paused: bool,
+    /// `paused`, for the pass in flight ([`pass::run`]).
+    pause: watch::Sender<bool>,
     online: bool,
     offline_since: Option<i64>,
     running: Option<JoinHandle<Option<PassDone>>>,
@@ -131,6 +137,7 @@ impl Loop {
             gate: parts.gate,
             db: parts.db,
             on_status: parts.on_status,
+            on_event: parts.on_event,
             power: parts.power,
             keychain_recovered: parts.keychain_recovered,
             telemetry: parts.telemetry,
@@ -145,6 +152,7 @@ impl Loop {
             decision: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
             // `run` reads the persisted pause before it handles anything.
             paused: false,
+            pause: watch::Sender::new(false),
             online,
             offline_since: (!online).then(now_ms),
             running: None,
@@ -184,7 +192,10 @@ impl Loop {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut snapshots = tokio::time::interval(SNAPSHOT_TICK);
         match blocking(&self.db, pause::read).await {
-            Ok(paused) => self.paused = paused,
+            Ok(paused) => {
+                self.paused = paused;
+                self.pause.send_replace(paused);
+            }
             Err(error) => tracing::error!(%error, "could not read the sync pause; running"),
         }
         self.reevaluate().await;
@@ -286,15 +297,7 @@ impl Loop {
                 }
             }
             Command::SyncNow(reply) => self.sync_now(reply).await,
-            Command::SetPaused(paused, reply) => {
-                let resume = self.resume_trigger();
-                let outcome = self.set_paused(paused).await;
-                if outcome.is_ok() && !paused {
-                    self.request(resume);
-                    self.ensure_socket();
-                }
-                let _ = reply.send(outcome);
-            }
+            Command::SetPaused(paused, reply) => self.pause_command(paused, reply).await,
             Command::Reachable(reachable) => {
                 let online = reachable != Reachable::Offline;
                 if online != self.online {
@@ -422,10 +425,17 @@ impl Loop {
         let pass = pass::run(
             id,
             trigger,
-            self.driver.clone(),
+            match &self.driver {
+                Some(driver) => pass::PassDriver::Held(Arc::clone(driver)),
+                None => pass::PassDriver::Open {
+                    entitled: self.gate.entitlement() == Entitlement::Entitled,
+                    observers: self.observers(),
+                },
+            },
             Arc::clone(&self.backend),
             self.db.clone(),
-            self.gate.entitlement() == Entitlement::Entitled,
+            self.pause.subscribe(),
+            Arc::new(ProgressEvents(Arc::clone(&self.on_event))),
         );
         let mut stopping = self.stopping.clone();
         self.running = Some(tokio::spawn(async move {
@@ -434,16 +444,6 @@ impl Loop {
                 _ = async { stopping.wait_for(|stop| *stop).await.map(|_| ()) } => None,
             }
         }));
-    }
-
-    /// Ending a clock-skew pause polls the server clock again (a foreground pass), so a clock
-    /// that is still off pauses at once.
-    fn resume_trigger(&self) -> Trigger {
-        if self.skew_paused {
-            Trigger::Foreground
-        } else {
-            Trigger::Explicit
-        }
     }
 
     /// The trailing pass, or an answer for every Sync Now caller nothing will run for.
@@ -456,51 +456,6 @@ impl Loop {
             for (_, reply) in self.waiters.drain(..) {
                 let _ = reply.send(result.clone());
             }
-        }
-    }
-
-    async fn set_paused(&mut self, paused: bool) -> Result<(), StorageError> {
-        let db = self.db.clone();
-        let write = move || db.call_blocking(move |conn| pause::write(conn, paused));
-        tokio::task::spawn_blocking(write)
-            .await
-            .map_err(|error| StorageError::Failed {
-                what: format!("the pause write task failed: {error}"),
-            })??;
-        self.paused = paused;
-        self.skew_paused = false;
-        if let Some(driver) = &self.driver {
-            if paused {
-                driver.pause();
-            } else {
-                driver.resume();
-            }
-        }
-        if paused {
-            self.stop_socket();
-        }
-        Ok(())
-    }
-
-    /// Aborts a running pass, answers whoever waited on it, and forgets the driver and the
-    /// at-rest key. The key goes even with no driver kept: the open that installed it may have
-    /// failed, or its pass was cut before it handed the driver back. A loop that never opened
-    /// one leaves the key alone: another owner may have installed it.
-    fn close_driver(&mut self) {
-        self.stop_socket();
-        if let Some(running) = self.running.take() {
-            running.abort();
-        }
-        for (_, reply) in self.waiters.drain(..) {
-            let _ = reply.send(TriggerSyncResult::blocked(Blocked::Unavailable, None));
-        }
-        self.trailing = None;
-        self.push_at = None;
-        self.engine = None;
-        self.driver = None;
-        self.seen_clock = None;
-        if std::mem::take(&mut self.opened) {
-            self.backend.close();
         }
     }
 

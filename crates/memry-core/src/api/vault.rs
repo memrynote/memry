@@ -44,6 +44,7 @@ use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
 use crate::api::canvas::Canvases;
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::home_pages::HomePages;
 use crate::api::inbox::Inbox;
 use crate::api::journal::Journal;
 use crate::api::notes::Notes;
@@ -88,6 +89,8 @@ pub struct Vault {
 mod tags;
 // The desktop sync driver and the server vault binding (#3534).
 mod sync_driver;
+// The desktop sticky drafts' accessor (Step 31).
+mod sticky;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -197,6 +200,21 @@ impl Vault {
         self.db.clone()
     }
 
+    /// Desktop's bookmark list and lookups (Step 30a). Not part of the FFI
+    /// surface: the Rust desktop shell is its only caller. The writes are on
+    /// [`Vault::notes_writer`], which carries the device identity.
+    #[doc(hidden)]
+    pub fn bookmarks(&self) -> crate::api::bookmarks::Bookmarks {
+        crate::api::bookmarks::Bookmarks::over(self.db.clone())
+    }
+
+    /// Desktop's device-local "recently opened" trail (Step 30a). Not part of
+    /// the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn recently_opened(&self) -> crate::api::recently_opened::RecentlyOpened {
+        crate::api::recently_opened::RecentlyOpened::over(self.db.clone())
+    }
+
     /// Path identity and file state of this vault's files (desktop Step 12).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]
@@ -216,6 +234,13 @@ impl Vault {
     #[doc(hidden)]
     pub fn note_positions(&self) -> crate::api::note_positions::NotePositions {
         crate::api::note_positions::NotePositions::over(self.db.clone())
+    }
+
+    /// Readwise's links and run state (desktop Step 33).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn readwise(&self) -> crate::api::readwise::ReadwiseStore {
+        crate::api::readwise::ReadwiseStore::over(self.db.clone())
     }
 
     /// Outside edits of note files, fed into note bodies (desktop Step 12e).
@@ -381,6 +406,21 @@ impl Vault {
         self.db
             .read_blocking(crate::domain::template_admin::contents)
     }
+
+    /// Every Home board read and write over this vault (Step 30c). Needs the
+    /// keychain for the same reason [`Vault::tasks`] does.
+    pub fn home_pages(&self, store: Arc<dyn SecureStore>) -> Result<HomePages, AuthError> {
+        HomePages::over(self.db.clone(), &store)
+    }
+
+    /// This vault's custom icons, read without a device identity, for desktop's note export.
+    /// Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn custom_icon_list(
+        &self,
+    ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
+        self.db.read_blocking(crate::domain::custom_icons::list)
+    }
 }
 
 #[uniffi::export]
@@ -532,8 +572,9 @@ impl Vault {
         Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
     }
 
-    /// The search sheet's recently opened results, device-local (#4322).
-    pub fn search_recents(&self) -> Arc<SearchRecents> {
-        Arc::new(SearchRecents::over(self.db.clone()))
+    /// The search sheet's recently opened results, device-local (#4322),
+    /// keeping the newest `cap` (iOS 10, desktop 20).
+    pub fn search_recents(&self, cap: u32) -> Arc<SearchRecents> {
+        Arc::new(SearchRecents::over(self.db.clone(), cap))
     }
 }

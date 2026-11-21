@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://m.media-amazon.com/images/I/cover.jpg",
+    "stem": "rw-362b9d5fb1f447a8"
+  },
+  {
+    "url": "https://cdn.example.com/a.png?w=100&h=200",
+    "stem": "rw-80f9f0c2206312ad"
+  },
+  {
+    "url": "https://cdn.example.com/ümläut/😀.png",
+    "stem": "rw-c75be386fc147a75"
+  },
+  {
+    "url": "http://x",
+    "stem": "rw-037ab55168fe8769"
+  },
+  {
+    "url": "",
+    "stem": "rw-e3b0c44298fc1c14"
+  }
+]

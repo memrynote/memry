@@ -11,13 +11,17 @@
  *   node marketing/tutorials/engine/build.mjs <tutorial> --app <checkout> # film another checkout's build
  *   node marketing/tutorials/engine/build.mjs <tutorial> --only youtube  # metadata + thumbnails again
  *
+ * Filming runs on macOS with the test-mode build (pnpm --filter @memry/desktop-tauri build:e2e)
+ * and needs the Screen Recording permission for the terminal (marketing/engine/screen-rec.mjs).
+ *
  * <tutorial> is a folder under marketing/tutorials/ holding narration.json and scenes.mjs.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { query, startApp, stopApp, useApp } from './app.mjs'
+import { checkFails, dryRun } from '../../engine/dry-run.mjs'
+import { appBuild, query, startApp, stopApp, useApp } from './app.mjs'
 import { renderCards } from './card.mjs'
 import { quota } from './eleven.mjs'
 import { encode } from './encode.mjs'
@@ -72,17 +76,22 @@ if (steps.includes('check') || steps.includes('record')) {
   console.log(
     `  filming ${APP} (${execFileSync('git', ['-C', APP, 'log', '-1', '--format=%h %s'], { encoding: 'utf8' }).trim()})`
   )
-  const main = path.join(APP, 'apps/desktop/out/main/index.js')
-  if (!fs.existsSync(main))
-    throw new Error(
-      `No desktop build in ${APP}. Run there: pnpm --filter @memry/desktop exec electron-vite build`
-    )
-  const age = (Date.now() - fs.statSync(main).mtimeMs) / 36e5
+  const { binary, command } = await appBuild()
+  if (!fs.existsSync(binary))
+    throw new Error(`No test-mode build at ${binary}. Run in ${APP}: ${command}`)
+  const age = (Date.now() - fs.statSync(binary).mtimeMs) / 36e5
   const head =
     execFileSync('git', ['-C', APP, 'log', '-1', '--format=%ct'], { encoding: 'utf8' }) * 1000
-  if (fs.statSync(main).mtimeMs < head)
+  if (fs.statSync(binary).mtimeMs < head)
     console.warn(
-      `  warning: desktop build (${age.toFixed(1)} h old) is older than HEAD; rebuild to film the current app`
+      `  warning: the build (${age.toFixed(1)} h old) is older than HEAD; run ${command} to film the current app`
+    )
+  const subset = await dryRun(dir)
+  for (const line of [...subset.notInSubset, ...subset.outside]) console.error(`  ${line}`)
+  if (subset.electronMain) console.error('  electron-main: drives the Electron main process')
+  if (checkFails(subset))
+    throw new Error(
+      'scenes.mjs makes calls the WebDriver page lacks, points outside the film or drives Electron'
     )
   const q = await quota()
   console.log(`  ElevenLabs ${q.tier}: ${q.used}/${q.limit} characters used`)

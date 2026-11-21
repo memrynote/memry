@@ -32,6 +32,7 @@ e2e_commands! {
     os_drag => [e2e_os_drag],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],
+    sticky => [e2e_open_sticky, e2e_tuck_and_open_sticky],
     shell_integrations => [
         e2e_apply_login_item,
         e2e_close_window,
@@ -56,7 +57,12 @@ e2e_commands! {
         e2e_menu_activate,
         e2e_menu_bar_visible
     ],
-    sync => [e2e_set_gate_inputs, e2e_set_network_online],
+    sync => [
+        e2e_bootstrap_sync_device,
+        e2e_restart_sync_runtime,
+        e2e_set_gate_inputs,
+        e2e_set_network_online
+    ],
     updater => [e2e_updater_script, e2e_updater_hook_calls],
     vault_writeback => [
         e2e_app_terminate,

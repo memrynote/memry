@@ -20,7 +20,6 @@ import type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -52,6 +51,7 @@ import type {
   UndoTagTemplateResponse,
   UnlinkedMention
 } from '@memry/contracts/notes-api'
+import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
@@ -60,6 +60,7 @@ import {
   commands,
   events,
   type DefinitionInput,
+  type ExportFailure,
   type FileView,
   type FolderConfigUpdatedEvent,
   type NoteListItemView,
@@ -75,6 +76,7 @@ import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
 import { createLogger } from '../lib/logger'
 import { NotPortedError } from '../lib/not-ported'
+import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
@@ -98,7 +100,6 @@ export type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -254,12 +255,11 @@ function definitionInput(
  * (13l), a note's other names and the tag list of 13q, and the attachment upload of 14f-1
  * (`commands/notes.rs`, `commands/property_definitions.rs`, `commands/folders.rs`,
  * `commands/tags.rs`, `commands/attachments.rs`), and the version history of 14d
- * (`commands/notes_versions.rs`); every other method still goes to `window.api.notes`.
+ * (`commands/notes_versions.rs`), and the files imported into the vault of Step 32h1
+ * (`commands/notes_import.rs`); every other method still goes to `window.api.notes`.
  */
 const ported = {
   create: async (input: NoteCreateInput): Promise<NoteCreateResponse> => {
-    // Step 32 ports it; a create without it would lose what was asked.
-    if (input.plainChecklists) throw new NotPortedError('notes.create({ plainChecklists })')
     try {
       const note = await commands.notesCreate({
         title: input.title,
@@ -270,7 +270,8 @@ const ported = {
         properties: input.properties as Record<string, Value> | undefined,
         template: input.template,
         // Left out, the template's icon; `null`, none.
-        emoji: input.emoji
+        emoji: input.emoji,
+        plainChecklists: input.plainChecklists
       })
       return { success: true, note: toNote(note) }
     } catch (error) {
@@ -330,18 +331,26 @@ const ported = {
       return { ...failure(error), note: null, ...(code && { code }) }
     }
   },
-  // `plainChecklists` is Step 32's; an apply without it would drop what was asked. A failure
-  // answers as Electron's `registerCommand` does.
+  // A failure answers as Electron's `registerCommand` does.
   applyTemplate: async (input: ApplyTemplateInput): Promise<NoteUpdateResponse> => {
-    if (input.plainChecklists) throw new NotPortedError('notes.applyTemplate({ plainChecklists })')
     try {
-      const { noteId, templateId, mode } = input
-      const note = await commands.notesApplyTemplate({ noteId, templateId, mode })
+      const { noteId, templateId, mode, plainChecklists } = input
+      const note = await commands.notesApplyTemplate({ noteId, templateId, mode, plainChecklists })
       return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
     }
   },
+  // A dropped file's staged copy, or a file the import dialog returned; any other path rejects
+  // with `import_path_refused` before a file is read. A refused call rejects, as Electron's
+  // handler threw.
+  importFiles: (
+    sourcePaths: string[],
+    targetFolder?: string,
+    options?: PlainChecklistsOption
+  ): Promise<ImportFilesResponse> =>
+    commands.notesImportFiles({ sourcePaths, targetFolder, options }),
+  showImportDialog: (): Promise<ImportDialogResponse> => commands.notesShowImportDialog(),
   // The block menu's "Move to": the caller removes the blocks from the source only on
   // `success`. A failure answers as Electron's `registerCommand` does; a target whose file its
   // note never took also names its code, so the caller shows its own text, not Rust's English.
@@ -652,6 +661,10 @@ const ported = {
     return response.status === 'saved'
       ? { ok: true as const, ref: response.ref }
       : { ok: false as const, reason: response.reason }
+  },
+  exportHtml: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
+    const { success, path, code, error } = await commands.notesExportHtml(input)
+    return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
   }
 } satisfies Partial<NotesClientAPI>
 
@@ -692,19 +705,39 @@ export type NoteSaveResponse = NoteUpdateResponse &
  */
 export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'target_not_taken' }
 
+/**
+ * `ExportNoteResponse` with why nothing was written (`commands/export.rs`): the export dialog
+ * tells a cancel by `code`, which reads the same in every locale. Tauri only.
+ */
+export type ExportNoteResult = ExportNoteResponse & { code?: ExportFailure }
+
 // Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
 type NotesServiceApi = Omit<
   NotesClientAPI,
-  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
+  | PortedLargeFileMethod
+  | 'update'
+  | 'appendBlocks'
+  | 'exportHtml'
+  | 'getSimilar'
+  | 'getTagSuggestions'
+  | 'cluster'
 > & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
+  exportHtml: (input: ExportNoteInput) => Promise<ExportNoteResult>
 }
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<
   NotesServiceApi,
   PortedNoteMethod
 >(() => window.api.notes, ported)
+
+/** The note's list row, `null` once it is gone; unlike `notesService.get`, it counts no
+ * `note_opened`. Not an Electron method: Electron's listeners were live at once. */
+export async function getNoteListItem(id: string): Promise<NoteListItem | null> {
+  const item = await commands.notesGetListItem(id)
+  return item ? toListItem(item) : null
+}
 
 /**
  * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be
@@ -807,21 +840,30 @@ export function onNoteMoved(
   return subscribeToEvent(events.noteMovedEvent, callback, onListening)
 }
 
-export function onNoteExternalChange(
-  callback: (event: NoteExternalChangeEvent) => void
-): () => void {
-  return window.api.onNoteExternalChange(callback)
-}
-
-/** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
+/**
+ * Something the tag list shows changed (`commands/tags.rs`), or sync pulled a tag definition;
+ * the payload is empty.
+ */
 export function onTagsChanged(callback: () => void, onListening?: () => void): () => void {
-  return subscribeToEvent(events.noteTagsChangedEvent, () => callback(), onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.noteTagsChangedEvent, () => callback(), live),
+    ['tag_definition'],
+    () => callback(),
+    onListening
+  )
 }
 
-/** Sync changed a folder's settings or removed the folder (`shell/folder_sync.rs`). */
+/** Sync changed a folder's settings or removed the folder; a folder config's id is its path. */
 export function onFolderConfigUpdated(
   callback: (event: FolderConfigUpdatedEvent) => void,
   onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.folderConfigUpdatedEvent, callback, onListening)
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.folderConfigUpdatedEvent, callback, live),
+    ['folder_config'],
+    (items) => {
+      for (const item of items) callback({ path: item.itemId })
+    },
+    onListening
+  )
 }

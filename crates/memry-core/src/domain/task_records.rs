@@ -35,6 +35,7 @@ pub struct TaskRecord {
     pub position: i64,
     pub due_date: Option<String>,
     pub due_time: Option<String>,
+    pub duration_minutes: Option<i64>,
     pub start_date: Option<String>,
     /// The raw `repeatConfig` JSON, verbatim (`None` for absent or null).
     pub repeat_config: Option<Value>,
@@ -45,6 +46,8 @@ pub struct TaskRecord {
     pub tags: Vec<String>,
     pub linked_note_ids: Vec<String>,
     pub linked_canvas_ids: Vec<String>,
+    /// The plain values of the stored `fields` map (`plainVersionedMap`).
+    pub fields: Map<String, Value>,
     pub created_at: Option<String>,
     pub modified_at: Option<String>,
     /// Resolved status type within the task's own project; `None` when the
@@ -133,6 +136,47 @@ pub fn all(conn: &Connection) -> Result<Vec<TaskRecord>, StorageError> {
         tasks.push(record(&id, &payload, &status_types)?);
     }
     Ok(tasks)
+}
+
+/// The live tasks among `ids`, in `ids` order; an id that is not a live task
+/// is skipped. One query for the rows, one for the statuses.
+pub fn by_ids(conn: &Connection, ids: &[String]) -> Result<Vec<TaskRecord>, StorageError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let status_types = status_types(conn)?;
+    let wanted = serde_json::to_string(ids).map_err(|error| StorageError::Failed {
+        what: format!("task ids will not encode: {error}"),
+    })?;
+    let mut statement = conn
+        .prepare(
+            "SELECT s.item_id, s.payload
+               FROM sync_items s
+               JOIN tasks t ON t.id = s.item_id
+              WHERE s.item_type = 'task'
+                AND s.item_id IN (SELECT value FROM json_each(?1))
+                AND s.deleted_at IS NULL
+                AND t.deleted_at IS NULL
+                AND s.payload IS NOT NULL",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![wanted], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(failed)?;
+    let mut found = HashMap::new();
+    for row in rows {
+        let (id, payload) = row.map_err(failed)?;
+        found.insert(id, payload);
+    }
+    ids.iter()
+        .filter_map(|id| {
+            found
+                .get(id)
+                .map(|payload| record(id, payload, &status_types))
+        })
+        .collect()
 }
 
 /// A live task's tags as stored, and the names of its fields that hold a value: a value removed
@@ -272,6 +316,7 @@ fn record(
         position: object.get("position").and_then(Value::as_i64).unwrap_or(0),
         due_date: string(&object, "dueDate"),
         due_time: string(&object, "dueTime"),
+        duration_minutes: object.get("durationMinutes").and_then(Value::as_i64),
         start_date: string(&object, "startDate"),
         repeat_config: object.get("repeatConfig").filter(|v| !v.is_null()).cloned(),
         repeat_from: string(&object, "repeatFrom"),
@@ -281,6 +326,7 @@ fn record(
         tags: strings(&object, "tags"),
         linked_note_ids: strings(&object, "linkedNoteIds"),
         linked_canvas_ids: strings(&object, "linkedCanvasIds"),
+        fields: versioned::plain(object.get("fields")),
         created_at: timestamp(&object, "createdAt"),
         modified_at: timestamp(&object, "modifiedAt"),
         status_type,
