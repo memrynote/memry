@@ -4539,8 +4539,10 @@ name = "memrynote-cli"
 version = "0.0.0"
 dependencies = [
  "libc",
+ "memry-core",
  "memry-desktop",
  "regex",
+ "rusqlite",
  "serde_json",
  "tempfile",
  "windows-sys 0.61.2",
