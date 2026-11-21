@@ -13,6 +13,7 @@
   },
   "scripts": {
     "sandbox": "node bin/sandbox.mjs",
+    "sandbox:export-template": "node bin/sandbox.mjs export-template",
     "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts src/app-core/*.test.ts src/sandbox/*.test.ts",
     "typecheck": "node ../../scripts/typecheck.mjs"
   },

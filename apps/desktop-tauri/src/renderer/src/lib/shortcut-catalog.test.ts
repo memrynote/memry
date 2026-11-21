@@ -123,9 +123,8 @@ describe('shortcut-catalog', () => {
 
     it('formats multiple modifiers', () => {
       const binding: ShortcutBinding = { key: 't', modifiers: { meta: true, shift: true } }
-      const result = formatBinding(binding)
-      expect(result).toContain('Shift')
-      expect(result).toMatch(/T$/)
+      // jsdom is not macOS; editor-shortcut-labels.test.ts covers the macOS keycaps.
+      expect(formatBinding(binding)).toBe('Ctrl+Shift+T')
     })
 
     it('formats special keys', () => {

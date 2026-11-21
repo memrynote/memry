@@ -11,6 +11,14 @@ use super::{ATTACHMENTS_DIR, Locks, SCOPE};
 use crate::vault::note_file::read_note;
 use crate::vault::paths::open_vault_file;
 
+#[cfg(test)]
+thread_local! {
+    /// Runs on the reconciling thread between the read of a locked note's file and the write of
+    /// its baseline: a test records a newer baseline there, as the write-back does.
+    static BASELINE_READ: std::cell::RefCell<Option<Box<dyn FnMut()>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
 impl Locks<'_> {
     /// Every locked file read-only, every locked markdown note with a baseline, every note that
     /// lost its lock writable again with its baseline dropped, and every recorded file no lock
@@ -59,12 +67,23 @@ impl Locks<'_> {
     }
 
     /// `protectNoteFile`: read-only with the files of its attachments folder, and its text as
-    /// the baseline when it is a markdown note that has none.
+    /// the baseline when it is a markdown note that has none. Runs off the write-back's thread
+    /// (a pulled lock), so a baseline the write-back records between the check and the write
+    /// holds newer text and stays: the write only inserts.
     fn protect_note_file(&self, note_id: &str, rel: &str) -> Result<(), StorageError> {
         let store = self.vault.locks();
         if rel.ends_with(".md") && store.baseline(note_id)?.is_none() {
-            match read_note(self.root, rel) {
-                Ok(Some(file)) => store.write_baseline(note_id, &file.raw, &file.hash)?,
+            let read = read_note(self.root, rel);
+            #[cfg(test)]
+            BASELINE_READ.with_borrow_mut(|hook| {
+                if let Some(run) = hook {
+                    run();
+                }
+            });
+            match read {
+                Ok(Some(file)) => {
+                    store.insert_baseline(note_id, &file.raw, &file.hash)?;
+                }
                 Ok(None) => {}
                 // Outside the vault, not UTF-8, too large: no text to restore, and an outside
                 // edit of it then becomes the baseline.
@@ -161,4 +180,47 @@ pub(super) fn files_under(root: &Path, folder: &str) -> Vec<String> {
         }
     }
     found
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use memry_core::api::vault::Vault;
+    use memry_core::storage::OpenOptions;
+
+    use super::*;
+    use crate::vault::hash::content_hash;
+
+    /// A pulled lock's reconcile reads the older file, the write-back then writes the pulled text
+    /// through the lock and records it, and only then does the reconcile write: the newer
+    /// baseline stays, so a later outside edit is reverted to the pulled text. Red with the
+    /// baseline written over (`write_baseline`): the older text comes back.
+    #[test]
+    fn a_baseline_the_write_back_records_while_the_reconcile_reads_is_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("vault");
+        let core = root.join(".memry/core");
+        fs::create_dir_all(&core).unwrap();
+        fs::write(root.join("n.md"), "older\n").unwrap();
+        let vault = Arc::new(
+            Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
+        );
+        let writer = vault.clone();
+        BASELINE_READ.set(Some(Box::new(move || {
+            let newer = "newer\n";
+            writer
+                .locks()
+                .write_baseline("n1", newer, &content_hash(newer))
+                .unwrap();
+        })));
+
+        Locks::new(&root, &vault)
+            .protect_note_file("n1", "n.md")
+            .unwrap();
+        BASELINE_READ.set(None);
+
+        let kept = vault.locks().baseline("n1").unwrap().expect("a baseline");
+        assert_eq!(kept.content, "newer\n");
+    }
 }

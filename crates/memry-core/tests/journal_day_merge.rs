@@ -17,7 +17,7 @@ use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::update_log;
 use memry_core::domain::journal;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
@@ -51,6 +51,11 @@ struct ScriptedCipher(Mutex<Vec<(String, String)>>);
 
 impl RecordCipher for ScriptedCipher {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         self.0
             .lock()
             .unwrap()
@@ -485,7 +490,8 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
 }
 
 /// Applies typed journal tombstones through the real pull loop.
-async fn pull_tombstones(db: &Db, ids: &[&str]) {
+/// `live` is how many of `ids` hold a live row here: the rest count as skipped (S17-5).
+async fn pull_tombstones(db: &Db, ids: &[&str], live: usize) {
     let refs: Vec<Json> = ids
         .iter()
         .map(|id| json!({"id": id, "type": "journal"}))
@@ -515,7 +521,7 @@ async fn pull_tombstones(db: &Db, ids: &[&str]) {
     .pull_page()
     .await
     .expect("the page");
-    assert_eq!(report.deleted, ids.len());
+    assert_eq!((report.deleted, report.skipped), (live, ids.len() - live));
 }
 
 #[tokio::test]
@@ -531,7 +537,7 @@ async fn a_foreign_id_another_device_already_deleted_is_not_pulled_and_settles_w
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 0).await;
 
     // The deleting device merged the server body: nothing is fetched (an
     // empty script fails any request), and nothing held here is left.
@@ -569,7 +575,7 @@ async fn a_tombstone_for_a_live_foreign_row_keeps_its_unpushed_edits_for_the_mer
     .unwrap();
 
     // Another device merged FOREIGN and deleted it before this device did.
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 1).await;
     db.call_blocking(|conn| {
         assert_eq!(text_of(conn, FOREIGN), "unpushed", "not purged");
         assert_eq!(
@@ -612,7 +618,7 @@ async fn a_deleted_day_is_not_recreated_and_the_foreign_id_stays_live() {
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[CANONICAL]).await;
+    pull_tombstones(&db, &[CANONICAL], 1).await;
     db.call_blocking(|conn| {
         let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
         assert_eq!(
@@ -756,7 +762,7 @@ async fn a_foreign_id_deleted_elsewhere_is_not_built_from_its_text_again() {
         Ok(())
     })
     .unwrap();
-    pull_tombstones(&db, &[FOREIGN]).await;
+    pull_tombstones(&db, &[FOREIGN], 0).await;
 
     let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
         .await

@@ -7,9 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
+#[cfg(unix)]
+use memry_desktop::import::noteplan::{ALREADY_WALKED, LINK_NOT_FOLLOWED, RESERVED_NAME};
 use memry_desktop::import::noteplan::{
-    ALREADY_WALKED, LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, NotePlanImporter, RESERVED_NAME, TOO_DEEP,
-    convert_body, first_heading, lines_scanned, task_placeholder,
+    MAX_FOLDER_DEPTH, NotePlanImporter, TOO_DEEP, convert_body, first_heading, lines_scanned,
+    task_placeholder,
 };
 use memry_desktop::import::{ImportContext, ImportInput, ImportSummary, Importer, JournalEntry};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
@@ -448,6 +450,9 @@ fn folders_past_the_depth_cap_are_refused_and_reported() {
     assert_eq!(skipped_for(&summary, TOO_DEEP), 1);
 }
 
+// Windows cannot create a folder named CON or lpt1.old through Win32 paths (os error 267), so the
+// fixture exists only on unix filesystems, where such a folder can arrive from a synced copy.
+#[cfg(unix)]
 #[test]
 fn a_folder_with_a_windows_device_name_is_refused() {
     let dir = tempfile::tempdir().unwrap();

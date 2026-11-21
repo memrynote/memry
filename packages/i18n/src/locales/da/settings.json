@@ -1398,6 +1398,7 @@
       "selectModel": "Vælg en model",
       "apiKey": "API-nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
+      "apiKeyKeychainDescription": "Gemmes i systemets nøglering, sendes kun til udbyderen",
       "apiKeyPlaceholder": "Indtast API-nøgle til {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Forrige boks",
           "description": "Gå til forrige boks i sidebjælken"
+        },
+        "todayJournal": {
+          "label": "Dagens dagbog",
+          "description": "Åbn dagbogen på dagens indlæg"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "Denne enheds nøgler er gendannet, men denne boks er endnu ikke sat til at synkronisere med din konto. Vælg, hvordan den skal synkroniseres, fra synkroniseringsmenuen.",
         "vault-foreign": "Denne enheds nøgler er gendannet, men denne boks tilhører en anden konto. Den forbliver lokal på denne enhed.",
         "entitlement": "Denne enheds nøgler er gendannet, men synkronisering kræver en aktiv Sync-plan.",
-        "unavailable": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Den prøver igen; genstart Memry, hvis den ikke gør."
+        "unavailable": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Den prøver igen; genstart Memry, hvis den ikke gør.",
+        "unavailable-restart": "Denne enheds nøgler er gendannet, men synkroniseringen kunne ikke starte. Genstart Memry; hvis synkroniseringen stadig ikke starter, så log ud og log ind igen."
       }
     },
     "pagesSettingsAiInlineSection": {

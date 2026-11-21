@@ -2069,6 +2069,8 @@ public protocol CanvasesProtocol: AnyObject, Sendable {
     
     /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     * A scene over the sync cap is saved here and held back from sync, and
+     * the record names its size (`sync_held_bytes`).
      */
     func setScene(id: String, scene: String) throws  -> CanvasRecord
     
@@ -2160,6 +2162,8 @@ open func create(title: String?, ownerNoteId: String?, scene: String?)throws  ->
     
     /**
      * Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+     * A scene over the sync cap is saved here and held back from sync, and
+     * the record names its size (`sync_held_bytes`).
      */
 open func setScene(id: String, scene: String)throws  -> CanvasRecord  {
     return try  FfiConverterTypeCanvasRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -12777,6 +12781,13 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [CalendarCaldavObject], removed: [String], full: Bool, cursor: String?, zones: CalendarFeedZones) throws  -> UInt32
     
     /**
+     * The objects of one CalDAV calendar Memry items are bound to, with
+     * the ETag each binding holds. A pull checks those it did not see
+     * against the server's listing: bound objects have no mirror rows.
+     */
+    func caldavBoundObjects(calendarUrl: String) throws  -> [CalendarCaldavEtag]
+    
+    /**
      * `connectCaldavAccount` after discovery. Returns the account id.
      */
     func caldavConnect(input: CalendarCaldavConnect) throws  -> String
@@ -12808,9 +12819,11 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A push landed: the binding records the remote (`body` is what was
-     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     * sent; CalDAV keeps it as `caldavRaw`). `queued_at` is the item's
+     * `CalendarPushItem.queued_at`: the item leaves the queue only if no
+     * change was queued since, so an edit made during the request stays.
      */
-    func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
+    func pushDone(sourceType: String, sourceId: String, queuedAt: Int64, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones) throws 
     
     /**
      * A push failed; the item stays queued with the reason.
@@ -12843,7 +12856,8 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
     func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
     
@@ -13134,6 +13148,21 @@ open func caldavApplyPull(sourceId: String, calendarUrl: String, objects: [Calen
 }
     
     /**
+     * The objects of one CalDAV calendar Memry items are bound to, with
+     * the ETag each binding holds. A pull checks those it did not see
+     * against the server's listing: bound objects have no mirror rows.
+     */
+open func caldavBoundObjects(calendarUrl: String)throws  -> [CalendarCaldavEtag]  {
+    return try  FfiConverterSequenceTypeCalendarCaldavEtag.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vaultcalendar_caldav_bound_objects(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(calendarUrl),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * `connectCaldavAccount` after discovery. Returns the account id.
      */
 open func caldavConnect(input: CalendarCaldavConnect)throws  -> String  {
@@ -13227,14 +13256,17 @@ open func pushDeleted(sourceType: String, sourceId: String, bindingId: String)th
     
     /**
      * A push landed: the binding records the remote (`body` is what was
-     * sent; CalDAV keeps it as `caldavRaw`), the item leaves the queue.
+     * sent; CalDAV keeps it as `caldavRaw`). `queued_at` is the item's
+     * `CalendarPushItem.queued_at`: the item leaves the queue only if no
+     * change was queued since, so an edit made during the request stays.
      */
-open func pushDone(sourceType: String, sourceId: String, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func pushDone(sourceType: String, sourceId: String, queuedAt: Int64, provider: String, calendarId: String, remoteEventId: String, etag: String?, body: String?, zones: CalendarFeedZones)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vaultcalendar_push_done(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(sourceType),
         FfiConverterString.lower(sourceId),
+        FfiConverterInt64.lower(queuedAt),
         FfiConverterString.lower(provider),
         FfiConverterString.lower(calendarId),
         FfiConverterString.lower(remoteEventId),
@@ -13320,7 +13352,8 @@ open func feedRecordError(sourceId: String, code: String)throws   {try rustCallW
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
 open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
     return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -15860,6 +15893,63 @@ public func FfiConverterTypeCalendarCaldavConnect_lower(_ value: CalendarCaldavC
 
 
 /**
+ * An object of a CalDAV calendar and its ETag.
+ */
+public struct CalendarCaldavEtag: Equatable, Hashable {
+    public var href: String
+    public var etag: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(href: String, etag: String?) {
+        self.href = href
+        self.etag = etag
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CalendarCaldavEtag: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCalendarCaldavEtag: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CalendarCaldavEtag {
+        return
+            try CalendarCaldavEtag(
+                href: FfiConverterString.read(from: &buf), 
+                etag: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CalendarCaldavEtag, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.href, into: &buf)
+        FfiConverterOptionString.write(value.etag, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavEtag_lift(_ buf: RustBuffer) throws -> CalendarCaldavEtag {
+    return try FfiConverterTypeCalendarCaldavEtag.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCalendarCaldavEtag_lower(_ value: CalendarCaldavEtag) -> RustBuffer {
+    return FfiConverterTypeCalendarCaldavEtag.lower(value)
+}
+
+
+/**
  * A CalDAV object as the server answered it.
  */
 public struct CalendarCaldavObject: Equatable, Hashable {
@@ -17119,13 +17209,21 @@ public struct CalendarPushItem: Equatable, Hashable {
     public var sourceType: String
     public var sourceId: String
     public var attempts: Int64
+    /**
+     * When the change was queued; `push_done` takes it back.
+     */
+    public var queuedAt: Int64
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(sourceType: String, sourceId: String, attempts: Int64) {
+    public init(sourceType: String, sourceId: String, attempts: Int64, 
+        /**
+         * When the change was queued; `push_done` takes it back.
+         */queuedAt: Int64) {
         self.sourceType = sourceType
         self.sourceId = sourceId
         self.attempts = attempts
+        self.queuedAt = queuedAt
     }
 
     
@@ -17146,7 +17244,8 @@ public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
             try CalendarPushItem(
                 sourceType: FfiConverterString.read(from: &buf), 
                 sourceId: FfiConverterString.read(from: &buf), 
-                attempts: FfiConverterInt64.read(from: &buf)
+                attempts: FfiConverterInt64.read(from: &buf), 
+                queuedAt: FfiConverterInt64.read(from: &buf)
         )
     }
 
@@ -17154,6 +17253,7 @@ public struct FfiConverterTypeCalendarPushItem: FfiConverterRustBuffer {
         FfiConverterString.write(value.sourceType, into: &buf)
         FfiConverterString.write(value.sourceId, into: &buf)
         FfiConverterInt64.write(value.attempts, into: &buf)
+        FfiConverterInt64.write(value.queuedAt, into: &buf)
     }
 }
 
@@ -17649,6 +17749,12 @@ public struct CanvasRecord: Equatable, Hashable {
      * Excalidraw JSON in desktop's canonical form.
      */
     public var scene: String
+    /**
+     * The scene's size in bytes when it is over the sync cap: the canvas is
+     * saved on this device and held back from sync until it shrinks. `nil`
+     * when it syncs.
+     */
+    public var syncHeldBytes: UInt64?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -17658,11 +17764,17 @@ public struct CanvasRecord: Equatable, Hashable {
          */ownerNoteId: String?, 
         /**
          * Excalidraw JSON in desktop's canonical form.
-         */scene: String) {
+         */scene: String, 
+        /**
+         * The scene's size in bytes when it is over the sync cap: the canvas is
+         * saved on this device and held back from sync until it shrinks. `nil`
+         * when it syncs.
+         */syncHeldBytes: UInt64? = nil) {
         self.id = id
         self.title = title
         self.ownerNoteId = ownerNoteId
         self.scene = scene
+        self.syncHeldBytes = syncHeldBytes
     }
 
     
@@ -17684,7 +17796,8 @@ public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 title: FfiConverterOptionString.read(from: &buf), 
                 ownerNoteId: FfiConverterOptionString.read(from: &buf), 
-                scene: FfiConverterString.read(from: &buf)
+                scene: FfiConverterString.read(from: &buf), 
+                syncHeldBytes: FfiConverterOptionUInt64.read(from: &buf)
         )
     }
 
@@ -17693,6 +17806,7 @@ public struct FfiConverterTypeCanvasRecord: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.title, into: &buf)
         FfiConverterOptionString.write(value.ownerNoteId, into: &buf)
         FfiConverterString.write(value.scene, into: &buf)
+        FfiConverterOptionUInt64.write(value.syncHeldBytes, into: &buf)
     }
 }
 
@@ -34290,6 +34404,31 @@ fileprivate struct FfiConverterSequenceTypeCalendarCaldavCalendar: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeCalendarCaldavEtag: FfiConverterRustBuffer {
+    typealias SwiftType = [CalendarCaldavEtag]
+
+    public static func write(_ value: [CalendarCaldavEtag], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCalendarCaldavEtag.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CalendarCaldavEtag] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CalendarCaldavEtag]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCalendarCaldavEtag.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCalendarCaldavObject: FfiConverterRustBuffer {
     typealias SwiftType = [CalendarCaldavObject]
 
@@ -36948,6 +37087,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_apply_pull() != 4511) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_bound_objects() != 1815) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultcalendar_caldav_connect() != 9130) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36969,7 +37111,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_push_deleted() != 35928) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 60085) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_push_done() != 57825) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_push_failed() != 26185) {
@@ -36987,7 +37129,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 25321) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
@@ -37014,7 +37156,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_canvases_create() != 12599) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 42908) {
+    if (uniffi_memry_core_checksum_method_canvases_set_scene() != 52976) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_archived() != 44138) {

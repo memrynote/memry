@@ -4,7 +4,13 @@ import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
 import { memryPwInstall, INSTALL_SCRIPT } from './pw-compat/in-page.mjs'
-import { keyToCodepoint, parseKeyCombo, pressActions, typeActions } from './pw-compat/keys.ts'
+import {
+  heldFlags,
+  keyToCodepoint,
+  parseKeyCombo,
+  pressActions,
+  typeActions
+} from './pw-compat/keys.ts'
 import { describeSpec, rootSpec, specs } from './pw-compat/selector-spec.ts'
 
 // ---- keys -------------------------------------------------------------------------------------
@@ -26,6 +32,16 @@ test('ControlOrMeta follows the platform', () => {
   assert.equal(keyToCodepoint('ControlOrMeta', 'darwin'), '\uE03D')
   assert.equal(keyToCodepoint('ControlOrMeta', 'win32'), '\uE009')
   assert.equal(keyToCodepoint('ControlOrMeta', 'linux'), '\uE009')
+})
+
+test('a click holds the flags of its modifier keys, ControlOrMeta by platform', () => {
+  const none = { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }
+  assert.deepEqual(heldFlags(['ControlOrMeta'], 'darwin'), { ...none, metaKey: true })
+  assert.deepEqual(heldFlags(['ControlOrMeta', 'Shift'], 'linux'), {
+    ...none,
+    ctrlKey: true,
+    shiftKey: true
+  })
 })
 
 test('key combos split on plus, and a lone plus is the plus key', () => {
@@ -358,28 +374,30 @@ test('a hover reaches its target when the real pointer moved over another elemen
   assert.deepEqual(overs, ['parked', 'target'])
 })
 
+/** Blink moves the focus but fires no focus events while its window is in the background. */
+function holdFocusEvents(win) {
+  const held = (event) => event.stopImmediatePropagation()
+  for (const method of ['focus', 'blur']) {
+    const native = win.HTMLElement.prototype[method]
+    win.HTMLElement.prototype[method] = function () {
+      for (const type of ['focus', 'focusin', 'blur', 'focusout'])
+        win.addEventListener(type, held, true)
+      try {
+        native.call(this)
+      } finally {
+        for (const type of ['focus', 'focusin', 'blur', 'focusout'])
+          win.removeEventListener(type, held, true)
+      }
+    }
+  }
+}
+
 for (const windowFocused of [true, false]) {
   test(`fill and blur fire one focusin and one focusout ${windowFocused ? 'in a focused window' : 'when the window lacks system focus'}`, () => {
     const { dom, pw } = page('<form id="f"><input id="key"></form>')
     const { fill, focus, blur } = pw
     const win = dom.window
-    if (!windowFocused) {
-      // Blink moves the focus but fires no focus events while its window is in the background.
-      const held = (event) => event.stopImmediatePropagation()
-      for (const method of ['focus', 'blur']) {
-        const native = win.HTMLElement.prototype[method]
-        win.HTMLElement.prototype[method] = function () {
-          for (const type of ['focus', 'focusin', 'blur', 'focusout'])
-            win.addEventListener(type, held, true)
-          try {
-            native.call(this)
-          } finally {
-            for (const type of ['focus', 'focusin', 'blur', 'focusout'])
-              win.removeEventListener(type, held, true)
-          }
-        }
-      }
-    }
+    if (!windowFocused) holdFocusEvents(win)
     const events = []
     const form = win.document.getElementById('f')
     for (const type of ['focusin', 'focusout']) form.addEventListener(type, () => events.push(type))
@@ -393,3 +411,52 @@ for (const windowFocused of [true, false]) {
     assert.deepEqual(events, ['focusin', 'focusout'])
   })
 }
+
+for (const windowFocused of [true, false]) {
+  test(`a click gives its target one focusin and drops it with one focusout ${windowFocused ? 'in a focused window' : 'when the window lacks system focus'}`, async () => {
+    // The driver's clicks are synthetic, so the page's own `focus()` is all that moves focus: a
+    // field that opens its list `onFocus` stays shut in an app window the OS did not focus (#3967).
+    const { dom, pw } = page('<input id="field"><p id="text">Not focusable</p>')
+    const win = dom.window
+    const doc = win.document
+    if (!windowFocused) holdFocusEvents(win)
+    const events = []
+    for (const type of ['focusin', 'focusout'])
+      doc.addEventListener(type, (event) => events.push(`${type} ${event.target.id}`))
+    const click = async (target) => {
+      doc.elementFromPoint = () => target
+      pw.watch()
+      const init = { bubbles: true, cancelable: true, button: 0 }
+      target.dispatchEvent(new win.MouseEvent('mousedown', init))
+      await Promise.resolve()
+      for (const type of ['mouseup', 'click']) target.dispatchEvent(new win.MouseEvent(type, init))
+      pw.fixup(10, 10, 0, 1)
+    }
+
+    await click(doc.getElementById('field'))
+    assert.deepEqual(events, ['focusin field'])
+    await click(doc.getElementById('text'))
+    assert.deepEqual(events, ['focusin field', 'focusout field'])
+  })
+}
+
+// tauri-plugin-wdio-webdriver 1.5.0 sends its synthetic clicks without the held modifiers.
+test('a held modifier reaches the page on the driver click that lacked it, once', () => {
+  const { dom, pw } = page('<button id="b">Tag</button>')
+  const seen = []
+  const button = dom.window.document.getElementById('b')
+  button.addEventListener('click', (event) => seen.push([event.metaKey, event.ctrlKey]))
+  const click = () =>
+    button.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
+
+  pw.hold({ metaKey: true, ctrlKey: false, shiftKey: false, altKey: false })
+  click()
+  assert.deepEqual(seen, [[true, false]])
+
+  pw.hold(null)
+  click()
+  assert.deepEqual(seen, [
+    [true, false],
+    [false, false]
+  ])
+})

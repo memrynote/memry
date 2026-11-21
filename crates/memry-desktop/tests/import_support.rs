@@ -171,6 +171,10 @@ impl ImportSink for RecordingSink {
         Ok(())
     }
 
+    fn finish(&self) {
+        self.push(json!({ "op": "finish" }));
+    }
+
     /// The generator's `saveBookmark`, with the run's `now` given as `<now>`.
     fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError> {
         if self.fail_bookmark_url.as_deref() == Some(bookmark.source_url.as_str()) {

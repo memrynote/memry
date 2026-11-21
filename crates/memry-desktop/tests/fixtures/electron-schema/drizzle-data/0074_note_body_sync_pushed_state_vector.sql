@@ -1,0 +1,14 @@
+-- The Yjs state vector of every body update the server confirmed from this
+-- device, merged (#3037). A pulled note or journal delete whose tombstone
+-- carries the deleter's `bodyStateVector` keeps the local text when this
+-- vector holds an item the deleter's does not cover (chapter 05 §5.8).
+--
+-- Additive only. One nullable column, no backfill: a row without it reads as
+-- "unknown", and the keep rule decides without it, as it did before.
+--
+-- A downgrade is inert: an older build selects and inserts only its own
+-- columns (Drizzle lists columns explicitly), and its migrator applies nothing
+-- past its own journal.
+--
+-- Hand-written (project switched off the Drizzle generator after 0020).
+ALTER TABLE `note_body_sync` ADD COLUMN `pushed_state_vector` text;

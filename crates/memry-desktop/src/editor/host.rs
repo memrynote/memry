@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin};
 use memry_core::api::vault::Vault;
@@ -64,12 +64,17 @@ struct Doc {
 
 type Docs = Mutex<HashMap<String, Doc>>;
 
+/// When each document a window opened in this vault last took a server update. Bounded by the
+/// documents opened while the vault stays open; it goes with the vault.
+type RemoteUpdates = Mutex<HashMap<String, Instant>>;
+
 /// The open vault, recorded by its open hook.
 #[derive(Clone)]
 struct Served {
     vault: Weak<Vault>,
     path: PathBuf,
     docs: Arc<Docs>,
+    remote: Arc<RemoteUpdates>,
 }
 
 /// The open vault's editor for one call.
@@ -77,6 +82,7 @@ struct Live {
     editor: Arc<Editor>,
     path: PathBuf,
     docs: Arc<Docs>,
+    remote: Arc<RemoteUpdates>,
 }
 
 pub struct EditorHost {
@@ -112,6 +118,7 @@ impl EditorHost {
                     vault: Arc::downgrade(&view.vault),
                     path: canonical(&view.path),
                     docs: Arc::default(),
+                    remote: Arc::default(),
                 });
                 Ok(())
             }),
@@ -239,6 +246,20 @@ impl EditorHost {
         Ok((diff, live.editor.state_vector(note_id)?))
     }
 
+    /// The whole state of `note_id`'s document while a window holds it open, `None` while none
+    /// does: Electron answered `getCrdtDocMarkdown` only for a document an editor had loaded and
+    /// not yet closed (`apps/desktop/src/main/test-hooks.ts:552`). e2e reads only.
+    #[cfg(feature = "e2e")]
+    pub fn open_state(&self, note_id: &str) -> Result<Option<Vec<u8>>, EditorHostError> {
+        // The v1 encoding of the empty state vector (no clients): the diff is everything.
+        const EMPTY_STATE_VECTOR: [u8; 1] = [0];
+        let live = self.live()?;
+        if !live.editor.is_open(note_id) {
+            return Ok(None);
+        }
+        Ok(Some(live.editor.state_diff(note_id, &EMPTY_STATE_VECTOR)?))
+    }
+
     /// The window closed its editor of `note_id`.
     pub fn close(&self, note_id: &str, window_label: &str) {
         if let Ok(live) = self.live() {
@@ -278,6 +299,34 @@ impl EditorHost {
         })
     }
 
+    /// Readwise leaves a note of `vault_path` alone while it is busy (`note-writer.ts:223`
+    /// `isBusy`): a window has it open or closed it within the editor's grace period (its last
+    /// save may still be on the way), or it took a server update less than `within` ago. Busy
+    /// too when `vault_path` is not the vault served (a run that outlived its vault writes
+    /// nothing).
+    pub fn is_busy(&self, vault_path: &Path, note_id: &str, within: Duration) -> bool {
+        self.serving(vault_path).is_none_or(|live| {
+            live.editor.held_lately(note_id) || recent(&live.remote, note_id, within)
+        })
+    }
+
+    /// Whether a document of `vault_path` a window opened took a server update less than
+    /// `within` ago (`wasRecentNetworkUpdate`); true when `vault_path` is not the vault served.
+    /// Departure: Electron's user-started writes (re-import, reset) skip both checks
+    /// (`note-writer.ts:244-245`); here a user-started command still checks this one, so it never
+    /// writes over a server update the note file has not caught up with.
+    pub fn took_remote_update(&self, vault_path: &Path, note_id: &str, within: Duration) -> bool {
+        self.serving(vault_path)
+            .is_none_or(|live| recent(&live.remote, note_id, within))
+    }
+
+    /// The served vault's editor, if `vault_path` is that vault.
+    fn serving(&self, vault_path: &Path) -> Option<Live> {
+        self.live()
+            .ok()
+            .filter(|live| canonical(vault_path) == live.path)
+    }
+
     fn live(&self) -> Result<Live, EditorHostError> {
         let served = lock(&self.served)
             .clone()
@@ -290,6 +339,7 @@ impl EditorHost {
             editor,
             path: served.path,
             docs: served.docs,
+            remote: served.remote,
         })
     }
 
@@ -323,6 +373,7 @@ impl Live {
                     note_id,
                     fan_out(
                         Arc::downgrade(&self.docs),
+                        Arc::downgrade(&self.remote),
                         Arc::downgrade(&self.editor),
                         note_id,
                     ),
@@ -391,14 +442,18 @@ impl Live {
 /// the update. A channel that cannot receive any more is dropped (its window is gone), and with
 /// the last one the listener; the window's close releases its hold. Core runs it on the thread
 /// of any write of the document, so it takes only the subscriber map, which no caller holds
-/// while it writes.
+/// while it writes. A server update is also stamped in `remote`, a leaf of its own.
 fn fan_out(
     docs: Weak<Docs>,
+    remote: Weak<RemoteUpdates>,
     editor: Weak<Editor>,
     note_id: &str,
 ) -> impl Fn(Notice<'_>) + Send + Sync + 'static {
     let note_id = note_id.to_owned();
     move |notice| {
+        if let (Notice::Update(_, Origin::Remote), Some(remote)) = (notice, remote.upgrade()) {
+            lock(&remote).insert(note_id.clone(), Instant::now());
+        }
         let Some(docs) = docs.upgrade() else { return };
         let sender = match notice {
             Notice::Update(_, Origin::Local(holder)) => Some(holder.as_str()),
@@ -442,6 +497,12 @@ fn fan_out(
             editor.unsubscribe(listener);
         }
     }
+}
+
+fn recent(remote: &RemoteUpdates, note_id: &str, within: Duration) -> bool {
+    lock(remote)
+        .get(note_id)
+        .is_some_and(|at| at.elapsed() < within)
 }
 
 /// Waits `period` in short ticks; false once `cancel` is set (the vault closed).

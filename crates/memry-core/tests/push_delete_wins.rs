@@ -7,6 +7,7 @@
 //! | every other refusal leaves the local record live        | §5.7, §5.8: only a definition upsert |
 //! | a user's create is sent as `create` and stays live       | §5.12.3 re-create over a marker    |
 //! | a manifest re-upload refused as deleted is deleted here | §5.8, §5.15: not re-pushed for ever |
+//! | a re-creatable create refused as deleted stays live    | the pulled tombstone deletes it    |
 //! | an edit made while the refused push was in flight stays | the edit is pushed next            |
 
 #[allow(unused_imports)]
@@ -225,6 +226,25 @@ async fn a_manifest_re_upload_refused_as_deleted_is_deleted_here() {
         .expect("the wave");
     assert!(!live(&db, "task"), "the delete wins here too");
     assert!(queued(&db).is_empty());
+}
+
+/// A note, journal or bookmark `create` the server refused as deleted: acked, and left live for
+/// the pull's tombstone, which owns its delete (`delete_keep`, the body purge), as Electron leaves
+/// it (`push-coordinator.ts:428-440`). None is a manifest re-upload (`manifest::REUPLOADED` leaves them
+/// out, #4785), so the re-upload's local delete never reaches them.
+#[tokio::test]
+async fn a_recreatable_re_upload_refused_as_deleted_stays_live() {
+    for item_type in ["note", "journal", "bookmark"] {
+        let db = scratch_db(item_type);
+        queued_row(&db, item_type, outbox::OP_CREATE);
+        let transport = FakeTransport::new(vec![refused("gone", "SYNC_DELETE_WINS")]);
+        push(&db, transport, Arc::new(Operations::default()))
+            .drain_wave()
+            .await
+            .expect("the wave");
+        assert!(live(&db, item_type), "{item_type} is left to the pull");
+        assert!(queued(&db).is_empty(), "{item_type}'s refusal is acked");
+    }
 }
 
 /// Edits `gone` while the first push of its record is in flight and answers `SYNC_DELETE_WINS`;

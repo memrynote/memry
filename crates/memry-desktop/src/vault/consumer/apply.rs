@@ -239,7 +239,12 @@ impl Applier {
             }
         };
         if let Some(file) = &file {
+            // A large file's note claimed after its file shrank queues its record (#4326).
             let large = large_file_class(&file.raw).is_some();
+            if !large && let Err(error) = self.left_large(lane, &note_id, file) {
+                tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
+                return Step::Retry(path.to_owned());
+            }
             record_large_file(lane.files(), &note_id, large);
         }
         // Seeded on `Existing` too: a crash between a create and its seed leaves an empty

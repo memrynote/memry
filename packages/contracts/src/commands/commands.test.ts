@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ShortcutBinding } from '../settings-schemas'
+import { DEFAULT_STICKY_SHORTCUT, type ShortcutBinding } from '../settings-schemas'
 import {
   COMMANDS,
   LEGACY_SHORTCUT_IDS,
@@ -11,6 +11,13 @@ import { LEGACY_SHORTCUTS } from './legacy-shortcuts.fixture'
 import { resolvePlatformBinding, type CommandMeta, type KeyboardSpec } from './types'
 
 const entries = Object.entries(COMMANDS) as [CommandId, CommandMeta][]
+
+/** `[platform, isMac, isLinux]`, the arguments `resolvePlatformBinding` takes. */
+const PLATFORMS = [
+  ['macOS', true, false],
+  ['Windows', false, false],
+  ['Linux', false, true]
+] as const
 
 function chord(binding: ShortcutBinding): string {
   const { meta, ctrl, shift, alt } = binding.modifiers
@@ -64,6 +71,14 @@ describe('COMMANDS', () => {
     }
   })
 
+  it('gives no native menu accelerator a Linux-only binding, which the menu table cannot carry', () => {
+    for (const [id, meta] of entries) {
+      const keyboard = meta.keyboard
+      if (keyboard?.owner !== 'app' || !keyboard.menuAccelerator) continue
+      expect('linux' in keyboard.default, id).toBe(false)
+    }
+  })
+
   it('mirrors exactly the accelerators the native menu shows today', () => {
     const mirrored = entries
       .filter(([, meta]) => meta.keyboard?.owner === 'app' && meta.keyboard.menuAccelerator)
@@ -90,14 +105,50 @@ describe('COMMANDS', () => {
     }
   })
 
-  it.each([true, false])('gives no two app shortcuts the same default chord (mac: %s)', (isMac) => {
-    const owners = new Map<string, string>()
-    for (const [id, meta] of entries) {
-      if (meta.keyboard?.owner !== 'app') continue
-      const key = chord(resolvePlatformBinding(meta.keyboard.default, isMac))
-      expect(owners.get(key), `${id} shares ${key} with ${owners.get(key)}`).toBeUndefined()
-      owners.set(key, id)
+  it.each(PLATFORMS)(
+    'gives no two app shortcuts the same default chord (%s)',
+    (_, isMac, isLinux) => {
+      const owners = new Map<string, string>()
+      for (const [id, meta] of entries) {
+        if (meta.keyboard?.owner !== 'app') continue
+        const key = chord(resolvePlatformBinding(meta.keyboard.default, isMac, isLinux))
+        expect(owners.get(key), `${id} shares ${key} with ${owners.get(key)}`).toBeUndefined()
+        owners.set(key, id)
+      }
     }
+  )
+
+  it.each(PLATFORMS)(
+    'keeps app defaults off the system-wide shortcuts, which the OS takes first (%s)',
+    (_, isMac, isLinux) => {
+      // The sticky's default, and quick capture's fallback (memry-desktop `FALLBACK_ACCELERATOR`).
+      const global = [
+        DEFAULT_STICKY_SHORTCUT,
+        { key: 'Space', modifiers: { meta: true, shift: true } }
+      ]
+      for (const [id, meta] of entries) {
+        if (meta.keyboard?.owner !== 'app') continue
+        const key = chord(resolvePlatformBinding(meta.keyboard.default, isMac, isLinux))
+        expect(global.map(chord), id).not.toContain(key)
+      }
+    }
+  )
+
+  it("gives today's journal ⌥⌘T, Ctrl+Alt+T on Windows, Ctrl+Alt+J on Linux, without AltGr", () => {
+    const journal = COMMANDS['go.journal'].keyboard
+    const optionT = { key: 't', modifiers: { meta: true, alt: true } }
+    expect(resolvePlatformBinding(journal.default, true)).toEqual(optionT)
+    expect(resolvePlatformBinding(journal.default, false)).toEqual(optionT)
+    // GNOME and Ubuntu open a terminal on Ctrl+Alt+T before the app sees it.
+    expect(resolvePlatformBinding(journal.default, false, true)).toEqual({
+      key: 'j',
+      modifiers: { meta: true, alt: true }
+    })
+    expect(journal.skipAltGraph).toBe(true)
+    expect(COMMANDS['tabs.newTab'].keyboard.default).toEqual({
+      key: 't',
+      modifiers: { meta: true }
+    })
   })
 
   it('encodes the guard policies the hooks apply today', () => {
@@ -182,9 +233,18 @@ describe('resolvePlatformBinding', () => {
   const mac: ShortcutBinding = { key: 'ArrowRight', modifiers: { meta: true, ctrl: true } }
   const other: ShortcutBinding = { key: 'ArrowRight', modifiers: { meta: true, alt: true } }
 
+  const linux: ShortcutBinding = { key: 'ArrowRight', modifiers: { meta: true, shift: true } }
+
   it('picks the platform half of a split binding', () => {
     expect(resolvePlatformBinding({ mac, other }, true)).toBe(mac)
     expect(resolvePlatformBinding({ mac, other }, false)).toBe(other)
+  })
+
+  it('takes the Linux binding on Linux only, and `other` there when it has none', () => {
+    expect(resolvePlatformBinding({ mac, other, linux }, false, true)).toBe(linux)
+    expect(resolvePlatformBinding({ mac, other, linux }, false, false)).toBe(other)
+    expect(resolvePlatformBinding({ mac, other, linux }, true, false)).toBe(mac)
+    expect(resolvePlatformBinding({ mac, other }, false, true)).toBe(other)
   })
 
   it('returns a plain binding unchanged', () => {

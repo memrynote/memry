@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Još nema trezora",
       "openVault": "Otvori trezor",
+      "createVault": "Stvori trezor",
+      "openFolderAsVault": "Otvori mapu kao trezor",
       "settings": "Postavke",
       "remove": "Ukloni „",
       "removeVaultTitle": "Ukloniti „{name}” s popisa?",

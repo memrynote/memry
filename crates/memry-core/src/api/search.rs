@@ -48,6 +48,8 @@ mod embeddings;
 mod file_text;
 #[cfg(feature = "markdown")]
 mod fold;
+#[cfg(feature = "markdown")]
+mod folder_view;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]
@@ -59,6 +61,8 @@ mod results;
 mod similarity;
 #[cfg(feature = "markdown")]
 mod tags;
+#[cfg(feature = "vec")]
+mod voice_embeddings;
 
 pub use results::{SearchGroups, SearchResult};
 
@@ -284,6 +288,13 @@ impl Search {
     /// [`note_properties::usage`].
     pub fn property_usage(&self) -> Result<Vec<PropertyUse>, StorageError> {
         self.index.read_blocking(note_properties::usage)
+    }
+
+    /// [`note_properties::values_named`].
+    pub fn property_values(&self, name: &str) -> Result<Vec<(String, String)>, StorageError> {
+        let name = name.to_owned();
+        self.index
+            .read_blocking(move |index| note_properties::values_named(index, &name))
     }
 
     /// [`note_properties::named`].

@@ -48,6 +48,24 @@ pub(super) const FEATURES: &[&str] = &[
 
 pub(super) const JOURNAL: &[&str] = &["defaultTemplate"];
 
+/// The calendar leaves desktop mirrors into settings sync
+/// (`calendar-settings-sync.ts`: `CALENDAR_KEYS`, plus the whole-value
+/// `calendar.defaultWriteTarget`). The two day-panel click fields stay local.
+pub(super) const CALENDAR: &[&str] = &["weekStartDay", "showNotesOnCalendar", "defaultWriteTarget"];
+
+/// `calendar.google.<key>`: desktop's `GOOGLE_KEYS`.
+pub(super) const CALENDAR_GOOGLE: &[&str] = &[
+    "defaultTargetCalendarId",
+    "onboardingCompleted",
+    "promoteConfirmDismissed",
+    "pushEventsToGoogle",
+    "agentReadEventsConsent",
+];
+
+/// `calendar.<provider>.<key>` for every provider but Google and This Mac:
+/// desktop's `PROVIDER_KEYS`, whatever the provider can write.
+pub(super) const CALENDAR_PROVIDER: &[&str] = &["agentReadEventsConsent", "pushEventsToProvider"];
+
 pub(super) const SIDEBAR: &[&str] = &[
     "sectionOrder",
     "railOrder",

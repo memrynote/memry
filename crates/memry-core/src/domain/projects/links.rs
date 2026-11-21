@@ -204,6 +204,73 @@ pub fn set_link_pinned(
     )
 }
 
+/// An inbound `links` array with this device's markdown-note entries the
+/// remote omits put back (chapter 06 §6.7.2). Desktop's `reconcileLinks`
+/// (`project-handler.ts:116-137`) deletes only table-owned rows: a markdown
+/// note's membership is its `project` property, which no inbound project
+/// changes. So a local entry stays, after the remote's, when its item is a
+/// markdown note the remote does not list and whose property still names the
+/// project under one of `names`. `remote` is an array or `null` (a clear) and
+/// comes back unchanged when nothing is kept.
+pub(crate) fn keep_markdown_members(
+    conn: &Connection,
+    names: &[&str],
+    local: Option<&Value>,
+    remote: Value,
+) -> Result<Value, StorageError> {
+    let Some(Value::Array(local)) = local else {
+        return Ok(remote);
+    };
+    let item_id = |entry: &Value| {
+        entry
+            .get("itemId")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+    };
+    let mut entries = remote.as_array().cloned().unwrap_or_default();
+    let listed: Vec<String> = entries.iter().filter_map(item_id).collect();
+    let mut kept = false;
+    for entry in local {
+        let Some(id) = item_id(entry) else {
+            continue;
+        };
+        if !listed.contains(&id)
+            && is_markdown_note(conn, &id)?
+            && note_names_project(conn, &id, names)?
+        {
+            entries.push(entry.clone());
+            kept = true;
+        }
+    }
+    Ok(if kept { Value::Array(entries) } else { remote })
+}
+
+/// Whether a note's `project` property names one of `names`, case folded as
+/// desktop folds them. A note with no stored payload names nothing; one whose
+/// payload will not parse is already flagged corrupt by its own apply.
+fn note_names_project(
+    conn: &Connection,
+    note_id: &str,
+    names: &[&str],
+) -> Result<bool, StorageError> {
+    let Some(raw) = sync_items::load(conn, notes::ITEM_TYPE, note_id)?.and_then(|row| row.payload)
+    else {
+        return Ok(false);
+    };
+    let Ok(note) = StoredPayload::parse(&raw) else {
+        return Ok(false);
+    };
+    let property = note
+        .object()
+        .get("properties")
+        .and_then(|properties| properties.get(PROJECT_PROPERTY_KEY));
+    Ok(project_names(property).iter().any(|listed| {
+        names
+            .iter()
+            .any(|name| listed.to_lowercase() == name.trim().to_lowercase())
+    }))
+}
+
 /// The markdown notes linked to a project (`listMarkdownNoteIdsForProject`),
 /// deduplicated, in `links` order.
 pub(super) fn markdown_note_ids(
@@ -330,7 +397,10 @@ fn names_item(entry: &Value, markdown: bool, item_type: LinkItemType, item_id: &
 }
 
 /// The stored `links` array; absent, `null` and a non-array all read empty.
-fn stored_links(conn: &Connection, project_id: &str) -> Result<Vec<Value>, StorageError> {
+pub(super) fn stored_links(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<Value>, StorageError> {
     let Some(raw) = sync_items::load(conn, ITEM_TYPE, project_id)?.and_then(|row| row.payload)
     else {
         return Ok(Vec::new());
@@ -368,7 +438,7 @@ fn read_link(entry: &Value, project_id: &str) -> Option<ProjectLink> {
 
 /// A live note whose `file_type` is markdown — desktop's `isMarkdownNote`,
 /// keyed off the row and never the caller's `item_type`.
-fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+pub(super) fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
     let file_type: Option<String> = conn
         .query_row(
             "SELECT file_type FROM notes WHERE id = ?1 AND deleted_at IS NULL",

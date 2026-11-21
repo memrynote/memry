@@ -1398,6 +1398,7 @@
       "selectModel": "Selecteer een model",
       "apiKey": "API-sleutel",
       "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de aanbieder",
+      "apiKeyKeychainDescription": "Opgeslagen in de sleutelhanger van je besturingssysteem, alleen verzonden naar de aanbieder",
       "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Vorige kluis",
           "description": "Ga naar de vorige kluis in de zijbalk"
+        },
+        "todayJournal": {
+          "label": "Dagboek van vandaag",
+          "description": "Open het dagboek op het item van vandaag"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "De sleutels van dit apparaat zijn hersteld, maar deze kluis is nog niet ingesteld om met je account te synchroniseren. Kies in het synchronisatiemenu hoe je hem wilt synchroniseren.",
         "vault-foreign": "De sleutels van dit apparaat zijn hersteld, maar deze kluis hoort bij een ander account. Hij blijft lokaal op dit apparaat.",
         "entitlement": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren vereist een actief Sync-abonnement.",
-        "unavailable": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren kon niet starten. Het wordt opnieuw geprobeerd; herstart Memry als dat niet lukt."
+        "unavailable": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren kon niet starten. Het wordt opnieuw geprobeerd; herstart Memry als dat niet lukt.",
+        "unavailable-restart": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren kon niet starten. Herstart Memry; als synchroniseren dan nog steeds niet start, meld je af en weer aan."
       }
     },
     "pagesSettingsAiInlineSection": {
