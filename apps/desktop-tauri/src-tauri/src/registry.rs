@@ -80,6 +80,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::calendar_providers::calendar_connect_provider,
             crate::commands::calendar_providers::calendar_disconnect_provider,
             crate::commands::calendar_providers::calendar_discover_provider_calendars,
+            crate::commands::calendar_providers::calendar_refresh_provider,
             // canvas (the asset and live-canvas commands are not ported yet)
             crate::commands::canvas::canvas_create::<Wry>,
             crate::commands::canvas::canvas_delete::<Wry>,

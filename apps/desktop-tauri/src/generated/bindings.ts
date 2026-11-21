@@ -137,6 +137,12 @@ export const commands = {
 	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
 	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
 	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
+	/**
+	 *  `calendar:refresh-provider` (`caldav-provider.ts:91-115`): the push drain, then with `sourceId`
+	 *  that calendar's pull (its Retry), otherwise every account's (or `accountId`'s). A failure
+	 *  answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
+	 */
+	calendarRefreshProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_refresh_provider", { input }),
 	/**  `canvas:create`. */
 	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
 	/**  `canvas:delete`: the document goes to the OS trash. */
@@ -1782,7 +1788,7 @@ export type CommandError = {
 };
 
 /**  `CaldavConnectErrorCode`. */
-export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices";
+export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices" | "sync_failed";
 
 /**  `ContentType`. */
 export type ContentType = "note" | "journal" | "task" | "inbox";
