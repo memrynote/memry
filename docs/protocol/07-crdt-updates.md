@@ -146,7 +146,7 @@ conforming; neither cap may be exceeded.
 update takes `COALESCE(MAX(sequence_num), 0) + 1` over the **union** of
 `crdt_updates`, `crdt_snapshots` **and** `crdt_sequence_floors` for that document
 (`apps/sync-server/src/services/crdt.ts:143-151`, and the same union in
-`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260` for a snapshot's
+`apps/sync-server/src/services/crdt-snapshot-write.ts:274-282` for a snapshot's
 watermark), so **a snapshot consumes a sequence number in the same space**. The
 floor is the highest sequence number of a body the server purged on delete
 (§7.15), so a re-created document numbers on from its deleted one and sequence
@@ -237,7 +237,7 @@ deliberately unbounded per entry: an oversized payload is a per-note rejection,
 not a malformed batch. Response `{ results: [...] }`, one entry per request
 entry in request order, each `{ noteId, accepted: true, sequenceNum, revision }`
 or `{ noteId, accepted: false, reason }`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:43`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:44`).
 
 `POST /sync/crdt/updates` takes
 `{ noteId: string, updates: string[] }` — the updates being base64 packed
@@ -264,11 +264,11 @@ edit. Rows written before the migration have no hash and are never matched.
 
 **Normative.** A fresh `crypto.randomUUID()` on **every** snapshot write, insert
 and conflict alike, and **never conditional on whether the bytes changed**
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`, applied by the upsert at `:114`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:309`, applied by the upsert at `:135`).
 
 The reason is on record: a revision that fails to move when the blob moves leaves
 a client skipping a snapshot it needed, with a stale body forever
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:300-302`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:322-324`).
 
 Rows written before `revision` existed carry `''` and are coalesced to a
 synthetic `legacy:<id>:<created_at>:<size_bytes>`, so an old snapshot is not
@@ -283,7 +283,7 @@ equality.**
 **Normative.** Once a snapshot exists for a document, a push **without**
 `coversThrough` leaves its `sequence_num` where it is: the upsert reuses
 `existingSnapshot?.sequence_num ?? currentSeq`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:297-299`).
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:319-321`).
 
 The reason is on record: client-uploaded snapshots carry no causal metadata
 proving they already contain every server update above the prior watermark, so
@@ -293,7 +293,7 @@ A push **with** `coversThrough` carries that proof for the rows it covers, so
 it may move the watermark forward, and only over rows it prunes (§7.7.1). The
 watermark **never moves down**: the conflict clause writes
 `MAX(crdt_snapshots.sequence_num, excluded.sequence_num)`
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:114`), so a concurrent push that read an older watermark cannot
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:135`), so a concurrent push that read an older watermark cannot
 lower it under rows another push already pruned.
 
 ## 7.7 Pruning is server-side
@@ -819,9 +819,9 @@ stored snapshot row is server-originated.**
 A client that pushes a snapshot learns the revision it wrote from the push
 response: both snapshot routes carry it (`apps/sync-server/src/routes/sync.ts:1209`
 for the single note, the accepted batch outcome at
-`apps/sync-server/src/services/crdt-snapshot-write.ts:43`), and it is the same token the
+`apps/sync-server/src/services/crdt-snapshot-write.ts:44`), and it is the same token the
 upsert bound, per push rather than per batch
-(`apps/sync-server/src/services/crdt-snapshot-write.ts:287`). **#2187**, resolved as the
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:309`). **#2187**, resolved as the
 additive option: the field is new, so old clients reading these bodies through an
 unvalidated cast ignore it.
 
@@ -868,7 +868,7 @@ and recorded).**
 **Normative (server, #2986).** When the server accepts a `delete` of a `note` or
 `journal` record, it purges that document's body after the commit
 (`purgeDeletedDocumentBodies`,
-`apps/sync-server/src/services/document-body-purge.ts:77-198`, called from push
+`apps/sync-server/src/services/document-body-purge.ts:79-207`, called from push
 Stage 9 in `apps/sync-server/src/services/sync.ts`). In one D1 batch per
 document it records the highest sequence number in `crdt_sequence_floors`
 (§7.4), refunds the stored bytes, and deletes the `crdt_updates` and
@@ -887,6 +887,40 @@ purge failure never fails the push. The 6-hourly cleanup
 (`cleanupDeletedDocumentBodies`, `apps/sync-server/src/services/cleanup.ts`)
 purges the bodies of tombstones written before this rule and of pushes whose
 purge failed.
+
+**Normative (server, #5367): a snapshot of the purged body is refused.** A
+snapshot push encoded before the delete can arrive after the purge, and stored
+it would be the baseline a fresh device takes for a re-created id. The purge
+therefore records the tombstone's feed cursor beside the floor
+(`crdt_sequence_floors.purge_cursor`, migration
+`0026_crdt_purge_cursor.sql`;
+`apps/sync-server/src/services/document-body-purge.ts:115-130`), and the
+snapshot upsert stores nothing, insert or replace, when either holds
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:130-148`):
+
+- the document is dead: a `note` or `journal` record for the id is deleted
+  and none is live, the same check the purge makes;
+- the push claims `coversThrough` (§7.7.1) below the purge cursor. That pusher
+  never read the tombstone, so its state may be the purged body's, even after
+  the id was re-created.
+
+The refusal is the ordinary `409 CRDT_SNAPSHOT_NOT_COVERED` on the single route
+and `{ accepted: false, reason: 'CRDT_SNAPSHOT_NOT_COVERED' }` in a batch, with
+the stored row's `blockingCursor` when one exists. Every shipped client already
+handles it: it keeps its document, owes it a pull, and pushes again later. The
+pull either applies the tombstone, and the document is gone, or reads the feed
+past the purge cursor, so the next claim is accepted. An unclaimed push for a
+live document carries nothing to judge and is stored, so a client that never
+claims is not refused once the id is live again.
+
+Update pushes (`POST /sync/crdt/updates`) are not fenced. A device that revives
+an id pushes its first update before its record (the core sends every CRDT
+row ahead of every record row in a pass), so a live-record check would refuse
+the new body and stall that device's outbox. The server cannot tell an update
+authored on the purged body from one authored on the new body; that needs a
+body generation (#5361). An unclaimed snapshot of the purged body that arrives
+after the re-create, and a purge that ran before migration `0026`, are not
+fenced either.
 
 The reason is the re-create. A journal day's id is `j<date>` on every device
 (chapter 01 §1.9), so a day deleted and written again reuses its id. The
@@ -1036,13 +1070,13 @@ wire.
 (migration `0011_crdt_server_cursor.sql`) drawn from the same per-user
 `server_cursor_sequence` as `sync_items`. The cursor is reserved **inside the
 batch that commits the row** (`apps/sync-server/src/services/crdt.ts:193`,
-`apps/sync-server/src/services/crdt-snapshot-write.ts:337`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
+`apps/sync-server/src/services/crdt-snapshot-write.ts:359`), the rule chapter 05 §5.11 relies on: no reader sees a cursor
 above a row that has not committed. Push requests and responses are unchanged,
 and no push response carries the cursor.
 
 - **A snapshot is re-cursored on every write**, insert and conflict alike, like
   a `sync_items` row: the upsert sets `server_cursor = excluded.server_cursor`
-  (`apps/sync-server/src/services/crdt-snapshot-write.ts:114`). Its `sequence_num` stays
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:135`). Its `sequence_num` stays
   pinned (§7.6). A reader past the old cursor therefore sees the replaced
   snapshot again at its new cursor.
 - **Rows written before migration `0011` have a NULL cursor** and are never in

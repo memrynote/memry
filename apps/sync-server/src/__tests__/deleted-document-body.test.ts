@@ -6,7 +6,7 @@ import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { cleanupDeletedDocumentBodies } from '../services/cleanup'
 import { getSnapshot, getUpdates, storeUpdates } from '../services/crdt'
-import { storeSnapshot } from '../services/crdt-snapshot-write'
+import { storeSnapshot, storeSnapshotBatch } from '../services/crdt-snapshot-write'
 import { purgeDeletedDocumentBodies } from '../services/document-body-purge'
 import { compactOneRange } from '../services/pack-compaction'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
@@ -381,5 +381,87 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
 
     expect(await bodyFromZero(DAY_ID)).toEqual([])
     expect(await cleanupDeletedDocumentBodies(harness.db, storage)).toBe(0)
+  })
+})
+
+// #5367: a snapshot encoded from the deleted body can reach the server after
+// the purge. Stored, it is the re-created day's baseline on a fresh device.
+describe('a snapshot of the purged body is refused (#5367)', () => {
+  const cursorNow = (): number =>
+    (
+      harness.raw
+        .prepare('SELECT current_cursor FROM server_cursor_sequence WHERE user_id = ?')
+        .get(USER_ID) as { current_cursor: number }
+    ).current_cursor
+  const postSnapshot = (app: App, data: ArrayBuffer) =>
+    app.request(
+      '/sync/crdt/snapshot',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noteId: DAY_ID, snapshot: Buffer.from(data).toString('base64') })
+      },
+      env,
+      {
+        waitUntil: () => undefined,
+        passThroughOnException: () => undefined
+      } as unknown as ExecutionContext
+    )
+  const claimed = (data: ArrayBuffer, coversThrough: number) =>
+    storeSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID, DEVICE_ID, data, null, {
+      coversThrough
+    })
+
+  // #5367
+  it('refuses a snapshot for a deleted document with the refusal clients handle', async () => {
+    const app = buildApp()
+    await createDay(app)
+    await writeBody(DAY_ID, bytes(1, 1))
+    await deleteDay(app)
+    const used = storageUsed()
+    const objects = (await storage.list()).objects.map((o) => o.key)
+
+    const res = await postSnapshot(app, bytes(9, 9, 9))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: { code: 'CRDT_SNAPSHOT_NOT_COVERED' } })
+    const [batch] = await storeSnapshotBatch(harness.db, storage, USER_ID, VAULT_ID, DEVICE_ID, [
+      { noteId: DAY_ID, snapshotData: bytes(9, 9, 9) }
+    ])
+    expect(batch).toMatchObject({ accepted: false, reason: 'CRDT_SNAPSHOT_NOT_COVERED' })
+    expect(count('crdt_snapshots')).toBe(0)
+    expect(storageUsed()).toBe(used)
+    expect((await storage.list()).objects.map((o) => o.key)).toEqual(objects)
+
+    await createDay(app, { [DEVICE_ID]: 3 })
+    await writeBody(DAY_ID, bytes(2, 1))
+    expect(await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID)).toBeNull()
+    expect(await bodyFromZero(DAY_ID)).toEqual([[2, 1]])
+
+    // An unclaimed push for the live day is accepted: an older client is not
+    // refused once the record is live again.
+    expect((await postSnapshot(app, bytes(2, 2))).status).toBe(200)
+  })
+
+  // #5367: the push was in flight across the delete, the purge and the revive.
+  it('refuses a claimed snapshot that never read the tombstone, after the revive', async () => {
+    const app = buildApp()
+    await createDay(app)
+    await writeBody(DAY_ID, bytes(1, 1))
+    const beforeDelete = cursorNow()
+    await deleteDay(app)
+    await createDay(app, { [DEVICE_ID]: 3 })
+    await writeBody(DAY_ID, bytes(2, 1))
+
+    await expect(claimed(bytes(9, 9, 9), beforeDelete)).rejects.toMatchObject({
+      code: 'CRDT_SNAPSHOT_NOT_COVERED',
+      statusCode: 409
+    })
+    expect(await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID)).toBeNull()
+    expect(await bodyFromZero(DAY_ID)).toEqual([[2, 1]])
+
+    // A pusher that read the feed past the tombstone is accepted.
+    await expect(claimed(bytes(2, 2), cursorNow())).resolves.toMatchObject({
+      revision: expect.any(String)
+    })
   })
 })
