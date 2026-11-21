@@ -165,6 +165,10 @@ impl Server {
         Self { addr, seen }
     }
 
+    pub fn url(&self) -> String {
+        format!("http://{}", self.addr)
+    }
+
     pub fn client(&self) -> ReadwiseClient {
         let _ = rustls::crypto::ring::default_provider().install_default();
         let http = memry_desktop::http::builder().no_proxy().build().unwrap();
