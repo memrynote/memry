@@ -7,9 +7,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
+#[cfg(unix)]
+use memry_desktop::import::noteplan::{ALREADY_WALKED, LINK_NOT_FOLLOWED};
 use memry_desktop::import::noteplan::{
-    ALREADY_WALKED, LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, NotePlanImporter, RESERVED_NAME, TOO_DEEP,
-    convert_body, first_heading, lines_scanned, task_placeholder,
+    MAX_FOLDER_DEPTH, NotePlanImporter, RESERVED_NAME, TOO_DEEP, convert_body, first_heading,
+    lines_scanned, task_placeholder,
 };
 use memry_desktop::import::{ImportContext, ImportInput, ImportSummary, Importer, JournalEntry};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
