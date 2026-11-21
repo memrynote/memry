@@ -51,7 +51,8 @@ pub fn merge(payload: &str, fields: &str, nested: Option<&str>) -> Result<Merge,
     let Some(extra) = parsed(fields)? else {
         return Ok(Merge::Ignored);
     };
-    let nested = match nested {
+    // `row.nestedFields ? ... : []`: an empty text is no nested fields.
+    let nested = match nested.filter(|text| !text.is_empty()) {
         Some(text) => match parsed(text)? {
             Some(nested) => nested,
             None => return Ok(Merge::Ignored),

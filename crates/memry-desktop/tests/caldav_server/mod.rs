@@ -5,6 +5,7 @@
 //! `Depth` and body, which tell the WebDAV steps apart.
 
 pub mod dav;
+pub mod store;
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -31,6 +32,8 @@ pub struct Seen {
     pub target: String,
     pub depth: Option<String>,
     pub authorization: Option<String>,
+    pub if_match: Option<String>,
+    pub if_none_match: Option<String>,
     pub body: String,
 }
 
@@ -177,6 +180,8 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
             .unwrap_or_default(),
         depth: header(&head, "depth"),
         authorization: header(&head, "authorization"),
+        if_match: header(&head, "if-match"),
+        if_none_match: header(&head, "if-none-match"),
         body: String::from_utf8_lossy(&data[head_end..head_end + length]).into_owned(),
     };
     log.lock().expect("log").push(seen.clone());

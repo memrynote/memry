@@ -15,8 +15,13 @@ const BEFORE_MS: i64 = 400 * DAY_MS;
 const AFTER_MS: i64 = 800 * DAY_MS;
 
 pub(super) fn feed_zones(text: &str, now_ms: i64) -> CalendarFeedZones {
+    named_zones(ical::zone_ids(text), now_ms)
+}
+
+/// The device's zone and each named one jiff knows.
+pub(super) fn named_zones(ids: impl IntoIterator<Item = String>, now_ms: i64) -> CalendarFeedZones {
     let (from, to) = (now_ms - BEFORE_MS, now_ms + AFTER_MS);
-    let named = ical::zone_ids(text)
+    let named = ids
         .into_iter()
         .filter_map(|id| {
             let zone = TimeZone::get(&id).ok()?;

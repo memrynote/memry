@@ -1,4 +1,5 @@
-//! The task events (`tasks:created`, `tasks:updated`), sent after the write committed. They carry
+//! The task events (`tasks:created`, `tasks:updated`, `tasks:deleted`, `tasks:completed`,
+//! `tasks:moved`), sent after the write committed. They carry
 //! the task id only; the renderer refetches.
 
 use serde::Serialize;
@@ -13,6 +14,24 @@ pub struct TaskCreatedEvent {
 /// A task's fields changed (`tasks:updated`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct TaskUpdatedEvent {
+    pub id: String,
+}
+
+/// A task was deleted (`tasks:deleted`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct TaskDeletedEvent {
+    pub id: String,
+}
+
+/// A task was completed (`tasks:completed`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct TaskCompletedEvent {
+    pub id: String,
+}
+
+/// A task changed project, status, parent or position through a move (`tasks:moved`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct TaskMovedEvent {
     pub id: String,
 }
 

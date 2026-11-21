@@ -61,6 +61,8 @@ mod results;
 mod similarity;
 #[cfg(feature = "markdown")]
 mod tags;
+#[cfg(feature = "vec")]
+mod voice_embeddings;
 
 pub use results::{SearchGroups, SearchResult};
 

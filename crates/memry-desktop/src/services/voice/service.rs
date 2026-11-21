@@ -1,7 +1,8 @@
 //! The transcription pipeline of `transcription.ts`: [`VoiceService::transcribe`] runs the engine
 //! the settings pick on audio bytes (`transcribeAudioData`, also dictation's), and
 //! [`VoiceService::on_voice_captured`] transcribes a voice memo's file and writes the outcome onto
-//! the item (`transcribeAudio`), which Step 27 (#3544)'s job runner calls.
+//! the item (`transcribeAudio`), which Step 27 (#3544)'s job runner calls. Either outcome
+//! notifies the voice memo embedding lane (`emitInboxUpdated`, transcription.ts:79-90).
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -28,6 +29,9 @@ pub const MAX_AUDIO_BYTES: usize = if MAX_TRANSCRIBE_BYTES > openai::MAX_BYTES {
 
 /// Where the local engine reports its model load (`VoiceModelProgressEvent`).
 pub type Progress = Arc<dyn Fn(ModelProgress) + Send + Sync>;
+/// Where a memo whose transcription outcome was stored is announced: the app publishes it to the
+/// voice memo embedding lane ([`crate::embedding::voice_projector::notify_voice`]).
+pub type Notify = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// `TranscriptionResult`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -56,14 +60,21 @@ pub struct VoiceService {
     engine: Arc<LocalEngine>,
     key: OpenAiKey,
     openai: OpenAi,
+    notify: Notify,
 }
 
 impl VoiceService {
-    pub fn new(engine: Arc<LocalEngine>, key: OpenAiKey, openai: OpenAi) -> Arc<Self> {
+    pub fn new(
+        engine: Arc<LocalEngine>,
+        key: OpenAiKey,
+        openai: OpenAi,
+        notify: Notify,
+    ) -> Arc<Self> {
         Arc::new(Self {
             engine,
             key,
             openai,
+            notify,
         })
     }
 
@@ -124,7 +135,9 @@ impl VoiceService {
 
     /// `transcribeAudio`: transcribes the memo's file and writes `processing`, then either the
     /// transcript with `complete` and the name `settings.memo_name_mode` gives, or `failed` with
-    /// the reason. `vault` is the root the item's `attachment_path` is relative to.
+    /// the reason. `vault` is the root the item's `attachment_path` is relative to. A stored
+    /// outcome is announced through `notify` whatever `settings.audio_search` says: the lane
+    /// embeds a transcript with the text model regardless, and gates only the audio path.
     pub async fn on_voice_captured(
         self: &Arc<Self>,
         inbox: Arc<Inbox>,
@@ -171,28 +184,26 @@ impl VoiceService {
                 })
                 .await
                 {
-                    // Stage C2 of Step 24 (#3541) queues the memo's audio embedding here when
-                    // `settings.audio_search`.
-                    Ok(()) => TranscriptionResult {
-                        success: true,
-                        transcription: Some(text),
-                        error: None,
-                    },
+                    Ok(()) => {
+                        (self.notify)(&item_id);
+                        TranscriptionResult {
+                            success: true,
+                            transcription: Some(text),
+                            error: None,
+                        }
+                    }
                     Err(error) => TranscriptionResult::failed(error),
                 }
             }
             Err(error) => {
                 tracing::warn!(scope = "Voice", "a voice memo was not transcribed: {error}");
-                let reason = error.clone();
-                if let Err(write_error) = write(&inbox, move |inbox| {
-                    inbox.fail_transcription(item_id, reason)
-                })
-                .await
-                {
-                    tracing::error!(
+                let (id, reason) = (item_id.clone(), error.clone());
+                match write(&inbox, move |inbox| inbox.fail_transcription(id, reason)).await {
+                    Ok(()) => (self.notify)(&item_id),
+                    Err(write_error) => tracing::error!(
                         scope = "Voice",
                         "the transcription failure was not stored: {write_error}"
-                    );
+                    ),
                 }
                 TranscriptionResult::failed(error)
             }

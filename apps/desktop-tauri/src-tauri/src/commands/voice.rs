@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use memry_desktop::embedding::voice_projector::notify_voice;
 use memry_desktop::http;
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::launch_env::LaunchEnv;
@@ -70,9 +71,16 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         app.state::<LaunchEnv>().get(openai::MODEL_VAR),
     );
     let key = OpenAiKey::new(keychain, device.as_deref());
+    // A memo's stored transcription outcome reaches the open vault's voice embedding lane.
+    let announcing = app.clone();
+    let notify = Arc::new(move |item_id: &str| {
+        if let Some(session) = announcing.try_state::<Session>() {
+            notify_voice(&session, item_id.to_owned());
+        }
+    });
     let voice = Arc::new(Voice {
         model,
-        service: VoiceService::new(engine, key, openai),
+        service: VoiceService::new(engine, key, openai, notify),
     });
     let stopping = voice.clone();
     app.state::<ShutdownService>()

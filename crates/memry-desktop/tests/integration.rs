@@ -122,6 +122,8 @@ mod byte_preservation;
 mod calendar_caldav;
 #[path = "calendar_caldav_connect.rs"]
 mod calendar_caldav_connect;
+#[path = "calendar_caldav_sync.rs"]
+mod calendar_caldav_sync;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
 #[path = "calendar_feeds.rs"]
@@ -215,6 +217,8 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_noteplan.rs"]
+mod importer_noteplan;
 #[path = "importer_roam.rs"]
 mod importer_roam;
 #[path = "importer_untrusted.rs"]
@@ -427,6 +431,10 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_reopen.rs"]
+mod task_reopen;
+#[path = "task_writes.rs"]
+mod task_writes;
 #[path = "tasks_service.rs"]
 mod tasks_service;
 #[path = "telemetry_flush.rs"]
@@ -484,10 +492,14 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_embedding_lane.rs"]
+mod voice_embedding_lane;
 #[path = "voice_engine.rs"]
 mod voice_engine;
 #[path = "voice_service.rs"]
 mod voice_service;
+#[path = "web_fetch.rs"]
+mod web_fetch;
 
 #[test]
 fn every_test_file_is_built() {

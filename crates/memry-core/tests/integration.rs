@@ -269,6 +269,8 @@ mod domain_tasks;
 mod domain_tasks_lifecycle;
 #[path = "domain_tasks_list.rs"]
 mod domain_tasks_list;
+#[path = "domain_tasks_reopen.rs"]
+mod domain_tasks_reopen;
 #[path = "domain_tasks_spawn.rs"]
 mod domain_tasks_spawn;
 #[path = "domain_tasks_update.rs"]

@@ -56,6 +56,8 @@ use memry_desktop::readwise::limiter::RequestLimiter;
 mod after;
 #[path = "readwise_run/claim.rs"]
 mod claim;
+#[path = "readwise_run/gate.rs"]
+mod gate;
 
 use editor_window::Window;
 use readwise_server::{Reply, Seen, Server};
