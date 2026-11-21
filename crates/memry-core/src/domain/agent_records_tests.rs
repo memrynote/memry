@@ -1,6 +1,7 @@
 //! [`seal_pending`] on a real `data.db` (Step 16, #3533): the work it skips
 //! and the connection state it hands back.
 
+use crate::domain::agent_queue::Queue;
 use std::time::Duration;
 
 use serde_json::json;
@@ -102,7 +103,7 @@ fn a_title_written_over_a_pending_record_is_sealed_once() {
             title: Some("Renamed"),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, "c1", &patch, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, "c1", &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
         assert_eq!(
             seal_pending(conn, &key, NOW + 2).map_err(storage)?.records,
             0
@@ -131,7 +132,7 @@ fn a_local_title_under_another_key_makes_the_merge_corrupt() {
             backend: "local",
             backend_model: None,
         };
-        let id = create(conn, &earlier, &new, DEVICE, NOW)
+        let id = create(conn, &earlier, &new, Queue::Outbox, DEVICE, NOW)
             .map_err(storage)?
             .id;
         let stored = || sync_items::push_payload(conn, "agent_conversation", &id);

@@ -1,5 +1,6 @@
 //! Native ML of MemryNote: the EmbeddingGemma 2 model of Electron's embedding worker
-//! (`apps/desktop/src/main/lib/embedding-worker.ts`) on an in-process ONNX Runtime.
+//! (`apps/desktop/src/main/lib/embedding-worker.ts`) on an in-process ONNX Runtime, and with the `whisper` feature the whisper.cpp
+//! model of its voice transcription worker (`WhisperEngine`).
 
 mod audio;
 mod audio_prep;
@@ -9,6 +10,8 @@ pub mod image_prep;
 mod runtime;
 mod text;
 mod vision;
+#[cfg(feature = "whisper")]
+mod whisper;
 
 pub use audio_prep::{
     AudioFeatures, MAX_AUDIO_BYTES, MAX_DECODED_SAMPLES, MAX_WINDOWS, MEL_BINS, MIN_SAMPLE_RATE,
@@ -21,6 +24,8 @@ pub use engine::{
 };
 pub use files::{MODEL_REPO, MODEL_REVISION, ModelFile, ModelGroup, model_dir, verify};
 pub use runtime::lower_thread_priority;
+#[cfg(feature = "whisper")]
+pub use whisper::WhisperEngine;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MlError {

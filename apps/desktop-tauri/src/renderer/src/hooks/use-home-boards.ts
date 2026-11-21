@@ -2,6 +2,12 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { HomePage, WidgetInstance } from '@memry/contracts/home-page-api'
 import { trackTelemetry } from '@/lib/telemetry'
+import {
+  homePagesService,
+  onHomePageCreated,
+  onHomePageDeleted,
+  onHomePageUpdated
+} from '@/services/home-pages-service'
 
 const ACTIVE_KEY = 'memry-home-active-board'
 const homeBoardsKey = ['home-boards'] as const
@@ -49,7 +55,7 @@ export function useHomeBoards() {
   const qc = useQueryClient()
   const { data: boards = [], isLoading } = useQuery({
     queryKey: homeBoardsKey,
-    queryFn: () => window.api.homePages.list()
+    queryFn: () => homePagesService.list()
   })
 
   const activeBoardId = useSyncExternalStore(subscribeActiveBoardId, getStoredActiveBoardId)
@@ -63,9 +69,9 @@ export function useHomeBoards() {
       void qc.invalidateQueries({ queryKey: homeBoardsKey })
     }
     const unsubscribers = [
-      window.api.onHomePageCreated(refetch),
-      window.api.onHomePageUpdated(refetch),
-      window.api.onHomePageDeleted(refetch)
+      onHomePageCreated(refetch),
+      onHomePageUpdated(refetch),
+      onHomePageDeleted(refetch)
     ]
     return () => {
       for (const unsubscribe of unsubscribers) unsubscribe()
@@ -74,7 +80,7 @@ export function useHomeBoards() {
 
   const createMut = useMutation({
     mutationFn: (name: string) =>
-      window.api.homePages.create({ name, position: boards.length, widgets: [] }),
+      homePagesService.create({ name, position: boards.length, widgets: [] }),
     onSuccess: () => {
       trackBoardCustomized('create')
       void invalidate()
@@ -83,7 +89,7 @@ export function useHomeBoards() {
 
   const updateMut = useMutation({
     mutationFn: (input: { id: string; name?: string; widgets?: WidgetInstance[] }) =>
-      window.api.homePages.update(input),
+      homePagesService.update(input),
     onSuccess: (_data, input) => {
       trackBoardCustomized(input.widgets ? 'widgets' : 'rename', input.widgets?.length)
       void invalidate()
@@ -91,7 +97,7 @@ export function useHomeBoards() {
   })
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => window.api.homePages.delete(id),
+    mutationFn: (id: string) => homePagesService.delete(id),
     onSuccess: () => {
       trackBoardCustomized('delete')
       void invalidate()
@@ -99,7 +105,7 @@ export function useHomeBoards() {
   })
 
   const reorderMut = useMutation({
-    mutationFn: (ids: string[]) => window.api.homePages.reorder(ids),
+    mutationFn: (ids: string[]) => homePagesService.reorder(ids),
     onSuccess: () => {
       trackBoardCustomized('reorder')
       void invalidate()

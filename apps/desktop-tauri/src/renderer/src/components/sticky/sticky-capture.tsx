@@ -5,6 +5,7 @@ import { Loader2, Minus, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
+import { stickyService } from '@/services/sticky-service'
 import { StickyInput } from './sticky-input'
 import { StickyKindBar } from './sticky-kind-bar'
 import { StickySent } from './sticky-sent'
@@ -53,7 +54,7 @@ export function StickyCapture(): React.JSX.Element {
 
   const tuck = useCallback(async () => {
     await draft.flush()
-    await window.api.sticky.tuck()
+    await stickyService.tuck()
   }, [draft])
 
   const send = useCallback(
@@ -70,7 +71,7 @@ export function StickyCapture(): React.JSX.Element {
           return
         }
         draft.clear()
-        if (close) await window.api.sticky.tuck()
+        if (close) await stickyService.tuck()
         else setSent(result)
       } catch (err) {
         setSendError(extractErrorMessage(err, t('sticky.errors.sendFailed')))
@@ -139,7 +140,7 @@ export function StickyCapture(): React.JSX.Element {
     // The border box: the margin the card's shadow draws into counts too.
     const observer = new ResizeObserver(() => {
       const height = el.getBoundingClientRect().height
-      if (height > 0) void window.api.sticky.resize(Math.ceil(height))
+      if (height > 0) void stickyService.resize(Math.ceil(height))
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -172,7 +173,7 @@ export function StickyCapture(): React.JSX.Element {
               void window.api.sticky.openTarget({ kind: sent.kind, targetId: sent.targetId })
             }
             onUndo={() => void undoSend()}
-            onDone={() => void window.api.sticky.tuck()}
+            onDone={() => void stickyService.tuck()}
           />
         ) : (
           <>

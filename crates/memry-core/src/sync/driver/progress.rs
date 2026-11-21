@@ -1,8 +1,11 @@
 //! The driver's first-sync progress in the shape desktop's renderer already
 //! renders: `InitialSyncProgressEvent` (`packages/contracts/src/ipc-events.ts`).
 //!
-//! The first sync's refs, metadata and bodies passes all report `notes`, the
-//! pack bootstrap reports `packs`, the outbox the catch-up passes will push
+//! The first sync reports one `notes` bar that only moves forward, as
+//! Electron's `initial-sync-progress.ts` counts records applied: the refs pass
+//! is indeterminate (0 of 0), the metadata pass counts the records it pulled
+//! against those outstanding, and the bodies pass reports nothing (Electron's
+//! body pulls emit no progress). The pack bootstrap reports `packs`, the outbox the catch-up passes will push
 //! once their seeds ran reports `tasks` (Electron's `full-sync-runner.ts`), and
 //! the end reports `complete`. `manifest` belongs to the manifest check, which
 //! is not the driver's.
@@ -76,11 +79,14 @@ impl Phases {
 impl ProgressSink for Phases {
     fn progress(&self, progress: FirstSyncProgress) {
         match progress.phase {
-            FirstSyncPhase::Refs | FirstSyncPhase::Metadata | FirstSyncPhase::Bodies => {
+            // Each pass has its own denominator, so only one feeds the bar.
+            FirstSyncPhase::Refs => self.emit(InitialSyncPhase::Notes, 0, 0),
+            FirstSyncPhase::Metadata => {
                 self.emit(InitialSyncPhase::Notes, progress.completed, progress.total);
             }
-            // The catch-up passes still run; the driver reports `complete`.
-            FirstSyncPhase::Done => {}
+            // Bodies: Electron's body pulls report nothing. Done: the catch-up
+            // passes still run, and the driver reports `complete`.
+            FirstSyncPhase::Bodies | FirstSyncPhase::Done => {}
         }
     }
 
