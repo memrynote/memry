@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
+import type { CrdtDocWaitEvent, CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
 
 // ============================================================================
 // Renderer-side mocks for window.api and logger
@@ -73,15 +74,15 @@ function broadcastDocLoaded(noteId: string): void {
   for (const callback of Array.from(loadedSubscribers)) callback({ noteId })
 }
 
-/** Main's signal that a waiting doc's pulls are stuck (#5290). */
-const stuckSubscribers = new Set<(data: { noteId: string }) => void>()
-const mockOnCrdtDocStuck = vi.fn((callback: (data: { noteId: string }) => void) => {
-  stuckSubscribers.add(callback)
-  return () => stuckSubscribers.delete(callback)
+/** Main's signal that what a waiting doc waits on changed (#5290, #5342). */
+const waitSubscribers = new Set<(data: CrdtDocWaitEvent) => void>()
+const mockOnCrdtDocWait = vi.fn((callback: (data: CrdtDocWaitEvent) => void) => {
+  waitSubscribers.add(callback)
+  return () => waitSubscribers.delete(callback)
 })
 
-function broadcastDocStuck(noteId: string): void {
-  for (const callback of Array.from(stuckSubscribers)) callback({ noteId })
+function broadcastDocWait(noteId: string, wait: CrdtRemoteBodyWait): void {
+  for (const callback of Array.from(waitSubscribers)) callback({ noteId, wait })
 }
 
 /**
@@ -122,7 +123,7 @@ beforeEach(() => {
       onCrdtProviderReset: mockOnCrdtProviderReset,
       onCrdtProviderReady: mockOnCrdtProviderReady,
       onCrdtDocLoaded: mockOnCrdtDocLoaded,
-      onCrdtDocStuck: mockOnCrdtDocStuck
+      onCrdtDocWait: mockOnCrdtDocWait
     }
   }
 })
@@ -203,16 +204,19 @@ describe('YjsIpcProvider.connect', () => {
       await flushMicrotasks()
       expect(provider.remoteWait).toBe('merging')
 
-      broadcastDocStuck('another-note')
+      broadcastDocWait('another-note', 'stuck')
       expect(provider.remoteWait).toBe('merging')
-      broadcastDocStuck('note-stuck')
+      broadcastDocWait('note-stuck', 'stuck')
       expect(provider.remoteWait).toBe('stuck')
+      // #5342: the session ended after the open
+      broadcastDocWait('note-stuck', 'signed-out')
+      expect(provider.remoteWait).toBe('signed-out')
 
       broadcastDocLoaded('note-stuck')
       await connecting
       expect(provider.remoteWait).toBeNull()
-      expect(waits).toEqual(['merging', 'stuck', null])
-      expect(stuckSubscribers.size).toBe(0)
+      expect(waits).toEqual(['merging', 'stuck', 'signed-out', null])
+      expect(waitSubscribers.size).toBe(0)
 
       provider.destroy()
       doc.destroy()

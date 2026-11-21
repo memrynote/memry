@@ -1,7 +1,12 @@
 import * as Y from 'yjs'
 import type { FileHandle } from 'fs/promises'
 import { BrowserWindow } from 'electron'
-import { CRDT_EVENTS, CRDT_FRAGMENT_NAME, type CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
+import {
+  CRDT_EVENTS,
+  CRDT_FRAGMENT_NAME,
+  type CrdtDocWaitEvent,
+  type CrdtRemoteBodyWait
+} from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -951,18 +956,24 @@ export class CrdtProvider {
   }
 
   /**
-   * The coordinator's report that a waiting note's pulls are stuck (#5290):
-   * its editors switch to the vault file, read-only. The doc is never seeded
-   * here: a seed beside the server body would duplicate it once the signer
-   * resolves (D-UNMERGED-OPEN-EXIT-2).
+   * Tells a waiting note's editors what they now wait on (`remoteBodyWait`):
+   * for the coordinator once its pulls are stuck (#5290). Each reason but
+   * `merging` switches them to the vault file, read-only. The doc is never
+   * seeded here: a seed beside the server body would duplicate it once the
+   * body merges (D-UNMERGED-OPEN-EXIT-2).
    */
-  reportStuckEditorDoc(noteId: string): void {
+  reportEditorWait(noteId: string): void {
     const entry = this.docs.get(noteId)
-    if (!entry || entry.closing || !entry.awaitingMerge || entry.windowIds.size === 0) return
-    log.warn('A waiting editor shows its file read-only: the server body cannot be merged', {
-      noteId
-    })
-    broadcastToAllWindows(CRDT_EVENTS.DOC_STUCK, { noteId })
+    if (!entry || entry.closing || entry.windowIds.size === 0) return
+    const wait = this.remoteBodyWait(noteId)
+    if (!wait) return
+    log.warn('A waiting editor shows its file read-only', { noteId, wait })
+    broadcastToAllWindows(CRDT_EVENTS.DOC_WAIT, { noteId, wait } satisfies CrdtDocWaitEvent)
+  }
+
+  /** `reportEditorWait` for every waiting doc, for the runtime once the session ends (#5342). */
+  reportEditorWaits(): void {
+    for (const noteId of this.docs.keys()) this.reportEditorWait(noteId)
   }
 
   /** Ends a doc's wait for the server body, and tells its editors (#5290). */

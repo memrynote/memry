@@ -697,8 +697,8 @@ describe('CrdtProvider with no store (#2536)', () => {
         expect(provider.remoteBodyWait(NOTE)).toBe('stuck')
         expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
         expect(h.broadcasts).toContainEqual({
-          channel: CRDT_EVENTS.DOC_STUCK,
-          payload: { noteId: NOTE }
+          channel: CRDT_EVENTS.DOC_WAIT,
+          payload: { noteId: NOTE, wait: 'stuck' }
         })
 
         // #when the signer resolves and the next pull merges
@@ -841,6 +841,23 @@ describe('CrdtProvider with no store (#2536)', () => {
         // #then the editor keeps its usual wait, with no sign-in notice
         expect(provider.remoteBodyWait(NOTE)).toBe('merging')
         expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+      })
+
+      it('turns a merging editor signed out once the session ends after the open', async () => {
+        // #given an editor that opened waiting while a failed refresh left the session alive
+        const session: Session = { token: false, ended: false, vaultKey: true }
+        const { provider } = await openWith(session, true)
+        expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+
+        // #when the session ends and the runtime reports it
+        session.ended = true
+        provider.reportEditorWaits()
+
+        // #then the editor is told to show the file read-only, signed out
+        expect(h.broadcasts).toContainEqual({
+          channel: CRDT_EVENTS.DOC_WAIT,
+          payload: { noteId: NOTE, wait: 'signed-out' }
+        })
       })
 
       it('with no vault key waits vault-locked, and loads once the key is back', async () => {

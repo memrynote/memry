@@ -136,6 +136,7 @@ import {
   hasSessionEnded,
   refreshAccessToken,
   retrieveToken,
+  setOnSessionEnded,
   setOnTokenRefreshed
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
@@ -752,6 +753,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         serverUrl: resolveSyncServerUrl()
       })
 
+      // An editor that opened waiting while the session still looked alive
+      // shows its file read-only with the sign-in notice (#5342).
+      setOnSessionEnded(() => crdtProvider.reportEditorWaits())
       setOnTokenRefreshed(() => {
         if (network.online) {
           noteBodyOutbox.resume()
@@ -1068,6 +1072,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   // its `if (runtime) return` guard and install its own callback — clearing
   // after any of the awaits below would silently unhook the *live* runtime.
   setOnTokenRefreshed(null)
+  setOnSessionEnded(null)
 
   resetSyncServiceSingletons()
 

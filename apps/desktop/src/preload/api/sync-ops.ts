@@ -1,6 +1,6 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import type { SyncControlSurface, VaultBindingChoice } from '@memry/contracts/ipc-sync-ops'
-import type { CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
+import type { CrdtDocWaitEvent, CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
 export const syncOps = {
@@ -126,8 +126,9 @@ export const onCrdtProviderReady = (
 export const onCrdtDocLoaded = (callback: (data: { noteId: string }) => void): (() => void) =>
   subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_LOADED, callback)
 
-export const onCrdtDocStuck = (callback: (data: { noteId: string }) => void): (() => void) =>
-  subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_STUCK, callback)
+/** What a waiting doc waits on changed after the open (#5290, #5342). */
+export const onCrdtDocWait = (callback: (data: CrdtDocWaitEvent) => void): (() => void) =>
+  subscribe<CrdtDocWaitEvent>(SYNC_EVENTS.DOC_WAIT, callback)
 
 /** A note's file could not be updated from its doc; once per run of failed passes. */
 export const onCrdtWriteBackFailed = (
