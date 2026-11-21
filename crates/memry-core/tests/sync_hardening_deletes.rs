@@ -7,6 +7,11 @@
 //! seals it (`record-envelope.json`, which `push_seal` holds the core's
 //! sealer to byte for byte) and as this core seals it, still deletes.
 //!
+//! A real delete arrives with its id in `deleted` and no ref row, so every
+//! case runs in that shape too. An id in `deleted` deletes only through a
+//! verified typed delete (§5.12.1, #5340): a bare id with no item, or with
+//! an item the pull refused, deletes nothing, as in Electron.
+//!
 //! Real `HttpClient`, SQLite, pull, `AccountCipher` and envelope crypto; the
 //! transport is the only fake.
 
@@ -19,6 +24,7 @@ use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::storage::repositories::sync_items;
+use memry_core::sync::hardening::quarantine;
 use memry_core::sync::pull::{PullLoop, PullReport};
 use serde_json::{Value as Json, json};
 
@@ -87,13 +93,42 @@ fn sealed(id: &str, signer: &str, seed: u8, content: Option<&Json>) -> Json {
     envelope::to_json(&sealed.envelope)
 }
 
-/// One feed page through the hardened pull, opened with `cipher`.
-async fn pull(db: &Db, cipher: AccountCipher, items: Vec<Json>) -> PullReport {
-    let listed: Vec<Json> = items
+/// How a changes page lists the pulled items' ids.
+#[derive(Clone, Copy, Debug)]
+enum Listed {
+    /// As ref rows in `items`.
+    Refs,
+    /// In `deleted` only, as the server lists a tombstone.
+    Deleted,
+    /// In both.
+    Both,
+}
+
+const SHAPES: [Listed; 3] = [Listed::Refs, Listed::Deleted, Listed::Both];
+
+/// One feed page through the hardened pull, opened with `cipher`. `listed`
+/// says where `targets` go; every other item is a ref row. `bare` ids join
+/// `deleted` with no item in the pull.
+async fn pull_page(
+    db: &Db,
+    cipher: AccountCipher,
+    items: Vec<Json>,
+    targets: &[&str],
+    listed: Listed,
+    bare: &[&str],
+) -> PullReport {
+    let target = |item: &&Json| targets.contains(&item["id"].as_str().unwrap_or_default());
+    let refs: Vec<Json> = items
         .iter()
+        .filter(|item| !matches!(listed, Listed::Deleted) || !target(item))
         .map(|item| json!({ "id": item["id"], "type": "note" }))
         .collect();
-    let changes = json!({ "items": listed, "deleted": [], "hasMore": false, "nextCursor": "20" });
+    let mut deleted: Vec<&str> = bare.to_vec();
+    if !matches!(listed, Listed::Refs) {
+        deleted.extend(targets);
+    }
+    let changes =
+        json!({ "items": refs, "deleted": deleted, "hasMore": false, "nextCursor": "20" });
     let transport = FakeTransport::new(vec![
         response(200, &changes.to_string()),
         response(200, &json!({ "items": items }).to_string()),
@@ -111,6 +146,10 @@ async fn pull(db: &Db, cipher: AccountCipher, items: Vec<Json>) -> PullReport {
     .expect("the page")
 }
 
+async fn pull(db: &Db, cipher: AccountCipher, items: Vec<Json>) -> PullReport {
+    pull_page(db, cipher, items, &[], Listed::Refs, &[]).await
+}
+
 fn alive(db: &Db, id: &str) -> bool {
     let id = id.to_owned();
     db.call_blocking(move |conn| sync_items::load(conn, "note", &id))
@@ -126,26 +165,42 @@ fn stub(id: &str) -> Json {
     })
 }
 
-/// Pulls `forged` for the live note `n1` beside a real update of `n2`: the
-/// forged delete is one corrupt item and deletes nothing.
+/// Pulls `forged` for the live note `n1` beside a real update of `n2`, with
+/// `n1` listed in each shape: the forged delete is one corrupt item and
+/// deletes nothing, also when the server lists `n1` in `deleted`.
 async fn assert_refused(forged: Json) {
-    let db = scratch_db();
-    pull_live(&db, vec![stub("n1")]).await;
-    let peer = keypair(PEER_SEED).0;
-    let update = sealed("n2", "peer", PEER_SEED, Some(&json!({ "title": "Kept" })));
+    for listed in SHAPES {
+        let db = scratch_db();
+        pull_live(&db, vec![stub("n1")]).await;
+        let peer = keypair(PEER_SEED).0;
+        let update = sealed("n2", "peer", PEER_SEED, Some(&json!({ "title": "Kept" })));
 
-    let report = pull(
-        &db,
-        cipher(vault_key(), "peer", &peer).await,
-        vec![forged, update],
-    )
-    .await;
+        let report = pull_page(
+            &db,
+            cipher(vault_key(), "peer", &peer).await,
+            vec![forged.clone(), update],
+            &["n1"],
+            listed,
+            &[],
+        )
+        .await;
 
-    assert_eq!((report.corrupt, report.deleted), (1, 0), "{report:?}");
-    assert_eq!(report.applied, 1, "the page's other item still applies");
-    assert!(!report.refused);
-    assert!(alive(&db, "n1"), "a forged delete deletes nothing");
-    assert!(alive(&db, "n2"));
+        assert_eq!(
+            (report.corrupt, report.deleted),
+            (1, 0),
+            "{listed:?} {report:?}"
+        );
+        assert_eq!(
+            report.applied, 1,
+            "{listed:?}: the page's other item still applies"
+        );
+        assert!(!report.refused, "{listed:?}");
+        assert!(
+            alive(&db, "n1"),
+            "{listed:?}: a forged delete deletes nothing"
+        );
+        assert!(alive(&db, "n2"), "{listed:?}");
+    }
 }
 
 #[tokio::test]
@@ -174,19 +229,100 @@ async fn sync_hardening_a_real_signature_over_another_item_deletes_nothing() {
 
 #[tokio::test]
 async fn sync_hardening_a_delete_this_core_signed_deletes() {
+    for listed in SHAPES {
+        let db = scratch_db();
+        pull_live(&db, vec![stub("n1")]).await;
+        let peer = keypair(PEER_SEED).0;
+
+        let report = pull_page(
+            &db,
+            cipher(vault_key(), "peer", &peer).await,
+            vec![sealed("n1", "peer", PEER_SEED, None)],
+            &["n1"],
+            listed,
+            &[],
+        )
+        .await;
+
+        assert_eq!(
+            (report.deleted, report.corrupt),
+            (1, 0),
+            "{listed:?} {report:?}"
+        );
+        assert!(!alive(&db, "n1"), "{listed:?}");
+    }
+}
+
+/// §5.12.1 (#5340): an id in `deleted` that the pull returned no item for
+/// carries no signature, so it deletes nothing, as in Electron.
+#[tokio::test]
+async fn sync_hardening_a_bare_deleted_id_deletes_nothing() {
     let db = scratch_db();
     pull_live(&db, vec![stub("n1")]).await;
     let peer = keypair(PEER_SEED).0;
+    let update = sealed("n2", "peer", PEER_SEED, Some(&json!({ "title": "Kept" })));
 
-    let report = pull(
+    let report = pull_page(
         &db,
         cipher(vault_key(), "peer", &peer).await,
-        vec![sealed("n1", "peer", PEER_SEED, None)],
+        vec![update],
+        &[],
+        Listed::Refs,
+        &["n1"],
     )
     .await;
 
-    assert_eq!((report.deleted, report.corrupt), (1, 0), "{report:?}");
-    assert!(!alive(&db, "n1"));
+    assert_eq!(
+        (report.applied, report.deleted, report.corrupt),
+        (1, 0, 0),
+        "{report:?}"
+    );
+    assert!(alive(&db, "n1"), "a bare id deletes nothing");
+    assert!(alive(&db, "n2"));
+}
+
+/// A bad signature counts toward the quarantine (§5.14): the third forged
+/// delete of `n1` makes its entry permanent.
+#[tokio::test]
+async fn sync_hardening_a_delete_with_a_bad_signature_is_quarantined() {
+    let db = scratch_db();
+    pull_live(&db, vec![stub("n1")]).await;
+    let peer = keypair(PEER_SEED).0;
+    let mut forged = sealed("n1", "peer", PEER_SEED, None);
+    forged["signature"] = json!(keys::base64_encode(&[0; 64]));
+
+    for _ in 0..3 {
+        let cipher = cipher(vault_key(), "peer", &peer).await;
+        pull_page(
+            &db,
+            cipher,
+            vec![forged.clone()],
+            &["n1"],
+            Listed::Deleted,
+            &[],
+        )
+        .await;
+    }
+
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after the epoch")
+        .as_millis() as i64;
+    let entries = db
+        .call_blocking(move |conn| quarantine::entries(conn, now_ms))
+        .expect("the quarantine");
+    let entries: Vec<(&str, &str, bool)> = entries
+        .iter()
+        .map(|entry| {
+            (
+                entry.item_type.as_str(),
+                entry.item_id.as_str(),
+                entry.permanent,
+            )
+        })
+        .collect();
+    assert_eq!(entries, [("note", "n1", true)]);
+    assert!(alive(&db, "n1"));
 }
 
 /// Electron's own delete, sealed by its production code path.

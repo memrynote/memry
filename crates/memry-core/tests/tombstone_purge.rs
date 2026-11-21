@@ -133,9 +133,9 @@ async fn deliver_typed_delete(db: &Db, item_type: &str) -> Result<PullReport, Pu
     .await
 }
 
-/// §5.12.1's delete: an id in `deleted` with **no ref row and no typed item**,
-/// so nothing on the wire says what type it is.
-async fn deliver_untyped_delete(db: &Db) -> Result<PullReport, PullError> {
+/// An id in `deleted` with **no ref row and no typed item**: nothing on the
+/// wire says what type it is, and nothing signs it.
+async fn deliver_bare_deleted_id(db: &Db) -> Result<PullReport, PullError> {
     pull_one_page(
         db,
         json!({
@@ -227,43 +227,30 @@ fn projected_deleted_at(db: &Db, table: &str, key: &str) -> Option<i64> {
 
 // --------------------------------------------------------------------- tests
 
-/// §5.12.1's untyped delete reaches every tier: every row under the id
-/// whatever its type, every projection those types name, and the body log.
-///
-/// The wire says nothing about the type here, and a client MUST NOT guess one
-/// from the id's shape. What it may do is read what this device stored, which
-/// is what makes "mark every row" implementable at all — and what makes the
-/// purge safe: if *every* row under the id is being deleted, the body rows
-/// under it are covered too, whichever type owns them.
+/// A bare id in `deleted` is unsigned, so it deletes nothing on any tier
+/// (§5.12.1, #5340): not the note, not a row of another type under the same
+/// id (§5.15's collision, a tag named like the note), and not the body log.
+/// Electron only fetches such an id (`changes-page.ts:38`).
 #[tokio::test]
-async fn an_untyped_delete_marks_every_type_and_purges_the_body() {
+async fn a_bare_deleted_id_deletes_no_row_and_keeps_the_body() {
     let db = scratch_db("untyped");
     seed_note(&db);
     let registry = registry();
     edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
-
-    // §5.15's collision, made real: a second row under the same id, a type
-    // whose ids are free-form names (§13.6).
     db.call_blocking(|conn| {
         sync_items::upsert_metadata_only(conn, "tag_definition", NOTE, NOW, None)
     })
     .expect("the second row");
 
     assert_eq!(body_rows(&db), 1);
-    let report = deliver_untyped_delete(&db).await.expect("the page");
+    let report = deliver_bare_deleted_id(&db).await.expect("the page");
 
-    assert_eq!(report.deleted, 1);
-    assert!(record_deleted_at(&db, "note").is_some(), "the note's row");
-    assert!(
-        record_deleted_at(&db, "tag_definition").is_some(),
-        "§5.12.1: every row for that id, whatever its type"
-    );
-    assert!(
-        projected_deleted_at(&db, "notes", "id").is_some(),
-        "and the projection each type names"
-    );
-    assert_eq!(body_rows(&db), 0, "§7.15: the body log goes with it");
-    assert_eq!(report.purged_documents, vec![NOTE.to_owned()]);
+    assert_eq!(report.deleted, 0);
+    assert_eq!(record_deleted_at(&db, "note"), None, "the note's row");
+    assert_eq!(record_deleted_at(&db, "tag_definition"), None);
+    assert_eq!(projected_deleted_at(&db, "notes", "id"), None);
+    assert_eq!(body_rows(&db), 1, "the body log stays");
+    assert!(report.purged_documents.is_empty());
 }
 
 /// A **typed** delete for a type that is not a document leaves the document's

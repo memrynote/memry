@@ -851,12 +851,29 @@ instead of two (`apps/sync-server/src/services/sync.ts:1096`).
 
 ### 5.12.1 Untyped `deleted` ids and a subset subscriber — Q05.2
 
-**Normative.** A subset subscriber cannot tell what type a bare tombstone is for,
-and **it does not need to**: the id space is `(type, id)` for bookkeeping
-(§5.15), but a delete is idempotent and a delete for an id the client has never
-seen is a no-op. A conforming client MUST record a bare tombstone for an unknown
-id — so that a later pull of that id does not resurrect it locally — and MUST NOT
-treat it as an error or as a reason to stop the page.
+**Normative.** An id in `deleted` is not a delete. It carries no type and no
+signature, and the server is untrusted, so it only names an id the client
+fetches with POST `/sync/pull` (§5.12). The server lists a tombstone row's id
+there (`apps/sync-server/src/services/sync.ts:1440`) and answers the pull with
+that row's signed delete, or with a purged marker when the client declared
+`purged_tombstones` (`apps/sync-server/src/services/sync.ts:1635-1637`, §5.12.3).
+
+- An id in `deleted` MUST delete only through a typed delete on the same page
+  that verified under §5.14, or an attested purged marker (§5.12.3).
+- An id in `deleted` for which the pull returned no item, or returned an item
+  the client refused (§5.14), MUST delete nothing and record nothing. It is not
+  an error and it does not stop the page; a client SHOULD log it with the page
+  cursor. A refused item never falls through to a delete by id.
+
+Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.ts`)
+is the only read of `changes.deleted`, which joins the pull request, and only
+what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:823`)
+and attested markers (`pull-coordinator.ts:908`) apply. Rust core page pull:
+`crates/memry-core/src/sync/pull.rs:412-425` counts and logs the uncovered
+ids and `:434` applies none. The core's first sync refs pass
+(`crates/memry-core/src/sync/first_sync.rs:429-435`) still records a bare
+tombstone (§5.12.2) for every `deleted` id; #5340 tracks moving it to this
+rule.
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are
@@ -916,6 +933,11 @@ every item sharing a chunk with one bad row.
   quarantined at `pull-coordinator.ts:884`); only what it decrypted applies
   (`pull-coordinator.ts:908`). Rust core: `crates/memry-core/src/sync/pull_decode.rs:51`
   opens the item before `:58` reads it as a delete.
+- **A refused delete MUST NOT delete through its id.** When the server also
+  lists a refused item's id in `deleted`, the id deletes nothing (§5.12.1):
+  the corrupt count is the item's only outcome. Rust core:
+  `crates/memry-core/src/sync/pull.rs:416-419` counts such an id as bare and `:434` leaves it out of the
+  apply.
 - `purgedTombstones` and `blobMissing` entries are validated one by one, like
   items: a malformed entry is refused on its own and never costs its siblings or
   the page (#2302).

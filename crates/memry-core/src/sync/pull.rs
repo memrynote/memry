@@ -409,17 +409,20 @@ impl PullLoop {
         // keep the order the server sent them in. `sort_by_key` is stable.
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
 
-        // §5.12.1: an id in `deleted` with no ref row, and for which the pull
-        // returned no typed item either, has no type on the wire. It is not an
-        // error and it does not stop the page.
-        let untyped: Vec<String> = page
+        // §5.12.1 (#5340): an id in `deleted` deletes only through a verified
+        // typed delete or an attested marker. A bare id is unsigned, so it
+        // deletes nothing, as in Electron (`changes-page.ts:38` only fetches
+        // it); an item the pull returned and refused never falls through here.
+        let bare = page
             .deleted
             .iter()
-            .filter(|id| {
-                !page.ref_ids.contains(id) && !typed_covers(&pending, id) && !named.contains(*id)
-            })
-            .cloned()
-            .collect();
+            .filter(|id| !typed_covers(&pending, id) && !named.contains(*id))
+            .count();
+        if bare > 0 {
+            eprintln!(
+                "memry-core: {bare} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored"
+            );
+        }
 
         let bodies = self.fetch_note_bodies(&page, &pending).await?;
         // Only a loop that lands bodies owes them: its caller is the one that
@@ -428,7 +431,7 @@ impl PullLoop {
         let mut feed = AppliedFeed::default();
         let landed = async {
             let outcomes = self
-                .apply_all(pending, untyped, owe_bodies, &mut feed)
+                .apply_all(pending, Vec::new(), owe_bodies, &mut feed)
                 .await?;
             report.applied += outcomes.applied;
             report.deleted += outcomes.deleted;

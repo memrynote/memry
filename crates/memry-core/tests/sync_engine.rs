@@ -342,7 +342,7 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
         response(
             200,
             // The server answers with the typed tombstone and says nothing
-            // about the second id, which §5.12.1 makes an untyped delete.
+            // about the second id, which carries no signed delete (§5.12.1).
             &json!({"items": [tombstone("note-1", "note", 1_700_000_000_000i64)]}).to_string(),
         ),
     ]);
@@ -350,8 +350,9 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
     let pull = loop_for(transport, db.clone(), cipher.clone());
 
     let report = pull.pull_page().await.expect("the page");
-    // Neither id was ever live here, so both count as skipped (S17-5).
-    assert_eq!((report.deleted, report.skipped), (0, 2));
+    // note-1 was never live here, so it counts as skipped (S17-5); the bare
+    // id applies nothing (#5340).
+    assert_eq!((report.deleted, report.skipped), (0, 1));
     assert_eq!(report.corrupt, 0);
     assert!(!report.refused);
     // §5.14: a tombstone opens like any record; §5.8 (#3037) reads only its
@@ -362,9 +363,9 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
         let row = sync_items::load(conn, "note", "note-1")?.expect("the tombstoned row");
         assert_eq!(row.deleted_at, Some(1_700_000_000_000));
         assert!(row.payload.is_none());
-        // §5.12.1: an id with no ref row and no typed item is recorded, so a
-        // later pull of it cannot resurrect it locally.
-        assert!(store::has_bare_tombstone(conn, "never-seen")?);
+        // §5.12.1 (#5340): an id with no typed item is unsigned, so nothing
+        // is recorded for it, as in Electron.
+        assert!(!store::has_bare_tombstone(conn, "never-seen")?);
         Ok(())
     })
     .expect("read back");

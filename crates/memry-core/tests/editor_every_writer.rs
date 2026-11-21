@@ -267,10 +267,9 @@ async fn pull_the_delete(f: &Fixture, day: &str, typed: bool) {
         "encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA", "dataNonce": "AAAA",
         "signature": "AAAA", "signerDeviceId": "device-desktop", "deletedAt": 1_700_000_500_000i64,
     });
-    let items = if typed { json!([item]) } else { json!([]) };
     let transport = FakeTransport::new(vec![
         response(200, &changes.to_string()),
-        response(200, &json!({ "items": items }).to_string()),
+        response(200, &json!({ "items": [item] }).to_string()),
     ]);
     PullLoop::new(
         http(transport),
