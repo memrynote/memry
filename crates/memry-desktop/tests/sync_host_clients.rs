@@ -137,6 +137,14 @@ const ALLOWED: &[(&str, &str)] = &[
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend/tests.rs",
         "builds Velopack's error values, no request",
     ),
+    (
+        "crates/memry-desktop/src/services/voice/openai.rs",
+        "api.openai.com, the voice transcription's OpenAI engine, with only the person's OpenAI key",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/voice.rs",
+        "builds the voice OpenAI engine's client; its endpoint is the fixed api.openai.com constant",
+    ),
 ];
 
 /// A network client crate, or the shared client's module however it is named: by path from
