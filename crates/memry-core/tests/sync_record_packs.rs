@@ -16,7 +16,9 @@ use std::sync::{Arc, Mutex};
 use http_fakes::{body_json, bytes_response, response};
 use memry_core::api::errors::TransportError;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
-use memry_core::protocol::http::{ClientIdentity, DEFAULT_REQUEST_TIMEOUT_MS, HttpClient};
+use memry_core::protocol::http::{
+    ClientIdentity, DEFAULT_REQUEST_TIMEOUT_MS, HttpClient, IDLE_TIMEOUT_MS,
+};
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
@@ -178,6 +180,17 @@ struct Server {
     hang: Option<String>,
     /// `byteSize` of every listed record pack; 10 when unset.
     byte_size: Option<u64>,
+    /// Every record pack GET times out on this timer.
+    pack_timeout: Option<Timer>,
+}
+
+/// Which timer ended a pack GET (chapter 00 §0.6).
+#[derive(Clone, Copy)]
+enum Timer {
+    /// The request's own deadline: `elapsed_ms` is its `timeout_ms`.
+    Deadline,
+    /// The idle limit, which fires before a pack's deadline.
+    Idle,
 }
 
 impl Server {
@@ -229,6 +242,13 @@ impl Server {
         }
         let url = request.url.as_str();
         if let Some(id) = url.strip_prefix("https://r2.example/packs/") {
+            if let Some(timer) = self.pack_timeout {
+                let elapsed_ms = match timer {
+                    Timer::Deadline => request.timeout_ms,
+                    Timer::Idle => IDLE_TIMEOUT_MS,
+                };
+                return Some(Err(TransportError::Timeout { elapsed_ms }));
+            }
             if self.missing.contains(id) {
                 return Some(response(404, "{}"));
             }
@@ -552,6 +572,27 @@ async fn a_pack_get_gets_a_deadline_scaled_to_its_listed_size() {
             .all(|(_, timeout)| *timeout == DEFAULT_REQUEST_TIMEOUT_MS),
         "{rest:?}"
     );
+}
+
+/// #5331: a pack GET that ran out its deadline spent minutes on the line, so
+/// it is not sent again from byte 0. One that went idle is retried.
+#[tokio::test(start_paused = true)]
+async fn a_pack_get_past_its_deadline_is_not_retried_but_an_idle_one_is() {
+    for (timer, sends) in [(Timer::Deadline, 1), (Timer::Idle, 4)] {
+        let db = scratch_db("deadline-retry");
+        let mut server = covered_vault(40, 40);
+        server.byte_size = Some(8 * 1024 * 1024);
+        server.pack_timeout = Some(timer);
+        let routes = Routes::new(server);
+        run(&db, &routes, &[]).await;
+
+        let calls = routes.calls.lock().unwrap().clone();
+        let packs = calls
+            .iter()
+            .filter(|url| url.starts_with("https://r2.example/packs/"))
+            .count();
+        assert_eq!(packs, sends, "{calls:?}");
+    }
 }
 
 #[tokio::test]

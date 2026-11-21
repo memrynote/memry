@@ -258,12 +258,22 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   `crates/memry-cli/src/transport.rs:49-52`;
   `apps/ios/Memry/Seams/Transport.swift:124-131`);
 - in the Rust core, replaces the ceiling of a pack GET (chapter 08 §8.9) with a
-  deadline scaled to the listed `byteSize`: 60 s plus `byteSize` at
-  0.25 Mbit/s (31,250 bytes a second), capped at **1,200 seconds**, which covers
-  a pack at `PACK_HARD_MAX_BYTES` (32 MiB,
+  deadline scaled to the listed `byteSize`: 60 s plus `byteSize` at a third
+  of 0.25 Mbit/s (31,250 bytes a second), because three packs download at once
+  (`RECORD_DOWNLOAD_WIDTH = 3`,
+  `crates/memry-core/src/sync/pack_bootstrap/records.rs:44`). The deadline is
+  capped at **3,300 seconds**, which covers three packs at
+  `PACK_HARD_MAX_BYTES` (32 MiB, 3,281 s,
   `apps/sync-server/src/services/pack-compaction.ts:88`). A listing without
-  `byteSize` gets the cap. An 8 MiB pack gets 328 s; at 0.5 Mbit/s it takes
-  134 s (`crates/memry-core/src/sync/pack_bootstrap/download.rs:16-36`, #5331).
+  `byteSize` gets the cap. A pack at `PACK_TARGET_BYTES` (24 MiB,
+  `apps/sync-server/src/services/pack-sizing.ts:15`) gets 2,476 s. Three of
+  them sharing 0.5 Mbit/s take 1,208 s each
+  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:19-41`, #5331). A
+  pack GET that times out at its deadline is not retried, because a retry
+  restarts from byte 0. One that times out idle is retried on the §0.6.1 ladder.
+  A shell reports a deadline timeout with `elapsed_ms` at or past the request's
+  `timeout_ms`
+  (`crates/memry-core/src/protocol/http.rs:112-119`, `:369-375`).
   Desktop's pack GET has no ceiling and resumes a partial file with `Range`
   (`apps/desktop/src/main/sync/packs/pack-download.ts:24-26`);
 - reads `retry-after` from a `429` response **in lowercase**

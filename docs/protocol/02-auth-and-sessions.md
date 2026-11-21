@@ -552,7 +552,7 @@ and one replay of the original request:
   fails it with the original `401`. A latch window fails it with the wait, and
   a refresh that failed without a `401` fails it with that failure, because
   neither ends the session
-  (`crates/memry-core/src/protocol/http.rs:328-331`,
+  (`crates/memry-core/src/protocol/http.rs:342-345`,
   `crates/memry-core/src/protocol/auth.rs:490-493`).
 
 A `401` never enters the §0.6.1 ladder, in either direction: it is not
