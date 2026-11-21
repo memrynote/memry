@@ -73,7 +73,24 @@ export interface ListPacksOptions {
   /** Opaque keyset token from a previous response (`maxCursor:id`). */
   cursor?: string | null
   limit?: number
+  /** The raw `PACK_COVERAGE_DISABLED` Worker var, see packCoverageDisabled. */
+  coverageDisabled?: string
 }
+
+/**
+ * The step 14 rollback switch (#5392, protocol 08 §8.10): the
+ * `PACK_COVERAGE_DISABLED` Worker var, `*` for every vault or a comma-separated
+ * list of vault ids. A listed vault is served no packs and no coverage, so every
+ * client takes it item by item (§8.0), and a bootstrap starts no backfill
+ * chain. It writes nothing: pack rows, watermarks and R2 objects stay as they
+ * are, so unsetting it serves the listing again with no rebuild. Unset or
+ * empty: no vault is listed.
+ */
+export const packCoverageDisabled = (value: string | undefined, vaultId: string): boolean =>
+  (value ?? '').split(',').some((entry) => {
+    const id = entry.trim()
+    return id === '*' || id === vaultId
+  })
 
 const CURSOR_SEPARATOR = ':'
 const encodePageCursor = (row: PackIndexRow): string =>
@@ -101,6 +118,12 @@ export const listPacks = async (
   // stable across pages: no row can be skipped or served twice by page churn,
   // which a bare max_cursor < ? filter could not guarantee.
   const pageToken = options.cursor ? decodePageCursor(options.cursor) : null
+
+  if (packCoverageDisabled(options.coverageDisabled, vaultId)) {
+    const empty: PackListResponse = { packs: [], serverTime: Math.floor(Date.now() / 1000) }
+    if (!pageToken) empty.coverage = []
+    return empty
+  }
 
   const statement = pageToken
     ? db

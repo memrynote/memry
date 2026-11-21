@@ -970,6 +970,22 @@ describe('sync routes', () => {
       )
     })
 
+    it('forwards PACK_COVERAGE_DISABLED to the listing (#5392)', async () => {
+      await app.request(
+        '/sync/packs',
+        { method: 'GET' },
+        { ...env, PACK_COVERAGE_DISABLED: 'vault-1' },
+        executionCtx
+      )
+      expect(listPacks).toHaveBeenLastCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        { cursor: null, limit: undefined, coverageDisabled: 'vault-1' },
+        null
+      )
+    })
+
     it('forwards pagination params and rejects malformed cursors', async () => {
       await app.request('/sync/packs?limit=5&cursor=100:abc', { method: 'GET' }, env, executionCtx)
       expect(listPacks).toHaveBeenLastCalledWith(
