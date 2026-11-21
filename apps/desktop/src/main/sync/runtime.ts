@@ -66,6 +66,7 @@ import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
 import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
+import { createServerBodyReader, reviveHealRunner } from './revive-heal'
 import { holdCanvasAssetsBeforePush } from '../canvas/assets/asset-service-context'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import {
@@ -335,6 +336,7 @@ function resetSyncServiceSingletons(): void {
   stopAttachmentDownloadRedriver()
   attachmentUploadRedriver.stop()
   deletedAssetReleaseRunner.stop()
+  reviveHealRunner.stop()
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -905,6 +907,27 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Each pass waits for a full sync this session, so the live-reference
       // check sees what peers did.
       deletedAssetReleaseRunner.start(() => engine.isCaughtUpWithServer())
+      // A day re-created before #5358 re-pushes its full state once when the
+      // server holds its body pending (#5354).
+      reviveHealRunner.start(
+        {
+          db: runtimeSyncDb,
+          isNoteSyncable: (noteId) => crdtProvider.isNoteSyncable(noteId),
+          hasQueuedChange: (noteId) =>
+            queue.hasPendingItem(noteId) || queue.listNoteBodyNoteIds().includes(noteId),
+          readServerBody: createServerBodyReader({
+            getAccessToken: () => getValidAccessToken(),
+            getVaultKey: () => getOptionalRuntimeVaultKey(db, 'revive heal'),
+            getDevicePublicKey: async (deviceId) => {
+              const token = await getValidAccessToken()
+              return token ? getDeviceSigningKey(runtimeSyncDb, deviceId, token) : null
+            }
+          }),
+          readLocalState: (noteId) => crdtProvider.readSyncableState(noteId),
+          enqueueFullState: (noteId) => noteBodyOutbox.enqueueFullState(noteId)
+        },
+        () => engine.isCaughtUpWithServer()
+      )
 
       void import('./vault-directory')
         .then(({ refreshVaultDirectory }) => refreshVaultDirectory({ force: true }))

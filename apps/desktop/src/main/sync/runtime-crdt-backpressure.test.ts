@@ -174,6 +174,10 @@ vi.mock('./attachment-upload-redriver', () => ({
 vi.mock('./deleted-asset-release-runner', () => ({
   deletedAssetReleaseRunner: { start: vi.fn(), stop: vi.fn() }
 }))
+vi.mock('./revive-heal', () => ({
+  createServerBodyReader: vi.fn(),
+  reviveHealRunner: { start: vi.fn(), stop: vi.fn() }
+}))
 vi.mock('@memry/sync-client/task-sync', () => ({
   initTaskSyncService: () => ({}),
   resetTaskSyncService: vi.fn()

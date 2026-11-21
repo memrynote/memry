@@ -1009,8 +1009,14 @@ Consequences a conforming client MUST implement:
   pushes only when that body is pending and its own full state completes it
   (`crates/memry-core/src/sync/revive_heal.rs:61`, `:95`, `:151`). The pass
   runs the heal after the body step and before the push
-  (`crates/memry-core/src/api/sync/pass.rs:140`). Each verdict is kept per
-  document, so a document is read and pushed at most once.
+  (`crates/memry-core/src/api/sync/pass.rs:140`). Desktop, whose builds
+  before #5358 kept the deleted doc the same way, judges the same candidates
+  (it keeps no epoch, so a day revived since then is read once and found
+  healthy) and queues a full-state row on its note-body outbox
+  (`apps/desktop/src/main/sync/revive-heal.ts:52`, `:96`), every ten minutes
+  once a full sync has delivered (`apps/desktop/src/main/sync/runtime.ts:912`).
+  Each verdict is kept per document, so a document is read and pushed at most
+  once.
 
 ### 7.15.1 The three obligations are not all the same component's
 
