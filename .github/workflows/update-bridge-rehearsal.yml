@@ -126,7 +126,9 @@ jobs:
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Check the exe needs no VC++ redistributable
-        run: node scripts/release/pe-imports.mjs pack/Memrynote.exe
+        run: |
+          node scripts/release/pe-imports.mjs pack/Memrynote.exe
+          node scripts/release/pe-imports.mjs pack/memry-ml-worker.exe
       - name: Check the payload
         run: node scripts/release/assert-payload.mjs pack windows
       - name: The bundled worker opens a PDF with the bundled pdfium
@@ -190,7 +192,7 @@ jobs:
       - name: Build bundle (unsigned)
         run: |
           node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
-          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.macos.conf.json --config "$RUNNER_TEMP/version.conf.json"
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -239,6 +241,19 @@ jobs:
             entitlements="$(codesign -d --entitlements - --xml "$file")"
             if [[ "$entitlements" == *'<key>'* ]]; then echo "::error::$file has entitlements: $entitlements"; exit 1; fi
           done
+      - name: The EventKit helper is signed with the hardened runtime, the app's Team ID and the calendars entitlement only
+        run: |
+          set -euo pipefail
+          contents=pack/MemryNote.app/Contents
+          helper="$contents/MacOS/memry-eventkit"
+          team="$(codesign -dv "$contents/MacOS/MemryNote" 2>&1 | sed -n 's/^TeamIdentifier=//p')"
+          [[ "$team" =~ ^[A-Z0-9]{10}$ ]] || { echo "::error::the main binary has no Team ID"; exit 1; }
+          codesign -dv --verbose=2 "$helper" 2>&1 | tee "$RUNNER_TEMP/codesign.txt"
+          grep -qxF "TeamIdentifier=$team" "$RUNNER_TEMP/codesign.txt" || { echo "::error::$helper is not signed by the app's team"; exit 1; }
+          grep -qE '^CodeDirectory .*flags=.*runtime' "$RUNNER_TEMP/codesign.txt" || { echo "::error::$helper lacks the hardened runtime"; exit 1; }
+          keys="$(codesign -d --entitlements - --xml "$helper" | grep -o '<key>[^<]*</key>')"
+          [ "$keys" = '<key>com.apple.security.personal-information.calendars</key>' ] || { echo "::error::$helper entitlements are not exactly the calendars grant: $keys"; exit 1; }
+          echo "memry-eventkit signed with calendars only"
       - name: The bundled worker opens a PDF with the bundled pdfium
         run: node scripts/release/smoke-worker.mjs pack/MemryNote.app macos crates/memry-ml-worker/tests/fixtures/two-pages.pdf
       - name: Fetch previous full packages

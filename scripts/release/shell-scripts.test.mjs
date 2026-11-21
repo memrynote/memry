@@ -225,6 +225,36 @@ describe(
           `codesign --verify --strict --verbose=2 ${app}`
         ])
       }))
+
+    for (const missing of ['Contents/MacOS/memry-eventkit', 'Contents/MacOS/memry-ml-worker']) {
+      it(`fails before signing when the manifest's ${path.basename(missing)} is not in the bundle`, () =>
+        inTemp((dir) => {
+          const app = path.join(dir, 'MemryNote.app')
+          const files = {
+            'Contents/Info.plist':
+              '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+              '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
+            'Contents/MacOS/MemryNote': 'bin',
+            'Contents/MacOS/memry-ml-worker': 'bin',
+            'Contents/MacOS/memry-eventkit': 'bin',
+            'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
+          }
+          delete files[missing]
+          for (const [rel, body] of Object.entries(files)) {
+            mkdirSync(path.dirname(path.join(app, rel)), { recursive: true })
+            writeFileSync(path.join(app, rel), body)
+          }
+          const bin = path.join(dir, 'bin')
+          const calls = path.join(dir, 'calls')
+          stub(bin, 'codesign', `echo "codesign $*" >> "${calls}"`)
+          const result = run('sign-macos-bundle.sh', [app, 'Developer ID', 'app.plist', 'kc'], {
+            binDir: bin
+          })
+          assert.notEqual(result.status, 0)
+          assert.match(result.stderr, new RegExp(`missing .*${path.basename(missing)}`))
+          assert.equal(existsSync(calls), false)
+        }))
+    }
   }
 )
 

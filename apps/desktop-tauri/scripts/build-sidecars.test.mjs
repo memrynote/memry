@@ -10,6 +10,7 @@ import {
   OCR_DATA,
   pdfiumTarget,
   sidecarBuild,
+  sidecarOutput,
   sidecarFile,
   SIDECARS
 } from './build-sidecars.mjs'
@@ -49,6 +50,22 @@ describe('build-sidecars', () => {
     assert.match(
       readFileSync(join(cwd, '.cargo/config.toml'), 'utf8'),
       /CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded"/
+    )
+  })
+
+  it('copies the sidecar from CARGO_TARGET_DIR when set, relative to the crates/ cargo runs in', () => {
+    const crates = fileURLToPath(new URL('../../../crates', import.meta.url))
+    assert.equal(
+      sidecarOutput('memry-ml-worker', 'x86_64-pc-windows-msvc', {}),
+      join(crates, 'target/x86_64-pc-windows-msvc/release/memry-ml-worker.exe')
+    )
+    assert.equal(
+      sidecarOutput('memry-ml-worker', 'aarch64-apple-darwin', { CARGO_TARGET_DIR: '/tmp/t' }),
+      '/tmp/t/aarch64-apple-darwin/release/memry-ml-worker'
+    )
+    assert.equal(
+      sidecarOutput('memry-ml-worker', 'aarch64-apple-darwin', { CARGO_TARGET_DIR: 'out' }),
+      join(crates, 'out/aarch64-apple-darwin/release/memry-ml-worker')
     )
   })
 

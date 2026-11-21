@@ -70,6 +70,15 @@ export function sidecarBuild(crate, bin, triple) {
   }
 }
 
+/** Where `sidecarBuild`'s cargo leaves the binary: `CARGO_TARGET_DIR` (relative to `crates/`) or `crates/target`. */
+export function sidecarOutput(bin, triple, env = process.env) {
+  const crates = join(ROOT, 'crates')
+  const targetDir = env.CARGO_TARGET_DIR
+    ? resolve(crates, env.CARGO_TARGET_DIR)
+    : join(crates, 'target')
+  return join(targetDir, triple, 'release', `${bin}${exe(triple)}`)
+}
+
 function run(command, args, cwd = ROOT) {
   console.log(`$ ${command} ${args.join(' ')}`)
   const result = spawnSync(command, args, { cwd, stdio: 'inherit' })
@@ -93,8 +102,7 @@ function main(argv) {
   for (const { crate, bin } of SIDECARS) {
     const build = sidecarBuild(crate, bin, triple)
     run('cargo', build.args, build.cwd)
-    const built = join(ROOT, 'crates/target', triple, 'release', `${bin}${exe(triple)}`)
-    copyFileSync(built, join(binaries, sidecarFile(bin, triple)))
+    copyFileSync(sidecarOutput(bin, triple), join(binaries, sidecarFile(bin, triple)))
   }
 
   // A fresh dir per build, so a library of another target or a fetch stamp never ships.

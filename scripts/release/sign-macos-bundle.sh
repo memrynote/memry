@@ -21,6 +21,19 @@ keychain="${4:-}"
 eventkit_entitlements="$(cd "$(dirname "$0")/../.." && pwd)/apps/desktop-tauri/eventkit/entitlements.plist"
 [ -f "$eventkit_entitlements" ] || { echo "missing $eventkit_entitlements" >&2; exit 1; }
 
+# Every executable and dylib the manifest lists for macOS must be in the bundle. A missing helper
+# (the release config dropped it) fails here, not as a quietly unsigned or absent file.
+manifest="$(cd "$(dirname "$0")" && pwd)/payload-manifest.json"
+# shellcheck disable=SC2016 # the script is JavaScript, not shell
+required="$(node -e '
+const { platforms: { macos } } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+for (const name of macos.executables) console.log(`${macos.binDir}/${name}`)
+for (const file of macos.resources) if (file.endsWith(".dylib")) console.log(`${macos.resourceDir}/${file}`)
+' "$manifest")"
+for rel in $required; do
+  [ -e "$app/$rel" ] || { echo "missing $app/$rel (listed in payload-manifest.json)" >&2; exit 1; }
+done
+
 # sign <path> [codesign options]
 sign() {
   target="$1"
