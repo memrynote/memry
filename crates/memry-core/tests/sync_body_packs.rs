@@ -361,6 +361,42 @@ async fn a_kill_in_the_route_pull_resumes_with_the_servers_updates_exactly() {
     );
 }
 
+/// REVIEW-5347: a first sync killed after its body packs settled re-runs its
+/// refs pass on resume, past the body row of an edit made meanwhile. The
+/// edited document, settled by the packs, ends at the server's head and owed
+/// nothing, so the completed run's `coversThrough` covers it.
+#[tokio::test]
+async fn a_resume_after_the_body_packs_pulls_a_document_edited_meanwhile() {
+    let (db, dir) = body_pack_server::scratch("resume-edited");
+    let edited = ServerDoc::new("editdoc00001", 3);
+    let gap = ServerDoc::new("gapdoc000001", 4);
+    let mut items = update_items(&[&edited, &gap]);
+    items.retain(|item| item.1 != "gapdoc000001" || item.4.as_ref().unwrap()["sequenceNum"] != 3);
+    let mut server = Server::new(vec![edited, gap], vec![BodyPack::new("u1", items)]);
+    server.records = true;
+    // The gap keeps one document owed, so the route pass runs and hangs.
+    server.hang = Some("/sync/crdt/updates/batch".to_owned());
+    let routes = Routes::new(server);
+    killed_while(&routes, first_sync(&db, &routes, &dir).run(NOW_MS), || true).await;
+    assert_eq!(update_seqs(&db, "editdoc00001"), [1, 2, 3]);
+    assert!(!is_owed(&db, "editdoc00001"), "the packs settled it");
+
+    {
+        let mut server = routes.server.lock().unwrap();
+        server.hang = None;
+        server.docs[0] = ServerDoc::new("editdoc00001", 4);
+    }
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect("the resumed first sync");
+
+    let server = routes.server.lock().unwrap();
+    holds_exactly(&db, server.doc("editdoc00001"), 4);
+    holds_exactly(&db, server.doc("gapdoc000001"), 4);
+    assert!(!is_owed(&db, "editdoc00001") && !is_owed(&db, "gapdoc000001"));
+}
+
 /// A kill on the second updates page of a document with more updates than one
 /// page: the batch probe's answer was the first page, so the first per-document
 /// GET is the second page. The resume ends with the server's updates exactly.

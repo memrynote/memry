@@ -18,16 +18,17 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
-use crate::storage::Db;
+use crate::storage::{Db, nested_tx};
 use crate::sync::body_debt;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
 use crate::sync::first_sync_store::{
     owe_live_documents, read_meta, recent_document_ids, write_meta,
 };
+use crate::sync::note_body_feed;
 
 use super::{
     FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport,
-    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms,
+    META_FIRST_SYNC_BODY_PACKS, ProgressSink, now_ms, sqlite_failed,
 };
 
 /// Documents the bodies pass pulls at once while a bootstrap session elevates
@@ -57,6 +58,11 @@ impl FirstSync {
     /// Bodies from packs, once (`pack_bootstrap/bodies.rs`). Answers whether
     /// the phase settled or owed every live document, which makes the debts
     /// the bodies pass's work list.
+    ///
+    /// A run resumed after the phase settled re-ran the refs pass, which moved
+    /// the record cursor past body rows written since the settle. A settled
+    /// document edited meanwhile is behind its head, so every held document
+    /// is owed again and the bodies pass re-checks the window (#5344).
     pub(super) async fn body_packs_pass(
         &self,
         report: &mut FirstSyncReport,
@@ -74,7 +80,17 @@ impl FirstSync {
                     .fallback_reasons
                     .extend(packs.remove_spill().await);
             }
-            return Ok(text == "1");
+            let settled = text == "1";
+            if settled {
+                self.db
+                    .call(|conn| {
+                        let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                        note_body_feed::owe_held_bodies(&txn)?;
+                        txn.commit().map_err(sqlite_failed)
+                    })
+                    .await?;
+            }
+            return Ok(settled);
         }
         let Some(packs) = &self.packs else {
             return Ok(false);
