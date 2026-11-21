@@ -54,7 +54,7 @@ mod store;
 
 use file::file_changes;
 pub(crate) use file::forget as forget_file_baseline;
-pub use file::{taken, taken_all};
+pub use file::{taken, taken_all, written as file_written};
 pub use store::read_values;
 use store::{failed, require, stored, write};
 

@@ -215,7 +215,7 @@ impl Applier {
             // row named.
             Ok(None) => {
                 let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
-                !output_over(made, note_id, path, file)
+                !output_over(made, note_id, path, file, None)
                     .is_ok_and(|output| content_hash(&output) == previous)
             }
             Err(error) => {

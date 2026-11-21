@@ -209,12 +209,14 @@ pub struct VaultActivityChangedEvent;
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultNoticesChangedEvent;
 
-/// Who made a note change (`NoteEventSource`): the app, or an edit outside it.
+/// Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+/// from another device, which an open editor does not remount for (Electron `source: 'sync'`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum NoteEventSource {
     Internal,
     External,
+    Sync,
 }
 
 /// A note was made, by the app or from a file that appeared (`notes:created`).
