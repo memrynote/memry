@@ -313,8 +313,13 @@ write-back that replaces it. A merge that fails falls back to the seed, and the
 note's unmerged flag routes that push to the non-pruning update endpoint.
 
 An editor open of an empty document seeds from the vault file only for a
-local-only note or a note the server provably holds nothing for (#5290).
-Otherwise, while its merge has not completed or the note still has an
+local-only note or a note the server provably holds nothing for (#5290). A
+note created on this device that never synced also seeds when its merge does
+not complete, so it opens editable offline (#5371). That needs durable proof
+the server holds nothing: `note_metadata.synced_at` is null, its `note` create
+is still queued, it has no `note_body_sync` row, and the coordinator has no
+sign of a server body (no unmerged flag, owed or deferred pull, counted
+failure, or update applied this session). Journals never qualify. Otherwise, while its merge has not completed or the note still has an
 unmerged remote body, the document stays empty and waits (`awaitingMerge`).
 An update Yjs parks as pending structs does not end the wait; the document has
 to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
@@ -339,7 +344,7 @@ signed-out editor returns to its loading state, and the next sync drains the
 owed pull. The pull that later merges the body, or a pull that proves the
 server holds nothing, ends the wait, and the editor binds. A reconnect retries
 the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
-is how a note the server never saw seeds after an offline open.
+is how any other note the server never saw seeds after an offline open.
 
 The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
 vault file only when the server answered with no snapshot and no updates for
