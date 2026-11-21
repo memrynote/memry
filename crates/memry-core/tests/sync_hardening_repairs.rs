@@ -5,7 +5,9 @@
 //!   by id, and queues a live clocked local row the server does not list as
 //!   `create`; never a row held here in any state, a refused or permanently
 //!   quarantined one, `task_activity`, or a type the server re-creates over a
-//!   purged tombstone (notes among them). At most once per 30 minutes.
+//!   purged tombstone other than a note, journal or bookmark, which goes only
+//!   when the server answers nothing for its id (`sync_hardening_probe`). At
+//!   most once per 30 minutes.
 //! - A reconnect more than a day after the last successful pull reads the
 //!   record feed from the start; less than a day keeps the cursor. Through the
 //!   desktop driver's pass, on `driver_fakes`'s server.
@@ -38,7 +40,7 @@ use serde_json::{Value as Json, json};
 const MINUTE_MS: i64 = 60_000;
 const HOUR_MS: i64 = 60 * MINUTE_MS;
 
-fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     i64::try_from(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -48,7 +50,7 @@ fn now_ms() -> i64 {
     .expect("fits")
 }
 
-fn scratch_db() -> Db {
+pub(crate) fn scratch_db() -> Db {
     let dir = tempfile::Builder::new()
         .prefix("memry-hardening-repairs-")
         .tempdir()
@@ -73,7 +75,7 @@ fn declaration() -> Declaration {
         .expect("recognised")
 }
 
-fn pull_loop(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
+pub(crate) fn pull_loop(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
     let http = HttpClient::new(
         transport,
         "https://sync.example",
@@ -82,7 +84,7 @@ fn pull_loop(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
     PullLoop::new(Arc::new(http), db.clone(), declaration(), Arc::new(Live)).with_hardening()
 }
 
-fn envelope(id: &str, item_type: &str) -> Json {
+pub(crate) fn envelope(id: &str, item_type: &str) -> Json {
     json!({
         "id": id, "type": item_type, "operation": "update",
         "encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA",
@@ -98,7 +100,7 @@ fn changes(listed: &[(&str, &str)], next_cursor: &str) -> String {
     json!({"items": items, "deleted": [], "hasMore": false, "nextCursor": next_cursor}).to_string()
 }
 
-fn manifest(listed: &[(&str, &str)]) -> String {
+pub(crate) fn manifest(listed: &[(&str, &str)]) -> String {
     let items: Vec<Json> = listed
         .iter()
         .map(|(item_type, id)| json!({"type": item_type, "id": id}))
@@ -108,7 +110,7 @@ fn manifest(listed: &[(&str, &str)]) -> String {
 
 /// Pulls `envelopes` live through one feed page: rows the server pushed
 /// here, so nothing is queued for them.
-async fn pull_live(db: &Db, envelopes: Vec<Json>) {
+pub(crate) async fn pull_live(db: &Db, envelopes: Vec<Json>) {
     let listed: Vec<(String, String)> = envelopes
         .iter()
         .map(|item| {
@@ -143,7 +145,7 @@ fn exec(db: &Db, sql: &'static str) {
         .expect("seed");
 }
 
-fn queued(db: &Db) -> Vec<(String, String, String)> {
+pub(crate) fn queued(db: &Db) -> Vec<(String, String, String)> {
     db.call_blocking(|conn| {
         let mut statement = conn
             .prepare("SELECT item_type, item_id, op FROM outbox ORDER BY item_type, item_id")
@@ -170,7 +172,7 @@ fn live(db: &Db, item_type: &'static str, id: &'static str) -> bool {
     .expect("read")
 }
 
-fn pair(item_type: &str, id: &str) -> (String, String) {
+pub(crate) fn pair(item_type: &str, id: &str) -> (String, String) {
     (item_type.to_owned(), id.to_owned())
 }
 
@@ -202,11 +204,14 @@ async fn a_live_server_row_held_nowhere_here_is_pulled_by_id() {
 }
 
 #[tokio::test]
-async fn a_live_clocked_task_the_server_lacks_is_queued_as_create_and_a_note_is_not() {
+async fn a_live_clocked_task_the_server_lacks_is_queued_as_create_and_a_note_once_asked() {
     let db = scratch_db();
     pull_live(&db, vec![envelope("t1", "task"), envelope("n1", "note")]).await;
     assert!(queued(&db).is_empty(), "pulled rows owe nothing");
-    let transport = FakeTransport::new(vec![response(200, &manifest(&[]))]);
+    let transport = FakeTransport::new(vec![
+        response(200, &manifest(&[])),
+        response(200, &json!({ "items": [] }).to_string()),
+    ]);
 
     let outcome = ManifestCheck::default()
         .run(&pull_loop(&db, transport), now_ms())
@@ -218,13 +223,17 @@ async fn a_live_clocked_task_the_server_lacks_is_queued_as_create_and_a_note_is_
         outcome,
         ManifestOutcome {
             server_only: Vec::new(),
-            reuploaded: vec![pair("task", "t1")],
+            reuploaded: vec![pair("task", "t1"), pair("note", "n1")],
+            deleted_there: Vec::new(),
         }
     );
     assert_eq!(
         queued(&db),
-        vec![("task".to_owned(), "t1".to_owned(), "create".to_owned())],
-        "a note is re-created over a purged tombstone by the server, so it stays local"
+        vec![
+            ("note".to_owned(), "n1".to_owned(), "create".to_owned()),
+            ("task".to_owned(), "t1".to_owned(), "create".to_owned()),
+        ],
+        "the server named nothing of the note, so its create was lost"
     );
 }
 
