@@ -478,7 +478,11 @@ async fn the_device_limit_is_its_own_terminal_error() {
 #[tokio::test]
 async fn the_vault_limit_needs_a_plan_on_any_sync_route() {
     let transport = FakeTransport::new(vec![
-        error_response(402, "SYNC_VAULT_LIMIT_EXCEEDED", "plus allows 1 synced vaults"),
+        error_response(
+            402,
+            "SYNC_VAULT_LIMIT_EXCEEDED",
+            "plus allows 1 synced vaults",
+        ),
         error_response(402, "SYNC_PAYMENT_REQUIRED", "no plan"),
     ]);
     let client = make_client(transport.clone(), RecordingSleeper::new());
