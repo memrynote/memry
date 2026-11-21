@@ -1,4 +1,4 @@
-//! What [`super::apply_page`] tells the observers about each record
+//! What [`super::apply_page_into`] tells the observers about each record
 //! ([`crate::sync::driver::observer`]): its outcome, the fields a concurrent
 //! merge decided, a note revived by a losing tombstone, and the attachments an
 //! applied note references.
@@ -35,6 +35,24 @@ pub(super) fn is_live(
     .map_err(sqlite_failed)
 }
 
+/// A live note's title before `record` applies ([`AppliedRecord::title_before`]); `None` for
+/// any other type.
+pub(super) fn title_before(
+    conn: &Connection,
+    record: &InboundRecord,
+) -> Result<Option<String>, StorageError> {
+    if record.item_type != notes::ITEM_TYPE {
+        return Ok(None);
+    }
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1 AND deleted_at IS NULL",
+        params![record.item_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(sqlite_failed)
+}
+
 /// Adds one pulled record. `merged` is the conflict set of a concurrent
 /// merge, `None` for any other apply.
 pub(super) fn record(
@@ -42,7 +60,7 @@ pub(super) fn record(
     feed: &mut AppliedFeed,
     record: &InboundRecord,
     outcome: &ApplyOutcome,
-    existed: bool,
+    (existed, title_before): (bool, Option<String>),
     merged: Option<Vec<field_merge::FieldConflict>>,
 ) -> Result<(), StorageError> {
     let (outcome, conflicts) = match (outcome, merged) {
@@ -63,6 +81,7 @@ pub(super) fn record(
         item_id: record.item_id.clone(),
         outcome,
         conflicts,
+        title_before,
     });
     // Electron asks again on an identical skip too: the only re-request for a
     // download that died with the process before the page re-pulled (#2294).
@@ -102,24 +121,27 @@ fn push(feed: &mut AppliedFeed, item_type: &str, item_id: &str, outcome: Applied
         item_id: item_id.to_owned(),
         outcome,
         conflicts: Vec::new(),
+        title_before: None,
     });
 }
 
 /// The winner and the loser of one decided field. A value the side did not
 /// send is `null`.
 fn conflict(decided: field_merge::FieldConflict) -> FieldConflict {
+    // Absent is not `null` here (Electron compares `JSON.stringify` of each).
+    let local_lost = decided.local_value != decided.merged_value;
     let winning = decided.merged_value.unwrap_or(Json::Null);
-    let local = decided.local_value.unwrap_or(Json::Null);
-    let losing = if local == winning {
-        decided.remote_value.unwrap_or(Json::Null)
+    let losing = if local_lost {
+        decided.local_value.unwrap_or(Json::Null)
     } else {
-        local
+        decided.remote_value.unwrap_or(Json::Null)
     };
     FieldConflict {
         field: decided.field,
         losing,
         winning,
         merged_clock: serde_json::to_value(&decided.merged_clock).unwrap_or(Json::Null),
+        local_lost,
     }
 }
 

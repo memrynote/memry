@@ -1,12 +1,16 @@
 //! The single command list. Add a domain's commands under its comment, one fully qualified path
 //! per line, domains in alphabetical order, and its module under `src/commands/`.
 
-use tauri::ipc::Invoke;
-use tauri::{Runtime, Wry};
+use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::binary;
 use crate::startup::StartupState;
+
+mod dispatch;
+mod permission;
+
+pub use dispatch::{dispatcher, invoke_handler};
+pub use permission::app_all_permission;
 
 pub fn builder() -> Builder<Wry> {
     Builder::<Wry>::new()
@@ -61,6 +65,17 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
+            // calendar macOS (EventKit)
+            crate::commands::calendar_eventkit::calendar_eventkit_request_access,
+            // calendar feeds
+            crate::commands::calendar_ics::calendar_refresh_ics,
+            crate::commands::calendar_ics::calendar_subscribe_ics,
+            crate::commands::calendar_ics::calendar_unsubscribe_ics,
+            // calendar providers
+            crate::commands::calendar_providers::calendar_check_provider_writer_compat,
+            crate::commands::calendar_providers::calendar_connect_provider,
+            crate::commands::calendar_providers::calendar_disconnect_provider,
+            crate::commands::calendar_providers::calendar_discover_provider_calendars,
             // canvas
             crate::commands::canvas::canvas_can_upload_asset,
             crate::commands::canvas::canvas_create::<Wry>,
@@ -118,6 +133,26 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // folder view
+            crate::commands::folder_view::folder_view_available_properties,
+            crate::commands::folder_view::folder_view_delete_view,
+            crate::commands::folder_view::folder_view_folder_exists,
+            crate::commands::folder_view::folder_view_get_config,
+            crate::commands::folder_view::folder_view_get_views,
+            crate::commands::folder_view::folder_view_list,
+            crate::commands::folder_view::folder_view_set_config,
+            crate::commands::folder_view::folder_view_set_view,
+            // home pages (`home_pages_set_cover_upload` is a binary command)
+            crate::commands::home_pages::home_pages_create::<Wry>,
+            crate::commands::home_pages::home_pages_delete::<Wry>,
+            crate::commands::home_pages::home_pages_get::<Wry>,
+            crate::commands::home_pages::home_pages_list::<Wry>,
+            crate::commands::home_pages::home_pages_materialize_cover::<Wry>,
+            crate::commands::home_pages::home_pages_remove_cover::<Wry>,
+            crate::commands::home_pages::home_pages_reorder::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
+            crate::commands::home_pages::home_pages_update::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -160,6 +195,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachments::notes_list_attachments::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
+            crate::commands::export::notes_export_html::<Wry>,
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,
@@ -188,6 +224,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
+            crate::commands::notes_import::notes_import_files::<Wry>,
+            crate::commands::notes_import::notes_show_import_dialog,
             crate::commands::notes::notes_append_blocks::<Wry>,
             crate::commands::notes::notes_undo_tag_template::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
@@ -277,11 +315,13 @@ pub fn builder() -> Builder<Wry> {
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_ai,
+            crate::commands::settings::settings_get_calendar_provider,
             crate::commands::settings::settings_get_group,
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
             crate::commands::settings::settings_set_ai::<Wry>,
+            crate::commands::settings::settings_set_calendar_provider,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
@@ -308,9 +348,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::sync::sync_trigger::<Wry>,
             crate::commands::sync::sync_update_synced_setting::<Wry>,
             // sync account
-            crate::commands::sync_account::account_sign_out,
+            crate::commands::sync_account::account_sign_out::<Wry>,
             crate::commands::sync_account::sync_get_vault_binding,
-            crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_logout::<Wry>,
+            crate::commands::sync_account::sync_repair_device_keys,
             crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
@@ -336,6 +377,22 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
+            // tasks
+            crate::commands::tasks::tasks_get::<Wry>,
+            crate::commands::tasks::tasks_get_linked_tasks::<Wry>,
+            crate::commands::tasks::tasks_get_overdue::<Wry>,
+            crate::commands::tasks::tasks_get_stats::<Wry>,
+            crate::commands::tasks::tasks_get_subtasks::<Wry>,
+            crate::commands::tasks::tasks_get_tags::<Wry>,
+            crate::commands::tasks::tasks_get_today::<Wry>,
+            crate::commands::tasks::tasks_get_upcoming::<Wry>,
+            crate::commands::tasks::tasks_list::<Wry>,
+            crate::commands::tasks::tasks_status_create::<Wry>,
+            crate::commands::tasks::tasks_status_delete::<Wry>,
+            crate::commands::tasks::tasks_status_list::<Wry>,
+            crate::commands::tasks::tasks_status_reorder::<Wry>,
+            crate::commands::tasks::tasks_status_update::<Wry>,
+            crate::commands::tasks::tasks_update::<Wry>,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -349,6 +406,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::templates::templates_get,
             crate::commands::templates::templates_list,
             crate::commands::templates::templates_update,
+            // terminal command
+            crate::commands::terminal_command::settings_get_terminal_command_status,
+            crate::commands::terminal_command::settings_install_terminal_command,
+            crate::commands::terminal_command::settings_set_terminal_command_default_vault,
+            crate::commands::terminal_command::settings_uninstall_terminal_command,
             // unsplash
             crate::commands::unsplash::unsplash_search,
             // updater
@@ -393,6 +455,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
             // voice
+            crate::commands::voice::inbox_retry_transcription,
             crate::commands::voice::settings_download_voice_model,
             crate::commands::voice::settings_get_voice_model_status,
             crate::commands::voice::settings_get_voice_recording_readiness,
@@ -433,6 +496,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // home pages
+            crate::events::HomePageCreatedEvent,
+            crate::events::HomePageDeletedEvent,
+            crate::events::HomePageUpdatedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal
@@ -497,6 +564,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagNotesChangedEvent,
             crate::events::TagRenamedEvent,
             crate::events::TagsProgressEvent,
+            // tasks
+            crate::events::TaskActivityCreatedEvent,
+            crate::events::TaskCreatedEvent,
+            crate::events::TaskUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultConfigChangedEvent,
@@ -520,30 +591,4 @@ pub fn builder() -> Builder<Wry> {
         // `ai_provider_request` is a binary command; its argument and answer still get types.
         .typ::<memry_desktop::ai::proxy::AiProviderRequest>()
         .typ::<memry_desktop::ai::proxy::AiProviderHead>()
-}
-
-/// Sends a call to the binary handler when `command` is one of `binary_commands` and to the
-/// specta handler otherwise. Step 03 (#3520) wraps this closure with its `e2e_` dispatcher.
-pub fn dispatcher<R: Runtime>(
-    binary_commands: &'static [&'static str],
-    binary_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-    typed_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
-    move |invoke| {
-        if binary_commands.contains(&invoke.message.command()) {
-            binary_handler(invoke)
-        } else {
-            typed_handler(invoke)
-        }
-    }
-}
-
-pub fn invoke_handler(
-    builder: &Builder<Wry>,
-) -> impl Fn(Invoke<Wry>) -> bool + Send + Sync + 'static {
-    dispatcher(
-        binary::COMMANDS,
-        binary::handler(),
-        builder.invoke_handler(),
-    )
 }

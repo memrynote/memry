@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Хранилищ пока нет",
       "openVault": "Открыть хранилище",
+      "createVault": "Создать хранилище",
+      "openFolderAsVault": "Открыть папку как хранилище",
       "settings": "Настройки",
       "remove": "Убрать «",
       "removeVaultTitle": "Убрать «{name}» из списка?",

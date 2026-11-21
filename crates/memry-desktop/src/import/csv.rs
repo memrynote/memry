@@ -21,6 +21,9 @@ use super::{
 const FOLDER: &str = "CSV";
 const TITLE_ALIASES: [&str; 3] = ["title", "name", "subject"];
 const SAMPLE_MAX: usize = 5;
+/// Bytes of the preview's column list. Electron lists every header, so a wide one made the
+/// warning (sent twice, as the message and its `columns` param) larger than the header row.
+const MAX_COLUMNS_TEXT: usize = 1_000;
 
 thread_local! {
     static STEPS: Cell<usize> = const { Cell::new(0) };
@@ -375,9 +378,30 @@ impl Importer for CsvImporter {
     }
 }
 
+/// `plan.columns.join(', ')`, cut at `MAX_COLUMNS_TEXT` bytes and then ending in an ellipsis.
+fn columns_text(columns: &[String]) -> String {
+    let mut text = String::new();
+    for (i, column) in columns.iter().enumerate() {
+        if i > 0 {
+            text.push_str(", ");
+        }
+        text.push_str(column);
+        if text.len() > MAX_COLUMNS_TEXT {
+            let mut cut = MAX_COLUMNS_TEXT;
+            while !text.is_char_boundary(cut) {
+                cut -= 1;
+            }
+            text.truncate(cut);
+            text.push('…');
+            break;
+        }
+    }
+    text
+}
+
 /// `previewFile`'s group for a plan.
 fn preview_group(label: String, plan: CsvPlan) -> PreviewGroup {
-    let columns = plan.columns.join(", ");
+    let columns = columns_text(&plan.columns);
     let mut warnings: Vec<ImportText> =
         plan.warnings.into_iter().map(ImportText::Message).collect();
     warnings.push(ImportText::Message(
@@ -409,5 +433,62 @@ fn preview_group(label: String, plan: CsvPlan) -> PreviewGroup {
         sample_titles: Some(plan.sample_titles),
         warnings: Some(warnings),
         error: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The preview's "Columns:" warning for `header`, as `preview` builds it from a file.
+    fn columns_warning(header: &str) -> ImportMessage {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("wide.csv");
+        std::fs::write(&path, format!("{header}\nrow\n")).unwrap();
+        let input = ImportInput {
+            source_paths: vec![path.to_string_lossy().into_owned()],
+            options: None,
+        };
+        let preview = CsvImporter
+            .preview(&input, &CancellationToken::new())
+            .unwrap();
+        let warnings = preview.groups[0].warnings.clone().unwrap();
+        warnings
+            .into_iter()
+            .find_map(|text| match text {
+                ImportText::Message(message)
+                    if message.code.as_deref() == Some(codes::CSV_COLUMNS) =>
+                {
+                    Some(message)
+                }
+                _ => None,
+            })
+            .unwrap()
+    }
+
+    /// The warning lists the header, so its size follows the header's: a wide header's list
+    /// is cut at `MAX_COLUMNS_TEXT` and ends in an ellipsis.
+    #[test]
+    fn a_wide_header_gives_a_bounded_columns_warning() {
+        let wide: Vec<String> = (0..5_000).map(|i| format!("column_{i}")).collect();
+        // Multi-byte names put the byte cap inside a character: `€` (3 bytes) and `aé` (1 + 2)
+        // do at 1,000, `😀` (4) does not.
+        for header in [
+            wide.join(","),
+            "x".repeat(1 << 20),
+            "€".repeat(400),
+            "😀".repeat(300),
+            "aé".repeat(400),
+        ] {
+            let warning = columns_warning(&header);
+            let columns = warning.params.as_ref().unwrap()["columns"]
+                .as_str()
+                .unwrap();
+            assert!(columns.len() <= MAX_COLUMNS_TEXT + '…'.len_utf8());
+            assert!(columns.ends_with('…'));
+            assert_eq!(warning.message, format!("Columns: {columns}"));
+        }
+        let narrow = columns_warning("title,body");
+        assert_eq!(narrow.message, "Columns: title, body");
     }
 }

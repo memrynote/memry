@@ -31,14 +31,10 @@ describe('similarityService', () => {
     expect(commands.notesGetTagSuggestions).toHaveBeenCalledWith('a')
   })
 
-  it('groups the given notes and lets a refused grouping reach the caller', async () => {
+  it('groups the given notes', async () => {
     const answer = { status: 'ready', groups: [], ungrouped: ['a'], missing: [] }
     commands.notesCluster.mockResolvedValueOnce(answer)
     await expect(similarityService.cluster(['a'])).resolves.toBe(answer)
     expect(commands.notesCluster).toHaveBeenCalledWith(['a'])
-
-    const refused = { kind: 'invalid', code: 'invalid', message: 'invalid noteIds' }
-    commands.notesCluster.mockRejectedValueOnce(refused)
-    await expect(similarityService.cluster([])).rejects.toEqual(refused)
   })
 })

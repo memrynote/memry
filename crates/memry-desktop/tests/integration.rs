@@ -6,6 +6,8 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
+mod capture_support;
 mod device_key;
 mod electron_profile;
 mod embedding_lane;
@@ -22,6 +24,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_sign_out_cancel.rs"]
+mod account_sign_out_cancel;
 #[path = "account_teardown.rs"]
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
@@ -32,6 +36,14 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent_mcp_http.rs"]
+mod agent_mcp_http;
+#[path = "agent_mcp_parts.rs"]
+mod agent_mcp_parts;
+#[path = "agent_store.rs"]
+mod agent_store;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
@@ -106,6 +118,18 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
+#[path = "calendar_settings.rs"]
+mod calendar_settings;
 #[path = "canvas_assets.rs"]
 mod canvas_assets;
 #[path = "canvas_files.rs"]
@@ -114,6 +138,12 @@ mod canvas_files;
 mod canvas_folders;
 #[path = "canvas_service.rs"]
 mod canvas_service;
+#[path = "capture_pairing.rs"]
+mod capture_pairing;
+#[path = "capture_requests.rs"]
+mod capture_requests;
+#[path = "capture_server.rs"]
+mod capture_server;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
@@ -161,8 +191,12 @@ mod fold_untrusted;
 mod folder_file;
 #[path = "folder_prune.rs"]
 mod folder_prune;
+#[path = "folder_view.rs"]
+mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]
@@ -179,6 +213,12 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
+#[path = "importer_google_keep.rs"]
+mod importer_google_keep;
+#[path = "importer_roam.rs"]
+mod importer_roam;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
@@ -291,6 +331,8 @@ mod notes_folders;
 mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_import_files.rs"]
+mod notes_import_files;
 #[path = "notes_kept.rs"]
 mod notes_kept;
 #[path = "notes_link_rewrite.rs"]
@@ -307,6 +349,8 @@ mod notes_moves_edges;
 mod notes_outside_after_reopen;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
+#[path = "notes_plain_checklists.rs"]
+mod notes_plain_checklists;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_resolve_refs.rs"]
@@ -329,8 +373,12 @@ mod notes_update_critic_marks;
 mod notes_writes;
 #[path = "oauth_loopback.rs"]
 mod oauth_loopback;
+#[path = "obsidian_task_import.rs"]
+mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
+#[path = "owed_take.rs"]
+mod owed_take;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]
@@ -381,6 +429,8 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "tasks_service.rs"]
+mod tasks_service;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]
@@ -436,6 +486,10 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_engine.rs"]
+mod voice_engine;
+#[path = "voice_service.rs"]
+mod voice_service;
 
 #[test]
 fn every_test_file_is_built() {

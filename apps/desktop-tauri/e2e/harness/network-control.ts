@@ -2,6 +2,7 @@ import { expect as playwrightExpect } from './pw-compat/expect'
 import type { Page } from './pw-compat/page'
 import { invokeTest } from './invoke-test'
 import type { TauriApp } from './tauri-lifecycle'
+import { invoke } from './vault-commands'
 
 interface SyncStatusSnapshot {
   status: string
@@ -28,7 +29,7 @@ export async function readCrdtPendingCount(app: TauriApp): Promise<number> {
 }
 
 export async function readSyncStatus(page: Page): Promise<SyncStatusSnapshot> {
-  return page.evaluate(() => window.api.syncOps.getStatus())
+  return invoke<SyncStatusSnapshot>(page, 'sync_get_status')
 }
 
 /**
@@ -38,10 +39,10 @@ export async function readSyncStatus(page: Page): Promise<SyncStatusSnapshot> {
  */
 export async function triggerSync(page: Page, timeout = 15000): Promise<TriggerSyncResult> {
   const deadline = Date.now() + timeout
-  let result = await page.evaluate(() => window.api.syncOps.triggerSync())
+  let result = await invoke<TriggerSyncResult>(page, 'sync_trigger')
   while (!result.success && result.reason === 'busy' && Date.now() < deadline) {
     await page.waitForTimeout(250)
-    result = await page.evaluate(() => window.api.syncOps.triggerSync())
+    result = await invoke<TriggerSyncResult>(page, 'sync_trigger')
   }
   return result
 }

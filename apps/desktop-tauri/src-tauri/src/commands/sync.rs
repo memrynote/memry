@@ -3,15 +3,13 @@
 //! `memry_desktop::sync::ops`; device, binding, wipe, key-repair and storage commands are Steps
 //! 19 and 18.
 
-use std::sync::Arc;
-
 use memry_desktop::error::CoreError;
-use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::Session;
+use memry_desktop::settings::SettingsService;
 use memry_desktop::sync::ops::{
     self, GetHistoryInput, GetHistoryResult, GetQueueSizeResult, LargeNotesResult, NoteSyncState,
-    PauseSyncResult, QuarantinedItemInfo, ResumeSyncResult, SettingsWriteError, SyncControlSurface,
-    UnsentNotesResult, UpdateSyncedSettingResult,
+    PauseSyncResult, QuarantinedItemInfo, ResumeSyncResult, SyncControlSurface, UnsentNotesResult,
+    UpdateSyncedSettingResult,
 };
 use memry_desktop::sync::result::TriggerSyncResult;
 use memry_desktop::sync::status::SyncStatus;
@@ -208,7 +206,9 @@ pub struct UpdateSyncedSettingInput {
     pub value: Value,
 }
 
-/// `sync:update-synced-setting`.
+/// `sync:update-synced-setting`: written through the settings owner and announced as
+/// `settings-changed`. The Wry-only follow-ups of a settings write (tray, login item, menu) are
+/// not run: no renderer path sends a field they read through this channel.
 #[tauri::command]
 #[specta::specta]
 pub async fn sync_update_synced_setting<R: Runtime>(
@@ -222,14 +222,22 @@ pub async fn sync_update_synced_setting<R: Runtime>(
             "fieldPath is required",
         ));
     }
-    let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
-    blocking("sync_update_synced_setting", move || {
-        ops::update_synced_setting(&session(&app), store, input.field_path, input.value).map_err(
-            |error| match error {
-                SettingsWriteError::Storage(error) => CommandError::from_core(&error),
-                SettingsWriteError::Auth(error) => CommandError::from_core(&error),
-            },
-        )
+    let settings = app.state::<SettingsService>().inner().clone();
+    let session = session(&app);
+    let change = blocking("sync_update_synced_setting", move || {
+        ops::update_synced_setting(&session, &settings, &input.field_path, input.value)
+            .map_err(super::settings::map_error)
     })
-    .await
+    .await?;
+    let Some(change) = change else {
+        return Ok(UpdateSyncedSettingResult {
+            success: false,
+            error: Some("errors:sync.settingsNotInitialized".to_owned()),
+        });
+    };
+    super::settings::notify(&app, &change.group, change.fields);
+    Ok(UpdateSyncedSettingResult {
+        success: true,
+        error: None,
+    })
 }

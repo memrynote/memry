@@ -1,0 +1,338 @@
+[
+  {
+    "name": "html-heavy article",
+    "html": "\n<h1>Why notes compound</h1>\n<p>First <strong>paragraph</strong> with a <a href=\"https://example.com/a\">link</a> and <em>emphasis</em>.</p>\n<img src=\"https://cdn.example.com/hero.jpg\" alt=\"hero\">\n<blockquote><p>A quote worth keeping.</p></blockquote>\n<h2>Steps</h2>\n<ol><li>Capture</li><li>Connect <code>links</code></li></ol>\n<ul><li>One</li><li>Two<ul><li>Nested</li></ul></li></ul>\n<pre><code>const x = 1</code></pre>\n<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>\n<script>alert(1)</script>\n",
+    "imageUrls": [
+      "https://cdn.example.com/hero.jpg"
+    ],
+    "saved": [
+      [
+        "https://cdn.example.com/hero.jpg",
+        "../../attachments/n1/rw-0.png"
+      ]
+    ],
+    "rendered": "# Why notes compound\n\nFirst **paragraph** with a [link](https://example.com/a) and *emphasis*.\n\n![hero](../../attachments/n1/rw-0.png)\n\n> A quote worth keeping.\n\n## Steps\n\n1. Capture\n2. Connect `links`\n\n- One\n- Two\n  - Nested\n\n```\nconst x = 1\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |",
+    "renderedWithoutImages": "# Why notes compound\n\nFirst **paragraph** with a [link](https://example.com/a) and *emphasis*.\n\n> A quote worth keeping.\n\n## Steps\n\n1. Capture\n2. Connect `links`\n\n- One\n- Two\n  - Nested\n\n```\nconst x = 1\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |"
+  },
+  {
+    "name": "figure with caption",
+    "html": "<figure><img alt=\"Notes in MemryNote\" src=\"https://cdn.example.com/n.webp\" srcset=\"https://cdn.example.com/n-1100.webp 1100w,\"/><figcaption>Notes in MemryNote</figcaption></figure><figure><img alt=\"No caption\" src=\"https://cdn.example.com/b.webp\"/></figure>",
+    "imageUrls": [
+      "https://cdn.example.com/n.webp",
+      "https://cdn.example.com/b.webp"
+    ],
+    "saved": [
+      [
+        "https://cdn.example.com/n.webp",
+        "../../attachments/n1/rw-0.png"
+      ],
+      [
+        "https://cdn.example.com/b.webp",
+        "../../attachments/n1/rw-1.png"
+      ]
+    ],
+    "rendered": "<figure><img src=\"../../attachments/n1/rw-0.png\"><figcaption>Notes in MemryNote</figcaption></figure>\n\n![No caption](../../attachments/n1/rw-1.png)",
+    "renderedWithoutImages": ""
+  },
+  {
+    "name": "lazy sources",
+    "html": "<img src=\"data:image/gif;base64,R0lGOD\" data-src=\"https://cdn.example.com/lazy.png\"><img srcset=\"/img/small.png 400w, /img/large.png 1200w\"><picture><source srcset=\"https://cdn.example.com/p.webp 2x\"><img></picture><img src=\"blob:nope\">",
+    "baseUrl": "https://example.com/post/1",
+    "imageUrls": [
+      "https://cdn.example.com/lazy.png",
+      "https://example.com/img/large.png",
+      "https://cdn.example.com/p.webp"
+    ],
+    "saved": [
+      [
+        "https://cdn.example.com/lazy.png",
+        "../../attachments/n1/rw-0.png"
+      ],
+      [
+        "https://example.com/img/large.png",
+        "../../attachments/n1/rw-1.png"
+      ],
+      [
+        "https://cdn.example.com/p.webp",
+        "../../attachments/n1/rw-2.png"
+      ]
+    ],
+    "rendered": "![](../../attachments/n1/rw-0.png)\n\n![](../../attachments/n1/rw-1.png)\n\n![](../../attachments/n1/rw-2.png)",
+    "renderedWithoutImages": ""
+  },
+  {
+    "name": "local hosts",
+    "html": "<img src=\"http://127.0.0.1:8080/a.png\"><img src=\"http://localhost/b.png\"><img src=\"http://192.168.1.5/c.png\"><img src=\"http://169.254.169.254/d.png\"><img src=\"http://[::1]/e.png\"><img src=\"file:///etc/passwd\"><img src=\"https://cdn.example.com/ok.png\">",
+    "imageUrls": [
+      "https://cdn.example.com/ok.png"
+    ],
+    "saved": [
+      [
+        "https://cdn.example.com/ok.png",
+        "../../attachments/n1/rw-0.png"
+      ]
+    ],
+    "rendered": "![](../../attachments/n1/rw-0.png)",
+    "renderedWithoutImages": ""
+  },
+  {
+    "name": "image cap",
+    "html": "<img src=\"https://cdn.example.com/0.png\"><img src=\"https://cdn.example.com/1.png\"><img src=\"https://cdn.example.com/2.png\"><img src=\"https://cdn.example.com/3.png\"><img src=\"https://cdn.example.com/4.png\"><img src=\"https://cdn.example.com/5.png\"><img src=\"https://cdn.example.com/6.png\"><img src=\"https://cdn.example.com/7.png\"><img src=\"https://cdn.example.com/8.png\"><img src=\"https://cdn.example.com/9.png\"><img src=\"https://cdn.example.com/10.png\"><img src=\"https://cdn.example.com/11.png\"><img src=\"https://cdn.example.com/12.png\"><img src=\"https://cdn.example.com/13.png\"><img src=\"https://cdn.example.com/14.png\"><img src=\"https://cdn.example.com/15.png\"><img src=\"https://cdn.example.com/16.png\"><img src=\"https://cdn.example.com/17.png\"><img src=\"https://cdn.example.com/18.png\"><img src=\"https://cdn.example.com/19.png\"><img src=\"https://cdn.example.com/20.png\"><img src=\"https://cdn.example.com/21.png\"><img src=\"https://cdn.example.com/22.png\"><img src=\"https://cdn.example.com/23.png\"><img src=\"https://cdn.example.com/24.png\"><img src=\"https://cdn.example.com/25.png\"><img src=\"https://cdn.example.com/26.png\"><img src=\"https://cdn.example.com/27.png\"><img src=\"https://cdn.example.com/28.png\"><img src=\"https://cdn.example.com/29.png\"><img src=\"https://cdn.example.com/30.png\"><img src=\"https://cdn.example.com/31.png\"><img src=\"https://cdn.example.com/32.png\"><img src=\"https://cdn.example.com/33.png\"><img src=\"https://cdn.example.com/34.png\"><img src=\"https://cdn.example.com/35.png\"><img src=\"https://cdn.example.com/36.png\"><img src=\"https://cdn.example.com/37.png\"><img src=\"https://cdn.example.com/38.png\"><img src=\"https://cdn.example.com/39.png\"><img src=\"https://cdn.example.com/40.png\"><img src=\"https://cdn.example.com/41.png\"><img src=\"https://cdn.example.com/42.png\"><img src=\"https://cdn.example.com/43.png\"><img src=\"https://cdn.example.com/44.png\"><img src=\"https://cdn.example.com/45.png\"><img src=\"https://cdn.example.com/46.png\"><img src=\"https://cdn.example.com/47.png\"><img src=\"https://cdn.example.com/48.png\"><img src=\"https://cdn.example.com/49.png\"><img src=\"https://cdn.example.com/50.png\"><img src=\"https://cdn.example.com/51.png\"><img src=\"https://cdn.example.com/52.png\"><img src=\"https://cdn.example.com/53.png\"><img src=\"https://cdn.example.com/54.png\"><img src=\"https://cdn.example.com/55.png\"><img src=\"https://cdn.example.com/56.png\"><img src=\"https://cdn.example.com/57.png\"><img src=\"https://cdn.example.com/58.png\"><img src=\"https://cdn.example.com/59.png\"><img src=\"https://cdn.example.com/60.png\"><img src=\"https://cdn.example.com/61.png\"><img src=\"https://cdn.example.com/62.png\"><img src=\"https://cdn.example.com/63.png\"><img src=\"https://cdn.example.com/64.png\"><img src=\"https://cdn.example.com/65.png\"><img src=\"https://cdn.example.com/66.png\"><img src=\"https://cdn.example.com/67.png\"><img src=\"https://cdn.example.com/68.png\"><img src=\"https://cdn.example.com/69.png\"><img src=\"https://cdn.example.com/70.png\"><img src=\"https://cdn.example.com/71.png\"><img src=\"https://cdn.example.com/72.png\"><img src=\"https://cdn.example.com/73.png\"><img src=\"https://cdn.example.com/74.png\"><img src=\"https://cdn.example.com/75.png\"><img src=\"https://cdn.example.com/76.png\"><img src=\"https://cdn.example.com/77.png\"><img src=\"https://cdn.example.com/78.png\"><img src=\"https://cdn.example.com/79.png\">",
+    "imageUrls": [
+      "https://cdn.example.com/0.png",
+      "https://cdn.example.com/1.png",
+      "https://cdn.example.com/2.png",
+      "https://cdn.example.com/3.png",
+      "https://cdn.example.com/4.png",
+      "https://cdn.example.com/5.png",
+      "https://cdn.example.com/6.png",
+      "https://cdn.example.com/7.png",
+      "https://cdn.example.com/8.png",
+      "https://cdn.example.com/9.png",
+      "https://cdn.example.com/10.png",
+      "https://cdn.example.com/11.png",
+      "https://cdn.example.com/12.png",
+      "https://cdn.example.com/13.png",
+      "https://cdn.example.com/14.png",
+      "https://cdn.example.com/15.png",
+      "https://cdn.example.com/16.png",
+      "https://cdn.example.com/17.png",
+      "https://cdn.example.com/18.png",
+      "https://cdn.example.com/19.png",
+      "https://cdn.example.com/20.png",
+      "https://cdn.example.com/21.png",
+      "https://cdn.example.com/22.png",
+      "https://cdn.example.com/23.png",
+      "https://cdn.example.com/24.png",
+      "https://cdn.example.com/25.png",
+      "https://cdn.example.com/26.png",
+      "https://cdn.example.com/27.png",
+      "https://cdn.example.com/28.png",
+      "https://cdn.example.com/29.png",
+      "https://cdn.example.com/30.png",
+      "https://cdn.example.com/31.png",
+      "https://cdn.example.com/32.png",
+      "https://cdn.example.com/33.png",
+      "https://cdn.example.com/34.png",
+      "https://cdn.example.com/35.png",
+      "https://cdn.example.com/36.png",
+      "https://cdn.example.com/37.png",
+      "https://cdn.example.com/38.png",
+      "https://cdn.example.com/39.png",
+      "https://cdn.example.com/40.png",
+      "https://cdn.example.com/41.png",
+      "https://cdn.example.com/42.png",
+      "https://cdn.example.com/43.png",
+      "https://cdn.example.com/44.png",
+      "https://cdn.example.com/45.png",
+      "https://cdn.example.com/46.png",
+      "https://cdn.example.com/47.png",
+      "https://cdn.example.com/48.png",
+      "https://cdn.example.com/49.png"
+    ],
+    "saved": [
+      [
+        "https://cdn.example.com/0.png",
+        "../../attachments/n1/rw-0.png"
+      ],
+      [
+        "https://cdn.example.com/1.png",
+        "../../attachments/n1/rw-1.png"
+      ],
+      [
+        "https://cdn.example.com/2.png",
+        "../../attachments/n1/rw-2.png"
+      ],
+      [
+        "https://cdn.example.com/3.png",
+        "../../attachments/n1/rw-3.png"
+      ],
+      [
+        "https://cdn.example.com/4.png",
+        "../../attachments/n1/rw-4.png"
+      ],
+      [
+        "https://cdn.example.com/5.png",
+        "../../attachments/n1/rw-5.png"
+      ],
+      [
+        "https://cdn.example.com/6.png",
+        "../../attachments/n1/rw-6.png"
+      ],
+      [
+        "https://cdn.example.com/7.png",
+        "../../attachments/n1/rw-7.png"
+      ],
+      [
+        "https://cdn.example.com/8.png",
+        "../../attachments/n1/rw-8.png"
+      ],
+      [
+        "https://cdn.example.com/9.png",
+        "../../attachments/n1/rw-9.png"
+      ],
+      [
+        "https://cdn.example.com/10.png",
+        "../../attachments/n1/rw-10.png"
+      ],
+      [
+        "https://cdn.example.com/11.png",
+        "../../attachments/n1/rw-11.png"
+      ],
+      [
+        "https://cdn.example.com/12.png",
+        "../../attachments/n1/rw-12.png"
+      ],
+      [
+        "https://cdn.example.com/13.png",
+        "../../attachments/n1/rw-13.png"
+      ],
+      [
+        "https://cdn.example.com/14.png",
+        "../../attachments/n1/rw-14.png"
+      ],
+      [
+        "https://cdn.example.com/15.png",
+        "../../attachments/n1/rw-15.png"
+      ],
+      [
+        "https://cdn.example.com/16.png",
+        "../../attachments/n1/rw-16.png"
+      ],
+      [
+        "https://cdn.example.com/17.png",
+        "../../attachments/n1/rw-17.png"
+      ],
+      [
+        "https://cdn.example.com/18.png",
+        "../../attachments/n1/rw-18.png"
+      ],
+      [
+        "https://cdn.example.com/19.png",
+        "../../attachments/n1/rw-19.png"
+      ],
+      [
+        "https://cdn.example.com/20.png",
+        "../../attachments/n1/rw-20.png"
+      ],
+      [
+        "https://cdn.example.com/21.png",
+        "../../attachments/n1/rw-21.png"
+      ],
+      [
+        "https://cdn.example.com/22.png",
+        "../../attachments/n1/rw-22.png"
+      ],
+      [
+        "https://cdn.example.com/23.png",
+        "../../attachments/n1/rw-23.png"
+      ],
+      [
+        "https://cdn.example.com/24.png",
+        "../../attachments/n1/rw-24.png"
+      ],
+      [
+        "https://cdn.example.com/25.png",
+        "../../attachments/n1/rw-25.png"
+      ],
+      [
+        "https://cdn.example.com/26.png",
+        "../../attachments/n1/rw-26.png"
+      ],
+      [
+        "https://cdn.example.com/27.png",
+        "../../attachments/n1/rw-27.png"
+      ],
+      [
+        "https://cdn.example.com/28.png",
+        "../../attachments/n1/rw-28.png"
+      ],
+      [
+        "https://cdn.example.com/29.png",
+        "../../attachments/n1/rw-29.png"
+      ],
+      [
+        "https://cdn.example.com/30.png",
+        "../../attachments/n1/rw-30.png"
+      ],
+      [
+        "https://cdn.example.com/31.png",
+        "../../attachments/n1/rw-31.png"
+      ],
+      [
+        "https://cdn.example.com/32.png",
+        "../../attachments/n1/rw-32.png"
+      ],
+      [
+        "https://cdn.example.com/33.png",
+        "../../attachments/n1/rw-33.png"
+      ],
+      [
+        "https://cdn.example.com/34.png",
+        "../../attachments/n1/rw-34.png"
+      ],
+      [
+        "https://cdn.example.com/35.png",
+        "../../attachments/n1/rw-35.png"
+      ],
+      [
+        "https://cdn.example.com/36.png",
+        "../../attachments/n1/rw-36.png"
+      ],
+      [
+        "https://cdn.example.com/37.png",
+        "../../attachments/n1/rw-37.png"
+      ],
+      [
+        "https://cdn.example.com/38.png",
+        "../../attachments/n1/rw-38.png"
+      ],
+      [
+        "https://cdn.example.com/39.png",
+        "../../attachments/n1/rw-39.png"
+      ],
+      [
+        "https://cdn.example.com/40.png",
+        "../../attachments/n1/rw-40.png"
+      ],
+      [
+        "https://cdn.example.com/41.png",
+        "../../attachments/n1/rw-41.png"
+      ],
+      [
+        "https://cdn.example.com/42.png",
+        "../../attachments/n1/rw-42.png"
+      ],
+      [
+        "https://cdn.example.com/43.png",
+        "../../attachments/n1/rw-43.png"
+      ],
+      [
+        "https://cdn.example.com/44.png",
+        "../../attachments/n1/rw-44.png"
+      ],
+      [
+        "https://cdn.example.com/45.png",
+        "../../attachments/n1/rw-45.png"
+      ],
+      [
+        "https://cdn.example.com/46.png",
+        "../../attachments/n1/rw-46.png"
+      ],
+      [
+        "https://cdn.example.com/47.png",
+        "../../attachments/n1/rw-47.png"
+      ],
+      [
+        "https://cdn.example.com/48.png",
+        "../../attachments/n1/rw-48.png"
+      ],
+      [
+        "https://cdn.example.com/49.png",
+        "../../attachments/n1/rw-49.png"
+      ]
+    ],
+    "rendered": "![](../../attachments/n1/rw-0.png)\n\n![](../../attachments/n1/rw-1.png)\n\n![](../../attachments/n1/rw-2.png)\n\n![](../../attachments/n1/rw-3.png)\n\n![](../../attachments/n1/rw-4.png)\n\n![](../../attachments/n1/rw-5.png)\n\n![](../../attachments/n1/rw-6.png)\n\n![](../../attachments/n1/rw-7.png)\n\n![](../../attachments/n1/rw-8.png)\n\n![](../../attachments/n1/rw-9.png)\n\n![](../../attachments/n1/rw-10.png)\n\n![](../../attachments/n1/rw-11.png)\n\n![](../../attachments/n1/rw-12.png)\n\n![](../../attachments/n1/rw-13.png)\n\n![](../../attachments/n1/rw-14.png)\n\n![](../../attachments/n1/rw-15.png)\n\n![](../../attachments/n1/rw-16.png)\n\n![](../../attachments/n1/rw-17.png)\n\n![](../../attachments/n1/rw-18.png)\n\n![](../../attachments/n1/rw-19.png)\n\n![](../../attachments/n1/rw-20.png)\n\n![](../../attachments/n1/rw-21.png)\n\n![](../../attachments/n1/rw-22.png)\n\n![](../../attachments/n1/rw-23.png)\n\n![](../../attachments/n1/rw-24.png)\n\n![](../../attachments/n1/rw-25.png)\n\n![](../../attachments/n1/rw-26.png)\n\n![](../../attachments/n1/rw-27.png)\n\n![](../../attachments/n1/rw-28.png)\n\n![](../../attachments/n1/rw-29.png)\n\n![](../../attachments/n1/rw-30.png)\n\n![](../../attachments/n1/rw-31.png)\n\n![](../../attachments/n1/rw-32.png)\n\n![](../../attachments/n1/rw-33.png)\n\n![](../../attachments/n1/rw-34.png)\n\n![](../../attachments/n1/rw-35.png)\n\n![](../../attachments/n1/rw-36.png)\n\n![](../../attachments/n1/rw-37.png)\n\n![](../../attachments/n1/rw-38.png)\n\n![](../../attachments/n1/rw-39.png)\n\n![](../../attachments/n1/rw-40.png)\n\n![](../../attachments/n1/rw-41.png)\n\n![](../../attachments/n1/rw-42.png)\n\n![](../../attachments/n1/rw-43.png)\n\n![](../../attachments/n1/rw-44.png)\n\n![](../../attachments/n1/rw-45.png)\n\n![](../../attachments/n1/rw-46.png)\n\n![](../../attachments/n1/rw-47.png)\n\n![](../../attachments/n1/rw-48.png)\n\n![](../../attachments/n1/rw-49.png)",
+    "renderedWithoutImages": ""
+  }
+]
