@@ -223,7 +223,7 @@ final class VaultSelectionViewModel {
             // that a vault which cannot be **filled** is never presented as a
             // vault that can only be read. `sync(session:)` blocks and does no
             // I/O, so this costs one trip through the core queue.
-            filler = syncable(summary.id) ? try await mint?.filler(for: opened) : nil
+            filler = syncable(summary.id) ? try await mint?.filler(for: opened, named: VaultLabel(summary).text) : nil
             // Before `vault` is published, so the shell built from it reads
             // this vault's saved tab and stacks.
             snapshot.vaultOpened(summary.id)

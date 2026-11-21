@@ -251,6 +251,31 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   frozen by an OS backgrounding the app otherwise never resolves and latches the
   engine's in-flight guard permanently
   (`packages/sync-client/src/pull/http.ts:32-38`);
+- in the Rust core and its shells, also applies an **idle timeout of 60
+  seconds** to every request: a request that receives no bytes for that long
+  fails as a timeout, whatever its ceiling
+  (`IDLE_TIMEOUT_MS = 60_000`, `crates/memry-core/src/protocol/http.rs:40-42`;
+  `crates/memry-cli/src/transport.rs:49-52`;
+  `apps/ios/Memry/Seams/Transport.swift:124-131`);
+- in the Rust core, replaces the ceiling of a pack GET (chapter 08 §8.9) with a
+  deadline scaled to the listed `byteSize`: 60 s plus `byteSize` at a third
+  of 0.25 Mbit/s (31,250 bytes a second), because three packs download at once
+  (`RECORD_DOWNLOAD_WIDTH = 3`,
+  `crates/memry-core/src/sync/pack_bootstrap/records.rs:44`). The deadline is
+  capped at **3,300 seconds**, which covers three packs at
+  `PACK_HARD_MAX_BYTES` (32 MiB, 3,281 s,
+  `apps/sync-server/src/services/pack-compaction.ts:88`). A listing without
+  `byteSize` gets the cap. A pack at `PACK_TARGET_BYTES` (24 MiB,
+  `apps/sync-server/src/services/pack-sizing.ts:15`) gets 2,476 s. Three of
+  them sharing 0.5 Mbit/s take 1,208 s each
+  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:19-41`, #5331). A
+  pack GET that times out at its deadline is not retried, because a retry
+  restarts from byte 0. One that times out idle is retried on the §0.6.1 ladder.
+  A shell reports a deadline timeout with `elapsed_ms` at or past the request's
+  `timeout_ms`
+  (`crates/memry-core/src/protocol/http.rs:112-119`, `:369-375`).
+  Desktop's pack GET has no ceiling and resumes a partial file with `Range`
+  (`apps/desktop/src/main/sync/packs/pack-download.ts:24-26`);
 - reads `retry-after` from a `429` response **in lowercase**
   (`packages/sync-client/src/pull/http.ts:98-100`);
 - treats a timeout as a transient transport failure and an outer-caller abort as

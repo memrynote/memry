@@ -472,18 +472,18 @@ throughout (`packages/contracts/src/sync-api.ts:739-744`).
 `PackSummarySchema` (`:746-767`). The `POST /sync/bootstrap` open response
 carries the same first page (chapter 10 §10.4):
 
-| Field                    | Rule                                                                                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`, `packKey`          | non-empty strings                                                                                                                                     |
-| `itemKind`               | one of `record`, `crdt_snapshot`, `crdt_update` (`:726`)                                                                                              |
-| `minCursor`, `maxCursor` | `server_cursor` bounds for `record` and `crdt_update`; `created_at` epoch-second bounds for `crdt_snapshot` (`:719-724`)                              |
-| `itemCount`              |                                                                                                                                                       |
-| `byteSize`               | **the payload region only** — header, index and footer excluded. **NOT a file length: a reader MUST NOT Range-request against it** (`:753-758`)       |
-| `createdAt`              |                                                                                                                                                       |
-| `url`                    | a presigned GET, present **only** when the deployment opted into presigned transfers; **absent means "use the item-granular endpoints"** (`:735-737`) |
-| `expiresAt`              | epoch seconds at which `url` stops working (`:761-762`)                                                                                               |
-| `coverFrom`              | exclusive lower bound of the pack's coverage range, a `server_cursor`, for every kind (`:763-764`); §8.10                                             |
-| `coverThrough`           | inclusive upper bound of that range (`:765-766`). Both are absent on a cache-only pack (§8.10)                                                        |
+| Field                    | Rule                                                                                                                                                                                             |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`, `packKey`          | non-empty strings                                                                                                                                                                                |
+| `itemKind`               | one of `record`, `crdt_snapshot`, `crdt_update` (`:726`)                                                                                                                                         |
+| `minCursor`, `maxCursor` | `server_cursor` bounds for `record` and `crdt_update`; `created_at` epoch-second bounds for `crdt_snapshot` (`:719-724`)                                                                         |
+| `itemCount`              |                                                                                                                                                                                                  |
+| `byteSize`               | **the payload region only** — header, index and footer excluded. **NOT a file length: a reader MUST NOT Range-request against it** (`:753-758`). Sizes the pack GET's deadline (chapter 00 §0.6) |
+| `createdAt`              |                                                                                                                                                                                                  |
+| `url`                    | a presigned GET, present **only** when the deployment opted into presigned transfers; **absent means "use the item-granular endpoints"** (`:735-737`)                                            |
+| `expiresAt`              | epoch seconds at which `url` stops working (`:761-762`)                                                                                                                                          |
+| `coverFrom`              | exclusive lower bound of the pack's coverage range, a `server_cursor`, for every kind (`:763-764`); §8.10                                                                                        |
+| `coverThrough`           | inclusive upper bound of that range (`:765-766`). Both are absent on a cache-only pack (§8.10)                                                                                                   |
 
 `nextCursor` is an opaque keyset token, absent on the final page, and **packs
 arrive newest-first** (`packages/contracts/src/sync-api.ts:824-829`). A client

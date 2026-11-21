@@ -107,7 +107,7 @@ final class VaultFillWiringTests {
 
         // The production mint, over a real `AuthSession`.
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
         // A working fake would answer `false` too, which is exactly why the
         // type is asserted as well.
         #expect(filler is CoreVaultFiller)
@@ -132,7 +132,7 @@ final class VaultFillWiringTests {
         NoRequestURLProtocol.reset()
         let vault = try await opener.open(vaultId)
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
 
         let fill = VaultFillViewModel(filler: filler)
         await fill.begin()
@@ -164,7 +164,7 @@ final class VaultFillWiringTests {
         NoRequestURLProtocol.reset()
         let vault = try await opener.open(vaultId)
         let filler = try await CoreVaultFillerMint(session: session(), executor: executor)
-            .filler(for: vault)
+            .filler(for: vault, named: "Test vault")
 
         await #expect(throws: SyncError.self) {
             _ = try await filler.fetchNoteBody(noteId: "no-such-note")
