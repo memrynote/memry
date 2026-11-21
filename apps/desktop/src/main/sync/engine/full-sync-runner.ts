@@ -733,7 +733,7 @@ export class FullSyncRunner {
         path,
         { app },
         { runPackBootstrap },
-        { createCrdtSnapshotApplier, decodeSignerPublicKeys },
+        { createPackBodyApplier, decodeSignerPublicKeys },
         { beginPageApply },
         { DownloadPacer },
         { syncDevices },
@@ -742,7 +742,7 @@ export class FullSyncRunner {
         import('node:path'),
         import('electron'),
         import('../packs/pack-bootstrap'),
-        import('../packs/crdt-snapshot-applier'),
+        import('../packs/pack-body-applier'),
         import('../bulk-apply'),
         import('../download-queue'),
         import('@memry/db-schema/schema/sync-devices'),
@@ -756,7 +756,7 @@ export class FullSyncRunner {
       pacer.setMultiplier(getBootstrapElevationFactor())
 
       let settlePending = false
-      const applier = createCrdtSnapshotApplier({
+      const applier = createPackBodyApplier({
         store: {
           getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
           // The marker goes first: once the watermark exists, no later pack
@@ -777,7 +777,12 @@ export class FullSyncRunner {
           openDoc: async (noteId) => {
             await provider.open(noteId, undefined, { skipSeed: true })
           },
-          applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
+          applyRemoteUpdate: (noteId, update, editedAtMs) =>
+            provider.applyRemoteUpdate(noteId, update, editedAtMs),
+          holdsPendingStructs: (noteId) => {
+            const store = provider.getDoc(noteId)?.store
+            return store != null && (store.pendingStructs !== null || store.pendingDs !== null)
+          },
           getStateVector: (noteId) => provider.getStateVector(noteId),
           closeDoc: async (noteId) => {
             await provider.closeIfInactive(noteId)
@@ -807,10 +812,9 @@ export class FullSyncRunner {
           }
           return decodeSignerPublicKeys(
             this.ctx.deps.db
-              .select({ key: syncDevices.signingPublicKey })
+              .select({ deviceId: syncDevices.id, key: syncDevices.signingPublicKey })
               .from(syncDevices)
               .all()
-              .map((row) => row.key)
           )
         }
       })
@@ -818,7 +822,7 @@ export class FullSyncRunner {
       const result = await runPackBootstrap({
         getAccessToken: this.ctx.deps.getAccessToken,
         tempDir: path.join(app.getPath('userData'), 'sync-packs'),
-        snapshots: applier,
+        bodies: applier,
         beginPage: () => beginPageApply(this.ctx.deps.db),
         getStateValue: (key) => this.stateManager.getStateValue(key),
         setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
