@@ -195,7 +195,7 @@ struct CoreVaultFiller: VaultFilling {
             return pass
         } catch {
             SyncTelemetry.passFailed(error, since: start)
-            throw error
+            throw VaultPlanFull.naming(vaultName, in: error)
         }
     }
 
@@ -211,10 +211,13 @@ struct CoreVaultFiller: VaultFilling {
 
     private let sync: VaultSync
     private let executor: CoreExecutor
+    /// What the user calls this vault, so a refusal can say which one.
+    private let vaultName: String
 
-    init(sync: VaultSync, executor: CoreExecutor) {
+    init(sync: VaultSync, executor: CoreExecutor, vaultName: String) {
         self.sync = sync
         self.executor = executor
+        self.vaultName = vaultName
     }
 
     /// Blocking, so it goes on the serial core queue. One local row, no
@@ -348,7 +351,7 @@ final class RealtimeRelay: RealtimeListener, @unchecked Sendable {
 /// owns the one token manager, and the master key under it. Only the
 /// composition root has all three.
 protocol VaultFillerMinting: Sendable {
-    func filler(for vault: Vault) async throws -> any VaultFilling
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling
 }
 
 /// The production mint.
@@ -377,9 +380,9 @@ struct CoreVaultFillerMint: VaultFillerMinting {
 
     /// `sync(session:)` blocks and does no I/O at all, so it goes on the core
     /// queue beside every other blocking call rather than being awaited.
-    func filler(for vault: Vault) async throws -> any VaultFilling {
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling {
         let session = session
         let sync = try await executor.run { vault.sync(session: session) }
-        return CoreVaultFiller(sync: sync, executor: executor)
+        return CoreVaultFiller(sync: sync, executor: executor, vaultName: name)
     }
 }
