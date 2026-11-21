@@ -75,6 +75,38 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
     let Some((title, folder_path, is_day, aliases)) = found else {
         return Ok(None);
     };
+    record_of(conn, id, (title, folder_path, is_day, aliases)).map(Some)
+}
+
+/// The live markdown note `id` as its record reads now, whether or not a row names its file:
+/// what a pulled change gives the file it has (desktop write-back, #5309). `None` for a journal
+/// day, which lives in `journal_entries`, and for a deleted or file note.
+pub fn placed(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageError> {
+    let found = conn
+        .query_row(
+            "SELECT title, folder_path, aliases FROM notes
+              WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'",
+            params![id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    false,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(failed)?;
+    found.map(|found| record_of(conn, id, found)).transpose()
+}
+
+/// The record `id` read from its place `(title, folder_path, is_day, aliases)`.
+fn record_of(
+    conn: &Connection,
+    id: &str,
+    (title, folder_path, is_day, aliases): (String, Option<String>, bool, Option<String>),
+) -> Result<Unfiled, StorageError> {
     let item_type = if is_day {
         journal::ITEM_TYPE
     } else {
@@ -90,7 +122,7 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
             _ => None,
         }),
     };
-    Ok(Some(Unfiled {
+    Ok(Unfiled {
         date: is_day.then(|| title.clone()),
         title,
         folder_path,
@@ -98,7 +130,7 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
         aliases,
         properties: properties::values(conn, item_type, id)?,
         cover,
-    }))
+    })
 }
 
 /// Whether a day's file must not be named now: a journal setting change is recorded, or days

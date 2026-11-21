@@ -60,6 +60,10 @@ pub struct AppliedRecord {
     pub item_id: String,
     pub outcome: AppliedOutcome,
     pub conflicts: Vec<FieldConflict>,
+    /// A note's title as this device held it before the record applied, `None` for a note
+    /// that was not here and for every other type: a pulled change that keeps the title never
+    /// renames the note's file (Electron's `titleChanged`, `note-handler.ts:349`).
+    pub title_before: Option<String>,
 }
 
 /// An attachment an applied record references (Electron's
@@ -344,6 +348,7 @@ mod tests {
             item_id: id.into(),
             outcome: AppliedOutcome::Created,
             conflicts: Vec::new(),
+            title_before: None,
         }
     }
 
