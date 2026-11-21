@@ -124,7 +124,7 @@ NOT block the first sync on one.
 **Normative — it is an optimisation and is never required.**
 
 Desktop opens one only on a fresh device and swallows every failure
-(`apps/desktop/src/main/sync/engine/full-sync-runner.ts:352-368`). The Rust
+(`apps/desktop/src/main/sync/engine/full-sync-runner.ts:389-417`). The Rust
 core opens one for every first sync and stays silent on any failure
 (`crates/memry-core/src/api/sync/mod.rs:377-381`,
 `crates/memry-core/src/sync/first_sync.rs:228-235`). The platform-free engine

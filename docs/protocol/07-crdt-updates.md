@@ -1426,13 +1426,13 @@ Per page of a declaring run
     `noteBodyLegacySweep` to `pending` (`note-body-feed.ts:274`).
   - A full sync whose pull delivered (ran to `hasMore: false` without a refused
     page) then forces the vault-wide sweep
-    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:738`).
+    (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:548-556`).
   - Only that sweep's drain, with nothing owed back, records `done`, and only
-    if the key still reads `pending` (`full-sync-runner.ts:505`). An
+    if the key still reads `pending` (`full-sync-runner.ts:354`). An
     interrupted or partly failed sweep stays `pending`.
   - A page without `noteBodies` while the key is set means the server stopped
     serving bodies (§7.17.3). The page deletes the key and discards the sweep
-    this engine queued (`full-sync-runner.ts:528`), so that drain records
+    this engine queued (`full-sync-runner.ts:364-366`), so that drain records
     nothing. The next negotiated page forces a new sweep.
   - A device that was offline for the whole of a server rollback never sees a
     page without `noteBodies`. It cannot tell that the rollback wrote rows with
