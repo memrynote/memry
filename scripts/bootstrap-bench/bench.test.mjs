@@ -408,6 +408,7 @@ describe('proxy guards', () => {
         ['POST', '/sync/bootstrap/renew'],
         ['POST', '/sync/bootstrap/close'],
         ['POST', '/sync/attachments/presign-batch'],
+        ['POST', '/sync/attachments/manifests/batch'],
         ['POST', '/auth/otp/verify'],
         ['POST', '/auth/devices']
       ]
@@ -417,6 +418,30 @@ describe('proxy guards', () => {
         reads.map(([method, route]) => `${method} ${route}`)
       )
       assert.equal(proxy.requests.filter((r) => r.refused).length, writes.length)
+    } finally {
+      await proxy.close()
+      upstream.close()
+    }
+  })
+
+  it('logs a request the client aborted and drops its upstream request', async () => {
+    let upstreamClosed
+    const closed = new Promise((resolve) => (upstreamClosed = resolve))
+    const upstream = http.createServer((req) => req.on('close', upstreamClosed))
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
+    try {
+      const controller = new AbortController()
+      const arrived = new Promise((resolve) => upstream.once('request', resolve))
+      const pending = fetch(`${proxy.url}/sync/packs`, { signal: controller.signal })
+      await arrived
+      controller.abort()
+      await assert.rejects(pending)
+      await closed
+      assert.deepEqual(
+        proxy.requests.map((r) => [r.path, r.error]),
+        [['/sync/packs', 'client aborted']]
+      )
     } finally {
       await proxy.close()
       upstream.close()
