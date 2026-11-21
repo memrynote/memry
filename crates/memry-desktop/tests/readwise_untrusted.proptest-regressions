@@ -7,5 +7,6 @@
 cc 9fb23607a3fba16be20a3e651d17fe4ef80940a605eb7c5387054dddac2e9c57 # shrinks to text = "`", url = "", location_type = "`"
 cc f0c870b6bae0014690516712d75ff2d5752774c8dd15380db3fe783c139e85b9 # shrinks to text = "a `b", url = "https://`", location_type = ""
 cc 3f638068d9ab14fcb6bad85793f9ae7c394007be14b651db40b7d2a2848afe68 # shrinks to text = "a `b*!", url = "", location_type = "*"
+cc e2e55176aca4229d0b7c1adb2894ed06751ddbbdbebf06a376d61181eb6b8eb6 # shrinks to body = "<!--readwise:start\u{85}->"
 cc 5fdf9819f4e67261ee4769b23ef826ca46524b6a03dd780d8a02c57b88c8c67b # shrinks to text = "[[[Secret]]", url = "", location_type = ""
 cc 48582f881342528c1b3640a15f5f9eb81868e30cb8e878c172f0b35b382d26fb # shrinks to text = "[[[", url = "", location_type = ""
