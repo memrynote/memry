@@ -1,5 +1,6 @@
 # Rust CI's OS matrix, from the plan job's tier outputs ($full, $macos, $intel, $post_merge, and $win
 # and $mac, the rust_windows and rust_macos legs). scripts/ci-tier.test.mjs runs it for each event.
+# The optional --arg warm (the daily cache-warm run) adds the `checks` leg of each OS the merge queue runs.
 #
 # Post-merge (the scheduled run of feat/tauri-v2): only Apple Silicon, the leg the merge queue skips.
 # `covered` (a push the queue passed, or a SHA a scheduled run already finished): none.
@@ -21,7 +22,8 @@ def leg($os): if ($os | startswith("macos")) then {os: $os, part: "all"}
   else ({os: $os, part: "checks"}, {os: $os, part: "tests", partition: "1/2"}, {os: $os, part: "tests", partition: "2/2"}) end;
 def full_leg($os): if $os == "windows-11-arm" then (leg($os), {os: $os, part: "models", models: true})
   else leg($os) | if .part == "tests" then . else . + {models: true} end end;
-if $post_merge == "covered" then
+def warm_legs: [(["ubuntu-22.04", "windows-2022", "windows-11-arm"])[] | full_leg(.)] | map(select(.part == "checks"));
+(if $post_merge == "covered" then
   []
 elif $post_merge == "true" then
   [(if $macos == "true" then ["macos-15"] else [] end)[] | full_leg(.)]
@@ -35,3 +37,4 @@ else
   + (if $win == "checks" then [{os: "windows-2022", part: "checks"}] elif $win == "tests" then [leg("windows-2022")] else [] end)
   + (if $mac == "checks" then [{os: "macos-15", part: "checks"}] elif $mac == "tests" then [leg("macos-15")] else [] end)
 end
+) + (if ($ARGS.named.warm // "false") == "true" then warm_legs else [] end)

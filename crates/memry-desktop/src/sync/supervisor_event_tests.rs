@@ -24,6 +24,7 @@ fn typed(item_type: &str, item_id: &str, outcome: AppliedOutcome) -> AppliedReco
         item_id: item_id.into(),
         outcome,
         conflicts: Vec::new(),
+        title_before: None,
     }
 }
 

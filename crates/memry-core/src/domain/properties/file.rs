@@ -141,6 +141,17 @@ pub(crate) fn forget(conn: &Connection, id: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
+/// The write-back wrote `values`, the record's own, into the item's file (a pulled change,
+/// #5309): they are what the file holds now, so a later outside edit is measured against them.
+pub fn written(
+    conn: &Connection,
+    id: &str,
+    values: Map<String, Value>,
+) -> Result<(), StorageError> {
+    let values = own(conn, id, values)?;
+    record(conn, id, &values)
+}
+
 pub(super) fn record(
     conn: &Connection,
     id: &str,

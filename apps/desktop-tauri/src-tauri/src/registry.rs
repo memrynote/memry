@@ -65,6 +65,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_start_checkout,
             // calendar macOS (EventKit)
             crate::commands::calendar_eventkit::calendar_eventkit_request_access,
+            // calendar feeds
+            crate::commands::calendar_ics::calendar_refresh_ics,
+            crate::commands::calendar_ics::calendar_subscribe_ics,
+            crate::commands::calendar_ics::calendar_unsubscribe_ics,
+            // calendar providers
+            crate::commands::calendar_providers::calendar_check_provider_writer_compat,
+            crate::commands::calendar_providers::calendar_connect_provider,
+            crate::commands::calendar_providers::calendar_disconnect_provider,
+            crate::commands::calendar_providers::calendar_discover_provider_calendars,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -161,6 +170,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachments::notes_list_attachments::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
+            crate::commands::export::notes_export_html::<Wry>,
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,

@@ -153,6 +153,11 @@ fn assert_source(source: &str) {
 }
 
 #[test]
+fn bear_importer_matches_the_typescript_importer() {
+    assert_source("bear");
+}
+
+#[test]
 fn markdown_importer_matches_the_typescript_importer() {
     assert_source("markdown");
 }
@@ -165,6 +170,11 @@ fn csv_importer_matches_the_typescript_importer() {
 #[test]
 fn google_keep_importer_matches_the_typescript_importer() {
     assert_source("google-keep");
+}
+
+#[test]
+fn roam_importer_matches_the_typescript_importer() {
+    assert_source("roam");
 }
 
 #[test]

@@ -67,6 +67,7 @@ pub(super) fn fixture() -> Fixture {
         echo.clone(),
         vault.app_settings(store.clone()).ok(),
         own_files.clone(),
+        store.clone(),
     );
     Fixture {
         writer: vault.notes_writer(store.clone()).unwrap(),
@@ -362,6 +363,7 @@ mod guards;
 mod journal;
 mod locks;
 mod perf;
+mod place;
 mod reconcile;
 mod schedule;
 mod triggers;

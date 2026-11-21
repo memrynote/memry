@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
 mod capture_support;
 mod device_key;
 mod electron_profile;
@@ -111,8 +112,16 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
 #[path = "capture_pairing.rs"]
@@ -190,8 +199,12 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_roam.rs"]
+mod importer_roam;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]

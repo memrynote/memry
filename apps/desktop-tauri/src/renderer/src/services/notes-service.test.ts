@@ -49,6 +49,7 @@ const commands = vi.hoisted(() => ({
   notesUploadAttachmentBegin: vi.fn(),
   notesUploadAttachmentAbort: vi.fn(),
   notesDownloadAttachmentFromUrl: vi.fn(),
+  notesExportHtml: vi.fn(),
   notesGetVersions: vi.fn(),
   notesGetVersion: vi.fn(),
   notesRestoreVersion: vi.fn(),
@@ -1186,6 +1187,28 @@ describe('notes-service', () => {
     })
   })
 
+  it('exports HTML through Rust and keeps why nothing was written', async () => {
+    commands.notesExportHtml.mockResolvedValueOnce({ success: true, path: '/out/Plan.html' })
+    await expect(
+      notesService.exportHtml({ noteId: 'note-1', includeMetadata: false })
+    ).resolves.toEqual({ success: true, path: '/out/Plan.html' })
+    expect(commands.notesExportHtml).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      includeMetadata: false
+    })
+
+    commands.notesExportHtml.mockResolvedValueOnce({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
+    })
+    await expect(notesService.exportHtml({ noteId: 'note-1' })).resolves.toEqual({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
+    })
+  })
+
   it('forwards the export helpers', async () => {
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
 
@@ -1223,6 +1246,16 @@ describe('notes-service', () => {
       id: 'n',
       changes: { title: 'b', modified: new Date(MODIFIED) },
       source: 'external'
+    })
+    // A pulled place or frontmatter the write-back gave the file (#5309) keeps its `sync` source,
+    // which the open note's page skips as Electron's does (`note.tsx:687`).
+    listeners.get('updated')?.({
+      payload: { id: 'n', changes: { title: 'c', modified: MODIFIED }, source: 'sync' }
+    })
+    expect(updated).toHaveBeenLastCalledWith({
+      id: 'n',
+      changes: { title: 'c', modified: new Date(MODIFIED) },
+      source: 'sync'
     })
     expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
     // `notes:tags-changed` carries nothing the renderer reads.

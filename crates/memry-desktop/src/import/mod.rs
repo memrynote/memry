@@ -11,6 +11,7 @@
 //! TypeScript importers and `tests/importer_vectors.rs` replays here.
 
 pub mod assets;
+pub mod bear;
 pub mod context;
 pub mod csv;
 pub mod google_keep;
@@ -18,6 +19,7 @@ pub mod markdown;
 pub mod messages;
 pub mod obsidian_tasks;
 pub mod registry;
+pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod source_paths;

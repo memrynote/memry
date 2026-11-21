@@ -379,6 +379,7 @@ fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
             f.echo.clone(),
             None,
             f.own_files.clone(),
+            f.store.clone(),
         ),
     );
     let (tx, rx) = broadcast::channel(16);
