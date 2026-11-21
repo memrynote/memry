@@ -7,6 +7,9 @@
 //!   outside the app since its last read is kept, and a file it replaces is kept as a version
 //!   first. A crash before the schedule loses nothing: the next open's reconcile writes every
 //!   file left behind its body.
+//! - **Pulled place.** Each pulled note or day is marked in `data.db` before its schedule
+//!   ([`NoteFiles::mark_pulled`], migration 45): its pass gives the file the record's place and
+//!   frontmatter, and the next open's reconcile schedules every mark a quit left.
 //! - **Owed files.** When the pass's body step settled its debts (`bodies_settled`), every owed
 //!   file is taken ([`VaultTier::take_owed_file`]), which schedules its write-back. Not on
 //!   `bodies_applied`: the core tells that one before the pulled document's debt settles, so the
@@ -23,6 +26,9 @@ use std::sync::Arc;
 
 use memry_core::api::vault::Vault;
 use memry_core::sync::driver::{AppliedOutcome, AppliedRecord, ApplyObserver};
+
+#[cfg(doc)]
+use memry_core::api::note_files::NoteFiles;
 
 use crate::locks::Locks;
 use crate::vault::consumer::VaultTier;
@@ -58,8 +64,16 @@ impl ApplyObserver for DiskObserver {
         let mut locks = false;
         for record in applied {
             if FILE_TYPES.contains(&record.item_type.as_str()) {
-                self.tier
-                    .schedule_pulled(&record.item_id, record.title_before.as_deref());
+                let (id, title_before) = (&record.item_id, record.title_before.as_deref());
+                if let Err(error) = self.vault.note_files().mark_pulled(id, title_before) {
+                    tracing::error!(
+                        scope = SCOPE,
+                        note_id = id,
+                        "a pulled place was not marked; the file keeps its place until the next \
+                         pull of the note: {error}"
+                    );
+                }
+                self.tier.schedule(id);
             }
             locks |= record.item_type == LOCK_TYPE;
         }

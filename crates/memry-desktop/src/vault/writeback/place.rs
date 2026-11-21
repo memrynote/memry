@@ -1,13 +1,14 @@
 //! A pulled change to a note that has its file here (#5309): its title or folder moves the
 //! file, its tags, other names and properties reach the file's frontmatter (Electron
-//! `note-handler.ts` `applyUpsert`, markdown branch). The sync observer marks each pulled note
-//! ([`Pulled`]); the note's next pass takes the mark, so a local edit never moves a file or
-//! rewrites its frontmatter.
+//! `note-handler.ts` `applyUpsert`, markdown branch). The sync observer marks each pulled note in
+//! `data.db` ([`PulledMark`], migration 45), so the mark outlives a quit before the pass; the
+//! note's next pass takes the mark, so a local edit never moves a file or rewrites its
+//! frontmatter. Every stop before the pass gave the file the pull keeps the mark.
 //!
 //! In the pass, under the rows' lane, after its row, hash and file checks (a missing file is
 //! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass):
 //! - **Place** ([`Pass::place`]). The record's folder as the disk spells it, under the name its
-//!   title makes ([`name_for`]) when the pull changed the title ([`Mark::title_before`]), else
+//!   title makes ([`name_for`]) when the pull changed the title ([`PulledMark::title_before`]), else
 //!   under the file's name byte for byte (Electron's `titleChanged`, `note-handler.ts:349`), numbered
 //!   `<name> 1.md` on when another note or file holds it ([`free_target`]). A journal day is
 //!   never placed: [`NoteFiles::placed`] reads notes only. A target that would make the note a
@@ -19,7 +20,7 @@
 //!   in between finished by the next open. [`Applied::Renamed`] follows: `Renamed` for a new
 //!   name, `Moved` for a new folder alone. A move that fails keeps the file where it is: the
 //!   pass still writes the frontmatter and the body there, and the mark waits for the next pass,
-//!   [`PLACE_TRIES`] passes at most ([`Pulled::retry`]; Electron logs and goes on, L438-442).
+//!   [`PLACE_TRIES`] passes at most ([`Pass::retry_pulled`]; Electron logs and goes on, L438-442).
 //! - **Frontmatter** ([`patch`], inside `file_for`). `tags` when the set differs
 //!   (case-insensitive), `aliases` when they differ, and each property value the record holds
 //!   that the file does not. A file key goes only when the record lacks it and the property
@@ -30,9 +31,8 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
-use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use memry_core::domain::note_files::Unfiled;
+use memry_core::domain::note_files::{PulledMark, Unfiled};
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, parse_markdown_note};
@@ -53,62 +53,65 @@ const SCOPE: &str = "vault_writeback";
 /// The passes a failed move of a pulled place is tried in, the first included.
 pub(super) const PLACE_TRIES: u32 = 3;
 
-/// The notes a pull changed whose pass has not taken the change yet.
-#[derive(Default)]
-pub(super) struct Pulled(Mutex<HashMap<String, Mark>>);
-
-/// A pulled change a pass has not taken yet.
-#[derive(Debug, Clone)]
-pub(super) struct Mark {
-    /// The note's title before the first pull since its file was last placed; `None` when the
-    /// note was not here. The file takes the record's title only when it differs.
-    pub(super) title_before: Option<String>,
-    /// The passes whose move failed.
-    failed: u32,
-}
-
-impl Pulled {
-    /// A later pull keeps the first one's title: the file still carries that one.
-    pub(super) fn mark(&self, note_id: &str, title_before: Option<&str>) {
-        self.map().entry(note_id.to_owned()).or_insert(Mark {
-            title_before: title_before.map(str::to_owned),
-            failed: 0,
-        });
+impl Pass {
+    /// The note's pulled mark a pass takes ([`PulledMark`]): `None` when there is none, or its
+    /// move failed [`PLACE_TRIES`] passes since the last pull (parked until the next pull).
+    pub(super) fn pulled_mark(&self, note_id: &str) -> Result<Option<PulledMark>, String> {
+        let mark = self.vault.note_files().pulled_mark(note_id);
+        let mark = mark.map_err(|error| format!("the pulled mark: {error}"))?;
+        Ok(mark.filter(|mark| mark.failed < PLACE_TRIES))
     }
 
-    pub(super) fn take(&self, note_id: &str) -> Option<Mark> {
-        self.map().remove(note_id)
+    /// The pass gave the file the pull `mark` was read at: the mark goes, unless a later pull
+    /// came in while the pass ran.
+    pub(super) fn settle_pulled(&self, note_id: &str, mark: &PulledMark) {
+        let settled = self.vault.note_files().settle_pulled(note_id, mark.pulls);
+        if let Err(error) = settled {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the pulled mark stays for the next pass: {error}"
+            );
+        }
     }
 
-    /// Gives `mark` back to the next pass: this one stopped before it took the change.
-    pub(super) fn put_back(&self, note_id: &str, mark: Mark) {
-        self.map().insert(note_id.to_owned(), mark);
+    /// The note has no file to place, or its first file took the record's place.
+    pub(super) fn forget_pulled(&self, note_id: &str) {
+        if let Err(error) = self.vault.note_files().forget_pulled(note_id) {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "the pulled mark stays for the next pass: {error}"
+            );
+        }
     }
 
     /// A move that failed: the next pass tries it again, until [`PLACE_TRIES`] passes failed;
-    /// then the file stays where it is until the next pull of the note.
-    pub(super) fn retry(&self, note_id: &str, mut mark: Mark, why: &str) {
-        mark.failed += 1;
-        if mark.failed >= PLACE_TRIES {
-            tracing::error!(
+    /// then the mark is parked and the file stays where it is until the next pull of the note,
+    /// which still knows the title the file carries.
+    pub(super) fn retry_pulled(&self, note_id: &str, mark: &PulledMark, why: &str) {
+        match self.vault.note_files().fail_pulled(note_id, mark.pulls) {
+            Ok(Some(tries)) if tries >= PLACE_TRIES => tracing::error!(
                 scope = SCOPE,
                 note_id,
-                tries = mark.failed,
-                "a pulled place is given up; the file stays where it is: {why}"
-            );
-            return;
+                tries,
+                "a pulled place is given up until the next pull; the file stays where it is: \
+                 {why}"
+            ),
+            Ok(Some(tries)) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                tries,
+                "a pulled place waits for the next pass; the file stays where it is: {why}"
+            ),
+            // A later pull reset the mark: its pass tries afresh.
+            Ok(None) => {}
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a failed pulled place was not counted: {error}; {why}"
+            ),
         }
-        tracing::warn!(
-            scope = SCOPE,
-            note_id,
-            tries = mark.failed,
-            "a pulled place waits for the next pass; the file stays where it is: {why}"
-        );
-        self.put_back(note_id, mark);
-    }
-
-    fn map(&self) -> MutexGuard<'_, HashMap<String, Mark>> {
-        self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

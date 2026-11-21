@@ -16,6 +16,7 @@
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
 //! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
+//! | a pulled rename reaches B's file after a restart          | the pull mark in `data.db`, reconcile |
 
 #![cfg(feature = "harness")]
 

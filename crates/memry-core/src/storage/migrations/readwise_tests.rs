@@ -40,7 +40,10 @@ fn upsert(db: &Db, book: Option<i64>, document: Option<&str>, note: &str) -> rea
 #[test]
 fn the_readwise_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
     let db = Db::open_in_memory().expect("open");
-    let before = DATA_MIGRATIONS.len() - 1;
+    let before = DATA_MIGRATIONS
+        .iter()
+        .position(|m| m.name == "readwise")
+        .expect("the readwise migration");
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
@@ -52,7 +55,7 @@ fn the_readwise_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
     .expect("a row to keep");
     assert_eq!(
         db.call_blocking(|conn| run(conn, DATA_MIGRATIONS)).unwrap(),
-        38
+        latest_version(DATA_MIGRATIONS)
     );
     upsert(&db, Some(1), None, "n1");
     // A crash between the commit and the `user_version` write runs the SQL again.
