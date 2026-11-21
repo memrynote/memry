@@ -2155,6 +2155,24 @@ those packs out of its listing entirely and bootstraps through the item-granular
 30-second clock-skew margin and re-lists to mint fresh signatures when a queued pack ages out
 mid-run.
 
+**Rollback switch.** The Worker secret `PACK_COVERAGE_DISABLED` takes packs away from a vault
+without touching them. Set to `*` or to a comma-separated list of vault ids, it makes the listing
+and the bootstrap open answer `packs: []` and `coverage: []` for each vault it names, and the open
+starts no backfill chain, so every client of that vault syncs item by item. It deletes and
+rewrites nothing: pack rows, watermarks and R2 objects stay, compaction keeps running, and
+deleting the secret serves the packs again with no rebuild. Unset, nothing changes. It is the
+rollback of the packs rollout (protocol chapter 08 §8.10), set only by an operator:
+
+```sh
+# staging, one drill vault (or '*' for every vault)
+printf '%s' '<vault-id>' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env staging
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env staging
+
+# production
+printf '%s' '*' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env production
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env production
+```
+
 ## Deploy Prerequisites and Ordering
 
 This epic adds bindings, queues and migrations that are individually optional, plus one ordering

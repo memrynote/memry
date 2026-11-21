@@ -81,6 +81,10 @@ export type Bindings = {
   // their chains, apart from PACK_QUEUE so nudges never wait behind them.
   // Absent: the cron enqueues nothing and packs nothing.
   PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody>
+  // Step 14 rollback switch (#5392): `*` or comma-separated vault ids that get
+  // no packs, no coverage and no bootstrap backfill (pack-list.ts,
+  // packCoverageDisabled). Unset in wrangler.toml for every environment.
+  PACK_COVERAGE_DISABLED?: string
   // Socket items budget in bytes (#2300). Unset = 64 KiB; "0" turns every
   // changes_available frame back to hint-only. It can lower the cap, never raise it.
   SYNC_SOCKET_ITEMS_MAX_BYTES?: string

@@ -222,3 +222,62 @@ describe('listPacks coverage (protocol 08 §8.10, #5230)', () => {
     expect('coverFrom' in page.packs[0]).toBe(false)
   })
 })
+
+describe('PACK_COVERAGE_DISABLED (#5392, step 14 rollback)', () => {
+  const seedCovered = (vaultId: string): void => {
+    seedPack({ id: `${vaultId}-a`, minCursor: 1, maxCursor: 10, vaultId })
+    harness.raw
+      .prepare(`UPDATE pack_index SET cover_from = 0, cover_through = 10 WHERE vault_id = ?`)
+      .run(vaultId)
+    harness.raw
+      .prepare(
+        `INSERT INTO pack_watermarks (user_id, vault_id, item_kind, last_sort_value, last_sort_tiebreak, updated_at, covered_through)
+         VALUES (?, ?, 'record', 10, '', 1, 10)`
+      )
+      .run(USER, vaultId)
+  }
+  const stored = () => ({
+    packs: harness.raw.prepare('SELECT * FROM pack_index ORDER BY id').all(),
+    watermarks: harness.raw.prepare('SELECT * FROM pack_watermarks ORDER BY vault_id').all()
+  })
+
+  it('serves no packs and no coverage while set, writes nothing, and lists again once unset', async () => {
+    seedCovered(VAULT)
+    const before = stored()
+    const unset = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+
+    const first = await listPacks(harness.db, USER, VAULT, { coverageDisabled: '*' })
+    const later = await listPacks(harness.db, USER, VAULT, {
+      cursor: '99:z',
+      coverageDisabled: '*'
+    })
+
+    expect(first.packs).toEqual([])
+    expect(first.coverage).toEqual([])
+    expect('nextCursor' in first).toBe(false)
+    expect(later.packs).toEqual([])
+    expect(later.coverage).toBeUndefined()
+    expect(stored()).toEqual(before)
+    const restored = await listPacks(harness.db, USER, VAULT, { limit: 1 })
+    expect({ ...restored, serverTime: 0 }).toEqual({ ...unset, serverTime: 0 })
+    expect(restored.coverage).toEqual([
+      { itemKind: 'record', packedThrough: 10, coveredThrough: 10 }
+    ])
+  })
+
+  it('a vault list switches off only the vaults it names', async () => {
+    seedCovered(VAULT)
+    seedCovered(OTHER_VAULT)
+
+    const off = await listPacks(harness.db, USER, VAULT, { coverageDisabled: ` x, ${VAULT} ` })
+    const other = await listPacks(harness.db, USER, OTHER_VAULT, {
+      coverageDisabled: ` x, ${VAULT} `
+    })
+    const empty = await listPacks(harness.db, USER, VAULT, { coverageDisabled: '' })
+
+    expect(off).toMatchObject({ packs: [], coverage: [] })
+    expect(other.packs.map((pack) => pack.id)).toEqual([`${OTHER_VAULT}-a`])
+    expect(other.coverage).toHaveLength(1)
+    expect(empty.packs).toHaveLength(1)
+  })
+})

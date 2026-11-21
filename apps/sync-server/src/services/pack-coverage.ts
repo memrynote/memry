@@ -2,7 +2,7 @@ import { createLogger } from '../lib/logger'
 import { PACKED_KINDS } from './pack-compaction'
 import type { PackKindName } from './pack-format'
 import type { VaultScope } from './pack-index-write'
-import { COVERED_KINDS } from './pack-list'
+import { COVERED_KINDS, packCoverageDisabled } from './pack-list'
 import type { PackCompactionMessageBody } from './pack-queue'
 import { PACK_MIN_FILL_ROWS, PACK_SETTLE_SECONDS } from './pack-sizing'
 
@@ -201,9 +201,14 @@ const startChains = async (
  * every build takes its watermark by compare-and-swap.
  */
 export const reportBootstrapCoverage = async (
-  env: { DB: D1Database; PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody> },
+  env: {
+    DB: D1Database
+    PACK_BACKFILL_QUEUE?: Queue<PackCompactionMessageBody>
+    PACK_COVERAGE_DISABLED?: string
+  },
   scope: VaultScope
 ): Promise<KindCoverage[]> => {
+  const disabled = packCoverageDisabled(env.PACK_COVERAGE_DISABLED, scope.vaultId)
   const results = await env.DB.batch<KindRow>(
     PACKED_KINDS.map((kind) => kindStatement(env.DB, scope, kind))
   )
@@ -213,7 +218,9 @@ export const reportBootstrapCoverage = async (
     if (!row) throw new Error(`coverage read returned no row for ${kind}`)
     return { kind, row, ...assess(kind, row, now) }
   })
-  const queue = env.PACK_BACKFILL_QUEUE
+  // A vault whose coverage is switched off starts no chain and claims no
+  // start (#5392), so the switch writes nothing.
+  const queue = disabled ? undefined : env.PACK_BACKFILL_QUEUE
   const buildable = assessed.filter((entry) => entry.buildable).map((entry) => entry.kind)
   const started =
     queue && buildable.length > 0
@@ -235,7 +242,8 @@ export const reportBootstrapCoverage = async (
   logger.info('bootstrap pack coverage', {
     user: scope.userId.slice(0, 8),
     vaultId: scope.vaultId,
-    kinds: report
+    kinds: report,
+    ...(disabled ? { coverageDisabled: true } : {})
   })
   return report
 }

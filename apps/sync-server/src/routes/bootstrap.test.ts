@@ -332,6 +332,52 @@ describe('POST /sync/bootstrap pack coverage (#5230)', () => {
     expect('packsNextCursor' in body).toBe(false)
   })
 
+  // #5392: the step 14 rollback. A covered vault with a backlog past the fill,
+  // so an open with the switch unset lists packs and starts the record chain.
+  const seedCoveredWithBacklog = (): void => {
+    seedDevice({ lastCursor: null })
+    for (let i = 1; i <= 300; i++) seedItem(`item-${i}`, i)
+    seedRecordPack('p1', 0, 20)
+    seedRecordWatermark(20, 20)
+  }
+  const stored = () => ({
+    packs: harness.raw.prepare('SELECT * FROM pack_index').all(),
+    watermarks: harness.raw.prepare('SELECT * FROM pack_watermarks').all(),
+    enqueues: harness.raw.prepare('SELECT * FROM pack_bootstrap_enqueues').all()
+  })
+
+  it('PACK_COVERAGE_DISABLED serves an empty statement and starts no chain (#5392)', async () => {
+    seedCoveredWithBacklog()
+    const before = stored()
+    const backfills = createMemoryQueue()
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    const body = await open({ PACK_BACKFILL_QUEUE: backfills, PACK_COVERAGE_DISABLED: 'vault-1' })
+
+    expect(body.packs).toEqual([])
+    expect(body.coverage).toEqual([])
+    expect('packsNextCursor' in body).toBe(false)
+    expect(backfills.sent).toEqual([])
+    expect(stored()).toEqual(before)
+    const log = coverageLog(info) as { coverageDisabled?: boolean; kinds: unknown } | undefined
+    expect(log?.coverageDisabled).toBe(true)
+  })
+
+  it('PACK_COVERAGE_DISABLED naming another vault leaves this one as before (#5392)', async () => {
+    seedCoveredWithBacklog()
+    const backfills = createMemoryQueue()
+    vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    const body = await open({
+      PACK_BACKFILL_QUEUE: backfills,
+      PACK_COVERAGE_DISABLED: 'vault-2,vault-3'
+    })
+
+    expect(body.coverage).toEqual([{ itemKind: 'record', packedThrough: 20, coveredThrough: 20 }])
+    expect(body.packs.map((pack: Record<string, unknown>) => pack.id)).toEqual(['p1'])
+    expect(backfills.sent.map((sent) => sent.body.backfill?.kind)).toEqual(['record'])
+  })
+
   it('logs coverage per kind and starts an under-covered kind on the backfill queue', async () => {
     // #given: 300 records and no pack yet, past the minimum fill
     seedDevice({ lastCursor: null })

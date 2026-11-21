@@ -97,6 +97,10 @@ the client cannot bound. A client MAY wait only for a bounded time it can show
 is shorter than the item-by-item path, and no client does today. The server
 logs one line per open with each kind's coverage, its uncovered row count
 (counted up to `COVERAGE_COUNT_CAP` = 256) and the reason (`cache_only`, `never_packed`, `unanchored`, `tail`).
+For a vault named by `PACK_COVERAGE_DISABLED` (chapter 08 §8.10, **Rollback
+switch**) the open answers `packs: []` and `coverage: []`, starts no chain,
+and its log line carries `coverageDisabled: true`
+(`apps/sync-server/src/services/pack-coverage.ts:211`, `:223`).
 
 ## 10.5 Errors, and the fallback rule
 
