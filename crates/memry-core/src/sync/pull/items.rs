@@ -137,9 +137,10 @@ impl PullLoop {
     /// [`note_body_feed::fetch`] for this page, when bodies are declared.
     ///
     /// The bodies dropped unfetched are those of a note or journal this page
-    /// deletes: a typed tombstone of a document type, or an id in `deleted`
-    /// with no typed item, which deletes every row under it (§5.12.1). A tag
-    /// that shares a note's id deletes no body.
+    /// deletes: a typed tombstone of a document type. An id in `deleted` with
+    /// no typed item deletes nothing (§5.12.1), so its note stays alive and
+    /// its bodies apply, as Electron fetches them (`note-body-feed.ts:168-176`).
+    /// A tag that shares a note's id deletes no body.
     pub(super) async fn fetch_note_bodies(
         &self,
         page: &ChangesPage,
@@ -156,11 +157,10 @@ impl PullLoop {
                     .iter()
                     .filter(|item| item.item_id() == *id)
                     .collect();
-                typed.is_empty()
-                    || typed.iter().any(|item| {
-                        matches!(item, Pending::Tombstone { .. })
-                            && apply::DOCUMENT_TYPES.contains(&item.item_type())
-                    })
+                typed.iter().any(|item| {
+                    matches!(item, Pending::Tombstone { .. })
+                        && apply::DOCUMENT_TYPES.contains(&item.item_type())
+                })
             })
             .cloned()
             .collect();

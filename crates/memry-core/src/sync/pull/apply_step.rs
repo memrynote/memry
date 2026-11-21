@@ -42,6 +42,7 @@ impl PullLoop {
     ) -> Result<(ApplyTotals, Vec<String>), PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
+        let vault_root = self.vault_root.clone();
         let at_rest = self.at_rest.clone();
         let (mut totals, advanced) = self
             .db
@@ -59,6 +60,7 @@ impl PullLoop {
                     untyped,
                     now,
                     clock_device.as_deref(),
+                    vault_root.as_deref(),
                     &at_rest,
                     &mut totals,
                 )?;

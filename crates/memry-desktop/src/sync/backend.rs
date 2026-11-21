@@ -2,6 +2,7 @@
 //! [`SyncPasses`] is the driver as the supervisor uses it. `SyncDriver` and [`VaultSyncBackend`]
 //! are the real ones; tests put fakes behind both.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::AuthSession;
@@ -163,6 +164,8 @@ pub struct VaultSyncBackend {
     account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
     /// Heard by every driver this backend opens, after the supervisor's own.
     observers: Vec<Arc<dyn ApplyObserver>>,
+    /// The open vault's folder, where a pulled delete reads a note's file (#5343).
+    vault_root: Option<PathBuf>,
     keys: Arc<AtRestKeys>,
     /// Sync's hold on the at-rest key while a driver is open.
     guard: Arc<Mutex<Option<AtRestKeyGuard>>>,
@@ -191,10 +194,18 @@ impl VaultSyncBackend {
             seeds,
             account,
             observers: Vec::new(),
+            vault_root: None,
             keys,
             guard: Arc::default(),
             closes: Arc::default(),
         }
+    }
+
+    /// The open vault's folder, for every driver this backend opens: a pulled delete over a body
+    /// log that does not replay keeps the note's file text, as Electron does (#5343).
+    pub fn with_vault_root(mut self, root: PathBuf) -> Self {
+        self.vault_root = Some(root);
+        self
     }
 
     /// Adds `observer` to every driver this backend opens (`sync::disk`).
@@ -273,7 +284,10 @@ impl SyncBackend for VaultSyncBackend {
             .sync_driver(
                 Arc::clone(&self.session),
                 Arc::clone(&self.reachability),
-                DriverConfig::desktop(),
+                DriverConfig {
+                    vault_root: self.vault_root.clone(),
+                    ..DriverConfig::desktop()
+                },
                 self.seeds.clone(),
                 observers
                     .into_iter()

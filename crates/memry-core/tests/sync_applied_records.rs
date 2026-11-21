@@ -305,8 +305,9 @@ async fn a_record_that_fails_mid_page_stores_and_tells_no_record_of_the_page() {
     }
 }
 
-/// A tombstone for an id this device never held live, typed or untyped (§5.12.1), deletes
-/// nothing: the run counts it skipped, as the feed reports it.
+/// A tombstone for an id this device never held live deletes nothing: the run
+/// counts it skipped, as the feed reports it. A bare id in `deleted` with no
+/// item applies nothing at all (§5.12.1, #5340), so it is not counted.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_tombstone_for_an_item_never_live_here_counts_as_skipped() {
     let db = scratch_db();
@@ -321,7 +322,7 @@ async fn a_tombstone_for_an_item_never_live_here_counts_as_skipped() {
 
     let report = pull.pull_page().await.expect("the page");
 
-    assert_eq!((report.deleted, report.skipped), (0, 2), "{report:?}");
+    assert_eq!((report.deleted, report.skipped), (0, 1), "{report:?}");
 }
 
 /// The first sync's metadata pass ([`PullLoop::fetch_ids`]) tells what it

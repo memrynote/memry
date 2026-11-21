@@ -15,6 +15,7 @@
 //! | `linking`: QR link, vault choice, wrong key, revoke     | `sync/linking-service.ts`, chapter 03      |
 //! | `binding`: foreign vault held, revocation event         | `vault-account-binding.ts`, D7             |
 //! | `vault_directory`: registration, 402 retry, delete      | `sync/vault-directory.ts`                  |
+//! | `delete_keep`: a delete over a bad blob keeps the file  | `keep-unseen-text.ts:46-52`, #5343         |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -26,6 +27,8 @@
 mod account;
 #[path = "sync_harness/binding.rs"]
 mod binding;
+#[path = "sync_harness/delete_keep.rs"]
+mod delete_keep;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "harness_server/mod.rs"]

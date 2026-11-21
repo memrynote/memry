@@ -121,6 +121,7 @@ impl FirstSync {
         }
         let now = now_ms();
         let at_rest = self.pull.at_rest_key();
+        let vault_root = self.pull.vault_root();
         let (removed, feed) = self
             .db
             .call(move |conn| {
@@ -151,7 +152,16 @@ impl FirstSync {
                     .collect();
                 let count = gone.len();
                 let mut totals = apply::ApplyTotals::default();
-                apply::apply_page_into(&txn, gone, Vec::new(), now, None, &at_rest, &mut totals)?;
+                apply::apply_page_into(
+                    &txn,
+                    gone,
+                    Vec::new(),
+                    now,
+                    None,
+                    vault_root.as_deref(),
+                    &at_rest,
+                    &mut totals,
+                )?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok((count, totals.feed))
             })

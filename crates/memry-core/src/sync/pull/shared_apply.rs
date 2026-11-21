@@ -17,6 +17,12 @@ impl PullLoop {
         self.at_rest.clone()
     }
 
+    /// The vault folder a delete reads a note's file in, as the pull's own
+    /// deletes do ([`PullLoop::with_vault_root`]).
+    pub(crate) fn vault_root(&self) -> Option<std::path::PathBuf> {
+        self.vault_root.clone()
+    }
+
     /// Whether this loop's declaration subscribes `item_type` (§5.3). A record
     /// pack is not filtered by the subscription, so its reader skips an
     /// undeclared entry as `POST /sync/pull` would never have served it
