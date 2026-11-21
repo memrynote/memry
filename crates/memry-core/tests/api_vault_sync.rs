@@ -534,3 +534,54 @@ async fn the_first_pass_after_a_first_sync_owes_no_body_it_already_pulled() {
     );
     assert_eq!(transport.calls_to("/sync/crdt/updates/batch").len(), 0);
 }
+
+/// REVIEW-5347: a window document whose first-sync pull stops at an update it
+/// cannot open (§7.9 stop-at-gap) holds `crdt` cursor 1 while the server holds
+/// 2. A completed first sync marks the legacy pull done, so the document must
+/// be owed: unowed, it would claim `coversThrough` past a body row it never
+/// merged, and nothing would pull it again.
+#[tokio::test]
+async fn a_window_document_whose_first_sync_pull_stopped_is_owed() {
+    let dir: PathBuf = std::env::temp_dir().join(format!(
+        "memry-api-vault-sync-stopped-{}-{}",
+        std::process::id(),
+        SCRATCH.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir_all(&dir).expect("the scratch directory");
+    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
+    let (public, secret) = keypair();
+
+    let update = body_update("Hello from the server");
+    let mut script = first_sync_script(&public, secret.clone(), RECENT);
+    script.push(http_fakes::probe_refused());
+    script.push(response(
+        200,
+        &json!({ "snapshot": Json::Null }).to_string(),
+    ));
+    script.push(response(
+        200,
+        &json!({"updates": [
+            {"sequenceNum": 1, "data": packed_base64(&update, &secret),
+             "createdAt": 1_700_000_000_000i64, "signerDeviceId": DEVICE},
+            {"sequenceNum": 2, "data": "@@not-base64@@",
+             "createdAt": 1_700_000_000_001i64, "signerDeviceId": DEVICE},
+        ], "hasMore": false})
+        .to_string(),
+    ));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone(), true));
+    sync.first_sync(None).await.expect("the first sync");
+    assert!(sync.is_first_sync_complete().expect("the meta read"));
+
+    let (owed, cursor) = side
+        .call_blocking(|conn| {
+            Ok((
+                memry_core::sync::body_debt::is_owed(conn, NOTE)?,
+                memry_core::sync::store::read_cursor(conn, &format!("crdt:{NOTE}"))?,
+            ))
+        })
+        .expect("the reads");
+    assert_eq!(cursor.as_deref(), Some("1"), "the pull stopped at 2");
+    assert!(owed, "behind the server's head, so owed");
+}
