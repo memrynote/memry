@@ -53,6 +53,8 @@ export type ShortcutConflict =
 export const isMac =
   typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
 
+const isLinux = typeof navigator !== 'undefined' && navigator.platform.includes('Linux')
+
 function toEntry(id: ShortcutId): ShortcutEntry {
   const { keyboard, group, i18nKey } = COMMANDS[id]
   const editorOwned = keyboard.owner === 'editor'
@@ -62,7 +64,8 @@ function toEntry(id: ShortcutId): ShortcutEntry {
     group,
     defaultBinding: resolvePlatformBinding(
       editorOwned ? keyboard.display : keyboard.default,
-      isMac
+      isMac,
+      isLinux
     ),
     rebindable: !editorOwned
   }
@@ -87,10 +90,28 @@ export const SHORTCUT_GROUP_ORDER: readonly CommandGroup[] = [
 // ============================================================================
 
 /**
- * Format a ShortcutBinding as a human-readable string (e.g., "⌘ Shift N")
+ * A binding as one label: ⌥⌘1 on macOS, Ctrl+Alt+1 elsewhere. Every surface
+ * that prints a shortcut as text formats it here.
  */
 export function formatBinding(binding: ShortcutBinding): string {
-  return bindingParts(binding).join(' ')
+  return bindingParts(binding).join(isMac ? '' : '+')
+}
+
+/**
+ * A BlockNote key spec ("Mod-Alt-1", "Mod+Shift+S", "Shift+Tab") as a binding.
+ * BlockNote's slash menu badges have already been through its
+ * `formatKeyboardShortcut`, which writes Mod as ⌘ on macOS and Ctrl elsewhere,
+ * so ⌘ and Ctrl read as Mod too. No BlockNote spec names a literal Ctrl.
+ */
+export function editorKeyBinding(spec: string): ShortcutBinding {
+  const tokens = spec.split(/[-+]/)
+  const modifiers: ShortcutBinding['modifiers'] = {}
+  for (const token of tokens.slice(0, -1)) {
+    if (token === 'Mod' || token === '⌘' || token === 'Ctrl') modifiers.meta = true
+    else if (token === 'Alt') modifiers.alt = true
+    else if (token === 'Shift') modifiers.shift = true
+  }
+  return { key: tokens.at(-1) ?? '', modifiers }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { foldTag } from '@memry/shared/tag-fold'
@@ -12,11 +12,18 @@ import {
 } from '@/features/tag-fields/rename-toasts'
 import { IpcFailureError, extractErrorMessage, getIpcErrorCode } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
+import { isTagGone, onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 
 const log = createLogger('Page:FolderView')
 
 export function useTagScopeActions(tag: string | null, totalNotes: number, closeTab: () => void) {
+  // The listeners and the re-check run once per tag: a new `closeTab` must not ask again.
+  const closeTabRef = useRef(closeTab)
+  useEffect(() => {
+    closeTabRef.current = closeTab
+  }, [closeTab])
+
   const handleTagIconChange = useCallback(
     async (icon: string | null) => {
       if (tag === null) return
@@ -81,20 +88,36 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
     }
   }, [tag, totalNotes, closeTab])
 
+  // A rename or delete before the listeners went live sent its event to nobody: once they
+  // are live, the tab asks whether its tag is gone.
   useEffect(() => {
     if (tag === null) return undefined
     const key = foldTag(tag)
-    const offRenamed = onTagRenamed((event) => {
-      if (foldTag(event.oldName) === key) closeTab()
-    })
-    const offDeleted = onTagDeleted((event) => {
-      if (foldTag(event.tag) === key) closeTab()
-    })
+    let live = true
+    const stop = subscribeToEvents(
+      [
+        (listening) =>
+          onTagRenamed((event) => {
+            if (foldTag(event.oldName) === key) closeTabRef.current()
+          }, listening),
+        (listening) =>
+          onTagDeleted((event) => {
+            if (foldTag(event.tag) === key) closeTabRef.current()
+          }, listening)
+      ],
+      () => {
+        isTagGone(tag)
+          .then((gone) => {
+            if (gone && live) closeTabRef.current()
+          })
+          .catch((error: unknown) => log.warn('the tag was not checked again', error))
+      }
+    )
     return () => {
-      offRenamed()
-      offDeleted()
+      live = false
+      stop()
     }
-  }, [tag, closeTab])
+  }, [tag])
 
   return { handleTagIconChange, handleTagRenameSubmit, handleTagDeleteConfirm }
 }

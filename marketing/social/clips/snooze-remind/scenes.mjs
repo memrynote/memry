@@ -36,16 +36,9 @@ export const scenes = {
     await dlg.waitFor()
     await sleep(400)
     unzoom()
-    await rec.click(
-      dlg
-        .getByRole('gridcell', { name: String(WEEK), exact: true })
-        .locator('button')
-        .or(dlg.getByText(String(WEEK), { exact: true }))
-        .last(),
-      {
-        pause: 150
-      }
-    )
+    await rec.click(dlg.getByText(String(WEEK), { exact: true }).last(), {
+      pause: 150
+    })
     await sleep(700)
     await rec.click(dlg.getByRole('button', { name: 'Snooze', exact: true }), { pause: 150 })
     await dlg.waitFor({ state: 'hidden' })

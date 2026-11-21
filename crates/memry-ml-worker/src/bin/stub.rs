@@ -8,13 +8,13 @@
 //! real file, whose path the stub cannot pick a behaviour by. `PdfRenderPage`
 //! answers the names of the child's environment variables, a tab, then its cwd. `EmbedText` hangs,
 //! crashes (any text that starts with `crash`) and creates files as `PdfOpen` does, answers NaNs
-//! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
+//! to any text that starts with `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
 //! answers `Done`;
 //! `EmbedImage` answers `Rejected` for bytes that start with `corrupt` (the worker's answer for an
 //! image it cannot decode) and otherwise an embedding whose values are the child's pid;
 //! `ModelManifest` names one empty file, `config.json`, in the app's pinned repo and revision.
 //! `AudioOpen` opens any path as recording 1 of three windows (none for a path ending in
-//! `short.wav`); `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
+//! `short.wav`) and aborts on a path ending in `crash-open.wav`; `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
 //! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
 //! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
 //! after that many milliseconds, anything else answers `read` at once.
@@ -129,7 +129,9 @@ fn main() {
                     park_forever()
                 }
                 crash if crash.starts_with("crash") => std::process::abort(),
-                "nan" => Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION]),
+                nan if nan.starts_with("nan") => {
+                    Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION])
+                }
                 _ => Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION]),
             },
             Request::EmbedImage { bytes, .. } if bytes.starts_with(b"corrupt") => {
@@ -137,6 +139,9 @@ fn main() {
             }
             Request::EmbedImage { .. } => {
                 Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION])
+            }
+            Request::AudioOpen { path } if path.ends_with("crash-open.wav") => {
+                std::process::abort()
             }
             Request::AudioOpen { path } => {
                 let windows = if path.ends_with("short.wav") { 0 } else { 3 };

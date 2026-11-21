@@ -231,8 +231,10 @@ pub(crate) fn apply_page_into(
                     continue;
                 }
                 let existed = feed::is_live(conn, &record.item_type, &record.item_id)?;
+                let title_before = feed::title_before(conn, &record)?;
                 let (outcome, merged) = apply_record(conn, &record, now_ms, clock_device, at_rest)?;
-                feed::record(conn, &mut totals.feed, &record, &outcome, existed, merged)?;
+                let before = (existed, title_before);
+                feed::record(conn, &mut totals.feed, &record, &outcome, before, merged)?;
                 refused_items::settle(conn, &record, &outcome, &mut totals.refused)?;
                 match outcome {
                     ApplyOutcome::Applied => {

@@ -107,6 +107,8 @@ describe('LinkedHereOrBacklinks', () => {
     expect(screen.getByTestId('linked-here-pending')).toBeInTheDocument()
     expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
 
+    // The snapshot is read once the tag listeners are live.
+    await waitFor(() => expect(api.tags.getSchemaSnapshot).toHaveBeenCalled())
     await act(async () => resolveSnapshot(snapshot))
 
     expect(await screen.findByTestId('linked-here')).toBeInTheDocument()

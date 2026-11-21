@@ -1,7 +1,7 @@
 /**
  * The seam under test is the real one: a real `TabProvider`, the real reducer,
- * and the real `updateTabTitleByEntityId`. Only `window.api.onCanvasUpdated` —
- * the IPC boundary the renderer cannot own — is a mock, so an assertion here is
+ * and the real `updateTabTitleByEntityId`. Only `onCanvasUpdated` of the canvas
+ * service — the IPC boundary the renderer cannot own — is a mock, so an assertion here is
  * about the tab state a user would see and not about a spy having been called.
  */
 
@@ -11,6 +11,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TabProvider, useTabs } from '@/contexts/tabs/context'
 import type { Tab, TabGroup, TabSystemState } from '@/contexts/tabs/types'
 import { CanvasTabTitleSync } from './canvas-tab-title-sync'
+
+const onCanvasUpdated = vi.hoisted(() => vi.fn())
+vi.mock('@/services/canvas-service', () => ({ onCanvasUpdated }))
 
 interface CanvasUpdatedPayload {
   canvas?: { id?: string; title?: string }
@@ -83,10 +86,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   emitCanvasUpdated = null
   window.api.onSettingsChanged = vi.fn(() => vi.fn())
-  window.api.onCanvasUpdated = vi.fn((callback: (event: CanvasUpdatedPayload) => void) => {
+  onCanvasUpdated.mockImplementation((callback: (event: CanvasUpdatedPayload) => void) => {
     emitCanvasUpdated = callback
     return unsubscribe
-  }) as unknown as typeof window.api.onCanvasUpdated
+  })
 })
 
 describe('CanvasTabTitleSync', () => {

@@ -9,6 +9,9 @@ use memry_core::api::calendar_records::{CalendarZone, CalendarZoneTransition};
 use memry_core::domain::calendar_items::ical::IcalZones;
 use memry_core::domain::calendar_items::ical::parse::{Component, parse_calendar};
 use memry_core::domain::calendar_items::providers::{ical_write, recurrence_lines};
+use memry_core::domain::calendar_items::writer_compat::{
+    CALENDAR_MULTI_WRITER_MIN_APP_VERSION, is_app_version_below,
+};
 use memry_core::domain::calendar_items::zone::FixedZone;
 use memry_core::storage::repositories::instants;
 use serde_json::Value;
@@ -178,4 +181,32 @@ fn recurrence_lines_match_desktop() {
         );
         assert_eq!(got, case["expected"], "{}", case["name"]);
     }
+}
+
+#[test]
+fn the_writer_compat_floor_reads_versions_as_desktop_does() {
+    let file = vectors();
+    let compat = &file["writerCompat"];
+    let minimum = compat["minimum"].as_str().expect("minimum");
+    assert_eq!(minimum, CALENDAR_MULTI_WRITER_MIN_APP_VERSION);
+    for case in compat["versions"].as_array().expect("versions") {
+        let version = case["version"].as_str().expect("version");
+        let below = case["below"].as_bool().expect("below");
+        assert_eq!(is_app_version_below(version, minimum), below, "{version:?}");
+    }
+}
+
+/// The contract constant itself, so a floor change that skips the vectors
+/// still fails here.
+#[test]
+fn the_writer_floor_equals_the_contract_constant() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../packages/contracts/src/calendar-api.ts"
+    );
+    let source = std::fs::read_to_string(path).expect("calendar-api.ts");
+    let line = format!(
+        "export const CALENDAR_MULTI_WRITER_MIN_APP_VERSION = '{CALENDAR_MULTI_WRITER_MIN_APP_VERSION}'"
+    );
+    assert!(source.lines().any(|l| l.trim() == line), "{line}");
 }

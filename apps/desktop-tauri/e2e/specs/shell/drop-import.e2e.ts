@@ -1,9 +1,10 @@
 // Files dropped from the OS (inv09 #1: the webview's own drop handler is off, so a drop reaches the
 // page as DOM `File` objects with no path; WebKitGTK gives it no file at all). The page streams
 // each file into the shell's staging area, or the shell copies the files of the OS drag it
-// recorded; the import gets the copies' paths, and the copies are deleted when the import settles.
+// recorded; the import (`notes_import_files`, Step 32h1) copies them into the vault, and the copies
+// are deleted when the import settles.
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -18,33 +19,24 @@ interface AppInfo {
   appDataDir: string
 }
 
-declare global {
-  interface Window {
-    __dropImport?: { calls: Array<{ paths: string[]; folder: string }>; finish: () => void }
-  }
-}
-
 const CHUNK = 4 * 1024 * 1024
 
-/**
- * The import is not ported yet: stand in for it, and keep it pending until the spec has read the
- * staged copies, because they are deleted the moment it settles.
- */
-async function stubImport(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const state: NonNullable<Window['__dropImport']> = { calls: [], finish: () => undefined }
-    window.__dropImport = state
-    // The page's api with one namespace replaced; everything else reads through to the real one.
-    window.api = Object.assign(Object.create(window.api), {
-      notes: {
-        importFiles: (paths: string[], folder: string) =>
-          new Promise((resolve) => {
-            state.calls.push({ paths, folder })
-            state.finish = () => resolve({ imported: paths.length, failed: 0, errors: [] })
-          })
-      }
+/** The vault-relative paths of the vault's files, outside `.memry`. */
+function vaultFiles(vault: string): string[] {
+  return readdirSync(vault, { recursive: true, encoding: 'utf8' })
+    .map((path) => path.split('\\').join('/'))
+    .filter((path) => !path.startsWith('.memry'))
+}
+
+/** The one vault file named `name`, once the import has copied it. */
+async function landed(vault: string, name: string): Promise<string> {
+  await expect
+    .poll(() => vaultFiles(vault).filter((path) => path.split('/').pop() === name).length, {
+      timeout: 15_000
     })
-  })
+    .toBe(1)
+  const path = vaultFiles(vault).find((file) => file.split('/').pop() === name) ?? ''
+  return join(vault, path)
 }
 
 /**
@@ -71,14 +63,13 @@ async function dropHiddenFileList(page: Page): Promise<void> {
   })
 }
 
-test('a dropped file is staged with its bytes for the import, then deleted', async ({
+test('a dropped file is staged and imported into the vault with its bytes, then deleted', async ({
   app,
-  page
+  page,
+  testVaultPath
 }) => {
   await appReady(page)
   const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
-
-  await stubImport(page)
 
   const note = 'Hello from the OS\n'.repeat(10)
   await page.evaluate(
@@ -98,29 +89,19 @@ test('a dropped file is staged with its bytes for the import, then deleted', asy
     { text: note }
   )
 
-  await expect
-    .poll(() => page.evaluate(() => window.__dropImport?.calls.length ?? 0), { timeout: 15_000 })
-    .toBe(1)
-  const call = await page.evaluate(() => window.__dropImport?.calls[0])
   // The unsupported file never leaves the page; the others keep their names and bytes.
-  expect(call?.folder).toBe('')
-  expect(call?.paths.length).toBe(2)
-  const [notePath = '', pdfPath = ''] = call?.paths ?? []
-  expect(notePath.startsWith(staging)).toBe(true)
-  expect(notePath.endsWith('dropped note.md')).toBe(true)
-  expect(readFileSync(notePath, 'utf8')).toBe(note)
-  expect(pdfPath.endsWith('scan.pdf')).toBe(true)
-  const pdf = readFileSync(pdfPath)
+  expect(readFileSync(await landed(testVaultPath, 'dropped note.md'), 'utf8')).toBe(note)
+  const pdf = readFileSync(await landed(testVaultPath, 'scan.pdf'))
   expect(pdf.length).toBe(3 * 1024 * 1024 + 17)
   expect(pdf.every((byte) => byte === 65)).toBe(true)
-
-  await page.evaluate(() => window.__dropImport?.finish())
-  await expect.poll(() => existsSync(notePath) || existsSync(pdfPath)).toBe(false)
+  expect(vaultFiles(testVaultPath).some((path) => path.endsWith('tool.exe'))).toBe(false)
+  await expect.poll(() => readdirSync(staging).length).toBe(0)
 })
 
-test('a WebKitGTK file drop is staged from the OS drag the shell recorded', async ({
+test('a WebKitGTK file drop is staged from the OS drag the shell recorded and imported', async ({
   app,
-  page
+  page,
+  testVaultPath
 }) => {
   await appReady(page)
   const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
@@ -129,7 +110,6 @@ test('a WebKitGTK file drop is staged from the OS drag the shell recorded', asyn
   const tool = join(outside, 'tool.exe')
   writeFileSync(note, 'dropped on the window\n')
   writeFileSync(tool, 'MZ')
-  await stubImport(page)
 
   // What the GTK hooks record for a drag from a file manager dropped on the window; the page
   // reads none of it.
@@ -137,20 +117,11 @@ test('a WebKitGTK file drop is staged from the OS drag the shell recorded', asyn
   await invokeTest(app, 'e2e_os_drag', { uris, dropped: true })
   await dropHiddenFileList(page)
 
-  await expect
-    .poll(() => page.evaluate(() => window.__dropImport?.calls.length ?? 0), { timeout: 15_000 })
-    .toBe(1)
-  const call = await page.evaluate(() => window.__dropImport?.calls[0])
-  // The unsupported file is never copied; the note is, under staging, with its name and bytes.
-  expect(call?.folder).toBe('')
-  expect(call?.paths.length).toBe(1)
-  const [copy = ''] = call?.paths ?? []
-  expect(copy.startsWith(staging)).toBe(true)
-  expect(copy.endsWith('from the file manager.md')).toBe(true)
+  // The unsupported file is never copied; the note is, with its name and bytes.
+  const copy = await landed(testVaultPath, 'from the file manager.md')
   expect(readFileSync(copy, 'utf8')).toBe('dropped on the window\n')
-
-  await page.evaluate(() => window.__dropImport?.finish())
-  await expect.poll(() => existsSync(copy)).toBe(false)
+  expect(vaultFiles(testVaultPath).some((path) => path.endsWith('tool.exe'))).toBe(false)
+  await expect.poll(() => readdirSync(staging).length).toBe(0)
   // A copy: the dropped file stays where it was.
   expect(existsSync(note)).toBe(true)
   rmSync(outside, { recursive: true, force: true })
@@ -290,5 +261,31 @@ test('the staging commands refuse an oversize file, a chunk out of order and fil
     released: 'drop_unknown',
     outsideDrag: 'drop_not_dropped'
   })
+  rmSync(outside, { recursive: true, force: true })
+})
+
+test('the import refuses a file that was neither dropped nor picked, before reading it', async ({
+  page,
+  testVaultPath
+}) => {
+  await appReady(page)
+  const outside = mkdtempSync(join(tmpdir(), 'memry-import-'))
+  const secret = join(outside, 'id_rsa')
+  writeFileSync(secret, 'secret')
+
+  const code = await page.evaluate(
+    (path) =>
+      window.__TAURI__.core.invoke('notes_import_files', { input: { sourcePaths: [path] } }).then(
+        () => 'accepted',
+        (error: unknown) =>
+          typeof error === 'object' && error !== null && 'code' in error
+            ? String(error.code)
+            : 'rejected'
+      ),
+    secret
+  )
+
+  expect(code).toBe('import_path_refused')
+  expect(vaultFiles(testVaultPath).some((path) => path.endsWith('id_rsa'))).toBe(false)
   rmSync(outside, { recursive: true, force: true })
 })

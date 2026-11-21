@@ -55,15 +55,34 @@ fn is_uuid(value: &str) -> bool {
             .all(|g| g.bytes().all(|c| c.is_ascii_hexdigit()))
 }
 
+/// The stored id, or `None` before the first mint.
+pub(crate) fn read(conn: &Connection) -> Result<Option<String>, StorageError> {
+    conn.query_row("SELECT value FROM meta WHERE key = ?1", [KEY], |row| {
+        row.get::<_, String>(0)
+    })
+    .optional()
+    .map_err(failed)
+}
+
+/// The Electron import's write into a fresh staged database: Electron's `vault_metadata` uuid,
+/// byte for byte, so the canvases and agent records that carry it stay this vault's. A value
+/// that is not a UUID is refused here rather than by every later open.
+pub(crate) fn write_imported(conn: &Connection, id: &str) -> Result<(), StorageError> {
+    if !is_uuid(id) {
+        return Err(StorageError::Failed {
+            what: "the Electron vault uuid is not a UUID".to_owned(),
+        });
+    }
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+        params![KEY, id],
+    )
+    .map(drop)
+    .map_err(failed)
+}
+
 /// The vault's id, minted on first use. Call after migrations, on the writer.
 pub fn resolve(conn: &mut Connection) -> Result<String, StorageError> {
-    let read = |conn: &Connection| -> Result<Option<String>, StorageError> {
-        conn.query_row("SELECT value FROM meta WHERE key = ?1", [KEY], |row| {
-            row.get::<_, String>(0)
-        })
-        .optional()
-        .map_err(failed)
-    };
     if read(conn)?.is_none() {
         conn.execute(
             "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, ?2)",

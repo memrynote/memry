@@ -11,6 +11,7 @@
 
 mod embed_client;
 pub mod frame;
+mod lifetime;
 mod ocr_client;
 pub mod op;
 mod pdf_client;

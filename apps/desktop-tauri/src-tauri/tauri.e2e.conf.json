@@ -5,10 +5,11 @@
     "security": {
       "capabilities": [
         "main",
+        "sticky",
         {
           "identifier": "e2e",
-          "windows": ["main", "e2e-*"],
-          "permissions": ["wdio:default", "wdio-webdriver:default"]
+          "windows": ["main", "e2e-*", "startup-error", "sticky"],
+          "permissions": ["wdio:default", "wdio-webdriver:default", "e2e-all"]
         },
         {
           "identifier": "e2e-secondary",
@@ -17,7 +18,8 @@
           "permissions": [
             "core:default",
             "core:window:allow-start-dragging",
-            "core:window:allow-toggle-maximize"
+            "core:window:allow-toggle-maximize",
+            "app-all"
           ]
         }
       ]
