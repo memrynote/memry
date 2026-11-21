@@ -373,6 +373,21 @@ export class CrdtPullLedger {
   }
 
   /**
+   * Any sign this device has of a server body for the note: an owed or
+   * deferred pull, an unmerged flag or withheld id, or a counted failed pull
+   * (#5371). No sign is not proof of none; callers add their own.
+   */
+  hasServerBodyEvidence(noteId: string): boolean {
+    return (
+      this.pendingPulls.has(noteId) ||
+      this.deferredPulls.has(noteId) ||
+      this.hasUnmergedRemoteState(noteId) ||
+      this.sessionFailures.has(noteId) ||
+      this.debts.failures(noteId) > 0
+    )
+  }
+
+  /**
    * The note's pulls failed `STUCK_BODY_PULL_FAILURES` times in a row on an
    * answer from the server (an unresolvable signer, a struct that never
    * arrives), so merging may never finish. An editor waiting on its body then

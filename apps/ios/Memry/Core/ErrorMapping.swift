@@ -133,6 +133,7 @@ enum ErrorMapping {
     private static func mappedDomainError(_ error: any Error) -> UserFacingError? {
         if let error = error as? SemanticError { return userFacing(error) }
         if let error = error as? PropertyWriteError { return userFacing(error) }
+        if let error = error as? VaultPlanFull { return userFacing(error) }
         return nil
     }
 

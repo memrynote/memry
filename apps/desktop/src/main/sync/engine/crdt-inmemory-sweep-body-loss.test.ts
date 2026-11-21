@@ -203,6 +203,11 @@ import { owesFileBody } from '../crdt-owed-file-body'
 import { readMergedFullState } from '../full-state-read'
 import { markdownToYFragment, yDocToMarkdown } from '../blocknote-converter'
 import { generateContentHash, parseNote } from '../../vault/frontmatter'
+import { isNeverSyncedLocalNote } from '../note-sync-state'
+import { recordNoteBodyPush } from '../note-body-push-record'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
+import type { DataDb } from '../../database/client'
 
 const NOTE = 'c8c29h5sqvgt'
 const NOTE_PATH = 'notes/Trip.md'
@@ -487,6 +492,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     store?: boolean
     durableDebts?: boolean
     session?: Session
+    online?: () => boolean
   }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
@@ -552,13 +558,26 @@ describe('CrdtProvider with no store (#2536)', () => {
       server.snapshot = { bytes: state, sequenceNum: watermark, revision: 'rev-pushed' }
       server.updates = server.updates.filter((u) => u.sequenceNum > watermark)
     }
-    await provider.init(outbox, pushSnapshot)
+    // The runtime's snapshot push records `sent` before the request, which
+    // fails while offline; the provider must not reach it then (#5371).
+    const online = options?.online
+    const sendSnapshot: SnapshotPushFn = online
+      ? async (noteId, state, coverage) => {
+          recordNoteBodyPush(noteId, 'sent', Date.now(), h.db as DataDb)
+          if (!online()) throw new Error('fetch failed')
+          await pushSnapshot(noteId, state, coverage)
+        }
+      : pushSnapshot
+    await provider.init(outbox, sendSnapshot)
+    if (online) provider.setNetworkOnline(online)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
     provider.setRemoteBodyQuery({
       hasUnmerged: (id) => coordinator.hasUnmergedRemoteState(id),
       isStuck: (id) => coordinator.isBodyPullStuck(id),
       signedOut: () => coordinator.isSignedOut(),
-      vaultLocked: () => coordinator.isVaultKeyMissing()
+      vaultLocked: () => coordinator.isVaultKeyMissing(),
+      neverSynced: (id) =>
+        !coordinator.knowsServerBody(id) && isNeverSyncedLocalNote(h.db as DataDb, id)
     })
     // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
@@ -1638,6 +1657,179 @@ describe('CrdtProvider with no store (#2536)', () => {
         file: parseNote(h.files.get(FILE)!).content,
         versions: h.versions
       }).toEqual({ server: serverBody, file: serverBody, versions: [fileBefore] })
+    })
+  })
+
+  describe('a note created here that never synced, opened offline (#5371)', () => {
+    const OFFLINE = (): Promise<boolean> => new Promise<boolean>(() => {})
+    const TYPED = ORIGINAL.replace('/lake).', '/lake). Map printed.')
+
+    /** A note created on this device: its create is still queued, nothing pushed. */
+    function createNoteHere(): void {
+      indexNoteFromFile()
+      ;(h.db as DataDb).insert(notesCreatedHere).values({ noteId: NOTE, createdAt: 1 }).run()
+    }
+
+    /** A note the ingest or the watcher indexed: create queued, no create-command marker. */
+    function indexNoteFromFile(): void {
+      putNoteInVault(ORIGINAL)
+      h.db = createTestDataDb().db
+      h.canonical = { id: NOTE, syncedAt: null }
+      ;(h.db as DataDb)
+        .insert(syncQueue)
+        .values({
+          id: 'create-row',
+          type: 'note',
+          itemId: NOTE,
+          operation: 'create',
+          payload: '{}',
+          createdAt: new Date()
+        })
+        .run()
+    }
+
+    function type(provider: ReturnType<typeof getCrdtProvider>, doc: Y.Doc): void {
+      const editor = new Y.Doc()
+      Y.applyUpdate(editor, Y.encodeStateAsUpdate(doc))
+      const seen = Y.encodeStateVector(editor)
+      const text = findText(editor.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')
+      text.insert(text.length, ' Map printed.')
+      provider.applyIpcUpdate(NOTE, Y.encodeStateAsUpdate(editor, seen), EDITOR_WINDOW)
+    }
+
+    it('opens editable, keeps what is typed, and syncs it later as one copy', async () => {
+      // #given a note created here while offline; the server holds nothing
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      const { provider, coordinator } = await startRuntime()
+
+      // #when the editor opens it while the merge cannot reach the server
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it opens with the file body and no wait
+      expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+      expect(provider.remoteBodyWait(NOTE)).toBeNull()
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+
+      // #when the user types and closes the note
+      type(provider, doc)
+      await provider.close(NOTE, EDITOR_WINDOW)
+
+      // #then once online the server and a reopen hold the typed body once
+      expect(await bodyAfterPull()).toBe(TYPED)
+      const reopened = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+      expect(countTexts(reopened.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')).toBe(1)
+      expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        TYPED
+      )
+    })
+
+    it('stays editable on an offline reopen after an offline close, and sends nothing while offline', async () => {
+      // #given a note created here, and a device with no network
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      let online = false
+      const { provider } = await startRuntime({ online: () => online })
+
+      // #when the user opens it offline, types, closes it, and reopens it offline
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+      type(provider, doc)
+      await provider.close(NOTE, EDITOR_WINDOW)
+      expect(isNeverSyncedLocalNote(h.db as DataDb, NOTE)).toBe(true)
+      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      const reopened = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it reopens editable with the typed body, and the snapshot stays owed
+      expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+      expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        TYPED
+      )
+      expect(h.server.snapshot).toBeNull()
+
+      // #when the network returns
+      online = true
+      await expect(provider.pushSnapshotForNote(NOTE)).resolves.toBe(true)
+
+      // #then the server holds the typed body once
+      expect(await bodyAfterPull()).toBe(TYPED)
+    })
+
+    it.each([
+      {
+        proof: 'a pull or record push stamped the row',
+        undo: () => (h.canonical = { id: NOTE, syncedAt: '2026-11-21T00:00:00.000Z' })
+      },
+      {
+        proof: 'the server acknowledged the create',
+        undo: () => (h.db as DataDb).delete(syncQueue).run()
+      },
+      {
+        proof: 'a body push started',
+        undo: () => recordNoteBodyPush(NOTE, 'sent', 1, h.db as DataDb)
+      }
+    ])('stays read-only once $proof', async ({ undo }) => {
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      undo()
+      const { provider } = await startRuntime()
+
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+    })
+
+    it('a note a shared folder brought stays read-only and shows the server body once (#5371)', async () => {
+      // #given a file another device already synced, indexed here from a shared folder
+      await serveNoteWithPeerEdit()
+      indexNoteFromFile()
+      const { provider, coordinator } = await startRuntime()
+
+      // #when the editor opens it while the merge cannot reach the server
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it waits instead of seeding beside the server body
+      expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+      // #when the pull merges once online
+      await coordinator.pullCrdtForNote(NOTE)
+
+      // #then the body appears once
+      expect(countTexts(doc.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')).toBe(1)
+    })
+
+    it('a seeded push of a closed never-synced note whose merge failed keeps the push owed', async () => {
+      // #given a note created here, closed, and a merge that cannot finish
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      const { provider } = await startRuntime()
+      provider.setRemoteMerge(async () => false)
+
+      // #when a snapshot push opens it
+      const pushed = await provider.pushSnapshotForNote(NOTE)
+
+      // #then nothing is seeded or sent; the push stays owed
+      expect(pushed).toBe(false)
+      expect(h.server).toEqual({ snapshot: null, updates: [] })
+    })
+
+    it('stays read-only when this session already pulled a server body for it', async () => {
+      // #given an id the server holds a body for, though the local facts say never synced
+      await serveNoteWithPeerEdit()
+      createNoteHere()
+      const { provider, coordinator } = await startRuntime()
+      await coordinator.pullCrdtForNotes([NOTE])
+      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+
+      // #when the editor opens it offline
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it waits for the server body instead of seeding beside it
+      expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
     })
   })
 })

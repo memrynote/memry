@@ -36,9 +36,11 @@ import {
 } from './folder-config-effects'
 import { followFolderRenameInShortcuts } from '../ipc/settings-handlers'
 import { followFolderRenameInReadwise } from '../readwise/settings'
+import { recordNoteCreatedHere } from '../sync/note-sync-state'
 
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
   const note = await createNote(input)
+  recordNoteCreatedHere(note.id)
   // Frontmatter tags only. `note.tags` merges the body's `#hashtag`s in for the
   // index, and the CRDT tag array they would land in is what write-back writes
   // back into the file's `tags:` block (#1454).

@@ -77,6 +77,7 @@ mod log_writes;
 mod manifest;
 mod pack_seed;
 mod probe;
+mod server_body;
 
 pub use log_writes::BodyEpochs;
 pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;

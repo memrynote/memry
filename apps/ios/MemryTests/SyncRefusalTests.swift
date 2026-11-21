@@ -69,6 +69,21 @@ struct SyncRefusalTests {
         #expect(calendar.failure == nil)
     }
 
+    /// The production filler names the refusal after its vault, so the copy
+    /// says which vault is not syncing.
+    @Test func a_vault_limit_names_the_vault_that_is_not_syncing() {
+        let refusal = SyncError.Api(source: .PaymentRequired(code: "SYNC_VAULT_LIMIT_EXCEEDED", message: "full"))
+        let named = ErrorMapping.userFacing(VaultPlanFull.naming("Work", in: refusal))
+        #expect(named.code == ErrorCode("api.vaultLimitReached"))
+        #expect(named.title.hasPrefix("\u{201C}Work\u{201D} is not syncing"))
+        #expect(named.title.contains("no room for another synced vault"))
+
+        // Any other refusal passes through untouched.
+        let noPlan = SyncError.Api(source: .PaymentRequired(code: "SYNC_PAYMENT_REQUIRED", message: "none"))
+        #expect(VaultPlanFull.naming("Work", in: noPlan) as? SyncError == noPlan)
+        #expect(VaultPlanFull.naming("Work", in: SyncError.Locked) as? SyncError == .Locked)
+    }
+
     @Test func a_generic_refusal_carries_its_status_and_code() {
         let refused = ErrorMapping.userFacing(SyncError.Api(source: .Status(
             status: 400, code: "VALIDATION_ERROR", message: "X-Memry-Vault-Id is required"
@@ -81,7 +96,7 @@ struct SyncRefusalTests {
         #expect(bare.guidance?.hasSuffix("Server reply: 404.") == true)
     }
 
-    @Test func the_account_notice_clears_after_a_good_pass_and_on_reload() async {
+    @Test func the_account_notice_clears_on_reload_not_on_a_sync_pass() async {
         let session = FakeAuthSession(from: .registered)
         session.scriptBilling(BillingStatus(
             email: "a@b.c", plan: "plus", status: "active", cadence: nil,
@@ -94,11 +109,10 @@ struct SyncRefusalTests {
         await account.load()
         await account.loadStorage()
         #expect(account.failure != nil, "the fake refuses storage")
+        // A pass says nothing about the account calls, so their refusal stays.
         account.syncFinished(true)
-        #expect(account.failure == nil)
-
-        await account.loadStorage()
         #expect(account.failure != nil)
+
         await account.load()
         #expect(account.failure == nil)
     }

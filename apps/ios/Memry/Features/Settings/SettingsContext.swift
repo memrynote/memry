@@ -178,7 +178,6 @@ final class AccountModel {
         if succeeded {
             local.lastSyncedAt = .now
             isOffline = false
-            failure = nil
         } else {
             isOffline = true
         }

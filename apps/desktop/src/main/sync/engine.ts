@@ -504,6 +504,11 @@ export class SyncEngine extends SyncEventEmitter {
     return this.crdtSync.isVaultKeyMissing()
   }
 
+  /** See `CrdtSyncCoordinator.knowsServerBody`; a woken note counts too. */
+  knowsCrdtServerBody(noteId: string): boolean {
+    return this.hasUnmergedRemoteCrdtState(noteId) || this.crdtSync.knowsServerBody(noteId)
+  }
+
   /**
    * `true` when this device knows it has not merged the server's state for this
    * note — an unverifiable signer, a failed or aborted pass, or a pull that is

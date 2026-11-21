@@ -120,7 +120,7 @@ pub(super) async fn pull_one(
 /// A failure every later request of this pass would repeat: a `429`, no
 /// network, or a session the server no longer accepts. The documents keep
 /// their debts without a backoff; they did not fail.
-fn ends_the_step(error: &ApiError) -> bool {
+pub(super) fn ends_the_step(error: &ApiError) -> bool {
     matches!(
         error,
         ApiError::RateLimited { .. }
