@@ -16,7 +16,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Patch, header_tags_of, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -101,8 +101,6 @@ pub struct Pass {
     pub(super) own_files: Arc<OwnFiles>,
     /// Reaches the notes writer, for a pulled place's move (`place`).
     pub(super) store: Arc<dyn SecureStore>,
-    /// The notes a pull changed whose pass has not taken the change yet (`place`).
-    pub(super) pulled: Pulled,
 }
 
 impl Pass {
@@ -126,15 +124,7 @@ impl Pass {
             settings,
             own_files,
             store,
-            pulled: Pulled::default(),
         }
-    }
-
-    /// A pull changed the note: its next pass gives its file the record's place and frontmatter
-    /// (`place`). `title_before` is its title before the pull: the file is renamed only when
-    /// the pulled title differs from it.
-    pub fn mark_pulled(&self, note_id: &str, title_before: Option<&str>) {
-        self.pulled.mark(note_id, title_before);
     }
 
     /// Writes the note's body to its file, or says why the file was kept.
@@ -163,7 +153,7 @@ impl Pass {
                 let outcome = self.file_unfiled(&mut lane, note_id, (read_at, read_mark), between);
                 // The first file takes the record's place and frontmatter.
                 if matches!(outcome, Outcome::Wrote { .. } | Outcome::Unchanged) {
-                    self.pulled.take(note_id);
+                    self.forget_pulled(note_id);
                 }
                 return outcome;
             }
@@ -173,7 +163,7 @@ impl Pass {
         // pulled one. A row not read yet keeps it, as a file changed since its hash does: the
         // pass after the read places the file.
         if row.file_type != FileType::Markdown.as_str() {
-            self.pulled.take(note_id);
+            self.forget_pulled(note_id);
             return Outcome::Kept(Keep::NotMarkdown);
         }
         let Some(row_hash) = row.content_hash else {
@@ -182,7 +172,7 @@ impl Pass {
         let file = match read_note(&self.root, &row.path) {
             Ok(Some(file)) => file,
             Ok(None) => {
-                self.pulled.take(note_id);
+                self.forget_pulled(note_id);
                 return Outcome::Kept(Keep::NoFile);
             }
             Err(error) => return Outcome::Failed(format!("the file could not be read: {error}")),
@@ -190,17 +180,21 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
-        // A pulled change: taken here, and given back to the next pass when this one stops.
-        let pulled = match self.pulled.take(note_id) {
+        // A pulled change: read here, and settled only once the file took it, so every stop
+        // before (and a quit) leaves the mark to the next pass.
+        let mark = match self.pulled_mark(note_id) {
+            Ok(mark) => mark,
+            Err(why) => return Outcome::Failed(why),
+        };
+        let pulled = match &mark {
             None => None,
             Some(mark) => match self.vault.note_files().placed(note_id) {
                 Ok(record) => record.map(|record| (mark, record)),
-                Err(error) => {
-                    self.pulled.put_back(note_id, mark);
-                    return Outcome::Failed(format!("the pulled record: {error}"));
-                }
+                Err(error) => return Outcome::Failed(format!("the pulled record: {error}")),
             },
         };
+        // A mark with no record to place (a journal day) is settled by the pass all the same.
+        let mut settle = mark.as_ref();
         let mut path = row.path.clone();
         let mut moved = false;
         if let Some((mark, record)) = &pulled {
@@ -214,7 +208,10 @@ impl Pass {
                 Ok(None) => {}
                 // The file and its row stay where they were, and the body is written there: a
                 // move that cannot happen never holds the file back from the note's edits.
-                Err(why) => self.pulled.retry(note_id, mark.clone(), &why),
+                Err(why) => {
+                    self.retry_pulled(note_id, mark, &why);
+                    settle = None;
+                }
             }
         }
         let pulled = pulled.as_ref().map(|(_, record)| record);
@@ -250,6 +247,9 @@ impl Pass {
                     note_id,
                     "the row was not stamped: {error}"
                 );
+            }
+            if let Some(mark) = settle {
+                self.settle_pulled(note_id, mark);
             }
             if moved {
                 lane.publish(Applied::Changed {
@@ -311,6 +311,9 @@ impl Pass {
         }
         if let Some(record) = pulled.filter(|_| patched) {
             self.wrote_pulled(note_id, record);
+        }
+        if let Some(mark) = settle {
+            self.settle_pulled(note_id, mark);
         }
         lane.publish(Applied::Changed {
             note_id: note_id.to_owned(),

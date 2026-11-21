@@ -1,11 +1,13 @@
 //! The open reconcile: a pass for every note whose file was left behind its body (the module
-//! invariants, "Every open brings the files left behind"), and for every note with no file. Electron journals a pulled page's
+//! invariants, "Every open brings the files left behind"), for every note with no file, and for
+//! every pulled place a quit left before its pass (`place`). Electron journals a pulled page's
 //! file operations and replays them (`replayBulkApplyJournal` of desktop `bulk-apply.ts`); this
 //! derives the same notes from the body stamps instead, so it also finds an edit made in the
 //! app whose pass never ran.
 
 use std::collections::BTreeSet;
 
+use super::place::PLACE_TRIES;
 use super::{Pass, WriteBack};
 use crate::vault::trash::move_to_trash;
 
@@ -69,6 +71,25 @@ pub(crate) fn reconcile(
         Err(error) => tracing::error!(
             scope = SCOPE,
             "the unfiled notes could not be listed, so they wait for the next open: {error}"
+        ),
+    }
+    // A pulled place or frontmatter a quit left before its pass (`place`, #5309).
+    match pass.vault.note_files().pulled_notes(PLACE_TRIES) {
+        Ok(notes) => {
+            if !notes.is_empty() {
+                tracing::info!(
+                    scope = SCOPE,
+                    count = notes.len(),
+                    "pulled places reach their files"
+                );
+            }
+            for note_id in &notes {
+                writeback.schedule(note_id);
+            }
+        }
+        Err(error) => tracing::error!(
+            scope = SCOPE,
+            "the pulled notes could not be listed, so they wait for the next open: {error}"
         ),
     }
 }

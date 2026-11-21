@@ -41,6 +41,7 @@ use crate::api::errors::StorageError;
 mod behind;
 mod large;
 mod marks;
+mod pulled;
 mod text_files;
 mod unfiled;
 
@@ -48,6 +49,9 @@ use behind::body_moved_after_stamp;
 pub use behind::{behind_bodies, behind_body};
 pub use large::{is_large_file, set_large_file};
 pub use marks::{LogMark, StampMark, mark_unmarked, stamped_mark};
+pub use pulled::{
+    PulledMark, fail_pulled, forget_pulled, mark_pulled, pulled_mark, pulled_notes, settle_pulled,
+};
 pub use text_files::{FiledTextFile, filed_text_files, gone_notes, markdown_notes};
 #[cfg(feature = "markdown")]
 pub use unfiled::days_wait;
@@ -428,14 +432,15 @@ pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageE
         )
         .map(|n| n > 0)
         .map_err(failed)?;
-    // The marker, the file hash, the size class, an owed move with its hold and the file's
-    // property baseline are file state of the note: they go with the row. A debt left would be
+    // The marker, the file hash, the size class, an owed move with its hold, a pulled place and
+    // the file's property baseline are file state of the note: they go with the row. A debt left would be
     // the next row's of the id (a day's repeats), hiding its date.
     crate::domain::owed_file_body::clear(tx, note_id)?;
     crate::domain::properties::forget_file_baseline(tx, note_id)?;
     write_file_hash(tx, note_id, None)?;
     set_large_file(tx, note_id, false)?;
     marks::forget(tx, note_id)?;
+    forget_pulled(tx, note_id)?;
     let owed = "DELETE FROM note_place_owed WHERE note_id = ?1";
     tx.execute(owed, params![note_id]).map_err(failed)?;
     crate::domain::notes::place_held::forget(tx, note_id)?;

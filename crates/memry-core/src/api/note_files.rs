@@ -184,6 +184,48 @@ impl NoteFiles {
             .read_blocking(move |conn| note_files::placed(conn, &id))
     }
 
+    /// A pull changed the note: its file is owed the record's place and frontmatter
+    /// ([`note_files::mark_pulled`]).
+    pub fn mark_pulled(&self, id: &str, title_before: Option<&str>) -> Result<(), StorageError> {
+        let (id, title_before) = (id.to_owned(), title_before.map(str::to_owned));
+        self.db
+            .call_blocking(move |conn| note_files::mark_pulled(conn, &id, title_before.as_deref()))
+    }
+
+    /// [`note_files::pulled_mark`].
+    pub fn pulled_mark(&self, id: &str) -> Result<Option<note_files::PulledMark>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::pulled_mark(conn, &id))
+    }
+
+    /// [`note_files::settle_pulled`].
+    pub fn settle_pulled(&self, id: &str, pulls: i64) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_files::settle_pulled(conn, &id, pulls))
+    }
+
+    /// [`note_files::fail_pulled`].
+    pub fn fail_pulled(&self, id: &str, pulls: i64) -> Result<Option<u32>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_files::fail_pulled(conn, &id, pulls))
+    }
+
+    /// [`note_files::forget_pulled`].
+    pub fn forget_pulled(&self, id: &str) -> Result<(), StorageError> {
+        let id = id.to_owned();
+        self.db
+            .call_blocking(move |conn| note_files::forget_pulled(conn, &id))
+    }
+
+    /// [`note_files::pulled_notes`].
+    pub fn pulled_notes(&self, tries: u32) -> Result<Vec<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_files::pulled_notes(conn, tries))
+    }
+
     /// The write-back wrote the record's property `values` into the note's file
     /// ([`properties::file_written`]).
     pub fn file_properties_written(
