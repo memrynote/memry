@@ -130,6 +130,12 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_files.rs"]
+mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]

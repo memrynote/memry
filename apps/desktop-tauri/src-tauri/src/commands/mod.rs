@@ -12,6 +12,8 @@ pub mod billing;
 pub mod calendar_eventkit;
 pub mod calendar_ics;
 pub mod calendar_providers;
+pub mod canvas;
+pub mod canvas_folders;
 pub mod clipboard;
 pub mod custom_icons;
 pub mod devices;
