@@ -37,6 +37,10 @@ pub use identity::{CLIENT_PLATFORMS, ClientIdentity};
 /// the OS backgrounding the app otherwise never resolves.
 pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 60_000;
 
+/// Chapter 00 §0.6. A request that receives no bytes for this long fails as a
+/// timeout, whatever its deadline: the shell applies it to every request.
+pub const IDLE_TIMEOUT_MS: u64 = 60_000;
+
 /// Chapter 07 §7.10 and chapter 03 §3.9 both spell the same ladder.
 pub const DEFAULT_MAX_RETRIES: u32 = 3;
 

@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 use http_fakes::{body_json, bytes_response, response};
 use memry_core::api::errors::TransportError;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::http::{ClientIdentity, DEFAULT_REQUEST_TIMEOUT_MS, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
@@ -25,7 +25,7 @@ use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
 use memry_core::sync::first_sync::{FirstSync, FirstSyncError, FirstSyncReport};
 use memry_core::sync::first_sync_store::read_meta;
-use memry_core::sync::pack_bootstrap::{META_RECORD_PACKS_DONE, PackBootstrap};
+use memry_core::sync::pack_bootstrap::{META_RECORD_PACKS_DONE, PackBootstrap, pack_deadline_ms};
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use serde_json::{Value as Json, json};
 use sha2::{Digest as _, Sha256};
@@ -176,6 +176,8 @@ struct Server {
     /// A URL substring whose request never answers: the process is killed
     /// while it waits.
     hang: Option<String>,
+    /// `byteSize` of every listed record pack; 10 when unset.
+    byte_size: Option<u64>,
 }
 
 impl Server {
@@ -194,7 +196,7 @@ impl Server {
                 let mut listed = json!({"id": pack.id, "itemKind": "record", "packKey": "k",
                     "minCursor": pack.entries.first().map_or(0, |e| e.cursor),
                     "maxCursor": pack.entries.last().map_or(0, |e| e.cursor),
-                    "itemCount": pack.entries.len(), "byteSize": 10, "createdAt": 1,
+                    "itemCount": pack.entries.len(), "byteSize": self.byte_size.unwrap_or(10), "createdAt": 1,
                     "url": format!("https://r2.example/packs/{}", pack.id),
                     "expiresAt": 4_000_000_000i64});
                 if let Some((from, through)) = pack.cover {
@@ -323,6 +325,8 @@ impl Server {
 struct Routes {
     server: Mutex<Server>,
     calls: Mutex<Vec<String>>,
+    /// Each request's url and the `timeout_ms` it reached the seam with.
+    timeouts: Mutex<Vec<(String, u64)>>,
     hung: Notify,
     /// Runs once, when the first `/sync/pull` is sent.
     on_pull: Mutex<Option<Box<dyn FnOnce() + Send>>>,
@@ -333,6 +337,7 @@ impl Routes {
         Arc::new(Self {
             server: Mutex::new(server),
             calls: Mutex::new(Vec::new()),
+            timeouts: Mutex::new(Vec::new()),
             hung: Notify::new(),
             on_pull: Mutex::new(None),
         })
@@ -354,6 +359,10 @@ impl Routes {
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.calls.lock().unwrap().push(request.url.clone());
+        self.timeouts
+            .lock()
+            .unwrap()
+            .push((request.url.clone(), request.timeout_ms));
         if request.url.contains("/sync/pull") {
             let hook = self.on_pull.lock().unwrap().take();
             if let Some(hook) = hook {
@@ -516,6 +525,33 @@ async fn the_request_count_follows_the_packs_and_not_the_items() {
     assert_eq!(routes.count("/sync/packs"), 2, "{:?}", routes.calls());
     assert_eq!(routes.calls().len(), ceiling(63, 3));
     assert_eq!(report.record_packs.entries_applied, 300);
+}
+
+/// #5331: an 8 MiB pack at 0.5 Mbit/s takes about 134 s, past the 60 s
+/// ceiling of every other request, so its GET gets a deadline scaled to the
+/// listed `byteSize` (chapter 00 §0.6).
+#[tokio::test]
+async fn a_pack_get_gets_a_deadline_scaled_to_its_listed_size() {
+    const EIGHT_MIB: u64 = 8 * 1024 * 1024;
+    let db = scratch_db("deadline");
+    let mut server = covered_vault(40, 40);
+    server.byte_size = Some(EIGHT_MIB);
+    let routes = Routes::new(server);
+    run(&db, &routes, &[]).await;
+
+    let timeouts = routes.timeouts.lock().unwrap().clone();
+    let (packs, rest): (Vec<_>, Vec<_>) = timeouts
+        .into_iter()
+        .partition(|(url, _)| url.starts_with("https://r2.example/packs/"));
+    let half_megabit_ms = EIGHT_MIB * 8 * 1000 / 500_000;
+    assert_eq!(packs.len(), 1, "{packs:?}");
+    assert_eq!(packs[0].1, pack_deadline_ms(Some(EIGHT_MIB)));
+    assert!(packs[0].1 > half_megabit_ms, "{packs:?}");
+    assert!(
+        rest.iter()
+            .all(|(_, timeout)| *timeout == DEFAULT_REQUEST_TIMEOUT_MS),
+        "{rest:?}"
+    );
 }
 
 #[tokio::test]

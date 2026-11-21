@@ -39,7 +39,8 @@ use super::super::body_pull::{BodyEpochs, BodyPullError, PackEntrySeed, PackSeed
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
 use super::listing::{PackSummary, list};
-use super::records::{RECORD_DOWNLOAD_WIDTH, download};
+use super::download::download;
+use super::records::RECORD_DOWNLOAD_WIDTH;
 use super::spill::{self, Loc, Spilled};
 use super::{PackBootstrap, now};
 
@@ -310,7 +311,7 @@ impl PackBootstrap {
                 report.requests += 1;
                 let http = Arc::clone(&self.http);
                 running.spawn(async move {
-                    let bytes = download(&http, &pack.url).await;
+                    let bytes = download(&http, &pack).await;
                     (pack, path, bytes)
                 });
             }

@@ -24,11 +24,13 @@ use crate::storage::Db;
 
 mod bodies;
 pub mod body_plan;
+mod download;
 mod listing;
 mod records;
 mod spill;
 
 pub use bodies::{BODY_CHUNK_BYTES, BODY_CHUNK_ENTRIES, BodyPackReport};
+pub use download::pack_deadline_ms;
 pub(crate) use listing::query_encode;
 pub use listing::{Coverage, Listing, PACK_LIST_PAGE_LIMIT, PackSummary, list, tail_start};
 pub use records::{

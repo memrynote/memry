@@ -1,4 +1,6 @@
 use super::*;
+use memry_core::protocol::http::IDLE_TIMEOUT_MS;
+use memry_core::sync::pack_bootstrap::pack_deadline_ms;
 use std::sync::Mutex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -130,6 +132,96 @@ async fn an_unusable_method_never_reaches_the_network() {
         .await
         .expect_err("the method is refused");
     assert!(matches!(error, TransportError::Failed { .. }));
+}
+
+/// An 8 MiB pack, the size #5331 names.
+const PACK_BYTES: usize = 8 * 1024 * 1024;
+/// 0.5 Mbit/s is 62,500 bytes a second: one 31,250-byte write every 500 ms.
+const SLOW_WRITE: usize = 31_250;
+const SLOW_EVERY: Duration = Duration::from_millis(500);
+
+/// Serves one GET of [`PACK_BYTES`] at 0.5 Mbit/s. With `stall_after`, it
+/// goes silent once that many body bytes are out, and keeps the socket open.
+async fn slow_pack(stall_after: Option<usize>) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let url = format!("http://{}/pack", listener.local_addr().expect("addr"));
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut head = Vec::new();
+        let mut chunk = [0u8; 1024];
+        while !head.windows(4).any(|w| w == b"\r\n\r\n") {
+            let read = socket.read(&mut chunk).await.expect("read");
+            assert!(read > 0, "the client hung up before its request ended");
+            head.extend_from_slice(&chunk[..read]);
+        }
+        let status = format!("HTTP/1.1 200 OK\r\nContent-Length: {PACK_BYTES}\r\n\r\n");
+        socket.write_all(status.as_bytes()).await.expect("head");
+        let block = vec![7u8; SLOW_WRITE];
+        let mut sent = 0;
+        while sent < PACK_BYTES && stall_after.is_none_or(|at| sent < at) {
+            tokio::time::sleep(SLOW_EVERY).await;
+            let n = SLOW_WRITE.min(PACK_BYTES - sent);
+            socket.write_all(&block[..n]).await.expect("body");
+            sent += n;
+        }
+        std::future::pending::<()>().await;
+        drop(socket);
+    });
+    url
+}
+
+fn pack_get(url: String) -> HttpRequest {
+    HttpRequest {
+        method: "GET".to_string(),
+        url,
+        headers: HashMap::new(),
+        body: None,
+        timeout_ms: pack_deadline_ms(Some(PACK_BYTES as u64)),
+    }
+}
+
+/// #5331: slow but steady finishes. The clock is paused, so the ~134 s of
+/// transfer run in virtual time.
+#[tokio::test(start_paused = true)]
+async fn an_eight_mib_pack_at_half_a_megabit_arrives_whole() {
+    let url = slow_pack(None).await;
+    let started = tokio::time::Instant::now();
+    let response = NativeTransport::new()
+        .expect("a transport")
+        .send(pack_get(url))
+        .await
+        .expect("the slow pack arrives");
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body.len(), PACK_BYTES);
+    let transfer = SLOW_EVERY * PACK_BYTES.div_ceil(SLOW_WRITE) as u32;
+    assert!(started.elapsed() >= transfer, "{:?}", started.elapsed());
+}
+
+/// #5331: a stall mid-body fails one idle limit after the last byte, not at
+/// the pack's much later deadline.
+#[tokio::test(start_paused = true)]
+async fn a_pack_that_stalls_mid_body_fails_at_the_idle_limit() {
+    let half = PACK_BYTES / 2;
+    let url = slow_pack(Some(half)).await;
+    let started = tokio::time::Instant::now();
+    let error = NativeTransport::new()
+        .expect("a transport")
+        .send(pack_get(url))
+        .await
+        .expect_err("the stall is cut off");
+    let elapsed = started.elapsed();
+    assert_eq!(
+        error,
+        TransportError::Timeout {
+            elapsed_ms: IDLE_TIMEOUT_MS
+        }
+    );
+    let last_byte = SLOW_EVERY * half.div_ceil(SLOW_WRITE) as u32;
+    let idle = Duration::from_millis(IDLE_TIMEOUT_MS);
+    assert!(
+        elapsed >= last_byte + idle && elapsed < last_byte + idle + SLOW_EVERY,
+        "failed after {elapsed:?}; the last byte left at {last_byte:?}"
+    );
 }
 
 #[derive(Default)]
