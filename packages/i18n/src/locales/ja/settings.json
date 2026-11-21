@@ -1398,6 +1398,7 @@
       "selectModel": "モデルを選択してください",
       "apiKey": "API キー",
       "apiKeyDescription": "ローカルに保存され、プロバイダーにのみ送信されます",
+      "apiKeyKeychainDescription": "OS のキーチェーンに保存され、プロバイダーにのみ送信されます",
       "apiKeyPlaceholder": "{provider} API キーを入力してください",
       "ollamaUrl": "Ollama の URL",
       "ollamaUrlDescription": "ローカルサーバーアドレス",

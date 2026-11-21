@@ -1398,6 +1398,7 @@
       "selectModel": "اختيار نموذج",
       "apiKey": "مفتاح API",
       "apiKeyDescription": "يُخزَّن محليًا ولا يُرسَل إلا إلى المزوّد",
+      "apiKeyKeychainDescription": "يُخزَّن في سلسلة مفاتيح نظام التشغيل ولا يُرسَل إلا إلى المزوّد",
       "apiKeyPlaceholder": "إدخال مفتاح {provider} API",
       "ollamaUrl": "عنوان URL لخادم Ollama",
       "ollamaUrlDescription": "عنوان الخادم المحلي",

@@ -76,7 +76,7 @@ pub struct ImportProgress {
 }
 
 pub enum StageOutcome {
-    Staged(StagedVault),
+    Staged(Box<StagedVault>),
     /// `core/data.db` carries the import marker: an earlier run installed this vault.
     AlreadyImported,
     /// `core/data.db` exists without the marker: the vault was first opened natively. It is
@@ -104,6 +104,8 @@ pub struct VaultStageReport {
     pub tables: BTreeMap<String, TableReport>,
     /// Source rows or keys not carried over, by named reason.
     pub dropped: BTreeMap<String, u64>,
+    /// Source rows carried over with less than the source held, by named reason.
+    pub notices: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -120,6 +122,10 @@ pub struct TableReport {
 /// What an importer of [`tables::TABLE_MAP`] reads from and writes to.
 pub struct TableCtx<'a> {
     pub source: &'a Connection,
+    /// The Electron `index.db` copy, which the note payload reads as Electron's push does.
+    pub index: &'a Connection,
+    /// The vault, whose note files the note payload reads as Electron's push does.
+    pub vault_dir: &'a Path,
     /// [`VaultImportInput::vault_id`].
     pub vault_id: &'a str,
     pub writer: &'a mut ImportWriter,
@@ -159,7 +165,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault { paths, report })),
+        Ok(report) => Ok(StageOutcome::Staged(Box::new(StagedVault {
+            paths,
+            report,
+        }))),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");
@@ -237,6 +246,8 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 }
                 let mut ctx = TableCtx {
                     source: sources.conn(mapping.db),
+                    index: sources.conn(tables::SourceDb::Index),
+                    vault_dir: &input.vault_dir,
                     vault_id: &input.vault_id,
                     writer: &mut writer,
                     now_ms: input.now_ms,
@@ -246,6 +257,9 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 for (reason, count) in stats.dropped {
                     table.dropped += count;
                     *report.dropped.entry(reason.to_owned()).or_default() += count;
+                }
+                for (reason, count) in stats.notices {
+                    *report.notices.entry(reason.to_owned()).or_default() += count;
                 }
             }
             // The preflight refused a pending table with rows, so this one is empty.

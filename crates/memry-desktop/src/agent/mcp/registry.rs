@@ -1,6 +1,7 @@
 //! One tool call from arguments to MCP result: the per-tool path of Electron's `mcp/server.ts`
 //! `createMcpServer` and `tools/write-tools.ts` `gateOrDeny`. The order is lookup, validation
-//! (with defaults), the write gate for a write tool, the host, then the reply cut and rendering.
+//! (with defaults), the desktop API argument check, the write gate for a write tool, the host,
+//! then the reply cut and rendering.
 //! The built-in engine calls [`ToolRegistry::call`] in process, so both paths share it.
 
 use std::sync::{Arc, RwLock};
@@ -9,6 +10,7 @@ use async_trait::async_trait;
 use rmcp::model::{CallToolResult, ContentBlock, JsonObject};
 use serde_json::{Map, Value};
 
+use super::desktop_args;
 use super::errors::{ToolError, ToolErrorCode, error_text};
 use super::reply_cap::{ReplyCap, cap_reply};
 use super::schemas::{Catalog, ToolClass, ToolSpec, catalog};
@@ -46,6 +48,9 @@ pub struct ToolImage {
 }
 
 /// Runs a validated tool call against the vault: the Rust twin of Electron's `tools/handles.ts`.
+/// The arguments passed zod's parse of the tool's schema and, for the desktop API tools, of the
+/// operation's arguments. A value zod checks with `z.custom` shows as `{}` in the contract and is
+/// not checked (the binary `data` of the inbox captures); the host checks it.
 #[async_trait]
 pub trait VaultToolHost: Send + Sync {
     async fn call(
@@ -126,6 +131,9 @@ impl ToolRegistry {
                 ));
             }
         };
+        if let Err(error) = desktop_args::check(name, &args) {
+            return error.to_result();
+        }
         let args = match spec.class {
             ToolClass::Read => args,
             ToolClass::Write => match self.approve(spec, args, ctx).await {
@@ -148,8 +156,8 @@ impl ToolRegistry {
         }
     }
 
-    /// The user's edit is held to the tool's input rules like the call itself; Electron runs it
-    /// unchecked.
+    /// The user's edit is held to the tool's input rules and the desktop argument check like the
+    /// call itself; Electron runs it unchecked.
     async fn approve(
         &self,
         spec: &ToolSpec,
@@ -177,12 +185,16 @@ impl ToolRegistry {
         };
         match gate.decide(request).await {
             GateDecision::Approved { args: None } => Ok(args),
-            GateDecision::Approved { args: Some(edited) } => spec.parse(edited).map_err(|issues| {
-                ToolError::new(
-                    ToolErrorCode::Validation,
-                    format!("The edited arguments are invalid: {issues}"),
-                )
-            }),
+            GateDecision::Approved { args: Some(edited) } => {
+                let edited = spec.parse(edited).map_err(|issues| {
+                    ToolError::new(
+                        ToolErrorCode::Validation,
+                        format!("The edited arguments are invalid: {issues}"),
+                    )
+                })?;
+                desktop_args::check(tool, &edited)?;
+                Ok(edited)
+            }
             GateDecision::Denied { reason } => Err(denied(reason.as_deref().unwrap_or(DENIED))),
         }
     }

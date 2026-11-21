@@ -4,12 +4,14 @@
 
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use base64::Engine;
 use md5::{Digest, Md5};
 use memry_core::api::errors::SecureStoreError;
 use memry_desktop::seams::secure_store::GenericSecrets;
 
+use super::store::Store;
 use super::{Reply, Seen};
 
 pub enum Auth {
@@ -50,6 +52,10 @@ pub struct Dav {
     pub pass: &'static str,
     pub auth: Auth,
     pub collections: Mutex<Vec<Collection>>,
+    /// The calendars' objects.
+    pub store: Store,
+    /// Whether the listing advertises RFC 6578 `sync-collection` (a `<d:sync-token>`).
+    pub sync_collection: AtomicBool,
 }
 
 pub const REALM: &str = "dav";
@@ -106,6 +112,8 @@ impl Dav {
             pass,
             auth,
             collections: Mutex::new(collections),
+            store: Store::default(),
+            sync_collection: AtomicBool::new(false),
         }
     }
 
@@ -156,6 +164,18 @@ impl Dav {
         let prefix = self.prefix;
         let principal = format!("{prefix}/principal/");
         let home = format!("{prefix}/calendars/");
+        let names: Vec<&str> = self
+            .collections
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|c| c.name)
+            .collect();
+        for name in names {
+            if let Some(reply) = self.store.answer(seen, &format!("{home}{name}/")) {
+                return reply;
+            }
+        }
         if seen.method != "PROPFIND" {
             return Reply::status(404);
         }
@@ -172,6 +192,11 @@ impl Dav {
         }
         if seen.target == home && seen.depth.as_deref() == Some("1") {
             let mut listing = response(&home, "<d:resourcetype><d:collection/></d:resourcetype>");
+            let token = if self.sync_collection.load(Ordering::SeqCst) {
+                "<d:sync-token>tok-0</d:sync-token>"
+            } else {
+                ""
+            };
             for c in self.collections.lock().unwrap().iter() {
                 let comps = c
                     .components
@@ -183,7 +208,7 @@ impl Dav {
                     &format!(
                         "<d:displayname>{}</d:displayname>\
                          <d:resourcetype><d:collection/><c:calendar/></d:resourcetype>\
-                         <ca:calendar-color>#FF2968FF</ca:calendar-color><cs:getctag>1</cs:getctag>\
+                         <ca:calendar-color>#FF2968FF</ca:calendar-color><cs:getctag>1</cs:getctag>{token}\
                          <c:supported-calendar-component-set>{comps}</c:supported-calendar-component-set>",
                         c.title
                     ),

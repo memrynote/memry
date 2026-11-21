@@ -3,10 +3,9 @@
 //! A refusal Electron answers with `{ success: false, error }` stays that envelope; a broken
 //! `tasks-api.ts` bound and a storage failure reject with the `CommandError`.
 //!
-//! After a landed update it sends what `publisher.ts` `taskUpdated` sends: [`TaskUpdatedEvent`],
-//! [`TaskCreatedEvent`] for the next occurrence a completing edit made, and
-//! [`NoteTagsChangedEvent`] when the tags changed. The status commands send nothing, as
-//! Electron's publisher sends nothing for them.
+//! After a landed write [`announce`] sends the events the service lists, in `publisher.ts`'s
+//! order. The status commands send nothing, as Electron's publisher sends nothing for them. The
+//! other task writes live in `task_writes`.
 
 use std::sync::Arc;
 
@@ -17,13 +16,16 @@ use memry_desktop::tasks::contract::{
     TaskListInput, TaskListItemView, TaskMutation, TaskPageView, TaskStatsView, TaskTagCount,
     TaskUpdateInput, TaskView,
 };
-use memry_desktop::tasks::service::{TaskWritten, TasksService};
+use memry_desktop::tasks::service::{TaskEvent, TaskWritten, TasksService};
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::blocking;
 use super::error::CommandError;
 use super::notes::open_vault;
-use crate::events::{NoteTagsChangedEvent, TaskCreatedEvent, TaskUpdatedEvent, broadcast};
+use crate::events::{
+    NoteTagsChangedEvent, TaskCompletedEvent, TaskCreatedEvent, TaskDeletedEvent, TaskMovedEvent,
+    TaskUpdatedEvent, broadcast,
+};
 
 fn service<R: Runtime>(app: &AppHandle<R>) -> Result<TasksService, CommandError> {
     let open = open_vault(app)?;
@@ -32,7 +34,7 @@ fn service<R: Runtime>(app: &AppHandle<R>) -> Result<TasksService, CommandError>
 }
 
 /// Runs `work` on the open vault's service off the async runtime.
-async fn run<R, T, E, F>(
+pub(super) async fn run<R, T, E, F>(
     app: AppHandle<R>,
     command: &'static str,
     work: F,
@@ -50,17 +52,38 @@ where
     .await
 }
 
-/// The events of one task write, after it committed.
-pub fn announce<R: Runtime>(app: &AppHandle<R>, written: &TaskWritten) {
-    if let Some(id) = &written.updated {
-        broadcast(app, TaskUpdatedEvent { id: id.clone() });
+/// The events of one task write, after it committed, in the order the service lists them.
+pub fn announce<R: Runtime, M>(app: &AppHandle<R>, written: &TaskWritten<M>) {
+    for event in &written.events {
+        match event {
+            TaskEvent::Created(id) => broadcast(app, TaskCreatedEvent { id: id.clone() }),
+            TaskEvent::Updated(id) => broadcast(app, TaskUpdatedEvent { id: id.clone() }),
+            TaskEvent::Deleted(id) => broadcast(app, TaskDeletedEvent { id: id.clone() }),
+            TaskEvent::Completed(id) => broadcast(app, TaskCompletedEvent { id: id.clone() }),
+            TaskEvent::Moved(id) => broadcast(app, TaskMovedEvent { id: id.clone() }),
+            TaskEvent::TagsChanged => broadcast(app, NoteTagsChangedEvent),
+        }
     }
-    if let Some(id) = &written.created {
-        broadcast(app, TaskCreatedEvent { id: id.clone() });
-    }
-    if written.tags_changed {
-        broadcast(app, NoteTagsChangedEvent);
-    }
+}
+
+/// Runs one task write and, once it committed, sends its events; answers its envelope.
+pub(super) async fn write<R, M, E, F>(
+    app: AppHandle<R>,
+    command: &'static str,
+    work: F,
+) -> Result<M, CommandError>
+where
+    R: Runtime,
+    M: Send + 'static,
+    E: CoreError,
+    F: FnOnce(&TasksService) -> Result<TaskWritten<M>, E> + Send + 'static,
+{
+    run(app, command, move |tasks, app| {
+        let written = work(tasks)?;
+        announce(app, &written);
+        Ok::<_, E>(written.mutation)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -87,14 +110,7 @@ pub async fn tasks_update<R: Runtime>(
     app: AppHandle<R>,
     input: TaskUpdateInput,
 ) -> Result<TaskMutation, CommandError> {
-    run(app, "tasks_update", move |tasks, app| {
-        let written = tasks.update(input);
-        if let Ok(written) = &written {
-            announce(app, written);
-        }
-        written.map(|written| written.mutation)
-    })
-    .await
+    write(app, "tasks_update", move |tasks| tasks.update(input)).await
 }
 
 #[tauri::command]
