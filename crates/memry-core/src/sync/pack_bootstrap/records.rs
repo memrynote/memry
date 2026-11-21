@@ -24,11 +24,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
 use tokio::task::JoinSet;
 
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 use crate::protocol::pack::{PackEntry, PackKind, extract_entry, parse_pack};
 
 use super::super::first_sync_store::{read_meta, write_meta};
 use super::super::pull::{PullError, PullLoop};
+use super::download::download;
 use super::listing::{PackSummary, list, tail_start};
 use super::{PackBootstrap, now};
 
@@ -154,7 +154,7 @@ impl PackBootstrap {
                 report.requests += 1;
                 let http = Arc::clone(&self.http);
                 running.spawn(async move {
-                    let bytes = download(&http, &pack.url).await;
+                    let bytes = download(&http, &pack).await;
                     (pack, bytes)
                 });
             }
@@ -276,16 +276,6 @@ impl PackBootstrap {
             .await?;
         Ok(())
     }
-}
-
-pub(super) async fn download(http: &HttpClient, url: &str) -> Result<Vec<u8>, String> {
-    let request = ApiRequest::new("GET", url)
-        .auth(Auth::None)
-        .retry(RetryPolicy::polled());
-    http.send(request)
-        .await
-        .map(|response| response.body)
-        .map_err(|error| error.to_string())
 }
 
 enum Rebuilt {

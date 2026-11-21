@@ -37,6 +37,10 @@ pub use identity::{CLIENT_PLATFORMS, ClientIdentity};
 /// the OS backgrounding the app otherwise never resolves.
 pub const DEFAULT_REQUEST_TIMEOUT_MS: u64 = 60_000;
 
+/// Chapter 00 §0.6. A request that receives no bytes for this long fails as a
+/// timeout, whatever its deadline: the shell applies it to every request.
+pub const IDLE_TIMEOUT_MS: u64 = 60_000;
+
 /// Chapter 07 §7.10 and chapter 03 §3.9 both spell the same ladder.
 pub const DEFAULT_MAX_RETRIES: u32 = 3;
 
@@ -76,6 +80,10 @@ pub struct RetryPolicy {
     pub retry_on_5xx: bool,
     /// A wait longer than this returns the error instead of sleeping.
     pub max_delay_ms: u64,
+    /// Whether a timeout at the request's own deadline is retried. A shell
+    /// reports one with `elapsed_ms` at or past `timeout_ms`; an idle timeout
+    /// fires earlier (chapter 00 §0.6).
+    pub retry_after_deadline: bool,
 }
 
 impl Default for RetryPolicy {
@@ -86,6 +94,7 @@ impl Default for RetryPolicy {
             retry_on_429: true,
             retry_on_5xx: true,
             max_delay_ms: MAX_RETRY_DELAY_MS,
+            retry_after_deadline: true,
         }
     }
 }
@@ -97,6 +106,15 @@ impl RetryPolicy {
         Self {
             retry_on_429: false,
             ..Self::default()
+        }
+    }
+
+    /// A pack GET (chapter 00 §0.6): polled, and a deadline that already ran
+    /// for minutes is not spent again from byte 0. An idle timeout still is.
+    pub fn pack() -> Self {
+        Self {
+            retry_after_deadline: false,
+            ..Self::polled()
         }
     }
 
@@ -349,7 +367,12 @@ impl HttpClient {
                 }
 
                 Outcome::Transport(error) => {
-                    if !retryable_transport(&error) || attempt >= request.retry.max_retries {
+                    let spent_deadline = matches!(error, TransportError::Timeout { elapsed_ms }
+                        if elapsed_ms >= request.timeout_ms && !request.retry.retry_after_deadline);
+                    if !retryable_transport(&error)
+                        || spent_deadline
+                        || attempt >= request.retry.max_retries
+                    {
                         return Err(ApiError::Transport { source: error });
                     }
                     let delay = request.retry.backoff_ms(attempt);

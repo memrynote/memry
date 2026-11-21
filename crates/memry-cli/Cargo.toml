@@ -48,3 +48,8 @@ serde_json = { workspace = true }
 # yrs API. The workspace pin, so the shell and the core link **one** yrs: two
 # would be two incompatible `Doc` types across the same document.
 yrs = { workspace = true }
+
+[dev-dependencies]
+# `test-util` for a paused clock: the slow-pack tests run minutes of transfer
+# in virtual time.
+tokio = { workspace = true, features = ["test-util"] }
