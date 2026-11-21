@@ -32,6 +32,9 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { healCaseVariantRows } from './case-variant-heal'
+import { folderConfigHandler } from '../sync/item-handlers/folder-config-handler'
+import { isSupersededByLiveRow, recordPendingDelete } from '../sync/pending-deletes'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -92,10 +95,16 @@ describe('healCaseVariantRows', () => {
     data.db.insert(noteMetadata).values(fields).run()
   }
 
-  function seedFolder(folderPath: string, icon: string | null): void {
+  function seedFolder(folderPath: string, icon: string | null, synced = false): void {
     data.db
       .insert(folderConfigs)
-      .values({ path: folderPath, icon, createdAt: 'x', modifiedAt: 'x' })
+      .values({
+        path: folderPath,
+        icon,
+        clock: synced ? { peer: 1 } : null,
+        createdAt: 'x',
+        modifiedAt: 'x'
+      })
       .run()
   }
 
@@ -161,6 +170,52 @@ describe('healCaseVariantRows', () => {
 
       expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
       expect(notes().canonical.map((row) => row.id)).toEqual(['local-twin', 'original', 'twin'])
+    }
+  )
+
+  // A folder row with a clock can be a server record, and a dropped one comes
+  // back by the next manifest check only to be dropped again (#5327). An
+  // unsynced row with the kept row's icon holds nothing, so it still goes.
+  it.runIf(fileSystemIgnoresCase())(
+    'drops only an unsynced folder copy with the kept icon, keeping folder twins',
+    async () => {
+      fs.mkdirSync(path.join(vault.path, 'SuperNotes'))
+      seedFolder('SuperNotes', 'star', true)
+      seedFolder('Supernotes', 'star', true)
+      seedFolder('SUPERNOTES', 'moon')
+      seedFolder('supernotes', 'star')
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 1 })
+      expect(new Set(folders().map((row) => row.path))).toEqual(
+        new Set(['SUPERNOTES', 'SuperNotes', 'Supernotes'])
+      )
+    }
+  )
+
+  // A rename of an iconed folder while signed out re-keys its row and records a
+  // pending delete of the old spelling; the old watcher then wrote the old
+  // spelling back with a null icon. That row holds nothing, and kept, it would
+  // retire the delete and push a new server twin.
+  it.runIf(fileSystemIgnoresCase())(
+    'drops the null-icon row an old watcher wrote after a signed-out rename',
+    async () => {
+      fs.mkdirSync(path.join(vault.path, 'SuperNotes'))
+      seedFolder('SuperNotes', 'star')
+      seedFolder('Supernotes', null)
+      recordPendingDelete(asClientDb(data.db), 'folder_config', 'Supernotes', '{}')
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 1 })
+
+      expect(isSupersededByLiveRow(asClientDb(data.db), 'folder_config', 'Supernotes')).toBe(false)
+      const pushed: string[] = []
+      const queue = { enqueue: (item: { itemId: string }) => pushed.push(item.itemId) }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- seedUnclocked only calls enqueue
+      folderConfigHandler.seedUnclocked(
+        asClientDb(data.db),
+        'device-1',
+        queue as unknown as SyncQueueManager
+      )
+      expect(pushed).toEqual(['SuperNotes'])
     }
   )
 
