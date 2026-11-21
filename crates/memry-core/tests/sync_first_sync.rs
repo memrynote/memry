@@ -804,6 +804,91 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
     assert_eq!(pulled.len(), 1, "the deleted ids were pulled once");
 }
 
+/// The scripted cipher, except that it refuses every envelope one signer
+/// claims, as a signature that does not verify under §5.14.
+struct RefusingSigner(Arc<ScriptedCipher>, &'static str);
+
+impl RecordCipher for RefusingSigner {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        if envelope.signer_device_id == self.1 {
+            return Err(EnvelopeError::SignatureInvalid);
+        }
+        self.0.open(envelope)
+    }
+}
+
+/// §5.12.1, §5.14 (#5340 review probe A): the pull of a `deleted` id answered
+/// with a delete whose signature does not verify is refused, and a refused
+/// item never falls through to a delete by id: the note stays live.
+#[tokio::test]
+async fn a_forged_delete_for_a_deleted_id_leaves_the_note_live() {
+    let db = scratch_db("forged-delete");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[31u8; 32]).expect("keypair");
+    let seeded = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {NOTE: {"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &body_update("Still here"), &secret_key),
+                "createdAt": 1_700_000_000_000i64,
+                "signerDeviceId": "device-a"
+            }], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    first_sync(&db, seeded, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the seeding first sync");
+
+    let mut forged = signed_delete(NOTE);
+    forged["signerDeviceId"] = json!("device-evil");
+    // One answer serves the pull and the body probe, as above.
+    let answer = json!({
+        "items": [forged],
+        "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 1}},
+        "snapshotMeta": {}
+    })
+    .to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[NOTE], 20, false)),
+        response(200, &answer),
+        response(200, &answer),
+    ]);
+    let cipher = Arc::new(RefusingSigner(
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+        "device-evil",
+    ));
+    first_sync_with(
+        &db,
+        transport.clone(),
+        public_key,
+        RecordedProgress::new(),
+        cipher,
+    )
+    .run(epoch(MODIFIED_AT) + 2_000)
+    .await
+    .expect("the first sync");
+
+    assert_eq!(
+        transport.calls_to("/sync/pull").len(),
+        1,
+        "the id was pulled"
+    );
+    assert_eq!(
+        deleted_marks(&db, NOTE),
+        (None, None),
+        "a refused delete deletes neither the sync row nor the note"
+    );
+    assert_eq!(text_of(&db, NOTE), "Still here");
+}
+
 /// §10.11: the refs pass counts the items it listed (refs and tombstones),
 /// with one more page while the feed has more, as Electron's
 /// `initial-sync-progress.ts` does. The server cursor is a per-user sequence
@@ -978,12 +1063,23 @@ fn first_sync(
     signer_public_key: Vec<u8>,
     progress: Arc<RecordedProgress>,
 ) -> FirstSync {
+    let cipher = ScriptedCipher::new(&[(NOTE, &note_payload()), ("def456abc789", &note_payload())]);
+    first_sync_with(db, transport, signer_public_key, progress, cipher)
+}
+
+fn first_sync_with(
+    db: &Db,
+    transport: Arc<FakeTransport>,
+    signer_public_key: Vec<u8>,
+    progress: Arc<RecordedProgress>,
+    cipher: Arc<dyn RecordCipher>,
+) -> FirstSync {
     let http = http(transport);
     let pull = Arc::new(PullLoop::new(
         Arc::clone(&http),
         db.clone(),
         Declaration::subscribed(),
-        ScriptedCipher::new(&[(NOTE, &note_payload()), ("def456abc789", &note_payload())]),
+        cipher,
     ));
     let bodies = Arc::new(BodyPull::new(
         http,

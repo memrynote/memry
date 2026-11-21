@@ -393,9 +393,9 @@ impl FirstSync {
                 path.push_str("&cursor=");
                 path.push_str(cursor);
             }
-            // Without `purged_tombstones`: a marker's id reaches this pass only
-            // as a `deleted` id, which the pull below resolves (chapter 05
-            // §5.12.3). Electron's run from cursor 0 skips markers too.
+            // Without `purged_tombstones`, as Electron's run from cursor 0: the
+            // page lists no marker. A marker's id can still reach the pull of
+            // `deleted` ids below, which applies an attested one (§5.12.3).
             let declared = self
                 .pull
                 .declaration()
@@ -411,7 +411,7 @@ impl FirstSync {
                 .map_err(|source| FirstSyncError::Pull { source })?;
 
             let page = read_refs_page(&body);
-            let next = page.next_cursor.clone().or(cursor);
+            let next = page.next_cursor.clone().or_else(|| cursor.clone());
             let recorded = page.refs.len();
             let tombstones = page.deleted.len();
 
@@ -424,7 +424,14 @@ impl FirstSync {
             let missed = if page.deleted.is_empty() {
                 false
             } else {
-                self.pull.fetch_ids(&page.deleted).await?.dropped_pages > 0
+                let pulled = self.pull.fetch_ids(&page.deleted).await?;
+                if pulled.uncovered > 0 {
+                    eprintln!(
+                        "memry-core: first sync: {} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored",
+                        pulled.uncovered
+                    );
+                }
+                pulled.dropped_pages > 0
             };
 
             // Durable **before** the cursor advances, in one transaction, so

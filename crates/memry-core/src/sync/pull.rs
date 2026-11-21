@@ -501,7 +501,11 @@ impl PullLoop {
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
-        self.take_markers(markers, false, &mut pending).await?;
+        let named = self.take_markers(markers, false, &mut pending).await?;
+        report.uncovered = ids
+            .iter()
+            .filter(|id| !typed_covers(&pending, id) && !named.contains(*id))
+            .count();
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
