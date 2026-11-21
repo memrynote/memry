@@ -152,3 +152,54 @@ fn the_vault_id_is_stored_verbatim_and_must_be_a_uuid() {
     writer.put_vault_id(id).unwrap();
     assert_eq!(writer.vault_id().unwrap().as_deref(), Some(id));
 }
+
+/// `note_files` rows name no hash (the document is written later), keep the local-only flag and
+/// take the import instant.
+#[test]
+fn note_files_are_stored_without_a_hash_and_keep_local_only() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut writer = ImportWriter::create(dir.path()).unwrap();
+    let file = |id: &str, path: &str, local_only: bool| ImportNoteFile {
+        note_id: id.into(),
+        path: path.into(),
+        file_type: "markdown".into(),
+        mime_type: None,
+        file_size: Some(12),
+        local_only,
+    };
+    writer
+        .put_note_files(&[file("a", "A.md", false), file("b", "b/B.md", true)], 7)
+        .unwrap();
+    let conn = writer.conn(Staged::Data);
+    type Row = (String, String, bool, Option<String>, Option<i64>, i64);
+    let rows: Vec<Row> = conn
+        .prepare(
+            "SELECT note_id, path, local_only, content_hash, file_size, indexed_at \
+             FROM note_files ORDER BY note_id",
+        )
+        .unwrap()
+        .query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+            ))
+        })
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(
+        rows,
+        vec![
+            ("a".into(), "A.md".into(), false, None, Some(12), 7),
+            ("b".into(), "b/B.md".into(), true, None, Some(12), 7),
+        ]
+    );
+    assert_eq!(
+        writer.row_count(Staged::Data, "note_file_hashes").unwrap(),
+        0
+    );
+}
