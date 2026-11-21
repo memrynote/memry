@@ -7,15 +7,18 @@ import sodium, {
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encryptCrdtUpdate } from '../crdt-encrypt'
-import { createCrdtSnapshotApplier, decodeSignerPublicKeys } from './crdt-snapshot-applier'
-import type { SnapshotSeedStore } from './crdt-snapshot-applier'
+import type { PackIndexEntry } from '@memry/contracts/pack-format'
+
+import type { DocumentPlan, PackedUpdate } from './body-plan'
+import { createPackBodyApplier, decodeSignerPublicKeys } from './pack-body-applier'
+import type { BodySeedStore } from './pack-body-applier'
 
 interface SignKeyPair {
   publicKey: Uint8Array
   privateKey: Uint8Array
 }
 
-describe('crdt snapshot pack applier', () => {
+describe('pack body applier', () => {
   let vaultKey: Uint8Array
   let deviceA: SignKeyPair
   let deviceB: SignKeyPair
@@ -27,7 +30,8 @@ describe('crdt snapshot pack applier', () => {
   let openCalls: string[]
   let closeCalls: string[]
   let openFailures: Set<string>
-  let store: SnapshotSeedStore
+  let pending: Set<string>
+  let store: BodySeedStore
 
   beforeAll(async () => {
     await sodiumReady
@@ -53,6 +57,7 @@ describe('crdt snapshot pack applier', () => {
     openCalls = []
     closeCalls = []
     openFailures = new Set()
+    pending = new Set()
     store = {
       getSnapshotWatermark: async (noteId) => watermarks.get(noteId) ?? null,
       putSnapshotWatermark: async (noteId, watermark) => {
@@ -64,9 +69,11 @@ describe('crdt snapshot pack applier', () => {
         opened.add(noteId)
       },
       applyRemoteUpdate: (noteId, update) => {
-        if (!opened.has(noteId)) return
+        if (!opened.has(noteId)) return false
         applied.push({ noteId, update })
+        return true
       },
+      holdsPendingStructs: (noteId) => pending.has(noteId),
       getStateVector: (noteId) => {
         if (!opened.has(noteId)) return null
         return applied.some((entry) => entry.noteId === noteId)
@@ -80,235 +87,268 @@ describe('crdt snapshot pack applier', () => {
     }
   })
 
-  const applier = (keys: Uint8Array[]) =>
-    createCrdtSnapshotApplier({
+  const applier = (keys: Record<string, Uint8Array>) =>
+    createPackBodyApplier({
       store,
       getVaultKey: async () => vaultKey,
-      getSignerPublicKeys: async () => keys
+      getSignerPublicKeys: async () => new Map(Object.entries(keys))
     })
 
-  describe('freshness gate', () => {
-    it('#given no local watermark #then the packed bytes are applied', async () => {
-      await expect(
-        applier([deviceA.publicKey]).shouldApply('note-1', { sequenceNum: 3, revision: 'r' })
-      ).resolves.toBe(true)
-    })
+  const entry = (id: string): PackIndexEntry => ({
+    kind: 'crdt_snapshot',
+    id,
+    sourceKey: '',
+    sortKey: 0,
+    offset: 0,
+    length: 0,
+    sha256: new Uint8Array(32)
+  })
 
-    it('#given local state at or beyond the packed sequence #then the bytes are stale', async () => {
-      watermarks.set('note-1', { appliedSequence: 5, snapshotRevision: 'other' })
-      const sut = applier([deviceA.publicKey])
-      await expect(sut.shouldApply('note-1', { sequenceNum: 5, revision: 'r' })).resolves.toBe(
-        false
-      )
-      await expect(sut.shouldApply('note-1', { sequenceNum: 4, revision: 'r' })).resolves.toBe(
-        false
-      )
-      await expect(sut.shouldApply('note-1', { sequenceNum: 6, revision: 'r' })).resolves.toBe(true)
-    })
+  const sealed = (noteId: string, text: string, signer: SignKeyPair): Uint8Array =>
+    encryptCrdtUpdate(new TextEncoder().encode(text), vaultKey, noteId, signer.privateKey)
 
-    it('#given the same revision already merged #then the bytes are redundant', async () => {
-      watermarks.set('note-1', { appliedSequence: 2, snapshotRevision: 'rev-9' })
-      await expect(
-        applier([deviceA.publicKey]).shouldApply('note-1', { sequenceNum: 7, revision: 'rev-9' })
-      ).resolves.toBe(false)
-    })
+  const snapshotPlan = (
+    noteId: string,
+    bytes: Uint8Array,
+    sequenceNum: number,
+    revision: string
+  ): DocumentPlan => ({
+    snapshot: { entry: entry(noteId), meta: { sequenceNum, revision }, read: async () => bytes },
+    updates: [],
+    watermark: { appliedSequence: sequenceNum, snapshotRevision: revision }
+  })
 
-    it('#given no CRDT store #then nothing is ever applied from a pack', async () => {
-      const sut = createCrdtSnapshotApplier({
-        store: null,
-        getVaultKey: async () => vaultKey,
-        getSignerPublicKeys: async () => [deviceA.publicKey]
-      })
-      await expect(sut.shouldApply('note-1', { sequenceNum: 1, revision: 'r' })).resolves.toBe(
-        false
-      )
-      await expect(
-        sut.apply('note-1', new Uint8Array([1]), { sequenceNum: 1, revision: 'r' })
-      ).resolves.toBe(false)
-    })
+  const update = (
+    noteId: string,
+    sequenceNum: number,
+    signerDeviceId: string,
+    bytes: Uint8Array
+  ): PackedUpdate => ({
+    entry: { ...entry(noteId), kind: 'crdt_update' },
+    sequenceNum,
+    signerDeviceId,
+    createdAt: 1_700_000_000,
+    read: async () => bytes
   })
 
   describe('signature verification', () => {
-    it('seeds the doc when the blob verifies under one of several registered keys', async () => {
-      const body = new TextEncoder().encode('a real yjs update would go here')
-      const packed = encryptCrdtUpdate(body, vaultKey, 'note-1', deviceB.privateKey)
+    it('seeds the doc when the snapshot verifies under one of several registered keys', async () => {
+      const packed = sealed('note-1', 'a real yjs update would go here', deviceB)
 
-      const ok = await applier([deviceA.publicKey, deviceB.publicKey]).apply('note-1', packed, {
-        sequenceNum: 11,
-        revision: 'rev-11'
-      })
-
-      expect(ok).toBe(true)
-      expect(applied).toEqual([{ noteId: 'note-1', update: body }])
-      // Exactly the watermark shape `snapshotBaselineSkip` reads as "this doc
-      // already holds that baseline", which is what suppresses the GET.
-      expect(watermarks.get('note-1')).toEqual({
-        appliedSequence: 11,
-        snapshotRevision: 'rev-11'
-      })
-    })
-
-    it('refuses a blob that verifies under no registered key', async () => {
-      const packed = encryptCrdtUpdate(
-        new TextEncoder().encode('body'),
-        vaultKey,
+      const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
         'note-1',
-        stranger.privateKey
+        snapshotPlan('note-1', packed, 11, 'rev-11')
       )
 
-      const ok = await applier([deviceA.publicKey, deviceB.publicKey]).apply('note-1', packed, {
-        sequenceNum: 3,
-        revision: 'r'
-      })
+      expect(reached).toEqual({ appliedSequence: 11, snapshotRevision: 'rev-11' })
+      expect(applied).toEqual([
+        { noteId: 'note-1', update: new TextEncoder().encode('a real yjs update would go here') }
+      ])
+      // Exactly the watermark shape `snapshotBaselineSkip` reads as "this doc
+      // already holds that baseline", which is what suppresses the GET.
+      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 11, snapshotRevision: 'rev-11' })
+    })
 
-      expect(ok).toBe(false)
+    it.each([
+      ['signed by an unregistered key', () => sealed('note-1', 'body', stranger)],
+      ['signed for a different note', () => sealed('note-OTHER', 'body', deviceA)]
+    ])('refuses a snapshot %s and never opens the doc', async (_label, bytes) => {
+      const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
+        'note-1',
+        snapshotPlan('note-1', bytes(), 3, 'r')
+      )
+
+      expect(reached).toBeNull()
       expect(applied).toEqual([])
+      expect(openCalls).toEqual([])
       // No watermark, so the sweep still fetches this note's baseline.
       expect(watermarks.has('note-1')).toBe(false)
     })
 
-    it('refuses a blob signed for a different note', async () => {
-      const packed = encryptCrdtUpdate(
-        new TextEncoder().encode('body'),
-        vaultKey,
-        'note-OTHER',
-        deviceA.privateKey
-      )
-
-      await expect(
-        applier([deviceA.publicKey]).apply('note-1', packed, { sequenceNum: 3, revision: 'r' })
-      ).resolves.toBe(false)
-      expect(applied).toEqual([])
-    })
-
-    it('refuses everything when the account has no registered keys', async () => {
-      const packed = encryptCrdtUpdate(
-        new TextEncoder().encode('body'),
-        vaultKey,
-        'note-1',
-        deviceA.privateKey
-      )
-      await expect(
-        applier([]).apply('note-1', packed, { sequenceNum: 3, revision: 'r' })
-      ).resolves.toBe(false)
-    })
-
-    it('refuses everything when the vault key is unavailable', async () => {
-      const sut = createCrdtSnapshotApplier({
+    it('refuses everything with no registered keys, no vault key or no store', async () => {
+      const plan = snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 3, 'r')
+      await expect(applier({}).applyDocument('note-1', plan)).resolves.toBeNull()
+      const noVaultKey = createPackBodyApplier({
         store,
         getVaultKey: async () => null,
-        getSignerPublicKeys: async () => [deviceA.publicKey]
+        getSignerPublicKeys: async () => new Map([['a', deviceA.publicKey]])
       })
-      await expect(
-        sut.apply('note-1', new Uint8Array([1, 2]), { sequenceNum: 1, revision: 'r' })
-      ).resolves.toBe(false)
+      await expect(noVaultKey.applyDocument('note-1', plan)).resolves.toBeNull()
+      const noStore = createPackBodyApplier({
+        store: null,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => new Map([['a', deviceA.publicKey]])
+      })
+      await expect(noStore.applyDocument('note-1', plan)).resolves.toBeNull()
+      expect(applied).toEqual([])
+      expect(watermarks.size).toBe(0)
     })
 
-    it('resolves the registered keys once per bootstrap, not once per entry', async () => {
-      const getSignerPublicKeys = vi.fn(async () => [deviceA.publicKey])
-      const sut = createCrdtSnapshotApplier({
+    it('resolves the registered keys once per bootstrap, not once per document', async () => {
+      const getSignerPublicKeys = vi.fn(async () => new Map([['a', deviceA.publicKey]]))
+      const sut = createPackBodyApplier({
         store,
         getVaultKey: async () => vaultKey,
         getSignerPublicKeys
       })
-      const packed = (noteId: string) =>
-        encryptCrdtUpdate(new TextEncoder().encode(noteId), vaultKey, noteId, deviceA.privateKey)
 
-      await sut.apply('note-1', packed('note-1'), { sequenceNum: 1, revision: 'a' })
-      await sut.apply('note-2', packed('note-2'), { sequenceNum: 1, revision: 'b' })
+      await sut.applyDocument(
+        'note-1',
+        snapshotPlan('note-1', sealed('note-1', 'x', deviceA), 1, 'a')
+      )
+      await sut.applyDocument(
+        'note-2',
+        snapshotPlan('note-2', sealed('note-2', 'y', deviceA), 1, 'b')
+      )
 
       expect(getSignerPublicKeys).toHaveBeenCalledTimes(1)
       expect(applied).toHaveLength(2)
     })
   })
 
+  describe('packed updates', () => {
+    const plain = (text: string) => new TextEncoder().encode(text)
+
+    it('applies the snapshot then each update in order and records the last sequence', async () => {
+      const plan: DocumentPlan = {
+        ...snapshotPlan('note-1', sealed('note-1', 'base', deviceA), 4, 'r4'),
+        updates: [
+          update('note-1', 5, 'b', sealed('note-1', 'u5', deviceB)),
+          update('note-1', 6, 'a', sealed('note-1', 'u6', deviceA))
+        ],
+        watermark: { appliedSequence: 6, snapshotRevision: 'r4' }
+      }
+
+      const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
+        'note-1',
+        plan
+      )
+
+      expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5'), plain('u6')])
+      expect(reached).toEqual({ appliedSequence: 6, snapshotRevision: 'r4' })
+      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 6, snapshotRevision: 'r4' })
+      expect(openCalls).toEqual(['note-1'])
+      expect(closeCalls).toEqual(['note-1'])
+    })
+
+    it.each([
+      ['its named signer is not registered', 'c'],
+      ['it verifies only under another registered key', 'a']
+    ])('stops at an update when %s, vouching only for what applied', async (_label, signer) => {
+      const plan: DocumentPlan = {
+        ...snapshotPlan('note-1', sealed('note-1', 'base', deviceA), 4, 'r4'),
+        updates: [
+          update('note-1', 5, 'a', sealed('note-1', 'u5', deviceA)),
+          // Signed by device b, but named as `signer`: chapter 07 §7.14 checks
+          // the named device's key only.
+          update('note-1', 6, signer, sealed('note-1', 'u6', deviceB)),
+          update('note-1', 7, 'a', sealed('note-1', 'u7', deviceA))
+        ],
+        watermark: { appliedSequence: 7, snapshotRevision: 'r4' }
+      }
+
+      const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
+        'note-1',
+        plan
+      )
+
+      expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
+      expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+    })
+
+    it('continues an update-only document from its local watermark without a revision', async () => {
+      const plan: DocumentPlan = {
+        snapshot: null,
+        updates: [update('note-1', 1, 'a', sealed('note-1', 'u1', deviceA))],
+        watermark: { appliedSequence: 1 }
+      }
+
+      const reached = await applier({ a: deviceA.publicKey }).applyDocument('note-1', plan)
+
+      expect(reached).toEqual({ appliedSequence: 1 })
+      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 1 })
+    })
+
+    it('#given the doc holds pending structs #then no watermark vouches for it', async () => {
+      pending.add('note-1')
+      const plan: DocumentPlan = {
+        ...snapshotPlan('note-1', sealed('note-1', 'base', deviceA), 4, 'r4'),
+        updates: [update('note-1', 5, 'a', sealed('note-1', 'u5', deviceA))],
+        watermark: { appliedSequence: 5, snapshotRevision: 'r4' }
+      }
+
+      const reached = await applier({ a: deviceA.publicKey }).applyDocument('note-1', plan)
+
+      // The state stays in the doc; the item routes fill the missing dependency.
+      expect(applied).toHaveLength(2)
+      expect(reached).toBeNull()
+      expect(watermarks.has('note-1')).toBe(false)
+      expect(closeCalls).toEqual(['note-1'])
+    })
+  })
+
   describe('seeding an unopened doc', () => {
-    const packedFor = (noteId: string): Uint8Array =>
-      encryptCrdtUpdate(new TextEncoder().encode('body'), vaultKey, noteId, deviceA.privateKey)
+    const plan = () => snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 4, 'r4')
 
     it('opens the doc before seeding and releases it afterwards', async () => {
-      const ok = await applier([deviceA.publicKey]).apply('note-1', packedFor('note-1'), {
-        sequenceNum: 4,
-        revision: 'r4'
-      })
-
-      expect(ok).toBe(true)
+      await expect(
+        applier({ a: deviceA.publicKey }).applyDocument('note-1', plan())
+      ).resolves.toEqual({ appliedSequence: 4, snapshotRevision: 'r4' })
       // Open FIRST: the provider drops an update for a doc it is not holding.
       expect(openCalls).toEqual(['note-1'])
-      expect(applied.map((entry) => entry.noteId)).toEqual(['note-1'])
-      // And released, so hundreds of packed notes are not hundreds of pinned
+      expect(applied.map((row) => row.noteId)).toEqual(['note-1'])
+      // And released, so thousands of packed notes are not thousands of pinned
       // Y.Docs in the main process.
       expect(closeCalls).toEqual(['note-1'])
       expect(opened.size).toBe(0)
     })
 
-    it('#given the doc cannot be opened #then no watermark is written', async () => {
-      openFailures.add('note-1')
+    it.each([
+      [
+        'the doc cannot be opened',
+        () => {
+          openFailures.add('note-1')
+        }
+      ],
+      [
+        'the provider drops the update',
+        () => {
+          // A doc that closes underneath the seed: open resolves, the update
+          // goes nowhere.
+          store.openDoc = async (noteId) => {
+            openCalls.push(noteId)
+          }
+        }
+      ],
+      [
+        'the doc is still empty after the seed',
+        () => {
+          store.getStateVector = () => new Uint8Array([0])
+        }
+      ]
+    ])('#given %s #then no watermark is written', async (_label, arrange) => {
+      arrange()
 
-      const ok = await applier([deviceA.publicKey]).apply('note-1', packedFor('note-1'), {
-        sequenceNum: 4,
-        revision: 'r4'
-      })
+      await expect(
+        applier({ a: deviceA.publicKey }).applyDocument('note-1', plan())
+      ).resolves.toBeNull()
 
-      expect(ok).toBe(false)
-      expect(applied).toEqual([])
       // The watermark is what suppresses `GET /sync/crdt/snapshot/:noteId`, so
       // writing one for a baseline that never landed loses the body forever.
       expect(watermarks.has('note-1')).toBe(false)
     })
-
-    it('#given the update is dropped by the provider #then no watermark is written', async () => {
-      // A doc that closes underneath the seed: open resolves, the update goes
-      // nowhere, and the doc stays empty.
-      store.openDoc = async (noteId) => {
-        openCalls.push(noteId)
-      }
-
-      const ok = await applier([deviceA.publicKey]).apply('note-1', packedFor('note-1'), {
-        sequenceNum: 4,
-        revision: 'r4'
-      })
-
-      expect(ok).toBe(false)
-      expect(applied).toEqual([])
-      expect(watermarks.has('note-1')).toBe(false)
-    })
-
-    it('#given the doc is still empty after the seed #then no watermark is written', async () => {
-      // Applied, but the doc holds nothing: an empty state vector is exactly
-      // the "no CRDT state" signal the sweep's seed fallback exists for.
-      store.getStateVector = () => new Uint8Array([0])
-
-      const ok = await applier([deviceA.publicKey]).apply('note-1', packedFor('note-1'), {
-        sequenceNum: 4,
-        revision: 'r4'
-      })
-
-      expect(ok).toBe(false)
-      expect(watermarks.has('note-1')).toBe(false)
-      // Released even on the refusal path.
-      expect(closeCalls).toEqual(['note-1'])
-    })
-
-    it('#given the blob never verifies #then the doc is never opened at all', async () => {
-      const ok = await applier([deviceB.publicKey]).apply('note-1', packedFor('note-1'), {
-        sequenceNum: 4,
-        revision: 'r4'
-      })
-
-      expect(ok).toBe(false)
-      expect(openCalls).toEqual([])
-    })
   })
 
   describe('decodeSignerPublicKeys', () => {
-    it('decodes what the device cache stores and drops what it cannot', () => {
+    it('decodes what the device cache stores by device id and drops what it cannot', () => {
       const encoded = sodiumToBase64(deviceA.publicKey, sodiumBase64Variants.ORIGINAL)
-      expect(decodeSignerPublicKeys([encoded, '!!! not base64 !!!'])).toEqual([deviceA.publicKey])
-    })
-
-    it('is empty for an empty cache', () => {
-      expect(decodeSignerPublicKeys([])).toEqual([])
+      expect(
+        decodeSignerPublicKeys([
+          { deviceId: 'a', key: encoded },
+          { deviceId: 'bad', key: '!!! not base64 !!!' }
+        ])
+      ).toEqual(new Map([['a', deviceA.publicKey]]))
     })
   })
 })

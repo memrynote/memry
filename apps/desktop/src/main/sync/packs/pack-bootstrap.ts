@@ -180,7 +180,7 @@ const listUsablePacks = async (
       if (!pack.url) continue
       if (pack.expiresAt === undefined) continue
       if (pack.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS <= nowSeconds) continue
-      // Only `crdt_snapshot` is applicable client-side — see the module doc.
+      // Body packs only: record packs stay on the item pull (module doc).
       if (pack.itemKind !== 'crdt_snapshot' && pack.itemKind !== 'crdt_update') continue
       usable.push(pack)
     }
@@ -305,7 +305,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   let relist: { at: number; pending: Promise<Map<string, PackSummary>> } | null = null
   let packsApplied = 0
   let appliedThroughCursor: number | null = null
-  let totalDocuments = 0
+  // The listed item count until the packs are indexed, then the document count.
+  let totalDocuments = packs.reduce((sum, pack) => sum + pack.itemCount, 0)
   let processedDocuments = 0
 
   const emitProgress = (): void => {
