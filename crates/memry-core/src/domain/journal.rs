@@ -34,7 +34,7 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
-use crate::sync::outbox;
+use crate::sync::{body_debt, outbox};
 
 use super::notes::{failed, iso, object, require_payload, seed_body, valid_document_id};
 use super::recreate::{recreate_clock, write_over_tombstone};
@@ -193,6 +193,11 @@ fn create_in(
     // A journal body is edited exactly as a note's is (FR-055), so it gets
     // the same materialised body row: empty text, no seed, derived from
     // the Yjs log the moment there is one.
+    seed_empty_body_in(tx, id, now_ms)
+}
+
+/// An empty body for `id`, here: the materialised row and one local log row.
+fn seed_empty_body_in(tx: &Connection, id: &str, now_ms: i64) -> Result<(), StorageError> {
     seed_body(tx, id, "", now_ms)?;
     // The body of a day created here is here, and empty. Without a log row a
     // day created by a tag or property write reads `NotPulled`, and the shell
@@ -216,7 +221,26 @@ fn create_in(
 /// original id is the only way "open today" can succeed after today was
 /// deleted. The revival is a re-create, so its clock ticks past every delete
 /// clock this device knows for the id (#2409).
+///
+/// It is a new body too (#5351, chapter 07 §7.15). The server purged the
+/// deleted one, so an update authored on top of it reaches every fresh device
+/// as structs whose parents are gone, and the day reads empty there. The
+/// deleted generation's log, snapshots, cursor, owed pull and queued updates
+/// go before anything authors, and the purge moves the id to a new epoch, so
+/// the new body writes under a client id the old one never used (§7.16).
 fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    update_log::purge_in(tx, id).map_err(|error| StorageError::Failed {
+        what: format!("purge the deleted body of {id}: {error}"),
+    })?;
+    body_debt::settle(tx, id)?;
+    tx.execute(
+        "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op = ?3",
+        params![ITEM_TYPE, id, outbox::OP_CRDT_UPDATE],
+    )
+    .map_err(failed)?;
+    tx.execute("DELETE FROM note_bodies WHERE note_id = ?1", params![id])
+        .map_err(failed)?;
+    seed_empty_body_in(tx, id, now_ms)?;
     tx.execute(
         "UPDATE sync_items SET deleted_at = NULL, updated_at = ?3
          WHERE item_type = ?1 AND item_id = ?2",

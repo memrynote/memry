@@ -924,6 +924,13 @@ Consequences a conforming client MUST implement:
   the surviving log, and re-applying it would resurrect body state for a document
   the record feed says is deleted.
 - **Do not treat surviving server rows as evidence the delete failed.**
+- **Start a new body when re-creating a deleted id (#5351).** A device that
+  writes a document id again after its delete, such as a journal day revived
+  under `j<date>`, drops its local update log, snapshots, body cursor, owed
+  pull and queued body updates for the id before it authors, as the core's
+  revive does (`crates/memry-core/src/domain/journal.rs:231-267`). An update
+  authored on the deleted body depends on structs the server purged, so a
+  device that bootstraps afterwards holds it pending and shows the day empty.
 
 ### 7.15.1 The three obligations are not all the same component's
 

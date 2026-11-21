@@ -56,6 +56,13 @@ export interface LocalBody {
   snapshotRevision: string | null
   appliedThrough: number
   empty: boolean
+  /**
+   * Whether the applied state holds structs or deletes still waiting for a
+   * parent that never arrived (#5351). Sequence numbers read as applied while
+   * the text shows nothing. Absent when the dump cannot tell: the TypeScript
+   * harness device keeps ciphertext only.
+   */
+  pending?: boolean
 }
 
 export interface LocalVaultState {
@@ -77,6 +84,7 @@ export type FindingKind =
   | 'body_short'
   | 'body_unknown_sequence'
   | 'body_unexpected_content'
+  | 'body_pending'
   | 'digest_missing'
   | 'digest_mismatch'
 
@@ -144,7 +152,20 @@ const checkRecords = (truth: ServerVaultTruth, local: LocalVaultState): Finding[
   return findings
 }
 
-const checkBody = (id: string, server: ServerBody, mine: LocalBody | undefined): Finding[] => {
+const checkBody = (id: string, server: ServerBody, mine: LocalBody | undefined): Finding[] => [
+  ...(mine?.pending
+    ? [
+        {
+          kind: 'body_pending' as const,
+          itemId: id,
+          detail: 'an applied update did not integrate: its parent structs are missing'
+        }
+      ]
+    : []),
+  ...checkSequences(id, server, mine)
+]
+
+const checkSequences = (id: string, server: ServerBody, mine: LocalBody | undefined): Finding[] => {
   const localRevision = mine?.snapshotRevision ?? null
   const appliedThrough = mine?.appliedThrough ?? 0
   if (server.snapshot === null && server.updateSequences.length === 0) {

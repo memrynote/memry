@@ -304,7 +304,9 @@ fn a_deleted_day_revives_under_its_id_and_merges_the_template() {
 }
 
 #[test]
-fn a_revived_day_that_already_has_a_body_keeps_its_document() {
+// #5351: the server purged the deleted body (chapter 07 §7.15), so the revived
+// day starts a new one from the template instead of writing over the old.
+fn a_revived_day_starts_a_new_body_from_the_template_without_the_deleted_one() {
     let db = open("revive-body");
     db.call_blocking(|conn| {
         daily_template(conn)?;
@@ -334,11 +336,15 @@ fn a_revived_day_that_already_has_a_body_keeps_its_document() {
         assert!(matches!(outcome, SeedOutcome::Revived { .. }));
         assert_eq!(
             count(conn, "SELECT count(*) FROM outbox WHERE op = 'crdt-update'"),
-            0
+            1
         );
         let blocks = extract_blocks(&body(conn, "j2099-06-15")).expect("blocks");
-        assert_eq!(blocks.len(), 1);
-        assert_eq!(blocks[0].inline[0].text, "Written by hand");
+        assert!(
+            blocks
+                .iter()
+                .all(|block| block.inline.iter().all(|run| run.text != "Written by hand")),
+            "{blocks:?}"
+        );
         Ok(())
     })
     .expect("the scenario");
