@@ -120,6 +120,9 @@ const STORED_COVERS_THROUGH_SQL = `CASE
  * - while the document is dead (a note or journal record deleted, none live);
  * - for a claim whose cursor is below the purge's tombstone cursor: that
  *   pusher never read the delete, whether or not the id was re-created since.
+ *   Dormant until the claim rollout: the routes drop every claim while
+ *   `snapshotClaimsEnabled` is false (protocol 07 §7.7.1), and
+ *   `CRDT_CLAIM_MIN_DESKTOP_VERSION` is unset in every environment.
  *
  * An unclaimed push for a live document carries nothing to judge and passes,
  * so a client that never claims is not refused forever.
@@ -282,7 +285,20 @@ const writeSnapshots = async (
            GROUP BY note_id`
         )
         .bind(userId, vaultId, ...ids, userId, vaultId, ...ids, userId, vaultId, ...ids)
-    })
+    }),
+    // The dead documents (`DEAD`, #5367), for the early refusal below.
+    ...existingChunks.map((ids) =>
+      db
+        .prepare(
+          `SELECT DISTINCT r.item_id AS note_id FROM sync_items r
+           WHERE r.user_id = ? AND r.vault_id = ? AND r.item_type IN ('note', 'journal')
+             AND r.item_id IN (${ids.map(() => '?').join(', ')}) AND r.deleted_at IS NOT NULL
+             AND NOT EXISTS (SELECT 1 FROM sync_items l WHERE l.user_id = r.user_id
+               AND l.vault_id = r.vault_id AND l.item_type IN ('note', 'journal')
+               AND l.item_id = r.item_id AND l.deleted_at IS NULL)`
+        )
+        .bind(userId, vaultId, ...ids)
+    )
   ])
   const existingByNote = new Map<string, ExistingRow>()
   for (const result of metaResults.slice(0, existingChunks.length)) {
@@ -292,13 +308,21 @@ const writeSnapshots = async (
     }
   }
   const maxSeqByNote = new Map<string, number>()
-  for (const result of metaResults.slice(existingChunks.length)) {
+  const deadFrom = existingChunks.length + watermarkChunks.length
+  for (const result of metaResults.slice(existingChunks.length, deadFrom)) {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     for (const row of (result as D1Result<{ note_id: string; max_seq: number | null }>).results ??
       []) {
       maxSeqByNote.set(row.note_id, row.max_seq ?? 0)
     }
   }
+  const deadNotes = new Set(
+    metaResults
+      .slice(deadFrom)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
+      .flatMap((result) => (result as D1Result<{ note_id: string }>).results ?? [])
+      .map((row) => row.note_id)
+  )
 
   // The covered watermark of every claimed write, one more round trip.
   const claimed = writes.flatMap((entry, index) =>
@@ -334,13 +358,20 @@ const writeSnapshots = async (
     })
   }
 
-  // An unclaimed push onto a claimed row is refused from the stage-1 read,
-  // before its R2 put: a pre-#2299 client retries every refusal, so each retry
-  // costs a D1 read only. The upsert's guard stays the authority.
+  // An unclaimed push onto a claimed row, and a push for a dead document
+  // (#5367), is refused from the stage-1 read, before its R2 put: a pre-#2299
+  // client retries every refusal, so each retry costs a D1 read only. The
+  // upsert's guards stay the authority.
   const planned: PlannedWrite[] = writes.flatMap((entry, index) => {
     const existing = existingByNote.get(entry.noteId)
-    if (!entry.claim && existing && existing.covers_through !== null) {
-      results[index] = { ok: false, error: new SnapshotNotCoveredError(existing.server_cursor) }
+    if (
+      deadNotes.has(entry.noteId) ||
+      (!entry.claim && existing && existing.covers_through !== null)
+    ) {
+      results[index] = {
+        ok: false,
+        error: new SnapshotNotCoveredError(existing?.server_cursor ?? null)
+      }
       return []
     }
     const revision = crypto.randomUUID()

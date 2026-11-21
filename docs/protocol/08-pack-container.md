@@ -274,10 +274,10 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   and floor tables, inside an `INSERT OR IGNORE` that takes none for an ignored
   retry (`apps/sync-server/src/services/crdt.ts:143-151`). A snapshot takes an
   existing number or a lower one: without a claim the union's current maximum
-  (`apps/sync-server/src/services/crdt-snapshot-write.ts:274-282`, `:358`), with
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:277-285`, `:389`), with
   a claim its covered watermark, the highest update the claim covers
-  (`:138-146`, `:152-156`, `:334-335`). A claimed watermark starts at the
-  existing snapshot row or 0 and never reads the floor (`:283`, `:311-312`), so
+  (`:163-171`, `:352-357`, `:387-388`). A claimed watermark starts at the
+  existing snapshot row or 0 and never reads the floor (`:329`, `:357`), so
   after a purge a claimed snapshot can number below the floor (#5248). So a
   document's updates above any baseline are numbered `baseline + 1`,
   `baseline + 2`, and so on, and a snapshot's number is never a lower bound for
@@ -662,9 +662,9 @@ anchor of 0, so the rebuild tiles from 0
 `(created_at, note_id)` watermark
 (`apps/sync-server/src/services/pack-selection.ts:118`); a snapshot written
 in the watermark's second with a smaller `note_id`, including every rewrite,
-which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:150`),
+which moves `created_at` (`apps/sync-server/src/services/crdt-snapshot-write.ts:153`),
 sorted below it and stayed item-granular forever. `server_cursor` is strictly
-increasing and moves on every rewrite (`:128`), so no committed row can sort
+increasing and moves on every rewrite (`:153`), so no committed row can sort
 below a watermark it was not selected under.
 
 **Where the tail starts.** A reader computes, for each kind that bounds its
@@ -923,7 +923,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   `apps/sync-server/src/services/pack-index-write.ts:57`). Builds, rollups and
   purge rewrites all record it. `record` packs carry NULL. The purge finds a
   document's packs with `json_each` over that column
-  (`apps/sync-server/src/services/document-body-purge.ts:34-36`).
+  (`apps/sync-server/src/services/document-body-purge.ts:35-36`).
 - **Packs written before migration 0024.** Their `documents` is NULL, so the
   server cannot tell which documents they hold. While the vault lists such a
   pack of a body kind and the document has rows of that kind (for
