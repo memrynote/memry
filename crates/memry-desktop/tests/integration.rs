@@ -478,6 +478,8 @@ mod vault_writeback;
 mod vault_writes;
 #[path = "voice_engine.rs"]
 mod voice_engine;
+#[path = "voice_service.rs"]
+mod voice_service;
 
 #[test]
 fn every_test_file_is_built() {
