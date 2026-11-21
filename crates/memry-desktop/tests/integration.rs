@@ -498,6 +498,8 @@ mod voice_embedding_lane;
 mod voice_engine;
 #[path = "voice_service.rs"]
 mod voice_service;
+#[path = "web_fetch.rs"]
+mod web_fetch;
 
 #[test]
 fn every_test_file_is_built() {
