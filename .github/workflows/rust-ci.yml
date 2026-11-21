@@ -174,8 +174,11 @@ jobs:
     # 59 to 62 minutes before the dependency (runs 44796943385, 44794576070, 44793743432). BoringSSL
     # builds six times in it, about a minute each, so the slow-runner run that the merge queue ejected
     # (44796950078) was on course for 63 to 67 minutes of 65.
-    # The windows-2022 leg stays at 65: its slowest run with BoringSSL took 59 minutes (44769358824).
-    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks')) && 90 || 65 }}
+    # The windows-2022 `checks` leg runs cold too and builds BoringSSL natively with NASM. With it the leg
+    # took 59 and 62 minutes of 65 (runs 44769358824, 44816744246), and run 44872951677 (#5048) was
+    # cancelled at the 65-minute limit (05:53:36Z to 06:58:48Z), in its last cargo step with every earlier
+    # step green. The windows-2022 `tests` legs stay at 65: they took under 35 minutes in that run.
+    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks') || (matrix.os == 'windows-2022' && matrix.part == 'checks')) && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
