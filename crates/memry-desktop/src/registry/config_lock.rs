@@ -19,6 +19,11 @@ pub(crate) struct LockError {
     pub kind: ErrorKind,
 }
 
+/// The lock file beside `config`.
+pub(crate) fn lock_path(config: &Path) -> PathBuf {
+    PathBuf::from(format!("{}.lock", config.display()))
+}
+
 /// How long a write waits for another process's write. A write holds the lock for one read,
 /// write and rename, well under a second.
 const WAIT: Duration = Duration::from_secs(5);
@@ -34,7 +39,7 @@ const POLL: Duration = Duration::from_millis(10);
 /// through a read-only handle: `flock` and `LockFileEx` both lock one. One this user cannot open
 /// at all takes the no-locks path, so it never stops the app's config writes.
 pub(crate) fn hold(config: &Path) -> Result<Option<File>, LockError> {
-    let path = PathBuf::from(format!("{}.lock", config.display()));
+    let path = lock_path(config);
     let fail = |error: std::io::Error| LockError {
         path: path.clone(),
         message: error.to_string(),
