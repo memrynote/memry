@@ -479,6 +479,11 @@ vi.mock('../src/generated/bindings', () => {
       journalExternalChangeEvent: event(() => api().onJournalExternalChange),
       // No Electron channel: a test reaches it through the mock api's `onJournalEventsDropped`.
       journalEventsDroppedEvent: event(() => api().onJournalEventsDropped),
+      canvasCreatedEvent: event(() => api().onCanvasCreated),
+      canvasUpdatedEvent: event(() => api().onCanvasUpdated),
+      canvasDeletedEvent: event(() => api().onCanvasDeleted),
+      // No preload channel in Electron; canvas-service.test.ts mocks its own listener.
+      canvasTooLargeEvent: { listen: async () => () => undefined },
       noteFoldUpdatedEvent: event(() => window.api.noteFold.onUpdated),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
