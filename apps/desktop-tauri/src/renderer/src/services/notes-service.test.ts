@@ -1247,6 +1247,16 @@ describe('notes-service', () => {
       changes: { title: 'b', modified: new Date(MODIFIED) },
       source: 'external'
     })
+    // A pulled place or frontmatter the write-back gave the file (#5309) keeps its `sync` source,
+    // which the open note's page skips as Electron's does (`note.tsx:687`).
+    listeners.get('updated')?.({
+      payload: { id: 'n', changes: { title: 'c', modified: MODIFIED }, source: 'sync' }
+    })
+    expect(updated).toHaveBeenLastCalledWith({
+      id: 'n',
+      changes: { title: 'c', modified: new Date(MODIFIED) },
+      source: 'sync'
+    })
     expect(deleted).toHaveBeenCalledWith({ id: 'n', path: 'a.md', source: 'internal' })
     // `notes:tags-changed` carries nothing the renderer reads.
     expect(tagsChanged).toHaveBeenCalledWith()
