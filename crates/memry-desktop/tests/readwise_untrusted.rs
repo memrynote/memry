@@ -19,6 +19,7 @@ use memry_desktop::readwise::types::{
     CategorySwitches, FolderLayout, PublishedDate, ReaderDocument, ReadwiseBook, ReadwiseHighlight,
     ReadwiseTag, SavedImages,
 };
+use memry_desktop::readwise::writer::strip_stray_markers;
 use memry_desktop::readwise::{PlanError, planner_steps};
 use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
@@ -577,5 +578,90 @@ proptest! {
             panic!("new counts rewrite an untouched section");
         };
         prop_assert_eq!(plan_journal_write(Some(&content), &books(later), &[]), JournalWrite::Unchanged);
+    }
+}
+
+/// `STRAY_MARKERS` (`note-writer.ts:318`) as JavaScript reads it: `\s` is ECMAScript white space
+/// and line terminators, which leave out U+0085.
+fn stray_markers_reference(body: &str) -> String {
+    let js_space = r"\t\n\x0B\x0C\r \u{a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}";
+    let pattern = format!("<!--[{js_space}]*readwise:(?:start|end)[^>]*-->");
+    regex::Regex::new(&pattern)
+        .expect("the reference pattern")
+        .replace_all(body, "")
+        .into_owned()
+}
+
+/// A reset strips every stray marker of a note body in one forward pass: unclosed markers,
+/// comment openers and white space runs cost a step per byte, never a rescan.
+#[test]
+fn stripping_stray_markers_is_linear() {
+    let cases = [
+        "<!-- readwise:end ".repeat(40_000),
+        "<!--".repeat(100_000),
+        "<!--readwise:start".repeat(30_000) + "-->",
+        format!("<!--{}readwise:end", " ".repeat(200_000)).repeat(2),
+        "<!-- readwise:end v1 last=x hash=0 --> keep ".repeat(20_000),
+    ];
+    for body in cases {
+        let bound = 4 * body.len() + 10;
+        assert_steps_at_most("strip_stray_markers", planner_steps, bound, || {
+            strip_stray_markers(&body);
+        });
+    }
+}
+
+#[test]
+fn stripping_stray_markers_runs_on_a_small_stack() {
+    let body = "<!--<!-- readwise:start <!-- readwise:end -".repeat(50_000);
+    let len = body.len();
+    let out = on_small_stack(move || strip_stray_markers(&body));
+    assert_output_bounded("strip_stray_markers", len, out.len());
+}
+
+/// The section a hostile highlight or a user's note text holds is neutralised: an inline
+/// `<!-- readwise:end ... -->` goes, and the text around it stays.
+#[test]
+fn stray_end_and_start_markers_are_removed_and_the_text_kept() {
+    let body = "Mine <!-- readwise:end v1 last=x hash=0 --> after\n<!--\u{feff}readwise:start-->\n\
+                kept <!-- readwise:endless > and <!--\u{85}readwise:end -->";
+    assert_eq!(
+        strip_stray_markers(body),
+        "Mine  after\n\nkept <!-- readwise:endless > and <!--\u{85}readwise:end -->"
+    );
+}
+
+fn marker_soup() -> impl Strategy<Value = String> {
+    let piece = prop::sample::select(vec![
+        "<!--",
+        "-->",
+        "--",
+        ">",
+        "-",
+        " ",
+        "\n",
+        "\u{85}",
+        "\u{feff}",
+        "\u{a0}",
+        "readwise:start",
+        "readwise:end",
+        "readwise:",
+        "x",
+        "é",
+        "<!-- readwise:end v1 last=x hash=0 -->",
+    ]);
+    prop::collection::vec(piece, 0..60).prop_map(|pieces| pieces.concat())
+}
+
+proptest! {
+    #![proptest_config(proptest_config(256))]
+
+    /// Byte for byte what the JavaScript regex removes, and never longer than the body.
+    #[test]
+    fn strip_stray_markers_matches_the_javascript_pattern(body in marker_soup()) {
+        let out = strip_stray_markers(&body);
+        prop_assert_eq!(&out, &stray_markers_reference(&body));
+        prop_assert!(out.len() <= body.len());
+        prop_assert!(out.len() <= output_bound(body.len()));
     }
 }

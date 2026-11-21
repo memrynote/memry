@@ -17,6 +17,7 @@
       "filterAll": "Alla filer"
     },
     "exportCancelled": "Export avbruten",
+    "exportVaultChanged": "Ett annat valv öppnades medan du valde var du skulle spara. Exportera anteckningen igen.",
     "dataDbRecovery": {
       "title": "Reparera valvets databas",
       "message": "Memrys databas för det här valvet är skadad.",

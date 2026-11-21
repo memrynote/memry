@@ -20,6 +20,7 @@ pub mod diagnostics;
 pub mod drop_stage;
 pub mod editor;
 pub mod error;
+pub mod export;
 pub mod fold;
 pub mod folder_view;
 pub mod folders;
