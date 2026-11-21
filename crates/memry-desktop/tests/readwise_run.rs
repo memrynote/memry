@@ -52,7 +52,7 @@ use tokio_util::sync::CancellationToken;
 
 use memry_desktop::readwise::limiter::RequestLimiter;
 
-#[path = "readwise_run_after.rs"]
+#[path = "readwise_run/after.rs"]
 mod after;
 
 use editor_window::Window;
