@@ -35,6 +35,7 @@ use crate::sync::body_step;
 use crate::sync::journal_day_merge;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
+use crate::sync::revive_heal;
 
 /// Pages one pass may pull before it stops and lets the next pass continue.
 const MAX_PULL_PAGES: u32 = 200;
@@ -134,6 +135,9 @@ impl VaultSync {
         // Foreign journal ids owed to their canonical day (#2939). Queues
         // the merged body and the tombstones for the push below.
         journal_day_merge::drain(&self.db, &body_pull, &self.session.device_id()?).await?;
+        // A document re-created on a build before #5351 re-pushes its full
+        // state once when the server holds its body pending (#5354).
+        revive_heal::run(&self.db, &body_pull).await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());

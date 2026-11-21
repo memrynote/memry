@@ -143,10 +143,17 @@ fn fresh_device(server_rows: &[&[u8]], queued: &[Vec<u8>]) -> (String, bool) {
     let doc = DocumentRegistry::new("fresh", Arc::new(|_, _| {}))
         .get_or_open(DAY_ID)
         .unwrap();
-    for blob in server_rows.iter().copied().chain(queued.iter().map(Vec::as_slice)) {
+    for blob in server_rows
+        .iter()
+        .copied()
+        .chain(queued.iter().map(Vec::as_slice))
+    {
         doc.apply_durable_update(blob).unwrap();
     }
-    (extract_text(&doc).unwrap(), doc.has_missing_updates().unwrap())
+    (
+        extract_text(&doc).unwrap(),
+        doc.has_missing_updates().unwrap(),
+    )
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
