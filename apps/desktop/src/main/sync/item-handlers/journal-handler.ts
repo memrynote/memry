@@ -23,6 +23,7 @@ import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { flushProjectionEvents } from '../../projections'
+import { baselineAfterWrite } from '../writeback-baseline'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
@@ -134,7 +135,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       log.warn('Skipping remote journal upsert: its file links outside the vault', { itemId })
       return 'skipped'
     }
-    const { absolutePath, entry, fileContent, frontmatter } = write
+    const { absolutePath, entry, fileContent, frontmatter, previousFile } = write
     const path = getJournalRelativePath(entry.date)
     const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
     const syncedAt = pulledRowSyncedAt(modifiedAt, now)
@@ -156,6 +157,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         id: itemId,
         path,
         fileContent,
+        // The doc takes the body over CRDT sync, not from this file.
+        contentHash: baselineAfterWrite(indexDb, itemId, previousFile, fileContent),
         frontmatter,
         parsedContent: entry.content,
         title: entry.date,

@@ -18,6 +18,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, getIndexDatabase } from '../database'
 import { writeJournalEntryWithContent, getJournalRelativePath } from '../vault/journal'
 import { syncJournalCache } from '../vault/journal-cache-sync'
+import { baselineAfterWrite } from '../sync/writeback-baseline'
 import { flushProjectionEvents } from '../projections'
 import { enqueueJournalCreate, initializeJournalCrdt } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
@@ -63,7 +64,7 @@ export async function createJournalEntry(input: CreateJournalEntryInput): Promis
   const cached = getJournalEntryByDate(db, input.date) ?? getNoteCacheByPath(db, journalPath)
   const cacheId = resolveJournalEntryId(input.date)
 
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile } = await writeJournalEntryWithContent(
     input.date,
     input.content,
     input.tags,
@@ -77,6 +78,10 @@ export async function createJournalEntry(input: CreateJournalEntryInput): Promis
       id: cacheId,
       path: journalPath,
       fileContent,
+      // The day file may already exist (an ipc create over it, a NotePlan
+      // import, a journal-day merge); its baseline stays unless only the
+      // frontmatter changed.
+      contentHash: baselineAfterWrite(db, cacheId, previousFile, fileContent),
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,

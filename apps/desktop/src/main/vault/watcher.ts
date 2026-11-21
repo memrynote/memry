@@ -72,6 +72,7 @@ import { isWritebackIgnored } from '../sync/crdt-writeback'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { baselineBeforeFeed, ingestOutsideEdit } from '../sync/writeback-baseline'
 import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import { protectLockedFile } from '../vault-locks/files'
@@ -1175,6 +1176,8 @@ export class VaultWatcher {
         id: cached.id,
         path: relativePath,
         fileContent: content,
+        // The baseline moves to the edit only once the doc holds it.
+        contentHash: baselineBeforeFeed(db, cached.id, content),
         frontmatter: parsed.frontmatter,
         parsedContent: parsed.content,
         title: cached.title,
@@ -1209,10 +1212,8 @@ export class VaultWatcher {
       },
       source: 'external'
     })
-    feedExternalEditToCrdt(
-      cached.id,
-      parsed.content,
-      writingFrontmatterOf(parsed.frontmatter)
+    ingestOutsideEdit(db, cached.id, content, () =>
+      feedExternalEditToCrdt(cached.id, parsed.content, writingFrontmatterOf(parsed.frontmatter))
     ).catch((err: unknown) => {
       logger.warn('Failed to feed external edit to CRDT', { noteId: cached.id, error: err })
     })

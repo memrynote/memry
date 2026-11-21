@@ -32,6 +32,8 @@ import {
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
+import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
+import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import {
   atomicWrite,
   deleteFile,
@@ -736,9 +738,22 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   }
 
   const wrote = currentRaw === null || fileContent !== currentRaw
-  if (wrote) {
-    await atomicWrite(absolutePath, fileContent)
+  const write = async (): Promise<void> => {
+    if (wrote) await atomicWrite(absolutePath, fileContent)
   }
+  // A new body goes to the doc before the file (`landBodyEdit`): the watcher
+  // ignores Memry's own write, so the next write-back would otherwise put the
+  // doc's older body back over it (#2646). No `writing`: the doc keeps its own
+  // alternatives. A metadata edit keeps the body the doc holds.
+  const content = input.content
+  const contentHash =
+    content !== undefined
+      ? await landBodyEdit(db, input.id, fileContent, {
+          notePath: existing.path,
+          feed: () => feedExternalEditToCrdt(input.id, content),
+          write
+        })
+      : (await write(), baselineAfterWrite(db, input.id, currentRaw, fileContent))
 
   // Identical bytes = no watcher echo, no sync item, no mtime bump. Sidecar
   // state (title/emoji) still updates the DBs without touching the file.
@@ -761,6 +776,7 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
           id: input.id,
           path: existing.path,
           fileContent,
+          contentHash,
           frontmatter: writtenFrontmatter,
           parsedContent: newContent,
           title: newTitle,

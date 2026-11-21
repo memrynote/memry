@@ -296,6 +296,13 @@ export class CrdtProvider {
   private readonly now: () => number
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
+  /** Each note's updates on their way to the store, chained in order (`whenPersisted`). */
+  private persisting = new Map<string, Promise<void>>()
+  /**
+   * Notes whose store missed an update: a later update alone leaves the gap,
+   * so the next store writes the doc's whole state (`persistUpdate`).
+   */
+  private storeOwed = new Set<string>()
   private networkBatcher = new MicrotaskBatchBroadcaster((noteId, merged) => {
     this.broadcastToWindows(noteId, merged, ORIGIN_NETWORK, undefined)
   })
@@ -1470,6 +1477,7 @@ export class CrdtProvider {
     this.mergeRemote = null
     this.storeUnreconciled = false
     this.unvouchedNotes.clear()
+    this.storeOwed.clear()
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -2224,9 +2232,43 @@ export class CrdtProvider {
 
   private persistUpdate(noteId: string, update: Uint8Array): void {
     if (!this.persistence) return
-    this.persistence.storeUpdate(noteId, update).catch((err: unknown) => {
-      log.error('Failed to persist CRDT update', { noteId, error: err })
-    })
+    const owedDoc = this.storeOwed.delete(noteId) ? this.docs.get(noteId)?.doc : undefined
+    const stored = this.persistence
+      .storeUpdate(noteId, owedDoc ? Y.encodeStateAsUpdate(owedDoc) : update)
+      .catch((err: unknown) => {
+        this.storeOwed.add(noteId)
+        log.error('Failed to persist CRDT update; the next store writes the whole doc', {
+          noteId,
+          error: err
+        })
+        throw err
+      })
+    // An earlier failure is `storeOwed`'s to report, not every later store's.
+    const previous = this.persisting.get(noteId)?.catch(() => {}) ?? Promise.resolve()
+    const chained = previous.then(() => stored)
+    this.persisting.set(noteId, chained)
+    chained
+      .catch(() => {})
+      .finally(() => {
+        if (this.persisting.get(noteId) === chained) this.persisting.delete(noteId)
+      })
+  }
+
+  /**
+   * Resolves once the store holds every update of the note handed to it so
+   * far, and rejects when one failed. After a failure it resolves only once a
+   * store of the doc's whole state lands. A writer that feeds the doc before
+   * it writes the file, or moves the baseline, waits here, so neither runs
+   * ahead of what a restart's doc holds (sync/writeback-baseline.ts).
+   */
+  async whenPersisted(noteId: string): Promise<void> {
+    await this.persisting.get(noteId)
+    // A closed doc reopens from the store, so only a live doc holds the gap.
+    const doc = this.docs.get(noteId)?.doc
+    if (doc && this.storeOwed.delete(noteId)) {
+      this.persistUpdate(noteId, Y.encodeStateAsUpdate(doc))
+    }
+    await this.persisting.get(noteId)
   }
 
   private maybeCompact(noteId: string): void {

@@ -638,6 +638,31 @@ describe('notes operations', () => {
       expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
     })
 
+    // The watcher ignores Memry's own write, so the doc takes a new body before
+    // the file does (D-DOC-FIRST, #2646). No `writing`: an open doc keeps its
+    // own alternatives. A metadata-only edit keeps the body the doc holds.
+    it("feeds a body edit, and only a body edit, to the note's CRDT doc", async () => {
+      const created = await notes.createNote({ title: 'Feed Body', content: 'Before' })
+      crdtMocks.feedExternalEditToCrdt.mockClear()
+
+      await notes.updateNote({ id: created.id, tags: ['focus'] })
+      await notes.updateNote({ id: created.id, content: 'new content' })
+
+      expect(crdtMocks.feedExternalEditToCrdt.mock.calls).toEqual([[created.id, 'new content']])
+    })
+
+    it('refuses the body, with the file untouched, when the CRDT feed throws', async () => {
+      const created = await notes.createNote({ title: 'Feed Throws', content: 'Before' })
+      crdtMocks.feedExternalEditToCrdt.mockRejectedValueOnce(new Error('converter failed'))
+
+      await expect(notes.updateNote({ id: created.id, content: 'After' })).rejects.toThrow(
+        'converter failed'
+      )
+
+      const { content } = readTestNote(path.join(tempVault.path, created.path))
+      expect(content.trim()).toBe('Before')
+    })
+
     it('T363: updates file content', async () => {
       const created = await notes.createNote({
         title: 'Update Test',

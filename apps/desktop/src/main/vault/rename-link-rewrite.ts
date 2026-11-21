@@ -8,18 +8,18 @@
  * through this module. This module is the persistence half of the Obsidian-model
  * fix: `rewrite-wiki-links.ts` decides which occurrences to rewrite; this one
  * finds the source notes through the `note_links` index and lands the rewrite
- * everywhere a note body lives, in the same order the watcher lands an
- * out-of-app edit:
+ * everywhere a note body lives, in the order every Memry body writer uses
+ * (`landBodyEdit`, sync/writeback-baseline.ts):
  *
- *  1. the vault file (`markWritebackIgnored` first, so the watcher does not
- *     re-ingest our own write),
- *  2. the index/canonical rows via `syncNoteToCache` — the re-projection is
+ *  1. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
+ *     doc, a closed-but-persisted doc, and correctly leaves a note with no
+ *     CRDT body alone. This is also what carries the rewrite to other devices,
+ *  2. the vault file (`markWritebackIgnored` first, so the watcher does not
+ *     re-ingest our own write), written through the outside-edit baseline,
+ *  3. the index/canonical rows via `syncNoteToCache` — the re-projection is
  *     what refreshes `note_links.target_title`, so backlinks and the graph
  *     survive without a rebuild,
- *  3. the renderer, via the same `notes:updated` event an external edit emits,
- *  4. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
- *     doc, a closed-but-persisted doc, and correctly leaves a note with no
- *     CRDT body alone. This is also what carries the rewrite to other devices.
+ *  4. the renderer, via the same `notes:updated` event an external edit emits.
  *
  * A source that fails is logged and skipped: the rename itself already
  * happened, and repairing nine of ten links beats unwinding a filesystem
@@ -42,6 +42,7 @@ import {
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
+import { landBodyEdit } from '../sync/writeback-baseline'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
@@ -183,17 +184,23 @@ export async function landSourceRewrite(
 
   // Same guard the sync note handler and `moveNote` use before touching a file
   // the watcher is also watching: this write is already being reconciled here.
+  const parsed = parseNote(rewritten, sourcePath)
   markWritebackIgnored(absolutePath)
-  await atomicWrite(absolutePath, rewritten)
+  const contentHash = await landBodyEdit(db, sourceId, rewritten, {
+    notePath: sourcePath,
+    feed: () =>
+      feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
+    write: () => atomicWrite(absolutePath, rewritten)
+  })
 
   const now = new Date().toISOString()
-  const parsed = parseNote(rewritten, sourcePath)
   const syncResult = syncNoteToCache(
     db,
     {
       id: sourceId,
       path: sourcePath,
       fileContent: rewritten,
+      contentHash,
       frontmatter: parsed.frontmatter,
       parsedContent: parsed.content,
       title: source.title,
@@ -215,8 +222,6 @@ export async function landSourceRewrite(
     source: 'external'
   }
   emitNoteEvent(NotesChannels.events.UPDATED, event)
-
-  await feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
 
   if (isJournalEntry(sourcePath)) {
     const journalDate = extractDateFromPath(sourcePath) ?? ''
