@@ -115,6 +115,17 @@ impl Vault {
         })
     }
 
+    /// [`Vault::search`] for a process that is not the index's owner (the command line beside
+    /// a running app): an `index.db` that needs a rebuild is an error and stays in place, so
+    /// only the app ever sets it aside. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn search_keeping_index(&self) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over_keeping(
+            self.db.clone(),
+            &self.directory,
+        )?))
+    }
+
     /// The desktop task surface ([`TaskStore`]). Not on the FFI
     /// surface; needs the keychain as [`Vault::tasks`] does.
     pub fn task_store(&self, store: &Arc<dyn SecureStore>) -> Result<TaskStore, AuthError> {

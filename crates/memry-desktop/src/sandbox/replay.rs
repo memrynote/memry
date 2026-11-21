@@ -36,7 +36,8 @@ use memry_core::api::notes_write::NotesWriter;
 use memry_core::seams::secure_store::SecureStore;
 
 use super::{Manifest, Rebase, SandboxError, device_zone_name};
-use crate::registry::vault_icon;
+use crate::registry::{config_lock, vault_icon};
+use crate::vault::config as vault_config;
 
 pub use plan::{MAX_DEPTH, MAX_FILE_BYTES, MAX_FILES};
 
@@ -142,6 +143,14 @@ fn build(
         path: staging.display().to_string(),
         message: error.to_string(),
     })?;
+    // Writing the icon left the config's lock file. The staging folder is ours alone, and the
+    // generator's vault (the template's paths) has no lock file: the next write makes one.
+    let lock = config_lock::lock_path(&vault_config::config_path(staging));
+    match fs::remove_file(&lock) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(io_error(&lock, &error)),
+    }
     Ok(plan.counts)
 }
 

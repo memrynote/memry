@@ -1,0 +1,62 @@
+{
+  "name": "vault-config",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{vault}",
+        "name": "Vault",
+        "noteCount": 0,
+        "taskCount": 0,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": true
+      }
+    ]
+  },
+  "files": {
+    "vault/.memry/config.json": "{\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"journal\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"journalShowInSidebar\": false,\n  \"theme\": \"kept\"\n}\n"
+  },
+  "steps": [
+    {
+      "argv": ["vault", "config"]
+    },
+    {
+      "argv": ["--json", "vault", "config"]
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "{\"journalFolder\":\" daily/ \",\"custom\":1,\"journalShowInSidebar\":true}"
+      ]
+    },
+    {
+      "argv": ["vault", "config"]
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "update-config",
+        "{\"excludePatterns\":[\"a\",1,\"b\"],\"defaultNoteFolder\":\"notes/inbox\"}"
+      ]
+    },
+    {
+      "argv": ["--json", "vault", "config"]
+    },
+    {
+      "argv": ["vault", "update-config", "{\"defaultNoteFolder\":\"../outside\"}"]
+    },
+    {
+      "argv": ["vault", "update-config"]
+    },
+    {
+      "argv": ["vault", "update-config", "[1]"]
+    },
+    {
+      "argv": ["vault", "update-config", "3"]
+    },
+    {
+      "argv": ["vault", "update-config", "not json"]
+    }
+  ]
+}
