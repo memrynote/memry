@@ -37,7 +37,8 @@
 //! clock does not follow is not asked about (Electron's `isNoteKnownDeleted`,
 //! `pending-deletes.ts:139-148`). Each is asked about once per check, so at
 //! most once per 30 minutes, and a check asks about at most [`MAX_PROBED`]
-//! rows: the rest wait for the next one. Electron re-uploads them without asking and has
+//! rows: the next check starts after the last row asked and wraps around, so
+//! rows that never resolve cannot hold the window. Electron re-uploads them without asking and has
 //! that hole (`pull-coordinator.ts:312,816`, `:179-224`).
 //!
 //! **Not re-uploaded:** the other types the server re-creates over a purged
@@ -116,10 +117,12 @@ pub struct ManifestOutcome {
 }
 
 /// The check's 30-minute throttle, one per driver (Electron keeps
-/// `lastCheckAt` in memory too, so the first pass after a start checks).
+/// `lastCheckAt` in memory too, so the first pass after a start checks), and
+/// the last [`PROBED`] row it asked about, where the next window starts.
 #[derive(Debug, Default)]
 pub struct ManifestCheck {
     last_at: Mutex<Option<i64>>,
+    last_asked: Mutex<Option<(String, String)>>,
 }
 
 impl ManifestCheck {
@@ -145,10 +148,14 @@ impl ManifestCheck {
         }
         let server = fetch(pull).await?;
         let declared: Vec<String> = pull.declaration().types().to_vec();
+        let after = self.last_asked().clone();
         let (mut outcome, asked) = pull
             .db()
-            .call(move |conn| diff(conn, &server, &declared, now_ms))
+            .call(move |conn| diff(conn, &server, &declared, after.as_ref(), now_ms))
             .await?;
+        if let Some(last) = asked.last() {
+            *self.last_asked() = Some(last.clone());
+        }
         if !outcome.server_only.is_empty() {
             let ids: Vec<String> = outcome
                 .server_only
@@ -176,6 +183,12 @@ impl ManifestCheck {
             ),
         }
         Ok(Some(outcome))
+    }
+
+    fn last_asked(&self) -> std::sync::MutexGuard<'_, Option<(String, String)>> {
+        self.last_asked
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 
@@ -430,11 +443,13 @@ fn spellings(item_type: &str, id: &str) -> Vec<(String, String)> {
 }
 
 /// The two directions, the re-uploads queued in one transaction, and the
-/// [`PROBED`] rows to ask the server about.
+/// [`PROBED`] rows to ask the server about: at most [`MAX_PROBED`], in
+/// `(type, id)` order from the first one after `after`, wrapping around.
 fn diff(
     conn: &Connection,
     server: &BTreeSet<(String, String)>,
     declared: &[String],
+    after: Option<&(String, String)>,
     now_ms: i64,
 ) -> Result<(ManifestOutcome, Keys), StorageError> {
     let held: BTreeSet<(String, String)> = keys(conn, "SELECT item_type, item_id FROM sync_items")?
@@ -463,7 +478,10 @@ fn diff(
         .collect();
     let local = keys(
         conn,
-        &format!("SELECT item_type, item_id FROM sync_items WHERE {UNSYNCED_LIVE}"),
+        &format!(
+            "SELECT item_type, item_id FROM sync_items WHERE {UNSYNCED_LIVE}
+              ORDER BY item_type, item_id"
+        ),
     )?;
     let (asked, reuploaded): (Keys, Keys) = local
         .into_iter()
@@ -479,6 +497,10 @@ fn diff(
         }
     }
     if unknown.len() > MAX_PROBED {
+        let start = after
+            .and_then(|after| unknown.iter().position(|key| key > after))
+            .unwrap_or(0);
+        unknown.rotate_left(start);
         eprintln!(
             "memry-core: {} record(s) the manifest lacks wait for the next check",
             unknown.len() - MAX_PROBED

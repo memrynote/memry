@@ -15,6 +15,7 @@ use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::{Applied, VaultTier};
@@ -62,6 +63,9 @@ impl SecureStore for MemoryStore {
 pub struct Mocked {
     _dir: tempfile::TempDir,
     pub vault: PathBuf,
+    // Read only by the binaries that change the device key (`notes_export.rs`).
+    #[allow(dead_code)]
+    pub store: Arc<dyn SecureStore>,
     pub webview: WebviewWindow<MockRuntime>,
 }
 
@@ -122,7 +126,11 @@ impl Mocked {
         app.manage(session);
         app.manage(Arc::new(LocaleService::new("en")));
         app.manage(index);
-        app.manage(NotesService::new(tier.clone(), store));
+        app.manage(AppPaths {
+            data_dir: dir.path().join("app"),
+            log_dir: dir.path().join("logs"),
+        });
+        app.manage(NotesService::new(tier.clone(), store.clone()));
         app.manage(tier.clone());
         let _ = handle.set(app.handle().clone());
         journal_events::forward(app.handle().clone(), tier.subscribe());
@@ -133,6 +141,7 @@ impl Mocked {
         Self {
             _dir: dir,
             vault,
+            store,
             webview,
         }
     }
