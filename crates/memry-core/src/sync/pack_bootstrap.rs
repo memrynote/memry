@@ -30,7 +30,9 @@ mod records;
 mod spill;
 
 pub use bodies::{BODY_CHUNK_BYTES, BODY_CHUNK_ENTRIES, BodyPackReport};
-pub use download::{PACK_DEADLINE_CAP_MS, pack_deadline_ms};
+pub use download::{
+    PACK_DEADLINE_CAP_MS, PACK_RETRY_FIRST_PAUSE_MS, PACK_RETRY_PAUSES, pack_deadline_ms,
+};
 pub(crate) use listing::query_encode;
 pub use listing::{Coverage, Listing, PACK_LIST_PAGE_LIMIT, PackSummary, list, tail_start};
 pub use records::{
@@ -72,11 +74,4 @@ impl PackBootstrap {
         self.spill_dir = Some(dir);
         self
     }
-}
-
-fn now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_secs() as i64)
-        .unwrap_or_default()
 }

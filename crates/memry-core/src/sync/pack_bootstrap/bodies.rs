@@ -27,22 +27,19 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use serde_json::Value as Json;
-use tokio::task::JoinSet;
 
 use crate::api::errors::StorageError;
 use crate::protocol::pack::{PackEntry, PackKind};
 
 use super::super::body_pull::{BodyEpochs, BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
+use super::PackBootstrap;
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
-use super::download::download;
+use super::download::Downloads;
 use super::listing::{PackSummary, list};
-use super::records::RECORD_DOWNLOAD_WIDTH;
 use super::spill::{self, Loc, Spilled};
-use super::{PackBootstrap, now};
 
 /// Entries per apply transaction.
 pub const BODY_CHUNK_ENTRIES: usize = 250;
@@ -218,7 +215,7 @@ impl PackBootstrap {
         if packs.is_empty() {
             return Ok(());
         }
-        let Some(held) = self.hold(dir, packs, report).await? else {
+        let Some(held) = self.hold(dir, packs, now_s, report).await? else {
             return Ok(());
         };
         if held.files.is_empty() {
@@ -262,6 +259,7 @@ impl PackBootstrap {
         &self,
         dir: &Path,
         packs: Vec<PackSummary>,
+        now_s: i64,
         report: &mut BodyPackReport,
     ) -> Result<Option<Held>, BodyPullError> {
         if let Err(error) = spill::create(dir).await? {
@@ -279,53 +277,18 @@ impl PackBootstrap {
                 None => queue.push((pack, path)),
             }
         }
-        let mut queue = queue.into_iter();
-        let mut relisted: Option<Vec<PackSummary>> = None;
-        let mut running: JoinSet<(PackSummary, PathBuf, Result<Vec<u8>, String>)> = JoinSet::new();
+        let mut downloads = Downloads::new(&self.http, self.vault_id.as_deref(), now_s, queue);
         loop {
-            while running.len() < RECORD_DOWNLOAD_WIDTH {
-                let Some((mut pack, path)) = queue.next() else {
-                    break;
-                };
-                if !pack.live(now()) {
-                    // One re-list mints fresh URLs for a run that outlived them.
-                    if relisted.is_none() {
-                        report.requests += 1;
-                        relisted = Some(
-                            list(&self.http, self.vault_id.as_deref(), now())
-                                .await
-                                .map(|listing| listing.packs)
-                                .unwrap_or_default(),
-                        );
-                    }
-                    match relisted.iter().flatten().find(|fresh| fresh.id == pack.id) {
-                        Some(fresh) if fresh.live(now()) => pack.url = fresh.url.clone(),
-                        _ => {
-                            report
-                                .fallback_reasons
-                                .push(format!("pack {} expired and was not re-signed", pack.id));
-                            continue;
-                        }
-                    }
-                }
-                report.requests += 1;
-                let http = Arc::clone(&self.http);
-                running.spawn(async move {
-                    let bytes = download(&http, &pack).await;
-                    (pack, path, bytes)
-                });
-            }
-            let Some(joined) = running.join_next().await else {
+            let next = downloads
+                .next(&mut report.requests, &mut report.fallback_reasons)
+                .await
+                .map_err(|error| StorageError::Failed {
+                    what: format!("a body pack download did not finish: {error}"),
+                })?;
+            let Some((pack, path, bytes)) = next else {
                 break;
             };
-            let (pack, path, bytes) = joined.map_err(|error| StorageError::Failed {
-                what: format!("a body pack download did not finish: {error}"),
-            })?;
-            let spilled = match bytes {
-                Ok(bytes) => spill::verify_and_write(&path, bytes).await?,
-                Err(reason) => Spilled::Unusable(reason),
-            };
-            match spilled {
+            match spill::verify_and_write(&path, bytes).await? {
                 Spilled::Held(entries) => held.index(path, entries, report),
                 Spilled::NotWritten(error) => {
                     report

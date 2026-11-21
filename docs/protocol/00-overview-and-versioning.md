@@ -268,9 +268,15 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   `byteSize` gets the cap. A pack at `PACK_TARGET_BYTES` (24 MiB,
   `apps/sync-server/src/services/pack-sizing.ts:15`) gets 2,476 s. Three of
   them sharing 0.5 Mbit/s take 1,208 s each
-  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:19-41`, #5331). A
+  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:35-65`, #5331). A
   pack GET that times out at its deadline is not retried, because a retry
   restarts from byte 0. One that times out idle is retried on the §0.6.1 ladder.
+  A pack GET that the ladder gives up on with an error the network may cure
+  (offline, a failed connection, an idle timeout, a 500, 502 or 503) pauses
+  the pack phase: no new pack GET starts until the running ones end, then the
+  lost packs download again after 30, 60, 120 and 240 s, the fourth pause the
+  last (chapter 08 §8.12, `PACK_RETRY_PAUSES`,
+  `crates/memry-core/src/sync/pack_bootstrap/download.rs:45-51`, #5374).
   A shell reports a deadline timeout with `elapsed_ms` at or past the request's
   `timeout_ms`
   (`crates/memry-core/src/protocol/http.rs:112-119`, `:369-375`).

@@ -296,6 +296,10 @@ impl HttpClient {
         self
     }
 
+    pub async fn sleep_ms(&self, ms: u64) {
+        self.sleeper.sleep_ms(ms).await;
+    }
+
     pub fn base_url(&self) -> &str {
         &self.base_url
     }

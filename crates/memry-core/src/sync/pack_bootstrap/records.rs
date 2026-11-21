@@ -11,6 +11,8 @@
 //! verify) costs that entry: its `sortKey − 1` bounds where the feed tail
 //! starts, so the tail names the item again. A pack that fails to download
 //! or parse costs its range, which [`super::tail_start`] then sees as a gap.
+//! A download the network lost is retried after a pause first
+//! ([`super::download`], #5374).
 //!
 //! Downloads run [`RECORD_DOWNLOAD_WIDTH`] at a time; each finished pack is
 //! applied in chunks of at most [`RECORD_CHUNK_ENTRIES`] entries or
@@ -18,19 +20,16 @@
 //! is remembered in [`META_RECORD_PACKS_DONE`] with its range, so a killed
 //! run downloads it no more and still counts its range.
 
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
-use tokio::task::JoinSet;
 
 use crate::protocol::pack::{PackEntry, PackKind, extract_entry, parse_pack};
 
 use super::super::first_sync_store::{read_meta, write_meta};
 use super::super::pull::{PullError, PullLoop};
-use super::download::download;
+use super::PackBootstrap;
+use super::download::Downloads;
 use super::listing::{PackSummary, list, tail_start};
-use super::{PackBootstrap, now};
 
 /// Finished record packs, a JSON array of [`DonePack`].
 pub const META_RECORD_PACKS_DONE: &str = "pack_bootstrap.record_packs_done";
@@ -77,8 +76,6 @@ pub struct RecordPackReport {
     pub fallback_reasons: Vec<String>,
 }
 
-type Downloaded = (PackSummary, Result<Vec<u8>, String>);
-
 impl PackBootstrap {
     /// Lists, downloads and applies every `record` pack, then answers where
     /// the record tail starts. Errors only on local storage failure; a
@@ -123,61 +120,29 @@ impl PackBootstrap {
         let mut documents = 0u64;
         on_progress(documents);
 
-        let mut queue = todo.into_iter();
-        let mut relisted: Option<Vec<PackSummary>> = None;
-        let mut running: JoinSet<Downloaded> = JoinSet::new();
+        let mut downloads = Downloads::new(
+            &self.http,
+            self.vault_id.as_deref(),
+            now_s,
+            todo.into_iter().map(|pack| (pack, ())),
+        );
         loop {
-            while running.len() < RECORD_DOWNLOAD_WIDTH {
-                let Some(mut pack) = queue.next() else { break };
-                if !pack.live(now()) {
-                    // URLs are signed once at listing time; one re-list mints
-                    // fresh ones for a run that outlived them (§8.12).
-                    if relisted.is_none() {
-                        report.requests += 1;
-                        relisted = Some(
-                            list(&self.http, self.vault_id.as_deref(), now())
-                                .await
-                                .map(|listing| listing.packs)
-                                .unwrap_or_default(),
-                        );
-                    }
-                    match relisted.iter().flatten().find(|fresh| fresh.id == pack.id) {
-                        Some(fresh) if fresh.live(now()) => pack.url = fresh.url.clone(),
-                        _ => {
-                            report
-                                .fallback_reasons
-                                .push(format!("pack {} expired and was not re-signed", pack.id));
-                            continue;
-                        }
-                    }
-                }
-                report.requests += 1;
-                let http = Arc::clone(&self.http);
-                running.spawn(async move {
-                    let bytes = download(&http, &pack).await;
-                    (pack, bytes)
-                });
-            }
-            let Some(joined) = running.join_next().await else {
-                break;
-            };
-            let (pack, bytes) =
-                joined.map_err(|error| crate::api::errors::StorageError::Failed {
+            let next = downloads
+                .next(&mut report.requests, &mut report.fallback_reasons)
+                .await
+                .map_err(|error| crate::api::errors::StorageError::Failed {
                     what: format!("a record pack download did not finish: {error}"),
                 })?;
-            let parsed = bytes.and_then(|bytes| {
-                parse_pack(&bytes)
-                    .map(|parsed| (bytes, parsed.entries))
-                    .map_err(|error| error.to_string())
-            });
-            let (bytes, entries) = match parsed {
-                Ok(parsed) => parsed,
-                // §8.12: a 404, an expired URL or a bad digest makes the pack
-                // absent and its range a gap. Never retried past the transport.
-                Err(reason) => {
+            let Some((pack, (), bytes)) = next else {
+                break;
+            };
+            // §8.12: a bad digest makes the pack absent and its range a gap.
+            let entries = match parse_pack(&bytes) {
+                Ok(parsed) => parsed.entries,
+                Err(error) => {
                     report
                         .fallback_reasons
-                        .push(format!("pack {}: {reason}", pack.id));
+                        .push(format!("pack {}: {error}", pack.id));
                     continue;
                 }
             };
