@@ -25,9 +25,12 @@ pub(super) fn queue(tx: &Connection, change: &Change, now_ms: i64) -> Result<(),
         "inbox" => "inbox_snooze",
         _ => return Ok(()),
     };
+    // The stamp only grows: a push that lands drops the row only if it still has the stamp the
+    // push was planned from, so an edit in the same millisecond must move it too.
     tx.execute(
         "INSERT INTO calendar_push_queue (source_type, source_id, queued_at) VALUES (?1, ?2, ?3)
-         ON CONFLICT(source_type, source_id) DO UPDATE SET queued_at = excluded.queued_at,
+         ON CONFLICT(source_type, source_id) DO UPDATE
+           SET queued_at = MAX(excluded.queued_at, calendar_push_queue.queued_at + 1),
            attempts = 0, last_error = NULL",
         params![source_type, item_id, now_ms],
     )

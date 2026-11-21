@@ -172,6 +172,169 @@ fn check_1_fails_when_a_table_wrote_fewer_rows_than_it_read() {
     checks::row_counts(&report).unwrap();
 }
 
+/// A record importer that skipped `merge_into` leaves a stored payload the merge still changes,
+/// and `sync_unknown_fields` fails check 1 instead of counting the row as merged.
+#[test]
+fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    electron_db::seed(
+        &rusqlite::Connection::open(&pair.data).unwrap(),
+        "sync_unknown_fields",
+        &[
+            ("type", Value::Text("folder_config".into())),
+            ("item_id", Value::Text("f".into())),
+            ("fields", Value::Text(r#"{"x":1}"#.into())),
+            ("nested_fields", Value::Null),
+        ],
+    );
+    let sources = copy_sources(&pair.data, &pair.index, &dir.path().join("staging")).unwrap();
+    let staged = dir.path().join("staged");
+    std::fs::create_dir_all(&staged).unwrap();
+    let mut writer = memry_core::storage::import::ImportWriter::create(&staged).unwrap();
+    writer
+        .put_records(
+            &[memry_core::storage::import::ImportRecord {
+                item_type: "folder_config",
+                item_id: "f".into(),
+                payload: r#"{"icon":null}"#.into(),
+                synced_at: None,
+            }],
+            7,
+        )
+        .unwrap();
+    let mut ctx = TableCtx {
+        source: sources.conn(SourceDb::Data),
+        index: sources.conn(SourceDb::Index),
+        vault_dir: dir.path(),
+        vault_id: "vault-1",
+        writer: &mut writer,
+        now_ms: 7,
+    };
+    assert!(matches!(
+        tables::unknown_fields::import(&mut ctx),
+        Err(ImportError::CheckFailed { check: 1, .. })
+    ));
+}
+
+/// Electron's push sends the body only for a queued `create` (`readNoteFileFields`,
+/// `journal-handler.ts:276`). A clocked row Electron never marked synced (a day pushed from this
+/// device, an offline edit) is pushed as an update with `content: null`, unless `sync_queue`
+/// still holds its `create`. `sync_queue` is pending (36c), so the importer runs directly.
+#[test]
+fn only_a_queued_create_carries_the_body() {
+    // Electron f5fd229's journal `buildPushPayload` with operation `create` over this day file.
+    const DAY_CREATE: &str = "{\"date\":\"2026-01-05\",\"content\":\"Today.\",\"tags\":[\"daily\"],\"properties\":{\"mood\":\"good\",\"aliases\":\"x\"},\"aliases\":[],\"clock\":{\"dev-A\":5},\"createdAt\":\"2026-01-05T08:00:00.000Z\",\"modifiedAt\":\"2026-01-05T09:00:00.000Z\"}";
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path().join("vault");
+    let pair = electron_db::create_pair(&vault.join(".memry"));
+    let data = rusqlite::Connection::open(&pair.data).unwrap();
+    for (id, path, journal_date, queued) in [
+        (
+            "j2026-01-05",
+            "journal/2026-01-05.md",
+            Some("2026-01-05"),
+            true,
+        ),
+        (
+            "j2026-01-06",
+            "journal/2026-01-06.md",
+            Some("2026-01-06"),
+            false,
+        ),
+        ("Queued-note1", "Queued.md", None, true),
+        ("Edited-note1", "Edited.md", None, false),
+    ] {
+        let (created, modified) = match journal_date {
+            Some(_) => ("2026-01-05T08:00:00.000Z", "2026-01-05T09:00:00.000Z"),
+            None => ("2026-01-02T03:04:05.000Z", "2026-01-03T03:04:05.000Z"),
+        };
+        electron_db::seed(
+            &data,
+            "note_metadata",
+            &[
+                ("id", Value::Text(id.into())),
+                ("path", Value::Text(path.into())),
+                ("title", Value::Text(id.into())),
+                (
+                    "journal_date",
+                    journal_date.map_or(Value::Null, |d| Value::Text(d.into())),
+                ),
+                ("clock", Value::Text(r#"{"dev-A":5}"#.into())),
+                ("synced_at", Value::Null),
+                ("created_at", Value::Text(created.into())),
+                ("modified_at", Value::Text(modified.into())),
+            ],
+        );
+        let item_type = if journal_date.is_some() {
+            "journal"
+        } else {
+            "note"
+        };
+        // An `update` row queued for every item; only a `create` sends the body.
+        for operation in ["update", "create"].iter().take(1 + usize::from(queued)) {
+            electron_db::seed(
+                &data,
+                "sync_queue",
+                &[
+                    ("type", Value::Text(item_type.into())),
+                    ("item_id", Value::Text(id.into())),
+                    ("operation", Value::Text((*operation).into())),
+                    ("payload", Value::Text("{}".into())),
+                ],
+            );
+        }
+        let file = vault.join(path);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        let text = match journal_date {
+            Some(_) => "---\ntags: daily\nmood: good\naliases: x\n---\n\nToday.\n\n",
+            None => "Body\n",
+        };
+        std::fs::write(file, text).unwrap();
+    }
+    drop(data);
+    let sources = copy_sources(&pair.data, &pair.index, &dir.path().join("staging")).unwrap();
+    let staged = dir.path().join("staged");
+    std::fs::create_dir_all(&staged).unwrap();
+    let mut writer = memry_core::storage::import::ImportWriter::create(&staged).unwrap();
+    let Some(tables::Importer::Ready(import)) = tables::TABLE_MAP
+        .iter()
+        .find(|m| m.table == "note_metadata")
+        .and_then(|m| m.class.importer())
+    else {
+        panic!("note_metadata has no importer");
+    };
+    let mut ctx = TableCtx {
+        source: sources.conn(SourceDb::Data),
+        index: sources.conn(SourceDb::Index),
+        vault_dir: &vault,
+        vault_id: "vault-1",
+        writer: &mut writer,
+        now_ms: 7,
+    };
+    import(&mut ctx).unwrap();
+    let payload = |item_type: &str, id: &str| -> serde_json::Value {
+        let text = writer.record_payload(item_type, id).unwrap().unwrap();
+        serde_json::from_str(&text).unwrap()
+    };
+    assert_eq!(
+        writer
+            .record_payload("journal", "j2026-01-05")
+            .unwrap()
+            .as_deref(),
+        Some(DAY_CREATE)
+    );
+    assert_eq!(
+        payload("journal", "j2026-01-06")["content"],
+        serde_json::Value::Null
+    );
+    assert_eq!(payload("note", "Queued-note1")["content"], "Body\n");
+    assert_eq!(
+        payload("note", "Edited-note1")["content"],
+        serde_json::Value::Null
+    );
+}
+
 /// The clock cap is the size guard: a well-formed clock over it is refused, one under it reads.
 #[test]
 fn a_clock_over_the_cap_is_refused_before_the_parse() {

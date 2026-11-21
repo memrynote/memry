@@ -122,6 +122,8 @@ mod byte_preservation;
 mod calendar_caldav;
 #[path = "calendar_caldav_connect.rs"]
 mod calendar_caldav_connect;
+#[path = "calendar_caldav_sync.rs"]
+mod calendar_caldav_sync;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
 #[path = "calendar_feeds.rs"]
@@ -429,6 +431,10 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_reopen.rs"]
+mod task_reopen;
+#[path = "task_writes.rs"]
+mod task_writes;
 #[path = "tasks_service.rs"]
 mod tasks_service;
 #[path = "telemetry_flush.rs"]

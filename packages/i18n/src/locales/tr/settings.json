@@ -1398,6 +1398,7 @@
       "selectModel": "Bir model seçin",
       "apiKey": "API anahtarı",
       "apiKeyDescription": "Yerel olarak depolanır, yalnızca sağlayıcıya gönderilir",
+      "apiKeyKeychainDescription": "İşletim sistemi anahtarlığınızda saklanır, yalnızca sağlayıcıya gönderilir",
       "apiKeyPlaceholder": "{provider} API anahtarını girin",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Yerel sunucu adresi",

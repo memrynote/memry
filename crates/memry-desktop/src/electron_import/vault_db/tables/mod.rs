@@ -9,6 +9,8 @@ use super::ImportError;
 use super::TableCtx;
 
 pub mod js_json;
+mod note_file;
+mod notes;
 pub mod records;
 mod row_dumps;
 mod tags;
@@ -88,6 +90,8 @@ pub struct TableStats {
     pub written: u64,
     /// Source rows not written, by named reason (`staleQueueRows`, `snapshotsWithoutNote`, ...).
     pub dropped: Vec<(&'static str, u64)>,
+    /// Source rows written with less than the source held, by named reason (`unreadNoteFiles`).
+    pub notices: Vec<(&'static str, u64)>,
 }
 
 pub type ImportFn = fn(&mut TableCtx<'_>) -> Result<TableStats, ImportError>;
@@ -167,8 +171,8 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "inbox_jobs" [26, Reseed]: "transient enrichment jobs; Step 27 re-queues jobs for items without a result"),
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
     map!(Data Migration "note_body_sync" [17, Convert, "36c"]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core)"),
-    map!(Data Migration "note_metadata" [13, Convert, "36b"]: "core notes and journal_entries rows plus the Step 12 note_files row; ids and clocks bit exact"),
-    map!(Data Migration "note_positions" [13, Convert, "36b"]: "Step 13 manual order rows (data 0021)"),
+    map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
+    map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0021)"),
     map!(Data Migration "project_links" [21, Convert, "36d2"]: "core project_links table"),
     map!(Data Migration "projects" [21, Convert, "36d2"]: "core projects table; clock JSON kept"),
     map!(Data Migration "property_definitions" [13, Convert => records::property_definitions]: "core property_definitions table"),
@@ -213,7 +217,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Index Migration "note_links" [13, Rebuild]: "derived links"),
     map!(Index Migration "note_names" [13, Rebuild]: "derived names"),
     map!(Index Migration "note_properties" [13, Rebuild]: "derived properties"),
-    map!(Index Migration "note_snapshots" [14, Copy, "36b"]: "core note_snapshots (data 0018); user data in a derived database"),
+    map!(Index Migration "note_snapshots" [14, Copy => notes::note_snapshots]: "core note_snapshots (data 0018); user data in a derived database"),
     map!(Index Migration "note_tags" [13, Rebuild]: "derived tags"),
     map!(Index Migration "portal_refs" [13, Rebuild]: "derived portal references"),
     map!(Index Migration "property_definitions" [13, Rebuild]: "cache copy of the data row"),
