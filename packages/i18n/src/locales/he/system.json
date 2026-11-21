@@ -17,6 +17,7 @@
       "filterAll": "כל הקבצים"
     },
     "exportCancelled": "הייצוא בוטל",
+    "exportVaultChanged": "כספת אחרת נפתחה בזמן שבחרת היכן לשמור. יש לייצא את הפתק שוב.",
     "dataDbRecovery": {
       "title": "תיקון מסד הנתונים של הכספת",
       "message": "מסד הנתונים של Memry עבור הכספת הזו ניזוק.",

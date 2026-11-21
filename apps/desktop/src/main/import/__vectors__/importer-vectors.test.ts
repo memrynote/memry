@@ -34,6 +34,7 @@ import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
 import type { Importer, ImportInput, ImportSummary } from '../types'
 import { createImportContext } from '../import-context'
+import { bearImporter } from '../bear/bear-importer'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
 import { googleKeepImporter } from '../google-keep/google-keep-importer'
@@ -110,6 +111,14 @@ interface VectorCase {
 }
 
 const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
+  {
+    source: 'bear',
+    importer: bearImporter,
+    cases: [
+      { name: 'backup', sources: ['export.bear2bk'] },
+      { name: 'two-zips', sources: ['export.bear2bk', 'more.zip'] }
+    ]
+  },
   {
     source: 'markdown',
     importer: markdownImporter,

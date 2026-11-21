@@ -17,6 +17,7 @@
       "filterAll": "Todos os arquivos"
     },
     "exportCancelled": "Exportação cancelada",
+    "exportVaultChanged": "Outro cofre foi aberto enquanto você escolhia onde salvar. Exporte a nota novamente.",
     "dataDbRecovery": {
       "title": "Reparar banco de dados do cofre",
       "message": "O banco de dados do Memry para este cofre está danificado.",
