@@ -80,6 +80,26 @@ describe('RateLimiter', () => {
     expect(third.windowStart).toBe(first.windowStart)
   })
 
+  it('charges cost tokens per consume and treats an invalid cost as 1', async () => {
+    // #given
+    const { doObj } = createDO()
+    const consumeCost = async (cost: unknown) => {
+      const response = await doObj.fetch(
+        new Request('https://do.internal/consume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ windowSeconds: 60, cost })
+        })
+      )
+      return ((await response.json()) as { count: number }).count
+    }
+
+    // #when / #then
+    expect(await consumeCost(5)).toBe(5)
+    expect(await consumeCost(0)).toBe(6)
+    expect(await consumeCost(2.5)).toBe(7)
+  })
+
   it('resets to a fresh window once windowSeconds have elapsed', async () => {
     // #given
     vi.useFakeTimers()
