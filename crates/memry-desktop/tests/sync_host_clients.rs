@@ -66,6 +66,18 @@ const ALLOWED: &[(&str, &str)] = &[
         "user-chosen ICS feed hosts, through calendar_providers::ics_fetch",
     ),
     (
+        "crates/memry-desktop/src/calendar_providers/caldav_transport.rs",
+        "user-chosen CalDAV hosts: the password goes only to the origin the person typed, redirects followed by hand, never logged",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_providers.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
+    ),
+    (
         "crates/memry-desktop/src/ai/catalog.rs",
         "the inline AI provider the person picked (OpenAI, Anthropic, Google, OpenRouter) or their local Ollama",
     ),
