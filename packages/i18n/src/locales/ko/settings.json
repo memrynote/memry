@@ -1398,6 +1398,7 @@
       "selectModel": "모델 선택",
       "apiKey": "API 키",
       "apiKeyDescription": "로컬에 저장되며 제공자에게만 전송됩니다.",
+      "apiKeyKeychainDescription": "OS 키체인에 저장되며 제공자에게만 전송됩니다.",
       "apiKeyPlaceholder": "{provider} API 키 입력",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "로컬 서버 주소",

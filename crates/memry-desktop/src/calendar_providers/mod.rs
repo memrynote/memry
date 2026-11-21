@@ -11,8 +11,12 @@
 //! check), with the provider status every mutation answers ([`provider_status`]).
 
 pub mod caldav_accounts;
+mod caldav_conflict;
+pub mod caldav_dav;
 pub mod caldav_digest;
 pub mod caldav_discover;
+pub mod caldav_push;
+pub mod caldav_sync;
 pub mod caldav_transport;
 mod caldav_xml;
 pub mod credentials;
