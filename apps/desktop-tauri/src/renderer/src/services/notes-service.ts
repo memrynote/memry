@@ -16,10 +16,8 @@ import type {
   ImportDialogResponse,
   ImportFilesResponse,
   Note,
-  NoteCreatedEvent,
   NoteCreateInput,
   NoteCreateResponse,
-  NoteDeletedEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -30,7 +28,6 @@ import type {
   NotesClientAPI,
   NoteUpdateInput,
   NoteUpdateResponse,
-  NoteUpdatedEvent,
   PropertyDefinition,
   RestoreVersionResponse,
   SnapshotDetail,
@@ -53,6 +50,7 @@ import type {
 } from '@memry/contracts/notes-api'
 import type { PlainChecklistsOption } from '@memry/contracts/plain-checklists'
 import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
+import type * as RpcNotes from '@memry/rpc/notes'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
@@ -63,6 +61,7 @@ import {
   type ExportFailure,
   type FileView,
   type FolderConfigUpdatedEvent,
+  type NoteEventSource,
   type NoteListItemView,
   type NoteView,
   type PropertyDefinitionView,
@@ -82,6 +81,13 @@ import { createWindowApiForwarder } from './window-api-forwarder'
 
 const log = createLogger('Service:Notes')
 
+// Rust's note events also carry `sync` (a pulled change the write-back gave the file, #5309),
+// which Electron sends too but the shared RPC type does not name.
+type FromRust<E> = Omit<E, 'source'> & { source: NoteEventSource }
+export type NoteCreatedEvent = FromRust<RpcNotes.NoteCreatedEvent>
+export type NoteUpdatedEvent = FromRust<RpcNotes.NoteUpdatedEvent>
+export type NoteDeletedEvent = FromRust<RpcNotes.NoteDeletedEvent>
+
 export type {
   AttachmentInfo,
   AttachmentResult,
@@ -96,10 +102,8 @@ export type {
   ImportDialogResponse,
   ImportFilesResponse,
   Note,
-  NoteCreatedEvent,
   NoteCreateInput,
   NoteCreateResponse,
-  NoteDeletedEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -110,7 +114,6 @@ export type {
   NotesClientAPI,
   NoteUpdateInput,
   NoteUpdateResponse,
-  NoteUpdatedEvent,
   PropertyDefinition,
   RestoreVersionResponse,
   SnapshotDetail,

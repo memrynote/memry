@@ -66,12 +66,16 @@ const ALLOWED: &[(&str, &str)] = &[
         "user-chosen ICS feed hosts, through calendar_providers::ics_fetch",
     ),
     (
-        "crates/memry-desktop/src/services/voice/openai.rs",
-        "api.openai.com, the voice transcription's OpenAI engine, with only the person's OpenAI key",
+        "crates/memry-desktop/src/calendar_providers/caldav_transport.rs",
+        "user-chosen CalDAV hosts: the password goes only to the origin the person typed, redirects followed by hand, never logged",
     ),
     (
-        "apps/desktop-tauri/src-tauri/src/commands/voice.rs",
-        "builds the voice OpenAI engine's client; its endpoint is the fixed api.openai.com constant",
+        "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_providers.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
     ),
     (
         "crates/memry-desktop/src/ai/catalog.rs",
@@ -128,6 +132,14 @@ const ALLOWED: &[(&str, &str)] = &[
     (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend/tests.rs",
         "builds Velopack's error values, no request",
+    ),
+    (
+        "crates/memry-desktop/src/services/voice/openai.rs",
+        "api.openai.com, the voice transcription's OpenAI engine, with only the person's OpenAI key",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/voice.rs",
+        "builds the voice OpenAI engine's client; its endpoint is the fixed api.openai.com constant",
     ),
 ];
 
