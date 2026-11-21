@@ -217,6 +217,8 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_noteplan.rs"]
+mod importer_noteplan;
 #[path = "importer_roam.rs"]
 mod importer_roam;
 #[path = "importer_untrusted.rs"]

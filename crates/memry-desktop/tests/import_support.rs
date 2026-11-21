@@ -2,22 +2,34 @@
 //! (`apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`) mocks, recorded into
 //! one timeline with the progress snapshots.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine;
-use memry_core::markdown::frontmatter::YamlValue;
+use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
 use memry_desktop::attachments::{self, SavedAttachment};
-use memry_desktop::import::{ImportProgress, ImportSink, ImportedNote, SinkError};
+use memry_desktop::import::{
+    ImportProgress, ImportSink, ImportedJournalEntry, ImportedNote, ImportedTask, JournalEntry,
+    SinkError,
+};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 pub type Timeline = Arc<Mutex<Vec<Value>>>;
 
-#[derive(Default)]
 pub struct RecordingSink {
     pub timeline: Timeline,
     notes: AtomicUsize,
+    tasks: AtomicUsize,
+    /// The generator's `getInboxProjectId`.
+    pub inbox: Option<String>,
+    /// The generator's `nestedSubtasks`.
+    pub nested_subtasks: bool,
+    /// The entries the generator's `readJournalEntry` finds, by date.
+    pub journals: HashMap<String, JournalEntry>,
+    /// `resolveJournalEntryId` throws.
+    pub fail_journal_id: bool,
 }
 
 impl RecordingSink {
@@ -25,6 +37,11 @@ impl RecordingSink {
         Self {
             timeline,
             notes: AtomicUsize::new(0),
+            tasks: AtomicUsize::new(0),
+            inbox: Some("inbox".to_owned()),
+            nested_subtasks: true,
+            journals: HashMap::new(),
+            fail_journal_id: false,
         }
     }
 
@@ -82,20 +99,71 @@ impl ImportSink for RecordingSink {
     }
 
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.push(note_record("createNote", note));
+        Ok(())
+    }
+
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.push(note_record("createNoteAsWritten", note));
+        Ok(())
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        self.inbox.clone()
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        self.nested_subtasks
+    }
+
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
         self.push(json!({
-            "op": "createNote",
-            "id": note.id,
-            "title": note.title,
-            "folder": note.folder,
-            "tags": note.tags,
-            "properties": note
-                .properties
-                .iter()
-                .map(|(key, value)| json!([key, tag_value(value)]))
-                .collect::<Vec<_>>(),
-            "created": note.created.map(|_| "<birthtime>"),
-            "modified": note.modified,
-            "content": note.content,
+            "op": "createTask",
+            "projectId": task.project_id,
+            "title": task.title,
+            "dueDate": task.due_date,
+            "parentId": task.parent_id,
+            "sourceNoteId": task.source_note_id,
+        }));
+        Ok(format!(
+            "task-{}",
+            self.tasks.fetch_add(1, Ordering::SeqCst) + 1
+        ))
+    }
+
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        self.push(json!({
+            "op": "completeTask",
+            "id": id,
+            "completedAt": completed_at,
+            "recordOnly": true,
+        }));
+        Ok(())
+    }
+
+    fn archive_task(&self, id: &str) -> Result<(), SinkError> {
+        self.push(json!({ "op": "archiveTask", "id": id }));
+        Ok(())
+    }
+
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        if self.fail_journal_id {
+            return Err(SinkError("no journal id".to_owned()));
+        }
+        Ok(format!("j{date}"))
+    }
+
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {
+        Ok(self.journals.get(date).cloned())
+    }
+
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError> {
+        self.push(json!({
+            "op": "createJournalEntry",
+            "date": entry.date,
+            "tags": entry.tags,
+            "properties": entry.properties.map(|properties| properties_record(&properties)),
+            "content": entry.content,
         }));
         Ok(())
     }
@@ -103,6 +171,29 @@ impl ImportSink for RecordingSink {
     fn finish(&self) {
         self.push(json!({ "op": "finish" }));
     }
+}
+
+/// The generator's `noteRecord`.
+fn note_record(op: &str, note: ImportedNote) -> Value {
+    json!({
+            "op": op,
+            "id": note.id,
+            "title": note.title,
+            "folder": note.folder,
+            "tags": note.tags,
+            "properties": properties_record(&note.properties),
+            "created": note.created.map(|_| "<birthtime>"),
+            "modified": note.modified,
+            "content": note.content,
+    })
+}
+
+/// `Object.entries(properties)` with each value tagged.
+fn properties_record(properties: &YamlMap) -> Value {
+    properties
+        .iter()
+        .map(|(key, value)| json!([key, tag_value(value)]))
+        .collect()
 }
 
 /// The generator's `tagValue`: a frontmatter value as `JSON.stringify` writes it, with the
