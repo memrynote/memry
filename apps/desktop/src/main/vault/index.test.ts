@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'fs'
+import os from 'os'
+import nodePath from 'path'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type * as ProjectionsModule from '../projections'
 
 const mocks = vi.hoisted(() => ({
@@ -81,6 +85,9 @@ const mocks = vi.hoisted(() => ({
   agentShutdown: vi.fn(),
   trackMainLog: vi.fn(),
   checkLockedFilesAtOpen: vi.fn(),
+  logInfo: vi.fn(),
+  dataDb: null as unknown,
+  indexDb: null as unknown,
   embeddingProjectorWiring: [] as Array<{ getPath: () => unknown; gate: () => boolean }>
 }))
 
@@ -149,8 +156,8 @@ vi.mock('../database', () => ({
   initializeFts: (...args: unknown[]) => mocks.initializeFts(...args),
   initializeFtsTasks: (...args: unknown[]) => mocks.initializeFtsTasks(...args),
   initializeFtsInbox: (...args: unknown[]) => mocks.initializeFtsInbox(...args),
-  getDatabase: () => ({ kind: 'data-db' }),
-  getIndexDatabase: () => ({ kind: 'index-db' }),
+  getDatabase: () => mocks.dataDb ?? { kind: 'data-db' },
+  getIndexDatabase: () => mocks.indexDb ?? { kind: 'index-db' },
   checkIndexHealth: (...args: unknown[]) => mocks.checkIndexHealth(...args)
 }))
 
@@ -209,7 +216,7 @@ vi.mock('../lib/embeddings', () => ({
 
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({
-    info: vi.fn(),
+    info: (...args: unknown[]) => mocks.logInfo(...args),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn()
@@ -249,6 +256,7 @@ vi.mock('../projections', async () => {
   return {
     // The real predicate: a mocked one would let a broken failure marker pass.
     isReconcileFailure: actual.isReconcileFailure,
+    flushProjectionEvents: async () => {},
     rebuildProjections: (...args: unknown[]) => mocks.rebuildProjections(...args),
     reconcileProjections: (...args: unknown[]) => mocks.reconcileProjections(...args),
     startProjectionRuntime: (...args: unknown[]) => mocks.startProjectionRuntime(...args),
@@ -366,8 +374,19 @@ import {
   updateConfig
 } from './index'
 import { getJournalConfig } from './journal-config'
+import { asClientDb, createTestDataDb, createTestIndexDb } from '@tests/utils/test-db'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { NoteError, NoteErrorCode } from '../lib/errors'
+
+function fileSystemIgnoresCase(): boolean {
+  const dir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'memry-case-probe-'))
+  try {
+    fs.writeFileSync(nodePath.join(dir, 'probe'), '')
+    return fs.existsSync(nodePath.join(dir, 'PROBE'))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {
@@ -377,6 +396,8 @@ describe('vault lifecycle', () => {
     mocks.vaults = []
     mocks.currentVaultPath = null
     mocks.embeddingProjectorWiring.length = 0
+    mocks.dataDb = null
+    mocks.indexDb = null
     mocks.dialogResult = { canceled: false, filePaths: ['/vault/picked'] }
     mocks.config = {
       excludePatterns: ['.git'],
@@ -825,6 +846,60 @@ describe('vault lifecycle', () => {
     await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
     expect(mocks.checkLockedFilesAtOpen).toHaveBeenCalledTimes(1)
   })
+
+  // A synced folder_config case twin is a server record. Dropping it at every
+  // open left the device short of the server until a manifest check (#5327).
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps synced folder_config case twins across a vault open (#5327)',
+    async () => {
+      const vaultPath = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'memry-folder-twins-'))
+      fs.mkdirSync(nodePath.join(vaultPath, 'SuperNotes'))
+      const data = createTestDataDb()
+      const index = createTestIndexDb()
+      mocks.dataDb = asClientDb(data.db)
+      mocks.indexDb = index.db
+      try {
+        for (const [folderPath, icon] of [
+          ['SuperNotes', 'star'],
+          ['Supernotes', 'moon']
+        ]) {
+          data.db
+            .insert(folderConfigs)
+            .values({ path: folderPath, icon, clock: { peer: 1 }, createdAt: 'x', modifiedAt: 'x' })
+            .run()
+        }
+
+        await selectVault({ path: vaultPath })
+        await vi.waitFor(() => expect(mocks.indexVault).toHaveBeenCalled())
+
+        const folders = data.db
+          .select({ path: folderConfigs.path, icon: folderConfigs.icon })
+          .from(folderConfigs)
+          .all()
+        expect(folders).toHaveLength(2)
+        expect(folders).toEqual(
+          expect.arrayContaining([
+            { path: 'SuperNotes', icon: 'star' },
+            { path: 'Supernotes', icon: 'moon' }
+          ])
+        )
+        expect(mocks.logInfo).not.toHaveBeenCalledWith(
+          'Dropped case-variant copies of notes and folders',
+          expect.anything()
+        )
+        expect(mocks.trackMainError).not.toHaveBeenCalledWith(
+          'vault',
+          'case_variant_heal',
+          expect.anything()
+        )
+      } finally {
+        await closeVault()
+        index.close()
+        data.close()
+        fs.rmSync(vaultPath, { recursive: true, force: true })
+      }
+    }
+  )
 
   it('still prunes missing files when the locked-file check fails (#2606)', async () => {
     mocks.checkLockedFilesAtOpen.mockRejectedValue(new Error('disk gone'))

@@ -92,10 +92,16 @@ describe('healCaseVariantRows', () => {
     data.db.insert(noteMetadata).values(fields).run()
   }
 
-  function seedFolder(folderPath: string, icon: string | null): void {
+  function seedFolder(folderPath: string, icon: string | null, synced = false): void {
     data.db
       .insert(folderConfigs)
-      .values({ path: folderPath, icon, createdAt: 'x', modifiedAt: 'x' })
+      .values({
+        path: folderPath,
+        icon,
+        clock: synced ? { peer: 1 } : null,
+        createdAt: 'x',
+        modifiedAt: 'x'
+      })
       .run()
   }
 
@@ -161,6 +167,25 @@ describe('healCaseVariantRows', () => {
 
       expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
       expect(notes().canonical.map((row) => row.id)).toEqual(['local-twin', 'original', 'twin'])
+    }
+  )
+
+  // A folder row with a clock can be a server record, and a dropped one comes
+  // back by the next manifest check only to be dropped again (#5327). An
+  // unsynced row with the kept row's icon holds nothing, so it still goes.
+  it.runIf(fileSystemIgnoresCase())(
+    'drops only an unsynced folder copy with the kept icon, keeping folder twins',
+    async () => {
+      fs.mkdirSync(path.join(vault.path, 'SuperNotes'))
+      seedFolder('SuperNotes', 'star', true)
+      seedFolder('Supernotes', 'star', true)
+      seedFolder('SUPERNOTES', 'moon')
+      seedFolder('supernotes', 'star')
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 1 })
+      expect(new Set(folders().map((row) => row.path))).toEqual(
+        new Set(['SUPERNOTES', 'SuperNotes', 'Supernotes'])
+      )
     }
   )
 
