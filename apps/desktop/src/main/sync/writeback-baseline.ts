@@ -151,13 +151,14 @@ export function baselineBeforeFeed(indexDb: IndexDb, noteId: string, written: st
  * - A feed that rejects (the store failed) throws, with no file written and
  *   the baseline kept: the caller keeps its copy of the edit.
  * - A feed that declines writes the file and keeps the baseline.
- * - A failed file write after the feed keeps the baseline and throws. The
- *   writer replaces the whole body, and often the frontmatter the doc does not
- *   hold, so the caller's retry is idempotent and nothing is dropped silently.
+ * - A failed file write after the feed keeps the baseline, and the write-back
+ *   writes the file from the doc, which owns the body; a caller that swallows
+ *   the error still gets a file that converges. The writer then throws: it
+ *   often carries frontmatter the doc does not hold, which only the caller's
+ *   retry lands.
  * - `appends`: the edit adds to the body, so a caller's retry would add it
- *   twice. A failed file write after the feed then resolves, and the
- *   write-back writes the file from the doc, which owns the change. A lock
- *   refusal still throws.
+ *   twice. A failed file write after the feed then resolves instead.
+ * - A lock refusal of the write throws with no write-back.
  */
 export async function landBodyEdit(
   indexDb: IndexDb,
@@ -183,13 +184,13 @@ export async function landBodyEdit(
   try {
     await writeWithBaseline(indexDb, noteId, fileContent, steps.write)
   } catch (err) {
-    const refused = err instanceof NoteError && err.code === NoteErrorCode.READ_ONLY
-    if (!steps.appends || refused) throw err
+    if (err instanceof NoteError && err.code === NoteErrorCode.READ_ONLY) throw err
     log.error('The doc holds a body change its file write missed; the write-back writes it', {
       noteId,
       err
     })
     crdtWriteback().retryWriteback(noteId)
+    if (!steps.appends) throw err
     return baselineBeforeFeed(indexDb, noteId, fileContent)
   }
   return generateContentHash(fileContent)

@@ -36,6 +36,7 @@ const h = vi.hoisted(() => ({
   storeGate: null as null | { reject: (e: Error) => void; promise: Promise<void> },
   lockedNoteIds: new Set<string>(),
   lockedFolders: new Set<string>(),
+  writeAttempts: 0,
   /** The next file write never lands. */
   crashBeforeWrite: false,
   /** The process stops at the next feed, before or after the doc takes it. */
@@ -117,6 +118,7 @@ vi.mock('../lib/paths', async (importOriginal) => ({
 vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {
+    h.writeAttempts++
     // The vault lock's file guard (vault-locks/files).
     const registry = await import('../vault-locks/registry')
     const relative = absolute.replace('/vault/', '')
@@ -272,6 +274,7 @@ function disarm(): void {
   h.storeGate = null
   h.lockedNoteIds.clear()
   h.lockedFolders.clear()
+  h.writeAttempts = 0
   invalidateVaultLocks()
   h.hangAtFeed = null
   h.crashBeforeWrite = false
@@ -532,10 +535,39 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
       })
     )
     h.failWrite = false
-    await settle(id)
     expect(res).toBe('rejected')
     expect(h.files.get(`/vault/${notePath}`)).toBe(indexed)
     expect(hashOf(id)).toBe(generateContentHash(indexed))
+    // The write-back brings the file up to the doc's body after the visible
+    // error; only the caller's retry lands the frontmatter (accepted, R3-2).
+    await settle(id)
+    expect(h.files.get(`/vault/${notePath}`)).toContain('Body two.')
+    expect(h.files.get(`/vault/${notePath}`)).not.toContain('urgent')
+  })
+
+  // R3-1: a caller that swallows the error (rename link rewrite, task-line
+  // removal) still gets a file that converges on the doc.
+  it('a link rewrite on a closed doc whose file write fails once rejects, and the write-back fixes the file', async () => {
+    const id = 'closed-rewrite'
+    const notePath = 'Src/a.md'
+    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    await getCrdtProvider().close(id, 1)
+    const cached = getNoteCacheById(h.indexDb as never, id) as NoteCache
+    h.failWrite = true
+    const res = await outcome(
+      landSourceRewrite(h.indexDb as never, cached, {
+        path: notePath,
+        title: cached.title,
+        content: indexed.replace('First line.', 'First line fixed.')
+      })
+    )
+    h.failWrite = false
+    expect(res).toBe('rejected')
+    await vi.waitFor(() => expect(h.files.get(`/vault/${notePath}`)).toContain('fixed'), {
+      timeout: 5000
+    })
+    expect(count(h.files.get(`/vault/${notePath}`)!, 'First line')).toBe(1)
+    expect(h.writeAttempts).toBe(2)
   })
 
   it('append-blocks whose file write fails after the feed resolves, and the write-back writes the file', async () => {

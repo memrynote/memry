@@ -149,6 +149,22 @@ describe("Memry's own body edit (landBodyEdit)", () => {
     expect(cached().contentHash).toBe(generateContentHash(A))
   })
 
+  it('a full-body writer throws with the baseline kept and retries through the write-back when the write fails after the feed', async () => {
+    retryWriteback.mockClear()
+    await expect(
+      landBodyEdit(index.db, 'n1', B, {
+        notePath: 'a.md',
+        feed: async () => true,
+        write: async () => {
+          throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' })
+        }
+      })
+    ).rejects.toThrow('EBUSY')
+    expect(disk).toBe(A)
+    expect(cached().contentHash).toBe(generateContentHash(A))
+    expect(retryWriteback).toHaveBeenCalledWith('n1')
+  })
+
   // The doc holds the edit, so the caller must not keep a second copy.
   it('an append resolves with the baseline kept and retries through the write-back when the write fails after the feed', async () => {
     retryWriteback.mockClear()
