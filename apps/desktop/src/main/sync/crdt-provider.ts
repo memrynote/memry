@@ -148,6 +148,7 @@ export interface SnapshotRefusal {
 
 const NO_COVERAGE: SnapshotCoverageReader = () => ({ unmerged: false })
 const NOT_PAUSED = (): boolean => false
+const ALWAYS_ONLINE = (): boolean => true
 
 /** The pre-encode read `encodeForPush` needs; only `readPushBase` makes one. */
 interface PushBase {
@@ -282,6 +283,8 @@ export class CrdtProvider {
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   /** See `setSyncPaused`. */
   private syncPaused: () => boolean = NOT_PAUSED
+  /** See `setNetworkOnline`. */
+  private networkOnline: () => boolean = ALWAYS_ONLINE
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
   /** See `setSnapshotDeferral`. */
   private deferSnapshot: ((noteId: string) => void) | null = null
@@ -491,14 +494,30 @@ export class CrdtProvider {
     this.syncPaused = isPaused ?? NOT_PAUSED
   }
 
-  /** The snapshot push, or none while sync is paused. */
-  private snapshotSender(): SnapshotPushFn | null {
-    return this.snapshotPushFn && !this.syncPaused() ? this.snapshotPushFn : null
+  /**
+   * Wired by the sync runtime to its network monitor. While offline every
+   * snapshot path takes the same no-push branch as the pause: the runtime's
+   * push records `sent` before its request, so a send that can only fail
+   * would make a note created here look synced and reopen read-only offline
+   * (#5371). The edits wait in the outbox, which pauses offline, and its
+   * flush once online requests the snapshot again.
+   */
+  setNetworkOnline(isOnline: (() => boolean) | null): void {
+    this.networkOnline = isOnline ?? ALWAYS_ONLINE
   }
 
-  /** The batch snapshot push, or none while sync is paused. */
+  private snapshotsHeld(): boolean {
+    return this.syncPaused() || !this.networkOnline()
+  }
+
+  /** The snapshot push, or none while sync is paused or offline. */
+  private snapshotSender(): SnapshotPushFn | null {
+    return this.snapshotPushFn && !this.snapshotsHeld() ? this.snapshotPushFn : null
+  }
+
+  /** The batch snapshot push, or none while sync is paused or offline. */
   private snapshotBatchSender(): SnapshotBatchPushFn | null {
-    return this.snapshotBatchPushFn && !this.syncPaused() ? this.snapshotBatchPushFn : null
+    return this.snapshotBatchPushFn && !this.snapshotsHeld() ? this.snapshotBatchPushFn : null
   }
 
   /**
@@ -1667,6 +1686,7 @@ export class CrdtProvider {
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
     this.syncPaused = NOT_PAUSED
+    this.networkOnline = ALWAYS_ONLINE
     this.snapshotCoverage = NO_COVERAGE
     this.deferSnapshot = null
     this.oweRemoteMerge = null

@@ -492,6 +492,7 @@ describe('CrdtProvider with no store (#2536)', () => {
     store?: boolean
     durableDebts?: boolean
     session?: Session
+    online?: () => boolean
   }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
@@ -557,7 +558,18 @@ describe('CrdtProvider with no store (#2536)', () => {
       server.snapshot = { bytes: state, sequenceNum: watermark, revision: 'rev-pushed' }
       server.updates = server.updates.filter((u) => u.sequenceNum > watermark)
     }
-    await provider.init(outbox, pushSnapshot)
+    // The runtime's snapshot push records `sent` before the request, which
+    // fails while offline; the provider must not reach it then (#5371).
+    const online = options?.online
+    const sendSnapshot: SnapshotPushFn = online
+      ? async (noteId, state, coverage) => {
+          recordNoteBodyPush(noteId, 'sent', Date.now(), h.db as DataDb)
+          if (!online()) throw new Error('fetch failed')
+          await pushSnapshot(noteId, state, coverage)
+        }
+      : pushSnapshot
+    await provider.init(outbox, sendSnapshot)
+    if (online) provider.setNetworkOnline(online)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
     provider.setRemoteBodyQuery({
       hasUnmerged: (id) => coordinator.hasUnmergedRemoteState(id),
@@ -1712,6 +1724,36 @@ describe('CrdtProvider with no store (#2536)', () => {
       expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
         TYPED
       )
+    })
+
+    it('stays editable on an offline reopen after an offline close, and sends nothing while offline', async () => {
+      // #given a note created here, and a device with no network
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      let online = false
+      const { provider } = await startRuntime({ online: () => online })
+
+      // #when the user opens it offline, types, closes it, and reopens it offline
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+      type(provider, doc)
+      await provider.close(NOTE, EDITOR_WINDOW)
+      expect(isNeverSyncedLocalNote(h.db as DataDb, NOTE)).toBe(true)
+      await vi.waitFor(() => expect(hasPendingWriteback(NOTE)).toBe(false), { timeout: 5000 })
+      const reopened = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it reopens editable with the typed body, and the snapshot stays owed
+      expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+      expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        TYPED
+      )
+      expect(h.server.snapshot).toBeNull()
+
+      // #when the network returns
+      online = true
+      await expect(provider.pushSnapshotForNote(NOTE)).resolves.toBe(true)
+
+      // #then the server holds the typed body once
+      expect(await bodyAfterPull()).toBe(TYPED)
     })
 
     it.each([

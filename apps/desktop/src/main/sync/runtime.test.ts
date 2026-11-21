@@ -229,6 +229,7 @@ const runtimeMocks = vi.hoisted(() => {
       setRemoteMerge: vi.fn(),
       setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
+      setNetworkOnline: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushSnapshotsForNotes: vi.fn(),
@@ -1310,6 +1311,20 @@ describe('sync runtime', () => {
 
     ;(engine.deps.onSyncResumed as () => void)()
     expect(outbox.flushAll).toHaveBeenCalledTimes(1)
+  })
+
+  // #5371: the snapshot push records `sent` before its request, so an offline
+  // close made a note created here look synced and reopen read-only offline.
+  it('holds snapshot sends while the network monitor reports offline', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    const online = runtimeMocks.crdtProvider.setNetworkOnline.mock.calls.at(-1)![0] as () => boolean
+
+    network.online = false
+    expect(online()).toBe(false)
+    network.online = true
+    expect(online()).toBe(true)
   })
 
   it("wires the engine's snapshot coverage into the provider and owes a pull on a refusal", async () => {

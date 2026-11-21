@@ -715,8 +715,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         return results
       }
 
+      // Built before the provider's init so every snapshot path sees it; it
+      // polls only once started, below.
+      const network = new NetworkMonitor()
       const crdtProvider = getCrdtProvider()
       crdtProvider.setSyncPaused(isSyncPaused)
+      crdtProvider.setNetworkOnline(() => network.online)
       await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
       // Once, then the pre-#2298 file is gone: its notes become full-state rows.
       importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
@@ -732,7 +736,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         log.error('Sync worker failed to start — continuing with main-thread crypto', err)
       }
 
-      const network = new NetworkMonitor()
       network.start()
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {

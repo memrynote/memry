@@ -25,6 +25,7 @@ const fixture = vi.hoisted(() => ({
       (outbox: NoteBodyOutbox, single: SnapshotPushFn, batch: SnapshotBatchPushFn) => Promise<void>
     >(),
     setSyncPaused: vi.fn(),
+    setNetworkOnline: vi.fn(),
     setSnapshotCoverage: vi.fn(),
     setOweRemoteMerge: vi.fn(),
     setRemoteMerge: vi.fn(),

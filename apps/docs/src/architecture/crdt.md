@@ -331,6 +331,16 @@ needs durable proof that the server holds nothing:
 - The coordinator has no sign of a server body: no unmerged flag, no owed or
   deferred pull, no counted failure, and no update applied this session.
 
+No snapshot push starts while the device is offline, as while sync is paused:
+the request could only fail after recording `sent`, and the note would reopen
+read-only offline. The edits wait in the outbox, and its flush once online
+requests the snapshot again.
+
+The bypass has one residual risk: device A creates a note offline, so it holds
+the marker; a shared folder carries the file to device B, and B syncs it before
+A does. When A then opens the note offline, it seeds beside B's server body,
+and the two copies merge into a duplicate once A is back online (#2536).
+
 Journals never qualify. Otherwise, while its merge has not completed or the
 note still has an unmerged remote body, the document stays empty and waits (`awaitingMerge`).
 An update Yjs parks as pending structs does not end the wait; the document has
