@@ -13,14 +13,17 @@ use super::tables::SourceDb;
 use super::tables::records::parse_clock;
 use super::{ImportError, VaultStageReport, read_source_id};
 
-/// `(source table, id column, core item type)` of every imported record table with a clock.
-pub const RECORD_TABLES: &[(&str, &str, &str)] = &[
-    ("folder_configs", "path", "folder_config"),
-    ("property_definitions", "name", "property_definition"),
-    ("tag_categories", "id", "tag_category"),
-    ("tag_definitions", "name", "tag_definition"),
-    ("templates", "id", "template"),
-    ("custom_icons", "id", "custom_icon"),
+/// `(source table, id column, core item type, rows of the type)` of every imported record table
+/// with a clock. `note_metadata` holds notes and journal days in one table.
+pub const RECORD_TABLES: &[(&str, &str, &str, &str)] = &[
+    ("folder_configs", "path", "folder_config", "1"),
+    ("property_definitions", "name", "property_definition", "1"),
+    ("tag_categories", "id", "tag_category", "1"),
+    ("tag_definitions", "name", "tag_definition", "1"),
+    ("templates", "id", "template", "1"),
+    ("custom_icons", "id", "custom_icon", "1"),
+    ("note_metadata", "id", "note", "journal_date IS NULL"),
+    ("note_metadata", "id", "journal", "journal_date IS NOT NULL"),
 ];
 
 pub(super) fn run(
@@ -32,8 +35,8 @@ pub(super) fn run(
     report.checks_passed.push(1);
     let source = sources.conn(SourceDb::Data);
     let mut clock_mismatches = Vec::new();
-    for (table, id_column, item_type) in RECORD_TABLES {
-        let expected = source_clocks(source, table, id_column)?;
+    for (table, id_column, item_type, rows) in RECORD_TABLES {
+        let expected = source_clocks(source, table, id_column, rows)?;
         let staged: BTreeMap<String, Option<String>> =
             writer.record_clocks(item_type)?.into_iter().collect();
         if !expected.keys().eq(staged.keys()) {
@@ -109,9 +112,12 @@ fn source_clocks(
     source: &rusqlite::Connection,
     table: &'static str,
     id_column: &str,
+    rows: &str,
 ) -> Result<BTreeMap<String, Option<String>>, ImportError> {
     let mut stmt = source
-        .prepare(&format!("SELECT rowid, {id_column}, clock FROM {table}"))
+        .prepare(&format!(
+            "SELECT rowid, {id_column}, clock FROM {table} WHERE {rows}"
+        ))
         .map_err(|e| source_error(SourceDb::Data, e))?;
     let mut rows = stmt
         .query([])

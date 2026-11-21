@@ -1398,6 +1398,7 @@
       "selectModel": "เลือกโมเดล",
       "apiKey": "คีย์ API",
       "apiKeyDescription": "จัดเก็บในเครื่อง ส่งไปยังผู้ให้บริการเท่านั้น",
+      "apiKeyKeychainDescription": "จัดเก็บในพวงกุญแจของระบบ ส่งไปยังผู้ให้บริการเท่านั้น",
       "apiKeyPlaceholder": "กรอกคีย์ API {provider}",
       "ollamaUrl": "URL ของ Ollama",
       "ollamaUrlDescription": "ที่อยู่เซิร์ฟเวอร์ในเครื่อง",

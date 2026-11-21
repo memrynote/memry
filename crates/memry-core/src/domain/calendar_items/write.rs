@@ -58,6 +58,10 @@ pub struct EventPatch {
     pub is_all_day: Option<bool>,
     pub target_calendar_id: Option<Option<String>>,
     pub color: Option<Option<String>>,
+    /// Attendee and reminder JSON as the event stores it (`Value::Null` clears).
+    pub attendees: Option<Value>,
+    pub reminders: Option<Value>,
+    pub visibility: Option<Option<String>>,
 }
 
 /// `nanoid()` (desktop's `generateId`).
@@ -213,6 +217,19 @@ pub fn update_event(
             if let Some(all_day) = patch.is_all_day {
                 changes.push(("isAllDay", Change::Set(json!(all_day))));
                 changed.push("isAllDay");
+            }
+            for (field, value) in [
+                ("attendees", patch.attendees.clone()),
+                ("reminders", patch.reminders.clone()),
+                (
+                    "visibility",
+                    patch.visibility.clone().map(|v| set(v.as_deref())),
+                ),
+            ] {
+                if let Some(value) = value {
+                    changes.push((field, Change::Set(value)));
+                    changed.push(field);
+                }
             }
             if let Some(target) = &patch.target_calendar_id {
                 changes.push(("targetCalendarId", Change::Set(set(target.as_deref()))));

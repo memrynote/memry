@@ -1,13 +1,41 @@
 //! The first step of `createMemryApp` (`apps/cli/src/app-core/memry-app.ts`): `ensureVaultLayout`
 //! (`app-core/paths.ts:209-210`) runs `fs.mkdir(path.join(vault, '.memry'), { recursive: true })`,
 //! which fails on a path that cannot hold a vault. So every command after the registry ones
-//! fails there, with Node's message. Stage B opens the vault, which creates the folder; until
-//! then this only reads.
+//! fails there, with Node's message, before the vault opens ([`crate::context::open`]).
+//!
+//! Also the `vault` subcommands that run on an open vault (`runVault`,
+//! `apps/cli/src/cli-commands-vault.ts:24-50`).
 
 use std::path::Path;
 
-use crate::CliResult;
+use serde_json::json;
+
+use crate::context::VaultContext;
+use crate::output::print;
+use crate::parse::ParsedCli;
 use crate::registry::normalize;
+use crate::{CliIo, CliResult, not_ported};
+
+/// The usage error of `runVault`.
+const USAGE: &str = "Usage: memrynote vault list|current|use|remove OR memrynote [--vault <path>] vault init|status|config|update-config|reindex|set-icon|activity|locks";
+
+pub fn run(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliResult {
+    match parsed.subcommand.as_deref() {
+        // The open did the work: `init` on a folder with no `.memry` initialised it.
+        Some("init" | "status" | "open") => {
+            print(
+                io,
+                parsed.json,
+                Some(&json!({ "isOpen": true, "path": vault.path })),
+            );
+            Ok(())
+        }
+        Some("config" | "update-config" | "reindex" | "set-icon" | "activity" | "locks") => {
+            Err(not_ported(parsed))
+        }
+        _ => Err(USAGE.into()),
+    }
+}
 
 /// Fails as Node's recursive `mkdir` of `<vault>/.memry` fails (`MKDirpSync`/`MKDirpAsync` of
 /// `src/node_file.cc`): `EEXIST` when `.memry` is there and is not a folder, `ENOTDIR` when

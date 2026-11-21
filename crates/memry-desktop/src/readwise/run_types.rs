@@ -5,6 +5,7 @@ use chrono_tz::Tz;
 use tokio_util::sync::CancellationToken;
 
 use super::client::ReadwiseError;
+use super::pull_gate::PullGateError;
 use super::run_state::RunCounts;
 use super::writer::SkipReason;
 
@@ -47,7 +48,7 @@ pub trait RunObserver {
 pub struct Unobserved;
 impl RunObserver for Unobserved {}
 
-/// The claim and the pull gate (D8, stage 33d3).
+/// The claim and the pull gate (D8): [`super::pull_gate::PullGate`].
 pub trait RunGate: Send + Sync {
     /// Returns once this device may pull: sync completed a pull and the vault is indexed.
     fn await_ready(&self, _cancel: &CancellationToken) -> Result<(), RunError> {
@@ -82,6 +83,9 @@ pub enum RunError {
     AlreadyRunning,
     #[error(transparent)]
     Readwise(#[from] ReadwiseError),
+    /// The pull gate refused the run (D8): it is skipped, not failed.
+    #[error(transparent)]
+    Gate(#[from] PullGateError),
     #[error("{0}")]
     Failed(String),
 }

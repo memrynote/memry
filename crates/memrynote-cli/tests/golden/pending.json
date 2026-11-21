@@ -333,11 +333,8 @@
   "templates update",
   "vault activity",
   "vault config",
-  "vault init",
   "vault locks",
-  "vault open",
   "vault reindex",
   "vault set-icon",
-  "vault status",
   "vault update-config"
 ]

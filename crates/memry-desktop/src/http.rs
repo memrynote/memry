@@ -5,7 +5,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The one HTTP client for every non-sync caller. Built once and cloned.
 ///
-/// rustls backend with the process default crypto provider (`ring`, installed by `main`) and
+/// rustls backend with the process default crypto provider (`ring`, installed by `main` or [`builder`]) and
 /// certificates verified through the platform verifier. A connect timeout and no total timeout:
 /// a slow body is never cut off.
 pub fn client() -> reqwest::Client {
@@ -33,6 +33,9 @@ pub fn client_trusting(root: reqwest::Certificate) -> reqwest::Client {
 /// The shared client's settings, for a caller that needs its own policy on the same TLS stack
 /// (the Unsplash service adds a redirect policy). Everyone else uses [`client`].
 pub fn builder() -> reqwest::ClientBuilder {
+    // `main` installs `ring` first; a client built before it (a test, a tool) would panic on
+    // `build`. `Err` means a provider is already installed, the state this wants.
+    let _already_installed = rustls::crypto::ring::default_provider().install_default();
     reqwest::Client::builder()
         .tls_backend_rustls()
         .connect_timeout(CONNECT_TIMEOUT)

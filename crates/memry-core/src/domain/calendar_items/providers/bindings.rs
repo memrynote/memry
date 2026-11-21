@@ -166,6 +166,37 @@ pub fn for_object(
     .map_err(failed)
 }
 
+/// `boundObjectEtags`: each object of one CalDAV calendar a live binding
+/// names, once, with the ETag last written or read back.
+pub fn caldav_objects(
+    conn: &Connection,
+    calendar_id: &str,
+) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT remote_event_id, remote_version FROM calendar_bindings
+              WHERE provider = 'caldav' AND remote_calendar_id = ?1
+                AND archived_at IS NULL AND deleted_at IS NULL
+              ORDER BY created_at_raw, id",
+        )
+        .map_err(failed)?;
+    let rows = stmt
+        .query_map([calendar_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let mut objects: Vec<(String, Option<String>)> = Vec::new();
+    for (remote, etag) in rows {
+        let href = caldav_parts(&remote).0;
+        if !objects.iter().any(|(h, _)| h == href) {
+            objects.push((href.to_owned(), etag));
+        }
+    }
+    Ok(objects)
+}
+
 /// What the provider answered for a write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Written {
