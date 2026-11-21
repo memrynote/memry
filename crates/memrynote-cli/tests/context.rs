@@ -54,7 +54,9 @@ impl Rig {
     }
 
     fn path(&self, rel: &str) -> PathBuf {
-        self.dir.path().join(rel)
+        // One component at a time, so the path has the separators the CLI's own joins give.
+        rel.split('/')
+            .fold(self.dir.path().to_path_buf(), |dir, part| dir.join(part))
     }
 
     fn run(&self, args: &[&str]) -> (i32, String, String) {
@@ -220,12 +222,10 @@ fn a_native_vault_electron_opened_later_stays_open() {
 
 fn rig_ok(rig: &Rig) -> (i32, String, String) {
     let vault = rig.path("vault");
+    let status = serde_json::json!({ "isOpen": true, "path": vault });
     (
         0,
-        format!(
-            "{{\n  \"isOpen\": true,\n  \"path\": \"{}\"\n}}\n",
-            vault.display()
-        ),
+        format!("{}\n", serde_json::to_string_pretty(&status).expect("json")),
         String::new(),
     )
 }
