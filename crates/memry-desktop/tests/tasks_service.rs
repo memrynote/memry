@@ -15,26 +15,28 @@ use memry_desktop::tasks::contract::{
     StatusCreateInput, StatusMutation, StatusReorderInput, StatusUpdateInput, TaskListInput,
     TaskUpdateInput,
 };
-use memry_desktop::tasks::service::{STATUS_CREATE_FAILED, STATUS_NOT_FOUND, TasksService};
+use memry_desktop::tasks::service::{
+    STATUS_CREATE_FAILED, STATUS_NOT_FOUND, TaskEvent, TasksService,
+};
 use serde_json::json;
 
 use crate::device_key;
 
-struct Fixture {
+pub(crate) struct Fixture {
     _dir: tempfile::TempDir,
-    vault: Vault,
-    tasks: Arc<Tasks>,
-    service: TasksService,
-    project: String,
+    pub(crate) vault: Vault,
+    pub(crate) tasks: Arc<Tasks>,
+    pub(crate) service: TasksService,
+    pub(crate) project: String,
 }
 
 /// 2026-03-10 09:30, local.
-fn tuesday() -> LocalDateTime {
+pub(crate) fn tuesday() -> LocalDateTime {
     LocalDateTime::new(CivilDate::new(2026, 3, 10).unwrap(), 9, 30, 0, 0)
 }
 
 impl Fixture {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
         let vault = Vault::open("vault-1".to_owned(), dir.path().display().to_string()).unwrap();
         let store: Arc<dyn SecureStore> = device_key::with_device_key();
@@ -50,7 +52,7 @@ impl Fixture {
         }
     }
 
-    fn task(&self, title: &str, due: Option<&str>, linked: &[&str]) -> String {
+    pub(crate) fn task(&self, title: &str, due: Option<&str>, linked: &[&str]) -> String {
         let change = self
             .tasks
             .create(NewTaskInput {
@@ -76,7 +78,7 @@ impl Fixture {
     }
 
     /// Empties the outbox, so a test sees only its own writes.
-    fn pushed(&self) {
+    pub(crate) fn pushed(&self) {
         self.vault
             .db_handle()
             .call_blocking(|conn| {
@@ -87,7 +89,7 @@ impl Fixture {
     }
 
     /// Outbox rows queued for `item_id`: what the sync push sends.
-    fn outbox(&self, item_id: &str) -> i64 {
+    pub(crate) fn outbox(&self, item_id: &str) -> i64 {
         let id = item_id.to_owned();
         self.vault
             .db_handle()
@@ -104,14 +106,14 @@ impl Fixture {
     }
 
     /// Sets the device-local `tasks.nestedSubtasks`.
-    fn nested_subtasks(&self, on: bool) {
+    pub(crate) fn nested_subtasks(&self, on: bool) {
         self.vault
             .db_handle()
             .call_blocking(move |conn| task_settings::set_nested_subtasks(conn, on).map(drop))
             .unwrap();
     }
 
-    fn update(&self, id: &str, patch: serde_json::Value) -> TaskUpdateInput {
+    pub(crate) fn update(&self, id: &str, patch: serde_json::Value) -> TaskUpdateInput {
         let mut input = json!({ "id": id });
         input
             .as_object_mut()
@@ -121,7 +123,7 @@ impl Fixture {
     }
 }
 
-fn draft(name: &str) -> ProjectDraft {
+pub(crate) fn draft(name: &str) -> ProjectDraft {
     ProjectDraft {
         name: name.to_owned(),
         description: None,
@@ -151,8 +153,11 @@ fn tasks_update_writes_the_task_queues_one_push_and_answers_the_envelope() {
     let task = written.mutation.task.clone().expect("the updated task");
     assert_eq!(task.task.title, "Plan the week");
     assert_eq!(task.task.tags, vec!["Home".to_owned()]);
-    assert_eq!(written.updated.as_deref(), Some(id.as_str()));
-    assert!(written.tags_changed);
+    assert_eq!(
+        written.events,
+        [TaskEvent::Updated(id.clone()), TaskEvent::TagsChanged],
+        "updated, then tags-changed, as publisher.ts sends them"
+    );
     assert_eq!(f.outbox(&id), 1, "the push path picks the edit up");
     let wire = serde_json::to_value(&written.mutation).unwrap();
     assert_eq!(wire["task"]["title"], "Plan the week");
@@ -183,7 +188,7 @@ fn tasks_update_refuses_with_each_electron_error_key_and_writes_nothing() {
         assert!(!written.mutation.success, "{key}");
         assert_eq!(written.mutation.error.as_deref(), Some(key));
         assert_eq!(written.mutation.task, None);
-        assert_eq!(written.updated, None);
+        assert!(written.events.is_empty(), "{key}");
     }
     assert_eq!(f.outbox(&id), 0, "a refusal queues nothing");
 }
@@ -231,10 +236,12 @@ fn a_done_status_through_tasks_update_reports_the_next_occurrence() {
         .update(f.update(&id, json!({ "statusId": done.id })))
         .unwrap();
 
-    let next = written.created.expect("the next occurrence");
+    let [TaskEvent::Updated(_), TaskEvent::Created(next)] = written.events.as_slice() else {
+        panic!("updated, then the next occurrence: {:?}", written.events);
+    };
     assert_eq!(
         f.service
-            .get(&next)
+            .get(next)
             .unwrap()
             .unwrap()
             .task

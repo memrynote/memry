@@ -27,6 +27,7 @@ pub enum ConnectSource {
 pub fn error_code(error: &RunError) -> String {
     match error {
         RunError::Readwise(error) => readwise_code(error),
+        RunError::Gate(error) => error.code().to_owned(),
         RunError::AlreadyRunning | RunError::Failed(_) => "unexpected".to_owned(),
     }
 }

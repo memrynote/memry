@@ -296,6 +296,9 @@ describe('proxy', () => {
       const listed = await (await fetch(`${proxy.url}/sync/packs?limit=50`)).json()
       assert.ok(listed.packs[0].url.startsWith(`${proxy.url}/__r2/`))
       assert.equal(await (await fetch(listed.packs[0].url)).text(), 'pack-bytes')
+      const named = Buffer.from(`http://127.0.0.1:${port}/r2/p1`).toString('base64url')
+      assert.equal((await fetch(`${proxy.url}/__r2/${named}`)).status, 404)
+      assert.equal((await fetch(`${proxy.url}/__r2/9`)).status, 404)
       assert.deepEqual(
         proxy.requests.map((r) => [r.host, r.path, r.resBytes]),
         [
@@ -303,6 +306,23 @@ describe('proxy', () => {
           ['r2', '/r2/p1?sig=a', 10]
         ]
       )
+      const absolute = await new Promise((resolve, reject) => {
+        const req = http.request(
+          {
+            host: '127.0.0.1',
+            port: new URL(proxy.url).port,
+            path: 'http://203.0.113.1/sync/packs?limit=50'
+          },
+          (res) => {
+            const chunks = []
+            res.on('data', (c) => chunks.push(c))
+            res.on('end', () => resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))))
+          }
+        )
+        req.on('error', reject)
+        req.end()
+      })
+      assert.ok(absolute.packs[0].url.startsWith(`${proxy.url}/__r2/`))
     } finally {
       await proxy.close()
       upstream.close()

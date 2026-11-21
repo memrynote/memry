@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/notes.rs"]
+mod notes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
 #[path = "electron_vault_import/tag_template_records.rs"]
@@ -104,7 +106,7 @@ impl Vault {
 
 fn staged(outcome: StageOutcome) -> memry_desktop::electron_import::vault_db::StagedVault {
     match outcome {
-        StageOutcome::Staged(staged) => staged,
+        StageOutcome::Staged(staged) => *staged,
         StageOutcome::AlreadyImported => panic!("AlreadyImported"),
         StageOutcome::NativeFirst => panic!("NativeFirst"),
     }

@@ -1398,6 +1398,7 @@
       "selectModel": "Vælg en model",
       "apiKey": "API-nøgle",
       "apiKeyDescription": "Gemt lokalt, sendes kun til udbyderen",
+      "apiKeyKeychainDescription": "Gemmes i systemets nøglering, sendes kun til udbyderen",
       "apiKeyPlaceholder": "Indtast API-nøgle til {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",

@@ -9,12 +9,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
+use memry_core::markdown::frontmatter::{YamlValue, json_to_yaml};
 use memry_desktop::import::context::MAX_SKIPPED_REASON_GROUPS;
 use memry_desktop::import::messages::{
     IMPORTING_ITEM_CODE, ONENOTE_DOWNLOADING_ATTACHMENT_CODE, STATUS, codes, importing_item,
     onenote_downloading_attachment,
 };
-use memry_desktop::import::{ImportContext, ImportInput, Importer, Registry};
+use memry_desktop::import::{ImportContext, ImportInput, Importer, JournalEntry, Registry};
 use serde_json::{Map, Value, json};
 use tokio_util::sync::CancellationToken;
 
@@ -98,7 +99,8 @@ fn run_case(source: &str, importer: &dyn Importer, case: &Value) -> Value {
         cancel,
         Box::new(move |snapshot| record_progress(&recorder, &snapshot)),
     );
-    let sink = RecordingSink::new(Arc::clone(&timeline));
+    let mut sink = RecordingSink::new(Arc::clone(&timeline));
+    configure_tasks(&mut sink, case);
     importer.run(&input, &mut ctx, &sink).unwrap();
 
     let unroot_summary = |summary: &mut Value| {
@@ -122,6 +124,29 @@ fn run_case(source: &str, importer: &dyn Importer, case: &Value) -> Value {
     record.insert("timeline".to_owned(), Value::Array(entries));
     record.insert("summary".to_owned(), summary);
     Value::Object(record)
+}
+
+/// The generator's `recordingTaskDeps` and `readJournalEntry` for one case.
+fn configure_tasks(sink: &mut RecordingSink, case: &Value) {
+    match &case["inboxProjectId"] {
+        Value::Null if case.get("inboxProjectId").is_some() => sink.inbox = None,
+        Value::String(id) => sink.inbox = Some(id.clone()),
+        _ => {}
+    }
+    if let Some(nested) = case["nestedSubtasks"].as_bool() {
+        sink.nested_subtasks = nested;
+    }
+    for (date, entry) in case["journals"].as_object().into_iter().flatten() {
+        let YamlValue::Map(properties) = json_to_yaml(&entry["properties"]) else {
+            panic!("journal properties are an object")
+        };
+        let entry = JournalEntry {
+            content: entry["content"].as_str().unwrap().to_owned(),
+            tags: serde_json::from_value(entry["tags"].clone()).unwrap(),
+            properties: (*properties).clone(),
+        };
+        sink.journals.insert(date.clone(), entry);
+    }
 }
 
 fn assert_source(source: &str) {
@@ -170,6 +195,11 @@ fn csv_importer_matches_the_typescript_importer() {
 #[test]
 fn google_keep_importer_matches_the_typescript_importer() {
     assert_source("google-keep");
+}
+
+#[test]
+fn noteplan_importer_matches_the_typescript_importer() {
+    assert_source("noteplan");
 }
 
 #[test]
