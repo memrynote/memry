@@ -17,6 +17,10 @@ use super::{ImportError, VaultStageReport, read_source_id};
 pub const RECORD_TABLES: &[(&str, &str, &str)] = &[
     ("folder_configs", "path", "folder_config"),
     ("property_definitions", "name", "property_definition"),
+    ("tag_categories", "id", "tag_category"),
+    ("tag_definitions", "name", "tag_definition"),
+    ("templates", "id", "template"),
+    ("custom_icons", "id", "custom_icon"),
 ];
 
 pub(super) fn run(
