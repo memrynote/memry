@@ -48,3 +48,12 @@ unicode-normalization = "0.1.25"
 lto = true
 codegen-units = 1
 strip = "debuginfo"
+
+# libsodium compiles from C source with the package's opt-level (`cc` reads
+# `OPT_LEVEL`), so the dev profile built it at -O0. A first sync verifies an
+# Ed25519 signature per record and per CRDT entry, and at -O0 that verify was
+# most of the iOS Debug app's bootstrap: 23 s / 104 s against 8 s / 28 s with
+# the release core on the same 18k-record vault (#5391). The bytes it produces
+# do not depend on the optimisation level.
+[profile.dev.package.libsodium-sys-stable]
+opt-level = 3
