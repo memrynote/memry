@@ -481,6 +481,13 @@ impl HttpClient {
             (409, "AUTH_DEVICE_LIMIT_REACHED") => {
                 Outcome::Fatal(ApiError::DeviceLimitReached { message })
             }
+            // #5373: the plan's vault cap, from any route that checks it
+            // (`POST /sync/vaults` and every vault-scoped `/sync/*`). The
+            // shell offers a larger plan; retrying changes nothing.
+            (402, "SYNC_VAULT_LIMIT_EXCEEDED") => Outcome::Fatal(ApiError::PaymentRequired {
+                code: body.code,
+                message,
+            }),
             (403, "PLATFORM_WRITES_DISABLED") => {
                 Outcome::Fatal(ApiError::WritesDisabled { message })
             }

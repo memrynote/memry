@@ -78,6 +78,8 @@ interface IpcOrigin {
 
 const ORIGIN_NETWORK = 'network'
 export const ORIGIN_LOCAL = 'local'
+/** Store meta key of the seed-duplicate repair's per-note marker (#5289). */
+const SEED_REPAIR_META_KEY = 'seedDuplicateRepairedAt'
 /**
  * An update this size or smaller holds no items and no deletes: an empty doc
  * encodes to 2 bytes, and any struct or delete adds more than 2.
@@ -723,6 +725,20 @@ export class CrdtProvider {
   /** The open store, for read-only scans. Null in in-memory mode. */
   readOnlyStore(): CrdtStoreReader | null {
     return this.persistence ? readOnlyStore(this.persistence) : null
+  }
+
+  /**
+   * Whether the seed-duplicate repair (#5289) already removed a copy from this
+   * note. Kept in the note's store meta, which a purge drops with the note.
+   * True with no store, so an in-memory session never repairs.
+   */
+  async seedRepairDone(noteId: string): Promise<boolean> {
+    if (!this.persistence) return true
+    return (await this.persistence.getMeta(noteId, SEED_REPAIR_META_KEY)) !== undefined
+  }
+
+  async markSeedRepairDone(noteId: string): Promise<void> {
+    await this.persistence?.setMeta(noteId, SEED_REPAIR_META_KEY, Date.now())
   }
 
   /**

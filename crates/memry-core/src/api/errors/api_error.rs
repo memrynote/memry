@@ -101,13 +101,13 @@ pub enum ApiError {
     #[error("invalid client identity: {what}")]
     InvalidClientIdentity { what: String },
 
-    /// A 402 from an account route that needs a plan: `POST /sync/vaults`
+    /// A 402 that needs a plan. Any route answers `SYNC_VAULT_LIMIT_EXCEEDED`
+    /// with it when the plan's vault slots are full. `POST /sync/vaults`
     /// answers it with no code when the account has no active sync plan, and
-    /// with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full;
-    /// `POST /auth/linking/initiate` answers it with `SYNC_PAYMENT_REQUIRED`.
-    /// The shell offers a plan; retrying changes nothing. Raised only by the
-    /// routes that name it, so the sync engine's 402 handling
-    /// (`sync::policy`, which reads `Status`) is unchanged.
+    /// `POST /auth/linking/initiate` with `SYNC_PAYMENT_REQUIRED`. The shell
+    /// offers a plan; retrying changes nothing. A `SYNC_PAYMENT_REQUIRED` from
+    /// a sync route stays a `Status`, which is what `sync::policy` reads
+    /// to demote the entitlement.
     #[error("sync needs a plan: {message}")]
     PaymentRequired {
         code: Option<String>,

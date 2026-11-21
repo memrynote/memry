@@ -340,6 +340,7 @@ import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 import { enqueueJournalDelete, initializeJournalCrdt } from '../journal/runtime-effects'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { repairSeedDuplicates } from './crdt-seed-duplicates'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 mocks.vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-vault-'))
@@ -1471,6 +1472,64 @@ describe('CrdtProvider', () => {
       expect(body).not.toContain('old text')
       const reread = await store.getYDoc(dayId)
       expect(reread.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()).not.toContain('old text')
+    })
+  })
+
+  describe('the seed-duplicate repair (#5289)', () => {
+    async function seedDuplicatedDoc(): Promise<Y.Doc> {
+      const { markdownToYFragment } =
+        await vi.importActual<typeof BlockNoteConverter>('./blocknote-converter')
+      const [server, device] = [new Y.Doc(), new Y.Doc()]
+      for (const doc of [server, device]) {
+        await markdownToYFragment('Pack.\n\nBook.', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+      }
+      Y.applyUpdate(device, Y.encodeStateAsUpdate(server))
+      return device
+    }
+
+    it('removes the second copy as a local edit: stored, pushed, marked, and no file write', async () => {
+      const stored = await seedDuplicatedDoc()
+      const persistence = mocks.persistenceInstances[0]
+      persistence.getYDoc.mockImplementation(async () => stored)
+      vi.spyOn(provider, 'readOnlyStore').mockReturnValue({
+        docNames: async () => ['note-1'],
+        updates: async () => [Y.encodeStateAsUpdate(stored)]
+      })
+
+      await repairSeedDuplicates(provider)
+
+      expect(queue.enqueue).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+      const pushed = new Y.Doc()
+      Y.applyUpdate(pushed, Y.encodeStateAsUpdate(stored))
+      for (const [, update] of queue.enqueue.mock.calls) Y.applyUpdate(pushed, update)
+      expect(pushed.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(1)
+      expect(persistence.storeUpdate).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+      expect(persistence.setMeta).toHaveBeenCalledWith(
+        'note-1',
+        'seedDuplicateRepairedAt',
+        expect.any(Number)
+      )
+      expect(persistence.setMeta.mock.invocationCallOrder[0]).toBeGreaterThan(
+        persistence.storeUpdate.mock.invocationCallOrder.at(-1)!
+      )
+      expect(mocks.scheduleWriteback).not.toHaveBeenCalled()
+      expect(provider.getDoc('note-1')).toBeUndefined()
+    })
+
+    it('leaves a note it repaired before alone', async () => {
+      const stored = await seedDuplicatedDoc()
+      const persistence = mocks.persistenceInstances[0]
+      persistence.getYDoc.mockImplementation(async () => stored)
+      persistence.getMeta.mockResolvedValue(1_700_000_000_000)
+      vi.spyOn(provider, 'readOnlyStore').mockReturnValue({
+        docNames: async () => ['note-1'],
+        updates: async () => [Y.encodeStateAsUpdate(stored)]
+      })
+
+      await repairSeedDuplicates(provider)
+
+      expect(queue.enqueue).not.toHaveBeenCalled()
+      expect(persistence.setMeta).not.toHaveBeenCalled()
     })
   })
 
