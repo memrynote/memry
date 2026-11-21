@@ -3,7 +3,7 @@
 //! Clocks come from the payload, so `sync_items.clock` is the Electron clock re-serialised;
 //! stage check 5 compares it with the source text.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
@@ -51,6 +51,22 @@ impl ImportWriter {
         stmt.query_map([item_type], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(failed)?
             .collect::<Result<_, _>>()
+            .map_err(failed)
+    }
+
+    /// The staged payload of one record, for the `sync_unknown_fields` importer.
+    pub fn record_payload(
+        &self,
+        item_type: &str,
+        item_id: &str,
+    ) -> Result<Option<String>, StorageError> {
+        self.data
+            .query_row(
+                "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                [item_type, item_id],
+                |row| row.get(0),
+            )
+            .optional()
             .map_err(failed)
     }
 
