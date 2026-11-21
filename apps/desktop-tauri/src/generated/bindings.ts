@@ -123,6 +123,12 @@ export const commands = {
 	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
 	 */
 	calendarEventkitRequestAccess: () => __TAURI_INVOKE<EventKitAuthorizationStatus>("calendar_eventkit_request_access"),
+	/**  `calendar:refresh-ics`: a feed failure is already recorded on the source, which shows it. */
+	calendarRefreshIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_refresh_ics", { input }),
+	/**  `calendar:subscribe-ics`. */
+	calendarSubscribeIcs: (input: IcsSubscribeInput) => __TAURI_INVOKE<IcsMutationView>("calendar_subscribe_ics", { input }),
+	/**  `calendar:unsubscribe-ics`. */
+	calendarUnsubscribeIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_unsubscribe_ics", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -346,6 +352,8 @@ export const commands = {
 	 *  on the size, the type or the note id before any byte is sent. Returns the upload's id.
 	 */
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
+	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
+	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -1741,10 +1749,46 @@ export type ExistingTagView = {
 	usage: number,
 };
 
+/**  Why an export wrote nothing; `cancelled` when the user dismissed the save dialog. */
+export type ExportFailure = "cancelled" | "not_found" | "failed";
+
+/**
+ *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
+ *  webview never names the file to write, so the command always asks the user through the save
+ *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
+ *  [`export_html_to`], reachable in process only.
+ */
+export type ExportNoteInput = {
+	noteId: string,
+	/**  On when absent. */
+	includeMetadata?: boolean | null,
+	/**  The PDF page; the HTML export ignores it. */
+	pageSize?: PageSize | null,
+	/**  Off when absent. */
+	includeTaskMarkers?: boolean | null,
+};
+
+/**  `{ success: true, path }` or `{ success: false, code, error }`. */
+export type ExportResult = {
+	success: boolean,
+	path?: string | null,
+	code?: ExportFailure | null,
+	/**  Localized, for the failure toast. */
+	error?: string | null,
+};
+
 export type FailureDetail = {
 	httpStatus?: number | null,
 	serverCode?: string | null,
 	retryable?: boolean | null,
+};
+
+/**  `IcsCalendarFeedSummary`: what this device mirrored from a feed. */
+export type FeedSummary = {
+	eventCount: number,
+	firstStartAt: string | null,
+	lastStartAt: string | null,
 };
 
 /**
@@ -2143,6 +2187,29 @@ export type HomePageView = {
 };
 
 export type HttpMethod = "GET" | "POST";
+
+/**  `IcsFeedErrorCode` (`packages/contracts/src/calendar-api.ts`). */
+export type IcsFeedCode = "invalid_url" | "unreachable" | "timeout" | "not_found" | "unauthorized" | "http_error" | "too_large" | "not_a_calendar" | "too_many_redirects" | "unsupported_redirect";
+
+/**  `IcsCalendarMutationResponse`, with the source's id where the handlers send the whole row. */
+export type IcsMutationView = {
+	success: boolean,
+	sourceId: string | null,
+	errorCode?: IcsFeedCode | null,
+	error?: string | null,
+	summary?: FeedSummary | null,
+};
+
+/**  `IcsCalendarSourceRequestSchema`. */
+export type IcsSourceInput = {
+	sourceId: string,
+};
+
+/**  `SubscribeIcsCalendarSchema`. */
+export type IcsSubscribeInput = {
+	url: string,
+	title?: string | null,
+};
 
 /**  `ImpactQuery`. */
 export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };
@@ -3092,6 +3159,8 @@ export type OptionInput = {
 	color: string,
 	default?: boolean | null,
 };
+
+export type PageSize = "A4" | "Letter" | "Legal";
 
 /**  `PauseSyncResult`. */
 export type PauseSyncResult = {

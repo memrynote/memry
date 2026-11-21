@@ -49,6 +49,7 @@ const commands = vi.hoisted(() => ({
   notesUploadAttachmentBegin: vi.fn(),
   notesUploadAttachmentAbort: vi.fn(),
   notesDownloadAttachmentFromUrl: vi.fn(),
+  notesExportHtml: vi.fn(),
   notesGetVersions: vi.fn(),
   notesGetVersion: vi.fn(),
   notesRestoreVersion: vi.fn(),
@@ -1183,6 +1184,28 @@ describe('notes-service', () => {
       expect(slice).not.toHaveBeenCalled()
       expect(invokeBinary).not.toHaveBeenCalled()
       expect(commands.notesUploadAttachmentAbort).not.toHaveBeenCalled()
+    })
+  })
+
+  it('exports HTML through Rust and keeps why nothing was written', async () => {
+    commands.notesExportHtml.mockResolvedValueOnce({ success: true, path: '/out/Plan.html' })
+    await expect(
+      notesService.exportHtml({ noteId: 'note-1', includeMetadata: false })
+    ).resolves.toEqual({ success: true, path: '/out/Plan.html' })
+    expect(commands.notesExportHtml).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      includeMetadata: false
+    })
+
+    commands.notesExportHtml.mockResolvedValueOnce({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
+    })
+    await expect(notesService.exportHtml({ noteId: 'note-1' })).resolves.toEqual({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
     })
   })
 
