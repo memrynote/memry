@@ -18,6 +18,8 @@ use tokio::sync::Notify;
 const TOOLS: &str = include_str!("../../../packages/contracts/test-vectors/agent-mcp/tools.json");
 const EXAMPLES: &str =
     include_str!("../../../packages/contracts/test-vectors/agent-mcp/examples.json");
+const DESKTOP_OPS: &str =
+    include_str!("../../../packages/contracts/test-vectors/agent-mcp/desktop-ops.json");
 
 type Calls = Arc<Mutex<Vec<(String, Value, CallContext)>>>;
 
@@ -141,8 +143,7 @@ fn the_catalogue_is_electrons_tools_list() {
 }
 
 /// Every example of `examples.json` runs its handler, and every invalid variant is refused before
-/// the handler (and before the gate), with the SDK's error frame. A variant that breaks only zod
-/// refinements gets the SDK's whole text.
+/// the handler (and before the gate) with the SDK's text of zod's issues.
 #[tokio::test]
 async fn every_example_call_gets_electrons_verdict() {
     let file: Value = serde_json::from_str(EXAMPLES).unwrap();
@@ -163,23 +164,56 @@ async fn every_example_call_gets_electrons_verdict() {
             assert!(ran && !is_error(&result), "{label}: {}", text(&result));
         } else {
             assert!(!ran && is_error(&result), "{label} ran");
-            let frame = format!(
-                "MCP error -32602: Input validation error: Invalid arguments for tool {tool}: "
+            assert_eq!(
+                text(&result),
+                case["errorText"].as_str().unwrap(),
+                "{label}"
             );
-            assert!(case["errorText"].as_str().unwrap().starts_with(&frame));
+        }
+    }
+}
+
+/// Every desktop API operation case of `examples.json` gets Electron's `assertDesktopApiArgs`
+/// verdict: a valid call reaches the host, a refused one answers the same `{code, message,
+/// details}` before the write gate.
+#[tokio::test]
+async fn every_desktop_operation_case_gets_electrons_verdict() {
+    let file: Value = serde_json::from_str(EXAMPLES).unwrap();
+    let ops: Value = serde_json::from_str(DESKTOP_OPS).unwrap();
+    let tool_of = |operation: &str| {
+        ops["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|op| op["operation"] == operation)
+            .map(|op| op["tool"].as_str().unwrap().to_owned())
+            .unwrap()
+    };
+    let host = Arc::new(FakeHost::default());
+    let registry = registry(host.clone());
+    let gate = FakeGate::approving();
+    registry.set_write_gate(Some(gate.clone()));
+    let cases = file["operations"].as_array().unwrap();
+    assert_eq!(cases.len(), 929);
+    for case in cases {
+        let operation = case["operation"].as_str().unwrap();
+        let tool = tool_of(operation);
+        host.calls.lock().unwrap().clear();
+        gate.seen.lock().unwrap().clear();
+        let call = json!({ "operation": operation, "args": case["args"] });
+        let result = registry.call(&tool, args(call), &turn()).await;
+        let label = format!("{operation} ({})", case["variant"]);
+        let ran = host.calls.lock().unwrap().len() == 1;
+        if case["valid"] == json!(true) {
+            assert!(ran && !is_error(&result), "{label}: {}", text(&result));
+        } else {
+            assert!(!ran && is_error(&result), "{label} ran");
             assert!(
-                text(&result).starts_with(&frame),
-                "{label}: {}",
-                text(&result)
+                gate.seen.lock().unwrap().is_empty(),
+                "{label} reached the gate"
             );
-            let issues = case["issues"].as_array().unwrap();
-            if issues.iter().all(|issue| issue["code"] == "custom") {
-                assert_eq!(
-                    text(&result),
-                    case["errorText"].as_str().unwrap(),
-                    "{label}"
-                );
-            }
+            let reply: Value = serde_json::from_str(&text(&result)).unwrap();
+            assert_eq!(reply, case["error"], "{label}");
         }
     }
 }
@@ -322,6 +356,32 @@ mod gate {
         })));
         let reply = refused(&registry, &turn()).await;
         assert_eq!(reply["code"], "VALIDATION");
+        assert!(host.calls.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn an_edited_desktop_write_is_held_to_the_operation_arguments() {
+        let host = Arc::new(FakeHost::default());
+        let registry = registry(host.clone());
+        registry.set_write_gate(Some(Arc::new(FakeGate {
+            decision: || GateDecision::Approved {
+                args: Some(json!({ "operation": "canvas.delete", "args": [42] })),
+            },
+            seen: Mutex::default(),
+        })));
+        let call = json!({ "operation": "canvas.delete", "args": ["canvas-1"] });
+        let result = registry
+            .call("vault_desktop_write", args(call), &turn())
+            .await;
+        let reply: Value = serde_json::from_str(&text(&result)).unwrap();
+        assert_eq!(reply["code"], "VALIDATION");
+        let message = reply["message"].as_str().unwrap();
+        assert!(
+            message.starts_with(
+                "canvas.delete arguments do not match its schema: id: expected string, got 42."
+            ),
+            "{message}"
+        );
         assert!(host.calls.lock().unwrap().is_empty());
     }
 

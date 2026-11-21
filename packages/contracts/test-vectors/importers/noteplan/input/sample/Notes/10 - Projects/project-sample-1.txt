@@ -1,0 +1,14 @@
+---
+type: area
+status: Active
+owner: Web
+icon: truck
+icon-color: purple-600
+---
+# Project Aurora: Website Redesign
+
+## Tasks
+* Project kickoff >2025-11-03
+	* Confirm stakeholders
+	+ Agenda shared
+* Measurement setup

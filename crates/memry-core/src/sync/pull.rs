@@ -28,9 +28,10 @@
 //! - **A `/sync/pull` body that is not a pull envelope refuses the run and
 //!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
 //!   item: the page must still be there to re-pull once the server is fixed.
-//! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
-//!   overrides the declared `operation`, and an id in `deleted` with no ref row
-//!   has no type on the wire at all (§5.12.1).
+//! - **A tombstone's body is never applied** (§5.12), but its envelope opens
+//!   and its signature verifies like any record's before it deletes anything
+//!   (§5.14). A present `deletedAt` overrides the declared `operation`, and an
+//!   id in `deleted` with no ref row has no type on the wire at all (§5.12.1).
 //!
 //! The loop never parses a payload into a typed struct: it hands the decrypted
 //! bytes to [`super::apply::apply_page`], which chooses the item's merge
@@ -38,6 +39,7 @@
 //! (chapter 13 §13.2). **This file must not learn an item type's name**: the
 //! one dispatch lives there, so that a route added later cannot forget it.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -117,6 +119,8 @@ pub struct PullLoop {
     orphans: Arc<OrphanRepair>,
     /// The keys purged tombstones verify under ([`PullLoop::with_signer_keys`]).
     signer_keys: Option<Arc<dyn SignerKeys>>,
+    /// The vault a delete reads a note's file in ([`PullLoop::with_vault_root`]).
+    vault_root: Option<PathBuf>,
 }
 
 impl PullLoop {
@@ -141,6 +145,7 @@ impl PullLoop {
             stale_cursor: None,
             orphans: Arc::default(),
             signer_keys: None,
+            vault_root: None,
         }
     }
 
@@ -225,6 +230,14 @@ impl PullLoop {
     /// stored plain and pending until `Vault::set_at_rest_key` seals them.
     pub fn with_at_rest_key(mut self, key: AtRestKey) -> Self {
         self.at_rest = key;
+        self
+    }
+
+    /// The vault folder whose files hold the notes' bodies (desktop). A delete
+    /// over a body log that does not replay keeps the note's file text
+    /// instead ([`super::delete_keep`], #5343).
+    pub fn with_vault_root(mut self, root: PathBuf) -> Self {
+        self.vault_root = Some(root);
         self
     }
 
@@ -408,17 +421,20 @@ impl PullLoop {
         // keep the order the server sent them in. `sort_by_key` is stable.
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
 
-        // §5.12.1: an id in `deleted` with no ref row, and for which the pull
-        // returned no typed item either, has no type on the wire. It is not an
-        // error and it does not stop the page.
-        let untyped: Vec<String> = page
+        // §5.12.1 (#5340): an id in `deleted` deletes only through a verified
+        // typed delete or an attested marker. A bare id is unsigned, so it
+        // deletes nothing, as in Electron (`changes-page.ts:38` only fetches
+        // it); an item the pull returned and refused never falls through here.
+        let bare = page
             .deleted
             .iter()
-            .filter(|id| {
-                !page.ref_ids.contains(id) && !typed_covers(&pending, id) && !named.contains(*id)
-            })
-            .cloned()
-            .collect();
+            .filter(|id| !typed_covers(&pending, id) && !named.contains(*id))
+            .count();
+        if bare > 0 {
+            eprintln!(
+                "memry-core: {bare} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored"
+            );
+        }
 
         let bodies = self.fetch_note_bodies(&page, &pending).await?;
         // Only a loop that lands bodies owes them: its caller is the one that
@@ -427,7 +443,7 @@ impl PullLoop {
         let mut feed = AppliedFeed::default();
         let landed = async {
             let outcomes = self
-                .apply_all(pending, untyped, owe_bodies, &mut feed)
+                .apply_all(pending, Vec::new(), owe_bodies, &mut feed)
                 .await?;
             report.applied += outcomes.applied;
             report.deleted += outcomes.deleted;

@@ -24,6 +24,7 @@ impl Registry {
             Arc::new(super::bear::BearImporter),
             Arc::new(super::csv::CsvImporter),
             Arc::new(super::google_keep::GoogleKeepImporter),
+            Arc::new(super::noteplan::NotePlanImporter),
             Arc::new(super::roam::RoamImporter),
         ] {
             registry

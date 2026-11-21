@@ -18,8 +18,8 @@ use memry_desktop::import::assets::{
 use memry_desktop::import::csv::{CsvImporter, map_rows, parse_csv, steps};
 use memry_desktop::import::markdown::{MarkdownImporter, parse_frontmatter};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedNote, Importer,
-    MAX_SOURCE_BYTES, SinkError,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedJournalEntry, ImportedNote,
+    ImportedTask, Importer, JournalEntry, MAX_SOURCE_BYTES, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -292,6 +292,42 @@ impl ImportSink for CancelOnSave {
 
     fn create_note(&self, note: ImportedNote) -> Result<(), SinkError> {
         self.inner.create_note(note)
+    }
+
+    fn create_note_as_written(&self, note: ImportedNote) -> Result<(), SinkError> {
+        self.inner.create_note_as_written(note)
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        self.inner.inbox_project_id()
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        self.inner.nested_subtasks()
+    }
+
+    fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
+        self.inner.create_task(task)
+    }
+
+    fn complete_task(&self, id: &str, completed_at: Option<&str>) -> Result<(), SinkError> {
+        self.inner.complete_task(id, completed_at)
+    }
+
+    fn archive_task(&self, id: &str) -> Result<(), SinkError> {
+        self.inner.archive_task(id)
+    }
+
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        self.inner.journal_entry_id(date)
+    }
+
+    fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {
+        self.inner.read_journal_entry(date)
+    }
+
+    fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError> {
+        self.inner.create_journal_entry(entry)
     }
 }
 
