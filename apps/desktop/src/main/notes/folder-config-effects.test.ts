@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
-import { markPullCompleted, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
+import { markRecordsPulled, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 
 const mocks = vi.hoisted(() => ({
@@ -132,7 +132,7 @@ describe('a folder found on disk', () => {
   })
 
   it('after the first pull, is queued at once', () => {
-    markPullCompleted()
+    markRecordsPulled()
 
     syncFolderConfigDiscovered('Work')
 
@@ -148,7 +148,7 @@ describe('a folder found on disk', () => {
 
 describe('backfillFolderConfigs', () => {
   it('queues folders that exist on disk but have no row, and is a no-op after', async () => {
-    markPullCompleted()
+    markRecordsPulled()
     mocks.folders = [
       { path: 'Projects', icon: null },
       { path: 'Projects/2026', icon: null }

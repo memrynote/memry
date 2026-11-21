@@ -27,7 +27,7 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
-import { markPullCompleted } from '@memry/sync-client/sync-eligibility'
+import { markPullCompleted, markRecordsPulled } from '@memry/sync-client/sync-eligibility'
 import { isKnownNote } from '../note-body-apply'
 import { listPackSeeded, packSeededKey } from './pack-seeded-docs'
 
@@ -449,7 +449,7 @@ export class FullSyncRunner {
       if (pullDelivered) {
         // Before the seed: a folder found after this point has no remote row
         // left to arrive, so it is pushed at once (folder-config-effects).
-        markPullCompleted()
+        markRecordsPulled()
         this.bootstrapPullSucceeded = true
         // Without a CRDT store there is no body phase to wait for.
         if (this.ctx.deps.crdtProvider == null) {
@@ -520,6 +520,7 @@ export class FullSyncRunner {
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
+      if (pullDelivered) markPullCompleted()
       // The seed-duplicate repair (#5289) runs only when every body the server
       // holds is merged here, so a body still downloading is never judged.
       const provider = this.ctx.deps.crdtProvider

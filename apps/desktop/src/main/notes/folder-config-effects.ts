@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { utcNow } from '@memry/shared/utc'
-import { hasCompletedPullSinceStart } from '@memry/sync-client/sync-eligibility'
+import { hasPulledRecordsSinceStart } from '@memry/sync-client/sync-eligibility'
 import { getDatabase } from '../database'
 import { getFolders } from '../vault/notes'
 import { getCurrentVaultPath } from '../store'
@@ -53,7 +53,7 @@ function recordFoundFolder(
   db: NonNullable<ReturnType<typeof getDatabase>>,
   folderPath: string
 ): void {
-  if (hasCompletedPullSinceStart()) return syncFolderConfigSet(folderPath, null)
+  if (hasPulledRecordsSinceStart()) return syncFolderConfigSet(folderPath, null)
   const now = utcNow()
   db.insert(folderConfigs)
     .values({ path: folderPath, icon: null, createdAt: now, modifiedAt: now })
