@@ -23,6 +23,8 @@ use memry_core::seams::transport::{
 use memry_core::sync::bootstrap::BootstrapClient;
 use memry_core::sync::diagnostics::{INTERIM_INTERVAL, RunDiagnostics};
 
+type Answers = Vec<Result<HttpResponse, TransportError>>;
+
 #[derive(Default)]
 struct Captured(Mutex<Vec<CoreDiagnostic>>);
 
@@ -112,86 +114,103 @@ impl Transport for TimedTransport {
     }
 }
 
+/// A failed first attempt, then a 200: what the ladder counts for each way the
+/// first attempt can fail.
 #[tokio::test(start_paused = true)]
-async fn a_429_then_200_counts_the_retry_the_429_and_the_wait() {
-    let transport = FakeTransport::new(vec![
-        response_with_header(
-            429,
-            r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
-            ("retry-after", "3"),
+async fn a_failed_attempt_then_200_counts_the_retry_and_what_failed() {
+    let cases: Vec<(&str, Answers, RequestStats, Vec<u64>)> = vec![
+        (
+            "429 waits out its Retry-After",
+            vec![
+                response_with_header(
+                    429,
+                    r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+                    ("retry-after", "3"),
+                ),
+                response(200, "{}"),
+            ],
+            RequestStats {
+                rate_limited: 1,
+                rate_limit_wait_ms: 3_000,
+                ..RequestStats::default()
+            },
+            vec![3_000],
         ),
-        response(200, "{}"),
-    ]);
+        (
+            "5xx backs off without a rate-limit wait",
+            vec![
+                error_response(503, "INTERNAL_ERROR", "overloaded"),
+                response(200, "{}"),
+            ],
+            RequestStats {
+                server_errors: 1,
+                ..RequestStats::default()
+            },
+            vec![2_000],
+        ),
+        (
+            "a dropped connection is a transport error",
+            vec![Err(TransportError::Offline), response(200, "{}")],
+            RequestStats {
+                transport_errors: 1,
+                ..RequestStats::default()
+            },
+            vec![2_000],
+        ),
+    ];
+    for (label, script, failure, slept) in cases {
+        let (sink, diagnostics) = recorder();
+        let sleeper = RecordingSleeper::new();
+        let http = diagnostics.observe(&client(FakeTransport::new(script), sleeper.clone()));
+
+        diagnostics
+            .phase(DiagnosticPhase::Refs, async {
+                http.send(ApiRequest::get("/sync/changes")).await.unwrap()
+            })
+            .await;
+
+        assert_eq!(sleeper.slept(), slept, "{label}: the ladder did back off");
+        assert_eq!(
+            only_final(&sink, DiagnosticPhase::Refs),
+            RequestStats {
+                requests: 2,
+                retries: 1,
+                ..failure
+            },
+            "{label}"
+        );
+    }
+}
+
+/// A pause a caller takes outside the ladder (the bodies pass, the pack
+/// download) is reported through the client it holds, and counts as a retry
+/// and a rate-limit wait without being a request.
+#[tokio::test(start_paused = true)]
+async fn a_429_pause_outside_the_ladder_counts_a_retry_and_its_wait() {
     let (sink, diagnostics) = recorder();
+    let transport = FakeTransport::new(vec![response(200, "{}")]);
     let http = diagnostics.observe(&client(transport, RecordingSleeper::new()));
 
     diagnostics
-        .phase(DiagnosticPhase::Refs, async {
-            http.send(ApiRequest::get("/sync/changes")).await.unwrap()
+        .phase(DiagnosticPhase::BodyPacks, async {
+            http.send(ApiRequest::get("/sync/packs")).await.unwrap();
+            http.paused(4_000);
+            http.paused(1_000);
         })
         .await;
 
     assert_eq!(
-        only_final(&sink, DiagnosticPhase::Refs),
+        only_final(&sink, DiagnosticPhase::BodyPacks),
         RequestStats {
-            requests: 2,
-            retries: 1,
-            rate_limited: 1,
-            rate_limit_wait_ms: 3_000,
+            requests: 1,
+            retries: 2,
+            rate_limit_wait_ms: 5_000,
             ..RequestStats::default()
         }
     );
-}
 
-#[tokio::test(start_paused = true)]
-async fn a_5xx_then_200_counts_the_retry_without_a_rate_limit_wait() {
-    let transport = FakeTransport::new(vec![
-        error_response(503, "INTERNAL_ERROR", "overloaded"),
-        response(200, "{}"),
-    ]);
-    let (sink, diagnostics) = recorder();
-    let sleeper = RecordingSleeper::new();
-    let http = diagnostics.observe(&client(transport, sleeper.clone()));
-
-    diagnostics
-        .phase(DiagnosticPhase::Metadata, async {
-            http.send(ApiRequest::post("/sync/pull")).await.unwrap()
-        })
-        .await;
-
-    assert_eq!(sleeper.slept(), vec![2_000], "the ladder did back off");
-    assert_eq!(
-        only_final(&sink, DiagnosticPhase::Metadata),
-        RequestStats {
-            requests: 2,
-            retries: 1,
-            server_errors: 1,
-            ..RequestStats::default()
-        }
-    );
-}
-
-#[tokio::test(start_paused = true)]
-async fn a_dropped_connection_then_200_counts_a_transport_error_and_a_retry() {
-    let transport = FakeTransport::new(vec![Err(TransportError::Offline), response(200, "{}")]);
-    let (sink, diagnostics) = recorder();
-    let http = diagnostics.observe(&client(transport, RecordingSleeper::new()));
-
-    diagnostics
-        .phase(DiagnosticPhase::Refs, async {
-            http.send(ApiRequest::get("/sync/changes")).await.unwrap()
-        })
-        .await;
-
-    assert_eq!(
-        only_final(&sink, DiagnosticPhase::Refs),
-        RequestStats {
-            requests: 2,
-            retries: 1,
-            transport_errors: 1,
-            ..RequestStats::default()
-        }
-    );
+    // A client nobody observes takes the call and does nothing.
+    client(FakeTransport::new(vec![]), RecordingSleeper::new()).paused(1_000);
 }
 
 #[tokio::test(start_paused = true)]
@@ -301,8 +320,6 @@ async fn without_a_sink_nothing_is_counted_and_nothing_breaks() {
 
     assert_eq!(status, 200);
 }
-
-type Answers = Vec<Result<HttpResponse, TransportError>>;
 
 fn granted() -> Result<HttpResponse, TransportError> {
     response(

@@ -316,6 +316,14 @@ impl HttpClient {
         }
     }
 
+    /// Reports that the caller is about to wait `wait_ms` for a 429 outside
+    /// the retry ladder. A no-op on a client nobody observes.
+    pub fn paused(&self, wait_ms: u64) {
+        if let Some(observer) = &self.observer {
+            observer.paused(wait_ms);
+        }
+    }
+
     fn retrying(&self, answered: Option<u16>, wait_ms: u64) {
         if let Some(observer) = &self.observer {
             observer.retry(answered, wait_ms);

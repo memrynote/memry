@@ -24055,8 +24055,9 @@ public struct RequestStats: Equatable, Hashable {
     public var p95Ms: UInt32
     public var maxMs: UInt32
     /**
-     * Attempts repeated after a retryable answer or a transport failure, plus
-     * documents put back after a 429 pause.
+     * Attempts repeated after a retryable answer or a transport failure by
+     * the retry ladder, plus each 429 pause taken outside it (documents put
+     * back by the bodies pass, packs waiting in the pack download).
      */
     public var retries: UInt32
     /**
@@ -24064,8 +24065,8 @@ public struct RequestStats: Equatable, Hashable {
      */
     public var rateLimited: UInt32
     /**
-     * Time slept waiting out a 429, in the retry ladder and in the bodies
-     * pass's pause.
+     * Time slept waiting out a 429: in the retry ladder, and in the pauses
+     * taken outside it.
      */
     public var rateLimitWaitMs: UInt64
     /**
@@ -24081,15 +24082,16 @@ public struct RequestStats: Equatable, Hashable {
     // declare one manually.
     public init(requests: UInt32, p50Ms: UInt32, p95Ms: UInt32, maxMs: UInt32, 
         /**
-         * Attempts repeated after a retryable answer or a transport failure, plus
-         * documents put back after a 429 pause.
+         * Attempts repeated after a retryable answer or a transport failure by
+         * the retry ladder, plus each 429 pause taken outside it (documents put
+         * back by the bodies pass, packs waiting in the pack download).
          */retries: UInt32, 
         /**
          * Attempts the server answered 429.
          */rateLimited: UInt32, 
         /**
-         * Time slept waiting out a 429, in the retry ladder and in the bodies
-         * pass's pause.
+         * Time slept waiting out a 429: in the retry ladder, and in the pauses
+         * taken outside it.
          */rateLimitWaitMs: UInt64, 
         /**
          * Attempts the server answered 5xx.
@@ -30577,10 +30579,10 @@ public enum CoreDiagnostic: Equatable, Hashable {
     /**
      * A bodies pass probed its documents and is about to pull the rest.
      * `concurrency` is the streams it runs, `documents` the window, and
-     * `up_to_date` those the probe showed current, which are skipped. A drain
-     * round probes chunk by chunk and reports 0.
+     * `up_to_date` those the probe showed current, which are skipped. `None`
+     * when the pass never measures it: a drain round probes chunk by chunk.
      */
-    case bodyPassStarted(elevated: Bool, concurrency: UInt32, documents: UInt32, upToDate: UInt32
+    case bodyPassStarted(elevated: Bool, concurrency: UInt32, documents: UInt32, upToDate: UInt32?
     )
     /**
      * A phase's requests so far. `finished` is `true` once the phase ended,
@@ -30612,7 +30614,7 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
         case 1: return .bootstrapOpened(outcome: try FfiConverterTypeBootstrapOutcome.read(from: &buf), status: try FfiConverterUInt16.read(from: &buf)
         )
         
-        case 2: return .bodyPassStarted(elevated: try FfiConverterBool.read(from: &buf), concurrency: try FfiConverterUInt32.read(from: &buf), documents: try FfiConverterUInt32.read(from: &buf), upToDate: try FfiConverterUInt32.read(from: &buf)
+        case 2: return .bodyPassStarted(elevated: try FfiConverterBool.read(from: &buf), concurrency: try FfiConverterUInt32.read(from: &buf), documents: try FfiConverterUInt32.read(from: &buf), upToDate: try FfiConverterOptionUInt32.read(from: &buf)
         )
         
         case 3: return .phaseStats(phase: try FfiConverterTypeDiagnosticPhase.read(from: &buf), finished: try FfiConverterBool.read(from: &buf), elapsedMs: try FfiConverterUInt64.read(from: &buf), requests: try FfiConverterTypeRequestStats.read(from: &buf)
@@ -30637,7 +30639,7 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
             FfiConverterBool.write(elevated, into: &buf)
             FfiConverterUInt32.write(concurrency, into: &buf)
             FfiConverterUInt32.write(documents, into: &buf)
-            FfiConverterUInt32.write(upToDate, into: &buf)
+            FfiConverterOptionUInt32.write(upToDate, into: &buf)
             
         
         case let .phaseStats(phase,finished,elapsedMs,requests):

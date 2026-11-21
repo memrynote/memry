@@ -62,12 +62,8 @@ struct LogTests {
         let sink = Sink()
         let log = sink.log()
         log.notice("bodies phase", .metric("requests", 812), .metric("p50_ms", 140), .status(429))
-        log.info("probe", .count(1), .count(2), .count(3), .count(4))
-        #expect(sink.lines.map { $0.text } == [
-            "bodies phase [requests=812 p50_ms=140 status=429]",
-            "probe [count=1 count=2 count=3 count=4]"
-        ])
-        #expect(sink.lines.map { $0.level.rawValue } == [OSLogType.default.rawValue, OSLogType.info.rawValue])
+        #expect(sink.lines.map { $0.text } == ["bodies phase [requests=812 p50_ms=140 status=429]"])
+        #expect(sink.lines.map { $0.level.rawValue } == [OSLogType.default.rawValue])
     }
 
     @Test("every level reaches the sink as itself")

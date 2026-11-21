@@ -93,7 +93,7 @@ impl VaultSync {
             elevated,
             concurrency: count(workers.min(due.len())),
             documents: count(due.len()),
-            up_to_date: 0,
+            up_to_date: None,
         });
         let round = diagnostics
             .phase(

@@ -177,6 +177,7 @@ fn finished_requests(events: &[CoreDiagnostic], phase: DiagnosticPhase) -> u32 {
     counts[0]
 }
 
+// Registers the process-global sink, so this must stay the binary's only test.
 #[tokio::test]
 async fn the_registered_sink_hears_a_first_sync_and_a_drain_round_and_counts_only_their_requests() {
     let sink = Arc::new(Captured::default());
@@ -252,7 +253,7 @@ async fn the_registered_sink_hears_a_first_sync_and_a_drain_round_and_counts_onl
                 elevated: true,
                 concurrency: 2,
                 documents: 2,
-                up_to_date: 0,
+                up_to_date: None,
             },
         ],
         "{events:?}"

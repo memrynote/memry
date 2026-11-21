@@ -1,15 +1,7 @@
 import MemryCore
 
-// #5215. The Rust core writes no log of its own: it hands this sink typed
-// numbers about a sync run (`CoreDiagnostic` has no string in it), and the
-// words on each line are written here, one fixed `StaticString` per case. So
-// what the core reports can reach `diagnostics.log` and a feedback email, but
-// it cannot carry a note id, a title, a path, a key or a server message, and
-// that is true by the shape of the type, not by anyone remembering it.
-//
-// Every line is `.notice`, the level that persists. Volume is the core's to
-// bound: a phase reports once when it ends and at most every two minutes while
-// it runs, and nothing is reported per request.
+// #5215. Maps the core's typed `CoreDiagnostic`s to fixed `Log.sync` lines; the
+// privacy argument is in the core's `seams/diagnostics.rs`.
 
 /// Writes the core's ``CoreDiagnostic`` events to `Log.sync`.
 final class CoreDiagnostics: DiagnosticsSink {
@@ -29,13 +21,17 @@ final class CoreDiagnostics: DiagnosticsSink {
         case let .bootstrapOpened(outcome, status):
             log.notice(Self.message(for: outcome), .status(Int(status)))
         case let .bodyPassStarted(elevated, concurrency, documents, upToDate):
-            log.notice(
-                "core body pass started",
-                Self.metric("elevated", elevated ? 1 : 0),
-                Self.metric("concurrency", concurrency),
-                Self.metric("documents", documents),
-                Self.metric("up_to_date", upToDate)
-            )
+            let elevated = Self.metric("elevated", elevated ? 1 : 0)
+            let concurrency = Self.metric("concurrency", concurrency)
+            let documents = Self.metric("documents", documents)
+            if let upToDate {
+                log.notice(
+                    "core body pass started", elevated, concurrency, documents,
+                    Self.metric("up_to_date", upToDate)
+                )
+            } else {
+                log.notice("core body pass started", elevated, concurrency, documents)
+            }
         case let .phaseStats(phase, finished, elapsedMs, stats):
             log.notice(
                 Self.message(for: phase, finished: finished),

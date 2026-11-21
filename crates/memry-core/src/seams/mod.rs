@@ -1,6 +1,5 @@
-//! The eight foreign traits the shell fills in. Data-model §D.7 lists eight; the
-//! eighth, `EditorHost`, left with the WebView editor, and `DiagnosticsSink`
-//! (#5215) took the place.
+//! The eight foreign traits the shell fills in. Data-model §D.7's `EditorHost`
+//! left with the WebView editor; `DiagnosticsSink` (#5215) was added.
 //!
 //! **The list is closed.** Adding another requires a written justification in
 //! the specification, because every seam is a place a shell can grow logic the
@@ -19,9 +18,7 @@
 //!
 //! `DiagnosticsSink` is justified by the platform log being the shell's: the core
 //! has no log of its own, and an iOS feedback email can attach only what the
-//! shell wrote. The payload is typed numbers (`CoreDiagnostic` has no string),
-//! so the seam carries no content a shell could mishandle, and it is
-//! synchronous and must not block, as `SyncProgressListener` is.
+//! shell wrote. Its payload and privacy rule are in [`diagnostics`].
 //!
 //! Everything else — merge, clocks, crypto, retry, cursors, schema — is the
 //! core's, and a seam that starts carrying one of those is the bug this list

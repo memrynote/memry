@@ -35,6 +35,7 @@ pub struct RunDiagnostics {
 }
 
 /// One phase's counts so far.
+#[derive(Clone)]
 struct Window {
     phase: DiagnosticPhase,
     started: Instant,
@@ -63,17 +64,18 @@ impl Window {
         }
     }
 
-    fn report(&self, finished: bool) -> CoreDiagnostic {
-        let mut sorted = self.latencies_ms.clone();
-        sorted.sort_unstable();
+    /// Sorts the latencies, so it runs on a window taken out of the lock.
+    fn report(mut self, finished: bool) -> CoreDiagnostic {
+        self.latencies_ms.sort_unstable();
+        let sorted = &self.latencies_ms;
         CoreDiagnostic::PhaseStats {
             phase: self.phase,
             finished,
             elapsed_ms: u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),
             requests: RequestStats {
                 requests: u32::try_from(sorted.len()).unwrap_or(u32::MAX),
-                p50_ms: percentile(&sorted, 50),
-                p95_ms: percentile(&sorted, 95),
+                p50_ms: percentile(sorted, 50),
+                p95_ms: percentile(sorted, 95),
                 max_ms: sorted.last().copied().unwrap_or(0),
                 retries: self.retries,
                 rate_limited: self.rate_limited,
@@ -128,7 +130,8 @@ impl RunDiagnostics {
     /// Runs `work` as `phase`: the requests it makes are counted from zero, and
     /// one final [`CoreDiagnostic::PhaseStats`] reports them when it returns,
     /// unless it made none. A run dropped mid-phase reports no final; its
-    /// interim snapshots stand.
+    /// interim snapshots stand. Not reentrant: a recorder holds one window, so
+    /// a run has one phase at a time.
     pub async fn phase<T>(&self, phase: DiagnosticPhase, work: impl Future<Output = T>) -> T {
         if self.sink.is_none() {
             return work.await;
@@ -168,11 +171,11 @@ impl RequestObserver for RunDiagnostics {
             let now = Instant::now();
             (now.duration_since(window.last_reported) >= INTERIM_INTERVAL).then(|| {
                 window.last_reported = now;
-                window.report(false)
+                window.clone()
             })
         };
-        if let Some(event) = interim {
-            self.emit(event);
+        if let Some(snapshot) = interim {
+            self.emit(snapshot.report(false));
         }
     }
 
@@ -183,5 +186,12 @@ impl RequestObserver for RunDiagnostics {
         if status == Some(429) {
             window.rate_limit_wait_ms += wait_ms;
         }
+    }
+
+    fn paused(&self, wait_ms: u64) {
+        let mut guard = self.lock();
+        let Some(window) = guard.as_mut() else { return };
+        window.retries += 1;
+        window.rate_limit_wait_ms += wait_ms;
     }
 }

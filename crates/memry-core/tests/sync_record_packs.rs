@@ -20,11 +20,13 @@ use memry_core::protocol::http::{
     ClientIdentity, DEFAULT_REQUEST_TIMEOUT_MS, HttpClient, IDLE_TIMEOUT_MS,
 };
 use memry_core::protocol::types::Declaration;
+use memry_core::seams::diagnostics::{CoreDiagnostic, DiagnosticPhase, DiagnosticsSink};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
+use memry_core::sync::diagnostics::RunDiagnostics;
 use memry_core::sync::first_sync::{FirstSync, FirstSyncError, FirstSyncReport};
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::{
@@ -485,6 +487,16 @@ impl Transport for Routes {
 }
 
 fn first_sync(db: &Db, routes: &Arc<Routes>, forged: &[&str]) -> FirstSync {
+    first_sync_observed(db, routes, forged, &RunDiagnostics::silent())
+}
+
+/// [`first_sync`] whose pack downloads are counted by `diagnostics`.
+fn first_sync_observed(
+    db: &Db,
+    routes: &Arc<Routes>,
+    forged: &[&str],
+    diagnostics: &Arc<RunDiagnostics>,
+) -> FirstSync {
     let http = Arc::new(HttpClient::new(
         Arc::clone(routes) as Arc<dyn Transport>,
         "https://sync.example",
@@ -502,8 +514,14 @@ fn first_sync(db: &Db, routes: &Arc<Routes>, forged: &[&str]) -> FirstSync {
         Declaration::subscribed(),
         Arc::new(NoBodies),
     ));
-    let packs = Arc::new(PackBootstrap::new(http, db.clone(), Arc::clone(&bodies)));
-    FirstSync::new(pull, bodies, db.clone()).with_packs(packs)
+    let packs = Arc::new(PackBootstrap::new(
+        diagnostics.observe(&http),
+        db.clone(),
+        Arc::clone(&bodies),
+    ));
+    FirstSync::new(pull, bodies, db.clone())
+        .with_packs(packs)
+        .with_diagnostics(Arc::clone(diagnostics))
 }
 
 async fn run(db: &Db, routes: &Arc<Routes>, forged: &[&str]) -> FirstSyncReport {
@@ -759,6 +777,64 @@ async fn a_504_and_a_429_pause_the_phase_and_the_429_waits_its_retry_after() {
         assert_eq!(live_ids(&db).len(), 70);
         if let Dropped::RateLimited(_) = dropped {
             assert_eq!(pack_gets(&routes), 3 + 7, "{:?}", routes.calls());
+        }
+    }
+}
+
+/// #5215: the pause the phase takes after a 429 is a retry and a rate-limit
+/// wait in its statistics, which the 504 pause is not.
+#[tokio::test(start_paused = true)]
+async fn the_pack_download_counts_its_429_pause_and_not_a_5xx_pause() {
+    #[derive(Default)]
+    struct Captured(Mutex<Vec<CoreDiagnostic>>);
+    impl DiagnosticsSink for Captured {
+        fn record(&self, event: CoreDiagnostic) {
+            self.0.lock().unwrap().push(event);
+        }
+    }
+
+    for (label, dropped) in [
+        ("504", Dropped::Status(504)),
+        ("429", Dropped::RateLimited(100)),
+    ] {
+        let db = scratch_db("drop-counted");
+        let mut server = dropped_server(95, None);
+        server.dropped_as = Some(dropped);
+        let routes = Routes::new(server);
+        let sink = Arc::new(Captured::default());
+        let diagnostics = RunDiagnostics::new(sink.clone());
+        first_sync_observed(&db, &routes, &[], &diagnostics)
+            .run(1_800_000_000_000)
+            .await
+            .expect("the first sync finishes");
+
+        let stats = sink
+            .0
+            .lock()
+            .unwrap()
+            .iter()
+            .find_map(|event| match event {
+                CoreDiagnostic::PhaseStats {
+                    phase: DiagnosticPhase::RecordPacks,
+                    finished: true,
+                    requests,
+                    ..
+                } => Some(*requests),
+                _ => None,
+            })
+            .expect("the record packs phase reports");
+        match dropped {
+            Dropped::RateLimited(after_s) => {
+                // Three GETs refused, one pause for all of them: a 429 is
+                // not retried by the ladder, so the pause is the only retry.
+                assert_eq!(stats.rate_limited, 3, "{label}");
+                assert_eq!(stats.retries, 1, "{label}");
+                assert_eq!(stats.rate_limit_wait_ms, after_s * 1_000, "{label}");
+            }
+            Dropped::Status(_) => {
+                assert_eq!(stats.rate_limited, 0, "{label}");
+                assert_eq!(stats.rate_limit_wait_ms, 0, "{label}");
+            }
         }
     }
 }

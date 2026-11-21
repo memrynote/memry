@@ -59,9 +59,8 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
-use crate::storage::{Db, nested_tx};
-
 use crate::seams::diagnostics::DiagnosticPhase;
+use crate::storage::{Db, nested_tx};
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
@@ -310,30 +309,31 @@ impl FirstSync {
 
         // Records first (#5232): packs, then the feed from where they end,
         // then the manifest decides, so the note list fills before any body.
-        let diagnostics = Arc::clone(&self.diagnostics);
-        let record_packs_used = diagnostics
+        let record_packs_used = self
+            .diagnostics
             .phase(DiagnosticPhase::RecordPacks, self.record_packs_pass(report))
             .await?;
-        diagnostics
+        self.diagnostics
             .phase(DiagnosticPhase::Refs, self.refs_pass(report))
             .await?;
         // The feed has been read to its end: the vault's total is known.
         self.records_progress(true).await?;
         if record_packs_used {
-            diagnostics
+            self.diagnostics
                 .phase(DiagnosticPhase::Reconcile, self.reconcile(report))
                 .await?;
         }
-        diagnostics
+        self.diagnostics
             .phase(DiagnosticPhase::Metadata, self.metadata_pass(report))
             .await?;
         // After the reconcile, so a document whose record is a tombstone or
         // absent takes no packed body (§8.10).
-        let body_packs_used = diagnostics
+        let body_packs_used = self
+            .diagnostics
             .phase(DiagnosticPhase::BodyPacks, self.body_packs_pass(report))
             .await?;
         let window_start = report.window_start;
-        diagnostics
+        self.diagnostics
             .phase(
                 DiagnosticPhase::Bodies,
                 self.bodies_pass(window_start, body_packs_used, report),

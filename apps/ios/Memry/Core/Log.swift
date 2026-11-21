@@ -149,11 +149,6 @@ struct Log: Sendable {
     }
 
     /// A line with several details, rendered in order: `message [a=1 b=2]`.
-    func info(_ message: StaticString, _ first: LogDetail, _ second: LogDetail, _ rest: LogDetail...) {
-        sink(.info, Log.line(message, [first, second] + rest))
-    }
-
-    /// See ``info(_:_:_:_:)``.
     func notice(_ message: StaticString, _ first: LogDetail, _ second: LogDetail, _ rest: LogDetail...) {
         sink(.default, Log.line(message, [first, second] + rest))
     }

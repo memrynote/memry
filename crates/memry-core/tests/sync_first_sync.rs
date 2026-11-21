@@ -1275,7 +1275,7 @@ async fn a_first_sync_tells_the_sink_its_bootstrap_result_concurrency_and_per_ph
                 elevated: false,
                 concurrency: 1,
                 documents: 1,
-                up_to_date: 0,
+                up_to_date: Some(0),
             },
             // The refused probe, the 429, the snapshot and the updates: the
             // document went back on the queue and waited out the Retry-After.

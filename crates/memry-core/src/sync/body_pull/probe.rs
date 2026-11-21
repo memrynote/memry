@@ -3,10 +3,11 @@
 //! route sends none) and each document's first page of updates (#5293).
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
-use crate::protocol::http::RetryPolicy;
+use crate::protocol::http::{HttpClient, RetryPolicy};
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 
 use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT};
@@ -36,6 +37,11 @@ pub(in crate::sync) struct ProbeAnswer {
 }
 
 impl BodyPull {
+    /// The client this pull sends through, for a caller pausing on its behalf.
+    pub(crate) fn http(&self) -> &Arc<HttpClient> {
+        &self.http
+    }
+
     /// The server's view of `doc_ids` (at most a batch, §7.3), each asked from
     /// its cursor, or from `0` when it holds none. `limit` is the sweep page
     /// size §7.3.1 asks for, so the answer is the first page itself.

@@ -62,13 +62,14 @@ pub struct RequestStats {
     pub p50_ms: u32,
     pub p95_ms: u32,
     pub max_ms: u32,
-    /// Attempts repeated after a retryable answer or a transport failure, plus
-    /// documents put back after a 429 pause.
+    /// Attempts repeated after a retryable answer or a transport failure by
+    /// the retry ladder, plus each 429 pause taken outside it (documents put
+    /// back by the bodies pass, packs waiting in the pack download).
     pub retries: u32,
     /// Attempts the server answered 429.
     pub rate_limited: u32,
-    /// Time slept waiting out a 429, in the retry ladder and in the bodies
-    /// pass's pause.
+    /// Time slept waiting out a 429: in the retry ladder, and in the pauses
+    /// taken outside it.
     pub rate_limit_wait_ms: u64,
     /// Attempts the server answered 5xx.
     pub server_errors: u32,
@@ -87,13 +88,13 @@ pub enum CoreDiagnostic {
     },
     /// A bodies pass probed its documents and is about to pull the rest.
     /// `concurrency` is the streams it runs, `documents` the window, and
-    /// `up_to_date` those the probe showed current, which are skipped. A drain
-    /// round probes chunk by chunk and reports 0.
+    /// `up_to_date` those the probe showed current, which are skipped. `None`
+    /// when the pass never measures it: a drain round probes chunk by chunk.
     BodyPassStarted {
         elevated: bool,
         concurrency: u32,
         documents: u32,
-        up_to_date: u32,
+        up_to_date: Option<u32>,
     },
     /// A phase's requests so far. `finished` is `true` once the phase ended,
     /// `false` for an interim snapshot of one still running.

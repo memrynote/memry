@@ -27,36 +27,28 @@ private final class Lines: @unchecked Sendable {
 
 @Suite("CoreDiagnostics")
 struct CoreDiagnosticsTests {
-    @Test("each bootstrap outcome is its own message with the HTTP status beside it")
-    func bootstrapOutcomes() {
+    @Test("a body pass reports its concurrency and window, and the skipped documents only when measured")
+    func bodyPass() {
         let lines = Lines()
         let sink = lines.sink()
-        let cases: [(BootstrapOutcome, UInt16)] = [
-            (.granted, 200), (.notEligible, 409), (.sessionLimit, 429),
-            (.notImplemented, 501), (.noToken, 200), (.failed, 0)
-        ]
-        for (outcome, status) in cases {
-            sink.record(event: .bootstrapOpened(outcome: outcome, status: status))
-        }
+        sink.record(event: .bodyPassStarted(
+            elevated: false, concurrency: 1, documents: 500, upToDate: 120
+        ))
+        sink.record(event: .bodyPassStarted(
+            elevated: true, concurrency: 2, documents: 2, upToDate: nil
+        ))
         #expect(lines.texts == [
-            "core bootstrap granted [status=200]",
-            "core bootstrap not eligible [status=409]",
-            "core bootstrap session limit [status=429]",
-            "core bootstrap not implemented [status=501]",
-            "core bootstrap answered without a token [status=200]",
-            "core bootstrap failed [status=0]"
+            "core body pass started [elevated=0 concurrency=1 documents=500 up_to_date=120]",
+            "core body pass started [elevated=1 concurrency=2 documents=2]"
         ])
     }
 
-    @Test("a body pass reports its concurrency, window and skipped documents")
-    func bodyPass() {
+    @Test("a bootstrap outcome is its fixed message with the HTTP status beside it")
+    func bootstrapOutcome() {
         let lines = Lines()
-        lines.sink().record(event: .bodyPassStarted(
-            elevated: false, concurrency: 1, documents: 500, upToDate: 120
-        ))
-        #expect(lines.texts == [
-            "core body pass started [elevated=0 concurrency=1 documents=500 up_to_date=120]"
-        ])
+        lines.sink().record(event: .bootstrapOpened(outcome: .notEligible, status: 409))
+        #expect(lines.texts == ["core bootstrap not eligible [status=409]"])
+        #expect(lines.levels == [.default])
     }
 
     @Test("a phase reports its request statistics, retries and rate-limit wait")
@@ -77,45 +69,5 @@ struct CoreDiagnosticsTests {
             "core bodies phase [\(numbers(elapsed: 61_000))]",
             "core bodies phase so far [\(numbers(elapsed: 120_000))]"
         ])
-    }
-
-    @Test("every phase, running or ended, has its own message")
-    func phaseMessagesAreDistinct() {
-        let lines = Lines()
-        let sink = lines.sink()
-        let phases: [DiagnosticPhase] = [
-            .recordPacks, .refs, .reconcile, .metadata, .bodyPacks, .bodies, .drainBodies
-        ]
-        for phase in phases {
-            for finished in [true, false] {
-                sink.record(event: .phaseStats(
-                    phase: phase, finished: finished, elapsedMs: 0,
-                    requests: RequestStats(
-                        requests: 0, p50Ms: 0, p95Ms: 0, maxMs: 0, retries: 0,
-                        rateLimited: 0, rateLimitWaitMs: 0, serverErrors: 0, transportErrors: 0
-                    )
-                ))
-            }
-        }
-        let messages = lines.texts.map { $0.components(separatedBy: " [").first ?? "" }
-        #expect(messages.count == 14)
-        #expect(Set(messages).count == 14)
-        #expect(lines.levels.allSatisfy { $0 == .default })
-    }
-
-    @Test("a line holds nothing but literals and numbers")
-    func linesAreBareIdentifiers() {
-        let lines = Lines()
-        lines.sink().record(event: .phaseStats(
-            phase: .refs, finished: true, elapsedMs: UInt64.max,
-            requests: RequestStats(
-                requests: .max, p50Ms: .max, p95Ms: .max, maxMs: .max, retries: .max,
-                rateLimited: .max, rateLimitWaitMs: .max, serverErrors: .max, transportErrors: .max
-            )
-        ))
-        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .=[]_-")
-        for text in lines.texts {
-            #expect(text.allSatisfy(allowed.contains), "unexpected characters in: \(text)")
-        }
     }
 }

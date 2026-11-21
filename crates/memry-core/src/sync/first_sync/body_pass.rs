@@ -18,7 +18,7 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::{ApiError, StorageError};
-use crate::protocol::http::RequestObserver;
+use crate::protocol::http::HttpClient;
 use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
 use crate::sync::body_debt;
@@ -257,7 +257,7 @@ async fn pull_parallel(
         elevated,
         concurrency: u32::try_from(workers).unwrap_or(u32::MAX),
         documents: u32::try_from(current.len() + pending.len()).unwrap_or(u32::MAX),
-        up_to_date: u32::try_from(current.len()).unwrap_or(u32::MAX),
+        up_to_date: Some(u32::try_from(current.len()).unwrap_or(u32::MAX)),
     });
     let completed = done + current.len() as u64;
     let total = live.max(completed + pending.len() as u64);
@@ -267,7 +267,7 @@ async fn pull_parallel(
         completed,
         probed,
         Arc::clone(progress),
-        Arc::clone(diagnostics),
+        Arc::clone(bodies.http()),
     ));
     let mut running = JoinSet::new();
     for _ in 0..workers {
@@ -299,7 +299,7 @@ struct BodyQueue {
     /// [`PROBE_CHUNK`], so the map holds at most 5 x 8 MiB = 40 MiB.
     probed: Mutex<HashMap<String, Probed>>,
     progress: Arc<dyn ProgressSink>,
-    diagnostics: Arc<RunDiagnostics>,
+    http: Arc<HttpClient>,
 }
 
 struct QueueState {
@@ -318,7 +318,7 @@ impl BodyQueue {
         completed: u64,
         probed: HashMap<String, Probed>,
         progress: Arc<dyn ProgressSink>,
-        diagnostics: Arc<RunDiagnostics>,
+        http: Arc<HttpClient>,
     ) -> Self {
         if completed > 0 {
             progress.progress(FirstSyncProgress {
@@ -337,7 +337,7 @@ impl BodyQueue {
             total,
             probed: Mutex::new(probed),
             progress,
-            diagnostics,
+            http,
         }
     }
 
@@ -396,10 +396,8 @@ impl BodyQueue {
         // The wait this pause adds: what another worker's pause already holds
         // is counted once.
         let waited = paused_until.duration_since(held_until.unwrap_or(now));
-        self.diagnostics.retry(
-            Some(429),
-            u64::try_from(waited.as_millis()).unwrap_or(u64::MAX),
-        );
+        self.http
+            .paused(u64::try_from(waited.as_millis()).unwrap_or(u64::MAX));
         true
     }
 }

@@ -92,6 +92,8 @@ pub(super) struct Downloads<T> {
     lost: Vec<(PackSummary, T)>,
     /// The longest `Retry-After` among them.
     retry_after_ms: u64,
+    /// Whether a pack waiting in `lost` was refused with a 429.
+    rate_limited: bool,
     pauses: u32,
     /// The last re-list and the pause count it was made at.
     relisted: Option<(u32, Vec<PackSummary>)>,
@@ -113,6 +115,7 @@ impl<T: Send + 'static> Downloads<T> {
             running: JoinSet::new(),
             lost: Vec::new(),
             retry_after_ms: 0,
+            rate_limited: false,
             pauses: 0,
             relisted: None,
         }
@@ -138,6 +141,9 @@ impl<T: Send + 'static> Downloads<T> {
                 let pause = (PACK_RETRY_FIRST_PAUSE_MS << self.pauses).max(self.retry_after_ms);
                 self.pauses += 1;
                 self.retry_after_ms = 0;
+                if std::mem::take(&mut self.rate_limited) {
+                    self.http.paused(pause);
+                }
                 self.http.sleep_ms(pause).await;
                 for lost in self.lost.drain(..).rev() {
                     self.queue.push_front(lost);
@@ -158,13 +164,12 @@ impl<T: Send + 'static> Downloads<T> {
     }
 
     fn lose(&mut self, pack: PackSummary, carried: T, error: &ApiError) {
-        if let ApiError::RateLimited {
-            retry_after_s: Some(after_s),
-            ..
-        } = error
-        {
-            let after_ms = after_s.saturating_mul(1_000).min(MAX_PAUSE_MS);
-            self.retry_after_ms = self.retry_after_ms.max(after_ms);
+        if let ApiError::RateLimited { retry_after_s, .. } = error {
+            self.rate_limited = true;
+            if let Some(after_s) = retry_after_s {
+                let after_ms = after_s.saturating_mul(1_000).min(MAX_PAUSE_MS);
+                self.retry_after_ms = self.retry_after_ms.max(after_ms);
+            }
         }
         self.lost.push((pack, carried));
     }
