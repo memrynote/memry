@@ -116,7 +116,15 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<usize, StorageError> {
             }
         };
         let verdict = db
-            .call(move |conn| settle(conn, &item_type, &doc_id, &server, now_ms()))
+            .call(move |conn| {
+                settle(
+                    conn,
+                    &item_type,
+                    &doc_id,
+                    |txn| judge(txn, &doc_id, &server),
+                    now_ms(),
+                )
+            })
             .await?;
         if verdict == Some(Verdict::Healed) {
             healed += 1;
@@ -132,14 +140,14 @@ fn settle(
     conn: &Connection,
     item_type: &str,
     doc_id: &str,
-    server: &[Vec<u8>],
+    judge: impl FnOnce(&Connection) -> Result<(Verdict, Vec<u8>), CrdtError>,
     now_ms: i64,
 ) -> Result<Option<Verdict>, StorageError> {
     let txn = nested_tx::begin(conn).map_err(failed)?;
     if select(&txn, Some(doc_id))?.is_empty() {
         return Ok(None);
     }
-    let verdict = match judge(&txn, doc_id, server) {
+    let verdict = match judge(&txn) {
         Ok((verdict, full)) => {
             if verdict == Verdict::Healed {
                 outbox::enqueue(&txn, &Change::crdt_update(item_type, doc_id, full), now_ms)?;
@@ -216,5 +224,53 @@ fn now_ms() -> i64 {
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crdt::body_edit::BlockEdit;
+    use crate::domain::journal;
+    use crate::domain::journal_ops::body;
+    use crate::storage::open_data;
+    use crate::sync::first_sync_store::read_meta;
+
+    #[test]
+    fn a_busy_document_is_stamped_tried_without_a_verdict() {
+        let dir = std::env::temp_dir().join(format!("memry-revive-busy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = open_data(&dir.join("data.db")).unwrap();
+        db.call_blocking(|c| {
+            let edit = BlockEdit::InsertParagraph {
+                after_block_id: None,
+                text: "Words.".into(),
+                new_block_id: "b-1".into(),
+            };
+            body::edit_day(c, "2099-06-15", &edit, "device-b", 1).unwrap();
+            assert!(journal::delete_day(c, "2099-06-15", "device-b", 2).unwrap());
+            c.execute("DELETE FROM outbox", []).unwrap();
+            c.execute("UPDATE sync_items SET deleted_at = NULL", [])
+                .unwrap();
+            let id = "j2099-06-15";
+            let busy = |_: &Connection| {
+                Err(CrdtError::DocumentBusy {
+                    doc_id: id.into(),
+                    what: "held".into(),
+                })
+            };
+            assert_eq!(settle(c, "journal", id, busy, 42).unwrap(), None);
+            assert_eq!(read_meta(c, &format!("{MARKER_PREFIX}{id}")).unwrap(), None);
+            assert_eq!(
+                read_meta(c, &format!("{TRIED_PREFIX}{id}"))
+                    .unwrap()
+                    .as_deref(),
+                Some("42")
+            );
+            assert_eq!(candidates(c).unwrap().len(), 1, "a later pass judges it");
+            Ok(())
+        })
+        .unwrap();
     }
 }

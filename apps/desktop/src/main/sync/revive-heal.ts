@@ -107,15 +107,12 @@ function mark(db: DrizzleDb, noteId: string, verdict: ReviveHealVerdict): void {
     .run()
 }
 
-// Strictly increasing, so two notes tried in one millisecond keep their order.
-let lastTriedAt = 0
 function markTried(db: DrizzleDb, noteId: string): void {
-  lastTriedAt = Math.max(Date.now(), lastTriedAt + 1)
-  write(db, `${TRIED_PREFIX}${noteId}`, 'tried', new Date(lastTriedAt))
+  write(db, `${TRIED_PREFIX}${noteId}`, 'tried', new Date())
 }
 
 /** A failure every later read of this run would repeat: a 429, no network, or a refused session. */
-const endsTheRun = (error: unknown): boolean =>
+export const endsTheRun = (error: unknown): boolean =>
   error instanceof RateLimitError ||
   error instanceof NetworkError ||
   (error instanceof SyncServerError && (error.statusCode === 401 || error.statusCode === 403))
@@ -151,7 +148,14 @@ export async function runReviveHeal(deps: ReviveHealDeps, signal?: AbortSignal):
       continue
     }
     if (signal?.aborted) break
-    const verdict = judgeRevivedBody(server, local)
+    let verdict: ReviveHealVerdict
+    try {
+      verdict = judgeRevivedBody(server, local)
+    } catch (error) {
+      // Bytes that do not decode cannot be judged, and a push would not help.
+      log.warn('Revived body does not decode', { noteId, error })
+      verdict = 'unhealable'
+    }
     if (verdict === 'healed') {
       deps.enqueueFullState(noteId)
       healed++

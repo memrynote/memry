@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
-import { RateLimitError } from '@memry/sync-client/http-errors'
+import { NetworkError, RateLimitError, SyncServerError } from '@memry/sync-client/http-errors'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb } from '../../test/helpers/test-data-db'
 import { getFromServer, type CrdtSnapshotMeta, type CrdtSnapshotResponse } from './http-client'
-import { createServerBodyReader, runReviveHeal, type ReviveHealDeps } from './revive-heal'
+import {
+  createServerBodyReader,
+  endsTheRun,
+  runReviveHeal,
+  type ReviveHealDeps
+} from './revive-heal'
 
 vi.mock('./http-client', () => ({ getFromServer: vi.fn() }))
 vi.mock('./crdt-encrypt', () => ({ decryptCrdtUpdate: (packed: Uint8Array) => packed }))
@@ -130,6 +135,27 @@ describe('runReviveHeal', () => {
     })
     expect(await runReviveHeal(deps)).toBe(0)
     expect(deps.readServerBody).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['a 429', new RateLimitError(30), true],
+    ['no network', new NetworkError('offline'), true],
+    ['a 401', new SyncServerError('unauthorized', 401), true],
+    ['a 403', new SyncServerError('forbidden', 403), true],
+    ['a 500', new SyncServerError('server error', 500), false]
+  ])('ends the run on %s: %s', (_label, error, ends) => {
+    expect(endsTheRun(error)).toBe(ends)
+  })
+
+  it('marks an undecodable body unhealable and heals the next note in the same run', async () => {
+    const BROKEN = 'j2099-06-14'
+    recordTombstoneClock(db, 'journal', BROKEN, { 'device-b': 2 })
+    deps.readServerBody = vi.fn(async (noteId: string) =>
+      noteId === BROKEN ? [new Uint8Array([200, 1, 7, 255, 255, 255, 255, 3])] : [shipped.revived]
+    )
+    expect(await runReviveHeal(deps)).toBe(1)
+    expect(await runReviveHeal(deps)).toBe(0)
+    expect(deps.readServerBody).toHaveBeenCalledTimes(2)
   })
 })
 
