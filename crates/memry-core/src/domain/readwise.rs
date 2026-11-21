@@ -6,6 +6,7 @@
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
@@ -188,7 +189,7 @@ pub fn upsert_link(
     input: &UpsertLink<'_>,
     now_ms: i64,
 ) -> Result<Link, StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let link = upsert_in(&tx, input, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(link)
@@ -360,7 +361,7 @@ pub fn rebuild_links(
     now_ms: i64,
 ) -> Result<usize, StorageError> {
     urls.sort_by(|a, b| a.0.cmp(&b.0));
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut seen = std::collections::HashSet::new();
     let mut linked = 0;
     for (note_id, url) in &urls {
