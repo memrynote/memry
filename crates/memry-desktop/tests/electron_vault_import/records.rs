@@ -155,6 +155,26 @@ fn records_and_the_vault_id_import_byte_for_byte() {
         )
         .unwrap();
     assert_eq!(unclocked, None);
+    // `clock ?? undefined`: an unclocked row carries no `clock` key, `null` included.
+    for (item_type, expected) in [
+        (
+            "folder_config",
+            r#"{"icon":"star","createdAt":"2026-01-02T03:04:05.000Z","modifiedAt":"2026-01-03T03:04:05.000Z"}"#,
+        ),
+        (
+            "property_definition",
+            r#"{"name":"unclocked","type":"select","options":"[\"a\",\"b\"]","defaultValue":null,"color":null,"createdAt":"2026-01-02T03:04:05.000Z"}"#,
+        ),
+    ] {
+        let payload: String = core
+            .query_row(
+                "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = 'unclocked'",
+                [item_type],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(payload, expected, "{item_type}");
+    }
     let folders: i64 = core
         .query_row("SELECT count(*) FROM folders", [], |row| row.get(0))
         .unwrap();

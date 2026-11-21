@@ -24,6 +24,7 @@ fn typed(item_type: &str, item_id: &str, outcome: AppliedOutcome) -> AppliedReco
         item_id: item_id.into(),
         outcome,
         conflicts: Vec::new(),
+        title_before: None,
     }
 }
 
@@ -83,6 +84,26 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
                 item_id: "t5".into(),
             },
         ]
+    );
+}
+
+/// The core's task-activity announcement, told after its rows committed, reaches the shell.
+#[tokio::test(start_paused = true)]
+async fn the_drivers_task_activity_announcement_reaches_the_shell() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    let observers = lock(&rig.backend.driver.observers).clone();
+
+    observers[0].task_activity_created(&["t1".to_owned(), "t2".to_owned()]);
+
+    assert_eq!(
+        *lock(&rig.sync_events),
+        [SyncEvent::TaskActivityCreated(vec![
+            "t1".into(),
+            "t2".into()
+        ])]
     );
 }
 

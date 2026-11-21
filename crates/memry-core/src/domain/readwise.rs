@@ -314,6 +314,18 @@ pub fn set_run_state(
     Ok(())
 }
 
+/// `clearRunState`: every run-state key and the highlight index, in one transaction. The
+/// table holds only the keys desktop clears (`sync-state.ts`), so the whole table goes; the
+/// links stay (D9).
+pub fn clear_run_state(conn: &mut Connection) -> Result<(), StorageError> {
+    let tx = conn.transaction().map_err(failed)?;
+    tx.execute("DELETE FROM readwise_run_state", [])
+        .map_err(failed)?;
+    tx.execute("DELETE FROM readwise_highlights", [])
+        .map_err(failed)?;
+    tx.commit().map_err(failed)
+}
+
 /// The Readwise item a `readwise_url` names (D4).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReadwiseItem {

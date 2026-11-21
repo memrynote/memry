@@ -60,6 +60,10 @@ pub struct AppliedRecord {
     pub item_id: String,
     pub outcome: AppliedOutcome,
     pub conflicts: Vec<FieldConflict>,
+    /// A note's title as this device held it before the record applied, `None` for a note
+    /// that was not here and for every other type: a pulled change that keeps the title never
+    /// renames the note's file (Electron's `titleChanged`, `note-handler.ts:349`).
+    pub title_before: Option<String>,
 }
 
 /// An attachment an applied record references (Electron's
@@ -102,6 +106,14 @@ pub trait ApplyObserver: Send + Sync {
 
     /// Every record of one committed page, in apply order. One call per page.
     fn records_applied(&self, _batch: &[AppliedRecord]) {}
+
+    /// These tasks' activity logs grew in one committed page, by a pulled
+    /// `task_activity` row or a `superseded` row this device wrote, each task
+    /// once. Told by [`SupersededObserver`] after its own write committed, so
+    /// a read at this call sees every row.
+    ///
+    /// [`SupersededObserver`]: crate::domain::task_activity::superseded::SupersededObserver
+    fn task_activity_created(&self, _task_ids: &[String]) {}
 
     /// A pulled tombstone of `note_id` was skipped because the local edit is
     /// newer, so the note lives on (Electron's `note-handler.ts:740`).
@@ -344,6 +356,7 @@ mod tests {
             item_id: id.into(),
             outcome: AppliedOutcome::Created,
             conflicts: Vec::new(),
+            title_before: None,
         }
     }
 

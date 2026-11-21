@@ -173,6 +173,11 @@ fn google_keep_importer_matches_the_typescript_importer() {
 }
 
 #[test]
+fn roam_importer_matches_the_typescript_importer() {
+    assert_source("roam");
+}
+
+#[test]
 fn messages_match_the_typescript_module() {
     let expected = load("messages.json");
     let codes: Map<String, Value> = codes::ALL

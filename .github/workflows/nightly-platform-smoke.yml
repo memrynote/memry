@@ -58,7 +58,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -113,7 +112,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         env:

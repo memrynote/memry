@@ -133,6 +133,7 @@ mod debug;
 mod deleted;
 pub(crate) mod journal;
 mod pass;
+mod place;
 mod reconcile;
 mod schedule;
 #[cfg(test)]

@@ -1,14 +1,17 @@
 //! The single command list. Add a domain's commands under its comment, one fully qualified path
 //! per line, domains in alphabetical order, and its module under `src/commands/`.
 
-use std::collections::BTreeSet;
+use tauri::Wry;
+use tauri_specta::{Builder, ErrorHandlingMode, collect_events};
 
-use tauri::ipc::Invoke;
-use tauri::{Runtime, Wry};
-use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
-
-use crate::binary;
 use crate::startup::StartupState;
+
+mod calendar;
+mod dispatch;
+mod permission;
+
+pub use dispatch::{dispatcher, invoke_handler};
+pub use permission::app_all_permission;
 
 pub fn builder() -> Builder<Wry> {
     Builder::<Wry>::new()
@@ -21,7 +24,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(collect_commands![
+        .commands(calendar::collect_commands_with_calendar!([
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -63,24 +66,35 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
-            // calendar
-            crate::commands::calendar::calendar_create_event::<Wry>,
-            crate::commands::calendar::calendar_delete_event::<Wry>,
-            crate::commands::calendar::calendar_get_event::<Wry>,
-            crate::commands::calendar::calendar_get_external_event::<Wry>,
-            crate::commands::calendar::calendar_get_range::<Wry>,
-            crate::commands::calendar::calendar_list_linked_notes::<Wry>,
-            crate::commands::calendar::calendar_list_sources::<Wry>,
-            crate::commands::calendar::calendar_promote_external_event::<Wry>,
-            crate::commands::calendar::calendar_search_events::<Wry>,
-            crate::commands::calendar::calendar_update_event::<Wry>,
-            crate::commands::calendar::calendar_update_source_selection::<Wry>,
+        ] [
             // calendar macOS (EventKit)
             crate::commands::calendar_eventkit::calendar_eventkit_request_access,
             // calendar feeds
             crate::commands::calendar_ics::calendar_refresh_ics,
             crate::commands::calendar_ics::calendar_subscribe_ics,
             crate::commands::calendar_ics::calendar_unsubscribe_ics,
+            // calendar providers
+            crate::commands::calendar_providers::calendar_check_provider_writer_compat,
+            crate::commands::calendar_providers::calendar_connect_provider,
+            crate::commands::calendar_providers::calendar_disconnect_provider,
+            crate::commands::calendar_providers::calendar_discover_provider_calendars,
+            // canvas (the asset and live-canvas commands are not ported yet)
+            crate::commands::canvas::canvas_create::<Wry>,
+            crate::commands::canvas::canvas_delete::<Wry>,
+            crate::commands::canvas::canvas_duplicate::<Wry>,
+            crate::commands::canvas::canvas_get::<Wry>,
+            crate::commands::canvas::canvas_library_list::<Wry>,
+            crate::commands::canvas::canvas_library_save::<Wry>,
+            crate::commands::canvas::canvas_list::<Wry>,
+            crate::commands::canvas::canvas_open_external,
+            crate::commands::canvas::canvas_reveal_in_finder,
+            crate::commands::canvas::canvas_update::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_create::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_delete::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_list::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_move::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_rename::<Wry>,
+            crate::commands::canvas_folders::canvas_folder_set_icon::<Wry>,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -359,6 +373,22 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
+            // tasks
+            crate::commands::tasks::tasks_get::<Wry>,
+            crate::commands::tasks::tasks_get_linked_tasks::<Wry>,
+            crate::commands::tasks::tasks_get_overdue::<Wry>,
+            crate::commands::tasks::tasks_get_stats::<Wry>,
+            crate::commands::tasks::tasks_get_subtasks::<Wry>,
+            crate::commands::tasks::tasks_get_tags::<Wry>,
+            crate::commands::tasks::tasks_get_today::<Wry>,
+            crate::commands::tasks::tasks_get_upcoming::<Wry>,
+            crate::commands::tasks::tasks_list::<Wry>,
+            crate::commands::tasks::tasks_status_create::<Wry>,
+            crate::commands::tasks::tasks_status_delete::<Wry>,
+            crate::commands::tasks::tasks_status_list::<Wry>,
+            crate::commands::tasks::tasks_status_reorder::<Wry>,
+            crate::commands::tasks::tasks_status_update::<Wry>,
+            crate::commands::tasks::tasks_update::<Wry>,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -421,6 +451,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
             // voice
+            crate::commands::voice::inbox_retry_transcription,
             crate::commands::voice::settings_download_voice_model,
             crate::commands::voice::settings_get_voice_model_status,
             crate::commands::voice::settings_get_voice_recording_readiness,
@@ -432,7 +463,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_minimize,
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
-        ])
+        ]))
         .events(collect_events![
             // account
             crate::events::AuthOauthCallbackEvent,
@@ -447,6 +478,14 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AppNavigationRequestedEvent,
             // calendar
             crate::events::CalendarChangedEvent,
+            // canvas
+            crate::events::CanvasCreatedEvent,
+            crate::events::CanvasDeletedEvent,
+            crate::events::CanvasFolderCreatedEvent,
+            crate::events::CanvasFolderDeletedEvent,
+            crate::events::CanvasFolderUpdatedEvent,
+            crate::events::CanvasTooLargeEvent,
+            crate::events::CanvasUpdatedEvent,
             // crdt
             crate::events::CrdtProviderReadyEvent,
             crate::events::CrdtProviderResetEvent,
@@ -523,6 +562,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagNotesChangedEvent,
             crate::events::TagRenamedEvent,
             crate::events::TagsProgressEvent,
+            // tasks
+            crate::events::TaskActivityCreatedEvent,
+            crate::events::TaskCreatedEvent,
+            crate::events::TaskUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultConfigChangedEvent,
@@ -546,54 +589,4 @@ pub fn builder() -> Builder<Wry> {
         // `ai_provider_request` is a binary command; its argument and answer still get types.
         .typ::<memry_desktop::ai::proxy::AiProviderRequest>()
         .typ::<memry_desktop::ai::proxy::AiProviderHead>()
-}
-
-/// Sends a call to the binary handler when `command` is one of `binary_commands` and to the
-/// specta handler otherwise. Step 03 (#3520) wraps this closure with its `e2e_` dispatcher.
-pub fn dispatcher<R: Runtime>(
-    binary_commands: &'static [&'static str],
-    binary_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-    typed_handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
-) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
-    move |invoke| {
-        if binary_commands.contains(&invoke.message.command()) {
-            binary_handler(invoke)
-        } else {
-            typed_handler(invoke)
-        }
-    }
-}
-
-/// The `app-all` permission that `pnpm ipc:generate` writes to `permissions/app-all.json`: every
-/// command `bindings_ts` invokes and every binary command. Only the main window's capability
-/// grants it, so a command a domain step registers reaches the main window and no other.
-pub fn app_all_permission(bindings_ts: &str) -> Result<String, String> {
-    let mut names = BTreeSet::new();
-    for call in bindings_ts.split("__TAURI_INVOKE<").skip(1) {
-        let name = call
-            .split_once(">(\"")
-            .and_then(|(_, rest)| rest.split_once('"'))
-            .map(|(name, _)| name)
-            .ok_or_else(|| format!("no command name in `{}`", &call[..call.len().min(80)]))?;
-        names.insert(name);
-    }
-    names.extend(binary::COMMANDS.iter().copied());
-    let file = serde_json::json!({
-        "permission": [{
-            "identifier": "app-all",
-            "description": "Every app command, for the main window. Generated by `pnpm ipc:generate` from `registry::builder()` and `binary::COMMANDS`.",
-            "commands": { "allow": names },
-        }]
-    });
-    serde_json::to_string_pretty(&file).map_err(|e| format!("serialize app-all: {e}"))
-}
-
-pub fn invoke_handler(
-    builder: &Builder<Wry>,
-) -> impl Fn(Invoke<Wry>) -> bool + Send + Sync + 'static {
-    dispatcher(
-        binary::COMMANDS,
-        binary::handler(),
-        builder.invoke_handler(),
-    )
 }

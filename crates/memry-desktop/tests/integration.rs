@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
 mod capture_support;
 mod device_key;
 mod electron_profile;
@@ -35,6 +36,12 @@ mod account_vault_download;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "agent_mcp.rs"]
+mod agent_mcp;
+#[path = "agent_mcp_http.rs"]
+mod agent_mcp_http;
+#[path = "agent_mcp_parts.rs"]
+mod agent_mcp_parts;
 #[path = "agent_store.rs"]
 mod agent_store;
 #[path = "ai_catalog.rs"]
@@ -111,6 +118,10 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
 #[path = "calendar_feeds.rs"]
@@ -119,6 +130,12 @@ mod calendar_feeds;
 mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
+#[path = "canvas_files.rs"]
+mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
 #[path = "capture_requests.rs"]
@@ -198,6 +215,8 @@ mod import_runner;
 mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
+#[path = "importer_roam.rs"]
+mod importer_roam;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
@@ -408,6 +427,8 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "tasks_service.rs"]
+mod tasks_service;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]
@@ -465,6 +486,8 @@ mod vault_writeback;
 mod vault_writes;
 #[path = "voice_engine.rs"]
 mod voice_engine;
+#[path = "voice_service.rs"]
+mod voice_service;
 
 #[test]
 fn every_test_file_is_built() {
