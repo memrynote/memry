@@ -7,7 +7,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use std::collections::HashSet;
+
 use crate::domain::readwise::{self, Link, LinkKey, LinkState, UpsertLink};
+use crate::domain::readwise_highlights::{self as highlights, IndexedHighlight, Record};
 use crate::domain::settings;
 use crate::storage::Db;
 
@@ -45,6 +48,13 @@ impl ReadwiseStore {
         let note_id = note_id.to_owned();
         self.db
             .read_blocking(move |conn| readwise::link_by_note(conn, &note_id))
+    }
+
+    /// [`readwise::link_by_reader_document`].
+    pub fn link_by_reader_document(&self, document_id: &str) -> Result<Option<Link>, StorageError> {
+        let document_id = document_id.to_owned();
+        self.db
+            .read_blocking(move |conn| readwise::link_by_reader_document(conn, &document_id))
     }
 
     /// [`readwise::links`].
@@ -125,5 +135,25 @@ impl ReadwiseStore {
                 .filter(Value::is_object)
                 .unwrap_or_else(|| Value::Object(serde_json::Map::new())))
         })
+    }
+
+    /// [`highlights::record`]: the index rows and the pending journal days in one transaction.
+    pub fn record_highlights(
+        &self,
+        record: &Record<'_>,
+        pending: impl FnOnce(&HashSet<i64>, Option<String>) -> Option<String>,
+    ) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| highlights::record(conn, record, now_ms(), pending))
+    }
+
+    /// [`highlights::between`].
+    pub fn highlights_between(
+        &self,
+        from: &str,
+        to: &str,
+    ) -> Result<Vec<IndexedHighlight>, StorageError> {
+        self.db
+            .read_blocking(|conn| highlights::between(conn, from, to))
     }
 }

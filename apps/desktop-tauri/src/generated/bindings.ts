@@ -137,6 +137,38 @@ export const commands = {
 	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
 	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
 	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
+	/**  `canvas:create`. */
+	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
+	/**  `canvas:delete`: the document goes to the OS trash. */
+	canvasDelete: (id: string) => __TAURI_INVOKE<CanvasDeleteResponse>("canvas_delete", { id }),
+	/**  `canvas:duplicate`: `null` when the original is gone or its document cannot be read. */
+	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
+	/**  `canvas:get`: `null` for a deleted canvas. */
+	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
+	/**  `canvas:library-list`. */
+	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
+	/**  `canvas:library-save`. */
+	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
+	/**  `canvas:list`. */
+	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
+	/**  `canvas:open-external`: the document in the OS default app. */
+	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
+	/**  `canvas:reveal-in-finder`. */
+	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
+	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
+	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
+	/**  `canvasFolder:create`: a directory and its record under `parent` (`null` the root). */
+	canvasFolderCreate: (parent: string | null, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_create", { parent, name }),
+	/**  `canvasFolder:delete`: one [`CanvasDeletedEvent`] per canvas it took, then the folder's. */
+	canvasFolderDelete: (path: string) => __TAURI_INVOKE<CanvasFolderDeleteResponse>("canvas_folder_delete", { path }),
+	/**  `canvasFolder:list`. */
+	canvasFolderList: () => __TAURI_INVOKE<CanvasFolderListResponse>("canvas_folder_list"),
+	/**  `canvasFolder:move`: the same name under `parent` (`null` the root). */
+	canvasFolderMove: (path: string, parent: string | null) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_move", { path, parent }),
+	/**  `canvasFolder:rename`: a new name under the same parent. */
+	canvasFolderRename: (path: string, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_rename", { path, name }),
+	/**  `canvasFolder:set-icon`: `null` clears it. */
+	canvasFolderSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_set_icon", { path, icon }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -827,6 +859,21 @@ export const commands = {
 	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
 	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
 	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
+	tasksGet: (id: string) => __TAURI_INVOKE<TaskListItemView | null>("tasks_get", { id }),
+	tasksGetLinkedTasks: (noteId: string) => __TAURI_INVOKE<TaskView[]>("tasks_get_linked_tasks", { noteId }),
+	tasksGetOverdue: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_overdue"),
+	tasksGetStats: () => __TAURI_INVOKE<TaskStatsView>("tasks_get_stats"),
+	tasksGetSubtasks: (parentId: string) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_subtasks", { parentId }),
+	tasksGetTags: () => __TAURI_INVOKE<TaskTagCount[]>("tasks_get_tags"),
+	tasksGetToday: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_today"),
+	tasksGetUpcoming: (days: number | null) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_upcoming", { days }),
+	tasksList: (input: TaskListInput) => __TAURI_INVOKE<TaskPageView>("tasks_list", { input }),
+	tasksStatusCreate: (input: StatusCreateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_create", { input }),
+	tasksStatusDelete: (id: string) => __TAURI_INVOKE<StatusMutation>("tasks_status_delete", { id }),
+	tasksStatusList: (projectId: string) => __TAURI_INVOKE<StatusView[]>("tasks_status_list", { projectId }),
+	tasksStatusReorder: (input: StatusReorderInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_reorder", { input }),
+	tasksStatusUpdate: (input: StatusUpdateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_update", { input }),
+	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -948,6 +995,8 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**  `inbox:retry-transcription`: transcribes a voice memo again and resolves when it is done. */
+	inboxRetryTranscription: (itemId: string) => __TAURI_INVOKE<TranscriptionResult>("inbox_retry_transcription", { itemId }),
 	/**
 	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
 	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
@@ -986,6 +1035,13 @@ export const events = {
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
 	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
+	canvasCreatedEvent: makeEvent<CanvasCreatedEvent, CanvasCreatedEvent>("canvas-created-event"),
+	canvasDeletedEvent: makeEvent<CanvasDeletedEvent, CanvasDeletedEvent>("canvas-deleted-event"),
+	canvasFolderCreatedEvent: makeEvent<CanvasFolderCreatedEvent, CanvasFolderCreatedEvent>("canvas-folder-created-event"),
+	canvasFolderDeletedEvent: makeEvent<CanvasFolderDeletedEvent, CanvasFolderDeletedEvent>("canvas-folder-deleted-event"),
+	canvasFolderUpdatedEvent: makeEvent<CanvasFolderUpdatedEvent, CanvasFolderUpdatedEvent>("canvas-folder-updated-event"),
+	canvasTooLargeEvent: makeEvent<CanvasTooLargeEvent, CanvasTooLargeEvent>("canvas-too-large-event"),
+	canvasUpdatedEvent: makeEvent<CanvasUpdatedEvent, CanvasUpdatedEvent>("canvas-updated-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
@@ -1039,6 +1095,9 @@ export const events = {
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
 	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
+	taskActivityCreatedEvent: makeEvent<TaskActivityCreatedEvent, TaskActivityCreatedEvent>("task-activity-created-event"),
+	taskCreatedEvent: makeEvent<TaskCreatedEvent, TaskCreatedEvent>("task-created-event"),
+	taskUpdatedEvent: makeEvent<TaskUpdatedEvent, TaskUpdatedEvent>("task-updated-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -1494,6 +1553,152 @@ export type CalendarCounts = {
 	selected: number,
 	memryManaged: number,
 };
+
+/**  `CanvasCreateSchema`. */
+export type CanvasCreateInput = {
+	title?: string | null,
+	scene?: string | null,
+	folder?: string | null,
+	icon?: string | null,
+	ownerNoteId?: string | null,
+};
+
+/**  A canvas was created, duplicated or kept as a conflict copy (`canvas:created`). */
+export type CanvasCreatedEvent = {
+	canvas: CanvasSummaryView,
+};
+
+export type CanvasDeleteResponse = {
+	success: boolean,
+};
+
+/**  A canvas was deleted, alone or with its folder (`canvas:deleted`). */
+export type CanvasDeletedEvent = {
+	id: string,
+};
+
+/**  `canvasFolder:created`. */
+export type CanvasFolderCreatedEvent = {
+	folder: CanvasFolderView,
+};
+
+export type CanvasFolderDeleteResponse = {
+	success: boolean,
+	deletedCanvasIds: string[],
+};
+
+/**  `canvasFolder:deleted`. */
+export type CanvasFolderDeletedEvent = {
+	path: string,
+};
+
+export type CanvasFolderListResponse = {
+	folders: CanvasFolderView[],
+};
+
+export type CanvasFolderMutationResponse = {
+	folder: CanvasFolderView | null,
+};
+
+/**
+ *  `canvasFolder:updated`: `previousPath` on a rename or move, so a listener re-keys state filed
+ *  under the old path.
+ */
+export type CanvasFolderUpdatedEvent = {
+	folder: CanvasFolderView,
+	previousPath?: string | null,
+};
+
+/**  `CanvasFolder`. */
+export type CanvasFolderView = {
+	id: string,
+	path: string,
+	icon: string | null,
+	createdAt: number,
+	updatedAt: number,
+};
+
+/**  `CanvasLibraryListResponse`. */
+export type CanvasLibraryListResponse = {
+	libraryItems: Value[],
+};
+
+/**  `CanvasLibrarySaveSchema`: Excalidraw's full item list; absence is how a delete arrives. */
+export type CanvasLibrarySaveInput = {
+	libraryItems: Value[],
+};
+
+/**  `CanvasLibrarySaveResponse`: the item count when the file was written, else 0. */
+export type CanvasLibrarySaveResponse = {
+	changed: number,
+};
+
+export type CanvasListResponse = {
+	canvases: CanvasSummaryView[],
+};
+
+/**  `CanvasSummary`. */
+export type CanvasSummaryView = {
+	id: string,
+	title: string | null,
+	folder: string | null,
+	icon: string | null,
+	ownerNoteId: string | null,
+	createdAt: number,
+	updatedAt: number,
+};
+
+/**
+ *  A canvas was saved here and held back from sync: its scene is over the cap
+ *  (`canvas:too-large`).
+ */
+export type CanvasTooLargeEvent = {
+	id: string,
+};
+
+/**
+ *  `CanvasUpdateSchema`. Absent leaves a field; `null` clears it (the root, for `folder`).
+ *  `entityRefs` is not read: the refs are derived from the scene.
+ */
+export type CanvasUpdateInput = {
+	id: string,
+	title?: string | null,
+	scene?: string | null,
+	folder?: string | null,
+	icon?: string | null,
+	expectedUpdatedAt?: number | null,
+	/**
+	 *  The `sha256` of the [`CanvasView`] the scene was drawn over; absent or `null` when the
+	 *  reader got no document. A scene saved over other bytes first keeps them as a copy.
+	 */
+	expectedSha256?: string | null,
+};
+
+/**  `CanvasUpdateResponse`. */
+export type CanvasUpdateResponse = {
+	tooLarge: boolean,
+	/**  The document's sha256 after the save: the saver's next `expectedSha256`. */
+	sha256: string | null,
+} & CanvasSummaryView;
+
+/**  A canvas was saved, renamed or moved (`canvas:updated`). */
+export type CanvasUpdatedEvent = {
+	canvas: CanvasSummaryView,
+};
+
+/**
+ *  `Canvas`: the summary and the scene without the file's sidecar. `unreadable` when the
+ *  document links outside the vault; its scene is then empty and never saved over.
+ */
+export type CanvasView = {
+	scene: string,
+	/**
+	 *  The sha256 of the document bytes this reader got, `null` when it got none. The reader
+	 *  sends it back as `expectedSha256`, so its save never replaces bytes it did not see.
+	 */
+	sha256: string | null,
+	unreadable?: boolean | null,
+} & CanvasSummaryView;
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
 export type CaptionRect = {
@@ -3925,6 +4130,49 @@ export type StatusAccount = {
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
 
+/**  `StatusCreateSchema`. */
+export type StatusCreateInput = {
+	projectId: string,
+	name: string,
+	color?: string | null,
+	isDone?: boolean | null,
+};
+
+/**  The `withDb` envelope of a status write: `{ success, status?, error? }`. */
+export type StatusMutation = {
+	success: boolean,
+	status?: StatusView | null,
+	error?: string | null,
+};
+
+/**  `StatusReorderSchema`. */
+export type StatusReorderInput = {
+	statusIds: string[],
+	positions: number[],
+};
+
+/**  `StatusUpdateSchema`. */
+export type StatusUpdateInput = {
+	id: string,
+	name?: string | null,
+	color?: string | null,
+	position?: number | null,
+	isDefault?: boolean | null,
+	isDone?: boolean | null,
+};
+
+/**  `Status`. `createdAt` is empty for an entry that carries none. */
+export type StatusView = {
+	id: string,
+	projectId: string,
+	name: string,
+	color: string,
+	position: number,
+	isDefault: boolean,
+	isDone: boolean,
+	createdAt: string,
+};
+
 /**  `StickyDraft` of `@memry/contracts/sticky-api`. */
 export type StickyDraftView = {
 	id: string,
@@ -4248,6 +4496,62 @@ export type TagsProgressEvent = {
 	total: number,
 };
 
+/**
+ *  A task's activity log grew (`task-activity:created`): a pulled peer row or a `superseded` row
+ *  this device wrote, sent once its row committed (`SyncEvent::TaskActivityCreated`), so the
+ *  open activity list refetches.
+ */
+export type TaskActivityCreatedEvent = {
+	taskId: string,
+};
+
+/**
+ *  A task was made, by a create or as the next occurrence of a completed repeating task
+ *  (`tasks:created`).
+ */
+export type TaskCreatedEvent = {
+	id: string,
+};
+
+/**  `TaskListSchema`. Absent `statusId`/`parentId` match any value, `null` matches none. */
+export type TaskListInput = {
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	includeCompleted?: boolean | null,
+	includeArchived?: boolean | null,
+	dueBefore?: string | null,
+	dueAfter?: string | null,
+	tags?: string[] | null,
+	/**  Accepted and ignored, as desktop's `listTasks` reads no search. */
+	search?: string | null,
+	sortBy?: TaskSortBy | null,
+	sortOrder?: TaskSortOrder | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `TaskListItem`: the task and its direct subtasks' counts. */
+export type TaskListItemView = {
+	hasSubtasks: boolean,
+	subtaskCount: number,
+	completedSubtaskCount: number,
+} & TaskView;
+
+/**  The `withDb` envelope of a task write: `{ success, task, error }`. */
+export type TaskMutation = {
+	success: boolean,
+	task: TaskListItemView | null,
+	error?: string | null,
+};
+
+/**  `TaskListResponse`. */
+export type TaskPageView = {
+	tasks: TaskListItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
 /**  `TaskResultMetadata`. */
 export type TaskResultMetadata = {
 	projectId: string,
@@ -4259,6 +4563,83 @@ export type TaskResultMetadata = {
 	priority: number,
 	completedAt: string | null,
 	createdAt: string | null,
+};
+
+/**  `TaskListSchema.sortBy`. */
+export type TaskSortBy = "position" | "dueDate" | "priority" | "created" | "modified";
+
+/**  `TaskListSchema.sortOrder`. */
+export type TaskSortOrder = "asc" | "desc";
+
+/**  `TaskStats`. */
+export type TaskStatsView = {
+	total: number,
+	completed: number,
+	overdue: number,
+	dueToday: number,
+	dueThisWeek: number,
+};
+
+/**  One entry of `tasks:get-tags`. */
+export type TaskTagCount = {
+	tag: string,
+	count: number,
+};
+
+/**  `TaskUpdateSchema`. A nullish field is absent (keep), `null` (clear) or a value. */
+export type TaskUpdateInput = {
+	id: string,
+	title?: string | null,
+	description?: string | null,
+	priority?: number | null,
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	dueDate?: string | null,
+	dueTime?: string | null,
+	durationMinutes?: number | null,
+	startDate?: string | null,
+	/**  `isRepeating` is derived from `repeatConfig`; a sent value is ignored. */
+	isRepeating?: boolean | null,
+	repeatConfig?: Value | null,
+	repeatFrom?: string | null,
+	tags?: string[] | null,
+	linkedNoteIds?: string[] | null,
+	linkedCanvasIds?: string[] | null,
+	fields?: { [key in string]: Value } | null,
+};
+
+/**  A task's fields changed (`tasks:updated`). */
+export type TaskUpdatedEvent = {
+	id: string,
+};
+
+/**  `Task`. `createdAt`/`modifiedAt` are empty for a payload that carries none. */
+export type TaskView = {
+	id: string,
+	projectId: string,
+	statusId: string | null,
+	parentId: string | null,
+	title: string,
+	description: string | null,
+	priority: number,
+	position: number,
+	dueDate: string | null,
+	dueTime: string | null,
+	durationMinutes: number | null,
+	startDate: string | null,
+	isRepeating: boolean,
+	repeatConfig: Value | null,
+	repeatFrom: string | null,
+	sourceNoteId: string | null,
+	completedAt: string | null,
+	archivedAt: string | null,
+	createdAt: string,
+	modifiedAt: string,
+	tags: string[],
+	linkedNoteIds: string[],
+	linkedCanvasIds: string[],
+	fields: { [key in string]: Value },
 };
 
 export type TelemetryEvent = {
@@ -4417,6 +4798,13 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**  `TranscriptionResult`. */
+export type TranscriptionResult = {
+	success: boolean,
+	transcription?: string | null,
+	error?: string | null,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */

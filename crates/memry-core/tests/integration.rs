@@ -502,6 +502,8 @@ mod sync_first_sync;
 mod sync_hardening_ledgers;
 #[path = "sync_hardening_orphans.rs"]
 mod sync_hardening_orphans;
+#[path = "sync_hardening_probe.rs"]
+mod sync_hardening_probe;
 #[cfg(feature = "markdown")]
 #[path = "sync_hardening_purged.rs"]
 mod sync_hardening_purged;

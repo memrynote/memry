@@ -20,6 +20,7 @@ const FIXED_MESSAGE_KEYS = new Map<string, string>([
  * Rust message stays English for the logs.
  */
 const COMMAND_CODE_KEYS = new Map<string, string>([
+  ['canvas_write_refused', 'common:canvas.actionFailed'],
   ['frontmatter_failed', 'errors:note.invalidFrontmatter'],
   ['invalid_title', 'errors:note.invalidTitle'],
   ['note_body_not_pulled', 'errors:property.noteNotPulled'],
@@ -32,6 +33,8 @@ const COMMAND_CODE_KEYS = new Map<string, string>([
   ['property_definitions_unreadable', 'errors:property.definitionsFileUnreadable'],
   ['property_definitions_write_failed', 'errors:property.definitionsFileWriteFailed']
 ])
+
+const COMMAND_KEYS = new Set(COMMAND_CODE_KEYS.values())
 
 const IPC_PREFIX_PATTERNS = [
   /^Error occurred in handler for ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
@@ -157,7 +160,7 @@ export function extractErrorMessage(
   if (!stripped) return fallback
   const message = FIXED_MESSAGE_KEYS.get(stripped) ?? stripped
 
-  if (message.startsWith(I18N_KEY_PREFIX)) {
+  if (message.startsWith(I18N_KEY_PREFIX) || COMMAND_KEYS.has(message)) {
     const translated = getI18n()?.t(message, values)
     if (typeof translated === 'string' && translated !== message) return translated
   }

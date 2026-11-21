@@ -87,6 +87,26 @@ async fn the_drivers_feed_tells_synced_corrupt_recovered_and_quarantined_records
     );
 }
 
+/// The core's task-activity announcement, told after its rows committed, reaches the shell.
+#[tokio::test(start_paused = true)]
+async fn the_drivers_task_activity_announcement_reaches_the_shell() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    let observers = lock(&rig.backend.driver.observers).clone();
+
+    observers[0].task_activity_created(&["t1".to_owned(), "t2".to_owned()]);
+
+    assert_eq!(
+        *lock(&rig.sync_events),
+        [SyncEvent::TaskActivityCreated(vec![
+            "t1".into(),
+            "t2".into()
+        ])]
+    );
+}
+
 /// One page is one event, whatever its size: K records reach the renderer as one broadcast.
 /// A record applied twice in one page is told once, with its last operation. Notes and
 /// journals are the vault tier's to tell (`shell/note_events.rs`, `journal_events.rs`).

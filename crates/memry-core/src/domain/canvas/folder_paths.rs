@@ -27,6 +27,12 @@ pub enum CanvasFolderError {
     /// `rewrite_folder_prefix` from the root, which would re-root every folder.
     #[error("Canvas folder rewrite needs a source folder")]
     NoSource,
+    /// The destination is taken by a live folder or a directory.
+    #[error("A canvas folder with that name already exists")]
+    Exists,
+    /// The move would nest a folder inside its own subtree.
+    #[error("A canvas folder cannot be moved into its own descendant")]
+    Descendant,
 }
 
 impl CanvasFolderError {
@@ -35,6 +41,8 @@ impl CanvasFolderError {
         match self {
             Self::Depth => "CANVAS_FOLDER_DEPTH",
             Self::InvalidName | Self::NoSource => "CANVAS_FOLDER_INVALID_NAME",
+            Self::Exists => "CANVAS_FOLDER_EXISTS",
+            Self::Descendant => "CANVAS_FOLDER_DESCENDANT",
         }
     }
 }

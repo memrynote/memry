@@ -11,16 +11,20 @@
 //! | a tie this device won under `_offline`            | §6.3's `_offline` tie-break: no row     |
 //! | a local delete meets a concurrent edit            | no row for a task deleted here          |
 //! | the desktop driver records it                     | the driver registers the observer       |
+//! | the driver announces a written row                | `task-activity:created` after the write |
+//! | a peer's activity row alone on a page             | `task-activity-handler.ts:76`           |
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
 use crate::driver_fakes::Desktop;
 
+use memry_core::domain::task_activity;
 use memry_core::domain::task_activity::superseded::{SupersededObserver, superseded_id};
 use memry_core::domain::tasks::{self, NewTask};
+use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
-use memry_core::sync::driver::observer::Observers;
+use memry_core::sync::driver::observer::{ApplyObserver, Observers};
 use rusqlite::Connection;
 use serde_json::{Value as Json, json};
 
@@ -77,9 +81,86 @@ fn delete(device: &Device) {
 
 /// The device's observers: the ones the desktop driver registers for tasks.
 fn observers(device: &Device) -> Arc<Observers> {
+    observers_telling(device, Vec::new())
+}
+
+fn observers_telling(device: &Device, listeners: Vec<Arc<dyn ApplyObserver>>) -> Arc<Observers> {
     let observers = Arc::new(Observers::default());
-    observers.register(SupersededObserver::new(device.db(), device.id.to_owned()));
+    observers.register(SupersededObserver::new(
+        device.db(),
+        device.id.to_owned(),
+        listeners,
+    ));
     observers
+}
+
+/// The renderer's `task-activity:created` listener: on each call it refetches, reading the
+/// task's activity rows there and then.
+struct Refetch {
+    db: std::sync::OnceLock<Db>,
+    /// `(task ids told, the told tasks' activity row ids read in the call)`.
+    heard: Mutex<Vec<(Vec<String>, Vec<String>)>>,
+}
+
+impl Refetch {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            db: std::sync::OnceLock::new(),
+            heard: Mutex::default(),
+        })
+    }
+
+    fn over(db: Db) -> Arc<Self> {
+        let refetch = Self::new();
+        refetch.bind(db);
+        refetch
+    }
+
+    fn bind(&self, db: Db) {
+        assert!(self.db.set(db).is_ok(), "bound once");
+    }
+
+    fn heard(&self) -> Vec<(Vec<String>, Vec<String>)> {
+        self.heard.lock().unwrap().clone()
+    }
+}
+
+impl ApplyObserver for Refetch {
+    fn name(&self) -> &str {
+        "refetch"
+    }
+
+    fn task_activity_created(&self, task_ids: &[String]) {
+        let ids = task_ids.to_vec();
+        let rows = self
+            .db
+            .get()
+            .expect("the refetch's vault")
+            .call_blocking(move |conn| {
+                let mut statement = conn
+                    .prepare("SELECT id FROM task_activity WHERE task_id = ?1 ORDER BY id")
+                    .map_err(failed)?;
+                let mut rows = Vec::new();
+                for task_id in &ids {
+                    for id in statement
+                        .query_map([task_id], |row| row.get::<_, String>(0))
+                        .map_err(failed)?
+                    {
+                        rows.push(id.map_err(failed)?);
+                    }
+                }
+                Ok(rows)
+            })
+            .expect("the refetch");
+        self.heard.lock().unwrap().push((task_ids.to_vec(), rows));
+    }
+}
+
+fn now_ms() -> i64 {
+    let elapsed = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after the epoch");
+    i64::try_from(elapsed.as_millis()).expect("fits")
 }
 
 /// Pulls everything the relay holds, the task observer listening.
@@ -302,5 +383,80 @@ async fn the_desktop_driver_records_a_lost_edit() {
             Some(r#""From the peer""#.to_owned()),
             "sync".to_owned(),
         )]
+    );
+}
+
+/// The renderer's refetch at `task-activity:created` sees the `superseded` row it announces: the
+/// driver tells its listeners after the write commits, never before.
+#[tokio::test]
+async fn the_desktop_driver_announces_a_lost_edit_after_its_row_is_written() {
+    let refetch = Refetch::new();
+    let desktop = Desktop::open_observed(
+        Declaration::declare(&["task", "task_activity"]).expect("recognised"),
+        |conn| tasks::create(conn, &new_task(), "desk", NOW).map(drop),
+        vec![Arc::clone(&refetch) as Arc<dyn ApplyObserver>],
+    )
+    .await;
+    refetch.bind(desktop.db.clone());
+    desktop.server.put(
+        "task",
+        TASK,
+        json!({
+            "title": "From the peer", "projectId": "proj-1", "priority": 1,
+            "clock": {"peer": 1}, "fieldClocks": {"title": {"peer": 1}},
+            "createdAt": "2025-10-09T08:53:20.000Z", "modifiedAt": "2025-10-09T08:53:20.000Z",
+        }),
+    );
+    desktop.server.page(&[TASK], "1");
+    desktop.pass().await;
+
+    let id = superseded_id(TASK, "title", &json!({"desk": 1, "peer": 1}));
+    assert_eq!(refetch.heard(), [(vec![TASK.to_owned()], vec![id])]);
+}
+
+/// A peer's activity row pulled on a page with no task update still reaches the open feed
+/// (Electron's `task-activity-handler.ts:76`), and the refetch then sees it.
+#[tokio::test]
+async fn a_peer_activity_row_alone_on_a_page_tells_its_task_once_it_landed() {
+    let relay = Relay::default();
+    let (a, b) = shared(&relay).await;
+    let who = a.id;
+    let written = a
+        .db()
+        .call_blocking(move |conn| {
+            task_activity::record_field_change(
+                conn,
+                TASK,
+                "priority",
+                &json!(1),
+                &json!(3),
+                who,
+                now_ms(),
+            )
+        })
+        .expect("the peer's row");
+    relay.push(&a).await;
+    let page = relay
+        .snapshot()
+        .into_iter()
+        .filter(|(_, sent)| sent.item_type == task_activity::ITEM_TYPE)
+        .collect();
+
+    let refetch = Refetch::over(b.db());
+    relay
+        .pull_observed(
+            &b,
+            page,
+            observers_telling(&b, vec![Arc::clone(&refetch) as Arc<dyn ApplyObserver>]),
+        )
+        .await;
+
+    let heard = refetch.heard();
+    assert_eq!(heard.len(), 1, "one call for the page: {heard:?}");
+    assert_eq!(heard[0].0, [TASK]);
+    assert!(
+        written.iter().all(|id| heard[0].1.contains(id)),
+        "the refetch saw {:?}, not {written:?}",
+        heard[0].1
     );
 }

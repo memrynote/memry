@@ -70,6 +70,22 @@ pub struct CanvasEdit<'a> {
     pub expected_updated_at: Option<i64>,
 }
 
+/// What a copy carries besides the source's folder and icon.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CanvasCopy<'a> {
+    pub title: Option<&'a str>,
+    /// The id to create it under; `None` mints one (see [`NewCanvas::id`]).
+    pub id: Option<&'a str>,
+    /// The scene to copy; `None` copies the source's. Desktop copies its
+    /// file's scene, which can be newer than the payload's.
+    pub scene: Option<&'a str>,
+}
+
+/// A new canvas id, the shape every canvas id has (`generateId`).
+pub fn new_id() -> String {
+    mint_id()
+}
+
 /// The outcome of [`update`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Updated {
@@ -134,9 +150,9 @@ pub fn create(
             what: "a canvas owner is a note id, not an empty string".to_owned(),
         });
     }
+    let id = chosen_id(canvas.id)?;
     let folder = normalize_folder(canvas.folder)?;
     let scene = canonical_scene(canvas.scene.unwrap_or(""))?;
-    let id = mint_id();
     let payload = object(json!({
         "id": id,
         "vaultId": vault_id,
@@ -217,47 +233,37 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, canvas_id),
-        now_ms,
-        |tx| {
-            let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
-            let changes = vec![
-                ("deletedAt", Change::set(now_ms)),
-                ("scene", Change::Remove),
-            ];
-            tombstone(
-                tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
-            )
-        },
-    )?;
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    tombstone_in(&tx, canvas_id, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(true)
 }
 
 /// Copies a live canvas beside the original (`duplicateCanvas`): same scene,
-/// folder and icon, never owned by a note, titled `title` (the shell names it
-/// after the file it allocates). Its `canvas_assets` rows are copied in the
+/// folder and icon, never owned by a note, titled `copy.title` (the shell
+/// names it after the file it allocates). Its `canvas_assets` rows are copied in the
 /// same transaction: asset GC frees content no other canvas references, so a
 /// copy without them would lose its images when the original next saves.
 /// `None` when the source is gone.
 pub fn duplicate(
     conn: &Connection,
     source_id: &str,
-    title: Option<&str>,
+    copy: &CanvasCopy<'_>,
     vault_id: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Saved>, StorageError> {
+    let id = chosen_id(copy.id)?;
+    let scene = copy.scene.map(canonical_scene).transpose()?;
     let Some(source) = get(conn, source_id)? else {
         return Ok(None);
     };
-    let id = mint_id();
+    let scene = scene.unwrap_or(source.scene);
     let payload = object(json!({
         "id": id,
         "vaultId": vault_id,
-        "title": title,
-        "scene": source.scene,
+        "title": copy.title,
+        "scene": scene,
         "folder": source.folder,
         "icon": source.icon,
         "ownerNoteId": null,
@@ -277,7 +283,83 @@ pub fn duplicate(
         params![source_id, id],
     )
     .map_err(failed)?;
-    commit(tx, &id, &source.scene, now_ms).map(Some)
+    commit(tx, &id, &scene, now_ms).map(Some)
+}
+
+/// The id the shell picked, or a new one.
+fn chosen_id(id: Option<&str>) -> Result<String, StorageError> {
+    match id {
+        Some("") => Err(StorageError::Invalid {
+            what: "a canvas id is not an empty string".to_owned(),
+        }),
+        Some(id) => Ok(id.to_owned()),
+        None => Ok(mint_id()),
+    }
+}
+
+/// Files a live canvas under `folder` (already canonical, `None` the root)
+/// inside a transaction the caller holds: ticks its clock and queues it
+/// unless its scene is over the cap. A folder move or rename does this for
+/// each canvas it carries (`relocateFolder`).
+pub(crate) fn set_folder_in(
+    tx: &Connection,
+    canvas_id: &str,
+    folder: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<SyncHold, StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = [
+        ("folder", Change::Set(json!(folder))),
+        (
+            "clock",
+            Change::Set(next_clock(stored.object(), device_id)?),
+        ),
+    ];
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
+    let sync = sync_hold(scene_of(stored.object()));
+    if sync == SyncHold::Queued {
+        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, canvas_id), now_ms)?;
+    }
+    Ok(sync)
+}
+
+/// [`delete`] of a canvas known to be live, inside a transaction the caller
+/// holds, with its outbox row.
+pub(crate) fn tombstone_in(
+    tx: &Connection,
+    canvas_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = vec![
+        ("deletedAt", Change::set(now_ms)),
+        ("scene", Change::Remove),
+    ];
+    tombstone(
+        tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
+    )?;
+    outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, canvas_id), now_ms)?;
+    Ok(())
+}
+
+/// The id and folder of every live canvas of the vault, read without scenes.
+pub(crate) fn placements(
+    conn: &Connection,
+    vault_id: &str,
+) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT id, folder FROM canvases
+             WHERE vault_id IN (?1, '') AND deleted_at IS NULL ORDER BY id",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([vault_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// Queues the canvas when `scene` fits the cap, commits, and reads it back.
@@ -323,3 +405,6 @@ fn scene_of(payload: &Object) -> &str {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod shell_tests;

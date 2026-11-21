@@ -211,6 +211,11 @@ impl PullLoop {
         &self.http
     }
 
+    /// The keys a delete's signer resolves under ([`PullLoop::with_signer_keys`]).
+    pub(crate) fn signer_keys(&self) -> Option<&dyn SignerKeys> {
+        self.signer_keys.as_deref()
+    }
+
     /// This device's clock id (chapter 01 §1.5), so a diverged canvas can keep
     /// the local drawing as a conflict copy instead of being recorded corrupt.
     pub fn with_clock_device(mut self, device_id: &str) -> Self {

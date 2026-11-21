@@ -473,6 +473,15 @@ impl Desktop {
         declaration: Declaration,
         seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
     ) -> Self {
+        Self::open_observed(declaration, seed, Vec::new()).await
+    }
+
+    /// [`Desktop::open_with`], `observers` hearing the driver from its open on.
+    pub async fn open_observed(
+        declaration: Declaration,
+        seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
         let dir = tempfile::Builder::new()
             .prefix("memry-driver-")
             .tempdir()
@@ -485,7 +494,7 @@ impl Desktop {
         })
         .expect("seed");
 
-        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
+        Self::drive(db, FakeServer::new(), declaration, observers).await
     }
 
     /// The app restarted: a new driver over the same `data.db` and server.
