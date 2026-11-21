@@ -4376,6 +4376,7 @@ dependencies = [
  "icu_plurals",
  "if-watch",
  "image",
+ "jiff",
  "keyring-core",
  "libc",
  "markup5ever 0.40.0",

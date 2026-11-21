@@ -113,6 +113,10 @@ mod block_refs;
 mod byte_preservation;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
 #[path = "calendar_settings.rs"]
 mod calendar_settings;
 #[path = "capture_pairing.rs"]
@@ -190,6 +194,8 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_bear.rs"]
+mod importer_bear;
 #[path = "importer_google_keep.rs"]
 mod importer_google_keep;
 #[path = "importer_untrusted.rs"]

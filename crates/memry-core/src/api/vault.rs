@@ -236,6 +236,13 @@ impl Vault {
         crate::api::note_positions::NotePositions::over(self.db.clone())
     }
 
+    /// Readwise's links and run state (desktop Step 33).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn readwise(&self) -> crate::api::readwise::ReadwiseStore {
+        crate::api::readwise::ReadwiseStore::over(self.db.clone())
+    }
+
     /// Outside edits of note files, fed into note bodies (desktop Step 12e).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[cfg(feature = "markdown")]
@@ -404,6 +411,15 @@ impl Vault {
     /// keychain for the same reason [`Vault::tasks`] does.
     pub fn home_pages(&self, store: Arc<dyn SecureStore>) -> Result<HomePages, AuthError> {
         HomePages::over(self.db.clone(), &store)
+    }
+
+    /// This vault's custom icons, read without a device identity, for desktop's note export.
+    /// Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn custom_icon_list(
+        &self,
+    ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
+        self.db.read_blocking(crate::domain::custom_icons::list)
     }
 }
 
