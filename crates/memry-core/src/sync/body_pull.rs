@@ -235,15 +235,21 @@ impl BodyPull {
 
     /// Tells `observers` of each document whose stored body changed, once
     /// the write has committed: a pull that stored a baseline or an update,
-    /// and a pack seed that applied.
+    /// and the body pack phase's settled documents.
     pub fn with_observers(mut self, observers: Arc<Observers>) -> Self {
         self.observers = Some(observers);
         self
     }
 
     async fn tell_observers(&self, doc_id: &str) {
+        self.tell_observers_of(vec![doc_id.to_owned()]).await;
+    }
+
+    /// One call for every document: a pack phase settles about 17k on a
+    /// large vault, and the desktop observer only queues each write-back.
+    pub(crate) async fn tell_observers_of(&self, doc_ids: Vec<String>) {
         if let Some(observers) = &self.observers {
-            observers.bodies_applied(vec![doc_id.to_owned()]).await;
+            observers.bodies_applied(doc_ids).await;
         }
     }
 

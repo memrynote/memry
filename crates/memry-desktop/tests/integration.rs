@@ -401,6 +401,8 @@ mod sticky_drafts;
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "sync_pack_files.rs"]
+mod sync_pack_files;
 #[path = "tag_definitions_sync.rs"]
 mod tag_definitions_sync;
 #[path = "tag_field_rename.rs"]

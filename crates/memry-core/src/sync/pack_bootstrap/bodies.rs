@@ -251,9 +251,14 @@ impl PackBootstrap {
             .db
             .call(move |conn| settle_pack_bodies(conn, manifest.as_ref()))
             .await?;
-        report.settled = settled;
+        report.settled = settled.len();
         report.owed = owed;
         report.ran = true;
+        // After the settle committed, not as each chunk lands: the desktop
+        // write-back keeps an owed note's file (`BodyRead::BodyNotPulled`),
+        // and every pack-applied document is owed until here. A document
+        // left owed is told by the route pull that settles it.
+        self.bodies.tell_observers_of(settled).await;
         Ok(())
     }
 

@@ -609,11 +609,11 @@ async fn a_resume_that_finds_no_body_pack_removes_the_old_spill() {
     assert!(!dir.join("pack-spill").exists(), "the old spill is removed");
 }
 
-/// Records each `bodies_applied` call with the document's cursor read at that
-/// moment: a told document's change is already committed.
+/// Records each `bodies_applied` call with the document's cursor and debt read
+/// at that moment: a told document's change is already committed.
 struct BodyWatcher {
     db: Db,
-    heard: std::sync::Mutex<Vec<(String, Option<i64>)>>,
+    heard: std::sync::Mutex<Vec<(String, Option<i64>, bool)>>,
 }
 
 impl ApplyObserver for BodyWatcher {
@@ -624,13 +624,18 @@ impl ApplyObserver for BodyWatcher {
     fn bodies_applied(&self, doc_ids: &[String]) {
         let mut heard = self.heard.lock().unwrap();
         for doc_id in doc_ids {
-            heard.push((doc_id.clone(), cursor_of(&self.db, doc_id)));
+            heard.push((
+                doc_id.clone(),
+                cursor_of(&self.db, doc_id),
+                is_owed(&self.db, doc_id),
+            ));
         }
     }
 }
 
-/// The desktop writes a note's file from `bodies_applied`, so every body the
-/// pack phase applies is told, after its chunk committed (tauri, #5133).
+/// The desktop writes a note's file from `bodies_applied` and keeps it while
+/// the body is owed, so every body the pack phase settles is told after the
+/// settle committed (tauri, #5133, REVIEW-5339).
 #[tokio::test]
 async fn every_body_a_pack_applies_is_told_to_the_observers_after_it_commits() {
     let (db, dir) = body_pack_server::scratch("observers");
@@ -656,12 +661,13 @@ async fn every_body_a_pack_applies_is_told_to_the_observers_after_it_commits() {
         let last = heard
             .iter()
             .rev()
-            .find(|(told, _)| told == id)
+            .find(|(told, ..)| told == id)
             .unwrap_or_else(|| panic!("{id} was never told: {heard:?}"));
         assert_eq!(
             last.1,
             cursor_of(&db, id),
             "{id}: told after its last commit"
         );
+        assert!(!last.2, "{id}: told once its debt settled: {heard:?}");
     }
 }

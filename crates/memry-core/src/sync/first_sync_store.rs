@@ -231,24 +231,24 @@ fn body_state(conn: &Connection, doc_id: &str) -> Result<BodyState, StorageError
 /// list: its paging can skip a document created behind its cursor during the
 /// read, and an absent document takes its baseline through the route
 /// (§8.10). Without a manifest every document is owed: the batch route
-/// answers no head. Answers `(settled, owed)`.
+/// answers no head. Answers the settled documents and the count owed.
 pub(super) fn settle_pack_bodies(
     conn: &Connection,
     checks: Option<&HashMap<String, BodyCheck>>,
-) -> Result<(usize, usize), StorageError> {
+) -> Result<(Vec<String>, usize), StorageError> {
     let live = live_document_ids(conn)?;
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-    let (mut settled, mut owed) = (0, 0);
-    for doc_id in &live {
-        let (cursor, revision) = body_state(&txn, doc_id)?;
+    let (mut settled, mut owed) = (Vec::new(), 0);
+    for doc_id in live {
+        let (cursor, revision) = body_state(&txn, &doc_id)?;
         let is_current = checks
-            .and_then(|checks| checks.get(doc_id))
+            .and_then(|checks| checks.get(&doc_id))
             .is_some_and(|check| current(check, cursor, revision.as_deref()));
         if is_current {
-            body_debt::settle(&txn, doc_id)?;
-            settled += 1;
+            body_debt::settle(&txn, &doc_id)?;
+            settled.push(doc_id);
         } else {
-            body_debt::owe(&txn, doc_id)?;
+            body_debt::owe(&txn, &doc_id)?;
             owed += 1;
         }
     }

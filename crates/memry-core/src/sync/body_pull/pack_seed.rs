@@ -121,18 +121,10 @@ impl BodyPull {
             });
         }
         let stored = self.store_baselines(baselines).await?;
-        let mut applied = Vec::new();
         for (at, stored) in placed.into_iter().zip(stored) {
-            if stored {
-                applied.push(entries[at].doc_id.to_owned());
-            } else {
+            if !stored {
                 outcome[at] = PackSeed::Stale;
             }
-        }
-        if !applied.is_empty()
-            && let Some(observers) = &self.observers
-        {
-            observers.bodies_applied(applied).await;
         }
         Ok(outcome)
     }
@@ -198,22 +190,11 @@ impl BodyPull {
         let doc_ids: Vec<String> = runs.iter().map(|(doc_id, _)| doc_id.clone()).collect();
         let stored = self.store_pack_runs(runs).await?;
         let mut applied = 0;
-        let mut told = Vec::new();
         for ((doc_id, wanted), stored) in doc_ids.into_iter().zip(wanted).zip(stored) {
             applied += stored;
-            if stored > 0 {
-                told.push(doc_id.clone());
-            }
             if stored < wanted {
                 stopped.insert(doc_id);
             }
-        }
-        // After the runs committed, as `seed_pack_chunk` tells its baselines:
-        // the desktop writes the note's file from it.
-        if !told.is_empty()
-            && let Some(observers) = &self.observers
-        {
-            observers.bodies_applied(told).await;
         }
         Ok((applied, stopped))
     }

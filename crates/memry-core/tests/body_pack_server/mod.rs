@@ -40,7 +40,7 @@ use sha2::{Digest as _, Sha256};
 use tokio::sync::Notify;
 use yrs::updates::decoder::Decode as _;
 use yrs::{
-    Doc, ReadTxn as _, StateVector, Text as _, Transact as _, Update, XmlElementPrelim,
+    Doc, ReadTxn as _, StateVector, Text as _, Transact as _, Update, Xml as _, XmlElementPrelim,
     XmlFragment as _, XmlTextPrelim,
 };
 
@@ -71,7 +71,8 @@ fn seal(doc_id: &str, update: &[u8]) -> Vec<u8> {
     .expect("seal")
 }
 
-/// `n` edits of one paragraph: edit `i` appends the word `w<i>`.
+/// `n` edits of one paragraph of a body the desktop write-back serializes
+/// (§12.5.0's `blockGroup`, a block id): edit `i` appends the word `w<i>`.
 fn edits(n: i64) -> Vec<Vec<u8>> {
     let doc = Doc::with_client_id(99);
     let fragment = doc.get_or_insert_xml_fragment("prosemirror");
@@ -83,8 +84,11 @@ fn edits(n: i64) -> Vec<Vec<u8>> {
                 let mut txn = doc.transact_mut();
                 match &text {
                     None => {
+                        let group =
+                            fragment.insert(&mut txn, 0, XmlElementPrelim::empty("blockGroup"));
                         let container =
-                            fragment.insert(&mut txn, 0, XmlElementPrelim::empty("blockContainer"));
+                            group.insert(&mut txn, 0, XmlElementPrelim::empty("blockContainer"));
+                        container.insert_attribute(&mut txn, "id", "block-1");
                         let paragraph =
                             container.insert(&mut txn, 0, XmlElementPrelim::empty("paragraph"));
                         text = Some(paragraph.insert(&mut txn, 0, XmlTextPrelim::new("w1")));
@@ -789,6 +793,32 @@ pub fn bootstrap_observed(
 
 /// A whole first sync, wired as `api/sync` wires it.
 pub fn first_sync(db: &Db, routes: &Arc<Routes>, dir: &std::path::Path) -> FirstSync {
+    first_sync_with(db, routes, dir, body_pull(db, &http(routes)))
+}
+
+/// [`first_sync`] whose body pull tells `observers`, as the desktop driver's does.
+pub fn first_sync_observed(
+    db: &Db,
+    routes: &Arc<Routes>,
+    dir: &std::path::Path,
+    observers: Arc<Observers>,
+) -> FirstSync {
+    let bodies = BodyPull::new(
+        http(routes),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory),
+    )
+    .with_observers(observers);
+    first_sync_with(db, routes, dir, Arc::new(bodies))
+}
+
+fn first_sync_with(
+    db: &Db,
+    routes: &Arc<Routes>,
+    dir: &std::path::Path,
+    bodies: Arc<BodyPull>,
+) -> FirstSync {
     let http = http(routes);
     let pull = Arc::new(PullLoop::new(
         Arc::clone(&http),
@@ -796,7 +826,6 @@ pub fn first_sync(db: &Db, routes: &Arc<Routes>, dir: &std::path::Path) -> First
         Declaration::subscribed(),
         Arc::new(Records),
     ));
-    let bodies = body_pull(db, &http);
     let packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
         .with_spill_dir(dir.join("pack-spill"));
     FirstSync::new(pull, bodies, db.clone()).with_packs(Arc::new(packs))
