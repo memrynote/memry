@@ -74,16 +74,16 @@ export function followLog(logPath, fs) {
   const lines = []
 
   const readFrom = (file, from) => {
-    const size = fs.statSync(file).size
-    if (size <= from) return ''
-    const buffer = Buffer.alloc(size - from)
     const fd = fs.openSync(file, 'r')
     try {
+      const size = fs.fstatSync(fd).size
+      if (size <= from) return ''
+      const buffer = Buffer.alloc(size - from)
       fs.readSync(fd, buffer, 0, buffer.length, from)
+      return buffer.toString('utf8')
     } finally {
       fs.closeSync(fd)
     }
-    return buffer.toString('utf8')
   }
 
   return () => {
