@@ -109,8 +109,8 @@ floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
 The gate classifies by route, not by method: besides `GET`, `HEAD` and
 `OPTIONS`, the `POST` routes that change no client-authored state are exempt
-too: `/sync/pull`, `/sync/records/pull`, `/sync/crdt/updates/batch` and
-`/sync/attachments/presign-batch`. Without that list a read-only device could
+too: `/sync/pull`, `/sync/records/pull`, `/sync/crdt/updates/batch`,
+`/sync/attachments/presign-batch` and `/sync/attachments/manifests/batch`. Without that list a read-only device could
 not fetch a change a peer made after the floor went up (#4716). The two pull
 routes are not strictly read-only: when a live row's blob is gone they stamp the
 server-set `blob_missing_at` on it (#2302), and a repeat pull keeps the first
@@ -1334,31 +1334,40 @@ signed-in account for sync, so another account's vaults never reach this account
 
 ## Endpoints
 
-| Path                                   | Direction | Purpose                                                                                       |
-| -------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
-| `POST /sync/push`                      | up        | Upload new sync items (metadata + blob refs)                                                  |
-| `POST /sync/pull`                      | down      | Fetch updates since cursor                                                                    |
-| `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
-| `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
-| `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
-| `GET /sync/crdt/manifest`              | down      | Body metadata for up to 1,000 notes per page: floor, snapshot revision, highest update        |
-| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
-| `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
-| `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
-| `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
-| `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
-| `PUT /sync/vaults/:vaultId/icon`       | up        | Set or reset a vault's encrypted icon; last writer wins on the client's change time           |
-| `POST /sync/bootstrap`                 | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
-| `POST /sync/bootstrap/renew`           | mixed     | Slide the window's TTL under the same session id                                              |
-| `POST /sync/bootstrap/close`           | up        | Release the window and its per-user session slot (idempotent)                                 |
-| `GET /sync/packs`                      | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
-| `POST /sync/attachments/presign-batch` | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
-| `POST /auth/*`                         | mixed     | OTP, sign-in, refresh, sign-out                                                               |
-| `POST /auth/oauth/google/native`       | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
-| `GET /auth/key-verifier`               | down      | Account key verifier for an established session (vault-key mismatch detection)                |
-| `GET /auth/devices`                    | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
-| `POST /devices/*`                      | mixed     | Linking, listing, revoking                                                                    |
-| `POST /keys/*`                         | mixed     | Key sealing during link, rotation                                                             |
+| Path                                     | Direction | Purpose                                                                                       |
+| ---------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `POST /sync/push`                        | up        | Upload new sync items (metadata + blob refs)                                                  |
+| `POST /sync/pull`                        | down      | Fetch updates since cursor                                                                    |
+| `POST /sync/crdt/updates`                | up        | Incremental Yjs binary updates                                                                |
+| `GET /sync/crdt/updates`                 | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
+| `POST /sync/crdt/updates/batch`          | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
+| `GET /sync/crdt/manifest`                | down      | Body metadata for up to 1,000 notes per page: floor, snapshot revision, highest update        |
+| `POST /sync/crdt/snapshot`               | up        | Full Yjs document baseline; prunes stored updates it covers (`coversThrough`, else watermark) |
+| `POST /sync/crdt/snapshot/batch`         | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
+| `GET /sync/crdt/snapshot/:noteId`        | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
+| `GET /sync/vaults`                       | down      | List the account's registered vaults                                                          |
+| `POST /sync/vaults`                      | up        | Register or update a vault's encrypted name                                                   |
+| `PUT /sync/vaults/:vaultId/icon`         | up        | Set or reset a vault's encrypted icon; last writer wins on the client's change time           |
+| `POST /sync/bootstrap`                   | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
+| `POST /sync/bootstrap/renew`             | mixed     | Slide the window's TTL under the same session id                                              |
+| `POST /sync/bootstrap/close`             | up        | Release the window and its per-user session slot (idempotent)                                 |
+| `GET /sync/packs`                        | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
+| `POST /sync/attachments/presign-batch`   | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
+| `POST /sync/attachments/manifests/batch` | down      | Signed manifests of up to 100 attachments in one request; a missing one is left out           |
+| `POST /auth/*`                           | mixed     | OTP, sign-in, refresh, sign-out                                                               |
+| `POST /auth/oauth/google/native`         | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
+| `GET /auth/key-verifier`                 | down      | Account key verifier for an established session (vault-key mismatch detection)                |
+| `GET /auth/devices`                      | down      | Signing-key directory; includes revoked devices (`revokedAt` set)                             |
+| `POST /devices/*`                        | mixed     | Linking, listing, revoking                                                                    |
+| `POST /keys/*`                           | mixed     | Key sealing during link, rotation                                                             |
+
+A fresh device downloads every attachment, and it used to send one manifest `GET` and one
+`presign-batch` per attachment: 2,128 of a 2,767-request bootstrap (#5329). The desktop download
+queue now hands the service the ids it will start next. The first download that needs a manifest
+fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/batch`, and the first
+that needs chunk URLs presigns the chunks of those downloads too, up to 1,024 per call. The bytes
+still download eagerly, so an attachment opens offline after bootstrap as before. A server without
+the batch route answers 404, and the desktop then fetches each manifest alone for 10 minutes.
 
 `GET /auth/devices` is the key directory every client verifies item and CRDT signatures against,
 not the device-management list (`GET /devices`, which hides revoked devices). It keeps revoked
