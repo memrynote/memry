@@ -3,7 +3,8 @@
 # Usage: sign-macos-bundle.sh <app> <identity> <entitlements> [keychain]
 # Order by path class: named sidecars and the pdfium dylib under Contents/Resources first, then
 # every other Mach-O file and framework, then the main binary, then the bundle. The script signs
-# whatever Mach-O files the bundle holds; the sidecars come from Steps 25, 29 and 35.
+# whatever Mach-O files the bundle holds; the sidecars come from Steps 25, 29 and 35. Every file
+# gets the app's entitlements except the EventKit helper (Step 29), which gets calendars only.
 set -eu
 
 app="${1:?usage: sign-macos-bundle.sh <app> <identity> <entitlements> [keychain]}"
@@ -13,12 +14,17 @@ keychain="${4:-}"
 
 [ -d "$app" ] || { echo "not a bundle: $app" >&2; exit 1; }
 
+# The EventKit helper only reads calendars, so it gets that one entitlement, not the app's.
+eventkit_entitlements="$(cd "$(dirname "$0")/../.." && pwd)/apps/desktop-tauri/eventkit/entitlements.plist"
+[ -f "$eventkit_entitlements" ] || { echo "missing $eventkit_entitlements" >&2; exit 1; }
+
+# sign <path> [entitlements]: the app's entitlements unless a file is named.
 sign() {
   if [ -n "$keychain" ]; then
-    codesign --force --timestamp --options runtime --entitlements "$entitlements" \
+    codesign --force --timestamp --options runtime --entitlements "${2:-$entitlements}" \
       --keychain "$keychain" --sign "$identity" "$1"
   else
-    codesign --force --timestamp --options runtime --entitlements "$entitlements" \
+    codesign --force --timestamp --options runtime --entitlements "${2:-$entitlements}" \
       --sign "$identity" "$1"
   fi
 }
@@ -30,16 +36,16 @@ trap 'rm -f "$signed"' EXIT
 sign_once() {
   [ -e "$1" ] || return 0
   grep -qxF "$1" "$signed" && return 0
-  sign "$1"
+  sign "$@"
   printf '%s\n' "$1" >> "$signed"
 }
 
 for named in \
   "$app/Contents/MacOS/memry-ml-worker" \
-  "$app/Contents/MacOS/memrynote-cli" \
-  "$app/Contents/MacOS/memry-eventkit"; do
+  "$app/Contents/MacOS/memrynote-cli"; do
   sign_once "$named"
 done
+sign_once "$app/Contents/MacOS/memry-eventkit" "$eventkit_entitlements"
 for dylib in "$app"/Contents/Resources/*pdfium*.dylib; do
   sign_once "$dylib"
 done

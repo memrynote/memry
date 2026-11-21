@@ -1,8 +1,10 @@
 //! Voice transcription settings: the local Whisper model (`model`), the OpenAI key (`key`), and
 //! whether a voice memo can be recorded now (`readiness`), as Electron's
-//! `apps/desktop/src/main/inbox/voice-transcription-settings.ts`. The engines that transcribe
-//! arrive with the later stages of Step 24 (#3541).
+//! `apps/desktop/src/main/inbox/voice-transcription-settings.ts`, and the local engine that
+//! transcribes (`engine`, whisper.cpp in the worker). The OpenAI engine arrives with Stage C of
+//! Step 24 (#3541).
 
+pub mod engine;
 pub mod key;
 pub mod model;
 

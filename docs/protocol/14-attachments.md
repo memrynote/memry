@@ -383,6 +383,9 @@ characters (`packages/contracts/src/blob-api.ts:57-59`). Desktop derives one per
 `"memry/canvas-asset-hold/v1" \0 canvasId \0 contentHash`
 (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:19,49-56`), so every device
 names the same holder and holding or releasing from any of them is idempotent.
+The derivation and the hold and release requests are pinned by
+`packages/contracts/test-vectors/chunk-holds.json:11` (holder ids) and `:93`
+(requests).
 The server learns how many holders a chunk has, as `ref_count` already shows,
 and nothing about which canvas or image they are.
 

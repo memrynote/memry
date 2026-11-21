@@ -67,7 +67,8 @@ pub enum HtmlTextError {
 /// The deepest element the tree builder may nest: Blink's `kMaximumHTMLParserDOMTreeDepth`.
 pub const MAX_DEPTH: usize = 512;
 
-/// The most nodes any file builds: 128 MiB of [`Node`]s.
+/// The most nodes any file builds: 128 MiB of [`Node`]s. The arena grows by doubling, and the
+/// tree builder's own state and the text sit beside it, so a parse at the cap peaks near 0.3 GB.
 const MAX_NODES: usize = 1 << 22;
 
 /// The most nodes `len` bytes of HTML may build. Each tag, text run or comment takes at least one
@@ -255,7 +256,7 @@ enum Kind {
 
 /// An arena node with sibling links, so every insert and removal the tree builder asks for is
 /// O(1) (a foster-parented run before a table would otherwise shift a sibling list each time).
-/// It takes 32 bytes, so the largest tree fits in 128 MiB.
+/// It takes 32 bytes, so the largest tree's nodes take 128 MiB ([`MAX_NODES`] for the peak).
 struct Node {
     kind: Kind,
     parent: Option<Id>,

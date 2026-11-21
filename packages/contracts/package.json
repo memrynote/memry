@@ -51,6 +51,7 @@
     "./journal-api": "./src/journal-api.ts",
     "./linking-api": "./src/linking-api.ts",
     "./locale-api": "./src/locale-api.ts",
+    "./ocr-language-data": "./src/ocr-language-data.ts",
     "./ocr-languages-api": "./src/ocr-languages-api.ts",
     "./onboarding-api": "./src/onboarding-api.ts",
     "./note-fold": "./src/note-fold.ts",

@@ -17,6 +17,8 @@ mod yaml_load;
 pub use edit::equal_visits;
 pub(crate) use edit::parse_yaml_date;
 pub use edit::{deep_strict_equal, edit_frontmatter_block, serialize_updated_note};
+/// `Date#toISOString`, which a desktop reader of a frontmatter date hands on as JSON does.
+pub use js::iso_string;
 /// JavaScript's `String#trim`, which a desktop input check needs to match zod's `.trim()`, and
 /// the whitespace it and `\s` take, for a desktop edit that trims one end (`/\s+$/`).
 pub use js::{is_js_whitespace, js_trim, number_to_string};

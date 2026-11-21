@@ -41,7 +41,9 @@ impl PostReveal {
         if state.started.contains(name) {
             return;
         }
-        if state.drained {
+        // Behind a task the drain has not started yet, a registration queues: running it here
+        // would start it ahead of tasks registered before it.
+        if state.drained && state.queue.is_empty() {
             state.started.insert(name.to_owned());
             drop(state);
             run(name, Box::new(task));
@@ -78,17 +80,20 @@ impl PostReveal {
         });
     }
 
+    /// Starts the queued tasks in registration order. Each leaves the queue only when it
+    /// starts, so `register` sees whether any task is still waiting.
     fn drain(&self) {
-        let pending = {
-            let mut state = self.lock();
-            state.drained = true;
-            let pending = std::mem::take(&mut state.queue);
-            for (name, _) in &pending {
+        self.lock().drained = true;
+        loop {
+            let (name, task) = {
+                let mut state = self.lock();
+                if state.queue.is_empty() {
+                    return;
+                }
+                let (name, task) = state.queue.remove(0);
                 state.started.insert(name.clone());
-            }
-            pending
-        };
-        for (name, task) in pending {
+                (name, task)
+            };
             run(&name, task);
         }
     }

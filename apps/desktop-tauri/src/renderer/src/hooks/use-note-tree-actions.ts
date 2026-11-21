@@ -880,11 +880,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       if (folderToConfigureTemplate && templateId) {
         try {
           const existing = (await notesService.getFolderConfig(folderToConfigureTemplate)) ?? {}
-          await notesService.setFolderConfig(folderToConfigureTemplate, {
+          const saved = await notesService.setFolderConfig(folderToConfigureTemplate, {
             ...existing,
             template: templateId,
             inherit: true
           })
+          if (!saved.success) throw new Error(saved.error)
           const templatesResponse = await templatesService.list()
           const template = templatesResponse.templates.find((t) => t.id === templateId)
           if (template) {
@@ -898,7 +899,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         } catch (err) {
           log.error('Failed to set folder template', err)
           toast.error(
-            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+            )
           )
         }
       }
@@ -913,7 +917,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         const existing = (await notesService.getFolderConfig(folderPath)) ?? {}
         const next = { ...existing, inherit: true }
         delete next.template
-        await notesService.setFolderConfig(folderPath, next)
+        const saved = await notesService.setFolderConfig(folderPath, next)
+        if (!saved.success) throw new Error(saved.error)
         deps.setFolderTemplateNames((prev) => {
           const nextNames = new Map(prev)
           nextNames.delete(folderPath)
@@ -923,7 +928,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       } catch (err) {
         log.error('Failed to clear folder template', err)
         toast.error(
-          getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+          )
         )
       }
     },

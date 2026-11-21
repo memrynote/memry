@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion, useReducedMotionConfig } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -112,7 +112,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 }: TaskDetailDrawerProps): React.JSX.Element | null {
   const { t, i18n } = useT('tasks')
   const { t: tCommon } = useT('common')
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotionConfig()
   const { width, setWidth, setIsResizing } = useResizablePanel({
     storageKey: TASK_DETAIL_WIDTH_KEY,
     defaultPx: TASK_DETAIL_WIDTH_DEFAULT_PX,

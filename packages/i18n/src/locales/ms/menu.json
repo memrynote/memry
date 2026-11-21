@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Pergi ke Utama",
     "goInbox": "Pergi ke Peti masuk",
-    "goJournal": "Pergi ke Jurnal",
     "goCalendar": "Pergi ke Kalendar",
     "goTasks": "Pergi ke Tugas",
     "goGraph": "Pergi ke Graf",
