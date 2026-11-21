@@ -5,3 +5,7 @@
 pub mod contract;
 pub mod defaults;
 pub mod service;
+pub mod write_contract;
+mod writes;
+
+pub use writes::{MOVE_MANY_FAILED, REORDER_FAILED, TASK_NOT_FOUND};

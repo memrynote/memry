@@ -88,6 +88,11 @@ pub struct TaskPatch {
     pub linked_note_ids: Option<Vec<String>>,
     pub linked_canvas_ids: Option<Vec<String>>,
     pub fields: Option<Map<String, Value>>,
+    /// Desktop's `moveTask` position; `TaskUpdateSchema` has none.
+    pub position: Option<i64>,
+    /// Desktop's `moveTask`: a status it names beats the equivalent status a project change
+    /// picks. `updateTask` takes the equivalent one either way.
+    pub named_status_wins: bool,
 }
 
 /// Why desktop's `updateTask` answers `{ success: false }` without writing.
@@ -288,6 +293,43 @@ fn nullable<T: Into<Value> + Clone>(patch: &Patch<T>) -> Option<Value> {
     }
 }
 
+/// `checkParent` with the `tasks.nestedSubtasks` setting: whether `parent_id` is a place
+/// `task_id` may not go. Off, a subtask cannot take a subtask, nor a parent become one.
+fn parent_refused(
+    conn: &Connection,
+    task_id: &str,
+    parent_id: &str,
+    project_id: &str,
+    allow_nested: bool,
+) -> Result<bool, StorageError> {
+    match require_parent(conn, task_id, parent_id, project_id) {
+        Ok(parent) => Ok(!allow_nested
+            && (parent.parent_id().is_some() || !subtask_ids(conn, task_id)?.is_empty())),
+        Err(StorageError::Invalid { .. } | StorageError::NotFound { .. }) => Ok(true),
+        Err(other) => Err(other),
+    }
+}
+
+/// Desktop's `createTask` refusals, in its order: a project no vault holds, then a parent
+/// the new task `task_id` may not sit under. `None` lets the create run.
+pub fn create_refusal(
+    conn: &Connection,
+    task_id: &str,
+    project_id: &str,
+    parent_id: Option<&str>,
+    allow_nested: bool,
+) -> Result<Option<UpdateRefusal>, StorageError> {
+    if projects::get(conn, project_id)?.is_none() {
+        return Ok(Some(UpdateRefusal::ProjectMissing));
+    }
+    if let Some(parent_id) = parent_id
+        && parent_refused(conn, task_id, parent_id, project_id, allow_nested)?
+    {
+        return Ok(Some(UpdateRefusal::InvalidParent));
+    }
+    Ok(None)
+}
+
 /// Applies `patch` to task `task_id` in one transaction. `local_now` is the
 /// device's wall clock, which a repeating series rolled here anchors on.
 /// `allow_nested` is the `tasks.nestedSubtasks` setting `checkParent` reads.
@@ -312,16 +354,7 @@ pub fn apply(
     }
     if let Patch::Set(parent_id) = &patch.parent_id {
         let project_id = patch.project_id.as_deref().unwrap_or(before.project_id());
-        let too_deep = match require_parent(batch.conn(), task_id, parent_id, project_id) {
-            Ok(parent) => {
-                !allow_nested
-                    && (parent.parent_id().is_some()
-                        || !subtask_ids(batch.conn(), task_id)?.is_empty())
-            }
-            Err(StorageError::Invalid { .. } | StorageError::NotFound { .. }) => true,
-            Err(other) => return Err(other),
-        };
-        if too_deep {
+        if parent_refused(batch.conn(), task_id, parent_id, project_id, allow_nested)? {
             return Ok(Err(UpdateRefusal::InvalidParent));
         }
     }
@@ -333,6 +366,7 @@ pub fn apply(
         }
     };
     push("title", patch.title.clone().map(Value::from));
+    push("position", patch.position.map(Value::from));
     push("description", nullable(&patch.description));
     push("priority", patch.priority.map(Value::from));
     push("projectId", patch.project_id.clone().map(Value::from));
@@ -349,8 +383,10 @@ pub fn apply(
     push("repeatFrom", nullable(&patch.repeat_from));
 
     let mut status_id = nullable(&patch.status_id);
+    let named = patch.named_status_wins && matches!(patch.status_id, Patch::Set(_));
     if let Some(project_id) = patch.project_id.as_deref()
         && project_id != before.project_id()
+        && !named
     {
         let source = match before.status_id() {
             Some(id) => status_by_id(batch.conn(), id)?,
