@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Prejsť na Domov",
     "goInbox": "Prejsť na Prijaté",
-    "goJournal": "Prejsť na Denník",
     "goCalendar": "Prejsť na Kalendár",
     "goTasks": "Prejsť na Úlohy",
     "goGraph": "Prejsť na Graf",

@@ -944,11 +944,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   )
 
   // ponytail: per-note native save dialog (cancel aborts the run). A single-folder
-  // bulk export needs a directory-picker IPC + ExportNoteInput.outputPath — add then.
+  // bulk export needs a Rust-side directory picker that names each file; a webview never
+  // supplies the path to write.
   const handleBulkExport = useCallback(async () => {
     for (const id of Array.from(selectedRowIds)) {
       const result = await notesService.exportHtml({ noteId: id })
-      if (result.error === 'Export cancelled') break
+      if (result.code === 'cancelled') break
     }
   }, [selectedRowIds])
 

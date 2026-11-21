@@ -1,0 +1,3048 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3549-obsidian-task-import",
+    "oracle": "apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts (buildObsidianTaskImport of packages/shared/src/obsidian-task-import.ts, parseObsidianTaskLine of obsidian-tasks.ts)",
+    "note": "`import` is built in UTC; `completedAt` names the other zones. `localZones` builds done dates in real zones."
+  },
+  "now": "2026-03-04T09:30:00.000Z",
+  "zones": [
+    {
+      "zone": "UTC",
+      "offset": 0
+    },
+    {
+      "zone": "Etc/GMT+5",
+      "offset": 300
+    },
+    {
+      "zone": "Etc/GMT-14",
+      "offset": -840
+    }
+  ],
+  "cases": [
+    {
+      "text": "",
+      "import": null
+    },
+    {
+      "text": "Buy milk",
+      "import": null
+    },
+    {
+      "text": "Buy milk #errand",
+      "import": null
+    },
+    {
+      "text": "Buy milk ^abc123",
+      "import": null
+    },
+    {
+      "text": "Buy milk 🆔 abc123",
+      "import": null
+    },
+    {
+      "text": "Buy milk ⛔ abc123",
+      "import": null
+    },
+    {
+      "text": "Buy milk 📅 2026-01-01\r",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-01-01\r",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "a :: b",
+      "import": null
+    },
+    {
+      "text": "Buy milk 🔺",
+      "import": {
+        "title": "Buy milk",
+        "priority": 4,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🔺",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ⏫",
+      "import": {
+        "title": "Buy milk",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ⏫",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔼",
+      "import": {
+        "title": "Buy milk",
+        "priority": 2,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🔼",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔽",
+      "import": {
+        "title": "Buy milk",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🔽",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ⏬",
+      "import": {
+        "title": "Buy milk",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ⏬",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ⏫️",
+      "import": {
+        "title": "Buy milk",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ⏫️",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "⏫",
+      "import": {
+        "title": "",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "⏫",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [priority:: highest]",
+      "import": {
+        "title": "Buy milk",
+        "priority": 4,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk [priority:: highest]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [priority:: lowest]",
+      "import": {
+        "title": "Buy milk",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk [priority:: lowest]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk (priority:: medium)",
+      "import": {
+        "title": "Buy milk",
+        "priority": 2,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk (priority:: medium)",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [priority:: urgent]",
+      "import": null
+    },
+    {
+      "text": "Buy milk 📅 2026-01-01",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 📆 2026-01-02",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-02",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📆 2026-01-02",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🗓 2026-01-03",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-03",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🗓 2026-01-03",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🛫 2026-01-04",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-04",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🛫 2026-01-04",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ⏳ 2026-01-05",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-05",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ⏳ 2026-01-05",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ⌛ 2026-01-06",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-06",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ⌛ 2026-01-06",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🛫 2026-01-04 ⏳ 2026-01-05",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-04",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🛫 2026-01-04 ⏳ 2026-01-05",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ❌ 2026-01-08",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ❌ 2026-01-08",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ➕ 2026-01-09",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ➕ 2026-01-09",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [due:: 2026-01-01]",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk [due:: 2026-01-01]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk (scheduled:: 2026-01-05)",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-05",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk (scheduled:: 2026-01-05)",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [start:: 2026-01-04] [scheduled:: 2026-01-05]",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2026-01-04",
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk [start:: 2026-01-04] [scheduled:: 2026-01-05]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [due:: 2026-01-01)",
+      "import": null
+    },
+    {
+      "text": "Buy milk 📅 2026-02-30",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-02-30",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-02-30",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 📅 2026-13-45",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-13-45",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-13-45",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-01-07",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-01-07",
+        "completedAt": "2026-01-07T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "2026-01-07T05:00:00.000Z",
+        "Etc/GMT-14": "2026-01-06T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk [completion:: 2026-01-07]",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk [completion:: 2026-01-07]",
+        "completedAt": "2026-01-07T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "2026-01-07T05:00:00.000Z",
+        "Etc/GMT-14": "2026-01-06T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2024-02-29",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2024-02-29",
+        "completedAt": "2024-02-29T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "2024-02-29T05:00:00.000Z",
+        "Etc/GMT-14": "2024-02-28T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2025-02-29",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2025-02-29",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-02-30",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-02-30",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-13-01",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-13-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-00-10",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-00-10",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-01-00",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-01-00",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-01-32",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-01-32",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 0026-01-01",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 0026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 0099-12-31",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 0099-12-31",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk ✅ 0100-01-01",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 0100-01-01",
+        "completedAt": "0100-01-01T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "0100-01-01T05:00:00.000Z",
+        "Etc/GMT-14": "0099-12-31T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk ✅ 0999-06-15",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 0999-06-15",
+        "completedAt": "0999-06-15T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "0999-06-15T05:00:00.000Z",
+        "Etc/GMT-14": "0999-06-14T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk ✅ 9999-12-31",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 9999-12-31",
+        "completedAt": "9999-12-31T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "9999-12-31T05:00:00.000Z",
+        "Etc/GMT-14": "9999-12-30T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk ✅ 2026-12-31",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk ✅ 2026-12-31",
+        "completedAt": "2026-12-31T00:00:00.000Z"
+      },
+      "completedAt": {
+        "Etc/GMT+5": "2026-12-31T05:00:00.000Z",
+        "Etc/GMT-14": "2026-12-30T10:00:00.000Z"
+      }
+    },
+    {
+      "text": "Buy milk 📅 2026-01-01 ✅ 2026-02-30",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-01-01 ✅ 2026-02-30",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every day",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every day",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every week",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every week",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 2 weeks",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 2,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 2 weeks",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every month",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "monthly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every month",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every year",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "yearly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every year",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 3 days",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 3,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 3 days",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 0 days",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 0,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 0 days",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 99999999999999999 days",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 100000000000000000,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 99999999999999999 days",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 123456789012345678901234567890 days",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 1.2345678901234568e+29,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 123456789012345678901234567890 days",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999 days",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": null,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999 days",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every weekday",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "daysOfWeek": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every weekday",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every weekday when done",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "daysOfWeek": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "completion",
+        "description": "Buy milk 🔁 every weekday when done",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every week when done",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "completion",
+        "description": "Buy milk 🔁 every week when done",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every monday, friday",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "daysOfWeek": [
+            1,
+            5
+          ],
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every monday, friday",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every fri and mon and fri",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "daysOfWeek": [
+            1,
+            5
+          ],
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 every fri and mon and fri",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 Every Week",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 🔁 Every Week",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every 3 fortnights",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🔁 every 3 fortnights",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🔁 every",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🔁 every",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk [repeat:: every 2 months when done]",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "monthly",
+          "interval": 2,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "completion",
+        "description": "Buy milk [repeat:: every 2 months when done]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🏁 delete",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🏁 delete",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 📅 2026-01-01 ⏫ 🔁 every week",
+      "import": {
+        "title": "Buy milk",
+        "priority": 3,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": {
+          "frequency": "weekly",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "Buy milk 📅 2026-01-01 ⏫ 🔁 every week",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk #Errand 📅 2026-01-01 #shop",
+      "import": {
+        "title": "Buy milk #Errand #shop",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "Errand",
+          "shop"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk #Errand 📅 2026-01-01 #shop",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk #a #A #a/b 📅 2026-01-01",
+      "import": {
+        "title": "Buy milk #a #A #a/b",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "a",
+          "a/b"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk #a #A #a/b 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "#only 📅 2026-01-01",
+      "import": {
+        "title": "#only",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "only"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#only 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy #nbsp 📅 2026-01-01",
+      "import": {
+        "title": "Buy #nbsp",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "nbsp"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy #nbsp 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk #😀 📅 2026-01-01",
+      "import": {
+        "title": "Buy milk #😀",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "😀"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk #😀 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Pay rent  [due:: 2026-09-15]  [priority:: high]",
+      "import": {
+        "title": "Pay rent",
+        "priority": 3,
+        "dueDate": "2026-09-15",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Pay rent  [due:: 2026-09-15]  [priority:: high]",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Mixed ⏫ [due:: 2026-01-01] #a 📅 2026-02-01 #b",
+      "import": {
+        "title": "Mixed #a #b",
+        "priority": 3,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "a",
+          "b"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Mixed ⏫ [due:: 2026-01-01] #a 📅 2026-02-01 #b",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "  Buy milk 📅 2026-01-01  ",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "  Buy milk 📅 2026-01-01  ",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 🆔 abc 📅 2026-01-01",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 🆔 abc 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "Buy milk 📅 2026-01-01 ^block",
+      "import": {
+        "title": "Buy milk",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "Buy milk 📅 2026-01-01 ^block",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "x ⏫ #a ⏫ #b ⏫ #c",
+      "import": {
+        "title": "x #a #b #c",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "a",
+          "b",
+          "c"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "x ⏫ #a ⏫ #b ⏫ #c",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "x 📅 2026-01-01 📅 2026-01-02 📅 2026-01-03 📅 2026-01-04 📅 2026-01-05 📅 2026-01-06 📅 2026-01-07 📅 2026-01-08 📅 2026-01-09 📅 2026-01-10 📅 2026-01-11 📅 2026-01-12 📅 2026-01-13 📅 2026-01-14 📅 2026-01-15 📅 2026-01-16 📅 2026-01-17 📅 2026-01-18 📅 2026-01-19 📅 2026-01-20 📅 2026-01-21 📅 2026-01-22 📅 2026-01-23",
+      "import": {
+        "title": "x 📅 2026-01-01 📅 2026-01-02",
+        "priority": null,
+        "dueDate": "2026-01-03",
+        "startDate": null,
+        "tags": [],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "x 📅 2026-01-01 📅 2026-01-02 📅 2026-01-03 📅 2026-01-04 📅 2026-01-05 📅 2026-01-06 📅 2026-01-07 📅 2026-01-08 📅 2026-01-09 📅 2026-01-10 📅 2026-01-11 📅 2026-01-12 📅 2026-01-13 📅 2026-01-14 📅 2026-01-15 📅 2026-01-16 📅 2026-01-17 📅 2026-01-18 📅 2026-01-19 📅 2026-01-20 📅 2026-01-21 📅 2026-01-22 📅 2026-01-23",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    },
+    {
+      "text": "日本語 😀 #tag 📅 2026-01-01",
+      "import": {
+        "title": "日本語 😀 #tag",
+        "priority": null,
+        "dueDate": "2026-01-01",
+        "startDate": null,
+        "tags": [
+          "tag"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "日本語 😀 #tag 📅 2026-01-01",
+        "completedAt": null
+      },
+      "completedAt": {
+        "Etc/GMT+5": null,
+        "Etc/GMT-14": null
+      }
+    }
+  ],
+  "localZones": [
+    {
+      "zone": "America/Santiago",
+      "cases": [
+        {
+          "text": "x ✅ 2024-04-06",
+          "completedAt": "2024-04-06T03:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-04-07",
+          "completedAt": "2024-04-07T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-04-08",
+          "completedAt": "2024-04-08T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-07",
+          "completedAt": "2024-09-07T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-08",
+          "completedAt": "2024-09-08T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-09",
+          "completedAt": "2024-09-09T03:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "America/Havana",
+      "cases": [
+        {
+          "text": "x ✅ 2018-03-11",
+          "completedAt": "2018-03-11T05:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-03",
+          "completedAt": "2018-11-03T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-04",
+          "completedAt": "2018-11-04T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-05",
+          "completedAt": "2018-11-05T05:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Asia/Amman",
+      "cases": [
+        {
+          "text": "x ✅ 2021-10-28",
+          "completedAt": "2021-10-27T21:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2021-10-29",
+          "completedAt": "2021-10-28T21:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2021-10-30",
+          "completedAt": "2021-10-29T22:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Pacific/Apia",
+      "cases": [
+        {
+          "text": "x ✅ 2011-12-29",
+          "completedAt": "2011-12-29T10:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2011-12-30",
+          "completedAt": null
+        },
+        {
+          "text": "x ✅ 2011-12-31",
+          "completedAt": "2011-12-30T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Pacific/Kiritimati",
+      "cases": [
+        {
+          "text": "x ✅ 1994-12-30",
+          "completedAt": "1994-12-30T10:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 1994-12-31",
+          "completedAt": null
+        },
+        {
+          "text": "x ✅ 1995-01-01",
+          "completedAt": "1994-12-31T10:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "fixtures": [
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [ ] #task Has a created date [created:: 2023-04-13]",
+      "parsed": {
+        "description": "#task Has a created date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": "2023-04-13",
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a created date [created:: 2023-04-13]",
+      "import": {
+        "title": "#task Has a created date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a created date [created:: 2023-04-13]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [ ] #task Has a scheduled date [scheduled:: 2023-04-14]",
+      "parsed": {
+        "description": "#task Has a scheduled date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": "2023-04-14",
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a scheduled date [scheduled:: 2023-04-14]",
+      "import": {
+        "title": "#task Has a scheduled date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2023-04-14",
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a scheduled date [scheduled:: 2023-04-14]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [ ] #task Has a start date [start:: 2023-04-15]",
+      "parsed": {
+        "description": "#task Has a start date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": "2023-04-15",
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a start date [start:: 2023-04-15]",
+      "import": {
+        "title": "#task Has a start date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2023-04-15",
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a start date [start:: 2023-04-15]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [ ] #task Has a due date [due:: 2023-04-16]",
+      "parsed": {
+        "description": "#task Has a due date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": "2023-04-16",
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a due date [due:: 2023-04-16]",
+      "import": {
+        "title": "#task Has a due date",
+        "priority": null,
+        "dueDate": "2023-04-16",
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a due date [due:: 2023-04-16]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [x] #task Has a done date [completion:: 2023-04-17]",
+      "parsed": {
+        "description": "#task Has a done date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": "2023-04-17",
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": "x",
+        "statusType": "DONE"
+      },
+      "text": "#task Has a done date [completion:: 2023-04-17]",
+      "import": {
+        "title": "#task Has a done date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a done date [completion:: 2023-04-17]",
+        "completedAt": "2023-04-17T00:00:00.000Z"
+      }
+    },
+    {
+      "file": "Dates_dataview.approved.md",
+      "line": "- [-] #task Has a cancelled date [cancelled:: 2023-04-18]",
+      "parsed": {
+        "description": "#task Has a cancelled date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": "2023-04-18",
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": "-",
+        "statusType": "CANCELLED"
+      },
+      "text": null,
+      "import": null
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Has a created date ➕ 2023-04-13",
+      "parsed": {
+        "description": "#task Has a created date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": "2023-04-13",
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a created date ➕ 2023-04-13",
+      "import": {
+        "title": "#task Has a created date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a created date ➕ 2023-04-13",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Has a scheduled date ⏳ 2023-04-14",
+      "parsed": {
+        "description": "#task Has a scheduled date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": "2023-04-14",
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a scheduled date ⏳ 2023-04-14",
+      "import": {
+        "title": "#task Has a scheduled date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2023-04-14",
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a scheduled date ⏳ 2023-04-14",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Has a start date 🛫 2023-04-15",
+      "parsed": {
+        "description": "#task Has a start date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": "2023-04-15",
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a start date 🛫 2023-04-15",
+      "import": {
+        "title": "#task Has a start date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": "2023-04-15",
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a start date 🛫 2023-04-15",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Has a due date 📅 2023-04-16",
+      "parsed": {
+        "description": "#task Has a due date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": "2023-04-16",
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Has a due date 📅 2023-04-16",
+      "import": {
+        "title": "#task Has a due date",
+        "priority": null,
+        "dueDate": "2023-04-16",
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a due date 📅 2023-04-16",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [x] #task Has a done date ✅ 2023-04-17",
+      "parsed": {
+        "description": "#task Has a done date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": "2023-04-17",
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": "x",
+        "statusType": "DONE"
+      },
+      "text": "#task Has a done date ✅ 2023-04-17",
+      "import": {
+        "title": "#task Has a done date",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Has a done date ✅ 2023-04-17",
+        "completedAt": "2023-04-17T00:00:00.000Z"
+      }
+    },
+    {
+      "file": "Dates_tasksPluginEmoji.approved.md",
+      "line": "- [-] #task Has a cancelled date ❌ 2023-04-18",
+      "parsed": {
+        "description": "#task Has a cancelled date",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": "2023-04-18",
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": "-",
+        "statusType": "CANCELLED"
+      },
+      "text": null,
+      "import": null
+    },
+    {
+      "file": "Dependencies_dataview.approved.md",
+      "line": "- [ ] #task do this first [id:: dcf64c]",
+      "parsed": {
+        "description": "#task do this first",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": "dcf64c",
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task do this first [id:: dcf64c]",
+      "import": null
+    },
+    {
+      "file": "Dependencies_dataview.approved.md",
+      "line": "- [ ] #task do this after first and some other task [dependsOn:: dcf64c,0h17ye]",
+      "parsed": {
+        "description": "#task do this after first and some other task",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [
+          "dcf64c",
+          "0h17ye"
+        ],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task do this after first and some other task [dependsOn:: dcf64c,0h17ye]",
+      "import": null
+    },
+    {
+      "file": "Dependencies_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task do this first 🆔 dcf64c",
+      "parsed": {
+        "description": "#task do this first",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": "dcf64c",
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task do this first 🆔 dcf64c",
+      "import": null
+    },
+    {
+      "file": "Dependencies_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task do this after first and some other task ⛔ dcf64c,0h17ye",
+      "parsed": {
+        "description": "#task do this after first and some other task",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [
+          "dcf64c",
+          "0h17ye"
+        ],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task do this after first and some other task ⛔ dcf64c,0h17ye",
+      "import": null
+    },
+    {
+      "file": "OnCompletion_dataview.approved.md",
+      "line": "- [ ] #task Keep this task when done",
+      "parsed": {
+        "description": "#task Keep this task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Keep this task when done",
+      "import": null
+    },
+    {
+      "file": "OnCompletion_dataview.approved.md",
+      "line": "- [ ] #task Keep this task when done too [onCompletion:: keep]",
+      "parsed": {
+        "description": "#task Keep this task when done too",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": "keep",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Keep this task when done too [onCompletion:: keep]",
+      "import": {
+        "title": "#task Keep this task when done too",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Keep this task when done too [onCompletion:: keep]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "OnCompletion_dataview.approved.md",
+      "line": "- [ ] #task Remove this task when done [onCompletion:: delete]",
+      "parsed": {
+        "description": "#task Remove this task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": "delete",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Remove this task when done [onCompletion:: delete]",
+      "import": {
+        "title": "#task Remove this task when done",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Remove this task when done [onCompletion:: delete]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "OnCompletion_dataview.approved.md",
+      "line": "- [ ] #task Remove completed instance of this recurring task when done [repeat:: every day] [onCompletion:: delete]",
+      "parsed": {
+        "description": "#task Remove completed instance of this recurring task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": "every day",
+        "recurrence": {
+          "frequency": "daily",
+          "interval": 1,
+          "fromCompletion": false
+        },
+        "onCompletion": "delete",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Remove completed instance of this recurring task when done [repeat:: every day] [onCompletion:: delete]",
+      "import": {
+        "title": "#task Remove completed instance of this recurring task when done",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "#task Remove completed instance of this recurring task when done [repeat:: every day] [onCompletion:: delete]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "OnCompletion_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Keep this task when done",
+      "parsed": {
+        "description": "#task Keep this task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Keep this task when done",
+      "import": null
+    },
+    {
+      "file": "OnCompletion_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Keep this task when done too 🏁 keep",
+      "parsed": {
+        "description": "#task Keep this task when done too",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": "keep",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Keep this task when done too 🏁 keep",
+      "import": {
+        "title": "#task Keep this task when done too",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Keep this task when done too 🏁 keep",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "OnCompletion_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Remove this task when done 🏁 delete",
+      "parsed": {
+        "description": "#task Remove this task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": "delete",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Remove this task when done 🏁 delete",
+      "import": {
+        "title": "#task Remove this task when done",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Remove this task when done 🏁 delete",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "OnCompletion_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Remove completed instance of this recurring task when done 🔁 every day 🏁 delete",
+      "parsed": {
+        "description": "#task Remove completed instance of this recurring task when done",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": "every day",
+        "recurrence": {
+          "frequency": "daily",
+          "interval": 1,
+          "fromCompletion": false
+        },
+        "onCompletion": "delete",
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Remove completed instance of this recurring task when done 🔁 every day 🏁 delete",
+      "import": {
+        "title": "#task Remove completed instance of this recurring task when done",
+        "priority": null,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": {
+          "frequency": "daily",
+          "interval": 1,
+          "endType": "never",
+          "completedCount": 0,
+          "createdAt": "2026-03-04T09:30:00.000Z"
+        },
+        "repeatFrom": "due",
+        "description": "#task Remove completed instance of this recurring task when done 🔁 every day 🏁 delete",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task Lowest priority [priority:: lowest]",
+      "parsed": {
+        "description": "#task Lowest priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "lowest",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Lowest priority [priority:: lowest]",
+      "import": {
+        "title": "#task Lowest priority",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Lowest priority [priority:: lowest]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task Low priority [priority:: low]",
+      "parsed": {
+        "description": "#task Low priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "low",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Low priority [priority:: low]",
+      "import": {
+        "title": "#task Low priority",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Low priority [priority:: low]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task Normal priority",
+      "parsed": {
+        "description": "#task Normal priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Normal priority",
+      "import": null
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task Medium priority [priority:: medium]",
+      "parsed": {
+        "description": "#task Medium priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "medium",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Medium priority [priority:: medium]",
+      "import": {
+        "title": "#task Medium priority",
+        "priority": 2,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Medium priority [priority:: medium]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task High priority [priority:: high]",
+      "parsed": {
+        "description": "#task High priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "high",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task High priority [priority:: high]",
+      "import": {
+        "title": "#task High priority",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task High priority [priority:: high]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_dataview.approved.md",
+      "line": "- [ ] #task Highest priority [priority:: highest]",
+      "parsed": {
+        "description": "#task Highest priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "highest",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Highest priority [priority:: highest]",
+      "import": {
+        "title": "#task Highest priority",
+        "priority": 4,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Highest priority [priority:: highest]",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Lowest priority ⏬",
+      "parsed": {
+        "description": "#task Lowest priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "lowest",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Lowest priority ⏬",
+      "import": {
+        "title": "#task Lowest priority",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Lowest priority ⏬",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Low priority 🔽",
+      "parsed": {
+        "description": "#task Low priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "low",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Low priority 🔽",
+      "import": {
+        "title": "#task Low priority",
+        "priority": 1,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Low priority 🔽",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Normal priority",
+      "parsed": {
+        "description": "#task Normal priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": null,
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Normal priority",
+      "import": null
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Medium priority 🔼",
+      "parsed": {
+        "description": "#task Medium priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "medium",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Medium priority 🔼",
+      "import": {
+        "title": "#task Medium priority",
+        "priority": 2,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Medium priority 🔼",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task High priority ⏫",
+      "parsed": {
+        "description": "#task High priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "high",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task High priority ⏫",
+      "import": {
+        "title": "#task High priority",
+        "priority": 3,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task High priority ⏫",
+        "completedAt": null
+      }
+    },
+    {
+      "file": "Priorities_tasksPluginEmoji.approved.md",
+      "line": "- [ ] #task Highest priority 🔺",
+      "parsed": {
+        "description": "#task Highest priority",
+        "tags": [
+          "#task"
+        ],
+        "priority": "highest",
+        "dueDate": null,
+        "scheduledDate": null,
+        "startDate": null,
+        "createdDate": null,
+        "doneDate": null,
+        "cancelledDate": null,
+        "recurrenceText": null,
+        "recurrence": null,
+        "onCompletion": null,
+        "id": null,
+        "dependsOn": [],
+        "blockLink": null,
+        "indentation": "",
+        "listMarker": "-",
+        "statusChar": " ",
+        "statusType": "TODO"
+      },
+      "text": "#task Highest priority 🔺",
+      "import": {
+        "title": "#task Highest priority",
+        "priority": 4,
+        "dueDate": null,
+        "startDate": null,
+        "tags": [
+          "task"
+        ],
+        "repeatConfig": null,
+        "repeatFrom": null,
+        "description": "#task Highest priority 🔺",
+        "completedAt": null
+      }
+    }
+  ]
+}

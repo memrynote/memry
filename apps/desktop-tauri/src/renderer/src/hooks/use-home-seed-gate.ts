@@ -17,7 +17,7 @@ const SEED_GRACE_MS = 10_000
  *
  * `lastSyncAt` is the "a pull has completed" signal: main sets it first when a
  * pull completes, and only then do pushes move it (push-coordinator, and the
- * ITEM_SYNCED case of syncReducer). Deliberately NOT gating on
+ * RECORDS_PULLED case of syncReducer). Deliberately NOT gating on
  * `status === 'idle'`: sync-core-handlers returns `{ status: 'idle' }` when the
  * engine has not started, which is indistinguishable from "fully synced".
  * `lastSyncAt` is persisted in `sync_state`, so an already-synced existing

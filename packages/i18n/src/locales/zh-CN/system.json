@@ -17,6 +17,7 @@
       "filterAll": "所有文件"
     },
     "exportCancelled": "导出已取消",
+    "exportVaultChanged": "在你选择保存位置时打开了另一个仓库。请重新导出笔记。",
     "dataDbRecovery": {
       "title": "修复保险库数据库",
       "message": "Memry 中此保险库的数据库已损坏。",

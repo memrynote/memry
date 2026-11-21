@@ -23,12 +23,15 @@ use super::{AccountError, AccountService};
 use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
-use crate::sync::backend::{SyncBackend, VaultSyncBackend};
-use crate::sync::gate::SyncStartGate;
+use crate::sync::backend::{SyncBackend, VaultSyncBackend, read_auth_facts};
+use crate::sync::disk::DiskObserver;
+use crate::sync::events::OnSyncEvent;
+use crate::sync::gate::{self, GateDecision, SyncNotStartedReason, SyncStartGate};
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
 use crate::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use crate::telemetry::Service;
+use crate::vault::consumer::VaultTier;
 
 /// `BINDING_RETRY_MS`: how long an `Unknown` binding waits before the next check.
 pub const BINDING_RETRY: Duration = Duration::from_secs(60);
@@ -124,11 +127,15 @@ pub struct SyncWiring {
     pub keychain_recovered: broadcast::Sender<()>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    pub on_event: OnSyncEvent,
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// The vault tier pulled bodies and locks reach the disk through (`sync::disk`); `None` in a
+    /// test that serves no vault files.
+    pub tier: Option<Arc<VaultTier>>,
     /// Each new gate, before its supervisor starts: billing tells it the plan
     /// (`BillingService::attach_gate`).
     pub on_gate: GateHook,
@@ -166,6 +173,17 @@ impl HeldOpen {
 }
 
 impl SyncWiring {
+    /// What the open vault's gate decides now, read off its binding and entitlement and the
+    /// account's facts; `Unavailable` with no supervisor (blocking: reads the master key).
+    pub fn start_decision(&self) -> GateDecision {
+        let Some(gate) = self.bindings.gate() else {
+            return GateDecision::NotStarted(SyncNotStartedReason::Unavailable);
+        };
+        let (signed_in, recovery_confirmed) = self.account.sync_facts();
+        let facts = read_auth_facts(signed_in, recovery_confirmed, self.store.as_ref());
+        gate::evaluate(&gate.inputs(facts))
+    }
+
     /// The factory `Session::attach_sync` takes.
     pub fn factory(self: Arc<Self>) -> SupervisorFactory {
         Arc::new(move |open: &OpenVault, signals: &AuthSignals| Some(self.start(open, signals)))
@@ -183,7 +201,16 @@ impl SyncWiring {
             Arc::clone(&self.reachability),
             Vec::new(),
             Arc::new(move || account.sync_facts()),
+            self.account.at_rest_keys(),
         );
+        let backend = match &self.tier {
+            Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
+                Arc::clone(tier),
+                open.path.clone(),
+                Arc::clone(&open.vault),
+            ))),
+            None => backend,
+        };
         let supervisor = SyncSupervisor::start(
             &self.runtime,
             SupervisorParts {
@@ -196,6 +223,7 @@ impl SyncWiring {
                 telemetry: self.telemetry.clone(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
+                on_event: Arc::clone(&self.on_event),
             },
         );
         self.runtime

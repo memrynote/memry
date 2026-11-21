@@ -153,7 +153,10 @@ fn another_writers_change_since_the_read_is_not_written_over() {
     let refused = folder_file::update_checked(
         vault,
         "Work",
-        |file| file.set(Some("y"), None, true),
+        |file| {
+            file.set(Some("y"), None, true);
+            Ok::<_, FolderFileError>(())
+        },
         &mut between,
     );
     assert!(

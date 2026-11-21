@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "前往首頁",
     "goInbox": "前往收件匣",
-    "goJournal": "前往日誌",
     "goCalendar": "前往行事曆",
     "goTasks": "前往任務",
     "goGraph": "前往圖譜",
