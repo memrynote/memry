@@ -59,10 +59,14 @@ function copiesOf(doc: Y.Doc, text: string): number {
 }
 
 /** The provider's doc ops over plain Y.Docs, with the marker in a map like the store's meta. */
-function memoryHost(docs: Map<string, Y.Doc>): SeedRepairHost & { marked: Set<string> } {
+function memoryHost(
+  docs: Map<string, Y.Doc>
+): SeedRepairHost & { marked: Set<string>; storeId: string | null } {
   const marked = new Set<string>()
   return {
     marked,
+    storeId: 'store-a',
+    whenPersisted: async () => {},
     readOnlyStore: () => memoryStore(docs),
     holdDoc: () => async () => {},
     open: async (noteId) => {
@@ -163,7 +167,39 @@ describe('scanSeedDuplicates', () => {
   })
 })
 
+function firstText(type: unknown): Y.XmlText {
+  if (type instanceof Y.XmlText) return type
+  if (type instanceof Y.XmlElement) {
+    for (const child of type.toArray()) {
+      try {
+        return firstText(child)
+      } catch {
+        continue
+      }
+    }
+  }
+  throw new Error('no text')
+}
+
 describe('removeSeedCopy', () => {
+  it('keeps both copies while an edit to the second waits for an update it depends on', async () => {
+    const doc = await seedOverServerBody('Pack.\n\nBook.')
+    const phone = new Y.Doc()
+    Y.applyUpdate(phone, Y.encodeStateAsUpdate(doc))
+    const edits: Uint8Array[] = []
+    phone.on('update', (update: Uint8Array) => edits.push(update))
+    const text = firstText(phone.getXmlFragment(CRDT_FRAGMENT_NAME).get(1))
+    text.insert(0, 'IMPORTANT ')
+    text.insert(10, 'now ')
+    Y.applyUpdate(doc, edits[1])
+    expect(classifyBody(doc)).toBe('exact')
+
+    expect(removeSeedCopy(doc)).toBe(false)
+
+    Y.applyUpdate(doc, edits[0])
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()).toContain('IMPORTANT now ')
+  })
+
   it('removes the second copy and leaves the markdown as it was', async () => {
     const doc = await seedOverServerBody(BODY)
     const before = await yDocToMarkdown(doc)
@@ -268,6 +304,23 @@ describe('repairSeedDuplicates', () => {
     expect(liveRoots(doc)).toBe(2)
   })
 
+  it('sets the marker only once the delete is in the store', async () => {
+    const doc = await seedOverServerBody(BODY)
+    let stored!: () => void
+    const host = {
+      ...memoryHost(new Map([['note-dup', doc]])),
+      whenPersisted: () => new Promise<void>((resolve) => (stored = resolve))
+    }
+
+    const run = repairSeedDuplicates(host)
+    await vi.waitFor(() => expect(liveRoots(doc)).toBe(1))
+    expect(host.marked.size).toBe(0)
+    stored()
+    await run
+
+    expect([...host.marked]).toEqual(['note-dup'])
+  })
+
   it('rechecks the open doc and leaves it when it no longer matches', async () => {
     const stored = await seedOverServerBody(BODY)
     const live = new Y.Doc()
@@ -290,14 +343,44 @@ describe('repairSeedDuplicates', () => {
 describe('scheduleSeedDuplicateRepair', () => {
   afterEach(() => vi.useRealTimers())
 
+  it('reads nothing when the store changed before the timer fires', async () => {
+    vi.useFakeTimers()
+    const doc = await seedOverServerBody(BODY)
+    const host = memoryHost(new Map([['note-dup', doc]]))
+    const open = vi.spyOn(host, 'open')
+
+    scheduleSeedDuplicateRepair(host, () => true)
+    host.storeId = 'store-b'
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+
+    expect(open).not.toHaveBeenCalled()
+    expect(liveRoots(doc)).toBe(2)
+  })
+
+  it('reads nothing when a note body became owed before the timer fires', async () => {
+    vi.useFakeTimers()
+    const doc = await seedOverServerBody(BODY)
+    const host = memoryHost(new Map([['note-dup', doc]]))
+    const open = vi.spyOn(host, 'open')
+    let owed = false
+
+    scheduleSeedDuplicateRepair(host, () => !owed)
+    owed = true
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+
+    expect(open).not.toHaveBeenCalled()
+    expect(liveRoots(doc)).toBe(2)
+  })
+
+  // Runs after the two deferrals above: each must leave the repair unscheduled.
   it('repairs ten minutes after the call, once per process', async () => {
     vi.useFakeTimers()
     const doc = await seedOverServerBody(BODY)
     const host = memoryHost(new Map([['note-dup', doc]]))
     const storeRead = vi.spyOn(host, 'readOnlyStore')
 
-    scheduleSeedDuplicateRepair(host)
-    scheduleSeedDuplicateRepair(host)
+    scheduleSeedDuplicateRepair(host, () => true)
+    scheduleSeedDuplicateRepair(host, () => true)
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 1)
     expect(storeRead).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)

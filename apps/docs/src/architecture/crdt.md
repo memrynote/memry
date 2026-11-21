@@ -354,7 +354,9 @@ the synced body. Desktop repairs them (`crdt-seed-duplicates.ts`, #5289). Once
 per launch, ten minutes after a full sync that delivered its pull and left no
 note body owed (nothing queued or backed off to pull, no legacy sweep pending,
 online), it reads every document in the store without compacting it. A failed
-sync, or one that still owes bodies, schedules nothing. A document counts as
+sync, or one that still owes bodies, schedules nothing. When the timer fires,
+the store must still be the one that sync settled and no body may be owed;
+otherwise nothing is read, and the next settled sync schedules again. A document counts as
 forked when its fragment holds two live top-level items that both have no left
 and no right origin, which means two devices each wrote the first content into
 an empty body. It counts as duplicated when one of those items' text equals or
@@ -366,14 +368,17 @@ The repair changes only an exact duplicate: the fragment holds exactly two live
 items, both such roots, and their block trees are equal in node names,
 attributes other than the block `id`, and text with its marks. A copy that
 differs by one block, carries extra text, or was edited afterwards is kept, and
-so is every duplicated body that is not exact. The repair opens the document,
+so is every duplicated body that is not exact, and every document that holds
+an update still waiting for one it depends on, since that update may edit the
+second copy. The repair opens the document,
 checks it again, and deletes the second root in fragment order as a local
 transaction (origin `seed-duplicate-repair`). It is stored and pushed like any
 edit, and it schedules no file write-back. The editor and the markdown
 serializer show only the first root, so the note's text does not change. Yjs
 orders concurrent roots the same way on every device, so two devices repairing
 at once delete the same item and converge on one copy. A per-note marker in the
-store meta (`seedDuplicateRepairedAt`) keeps the repair to once per note: a
+store meta (`seedDuplicateRepairedAt`), written only after the delete is in the
+store, keeps the repair to once per note: a
 copy that comes back later stays. A purge drops the marker with the note. The
 repaired and kept note ids go to the local log at info level, and a warn line
 with the counts only reaches the incident report and shipped logs.

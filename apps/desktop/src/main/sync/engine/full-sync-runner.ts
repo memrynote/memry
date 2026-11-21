@@ -522,7 +522,7 @@ export class FullSyncRunner {
       // holds is merged here, so a body still downloading is never judged.
       const provider = this.ctx.deps.crdtProvider
       if (pullDelivered && provider != null && !this.owesNoteBodies()) {
-        scheduleSeedDuplicateRepair(provider)
+        scheduleSeedDuplicateRepair(provider, () => !this.owesNoteBodies())
       }
       if (!pullDelivered && pull.status === 'skipped') return pull
       return pullDelivered && pushesDelivered ? DELIVERED : INCOMPLETE

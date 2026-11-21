@@ -56,11 +56,14 @@ export interface SeedDuplicateScan {
 
 /** The provider's doc operations the repair runs through. */
 export interface SeedRepairHost {
+  /** Changes whenever the store underneath the provider is replaced (vault switch, reopen). */
+  readonly storeId: string | null
   readOnlyStore(): CrdtStoreReader | null
   holdDoc(noteId: string): () => Promise<void>
   open(noteId: string, windowId: undefined, options: { skipSeed: boolean }): Promise<Y.Doc>
   seedRepairDone(noteId: string): Promise<boolean>
   markSeedRepairDone(noteId: string): Promise<void>
+  whenPersisted(noteId: string): Promise<void>
 }
 
 function textOf(type: unknown): string {
@@ -123,6 +126,9 @@ export function classifyBody(doc: Y.Doc): BodyShape {
  * write-back show the first root only, so what the user sees does not change.
  */
 export function removeSeedCopy(doc: Y.Doc): boolean {
+  // An update parked behind a missing one may edit the second copy; deleting
+  // the copy now would swallow that edit when it applies.
+  if (doc.store.pendingStructs !== null || doc.store.pendingDs !== null) return false
   if (classifyBody(doc) !== 'exact') return false
   doc.transact(() => doc.getXmlFragment(CRDT_FRAGMENT_NAME).delete(1, 1), ORIGIN_SEED_REPAIR)
   return true
@@ -169,6 +175,9 @@ async function repairNote(host: SeedRepairHost, noteId: string): Promise<boolean
   try {
     const doc = await host.open(noteId, undefined, { skipSeed: true })
     if (!removeSeedCopy(doc)) return false
+    // The marker only after the delete is in the store: a marker without it
+    // would keep the duplicate forever.
+    await host.whenPersisted(noteId)
     await host.markSeedRepairDone(noteId)
     return true
   } finally {
@@ -222,11 +231,20 @@ let scheduled = false
 
 /**
  * Once per process, from a full sync that delivered its pull and left no note
- * body owed. The store is read when the timer fires, so a vault switched in
- * between is the one repaired.
+ * body owed. When the timer fires, the store must still be the one that sync
+ * settled and `settled()` must still hold; otherwise nothing is read, and the
+ * next settled sync schedules again.
  */
-export function scheduleSeedDuplicateRepair(host: SeedRepairHost): void {
+export function scheduleSeedDuplicateRepair(host: SeedRepairHost, settled: () => boolean): void {
   if (scheduled) return
   scheduled = true
-  setTimeout(() => void repairSeedDuplicates(host), SCAN_DELAY_MS).unref()
+  const storeId = host.storeId
+  setTimeout(() => {
+    if (storeId === null || host.storeId !== storeId || !settled()) {
+      scheduled = false
+      log.info('Seed duplicate repair deferred: the store changed or note bodies are owed')
+      return
+    }
+    void repairSeedDuplicates(host)
+  }, SCAN_DELAY_MS).unref()
 }

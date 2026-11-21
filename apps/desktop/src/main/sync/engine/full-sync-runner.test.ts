@@ -996,7 +996,21 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(mocks.scheduleSeedDuplicateRepair).toHaveBeenCalledWith(h.ctx.deps.crdtProvider)
+      expect(mocks.scheduleSeedDuplicateRepair).toHaveBeenCalledWith(
+        h.ctx.deps.crdtProvider,
+        expect.any(Function)
+      )
+    })
+
+    it('#then the readiness it hands over is read live when the timer fires', async () => {
+      const h = settledHarness()
+      await h.runner.run()
+      const settled = mocks.scheduleSeedDuplicateRepair.mock.calls[0][1] as () => boolean
+      expect(settled()).toBe(true)
+
+      h.crdtSync.addPendingPull('note-owed')
+
+      expect(settled()).toBe(false)
     })
 
     it('#then a failed run does not', async () => {
