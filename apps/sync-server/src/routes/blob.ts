@@ -107,8 +107,8 @@ const blobDownloadLimit = createRateLimiter(blobDownloadBucket)
 
 /**
  * `blob_download` charged one token per requested id: a manifest batch does
- * the R2 reads of that many single manifest GETs (#5329). An unparseable body
- * costs one token and the route answers 400.
+ * the R2 reads of that many single manifest GETs (#5329). Invalid JSON costs
+ * one token and answers 500; a body that fails the schema costs one and 400.
  */
 const manifestBatchLimit = createRateLimiter({
   ...blobDownloadBucket,

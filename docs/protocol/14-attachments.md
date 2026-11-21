@@ -224,7 +224,7 @@ requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
 **attachment ids** (`packages/contracts/src/sync-payloads.ts:241`; chapter 13
 §13.7.1). An attachment id is exactly the `:attachment_id` path parameter of
 `GET /sync/attachments/:attachment_id/manifest`
-(`apps/sync-server/src/routes/blob.ts:827`) and the `id` field inside the
+(`apps/sync-server/src/routes/blob.ts:897`) and the `id` field inside the
 manifest itself (`packages/sync-client/src/push/attachment-manifest.ts:27`).
 
 The resolution chain is therefore:
@@ -322,7 +322,7 @@ and the manifest's `filename` is that path's last segment
   (`crates/memry-core/src/domain/inbox/write.rs:34`). An upload the server
   refuses for quota or for the plan's file size, both `413`
   (`STORAGE_QUOTA_EXCEEDED`, `STORAGE_FILE_TOO_LARGE`;
-  `apps/sync-server/src/routes/blob.ts:271`, `:274`,
+  `apps/sync-server/src/routes/blob.ts:288`, `:291`,
   `apps/sync-server/src/services/quota.ts:12`), is permanent. The capture gets
   no `attachmentId`, the device does not retry, and peers show the capture
   without its file (`crates/memry-core/src/api/sync/inbox_attachments.rs:67-78`).
@@ -348,7 +348,7 @@ against `manifest.size` under-counts.
 
 `POST /sync/attachments/dereference` is how chunk bytes are garbage collected: a
 client that removes an attachment reference tells the server the chunks are no
-longer needed (`apps/sync-server/src/routes/blob.ts:672`).
+longer needed (`apps/sync-server/src/routes/blob.ts:691`).
 
 **A read-only client never dereferences, and never calling it is safe.** It
 cannot leak quota, because quota is consumed by **uploads**, and a read-only
@@ -407,7 +407,7 @@ live while `ref_count > 0` or a hold names it.
   refund it. Storage is clamped at zero, so the effect is an under-counted
   quota, never a freed live chunk.
 - A dereference that takes a held chunk to zero refunds nothing; the release of
-  its last hold does (`apps/sync-server/src/routes/blob.ts:695-706`). The sweep
+  its last hold does (`apps/sync-server/src/routes/blob.ts:712-723`). The sweep
   reaps only rows with `ref_count <= 0` and no hold
   (`apps/sync-server/src/services/cleanup.ts:387,402`).
 - A server that predates holds answers 404. A client treats that as "no holds":
@@ -469,7 +469,7 @@ references, in the next upload re-drive
   which refuses a dead chunk because it requires `ref_count > 0` or another
   hold (`apps/sync-server/src/services/chunk-holds.ts:54`).
   `HEAD /attachments/chunks/:chunk_hash` and `presign-batch` answer from the
-  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:826`, `:765`),
+  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:850`, `:817`),
   and a dereferenced chunk keeps that row until the sweep, so neither can tell
   a freed chunk from a live one. The probe releases its holds at once
   (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:215`). Its holder id is

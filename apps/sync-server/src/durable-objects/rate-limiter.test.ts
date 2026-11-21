@@ -91,7 +91,8 @@ describe('RateLimiter', () => {
           body: JSON.stringify({ windowSeconds: 60, cost })
         })
       )
-      return ((await response.json()) as { count: number }).count
+      const body: { count: number } = await response.json()
+      return body.count
     }
 
     // #when / #then
