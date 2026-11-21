@@ -3,7 +3,11 @@
  * while Electron is the oracle, into packages/contracts/test-vectors/agent-mcp/:
  *
  * - tools.json: every tool as Electron's server lists it (`tools/list` of the real SDK server
- *   over `TOOL_SCHEMAS`): name, read or write class, description and input JSON Schema.
+ *   over `TOOL_SCHEMAS`): name, read or write class, description and input JSON Schema; and
+ *   `refinements`, each zod `.refine` of a tool input, which the JSON Schema cannot carry: its
+ *   tool, its path (`[]` for array items) and its message.
+ *
+ *   (examples.json below also holds calls that break each refinement.)
  * - desktop-ops.json: every desktop API operation with its tool, parameters and the JSON Schema
  *   of its argument array (`describeDesktopOperation`).
  * - examples.json: the calls of agent-api-examples.json and deterministic invalid variants of
@@ -49,6 +53,16 @@ const UNKNOWN_KEY = 'memry_unknown_key'
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** A zod v4 schema's (or check's) `_zod.def`. */
+function zodDef(schema: unknown): Record<string, unknown> | null {
+  if (!isRecord(schema) || !isRecord(schema._zod) || !isRecord(schema._zod.def)) return null
+  return schema._zod.def
 }
 
 /** The value as JSON: what crosses the wire, `undefined` dropped. */
@@ -114,19 +128,77 @@ async function startOracle(): Promise<Oracle> {
   return { client, ran }
 }
 
+interface Refinement {
+  tool: string
+  path: string[]
+  message: string
+}
+
+/**
+ * Walks a zod schema for `custom` checks (`.refine`). A refinement with no static message (a
+ * `superRefine`) cannot be listed, so it stops the generator.
+ */
+function collectRefinements(
+  tool: string,
+  schema: unknown,
+  at: string[],
+  ancestors: Set<unknown>,
+  out: Refinement[]
+): void {
+  const def = zodDef(schema)
+  if (def === null || ancestors.has(schema)) return
+  ancestors.add(schema)
+  for (const check of Array.isArray(def.checks) ? def.checks : []) {
+    const checkDef = zodDef(check)
+    if (checkDef?.check !== 'custom') continue
+    const message: unknown =
+      typeof checkDef.error === 'function' ? checkDef.error({}) : checkDef.error
+    if (typeof message !== 'string') {
+      throw new Error(`${tool} at ${at.join('.')}: a refinement without a static message`)
+    }
+    out.push({ tool, path: at, message })
+  }
+  const walk = (child: unknown, segment?: string): void =>
+    collectRefinements(tool, child, segment ? [...at, segment] : at, ancestors, out)
+  if (isRecord(def.shape)) {
+    for (const [key, child] of Object.entries(def.shape)) walk(child, key)
+  }
+  walk(def.catchall)
+  walk(def.element, '[]')
+  for (const item of Array.isArray(def.items) ? def.items : []) walk(item, '[]')
+  walk(def.rest, '[]')
+  walk(def.valueType, '*')
+  for (const option of Array.isArray(def.options) ? def.options : []) walk(option)
+  walk(def.left)
+  walk(def.right)
+  walk(def.in)
+  walk(def.out)
+  walk(def.innerType)
+  if (typeof def.getter === 'function') walk(def.getter())
+  ancestors.delete(schema)
+}
+
+function listRefinements(): Refinement[] {
+  const out: Refinement[] = []
+  for (const name of ALL_TOOLS)
+    collectRefinements(name, TOOL_SCHEMAS[name].input, [], new Set(), out)
+  return out
+}
+
 async function toolsFile(oracle: Oracle): Promise<JsonObject> {
   const { tools } = await oracle.client.listTools()
   return {
     meta: meta(
       'apps/desktop/src/main/agent/mcp/tools/schemas.ts (TOOL_SCHEMAS, READ_TOOL_NAMES, WRITE_TOOL_NAMES) listed by @modelcontextprotocol/sdk McpServer tools/list',
-      '`inputSchema` is what Electron sends external MCP clients. `class` write means the call needs a turn grant and the user’s approval.'
+      '`inputSchema` is what Electron sends external MCP clients. `class` write means the call needs a turn grant and the user’s approval. `refinements` are the zod `.refine` checks the JSON Schema leaves out; a path segment `[]` is every item of an array.'
     ),
     tools: tools.map((tool) => ({
       name: tool.name,
       class: WRITE_TOOLS.has(tool.name) ? 'write' : 'read',
       description: tool.description ?? '',
       inputSchema: toJson(tool.inputSchema)
-    }))
+    })),
+    refinements: toJson(listRefinements())
   }
 }
 
@@ -175,6 +247,69 @@ function toolCases(args: JsonObject, inputSchema: Json): Array<[string, JsonObje
   return cases
 }
 
+/**
+ * Calls that break a zod refinement of the tool, and edge cases of it that pass, each named. The
+ * JSON Schema has no refinements, so these hold the Rust checks to zod.
+ */
+function refineCases(name: ToolName, args: JsonObject): Array<[string, JsonObject]> {
+  const elements = Array.isArray(args.elements) ? args.elements : []
+  const element = (fields: JsonObject): JsonObject => ({
+    ...args,
+    elements: [...elements, { type: 'rectangle', x: 0, y: 0, ...fields }]
+  })
+  const edit = (fields: JsonObject): JsonObject => ({
+    ...args,
+    edits: [{ elementId: 'element-1', ...fields }]
+  })
+  switch (name) {
+    case 'vault_create_task':
+    case 'vault_update_task':
+      return [
+        ['due_date 2026-02-30', { ...args, due_date: '2026-02-30' }],
+        ['due_date not a date', { ...args, due_date: 'not a date' }],
+        ['due_date with a newline', { ...args, due_date: '2026-10-20\n' }],
+        ['due_date 2028-02-29', { ...args, due_date: '2028-02-29' }],
+        ['due_date null', { ...args, due_date: null }],
+        ['due 2026-13-01', { ...args, due: '2026-13-01' }],
+        ['due 2100-02-29', { ...args, due: '2100-02-29' }],
+        ['start_date 0099-12-31', { ...args, start_date: '0099-12-31' }],
+        ['start_date 0100-01-01', { ...args, start_date: '0100-01-01' }]
+      ]
+    case 'vault_draw_on_canvas':
+      return [
+        ['element link javascript:', element({ link: 'javascript:alert(1)' })],
+        ['element url file:', element({ type: 'embeddable', url: 'file:///etc/passwd' })],
+        ['element link HTTPS', element({ link: 'HTTPS://example.com' })],
+        ['element link null', element({ link: null })],
+        ['element url http', element({ type: 'embeddable', url: 'http://example.com/a' })],
+        [
+          'arrow with ref and elementId',
+          element({ type: 'arrow', start: { ref: 'idea', elementId: 'element-1' } })
+        ],
+        ['arrow with neither endpoint form', element({ type: 'arrow', end: {} })],
+        ['element ref of 33 emoji', element({ ref: '\u{1F600}'.repeat(33) })],
+        ['element ref of 32 emoji', element({ ref: '\u{1F600}'.repeat(32) })]
+      ]
+    case 'vault_edit_canvas_elements':
+      return [
+        ['edit link javascript:', edit({ link: 'javascript:alert(1)' })],
+        ['edit link file:', edit({ link: 'file:///etc/passwd' })],
+        ['edit link https', edit({ link: 'https://example.com' })],
+        ['edit link null', edit({ link: null })]
+      ]
+    case 'vault_bulk_tag_notes': {
+      const { add: _add, remove: _remove, ...ids } = args
+      return [
+        ['neither add nor remove', ids],
+        ['empty add and remove', { ...ids, add: [], remove: [] }],
+        ['only remove', { ...ids, remove: ['obsolete'] }]
+      ]
+    }
+    default:
+      return []
+  }
+}
+
 function replyText(result: unknown): string {
   if (!isObject(result) || !Array.isArray(result.content)) return ''
   return result.content
@@ -192,7 +327,8 @@ async function toolExamples(
     const example = examples.tools[name]
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the examples file holds JSON arguments
     const base = (example ? toJson(example.arguments) : {}) as JsonObject
-    for (const [variant, args] of toolCases(base, listed.get(name) ?? null)) {
+    const cases = [...toolCases(base, listed.get(name) ?? null), ...refineCases(name, base)]
+    for (const [variant, args] of cases) {
       oracle.ran.clear()
       const result = await oracle.client.callTool({ name, arguments: args })
       const valid = oracle.ran.has(name)
@@ -255,6 +391,29 @@ function operationExamples(examples: AgentApiExamples): Json[] {
   })
 }
 
+/** Each refinement needs a case that breaks it, or the Rust check of it is untested. */
+function assertEveryRefinementBroken(refinements: Json, cases: Json[]): void {
+  const key = (tool: Json, at: Json, message: Json): string => {
+    const segments = Array.isArray(at) ? at : []
+    const where = segments.map((segment) => (typeof segment === 'number' ? '[]' : segment))
+    return JSON.stringify([tool, where, message])
+  }
+  const broken = new Set<string>()
+  for (const item of cases) {
+    if (!isObject(item) || !Array.isArray(item.issues)) continue
+    for (const issue of item.issues) {
+      if (isObject(issue) && issue.code === 'custom') {
+        broken.add(key(item.tool, issue.path, issue.message))
+      }
+    }
+  }
+  for (const refinement of Array.isArray(refinements) ? refinements : []) {
+    if (!isObject(refinement)) continue
+    const wanted = key(refinement.tool, refinement.path, refinement.message)
+    if (!broken.has(wanted)) throw new Error(`no example breaks the refinement ${wanted}`)
+  }
+}
+
 function render(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`
 }
@@ -278,6 +437,7 @@ async function build(): Promise<Map<string, string>> {
       tools: await toolExamples(oracle, examples, listed),
       operations: operationExamples(examples)
     }
+    assertEveryRefinementBroken(tools.refinements, examplesFile.tools)
     return new Map([
       ['tools.json', render(tools)],
       ['desktop-ops.json', render(desktopOpsFile())],

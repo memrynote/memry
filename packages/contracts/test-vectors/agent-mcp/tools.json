@@ -2,7 +2,7 @@
   "meta": {
     "generator": "apps/desktop/scripts/generate-agent-mcp-vectors.ts",
     "oracle": "apps/desktop/src/main/agent/mcp/tools/schemas.ts (TOOL_SCHEMAS, READ_TOOL_NAMES, WRITE_TOOL_NAMES) listed by @modelcontextprotocol/sdk McpServer tools/list",
-    "note": "`inputSchema` is what Electron sends external MCP clients. `class` write means the call needs a turn grant and the user’s approval.",
+    "note": "`inputSchema` is what Electron sends external MCP clients. `class` write means the call needs a turn grant and the user’s approval. `refinements` are the zod `.refine` checks the JSON Schema leaves out; a path segment `[]` is every item of an array.",
     "regenerate": "pnpm --filter @memry/desktop vectors:agent-mcp"
   },
   "tools": [
@@ -3365,6 +3365,100 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "additionalProperties": false
       }
+    }
+  ],
+  "refinements": [
+    {
+      "tool": "vault_create_task",
+      "path": [
+        "due"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_create_task",
+      "path": [
+        "due_date"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_create_task",
+      "path": [
+        "start_date"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_update_task",
+      "path": [
+        "due"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_update_task",
+      "path": [
+        "due_date"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_update_task",
+      "path": [
+        "start_date"
+      ],
+      "message": "Date must be a real calendar date in YYYY-MM-DD form"
+    },
+    {
+      "tool": "vault_bulk_tag_notes",
+      "path": [],
+      "message": "Give at least one tag in add or remove."
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "path": [
+        "elements",
+        "[]",
+        "link"
+      ],
+      "message": "link must be an http(s) URL"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "path": [
+        "elements",
+        "[]",
+        "start"
+      ],
+      "message": "exactly one of ref or elementId is required"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "path": [
+        "elements",
+        "[]",
+        "end"
+      ],
+      "message": "exactly one of ref or elementId is required"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "path": [
+        "elements",
+        "[]",
+        "url"
+      ],
+      "message": "link must be an http(s) URL"
+    },
+    {
+      "tool": "vault_edit_canvas_elements",
+      "path": [
+        "edits",
+        "[]",
+        "link"
+      ],
+      "message": "link must be an http(s) URL"
     }
   ]
 }
