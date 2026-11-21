@@ -1,12 +1,13 @@
 //! Sync test commands: the gate inputs Steps 19 and 20 will own, the network switch, so a spec or
 //! a live-app check can drive the status badge without an account server, and the sign-in against
-//! the harness's local test server.
+//! the harness's local test server. And the note body rows the outbox still holds.
 
 use std::sync::Arc;
 
 use memry_desktop::account::AccountService;
 use memry_desktop::account::e2e_bootstrap::E2eDevice;
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::e2e::crdt_body;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::session::{Session, StartupOutcome};
@@ -132,4 +133,18 @@ pub async fn e2e_restart_sync_runtime(app: AppHandle<Wry>) -> Result<(), Command
             "the reopened vault runs no supervisor",
         ))
     }
+}
+
+/// Electron's `getCrdtPendingCount`: the open vault's note body rows not yet pushed, read from
+/// `data.db` with or without a supervisor. Fails when no vault is open.
+#[tauri::command]
+pub async fn e2e_crdt_pending_count(app: AppHandle<Wry>) -> Result<usize, CommandError> {
+    let open = app
+        .state::<Session>()
+        .current()
+        .ok_or_else(|| invalid("e2e_no_vault", "no vault is open"))?;
+    tauri::async_runtime::spawn_blocking(move || crdt_body::pending_count(&open.vault))
+        .await
+        .map_err(|e| invalid("e2e_crdt_pending_count", e))?
+        .map_err(|e| invalid("e2e_crdt_pending_count", e))
 }
