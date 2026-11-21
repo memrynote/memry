@@ -143,6 +143,15 @@ const SLOW_EVERY: Duration = Duration::from_millis(500);
 /// Serves one GET of [`PACK_BYTES`] at 0.5 Mbit/s. With `stall_after`, it
 /// goes silent once that many body bytes are out, and keeps the socket open.
 async fn slow_pack(stall_after: Option<usize>) -> String {
+    // A paused clock jumps to the next timer whenever no task is ready, and a
+    // task waiting on a real socket is not ready: without this ticker the
+    // clock would leap to the idle limit while the loopback bytes are in
+    // flight. One millisecond at a time, it can only drift by a few.
+    tokio::spawn(async {
+        loop {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    });
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let url = format!("http://{}/pack", listener.local_addr().expect("addr"));
     tokio::spawn(async move {

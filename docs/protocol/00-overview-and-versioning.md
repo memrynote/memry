@@ -251,6 +251,21 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   frozen by an OS backgrounding the app otherwise never resolves and latches the
   engine's in-flight guard permanently
   (`packages/sync-client/src/pull/http.ts:32-38`);
+- in the Rust core and its shells, also applies an **idle timeout of 60
+  seconds** to every request: a request that receives no bytes for that long
+  fails as a timeout, whatever its ceiling
+  (`IDLE_TIMEOUT_MS = 60_000`, `crates/memry-core/src/protocol/http.rs:40-42`;
+  `crates/memry-cli/src/transport.rs:49-52`;
+  `apps/ios/Memry/Seams/Transport.swift:124-131`);
+- in the Rust core, replaces the ceiling of a pack GET (chapter 08 §8.9) with a
+  deadline scaled to the listed `byteSize`: 60 s plus `byteSize` at
+  0.25 Mbit/s (31,250 bytes a second), capped at **1,200 seconds**, which covers
+  a pack at `PACK_HARD_MAX_BYTES` (32 MiB,
+  `apps/sync-server/src/services/pack-compaction.ts:88`). A listing without
+  `byteSize` gets the cap. An 8 MiB pack gets 328 s; at 0.5 Mbit/s it takes
+  134 s (`crates/memry-core/src/sync/pack_bootstrap/download.rs:16-36`, #5331).
+  Desktop's pack GET has no ceiling and resumes a partial file with `Range`
+  (`apps/desktop/src/main/sync/packs/pack-download.ts:24-26`);
 - reads `retry-after` from a `429` response **in lowercase**
   (`packages/sync-client/src/pull/http.ts:98-100`);
 - treats a timeout as a transient transport failure and an outer-caller abort as

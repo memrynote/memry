@@ -28,6 +28,7 @@ use crate::protocol::pack::{PackEntry, PackKind, extract_entry, parse_pack};
 
 use super::super::first_sync_store::{read_meta, write_meta};
 use super::super::pull::{PullError, PullLoop};
+use super::download::download;
 use super::listing::{PackSummary, list, tail_start};
 use super::{PackBootstrap, now};
 
