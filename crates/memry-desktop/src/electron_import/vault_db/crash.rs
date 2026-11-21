@@ -11,6 +11,8 @@ pub const POINTS: &[&str] = &[
     "install:synced",
     "install:index-renamed",
     "install:data-renamed",
+    // A `NativeFirst` rerun between taking the imported index out and putting one back.
+    "native-first:index-taken-out",
 ];
 
 #[cfg(feature = "import-crash-points")]

@@ -72,7 +72,7 @@ impl ReadwiseCategory {
 }
 
 /// Whether the user wants a category's books synced; `None` takes the default.
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 pub struct CategorySwitches {
     pub books: Option<bool>,
     pub articles: Option<bool>,
@@ -151,3 +151,33 @@ pub enum FrontmatterValue {
 
 /// Frontmatter in the order the TypeScript inserts its keys.
 pub type Frontmatter = Vec<(&'static str, FrontmatterValue)>;
+
+/// A frontmatter value as the note's JSON properties hold it.
+pub(super) fn json_value(value: &FrontmatterValue) -> serde_json::Value {
+    use serde_json::Value;
+    match value {
+        FrontmatterValue::Text(text) => Value::String(text.clone()),
+        FrontmatterValue::List(items) => {
+            Value::Array(items.iter().cloned().map(Value::String).collect())
+        }
+        FrontmatterValue::Number(number) => Value::Number(number.clone()),
+    }
+}
+
+/// The plan's `tags` apart from its other properties, in order.
+pub(super) fn split_frontmatter(
+    frontmatter: &[(&'static str, FrontmatterValue)],
+) -> (Vec<String>, serde_json::Map<String, serde_json::Value>) {
+    let mut tags = Vec::new();
+    let mut properties = serde_json::Map::new();
+    for (key, value) in frontmatter {
+        match (*key, value) {
+            ("tags", FrontmatterValue::List(list)) => tags.clone_from(list),
+            ("tags", _) => {}
+            (key, value) => {
+                properties.insert(key.to_owned(), json_value(value));
+            }
+        }
+    }
+    (tags, properties)
+}

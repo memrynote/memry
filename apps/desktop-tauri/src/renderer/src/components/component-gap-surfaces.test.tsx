@@ -384,6 +384,24 @@ describe('major renderer gap surfaces', () => {
     )
     failedHtmlDialog.unmount()
 
+    // A dismissed save dialog is told by its code, so a localized message is no failure.
+    mocks.toastError.mockClear()
+    mocks.exportHtml.mockClear()
+    mocks.exportHtml.mockResolvedValueOnce({
+      success: false,
+      code: 'cancelled',
+      error: 'Exportación cancelada'
+    })
+    const cancelledHtmlDialog = renderWithProviders(
+      <ExportDialog open onOpenChange={onOpenChange} noteId="note-1" noteTitle="Plan" />
+    )
+    await user.click(screen.getByRole('radio', { name: /html/ }))
+    await user.click(screen.getByRole('button', { name: 'export' }))
+    await waitFor(() => expect(mocks.exportHtml).toHaveBeenCalledTimes(1))
+    await act(async () => {})
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    cancelledHtmlDialog.unmount()
+
     renderWithProviders(
       <ExportDialog open onOpenChange={onOpenChange} noteId="note-1" noteTitle="Plan" />
     )

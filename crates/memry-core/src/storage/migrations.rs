@@ -235,6 +235,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "task_links",
         sql: include_str!("migrations/data/0037_task_links.sql"),
     },
+    Migration {
+        version: 38,
+        name: "readwise",
+        sql: include_str!("migrations/data/0038_readwise.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -421,6 +426,8 @@ mod note_file_marks_tests;
 mod note_large_files_tests;
 #[cfg(test)]
 mod numbering_tests;
+#[cfg(test)]
+mod readwise_tests;
 #[cfg(test)]
 mod saved_filter_inbox_tests;
 #[cfg(test)]

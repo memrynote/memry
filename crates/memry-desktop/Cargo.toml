@@ -15,7 +15,8 @@ memry-core = { path = "../memry-core", default-features = false, features = ["ma
 memry-ml-worker = { path = "../memry-ml-worker", default-features = false }
 serde = { workspace = true }
 # `float_roundtrip`: Readwise payload numbers (`location`, `published_date`) parse correctly
-# rounded, as `JSON.parse` does; the default parser can land one ULP off.
+# rounded, as `JSON.parse` does, and the Electron import re-serialises JSON numbers as V8 parsed
+# them; the default parser can land one ULP off.
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 thiserror = { workspace = true }
 # Device name and OS version for registration (Step 19); both already in the lockfile.
@@ -51,6 +52,9 @@ chrono-tz = "0.10.4"
 # The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
 # chrono's `clock` feature already builds it, so the lockfile gains no crate.
 iana-time-zone = "0.1.65"
+# Subscribed calendars resolve the IANA zones a feed names, as Electron's `Intl` did: the system
+# zoneinfo on Unix, the bundled tzdb on Windows. Already in the lockfile through `serde_with`.
+jiff = "0.2.38"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
@@ -100,6 +104,8 @@ pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac"] }
 sha1 = "0.11.0"
 hmac = "0.13.0"
 md-5 = "0.11"
+# The CalDAV multistatus reader (`calendar_providers::caldav_xml`); already in the lock through plist.
+quick-xml = "0.42.0"
 rusty-leveldb = "4.0.2"
 snap = "1.1.2"
 tempfile = "3"
@@ -110,12 +116,18 @@ tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util", 
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 # The capture server's own serve loop (`services/capture/mod.rs`): header and request timeouts
 # and a connection cap, which `axum::serve` lacks. Already in the lockfile through axum.
-hyper = { version = "1", default-features = false, features = ["http1", "server"] }
-hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+# The agent MCP server (`agent/mcp`) serves each connection itself too, for the header read
+# timeout and to drop the connections still open at stop.
+hyper = { version = "1.11.1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1.20", default-features = false, features = ["tokio", "service"] }
 http-body-util = "0.1"
-tokio-util = { version = "0.7.19", features = ["io"] }
+tokio-util = { version = "0.7.19", features = ["io", "rt"] }
 # The sign-in loopback compares `state` in constant time; already in the lockfile.
 subtle = "2.6.1"
+# The agent MCP server (`agent/mcp`, Step 28 #3545): streamable HTTP on the loopback axum router,
+# stateless, and the tool input schemas of packages/contracts/test-vectors/agent-mcp/tools.json.
+rmcp = { version = "=3.11.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
+jsonschema = { version = "=0.61.2", default-features = false }
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
@@ -257,6 +269,12 @@ path = "tests/extract_bench.rs"
 name = "model_download_proxy"
 path = "tests/model_download_proxy.rs"
 
+# The official TypeScript MCP client against the agent MCP server. Needs node and
+# `pnpm install --filter @memry/agent-mcp-client`; ignored by default, rust-ci runs it.
+[[test]]
+name = "agent_mcp_client"
+path = "tests/agent_mcp_client.rs"
+
 [[test]]
 name = "sync_harness"
 path = "tests/sync_harness.rs"
@@ -344,6 +362,10 @@ path = "tests/readwise_untrusted.rs"
 [[test]]
 name = "readwise_client"
 path = "tests/readwise_client.rs"
+
+[[test]]
+name = "readwise_run"
+path = "tests/readwise_run.rs"
 
 [[test]]
 name = "watch_perf"

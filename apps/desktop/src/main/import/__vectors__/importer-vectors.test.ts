@@ -34,9 +34,11 @@ import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
 import type { Importer, ImportInput, ImportSummary } from '../types'
 import { createImportContext } from '../import-context'
+import { bearImporter } from '../bear/bear-importer'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
 import { googleKeepImporter } from '../google-keep/google-keep-importer'
+import { roamImporter } from '../roam/roam-importer'
 
 const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
 
@@ -111,6 +113,14 @@ interface VectorCase {
 
 const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
   {
+    source: 'bear',
+    importer: bearImporter,
+    cases: [
+      { name: 'backup', sources: ['export.bear2bk'] },
+      { name: 'two-zips', sources: ['export.bear2bk', 'more.zip'] }
+    ]
+  },
+  {
     source: 'markdown',
     importer: markdownImporter,
     cases: [
@@ -144,6 +154,14 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
         sources: ['loose/Loose note.json', 'loose/bad.json', 'loose/readme.txt', 'loose/array.json']
       },
       { name: 'mixed', sources: ['loose/Loose note.json', 'Takeout.zip'] }
+    ]
+  },
+  {
+    source: 'roam',
+    importer: roamImporter,
+    cases: [
+      { name: 'graph', sources: ['graph.json'] },
+      { name: 'two-files', sources: ['not-pages.json', 'graph.json', 'edge.json'] }
     ]
   }
 ]

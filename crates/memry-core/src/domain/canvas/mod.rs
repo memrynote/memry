@@ -21,7 +21,11 @@
 //! [`folder_paths`] and [`scene_refs`] are the pure rules both build on.
 
 pub mod edges;
+/// Desktop writes the files, and links the JavaScript JSON helpers this uses.
+#[cfg(feature = "markdown")]
+pub mod file_format;
 pub mod folder_paths;
+pub mod folders;
 pub mod merge;
 pub mod scene_refs;
 mod store;
@@ -31,7 +35,8 @@ use serde_json::{Map, Value, json};
 use crate::api::errors::StorageError;
 
 pub use store::{
-    CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, sync_hold, update,
+    CanvasCopy, CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, new_id,
+    sync_hold, update,
 };
 
 /// The `(type, _)` half of every key this module writes.
@@ -73,6 +78,9 @@ pub struct Canvas {
 /// What a new canvas carries.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NewCanvas<'a> {
+    /// The id to create it under; `None` mints one. Desktop names the
+    /// `.excalidraw` file, which carries the id, before the record exists.
+    pub id: Option<&'a str>,
     pub title: Option<&'a str>,
     pub owner_note_id: Option<&'a str>,
     /// `None` or blank is an empty board.

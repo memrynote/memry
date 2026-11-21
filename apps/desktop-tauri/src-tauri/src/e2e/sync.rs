@@ -1,14 +1,16 @@
 //! Sync test commands: the gate inputs Steps 19 and 20 will own, the network switch, so a spec or
 //! a live-app check can drive the status badge without an account server, and the sign-in against
-//! the harness's local test server.
+//! the harness's local test server. And the note body rows the outbox still holds.
 
 use std::sync::Arc;
 
 use memry_desktop::account::AccountService;
 use memry_desktop::account::e2e_bootstrap::E2eDevice;
-use memry_desktop::account::vault_sync::OpenVaultBinding;
+use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::e2e::crdt_body;
+use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::reachability::DesktopReachability;
-use memry_desktop::session::Session;
+use memry_desktop::session::{Session, StartupOutcome};
 use memry_desktop::sync::gate::{Entitlement, VaultBinding};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
@@ -95,4 +97,54 @@ pub async fn e2e_bootstrap_sync_device(
         .map_err(|e| invalid("e2e_bootstrap_sync_device", e))?;
     account_sync::attach_if_signed_in(app);
     Ok(Bootstrapped { device_id })
+}
+
+/// Electron's `restartSyncRuntimeForTests`, done the way an app restart does it: closes the open
+/// vault, which stops its supervisor without the shutdown's final rounds, then opens the launch
+/// vault again through `Session::open_startup`. The reopen reads the database's identity and
+/// binding from disk, stamps the registry entry, and starts a new supervisor. Answers once that
+/// supervisor runs; its bind and first pass run after. Fails while sync is not wired or the
+/// account is signed out.
+#[tauri::command]
+pub async fn e2e_restart_sync_runtime(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    let wiring = app
+        .try_state::<Arc<SyncWiring>>()
+        .ok_or_else(|| invalid("e2e_no_sync", "sync is not wired yet"))?;
+    if !wiring.account.info().signed_in {
+        return Err(invalid("e2e_signed_out", "the account is signed out"));
+    }
+    let restarted = tauri::async_runtime::spawn_blocking(move || {
+        let session = app.state::<Session>();
+        session.close();
+        match session.open_startup(&app.state::<LaunchEnv>()) {
+            StartupOutcome::Opened(_) => Ok(session.sync_supervisor().is_some()),
+            StartupOutcome::Picker => Err("no launch vault to reopen".to_owned()),
+            StartupOutcome::Failed { error, .. } => Err(error.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| invalid("e2e_restart_sync_runtime", e))?
+    .map_err(|e| invalid("e2e_restart_sync_runtime", e))?;
+    if restarted {
+        Ok(())
+    } else {
+        Err(invalid(
+            "e2e_no_supervisor",
+            "the reopened vault runs no supervisor",
+        ))
+    }
+}
+
+/// Electron's `getCrdtPendingCount`: the open vault's note body rows not yet pushed, read from
+/// `data.db` with or without a supervisor. Fails when no vault is open.
+#[tauri::command]
+pub async fn e2e_crdt_pending_count(app: AppHandle<Wry>) -> Result<usize, CommandError> {
+    let open = app
+        .state::<Session>()
+        .current()
+        .ok_or_else(|| invalid("e2e_no_vault", "no vault is open"))?;
+    tauri::async_runtime::spawn_blocking(move || crdt_body::pending_count(&open.vault))
+        .await
+        .map_err(|e| invalid("e2e_crdt_pending_count", e))?
+        .map_err(|e| invalid("e2e_crdt_pending_count", e))
 }

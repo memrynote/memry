@@ -79,6 +79,22 @@ impl Canvases {
     }
 }
 
+/// Desktop's file service writes through [`crate::domain::canvas`] with these,
+/// so the `.excalidraw` file and the record change in one writer call.
+impl Canvases {
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
+
+    pub fn vault_id(&self) -> &str {
+        &self.vault_id
+    }
+
+    pub fn device_id(&self) -> &str {
+        &self.device_id
+    }
+}
+
 #[uniffi::export]
 impl Canvases {
     /// Creates a canvas and returns it. `scene` is Excalidraw JSON, or `nil`

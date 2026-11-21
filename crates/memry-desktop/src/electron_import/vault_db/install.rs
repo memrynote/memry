@@ -46,10 +46,17 @@ pub(super) fn refuse_if_present(path: &Path) -> Result<(), ImportError> {
 /// Where install keeps the `core/index.db` it replaces until `data.db` is in place.
 const REPLACED_INDEX_DIR: &str = "replaced-index";
 
-/// Moves each file of the `index.db` in `from_dir` that exists into `to_dir`.
-fn move_index(from_dir: &Path, to_dir: &Path) -> Result<(), ImportError> {
+/// Moves each file of the `index.db` in `from_dir` that exists into `to_dir`. Out of `core/`
+/// the sidecars go first and `index.db` last, into it `index.db` goes first: a move that fails
+/// part way never leaves a WAL in `core/` without the database it belongs to.
+fn move_index(from_dir: &Path, to_dir: &Path, core: &Path) -> Result<(), ImportError> {
     let index = from_dir.join(INDEX_FILE);
-    for from in std::iter::once(index.clone()).chain(sidecars(&index)) {
+    let mut files = vec![index.clone()];
+    files.extend(sidecars(&index));
+    if from_dir == core {
+        files.rotate_left(1);
+    }
+    for from in files {
         let Some(name) = from.file_name() else {
             continue;
         };
@@ -65,10 +72,34 @@ fn move_index(from_dir: &Path, to_dir: &Path) -> Result<(), ImportError> {
 /// Puts the `index.db` moved aside back into `core/`. A failure is logged and leaves it in
 /// staging, which the next run deletes: with no `core/data.db` beside it, it is rebuildable.
 fn restore_index(paths: &Paths, aside: &Path) {
-    if let Err(error) = move_index(aside, &paths.core) {
+    if let Err(error) = move_index(aside, &paths.core, &paths.core) {
         tracing::warn!(%error, "could not put the replaced core/index.db back");
     }
     sync_dir(&paths.core);
+}
+
+/// A run cut off between the two renames left the imported `index.db` in `core/` and the one it
+/// replaced in staging, and the vault then opened natively (`NativeFirst`): the imported index
+/// leaves `core/` with its sidecars and the replaced one goes back, before staging is removed.
+pub(super) fn restore_replaced_index(paths: &Paths) -> Result<(), ImportError> {
+    let aside = paths.staging.join(REPLACED_INDEX_DIR);
+    if !aside.join(INDEX_FILE).exists() {
+        return Ok(());
+    }
+    // A rerun cut off below left the imported index here; a native open may have created
+    // another `core/index.db` since, which must find the directory empty.
+    let imported = paths.staging.join("imported-index");
+    match fs::remove_dir_all(&imported) {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(ImportError::io(&imported, e)),
+    }
+    fs::create_dir_all(&imported).map_err(|e| ImportError::io(&imported, e))?;
+    move_index(&paths.core, &imported, &paths.core)?;
+    crash::point("native-first:index-taken-out");
+    move_index(&aside, &paths.core, &paths.core)?;
+    sync_dir(&paths.core);
+    Ok(())
 }
 
 fn rename(from: &Path, to: &Path) -> Result<(), ImportError> {
@@ -108,7 +139,7 @@ impl StagedVault {
         let index = paths.core.join(INDEX_FILE);
         let aside = paths.staging.join(REPLACED_INDEX_DIR);
         fs::create_dir_all(&aside).map_err(|e| ImportError::io(&aside, e))?;
-        if let Err(error) = move_index(&paths.core, &aside)
+        if let Err(error) = move_index(&paths.core, &aside, &paths.core)
             .and_then(|()| rename(&paths.staging.join(INDEX_FILE), &index))
         {
             restore_index(&paths, &aside);
@@ -118,8 +149,9 @@ impl StagedVault {
         crash::point("install:index-renamed");
 
         if let Err(error) = rename(&paths.staging.join(DATA_FILE), &data) {
-            // A native open raced the renames: the staged index leaves `core/` again.
-            match rename_no_replace(&index, &paths.staging.join(INDEX_FILE)) {
+            // A native open raced the renames: the staged index leaves `core/` again, with any
+            // WAL the native open wrote beside it, so none is replayed into the restored index.
+            match move_index(&paths.core, &paths.staging, &paths.core) {
                 Ok(()) => restore_index(&paths, &aside),
                 Err(e) => tracing::warn!(%e, "could not take the staged index.db back"),
             }
