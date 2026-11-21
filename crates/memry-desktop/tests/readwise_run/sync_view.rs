@@ -7,6 +7,7 @@
 
 use memry_core::api::errors::SyncError;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
+use memry_core::sync::driver::ApplyObserver;
 use memry_desktop::readwise::claim::write_claim;
 use memry_desktop::readwise::pull_gate::SyncView;
 use memry_desktop::readwise::sync_view::SessionSyncView;
@@ -31,7 +32,10 @@ impl SyncBackend for NeverOpens {
             keychain_unavailable: false,
         }
     }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        _observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         Err(SyncError::Locked)
     }
     fn refresh_refused(&self) -> bool {
@@ -82,6 +86,7 @@ fn the_settings_outbox_reads_from_a_run_thread_and_no_supervisor_reads_as_queued
                 telemetry: None,
                 signals: signals.clone(),
                 on_status: Arc::new(|_| {}),
+                on_event: Arc::new(|_| {}),
             },
         ))
     });
