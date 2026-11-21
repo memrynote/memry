@@ -20,6 +20,7 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{live, tombstone};
 use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox;
@@ -163,7 +164,7 @@ pub fn create(
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     commit(tx, &id, &scene, now_ms)
 }
@@ -178,7 +179,7 @@ pub fn update(
 ) -> Result<Updated, StorageError> {
     let folder = edit.folder.map(normalize_folder).transpose()?;
     let scene = edit.scene.map(canonical_scene).transpose()?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let stored = live(&tx, ITEM_TYPE, canvas_id, "canvas")?;
     if let Some(expected) = edit.expected_updated_at {
         let updated_at: Option<i64> = tx
@@ -232,7 +233,7 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tombstone_in(&tx, canvas_id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(true)
@@ -269,7 +270,7 @@ pub fn duplicate(
         "clock": next_clock(&Object::new(), device_id)?,
         "deletedAt": null,
     }));
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     insert_local(&tx, ITEM_TYPE, &id, payload, now_ms)?;
     tx.execute(
         "INSERT OR IGNORE INTO canvas_assets (
@@ -363,7 +364,7 @@ pub(crate) fn placements(
 
 /// Queues the canvas when `scene` fits the cap, commits, and reads it back.
 fn commit(
-    tx: rusqlite::Transaction<'_>,
+    tx: nested_tx::NestedTx<'_>,
     canvas_id: &str,
     scene: &str,
     now_ms: i64,

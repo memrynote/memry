@@ -77,6 +77,8 @@ pub(crate) struct FakeDriver {
     pub(crate) first_sync_error: Mutex<Option<SyncError>>,
     /// Every first sync fails with `first_sync_error`, as one body the server keeps refusing.
     pub(crate) first_sync_keeps_failing: AtomicBool,
+    /// The next this many passes end with bodies their budget left due.
+    pub(crate) bodies_left: AtomicUsize,
 }
 
 impl FakeDriver {
@@ -106,6 +108,7 @@ fn cut_report(trigger: PassTrigger) -> PassReport {
             source: TransportError::Cancelled,
         })),
         push_error: None,
+        bodies_left: false,
     }
 }
 
@@ -168,6 +171,12 @@ impl SyncPasses for FakeDriver {
             push_ms: PASS_PUSH.as_millis() as u64,
             pull_error: error,
             push_error: None,
+            bodies_left: self
+                .bodies_left
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                    left.checked_sub(1)
+                })
+                .is_ok(),
         })
     }
     async fn needs_first_sync(&self) -> Result<bool, SyncError> {

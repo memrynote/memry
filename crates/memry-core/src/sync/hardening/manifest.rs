@@ -57,6 +57,7 @@ use serde_json::{Value as Json, json};
 
 use crate::api::errors::StorageError;
 use crate::protocol::envelope::{self, RecordEnvelope, SyncOperation};
+use crate::storage::nested_tx;
 use crate::sync::clock::{self, ClockOrder, VectorClock};
 use crate::sync::outbox::{self, Change};
 use crate::sync::pull::{MAX_PULL_IDS, PullError, PullLoop};
@@ -315,7 +316,7 @@ fn settle(
     now_ms: i64,
 ) -> Result<(Keys, Keys), StorageError> {
     let (mut created, mut deleted) = (Vec::new(), Vec::new());
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (item_type, id) in asked {
         let Some(named) = answers.get(id) else {
             let unsynced: Option<i64> = tx
@@ -508,7 +509,7 @@ fn diff(
         unknown.truncate(MAX_PROBED);
     }
     if !reuploaded.is_empty() {
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         for (item_type, id) in &reuploaded {
             eprintln!(
                 "memry-core: a {item_type} missing from the server manifest is queued as create"

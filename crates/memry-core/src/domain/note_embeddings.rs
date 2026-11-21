@@ -30,6 +30,7 @@ use crate::api::errors::StorageError;
 use crate::domain::content_hash::{ContentHasher, content_hash};
 use crate::domain::embedding_input::{EMBEDDING_INPUT_VERSION, MAX_EMBEDDABLE_CONTENT_LENGTH};
 use crate::domain::file_text::extracted_text_for_note;
+use crate::storage::nested_tx;
 use crate::storage::vec::to_blob;
 
 fn failed(err: rusqlite::Error) -> StorageError {
@@ -300,7 +301,7 @@ pub fn store(
     let Some((head, later)) = windows.split_first() else {
         return delete(index, note_id);
     };
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     delete_chunks(&transaction, note_id)?;
     for (sql, vector) in [
         ("DELETE FROM vec_notes WHERE note_id = ?1", None),
@@ -347,7 +348,7 @@ pub fn store(
 
 /// `deleteNoteEmbedding`: every vector and the state row of the note.
 pub fn delete(index: &Connection, note_id: &str) -> Result<(), StorageError> {
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     delete_rows(&transaction, note_id)?;
     transaction.commit().map_err(failed)
 }
@@ -401,7 +402,7 @@ pub fn prune(index: &Connection, notes: Vec<EmbeddableNote>) -> Result<usize, St
     known.extend(ids(index, "SELECT note_id FROM note_embedding_state")?);
     known.extend(ids(index, "SELECT note_id FROM note_embedding_hashes")?);
     let gone: Vec<&String> = known.iter().filter(|id| !live.contains(*id)).collect();
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     for note_id in &gone {
         delete_rows(&transaction, note_id)?;
     }

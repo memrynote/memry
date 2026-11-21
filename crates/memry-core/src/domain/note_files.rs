@@ -37,6 +37,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 mod behind;
 mod large;
@@ -182,7 +183,7 @@ pub fn upsert_stats_as(
     stats: &[NoteFileStat],
     mark: StampMark,
 ) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for stat in stats {
         check_path(&stat.path)?;
         tx.execute(
@@ -246,7 +247,7 @@ pub fn set_file_hash(
     note_id: &str,
     file_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let exists = tx
         .query_row(
             "SELECT 1 FROM note_files WHERE note_id = ?1",
@@ -273,7 +274,7 @@ pub fn set_file_hash(
 /// write-back may write the document again.
 pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), StorageError> {
     check_path(&stat.path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let changed = tx
         .execute(
             &format!(
@@ -320,7 +321,7 @@ pub fn set_hash(
     note_id: &str,
     content_hash: Option<&str>,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let changed = tx
         .execute(
             "UPDATE note_files SET content_hash = ?2 WHERE note_id = ?1",
@@ -373,7 +374,7 @@ pub fn rename_prefix(
         return Err(invalid(format!("{new_dir:?} is inside {old_dir:?}")));
     }
 
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     // `'/' + 1 == '0'`: the paths under `old_dir/` are exactly this range, with
     // no LIKE escaping. It holds under the column's default BINARY collation.
     let (low, high) = (format!("{old_dir}/"), format!("{old_dir}0"));
@@ -414,7 +415,7 @@ pub fn rename_prefix(
 
 /// Removes the row of a note. `false` when there was none.
 pub fn remove(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let removed = remove_in(&tx, note_id)?;
     tx.commit().map_err(failed).map(|()| removed)
 }

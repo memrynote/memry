@@ -23,6 +23,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::{RESERVED_DAY_KEYS, edit_file, failed, fill_file, mirrored, stored};
 
@@ -40,7 +41,7 @@ pub fn taken(
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let found = take_in(&tx, id, indexed, after, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(found)
@@ -54,7 +55,7 @@ pub fn taken_all(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (id, after) in files {
         take_in(&tx, &id, None, after, device_id, now_ms)?;
     }

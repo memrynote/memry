@@ -92,7 +92,10 @@ fn descriptor() -> DeviceDescriptor {
 /// `unlocked` is false — the master key an unlock would have written.
 fn session(transport: Arc<FakeTransport>, unlocked: bool) -> Arc<AuthSession> {
     let store = FakeSecureStore::new();
-    store.put_text(SecureStoreKey::AccessToken, "access-1");
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &http_fakes::jwt(json!({"sub": "user-1", "device_id": DEVICE, "type": "access", "exp": 9_999_999_999u64})),
+    );
     if unlocked {
         store
             .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
@@ -204,9 +207,9 @@ fn packed_base64(update: &[u8], secret_key: &[u8]) -> String {
     BASE64.encode(packed)
 }
 
-/// The refs page, the metadata page, the bootstrap 501 that precedes them,
-/// and an old server's 404 for `GET /sync/packs` (#3252), which falls back to
-/// the item-granular bodies pass.
+/// The bootstrap 501, an old server's 404 for the record packs listing
+/// (#5232), the refs page, the metadata page, and the same 404 for the
+/// snapshot listing (#3252), which falls back to the item-granular bodies pass.
 ///
 /// Chapter 10 §10.12: a deployment with no bootstrap key answers 501 and the
 /// client says nothing about it. Scripting it here is the honest default — the
@@ -219,6 +222,7 @@ fn first_sync_script(
     vec![
         devices_response(public_key),
         error_response(501, "BOOTSTRAP_UNAVAILABLE", "no bootstrap key"),
+        error_response(404, "NOT_FOUND", "no pack route"),
         response(200, &changes_page(modified_at)),
         response(
             200,
@@ -298,6 +302,7 @@ async fn a_failed_bodies_pass_still_leaves_the_notes_that_arrived_visible() {
     // §0.6.1's ladder retries 5xx, so a 500 here would be three more scripted
     // responses and would be testing the ladder rather than the rule.
     let mut script = first_sync_script(&public, secret, RECENT);
+    script.push(http_fakes::probe_refused());
     script.push(error_response(
         403,
         "SYNC_VAULT_FORBIDDEN",
@@ -347,11 +352,12 @@ async fn a_windowed_out_body_arrives_only_through_the_on_demand_fetch() {
     );
     assert_eq!(before.body.text, "");
 
-    // The second script: the directory again, then §7.8's snapshot probe, then
-    // the update itself.
+    // The second script: the directory again, a refused batch probe, then
+    // §7.8's snapshot probe, then the update itself.
     let update = body_update("Hello from the server");
     let transport = FakeTransport::new(vec![
         devices_response(&public),
+        http_fakes::probe_refused(),
         response(200, &json!({ "snapshot": Json::Null }).to_string()),
         response(
             200,
@@ -445,4 +451,123 @@ async fn a_first_sync_and_a_pass_over_one_vault_run_one_at_a_time() {
     let urls: Vec<String> = transport.calls().iter().map(|c| c.url.clone()).collect();
     assert_eq!(urls.len(), first_sync_requests + 1, "{urls:?}");
     assert!(urls[first_sync_requests].contains("/devices"), "{urls:?}");
+}
+
+/// A first sync pulls every live body it holds to the head, so the first pass
+/// after it owes nothing. That pass's feed page serves `noteBodies` (empty), the
+/// one-time legacy pull's trigger (chapter 07 §7.17), and owing every held
+/// document there re-pulled the whole vault one document at a time.
+#[tokio::test]
+async fn the_first_pass_after_a_first_sync_owes_no_body_it_already_pulled() {
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-api-vault-sync-no-reowe-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
+    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
+    let owed = || {
+        side.call_blocking(|conn| memry_core::sync::body_debt::owed(conn))
+            .expect("the debts")
+    };
+    let (public, secret) = keypair();
+
+    let update = body_update("Hello from the server");
+    let mut script = first_sync_script(&public, secret.clone(), RECENT);
+    script.push(http_fakes::probe_refused());
+    script.push(response(
+        200,
+        &json!({ "snapshot": Json::Null }).to_string(),
+    ));
+    script.push(response(
+        200,
+        &json!({"updates": [{
+            "sequenceNum": 1,
+            "data": packed_base64(&update, &secret),
+            "createdAt": 1_700_000_000_000i64,
+            "signerDeviceId": DEVICE,
+        }], "hasMore": false})
+        .to_string(),
+    ));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone(), true));
+    assert_eq!(
+        sync.first_sync(None).await.expect("the first sync").bodies,
+        1
+    );
+    assert!(
+        owed().is_empty(),
+        "the first sync pulled the body to its head"
+    );
+
+    let transport = FakeTransport::new(vec![
+        devices_response(&public),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": 10, "noteBodies": []})
+                .to_string(),
+        ),
+    ]);
+    let pass = vault
+        .sync(session(transport.clone(), true))
+        .sync_now()
+        .await
+        .expect("the pass");
+
+    assert_eq!(pass.bodies, 0, "{pass:?}");
+    assert!(
+        owed().is_empty(),
+        "nothing the first sync pulled is owed again"
+    );
+    assert_eq!(transport.calls_to("/sync/crdt/updates/batch").len(), 0);
+}
+
+/// REVIEW-5347: a window document whose first-sync pull stops at an update it
+/// cannot open (§7.9 stop-at-gap) holds `crdt` cursor 1 while the server holds
+/// 2. A completed first sync marks the legacy pull done, so the document must
+/// be owed: unowed, it would claim `coversThrough` past a body row it never
+/// merged, and nothing would pull it again.
+#[tokio::test]
+async fn a_window_document_whose_first_sync_pull_stopped_is_owed() {
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-api-vault-sync-stopped-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
+    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
+    let (public, secret) = keypair();
+
+    let update = body_update("Hello from the server");
+    let mut script = first_sync_script(&public, secret.clone(), RECENT);
+    script.push(http_fakes::probe_refused());
+    script.push(response(
+        200,
+        &json!({ "snapshot": Json::Null }).to_string(),
+    ));
+    script.push(response(
+        200,
+        &json!({"updates": [
+            {"sequenceNum": 1, "data": packed_base64(&update, &secret),
+             "createdAt": 1_700_000_000_000i64, "signerDeviceId": DEVICE},
+            {"sequenceNum": 2, "data": "@@not-base64@@",
+             "createdAt": 1_700_000_000_001i64, "signerDeviceId": DEVICE},
+        ], "hasMore": false})
+        .to_string(),
+    ));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone(), true));
+    sync.first_sync(None).await.expect("the first sync");
+    assert!(sync.is_first_sync_complete().expect("the meta read"));
+
+    let (owed, cursor) = side
+        .call_blocking(|conn| {
+            Ok((
+                memry_core::sync::body_debt::is_owed(conn, NOTE)?,
+                memry_core::sync::store::read_cursor(conn, &format!("crdt:{NOTE}"))?,
+            ))
+        })
+        .expect("the reads");
+    assert_eq!(cursor.as_deref(), Some("1"), "the pull stopped at 2");
+    assert!(owed, "behind the server's head, so owed");
 }

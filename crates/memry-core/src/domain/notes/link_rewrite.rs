@@ -47,6 +47,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::{BODY_FRAGMENT, update_log};
 use crate::domain::{body_write, journal, wiki_target};
+use crate::storage::nested_tx;
 
 use super::failed;
 
@@ -230,7 +231,7 @@ fn rewrite_source(
     else {
         return Ok(());
     };
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     body_write::append_in(&tx, item_type, id, &update, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(())

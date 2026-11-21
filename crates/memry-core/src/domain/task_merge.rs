@@ -49,6 +49,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -241,7 +242,7 @@ pub(crate) fn write_merged(
     changes: &[(&str, Change)],
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     write_merged_in(&transaction, record, changes, now_ms)?;
     transaction.commit().map_err(failed)
 }

@@ -156,5 +156,21 @@ name = "read_pool_contention"
 path = "tests/read_pool_contention.rs"
 
 [[test]]
+name = "sync_apply_bench"
+path = "tests/sync_apply_bench.rs"
+
+[[test]]
+name = "sync_apply_kill"
+path = "tests/sync_apply_kill.rs"
+
+[[test]]
+name = "sync_body_apply_kill"
+path = "tests/sync_body_apply_kill.rs"
+
+[[test]]
+name = "sync_body_apply_races"
+path = "tests/sync_body_apply_races.rs"
+
+[[test]]
 name = "task_completion_spawn_vectors"
 path = "tests/task_completion_spawn_vectors.rs"

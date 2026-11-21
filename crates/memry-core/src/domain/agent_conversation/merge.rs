@@ -44,6 +44,7 @@ use crate::domain::agent_records::{parse_object, refuses, store_inbound};
 use crate::domain::notes::failed as sql_failed;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::agent::{is_sealed_pending, set_sealed_pending};
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
@@ -125,7 +126,7 @@ pub fn apply_remote(
     ));
     changes.push(("updatedAt", Change::Set(json!(updated_at))));
     changes.push(("deletedAt", Change::Set(json!(deleted_at))));
-    let transaction = conn.unchecked_transaction().map_err(sql_failed)?;
+    let transaction = nested_tx::begin(conn).map_err(sql_failed)?;
     set_sealed_pending(&transaction, ITEM_TYPE, &record.item_id, pending)?;
     task_merge::write_merged_in(&transaction, record, &changes, now_ms)?;
     transaction.commit().map_err(sql_failed)?;

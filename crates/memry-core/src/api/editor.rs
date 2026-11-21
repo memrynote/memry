@@ -90,6 +90,7 @@ use crate::markdown::convert::api::Converter;
 use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, outbox};
 
 use crate::crdt::body_writes::BodyWrite;
@@ -346,7 +347,7 @@ impl Editor {
                     return Ok(None);
                 }
                 let stored = (|| {
-                    let tx = conn.transaction().map_err(storage)?;
+                    let tx = nested_tx::begin(conn).map_err(storage)?;
                     let seq = update_log::append_local_update_in(&tx, note_id, update, now)?;
                     let change =
                         outbox::Change::crdt_update(owner.item_type, note_id, update.to_vec());
@@ -492,7 +493,7 @@ impl Editor {
                 what: format!("no live note or journal day {note_id} to repair"),
             },
         })?;
-        let tx = conn.unchecked_transaction().map_err(storage_crdt)?;
+        let tx = nested_tx::begin(conn).map_err(storage_crdt)?;
         append_in(&tx, owner.item_type, note_id, &update, now_ms())?;
         tx.commit().map_err(storage_crdt)?;
         *repaired = Some(update);

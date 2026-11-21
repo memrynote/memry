@@ -29,19 +29,7 @@ impl PullLoop {
         report: &mut PullReport,
         pending: &mut Vec<Pending>,
     ) -> Result<(), PullError> {
-        let items = if self.hardened {
-            let blocked = self
-                .db
-                .call(|conn| quarantine::blocked(conn, now_ms()))
-                .await?;
-            let (skipped, kept): (Vec<Json>, Vec<Json>) = items
-                .into_iter()
-                .partition(|item| blocked.contains(&(field(item, "type"), field(item, "id"))));
-            report.skipped += skipped.len();
-            kept
-        } else {
-            items
-        };
+        let items = self.skip_quarantined(items, report).await?;
         let mut marked = Vec::new();
         for (item, decoded) in self.decode_batch(items).await? {
             match decoded {
@@ -54,6 +42,27 @@ impl PullLoop {
         }
         self.warn(marked).await;
         Ok(())
+    }
+
+    /// In a hardened pull, drops every item permanently quarantined
+    /// ([`quarantine::blocked`]) undecoded and counts it skipped.
+    pub(super) async fn skip_quarantined(
+        &self,
+        items: Vec<Json>,
+        report: &mut PullReport,
+    ) -> Result<Vec<Json>, PullError> {
+        if !self.hardened {
+            return Ok(items);
+        }
+        let blocked = self
+            .db
+            .call(|conn| quarantine::blocked(conn, now_ms()))
+            .await?;
+        let (skipped, kept): (Vec<Json>, Vec<Json>) = items
+            .into_iter()
+            .partition(|item| blocked.contains(&(field(item, "type"), field(item, "id"))));
+        report.skipped += skipped.len();
+        Ok(kept)
     }
 
     /// Pushes the purged tombstones that apply onto `pending`

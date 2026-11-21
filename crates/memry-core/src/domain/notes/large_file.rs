@@ -30,6 +30,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::note_files;
+use crate::storage::nested_tx;
 use crate::sync::{body_debt, outbox};
 
 /// The note of the large-file class `file` no row names: a new record with `new_id` and no
@@ -41,7 +42,7 @@ pub fn adopt_large(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Adopted, CrdtError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let candidates = unfiled_notes(&tx, file.title, file.folder_path)?;
     if !candidates.is_empty() {
         let mut bare = None;
@@ -78,7 +79,7 @@ pub(super) fn is_bare(conn: &Connection, note_id: &str) -> Result<bool, CrdtErro
 /// gives it next, as a new note's is ([`super::new_files`]). A large file's note never queued
 /// it; one that did queues the same record again. Nothing for a note that is not live.
 pub fn left_class(conn: &Connection, note_id: &str, now_ms: i64) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if live_place(&tx, note_id)?.is_none() {
         return Ok(());
     }

@@ -41,6 +41,7 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::domain::notes::names::{js_trim, name_key, parse_stored};
 use crate::domain::tags::fold;
+use crate::storage::nested_tx;
 
 /// A target's note half, and its heading half when it carries a `#`.
 ///
@@ -144,7 +145,7 @@ impl WikiNames {
         let keys = to_json(&keys)?;
         // Both reads in one snapshot, so a rename committed between them is not half seen.
         let snapshot = if conn.is_autocommit() {
-            Some(conn.unchecked_transaction().map_err(failed)?)
+            Some(nested_tx::begin(conn).map_err(failed)?)
         } else {
             None
         };
@@ -399,7 +400,7 @@ fn target_keys(target: &str) -> Vec<String> {
 /// Stores the keys of every id `wiki_names_owed` lists and clears the list: an id no longer
 /// live keeps no key. On `data.db`'s writer, in one transaction. The number of ids settled.
 pub fn settle_name_keys(conn: &Connection) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let ids = {
         let mut statement = transaction
             .prepare("SELECT DISTINCT id FROM wiki_names_owed")

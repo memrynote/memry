@@ -29,10 +29,11 @@
 //! individually if the batch is rejected, and the server acks CRDT rows
 //! against the sequence it assigned to each specific update.
 
-use rusqlite::{Connection, Transaction, params};
+use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
+use crate::storage::nested_tx;
 
 mod claim;
 mod collapse;
@@ -230,7 +231,7 @@ pub fn commit<T, F>(
 where
     F: FnOnce(&Connection) -> Result<T, StorageError>,
 {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = source(&transaction)?;
     let outbox_id = enqueue(&transaction, change, now_ms)?;
     transaction.commit().map_err(failed)?;
@@ -506,7 +507,7 @@ pub fn defer(
 /// the row first so a crash inside the window leaves the reason behind rather
 /// than a silent disappearance.
 pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     retire_in(&transaction, ids, reason)?;
     transaction.commit().map_err(failed)?;
     Ok(())
@@ -514,7 +515,7 @@ pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), Storag
 
 /// [`retire`] inside the caller's open transaction, for a caller that records
 /// something else about the retired rows in the same commit.
-pub fn retire_in(tx: &Transaction, ids: &[i64], reason: &str) -> Result<(), StorageError> {
+pub fn retire_in(tx: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
     let truncated = truncate(reason);
     for id in ids {
         tx.execute(
