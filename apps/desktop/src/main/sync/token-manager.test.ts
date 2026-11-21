@@ -52,6 +52,7 @@ import {
   cancelTokenRefresh,
   refreshAccessToken,
   resetTokenManagerState,
+  setOnSessionEnded,
   setOnTokenRefreshed,
   hasSessionEnded
 } from './token-manager'
@@ -330,6 +331,25 @@ describe('token-manager', () => {
       await getValidAccessToken()
       await getValidAccessToken()
       expect(mockPostToServer).toHaveBeenCalledTimes(3)
+    })
+
+    it('reports the session ended once, on the terminal rejection only (#5342)', async () => {
+      // #given
+      givenDeadRefreshToken()
+      await rejectWith401()
+      const onEnded = vi.fn()
+      setOnSessionEnded(onEnded)
+
+      // #when two advisory rejections, then the terminal one
+      await getValidAccessToken()
+      await vi.advanceTimersByTimeAsync(61_000)
+      await getValidAccessToken()
+      expect(onEnded).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(301_000)
+      await getValidAccessToken()
+
+      // #then
+      expect(onEnded).toHaveBeenCalledTimes(1)
     })
 
     it('does not schedule a fallback retry after a rejection', async () => {

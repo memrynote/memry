@@ -516,7 +516,8 @@ vi.mock('./token-manager', () => ({
   getValidAccessToken: runtimeMocks.getValidAccessToken,
   refreshAccessToken: runtimeMocks.refreshAccessToken,
   retrieveToken: runtimeMocks.retrieveToken,
-  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed
+  setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed,
+  setOnSessionEnded: vi.fn()
 }))
 
 vi.mock('./vault-account-binding', () => ({

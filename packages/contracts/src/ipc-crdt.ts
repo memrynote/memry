@@ -18,11 +18,12 @@ export const CRDT_EVENTS = {
    */
   DOC_LOADED: 'crdt:doc-loaded',
   /**
-   * A doc waiting for the server body is stuck: its pulls keep failing on a
-   * server answer. The editor shows the vault file read-only until
-   * `DOC_LOADED` (#5290). Payload: `{ noteId: string }`.
+   * What a doc waiting for the server body now waits on changed after the
+   * open: its pulls are stuck (#5290), or the session ended (#5342). The
+   * editor shows the vault file read-only until `DOC_LOADED`. Payload:
+   * `CrdtDocWaitEvent`.
    */
-  DOC_STUCK: 'crdt:doc-stuck',
+  DOC_WAIT: 'crdt:doc-wait',
   DOC_ERROR: 'crdt:doc-error',
   /**
    * Main dropped the provider that owned every open Y.Doc, so each renderer
@@ -119,16 +120,23 @@ export interface CrdtOpenDocInput {
 }
 
 /** What an editor's doc waits on before it binds; see `CrdtOpenDocResult.awaitingRemote`. */
-export type CrdtRemoteBodyWait = 'merging' | 'stuck'
+export type CrdtRemoteBodyWait = 'merging' | 'stuck' | 'signed-out' | 'vault-locked'
+
+export interface CrdtDocWaitEvent {
+  noteId: string
+  wait: CrdtRemoteBodyWait
+}
 
 export interface CrdtOpenDocResult {
   success: boolean
   error?: string
   /**
    * The doc opened empty and waits for the server body (no CRDT store, #5290):
-   * `stuck` when the note's pulls keep failing on a server answer. The editor
-   * shows its loading state, or the vault file read-only while stuck or
-   * offline, until `CRDT_EVENTS.DOC_LOADED` names the note.
+   * `stuck` when the note's pulls keep failing on a server answer,
+   * `signed-out` when the session ended, and `vault-locked` when no vault key
+   * can be read (#5342). The editor shows its loading state while `merging`
+   * online, else the vault file read-only, until `CRDT_EVENTS.DOC_LOADED`
+   * names the note.
    */
   awaitingRemote?: CrdtRemoteBodyWait
 }

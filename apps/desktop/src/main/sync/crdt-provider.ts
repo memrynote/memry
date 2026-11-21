@@ -1,7 +1,12 @@
 import * as Y from 'yjs'
 import type { FileHandle } from 'fs/promises'
 import { BrowserWindow } from 'electron'
-import { CRDT_EVENTS, CRDT_FRAGMENT_NAME, type CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
+import {
+  CRDT_EVENTS,
+  CRDT_FRAGMENT_NAME,
+  type CrdtDocWaitEvent,
+  type CrdtRemoteBodyWait
+} from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -91,6 +96,10 @@ export interface RemoteBodyQuery {
   hasUnmerged: (noteId: string) => boolean
   /** The note's pulls keep failing on a server answer, so merging may never finish. */
   isStuck: (noteId: string) => boolean
+  /** The session ended: no pull runs as this user until they sign in again. */
+  signedOut: () => boolean
+  /** The last pull found no vault key (a locked keychain); signing in does not fix it. */
+  vaultLocked: () => boolean
 }
 
 /**
@@ -438,12 +447,16 @@ export class CrdtProvider {
 
   /**
    * What an editor of `noteId` waits on (#5290): null when its doc is ready,
-   * `stuck` when the note's pulls keep failing on a server answer, else
-   * `merging`. The editor shows the vault file read-only while `stuck` or
-   * offline, and binds once the wait ends.
+   * `signed-out` when the session ended, `vault-locked` when the last pull
+   * found no vault key (#5342), `stuck` when the note's pulls keep failing on
+   * a server answer, else `merging`. The editor shows the vault file
+   * read-only for every reason but `merging`, or while offline, and binds
+   * once the wait ends.
    */
   remoteBodyWait(noteId: string): CrdtRemoteBodyWait | null {
     if (!this.isAwaitingMerge(noteId)) return null
+    if (this.remoteBody?.signedOut()) return 'signed-out'
+    if (this.remoteBody?.vaultLocked()) return 'vault-locked'
     return this.remoteBody?.isStuck(noteId) ? 'stuck' : 'merging'
   }
 
@@ -943,18 +956,24 @@ export class CrdtProvider {
   }
 
   /**
-   * The coordinator's report that a waiting note's pulls are stuck (#5290):
-   * its editors switch to the vault file, read-only. The doc is never seeded
-   * here: a seed beside the server body would duplicate it once the signer
-   * resolves (D-UNMERGED-OPEN-EXIT-2).
+   * Tells a waiting note's editors what they now wait on (`remoteBodyWait`):
+   * for the coordinator once its pulls are stuck (#5290). Each reason but
+   * `merging` switches them to the vault file, read-only. The doc is never
+   * seeded here: a seed beside the server body would duplicate it once the
+   * body merges (D-UNMERGED-OPEN-EXIT-2).
    */
-  reportStuckEditorDoc(noteId: string): void {
+  reportEditorWait(noteId: string): void {
     const entry = this.docs.get(noteId)
-    if (!entry || entry.closing || !entry.awaitingMerge || entry.windowIds.size === 0) return
-    log.warn('A waiting editor shows its file read-only: the server body cannot be merged', {
-      noteId
-    })
-    broadcastToAllWindows(CRDT_EVENTS.DOC_STUCK, { noteId })
+    if (!entry || entry.closing || entry.windowIds.size === 0) return
+    const wait = this.remoteBodyWait(noteId)
+    if (!wait) return
+    log.warn('A waiting editor shows its file read-only', { noteId, wait })
+    broadcastToAllWindows(CRDT_EVENTS.DOC_WAIT, { noteId, wait } satisfies CrdtDocWaitEvent)
+  }
+
+  /** `reportEditorWait` for every waiting doc, for the runtime once the session ends (#5342). */
+  reportEditorWaits(): void {
+    for (const noteId of this.docs.keys()) this.reportEditorWait(noteId)
   }
 
   /** Ends a doc's wait for the server body, and tells its editors (#5290). */

@@ -437,6 +437,14 @@ describe('CrdtProvider with no store (#2536)', () => {
     })
   }
 
+  /** What the token manager and keychain answer: a token, a session that ended, a vault key. */
+  interface Session {
+    token: boolean
+    ended: boolean
+    vaultKey: boolean
+  }
+  const signedIn = (): Session => ({ token: true, ended: false, vaultKey: true })
+
   /** A CRDT store with nothing in it, for the cases that run with one. */
   function fakeStore(): unknown {
     const updates = new Map<string, Uint8Array[]>()
@@ -475,18 +483,24 @@ describe('CrdtProvider with no store (#2536)', () => {
    * there was no snapshot. A full-state row is pushed when the test flushes
    * it, through the reader the runtime's outbox uses.
    */
-  async function startRuntime(options?: { store?: boolean; durableDebts?: boolean }): Promise<{
+  async function startRuntime(options?: {
+    store?: boolean
+    durableDebts?: boolean
+    session?: Session
+  }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
     pushUpdate: (state: Uint8Array) => void
     flushFullStates: () => Promise<void>
   }> {
     const provider = getCrdtProvider()
+    const session = options?.session ?? signedIn()
     const ctx = {
       deps: {
         crdtProvider: provider,
-        getAccessToken: async () => 'token',
-        getVaultKey: async () => new Uint8Array(32)
+        getAccessToken: async () => (session.token ? 'token' : null),
+        hasSessionEnded: () => session.ended,
+        getVaultKey: async () => (session.vaultKey ? new Uint8Array(32) : null)
       },
       abortController: new AbortController()
     } as unknown as SyncContext
@@ -542,7 +556,9 @@ describe('CrdtProvider with no store (#2536)', () => {
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
     provider.setRemoteBodyQuery({
       hasUnmerged: (id) => coordinator.hasUnmergedRemoteState(id),
-      isStuck: (id) => coordinator.isBodyPullStuck(id)
+      isStuck: (id) => coordinator.isBodyPullStuck(id),
+      signedOut: () => coordinator.isSignedOut(),
+      vaultLocked: () => coordinator.isVaultKeyMissing()
     })
     // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
@@ -681,8 +697,8 @@ describe('CrdtProvider with no store (#2536)', () => {
         expect(provider.remoteBodyWait(NOTE)).toBe('stuck')
         expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
         expect(h.broadcasts).toContainEqual({
-          channel: CRDT_EVENTS.DOC_STUCK,
-          payload: { noteId: NOTE }
+          channel: CRDT_EVENTS.DOC_WAIT,
+          payload: { noteId: NOTE, wait: 'stuck' }
         })
 
         // #when the signer resolves and the next pull merges
@@ -764,6 +780,104 @@ describe('CrdtProvider with no store (#2536)', () => {
         )
       }
     )
+
+    describe('an editor opened while no pull can run as this user (#5342)', () => {
+      async function openWith(session: Session, serverHasBody: boolean) {
+        if (serverHasBody) await serveNoteWithPeerEdit()
+        else {
+          h.server = { snapshot: null, updates: [] }
+          putNoteInVault(ORIGINAL)
+        }
+        const runtime = await startRuntime({ session })
+        const doc = await runtime.provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+          runtime.coordinator.pullCrdtForNote(id)
+        )
+        return { ...runtime, doc }
+      }
+
+      it.each([
+        { case: 'a note the server never saw', serverHasBody: false },
+        { case: 'a note with a server body', serverHasBody: true }
+      ])(
+        'with the session ended waits signed out, and $case loads once signed in',
+        async ({ serverHasBody }) => {
+          // #given the session ended before the editor opens the note
+          const session: Session = { token: false, ended: true, vaultKey: true }
+          const { provider, coordinator, doc } = await openWith(session, serverHasBody)
+
+          // #then the editor is told to show the file read-only, and the doc stays unseeded
+          expect(provider.remoteBodyWait(NOTE)).toBe('signed-out')
+          expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+          // #when the user signs in, the reason clears before any pull runs
+          Object.assign(session, signedIn())
+          expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+
+          // #when the next sync drains the owed pull
+          await coordinator.pullCrdtForNotes(coordinator.drainPendingPulls())
+
+          // #then the editor binds the note's body, once
+          expect(provider.remoteBodyWait(NOTE)).toBeNull()
+          const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+          expect(fragment.length).toBe(1)
+          expect(countTexts(fragment, 'Pack for the')).toBe(1)
+          expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+            serverHasBody ? EXPECTED_BODY : ORIGINAL
+          )
+          expect(h.broadcasts).toContainEqual({
+            channel: CRDT_EVENTS.DOC_LOADED,
+            payload: { noteId: NOTE }
+          })
+        }
+      )
+
+      it('with a failed refresh on a live session waits as merging, not signed out', async () => {
+        // #given a refresh that failed (offline, a 5xx) while the session is alive
+        const { provider, doc } = await openWith(
+          { token: false, ended: false, vaultKey: true },
+          true
+        )
+
+        // #then the editor keeps its usual wait, with no sign-in notice
+        expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+      })
+
+      it('turns a merging editor signed out once the session ends after the open', async () => {
+        // #given an editor that opened waiting while a failed refresh left the session alive
+        const session: Session = { token: false, ended: false, vaultKey: true }
+        const { provider } = await openWith(session, true)
+        expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+
+        // #when the session ends and the runtime reports it
+        session.ended = true
+        provider.reportEditorWaits()
+
+        // #then the editor is told to show the file read-only, signed out
+        expect(h.broadcasts).toContainEqual({
+          channel: CRDT_EVENTS.DOC_WAIT,
+          payload: { noteId: NOTE, wait: 'signed-out' }
+        })
+      })
+
+      it('with no vault key waits vault-locked, and loads once the key is back', async () => {
+        // #given a signed-in session whose vault key cannot be read
+        const session: Session = { token: true, ended: false, vaultKey: false }
+        const { provider, coordinator, doc } = await openWith(session, true)
+
+        // #then the editor gets its own reason, and the doc stays unseeded
+        expect(provider.remoteBodyWait(NOTE)).toBe('vault-locked')
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+        // #when the key is readable again and the owed pull drains
+        session.vaultKey = true
+        await coordinator.pullCrdtForNotes(coordinator.drainPendingPulls())
+
+        // #then the editor binds the server body, once
+        expect(provider.remoteBodyWait(NOTE)).toBeNull()
+        expect(countTexts(doc.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')).toBe(1)
+      })
+    })
 
     it('a seeded push of the closed note pushes no seed beside the server body', async () => {
       const peer = await serveNoteWithPeerEdit()

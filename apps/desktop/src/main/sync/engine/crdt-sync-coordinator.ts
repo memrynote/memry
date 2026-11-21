@@ -111,6 +111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * and merging its server body would let the write-back re-create it.
    */
   private hasNoteRow: (noteId: string) => boolean
+  /** The last body pull that had a token found no vault key; see `isVaultKeyMissing`. */
+  private vaultKeyMissing = false
 
   constructor(
     ctx: SyncContext,
@@ -709,7 +711,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             docOpen: postVector != null
           })
           if (postVector && this.isBodyPullStuck(noteId)) {
-            crdtProvider.reportStuckEditorDoc(noteId)
+            crdtProvider.reportEditorWait(noteId)
           }
         }
       } else if (!sawUnmerged && crdtProvider.hasPersistence() && owesFileBody(noteId)) {
@@ -1396,7 +1398,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         // single-note path. The drop owes the note, and its retry merges.
         if (isEmptyStateVector(postVector) && (serverHeld.has(noteId) || sawUnmerged.has(noteId))) {
           log.debug('applyCrdtBatch: no markdown seed, the doc holds no server body', { noteId })
-          if (this.isBodyPullStuck(noteId)) crdtProvider.reportStuckEditorDoc(noteId)
+          if (this.isBodyPullStuck(noteId)) crdtProvider.reportEditorWait(noteId)
         } else if (isEmptyStateVector(postVector)) {
           await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
@@ -1423,6 +1425,34 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
   }
 
+  /**
+   * No body pull can run as this user until they sign in again: the session
+   * ended (`hasSessionEnded`). A refresh that failed for any other reason
+   * (offline, a 5xx, a rejection still in backoff) leaves the session alive.
+   * An editor waiting on its server body shows the vault file read-only with
+   * a sign-in notice (#5342), and the pull owed meanwhile merges after sign-in.
+   */
+  isSignedOut(): boolean {
+    return this.ctx.deps.hasSessionEnded?.() === true
+  }
+
+  /**
+   * The last body pull that had a token found no vault key, as with a locked
+   * keychain. Signing in does not fix that, so its editors get their own
+   * read-only notice (#5342).
+   */
+  isVaultKeyMissing(): boolean {
+    return this.vaultKeyMissing
+  }
+
+  private async pullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
+    const token = await this.ctx.deps.getAccessToken()
+    if (!token) return null
+    const vaultKey = await this.ctx.deps.getVaultKey()
+    this.vaultKeyMissing = !vaultKey
+    return vaultKey ? { token, vaultKey } : null
+  }
+
   /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */
   async pullCrdtForNote(noteId: string): Promise<boolean> {
     log.debug('pullCrdtForNote entered', { noteId })
@@ -1436,17 +1466,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // Owed on both misses, exactly as the group sibling does. This is the entry
     // point a `crdt_updated` broadcast uses, so returning silently here left a
     // note the server had just named unpulled, unflagged and unretried.
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
+    const credentials = await this.pullCredentials()
+    if (!credentials) {
       this.owePendingPull(noteId)
       return false
     }
-
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      this.owePendingPull(noteId)
-      return false
-    }
+    const { token, vaultKey } = credentials
 
     const localAbort = new AbortController()
     try {
@@ -1484,17 +1509,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     if (noteIds.length === 0) return noCost()
     log.debug('pullCrdtForNotes entered', { count: noteIds.length })
 
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
+    const credentials = await this.pullCredentials()
+    if (!credentials) {
       for (const noteId of noteIds) this.owePendingPull(noteId)
       return noCost()
     }
-
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      for (const noteId of noteIds) this.owePendingPull(noteId)
-      return noCost()
-    }
+    const { token, vaultKey } = credentials
 
     // A caller that can outlive this group passes its own signal: the paced
     // sweep spans minutes, so without one a group already in flight would keep

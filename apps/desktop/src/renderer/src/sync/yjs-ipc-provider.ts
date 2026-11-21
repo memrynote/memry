@@ -159,8 +159,8 @@ export class YjsIpcProvider extends Observable<string> {
 
   /**
    * What `connect()` waits on before it binds (#5290): main's doc waits for
-   * the server body (`merging`), or that body cannot be merged for now
-   * (`stuck`). Reported to `YjsIpcProviderConfig.onRemoteWait` when it changes.
+   * the server body (`merging`), or main pushed a reason it cannot merge for
+   * now (`crdt:doc-wait`: `stuck`, `signed-out`). Reported to `YjsIpcProviderConfig.onRemoteWait` when it changes.
    */
   get remoteWait(): RemoteBodyWait | null {
     return this.remoteWaitState
@@ -258,17 +258,17 @@ export class YjsIpcProvider extends Observable<string> {
    */
   private async openDoc(): Promise<void> {
     let loaded = false
-    let stuck = false
+    let pushedWait: RemoteBodyWait | null = null
     let onLoaded: (() => void) | null = null
     const stopListening = window.api.onCrdtDocLoaded(({ noteId }) => {
       if (noteId !== this.noteId) return
       loaded = true
       onLoaded?.()
     })
-    const stopStuck = window.api.onCrdtDocStuck(({ noteId }) => {
+    const stopWait = window.api.onCrdtDocWait(({ noteId, wait }) => {
       if (noteId !== this.noteId) return
-      stuck = true
-      if (this.remoteWaitState) this.setRemoteWait('stuck')
+      pushedWait = wait
+      if (this.remoteWaitState) this.setRemoteWait(wait)
     })
     try {
       const result = await window.api.syncCrdt.openDoc(
@@ -281,7 +281,7 @@ export class YjsIpcProvider extends Observable<string> {
       }
       if (result.awaitingRemote && !loaded && !this.destroyed) {
         log.info('Waiting for the server body before binding', { noteId: this.noteId })
-        this.setRemoteWait(stuck ? 'stuck' : result.awaitingRemote)
+        this.setRemoteWait(pushedWait ?? result.awaitingRemote)
         await new Promise<void>((resolve) => {
           onLoaded = resolve
           this.endLoadWait = resolve
@@ -293,7 +293,7 @@ export class YjsIpcProvider extends Observable<string> {
     } finally {
       this.endLoadWait = null
       stopListening()
-      stopStuck()
+      stopWait()
       if (!this.destroyed) this.setRemoteWait(null)
     }
   }

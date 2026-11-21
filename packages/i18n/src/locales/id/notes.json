@@ -192,6 +192,8 @@
     "bodySyncPending": "Menyinkronkan — isi catatan ini mungkin masih dalam perjalanan",
     "remoteBodyStuck": "Menunggu sinkronisasi — hanya baca sampai konten catatan yang disinkronkan tiba",
     "remoteBodyOffline": "Offline — hanya baca sampai catatan ini disinkronkan",
+    "remoteBodySignedOut": "Keluar — hanya baca sampai Anda masuk dan catatan ini disinkronkan",
+    "remoteBodyVaultLocked": "Kunci enkripsi vault ini tidak dapat dibaca — hanya baca sampai catatan ini disinkronkan",
     "taskRemoval": {
       "title": "{count, plural, =1 {Tugas dihapus dari catatan ini} other {# tugas dihapus dari catatan ini}}",
       "description": "{count, plural, other {Tetap simpan di daftar tugas, atau hapus dari semua tempat?}}",

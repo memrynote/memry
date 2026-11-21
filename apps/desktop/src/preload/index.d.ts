@@ -110,6 +110,7 @@ import type {
   CrdtHealth,
   CrdtOpenDocResult,
   CrdtSyncStep1Result,
+  CrdtDocWaitEvent,
   CrdtWriteBackFailedEvent
 } from '@memry/contracts/ipc-crdt'
 import type {
@@ -2271,7 +2272,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
     callback: (data: { vaultPath: string | null } | undefined) => void
   ) => () => void
   onCrdtDocLoaded: (callback: (data: { noteId: string }) => void) => () => void
-  onCrdtDocStuck: (callback: (data: { noteId: string }) => void) => () => void
+  onCrdtDocWait: (callback: (data: CrdtDocWaitEvent) => void) => () => void
   onCrdtWriteBackFailed: (callback: (event: CrdtWriteBackFailedEvent) => void) => () => void
   onFlushRequested: (callback: (requestId?: string) => void) => () => void
   notifyFlushDone: (requestId?: string) => void

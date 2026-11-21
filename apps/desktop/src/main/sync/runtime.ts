@@ -133,8 +133,10 @@ import {
 import type { AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
+  hasSessionEnded,
   refreshAccessToken,
   retrieveToken,
+  setOnSessionEnded,
   setOnTokenRefreshed
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
@@ -751,6 +753,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         serverUrl: resolveSyncServerUrl()
       })
 
+      // An editor that opened waiting while the session still looked alive
+      // shows its file read-only with the sign-in notice (#5342).
+      setOnSessionEnded(() => crdtProvider.reportEditorWaits())
       setOnTokenRefreshed(() => {
         if (network.online) {
           noteBodyOutbox.resume()
@@ -766,6 +771,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
+        hasSessionEnded: () => hasSessionEnded(),
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'sync engine'),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
@@ -866,7 +872,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       crdtProvider.setRemoteMerge((noteId) => engine.mergeRemoteCrdtForNote(noteId))
       crdtProvider.setRemoteBodyQuery({
         hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
-        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId)
+        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
+        signedOut: () => engine.isCrdtPullSignedOut(),
+        vaultLocked: () => engine.isCrdtPullVaultKeyMissing()
       })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may
@@ -1064,6 +1072,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   // its `if (runtime) return` guard and install its own callback — clearing
   // after any of the awaits below would silently unhook the *live* runtime.
   setOnTokenRefreshed(null)
+  setOnSessionEnded(null)
 
   resetSyncServiceSingletons()
 

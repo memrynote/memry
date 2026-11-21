@@ -192,6 +192,8 @@
     "bodySyncPending": "Szinkronizálás – előfordulhat, hogy a jegyzet tartalma még nem érkezett meg",
     "remoteBodyStuck": "Szinkronizálásra vár — csak olvasható, amíg a jegyzet szinkronizált tartalma meg nem érkezik",
     "remoteBodyOffline": "Offline — csak olvasható, amíg a jegyzet nem szinkronizál",
+    "remoteBodySignedOut": "Kijelentkezve — csak olvasható, amíg be nem jelentkezel és a jegyzet nem szinkronizál",
+    "remoteBodyVaultLocked": "A széf titkosítási kulcsa nem olvasható — csak olvasható, amíg a jegyzet nem szinkronizál",
     "taskRemoval": {
       "title": "{count, plural, one {Feladat eltávolítva ebből a jegyzetből} other {# feladat eltávolítva ebből a jegyzetből}}",
       "description": "{count, plural, one {Megtartja a Feladatokban, vagy mindenhonnan törli?} other {Megtartja őket a Feladatokban, vagy mindenhonnan törli őket?}}",

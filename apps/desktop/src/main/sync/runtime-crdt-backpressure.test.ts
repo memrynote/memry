@@ -92,7 +92,8 @@ vi.mock('./token-manager', () => ({
   retrieveToken: async () => 'refresh-token',
   getValidAccessToken: () => fixture.getToken(),
   refreshAccessToken: () => fixture.refresh(),
-  setOnTokenRefreshed: vi.fn()
+  setOnTokenRefreshed: vi.fn(),
+  setOnSessionEnded: vi.fn()
 }))
 vi.mock('./device-registration', () => ({ ensureDeviceRowForVault: vi.fn() }))
 vi.mock('./device-keys', () => ({ getDeviceSigningKey: vi.fn() }))
@@ -354,7 +355,8 @@ describe('runtime CRDT backpressure through durable SQLite and HTTP', () => {
       retrieveToken: async () => 'refresh-token',
       getValidAccessToken: getToken,
       refreshAccessToken: refresh,
-      setOnTokenRefreshed: vi.fn()
+      setOnTokenRefreshed: vi.fn(),
+      setOnSessionEnded: vi.fn()
     }))
     fixture.provider.init.mockResolvedValue(undefined)
     fixture.provider.pushAllSnapshots.mockReset().mockResolvedValue(0)
