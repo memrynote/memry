@@ -126,6 +126,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "none: hyper's server types serve the extension's capture API on 127.0.0.1, no request",
     ),
     (
+        "crates/memry-desktop/src/agent/mcp/server.rs",
+        "none: hyper's server types serve the loopback MCP endpoint on 127.0.0.1, no request",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
         "the update feed on github.com, fetched by Velopack; only its error type is named here",
     ),

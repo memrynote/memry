@@ -5,6 +5,7 @@ use super::*;
 use crate::domain::readwise::{
     self, LinkKey, LinkState, ReadwiseItem, UpsertLink, parse_readwise_url,
 };
+use crate::domain::readwise_highlights::{self, IndexRow, Record};
 use crate::storage::Db;
 
 fn failed(err: rusqlite::Error) -> StorageError {
@@ -274,4 +275,117 @@ fn run_state_keeps_the_text_it_was_given_until_deleted() {
     db.call_blocking(|conn| readwise::set_run_state(conn, "cursor", None, 3))
         .unwrap();
     assert_eq!(get(&db), None);
+}
+
+fn row(id: i64, book: i64, at: Option<&str>, created: Option<&str>, deleted: bool) -> IndexRow {
+    IndexRow {
+        highlight_id: id,
+        book_id: book,
+        highlighted_at: at.map(str::to_owned),
+        created_at: created.map(str::to_owned),
+        deleted,
+    }
+}
+
+fn record(db: &Db, rows: &[IndexRow], rebuild: bool, deleted_books: &[i64]) -> Vec<i64> {
+    let record = Record {
+        rows,
+        rebuild,
+        deleted_books,
+        ready_key: "highlightIndex",
+        pending_key: "journalPending",
+    };
+    let mut seen = Vec::new();
+    db.call_blocking(|conn| {
+        readwise_highlights::record(conn, &record, 5, |known, stored| {
+            seen = known.iter().copied().collect();
+            seen.sort_unstable();
+            Some(format!("{}+", stored.unwrap_or_default()))
+        })
+    })
+    .unwrap();
+    seen
+}
+
+fn live(db: &Db, from: &str, to: &str) -> Vec<(i64, i64, String)> {
+    db.read_blocking(|conn| readwise_highlights::between(conn, from, to))
+        .unwrap()
+        .into_iter()
+        .map(|h| (h.highlight_id, h.book_id, h.at))
+        .collect()
+}
+
+fn state(db: &Db, key: &str) -> Option<String> {
+    db.read_blocking(|conn| readwise::run_state(conn, key))
+        .unwrap()
+}
+
+#[test]
+fn the_highlight_index_tells_known_ids_and_keeps_the_pending_days_beside_it() {
+    let db = migrated();
+    let first = [
+        row(1, 10, Some("2026-01-02T10:00:00.000Z"), None, false),
+        row(2, 10, None, Some("2026-01-02T11:00:00.000Z"), false),
+    ];
+    assert_eq!(record(&db, &first, false, &[]), Vec::<i64>::new());
+    assert_eq!(state(&db, "journalPending").as_deref(), Some("+"));
+    assert_eq!(state(&db, "highlightIndex"), None);
+    let second = [row(2, 10, None, None, false), row(3, 11, None, None, false)];
+    assert_eq!(record(&db, &second, false, &[]), vec![2]);
+    assert_eq!(state(&db, "journalPending").as_deref(), Some("++"));
+    // An upsert overwrote 2's dates; 1 is kept.
+    assert_eq!(
+        live(&db, "2026-01-01", "2026-01-03"),
+        vec![(1, 10, "2026-01-02T10:00:00.000Z".to_owned())]
+    );
+}
+
+#[test]
+fn a_full_export_replaces_the_index_and_a_deleted_book_hides_every_highlight() {
+    let db = migrated();
+    let old = [
+        row(1, 10, Some("2026-01-02T10:00:00.000Z"), None, false),
+        row(9, 12, Some("2026-01-02T12:00:00.000Z"), None, false),
+    ];
+    record(&db, &old, false, &[]);
+    let full = [
+        row(1, 10, Some("2026-01-02T10:00:00.000Z"), None, false),
+        row(4, 11, None, Some("2026-01-02T09:00:00.000Z"), false),
+        row(5, 11, Some("2026-01-02T08:00:00.000Z"), None, true),
+    ];
+    record(&db, &full, true, &[]);
+    assert_eq!(state(&db, "highlightIndex").as_deref(), Some("ready"));
+    assert_eq!(
+        live(&db, "2026-01-02T00:00:00.000Z", "2026-01-03T00:00:00.000Z"),
+        vec![
+            (1, 10, "2026-01-02T10:00:00.000Z".to_owned()),
+            (4, 11, "2026-01-02T09:00:00.000Z".to_owned()),
+        ]
+    );
+    // The book's highlight the payload did not list goes with it; the window end is exclusive.
+    record(&db, &[], false, &[10]);
+    assert_eq!(
+        live(&db, "2026-01-02T00:00:00.000Z", "2026-01-02T09:00:00.000Z"),
+        Vec::new()
+    );
+    assert_eq!(
+        live(&db, "2026-01-02T00:00:00.000Z", "2026-01-03T00:00:00.000Z"),
+        vec![(4, 11, "2026-01-02T09:00:00.000Z".to_owned())]
+    );
+}
+
+#[test]
+fn an_empty_pending_list_deletes_its_key() {
+    let db = migrated();
+    record(&db, &[], false, &[]);
+    let record_none = Record {
+        rows: &[],
+        rebuild: false,
+        deleted_books: &[],
+        ready_key: "highlightIndex",
+        pending_key: "journalPending",
+    };
+    db.call_blocking(|conn| readwise_highlights::record(conn, &record_none, 6, |_, _| None))
+        .unwrap();
+    assert_eq!(state(&db, "journalPending"), None);
 }
