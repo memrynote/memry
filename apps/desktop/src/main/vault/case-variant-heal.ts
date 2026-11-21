@@ -79,7 +79,9 @@ function isNoteCopy(
 /**
  * Whether a case-variant folder_config row is a local copy of the row the disk
  * spells: it never entered sync (no clock), so the server holds nothing for
- * it, and it carries the kept row's icon. A row with a clock can be on the
+ * it, and its icon is null or the kept row's, so it holds nothing the kept row
+ * lacks. The old watcher wrote such rows with a null icon after a case-only
+ * rename (`syncFolderConfigDiscovered`). A row with a clock can be on the
  * server, and dropping it leaves this device short of the server's records,
  * which the manifest check pulls back and the next open drops again (#5327).
  * A kept twin changes nothing shown: `getFolders` reads the row the disk
@@ -89,7 +91,7 @@ function isFolderCopy(
   folder: { clock: unknown; icon: string | null },
   kept: { icon: string | null }
 ): boolean {
-  return folder.clock === null && folder.icon === kept.icon
+  return folder.clock === null && (folder.icon === null || folder.icon === kept.icon)
 }
 
 /**
