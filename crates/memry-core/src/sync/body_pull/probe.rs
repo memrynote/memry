@@ -6,10 +6,13 @@ use std::collections::HashMap;
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::StorageError;
+use crate::crdt::update_log;
 use crate::protocol::http::RetryPolicy;
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
+use crate::sync::store;
 
-use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT};
+use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT, crdt_cursor_scope};
 
 /// What the probe learned about one document.
 #[derive(Debug, Default)]
@@ -46,22 +49,38 @@ impl BodyPull {
         doc_ids: &[String],
         requests: &mut usize,
     ) -> Result<HashMap<String, Probed>, BodyPullError> {
-        let mut cursors = HashMap::new();
-        let mut notes = Vec::new();
+        // The server refuses a batch naming an id twice.
+        let mut ids: Vec<String> = Vec::new();
         for doc_id in doc_ids {
-            // The server refuses a batch naming an id twice.
-            if cursors.contains_key(doc_id) {
-                continue;
+            if !ids.contains(doc_id) {
+                ids.push(doc_id.clone());
             }
-            // A cursor of `0` is held too (#4315's empty body), so a resumed
-            // first sync can tell it is still empty without re-pulling it.
-            let cursor = self.stored_cursor(doc_id).await?;
-            notes.push(json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }));
-            cursors.insert(doc_id.clone(), cursor);
         }
-        if notes.is_empty() {
+        if ids.is_empty() {
             return Ok(HashMap::new());
         }
+        // A cursor of `0` is held too (#4315's empty body), so a resumed
+        // first sync can tell it is still empty without re-pulling it.
+        //
+        // One read on the pool for the whole chunk, not a writer hop per
+        // document: a write-back busy on the writer starved the first sync's
+        // probe for minutes with no request in flight (#5350).
+        let cursors: Vec<(String, Option<i64>)> = self
+            .db
+            .read(move |conn| {
+                ids.into_iter()
+                    .map(|doc_id| {
+                        let cursor = store::read_cursor(conn, &crdt_cursor_scope(&doc_id))?
+                            .and_then(|text| text.parse().ok());
+                        Ok((doc_id, cursor))
+                    })
+                    .collect()
+            })
+            .await?;
+        let notes: Vec<Json> = cursors
+            .iter()
+            .map(|(doc_id, cursor)| json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }))
+            .collect();
         // Counted against the caller's per-pass budget like any other request.
         *requests += 1;
         let request = self
@@ -76,6 +95,7 @@ impl BodyPull {
         // An older server sends no `snapshotMeta` key at all, so an empty
         // answer there could hide a snapshot that pruned past the cursor.
         let metas = body.get("snapshotMeta").filter(|metas| metas.is_object());
+        let revisions = self.held_revisions(&cursors).await?;
         let mut probed = HashMap::new();
         for (doc_id, cursor) in cursors {
             let page = read_update_page(&body, &doc_id);
@@ -116,7 +136,10 @@ impl BodyPull {
                     // `sequenceNum`, 0 included (a snapshot pushed before any
                     // update row).
                     (Some(cursor), Some(meta)) => {
-                        cursor >= meta.sequence_num && !self.baseline_due(&doc_id, meta).await?
+                        cursor >= meta.sequence_num
+                            && revisions
+                                .get(&doc_id)
+                                .is_some_and(|held| held.as_deref() == Some(meta.revision.as_str()))
                     }
                 };
             probed.insert(
@@ -129,5 +152,37 @@ impl BodyPull {
             );
         }
         Ok(probed)
+    }
+
+    /// The server revision this device holds for each document with a
+    /// cursor, in one read on the pool: [`BodyPull::baseline_due`]'s read for
+    /// a whole chunk. A NULL revision (§7.13.4) never equals a server token.
+    async fn held_revisions(
+        &self,
+        cursors: &[(String, Option<i64>)],
+    ) -> Result<HashMap<String, Option<String>>, BodyPullError> {
+        let ids: Vec<String> = cursors
+            .iter()
+            .filter(|(_, cursor)| cursor.is_some())
+            .map(|(doc_id, _)| doc_id.clone())
+            .collect();
+        if ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        Ok(self
+            .db
+            .read(move |conn| {
+                ids.into_iter()
+                    .map(|doc_id| {
+                        let held = update_log::server_revision(conn, &doc_id).map_err(|error| {
+                            StorageError::Failed {
+                                what: error.to_string(),
+                            }
+                        })?;
+                        Ok((doc_id, held))
+                    })
+                    .collect()
+            })
+            .await?)
     }
 }

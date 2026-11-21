@@ -273,6 +273,21 @@ pub fn snapshot(
     .map_err(CrdtError::from)
 }
 
+/// The server revision of the document's server snapshot: `None` when it has
+/// none, or holds a snapshot this device pushed (§7.13.4). Reads no snapshot
+/// bytes.
+pub fn server_revision(conn: &Connection, doc_id: &str) -> Result<Option<String>, CrdtError> {
+    conn.query_row(
+        "SELECT server_revision FROM yjs_snapshots WHERE doc_id = ?1",
+        params![Namespace::Server.row_id(doc_id)],
+        |row| row.get(0),
+    )
+    .optional()
+    .map(Option::flatten)
+    .map_err(failed("read a snapshot revision"))
+    .map_err(CrdtError::from)
+}
+
 /// Stores the snapshot the server answered with, at the sequence the server
 /// gave it and under the server's opaque `revision` token.
 ///
