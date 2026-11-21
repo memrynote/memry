@@ -86,6 +86,23 @@ impl Library {
     /// `findNoteByReadwiseUrl`: the lowest note id whose `readwise_url` names `item` and whose
     /// note exists.
     pub(crate) fn note_naming(&self, item: &ReadwiseItem) -> Result<Option<NoteView>, String> {
+        self.first_naming(item, |id| self.note(id))
+    }
+
+    /// [`Self::note_naming`] for a caller that only links the note and never writes it: a large
+    /// note counts, since its text is never read.
+    pub(crate) fn note_id_naming(&self, item: &ReadwiseItem) -> Result<Option<String>, String> {
+        self.first_naming(item, |id| {
+            let note = read::get(&self.open, id, None).map_err(|error| error.to_string())?;
+            Ok(note.map(|note| note.id))
+        })
+    }
+
+    fn first_naming<T>(
+        &self,
+        item: &ReadwiseItem,
+        found: impl Fn(&str) -> Result<Option<T>, String>,
+    ) -> Result<Option<T>, String> {
         let values = self
             .open
             .search
@@ -95,7 +112,7 @@ impl Library {
             if parse_readwise_url(&value).as_ref() != Some(item) {
                 continue;
             }
-            if let Some(note) = self.note(&note_id)? {
+            if let Some(note) = found(&note_id)? {
                 return Ok(Some(note));
             }
         }

@@ -50,6 +50,11 @@ use memry_desktop::vault::activity::{ActivityFilter, ActivityLog};
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
+use memry_desktop::readwise::limiter::RequestLimiter;
+
+#[path = "readwise_run/after.rs"]
+mod after;
+
 use editor_window::Window;
 use readwise_server::{Reply, Seen, Server};
 use vault_env::{Env, QUIET, WAIT, env, indexed};
@@ -87,6 +92,49 @@ fn book(id: i64, highlights: Vec<Value>) -> Value {
 }
 
 type Books = Arc<Mutex<Vec<Value>>>;
+/// Runs while the fake answers an image request: an edit made during a download.
+type ImageHook = Arc<Mutex<Option<Box<dyn Fn() + Send>>>>;
+
+/// A 1x1 PNG.
+const PNG: &[u8] = &[
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d, 0x49, 0x48, 0x44, 0x52, 0, 0, 0,
+    1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0x1f, 0x15, 0xc4, 0x89, 0, 0, 0, 0x0d, 0x49, 0x44, 0x41, 0x54,
+    0x78, 0x9c, 0x63, 0, 1, 0, 0, 5, 0, 1, 0x0d, 0x0a, 0x2d, 0xb4, 0, 0, 0, 0, 0x49, 0x45, 0x4e,
+    0x44, 0xae, 0x42, 0x60, 0x82,
+];
+
+/// A path prefix the fake answers with a status instead.
+type Fail = Arc<Mutex<Option<(&'static str, u16)>>>;
+
+/// The fake Readwise: the v2 export, the Reader list (`docs`, all under `new`), and `/img/`.
+fn serve(books: &Books, docs: &Books, image: &ImageHook, fail: &Fail, seen: &Seen) -> Reply {
+    if let Some((prefix, status)) = *fail.lock().unwrap()
+        && seen.path().starts_with(prefix)
+    {
+        return Reply::status(status);
+    }
+    match seen.path() {
+        "/api/v3/list/" => {
+            let all = docs.lock().unwrap().clone();
+            let listed = match seen.param("location").as_deref() {
+                Some("new") => all,
+                _ => Vec::new(),
+            };
+            Reply::page(Value::Array(listed), None)
+        }
+        path if path.starts_with("/img/") => {
+            if let Some(hook) = image.lock().unwrap().as_ref() {
+                hook();
+            }
+            Reply::Answer {
+                status: 200,
+                headers: vec![("content-type", "image/png".to_owned())],
+                body: PNG.to_vec(),
+            }
+        }
+        _ => export(books, seen),
+    }
+}
 
 /// `GET /api/v2/export/`: `ids=` answers the whole books, `updatedAfter` the books with a newer
 /// highlight (only those highlights) or a newer `touched_at`, nothing else the whole library.
@@ -132,6 +180,11 @@ struct Vault {
     library: Library,
     engine: Engine,
     books: Books,
+    docs: Books,
+    image: ImageHook,
+    fail: Fail,
+    store: Arc<dyn SecureStore>,
+    server_url: String,
     indexing: Arc<AtomicBool>,
     activity: Arc<ActivityLog>,
     _server: Server,
@@ -161,7 +214,14 @@ fn vault(files: &[(&str, &str)], books: Vec<Value>) -> Vault {
     let notes = NotesService::new(e.tier.clone(), store.clone());
     let books: Books = Arc::new(Mutex::new(books));
     let served = Arc::clone(&books);
-    let server = rt.block_on(Server::start(move |seen, _| export(&served, seen)));
+    let docs: Books = Arc::default();
+    let image: ImageHook = Arc::default();
+    let fail: Fail = Arc::default();
+    let (served_docs, hook, failing) = (Arc::clone(&docs), Arc::clone(&image), Arc::clone(&fail));
+    let server = rt.block_on(Server::start(move |seen, _| {
+        serve(&served, &served_docs, &hook, &failing, seen)
+    }));
+    let server_url = server.url();
     let client = server.client();
     let images = RemoteImages::new(memry_desktop::http::builder().no_proxy()).unwrap();
     let indexing = Arc::new(AtomicBool::new(false));
@@ -183,13 +243,19 @@ fn vault(files: &[(&str, &str)], books: Vec<Value>) -> Vault {
         Arc::new(Ungated),
         Arc::new(|| chrono::Utc::now().timestamp_millis()),
         Arc::new(|| Ok(chrono_tz::UTC)),
-    );
+    )
+    .with_reader_limiter(Arc::new(RequestLimiter::new(1000, Duration::from_secs(1))));
     Vault {
         e,
         host,
         library,
         engine,
         books,
+        docs,
+        image,
+        fail,
+        store,
+        server_url,
         indexing,
         activity,
         _server: server,
@@ -511,6 +577,12 @@ fn a_server_update_defers_a_user_started_write_for_two_seconds() {
 #[test]
 fn the_cursor_stays_put_on_an_empty_window_and_never_moves_back() {
     let v = vault(&[], two_highlights());
+    // A first import of an empty library fills the highlight index; until it is filled every
+    // run reads in full.
+    let library = std::mem::take(&mut *v.books.lock().unwrap());
+    assert_eq!(v.run().counts.books, 0);
+    assert!(v.state().highlight_index_ready().unwrap());
+    *v.books.lock().unwrap() = library;
     let later = "2026-11-01T00:00:00.000Z";
     let state = v.state();
     state.set_cursor(later).unwrap();
