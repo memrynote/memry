@@ -368,6 +368,7 @@ impl VaultTier {
             echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
             self.own_files.clone(),
+            self.store.clone(),
         ));
         let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)

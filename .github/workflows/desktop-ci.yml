@@ -125,7 +125,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -299,7 +298,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
@@ -383,7 +381,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         env:
@@ -484,7 +481,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -551,7 +547,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -632,7 +627,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         shell: bash
@@ -748,7 +742,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary

@@ -15,7 +15,8 @@ memry-core = { path = "../memry-core", default-features = false, features = ["ma
 memry-ml-worker = { path = "../memry-ml-worker", default-features = false }
 serde = { workspace = true }
 # `float_roundtrip`: Readwise payload numbers (`location`, `published_date`) parse correctly
-# rounded, as `JSON.parse` does; the default parser can land one ULP off.
+# rounded, as `JSON.parse` does, and the Electron import re-serialises JSON numbers as V8 parsed
+# them; the default parser can land one ULP off.
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 thiserror = { workspace = true }
 # Device name and OS version for registration (Step 19); both already in the lockfile.
@@ -110,6 +111,8 @@ pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac"] }
 sha1 = "0.11.0"
 hmac = "0.13.0"
 md-5 = "0.11"
+# The CalDAV multistatus reader (`calendar_providers::caldav_xml`); already in the lock through plist.
+quick-xml = "0.42.0"
 rusty-leveldb = "4.0.2"
 snap = "1.1.2"
 tempfile = "3"

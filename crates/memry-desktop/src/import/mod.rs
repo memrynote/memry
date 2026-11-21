@@ -19,6 +19,7 @@ pub mod markdown;
 pub mod messages;
 pub mod obsidian_tasks;
 pub mod registry;
+pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod source_paths;

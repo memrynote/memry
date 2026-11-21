@@ -15,6 +15,7 @@
 //! | a journal day created on A gets its day file on B        | the write-back files an unfiled day   |
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
+//! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
 
 #![cfg(feature = "harness")]
 
@@ -22,6 +23,8 @@
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "sync_disk_harness/note_events.rs"]
+mod note_events;
 #[path = "sync_disk_harness/unfiled.rs"]
 mod unfiled;
 #[path = "vault_env/mod.rs"]
