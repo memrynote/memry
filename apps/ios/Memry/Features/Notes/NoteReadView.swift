@@ -179,6 +179,8 @@ struct NoteReadView: View {
     @Environment(TasksRouter.self) private var router: TasksRouter?
     /// Opens a day in the Journal tab. Absent outside the vault shell.
     @Environment(\.openJournalDay) private var openJournalDay
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// `open`, with a day's `j<date>` route (a wiki link to a day) sent to
     /// the Journal tab instead of pushed as a note (JP052).
@@ -336,8 +338,13 @@ struct NoteReadView: View {
         // it as a second glass surface, and the two composite into a
         // ghosted overlap of icons behind the tab bar's own. A pushed note
         // hides the tab bar, as a detail screen does everywhere else on
-        // this OS, so exactly one bottom bar is on screen at a time.
-        .toolbar(.hidden, for: .tabBar)
+        // this OS, so exactly one bottom bar is on screen at a time. At
+        // regular width the tab bar sits at the top and holds the button that
+        // brings a hidden page sidebar back, so it stays.
+        .toolbar(
+            LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .compact ? .hidden : .automatic,
+            for: .tabBar
+        )
         .modifier(
             NoteReadToolbar(
                 model: model,

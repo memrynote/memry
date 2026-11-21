@@ -1,23 +1,26 @@
 import MemryCore
 import SwiftUI
 
-// #4346. Notes at regular width: the folder tree with Bookmarks and Tags as the
-// sidebar, the folder's notes as the list, the note as the detail
-// (`DESIGN.md` › Tablet). Compact width keeps the phone stack in
+// #4346. Notes at regular width: the list as the sidebar, the note as the
+// detail (`DESIGN.md` › Tablet). Compact width keeps the phone stack in
 // `NotesListView`.
 //
-// **One owner.** `NotesSplitRouter` holds the list's scope and the selected
-// note. The sidebar and the lists write it (a row's `NavigationLink(value:)`
-// sets the list selection through `NotesList`, a bookmark or tag goes through
-// `NotesLink`), and the detail column reads it. A link inside the note pushes
-// onto the detail column's own stack, so Back returns to the note before.
+// **The list is the sidebar column.** It starts on the vault root, the folder
+// tree with Bookmarks and Tags, and a folder, tag or list opened from it
+// pushes on the column's own stack, so Back walks up to the root. As the
+// sidebar column it sits below the tab bar, which covers a content column's
+// toolbar once the page sidebar is hidden.
 //
-// **Columns (Q4, `DESIGN.md` › Tablet).** Three at 13" landscape width with
-// the page sidebar hidden, two below it (portrait, smaller iPads, the page
-// sidebar open): the list and the note, with the tree a tap away. Set on the
-// width this view gets, never the device. `NotesColumns` owns the rule,
-// including which of the split view's writes are the user's: a column the
-// user shows or hides stays until they toggle again or rotate.
+// **One owner.** `NotesSplitRouter` holds the list's scope and the selected
+// note. The lists write it (a row's `NavigationLink(value:)` sets the list
+// selection through `NotesList`, a bookmark or tag goes through `NotesLink`),
+// the list column's stack follows the scope, and the detail column reads the
+// note. A link inside the note pushes onto the detail column's own stack, so
+// Back returns to the note before.
+//
+// **Columns (`DESIGN.md` › Tablet).** The list and the note. `NotesColumns`
+// owns the rule, including which of the split view's writes are the user's:
+// a column the user shows or hides stays until they toggle again or rotate.
 //
 // **The rails (#4347, D9, #4380).** The note inspector shows only when the
 // page holds the note column and the rail (`SideRails`, which also seats the
@@ -49,17 +52,18 @@ struct NotesSplitView: View {
             // change and the split view would keep its write.
             if notesColumns.needsPutBack { Task { notesColumns.putBack() } }
         })) {
-            NotesSidebar(model: model, router: router)
-        } content: {
-            listColumn
+            NavigationStack(path: Binding(get: { listPath }, set: { router.show($0.last ?? .root) })) {
+                rootList
+                    .navigationDestination(for: NotesScope.self) { list(for: $0) }
+            }
         } detail: {
             NotesDetailColumn(model: model, router: router)
         }
         .navigationSplitViewStyle(.balanced)
-        // The width left beside the app's page sidebar, a safe-area inset.
-        // With that sidebar open the split view keeps two columns anyway.
-        .onGeometryChange(for: CGSize.self) { $0.size } action: {
-            notesColumns.splitViewResized(to: $0, at: .now)
+        // The page sidebar sliding and the software keyboard resize the split
+        // view, which then writes its columns on its own (#5059).
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { _ in
+            notesColumns.splitViewResized(at: .now)
         }
         .background { WindowSizeReader { notesColumns.windowResized(to: $0, at: .now) } }
         // A reappearance (another page and back) keeps the user's columns,
@@ -104,23 +108,38 @@ struct NotesSplitView: View {
 
     private func open(_ id: String) { router.select(NoteRoute(id: id)) }
 
-    @ViewBuilder private var listColumn: some View {
-        switch router.scope {
+    /// The list column's stack for the router's scope. A folder stands on the
+    /// parent folders the tree lists, so Back walks up the tree to the root.
+    private var listPath: [NotesScope] {
+        guard case let .folder(path) = router.scope else { return router.scope == .root ? [] : [router.scope] }
+        let parts = path.split(separator: "/")
+        return parts.indices.compactMap { end in
+            let folder = parts[...end].joined(separator: "/")
+            return folder == path || model.outline?.node(at: folder) != nil ? .folder(folder) : nil
+        }
+    }
+
+    private var rootList: some View {
+        VaultBrowseScreen(
+            model: model,
+            expanded: $expanded,
+            selectedFolder: $selectedFolder,
+            sort: sort,
+            openFolder: { router.show(.folder($0)) },
+            openNote: open,
+            openTag: { router.show(.tag($0)) }
+        )
+        .navigationTitle(VaultTab.notes.title)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) }
+        }
+        .notesCreate(model, in: nil, place: "At the top of this vault.", open: open)
+    }
+
+    @ViewBuilder private func list(for scope: NotesScope) -> some View {
+        switch scope {
         case .root:
-            VaultBrowseScreen(
-                model: model,
-                expanded: $expanded,
-                selectedFolder: $selectedFolder,
-                sort: sort,
-                openFolder: { router.show(.folder($0)) },
-                openNote: open,
-                openTag: { router.show(.tag($0)) }
-            )
-            .navigationTitle(VaultTab.notes.title)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { SortMenu(sort: $sort) }
-            }
-            .notesCreate(model, in: nil, place: "At the top of this vault.", open: open)
+            rootList
         case let .folder(path):
             FolderScreen(
                 route: FolderRoute(path: path),
@@ -138,57 +157,4 @@ struct NotesSplitView: View {
             BookmarkListView(browse: model)
         }
     }
-}
-
-/// The sidebar: the vault root, the folder tree, Bookmarks and Tags.
-private struct NotesSidebar: View {
-    let model: VaultBrowseViewModel
-    let router: NotesSplitRouter
-
-    var body: some View {
-        List(selection: Binding(get: { router.scope }, set: { if let scope = $0 { router.show(scope) } })) {
-            Label(VaultTab.notes.title, systemImage: VaultTab.notes.symbol)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .modifier(NoteFolderDropTarget(folder: nil, model: model))
-                .tag(NotesScope.root)
-                .accessibilityIdentifier("notes.sidebar.root")
-            if let roots = model.outline?.roots, !roots.isEmpty {
-                Section("Collections") {
-                    OutlineGroup(roots, children: \.sidebarChildren) { node in
-                        FolderSidebarLabel(node: node)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .modifier(NoteFolderDropTarget(folder: node.folder.path, model: model))
-                            .accessibilityIdentifier("notes.sidebar.folder.\(node.folder.path)")
-                            .tag(NotesScope.folder(node.folder.path))
-                    }
-                }
-            }
-            BookmarksSection(bookmarks: model.bookmarks)
-            TagsSection(tags: model.tags, openTag: { router.show(.tag($0)) })
-        }
-        .listStyle(.sidebar)
-        .navigationTitle(VaultTab.notes.title)
-    }
-}
-
-private struct FolderSidebarLabel: View {
-    let node: FolderNode
-
-    var body: some View {
-        Label {
-            Text(node.title)
-                .foregroundStyle(node.isPlaceholderTitle ? Tokens.Text.secondary.color : Tokens.Text.primary.color)
-        } icon: {
-            if let emoji = ProjectIconValue.emoji(node.folder.icon) {
-                Text(emoji)
-            } else {
-                Image(systemName: "folder")
-            }
-        }
-    }
-}
-
-private extension FolderNode {
-    /// `nil` for a leaf, so the tree draws no disclosure arrow on it.
-    var sidebarChildren: [FolderNode]? { children.isEmpty ? nil : children }
 }

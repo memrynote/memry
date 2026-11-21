@@ -301,7 +301,7 @@ The pages follow desktop's rail order, then Notes. Graph is absent until it exis
 
 **Lists and details.**
 
-- Notes picks its column count automatically: three columns (tree, list, note) in 13-inch landscape, and two in portrait and on smaller iPads.
+- Notes splits into a list and a note at every width. The list is the split view's sidebar column, so it stays clear of the tab bar when the page sidebar is hidden. It opens on the folder tree with Bookmarks and Tags, and a folder, tag, or list opened from it pushes inside the column, so Back returns to the tree.
 - Inbox, Tasks, and Settings split into a list and a detail column.
 - An empty detail column follows the empty-state rules. Notes restores the last opened note, or offers "New note" when no note was opened before. Inbox selects its first item. Tasks shows a plain empty state.
 - The floating "+" moves into the list column's toolbar as `square.and.pencil`. A tap creates, and a long press opens the create menu. Compact width keeps the floating "+". The "Hold + for more" tip anchors to whichever control is shown.

@@ -3,9 +3,9 @@ import UIKit
 
 /// Which columns the Notes split view shows (`DESIGN.md` › Tablet, #4832).
 ///
-/// The width and the rails pick them: three columns at 13" landscape width,
-/// two below it (Q4), and the note alone beside a rail or a second note (D9,
-/// #4377). A column the user shows or hides with the split view's own button
+/// The split view has two: the list and the note. The rails pick them: both,
+/// or the note alone beside a rail or a second note (D9, #4377). A column the
+/// user shows or hides with the split view's own button
 /// overrides that, through note picks, the keyboard and the page sidebar,
 /// until the user toggles again: the columns, a Notes rail, or the second
 /// note. A rotation hands the columns back to the width and the rails, as
@@ -26,10 +26,6 @@ import UIKit
 /// inspector and the Day Panel off the Journal; the Journal's own panel never
 /// does.
 struct NotesColumns {
-    /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
-    /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
-    /// the page sidebar (about 1086pt) stay below it.
-    static let threeColumnWidth: CGFloat = 1300
     static let settle: Duration = .milliseconds(500)
 
     struct Inputs: Equatable {
@@ -49,7 +45,6 @@ struct NotesColumns {
     }
 
     private var inputs = Inputs()
-    private var splitWidth: CGFloat = 0
     private var windowLandscape: Bool?
     private var resizedAt: ContinuousClock.Instant?
     private var chosen: NavigationSplitViewVisibility?
@@ -58,8 +53,7 @@ struct NotesColumns {
 
     var shown: NavigationSplitViewVisibility {
         if let chosen { return chosen }
-        if inputs.noteBesideRail { return .detailOnly }
-        return splitWidth >= Self.threeColumnWidth ? .all : .doubleColumn
+        return inputs.noteBesideRail ? .detailOnly : .doubleColumn
     }
 
     /// The split view wrote columns other than `shown`: put them back once
@@ -75,8 +69,7 @@ struct NotesColumns {
         onScreen = shown
     }
 
-    mutating func splitViewResized(to size: CGSize, at now: ContinuousClock.Instant) {
-        splitWidth = size.width
+    mutating func splitViewResized(at now: ContinuousClock.Instant) {
         resizedAt = now
         onScreen = shown
     }
@@ -89,7 +82,9 @@ struct NotesColumns {
         onScreen = shown
     }
 
-    mutating func splitViewWrote(_ columns: NavigationSplitViewVisibility, at now: ContinuousClock.Instant) {
+    mutating func splitViewWrote(_ written: NavigationSplitViewVisibility, at now: ContinuousClock.Instant) {
+        // Two columns: `.all` shows what `.doubleColumn` shows.
+        let columns = written == .all ? .doubleColumn : written
         let settled = resizedAt.map { now - $0 >= Self.settle } ?? true
         if columns != onScreen, settled { chosen = columns }
         onScreen = columns

@@ -69,7 +69,7 @@ extension EditorSession {
     /// is written first. A note this vault does not list, or one the drag
     /// could not hand over, is skipped, and the editor's alert says so.
     func dropNotes(_ providers: [NSItemProvider], at location: Int, in field: BlockField) async {
-        let payloads = await NoteFolderDrop.payloads(from: providers)
+        let payloads = await NoteDrag.payloads(from: providers)
         let links = payloads.compactMap { EditorSuggestions.link(to: $0.noteId, in: linkNotes) }
         let dragged = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.memryNote.identifier) }.count
         if links.count < dragged {
@@ -129,7 +129,6 @@ extension BlockField: UITextDropDelegate, UIDropInteractionDelegate {
         let providers = drop.dropSession.items.map(\.itemProvider)
         switch kind {
         case .notes:
-            NoteDrag.dropped()
             let location = textView.offset(from: textView.beginningOfDocument, to: drop.dropPosition)
             Task { await session?.dropNotes(providers, at: location, in: self) }
         case .files:

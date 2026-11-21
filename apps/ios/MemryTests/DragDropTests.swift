@@ -11,8 +11,7 @@ import UniformTypeIdentifiers
 // #4357: the drop handlers over the providers a drag session hands them. The
 // Inbox drop captures through the composer's path into a real scratch vault,
 // a task drop dates the task through the calendar's task write, and a note
-// drag carries its text and its `memry://note/<id>` link. Serialized: the
-// note drag state is one per app.
+// drag carries its text and its `memry://note/<id>` link.
 
 @MainActor
 @Suite("Drag and drop", .serialized)
@@ -164,15 +163,6 @@ struct DragDropTests {
 
     // MARK: Notes
 
-    @Test func a_note_is_not_moved_onto_the_folder_it_is_in() {
-        #expect(!NoteFolderDrop.moves(from: "Work", to: "Work"))
-        #expect(!NoteFolderDrop.moves(from: nil, to: nil))
-        #expect(!NoteFolderDrop.moves(from: "", to: nil))
-        #expect(NoteFolderDrop.moves(from: "Work", to: "Work/Interviews"))
-        #expect(NoteFolderDrop.moves(from: "Work", to: nil))
-        #expect(NoteFolderDrop.moves(from: nil, to: "Work"))
-    }
-
     private static func note(_ id: String, in folder: String?) -> NoteSummary {
         NoteSummary(
             id: id, title: "[agent] \(id)", folderPath: folder, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
@@ -182,8 +172,7 @@ struct DragDropTests {
     @Test func a_dragged_note_carries_its_payload_text_and_memry_link() async throws {
         let note = Self.note("n1", in: "Work")
         let provider = NoteDrag.provider(for: note, vaultId: "vault-a") { "[agent] Plan\n\nBody" }
-        defer { NoteDrag.dropped() }
-        #expect(await NoteFolderDrop.payloads(from: [provider]) == [NoteDragPayload(noteId: "n1", vaultId: "vault-a")])
+        #expect(await NoteDrag.payloads(from: [provider]) == [NoteDragPayload(noteId: "n1", vaultId: "vault-a")])
         let text: String? = await withCheckedContinuation { continuation in
             _ = provider.loadDataRepresentation(for: .utf8PlainText) { data, _ in
                 continuation.resume(returning: data.map { String(decoding: $0, as: UTF8.self) })
@@ -198,69 +187,10 @@ struct DragDropTests {
         #expect(link?.absoluteString == NoteRelationValue.uri(noteId: "n1"))
     }
 
-    /// A folder takes only Memry's note type: a Safari link carries none,
-    /// and a note of another vault moves nothing, so the drop is refused.
-    @Test func a_folder_refuses_a_safari_link_and_another_vaults_note() async {
-        NoteDrag.dropped()
-        let outline = VaultOutline.build(
-            folders: [FolderSummary(path: "Work", parentPath: nil, name: "Work", icon: nil)],
-            notes: [Self.note("n1", in: "Work")]
-        )
+    /// Only Memry's note type carries a payload: a Safari link carries none.
+    @Test func a_safari_link_carries_no_note() async {
         let safari = NSItemProvider(object: URL(string: "https://example.com/note/n1")! as NSURL)
-        #expect(!NoteFolderDrop.types.contains { safari.hasItemConformingToTypeIdentifier($0.identifier) })
-        #expect(await NoteFolderDrop.payloads(from: [safari]).isEmpty)
-        #expect(NoteFolderDrop.moving(NoteDrag.dragged, vaultId: "vault-a", outline: outline, to: nil).isEmpty)
-
-        let other = NoteDrag.provider(for: Self.note("n1", in: "Work"), vaultId: "vault-b") { nil }
-        #expect(NoteFolderDrop.moving(NoteDrag.dragged, vaultId: "vault-a", outline: outline, to: nil).isEmpty)
-        let loaded = await NoteFolderDrop.payloads(from: [other])
-        #expect(NoteFolderDrop.moving(loaded, vaultId: "vault-a", outline: outline, to: nil).isEmpty)
-        #expect(NoteFolderDrop.moving(loaded, vaultId: "vault-b", outline: outline, to: nil).map(\.id) == ["n1"])
-
-        NoteDrag.dropped()
-        #expect(NoteDrag.dragged.isEmpty)
-    }
-
-    /// The hover state lives only while the system holds the drag.
-    @Test func a_released_drag_leaves_no_hover_state() {
-        NoteDrag.dropped()
-        autoreleasepool {
-            _ = NoteDrag.provider(for: Self.note("n1", in: "Work"), vaultId: "vault-a") { nil }
-        }
-        #expect(NoteDrag.dragged.isEmpty)
-    }
-
-    /// Every note of a multi-item drag moves, through the menu's move, and
-    /// the hover check counts each; one already in the folder stays.
-    @Test func every_note_of_a_multi_note_drag_moves() async throws {
-        NoteDrag.dropped()
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("memry-drop-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let vault = try Vault.open(vaultId: "vault-drop", directory: directory.path)
-        let model = VaultBrowseViewModel(vault: vault, executor: CoreExecutor(), store: TaskTestKeychain())
-        let writer = try #require(model.writer)
-        try await writer.createFolder(path: "Work")
-        try await writer.createFolder(path: "Target")
-        let work = try await writer.create(title: "[agent] A", folderPath: "Work")
-        let root = try await writer.create(title: "[agent] B", folderPath: nil)
-        let there = try await writer.create(title: "[agent] C", folderPath: "Target")
-        await model.reload()
-        let notes = try #require(model.outline?.allNotes)
-        let providers = try [work, root, there].map { id in
-            NoteDrag.provider(for: try #require(notes.first { $0.id == id }), vaultId: "vault-drop") { nil }
-        }
-        defer { NoteDrag.dropped() }
-        let hovering = NoteFolderDrop.moving(
-            NoteDrag.dragged, vaultId: "vault-drop", outline: model.outline, to: "Target"
-        )
-        #expect(Set(hovering.map(\.id)) == [work, root])
-
-        #expect(await NoteFolderDrop.drop(providers, vaultId: "vault-drop", on: "Target", model: model) == 2)
-        await model.reload()
-        let inTarget = model.outline?.allNotes.filter { $0.folderPath == "Target" }.map(\.id) ?? []
-        #expect(Set(inTarget) == [work, root, there])
-        #expect(model.writeFailure == nil)
+        #expect(await NoteDrag.payloads(from: [safari]).isEmpty)
     }
 
     // MARK: Tasks

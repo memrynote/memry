@@ -14,37 +14,43 @@ private let inspectorOpen = SideRailsOpen(dayPanel: false, journalDayPanel: true
 private let t0 = ContinuousClock.now
 private func at(_ ms: Int) -> ContinuousClock.Instant { t0 + .milliseconds(ms) }
 
-/// 13" landscape: the window, and the split view beside the page sidebar.
+/// 13" landscape and portrait windows.
 private let landscapeWindow = CGSize(width: 1366, height: 1024)
-private let besidePageSidebar = CGSize(width: 1086, height: 972)
-/// 13" portrait, without and with the software keyboard.
 private let portraitWindow = CGSize(width: 1024, height: 1366)
-private let portraitSplit = CGSize(width: 1024, height: 1314)
-private let portraitSplitWithKeyboard = CGSize(width: 1024, height: 430)
 
 /// 13" landscape beside the page sidebar, a note open beside the inspector,
 /// the layout settled by `at(0)`.
 private func besideTheRail() -> NotesColumns {
     var columns = NotesColumns()
     columns.windowResized(to: landscapeWindow, at: at(-2000))
-    columns.splitViewResized(to: besidePageSidebar, at: at(-2000))
+    columns.splitViewResized(at: at(-2000))
     columns.update(.init(noteBesideRail: true, rails: inspectorOpen))
     return columns
 }
 
 @Suite("#4832 notes columns")
 struct NotesColumnsTests {
-    @Test("the width picks the columns, and the note stands alone beside a rail")
-    func widthAndRailsPick() {
+    @Test("the list and the note at every width, and the note alone beside a rail")
+    func railsPick() {
         var columns = NotesColumns()
         columns.windowResized(to: landscapeWindow, at: at(0))
-        columns.splitViewResized(to: CGSize(width: 1366, height: 1024), at: at(0))
+        columns.splitViewResized(at: at(0))
         columns.update(.init(rails: closed))
-        #expect(columns.shown == .all)
-        #expect(columns.onScreen == .all)
-        columns.splitViewResized(to: besidePageSidebar, at: at(10))
+        #expect(columns.onScreen == .doubleColumn)
+        columns.windowResized(to: portraitWindow, at: at(10))
+        columns.splitViewResized(at: at(10))
         #expect(columns.onScreen == .doubleColumn)
         #expect(besideTheRail().onScreen == .detailOnly)
+    }
+
+    @Test("the split view's .all is the same two columns, no choice")
+    func allIsTheTwoColumns() {
+        var columns = besideTheRail()
+        columns.update(.init(rails: closed))
+        columns.splitViewWrote(.all, at: at(0))
+        #expect(!columns.needsPutBack)
+        columns.update(.init(noteBesideRail: true, rails: inspectorOpen))
+        #expect(columns.shown == .detailOnly, ".all was taken as the user's choice")
     }
 
     @Test("a list brought back beside the rail stays through note picks and the page sidebar")
@@ -56,8 +62,8 @@ struct NotesColumnsTests {
         columns.update(.init(noteBesideRail: true, rails: inspectorOpen))
         #expect(columns.shown == .doubleColumn)
         // The page sidebar hidden, then shown.
-        columns.splitViewResized(to: CGSize(width: 1366, height: 1024), at: at(1000))
-        columns.splitViewResized(to: besidePageSidebar, at: at(2000))
+        columns.splitViewResized(at: at(1000))
+        columns.splitViewResized(at: at(2000))
         #expect(columns.shown == .doubleColumn)
         #expect(!columns.needsPutBack)
     }
@@ -66,10 +72,10 @@ struct NotesColumnsTests {
     func theUsersHiddenListStays() {
         var columns = NotesColumns()
         columns.windowResized(to: landscapeWindow, at: at(-2000))
-        columns.splitViewResized(to: besidePageSidebar, at: at(-2000))
+        columns.splitViewResized(at: at(-2000))
         columns.update(.init(rails: closed))
         columns.splitViewWrote(.detailOnly, at: at(0))
-        columns.splitViewResized(to: CGSize(width: 1366, height: 1024), at: at(1000))
+        columns.splitViewResized(at: at(1000))
         #expect(columns.shown == .detailOnly)
     }
 
@@ -101,20 +107,20 @@ struct NotesColumnsTests {
     func theKeyboardIsNoRotation() {
         var columns = NotesColumns()
         columns.windowResized(to: portraitWindow, at: at(-2000))
-        columns.splitViewResized(to: portraitSplit, at: at(-2000))
+        columns.splitViewResized(at: at(-2000))
         columns.update(.init(rails: closed))
-        columns.splitViewWrote(.all, at: at(0))
+        columns.splitViewWrote(.detailOnly, at: at(0))
         // The caret goes into the body: the keyboard shows, then hides.
-        columns.splitViewResized(to: portraitSplitWithKeyboard, at: at(1000))
-        #expect(columns.shown == .all)
-        columns.splitViewResized(to: portraitSplit, at: at(3000))
-        #expect(columns.shown == .all)
+        columns.splitViewResized(at: at(1000))
+        #expect(columns.shown == .detailOnly)
+        columns.splitViewResized(at: at(3000))
+        #expect(columns.shown == .detailOnly)
 
         // The keyboard up through a rotation: the split view stays wider than
         // tall, the window turns.
-        columns.splitViewResized(to: portraitSplitWithKeyboard, at: at(5000))
+        columns.splitViewResized(at: at(5000))
         columns.windowResized(to: landscapeWindow, at: at(7000))
-        columns.splitViewResized(to: CGSize(width: 1086, height: 450), at: at(7000))
+        columns.splitViewResized(at: at(7000))
         #expect(columns.shown == .doubleColumn)
     }
 
@@ -125,7 +131,7 @@ struct NotesColumnsTests {
         // after its size last changed, and repeats the columns on screen
         // later still.
         var columns = besideTheRail()
-        columns.splitViewResized(to: CGSize(width: 1086, height: 450), at: at(0))
+        columns.splitViewResized(at: at(0))
         columns.splitViewWrote(.doubleColumn, at: at(138))
         #expect(columns.shown == .detailOnly)
         #expect(columns.needsPutBack)

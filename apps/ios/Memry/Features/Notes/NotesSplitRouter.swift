@@ -6,7 +6,7 @@ import SwiftUI
 // #4346. The one owner of what Notes shows at regular width: the list
 // column's scope, the selected note, and the notes opened from inside it.
 //
-// The sidebar and the list write through it, the detail column reads it, and
+// The list writes through it, the detail column reads it, and
 // every open from outside Notes (search, a capture's "View", a link) lands
 // here through `NotesLinks`. Followers (the inspector, drag and drop, the
 // two-note split, Handoff) read the selection from here, never from a column.
@@ -167,7 +167,7 @@ final class NotesSplitRouter {
         }
     }
 
-    /// A row picked in the list or the sidebar, into the focused pane.
+    /// A row picked in the list, into the focused pane.
     func select(_ route: NoteRoute?) {
         if route?.id != titleClaim { titleClaim = nil }
         update(focus) { $0 = NotesPane(note: route) }

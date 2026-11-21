@@ -100,37 +100,106 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([open, typed])
     }
 
-    /// `DESIGN.md` › Tablet: three columns in 13" landscape, two (the list
-    /// and the note) in portrait and beside the app's page sidebar.
-    func testColumnsFollowTheWidth() throws {
+    /// `DESIGN.md` › Tablet: the list and the note at every width. The list
+    /// is the split view's sidebar column, so with the page sidebar hidden it
+    /// sits clear of the tab bar, which covers a content column's toolbar.
+    func testTheListStaysBesideTheNoteClearOfTheTabBar() throws {
         try openNotes()
         let list = app.buttons["notes.addButton"].firstMatch
         XCTAssertTrue(list.isHittable, "beside the page sidebar the list is hidden")
-        XCTAssertFalse(treeShown(), "beside the page sidebar the tree takes a column")
-        if app.windows.firstMatch.frame.width >= 1300 {
-            togglePageSidebar()
-            attach("columns-three")
-            XCTAssertTrue(treeShown(), "13\" landscape hides the tree")
-            XCTAssertTrue(list.isHittable, "13\" landscape hides the list")
-            togglePageSidebar()
-        }
+        togglePageSidebar()
+        XCTAssertTrue(sidebarRow("Tasks").wait(for: \.isHittable, toEqual: false, timeout: 5), "the page sidebar did not hide")
+        attach("list-page-sidebar-hidden")
+        XCTAssertTrue(list.isHittable, "hiding the page sidebar hid the list")
+        assertClear(list, of: tabBar())
+        assertClear(app.buttons["Sort by"].firstMatch, of: tabBar())
         XCUIDevice.shared.orientation = .portrait
-        attach("columns-portrait")
-        XCTAssertFalse(treeShown(), "portrait shows the tree")
-        XCTAssertTrue(list.isHittable, "portrait hides the list")
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "portrait hides the list")
+        attach("list-portrait")
+        assertClear(list, of: tabBar())
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1)
+        tabBarSidebarToggle()?.tap()
+        XCTAssertTrue(sidebarRow("Tasks").wait(for: \.isHittable, toEqual: true, timeout: 5), "the page sidebar did not come back")
+    }
+
+    /// A folder opens on the list column's stack: Back returns to the folder
+    /// tree, and a relaunch comes back inside the folder.
+    func testAFolderOpensInTheListAndBackReturnsToTheTree() throws {
+        try openNotes()
+        let folder = "agent \(run)"
+        app.buttons["notes.addButton"].firstMatch.press(forDuration: 1)
+        let newFolder = app.buttons["notes.create.folder"].firstMatch
+        XCTAssertTrue(newFolder.waitForExistence(timeout: 5), "holding + showed no New folder")
+        newFolder.tap()
+        let create = app.buttons["Create"].firstMatch
+        XCTAssertTrue(create.waitForExistence(timeout: 5))
+        app.typeText(folder)
+        create.tap()
+        let folderRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", folder)).firstMatch
+        XCTAssertTrue(folderRow.waitForExistence(timeout: 10), "the new folder has no row")
+        folderRow.tap()
+        let openFolder = app.buttons["Open folder"].firstMatch
+        XCTAssertTrue(openFolder.waitForExistence(timeout: 5), "the selected folder has no arrow")
+        openFolder.tap()
+        let back = app.buttons["BackButton"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "the folder has no Back")
+        XCTAssertTrue(app.navigationBars[folder].exists, "the list column does not show the folder")
+        attach("folder-open")
+
+        // D6: the folder comes back after a relaunch, and Back still leads home.
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(back.waitForExistence(timeout: 10), "a relaunch lost the open folder")
+        back.tap()
+        XCTAssertTrue(folderRow.waitForExistence(timeout: 10), "Back did not return to the folder tree")
+        XCTAssertFalse(back.exists, "the folder tree shows Back")
+        attach("tree-after-back")
+
+        folderRow.press(forDuration: 1)
+        let delete = app.buttons["Delete folder"].firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "the folder menu has no Delete folder")
+        delete.tap()
+        let confirm = app.buttons["Delete folder"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(folderRow.waitForNonExistence(timeout: 10))
+    }
+
+    /// The page sidebar hidden beside an open note comes back. Its way back
+    /// is the tab bar at the top, which the note leaves on screen at
+    /// regular width.
+    func testThePageSidebarComesBackBesideAnOpenNote() throws {
+        try openNotes()
+        let title = "[agent] \(run) pages"
+        addNote(title)
+        // The sidebar's top row: on an iPad mini the keyboard covers its
+        // lower rows.
+        let searchRow = sidebarRow("Search")
+        togglePageSidebar()
+        XCTAssertTrue(searchRow.wait(for: \.isHittable, toEqual: false, timeout: 5), "the page sidebar did not hide")
+        let tasks = app.buttons["Tasks"].firstMatch
+        XCTAssertTrue(tasks.wait(for: \.isHittable, toEqual: true, timeout: 5), "no way to another page beside the note")
+        attach("page-sidebar-hidden-beside-note")
+        let toggle = tabBarSidebarToggle()
+        XCTAssertNotNil(toggle, "the tab bar has no sidebar button")
+        toggle?.tap()
+        XCTAssertTrue(searchRow.wait(for: \.isHittable, toEqual: true, timeout: 5), "the page sidebar did not come back")
+        deleteNotes([title])
     }
 
     /// #4380: the Day Panel, open on the Journal by default, stays the
-    /// Journal's. Back on Notes beside an open note, the column the user
-    /// showed is still there.
-    func testAColumnShownBesideANoteSurvivesAVisitToTheJournal() throws {
+    /// Journal's. Back on Notes beside an open note, the list the user hid
+    /// is still hidden.
+    func testAListHiddenBesideANoteSurvivesAVisitToTheJournal() throws {
         try openNotes()
         let title = "[agent] \(run) column"
         makeNote(title)
-        XCTAssertFalse(treeShown(), "beside the page sidebar the tree takes a column")
+        let list = app.buttons["notes.addButton"].firstMatch
+        XCTAssertTrue(list.isHittable, "the list is not beside the note")
         toggleNotesSidebar()
-        XCTAssertTrue(treeShown(), "the split view's sidebar button did not show the tree")
-        attach("column-shown")
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: false, timeout: 5), "the split view's sidebar button did not hide the list")
+        attach("list-hidden")
 
         sidebarRow("Journal").tap()
         // Whichever level the Journal was left on.
@@ -139,8 +208,10 @@ final class NotesSplitUITests: XCTestCase {
         sidebarRow("Notes").tap()
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 1)
-        attach("column-after-journal")
-        XCTAssertTrue(treeShown(), "returning to Notes reset the column the user showed")
+        attach("list-after-journal")
+        XCTAssertFalse(list.isHittable, "returning to Notes brought back the list the user hid")
+        toggleNotesSidebar()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "the split view's sidebar button did not show the list")
         deleteNotes([title])
     }
 
@@ -168,6 +239,28 @@ final class NotesSplitUITests: XCTestCase {
         app.buttons["BackButton"].firstMatch.tap()
         XCTAssertTrue(page(source).waitForExistence(timeout: 10), "Back did not return to the linking note")
 
+        deleteNotes([source, target])
+    }
+
+    /// #4357: a note row dragged from the list onto the open note links it
+    /// there. The list is the split view's sidebar column, which reports a
+    /// compact width, and the row still drags.
+    func testANoteDraggedFromTheListLinksInTheOpenNote() throws {
+        try openNotes()
+        let target = "[agent] \(run) dragged"
+        let source = "[agent] \(run) open"
+        makeNote(target)
+        let block = makeNote(source)
+        row(target).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).press(
+            forDuration: 1,
+            thenDragTo: block.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)),
+            withVelocity: .slow,
+            thenHoldForDuration: 1
+        )
+        XCTAssertTrue(
+            matches(NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}"), block),
+            "the drop left no link: \(block.value as? String ?? "")"
+        )
         deleteNotes([source, target])
     }
 
@@ -488,31 +581,30 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     /// #5059: the software keyboard is no rotation. A rotation with the
-    /// caret in the body hands the tree the user showed back to the width,
-    /// and the keyboard showing in portrait keeps it.
+    /// caret in the body brings back the list the user hid, and the keyboard
+    /// showing in portrait keeps it hidden.
     func testTheKeyboardIsNoRotation() throws {
         try openNotes()
         let title = "[agent] \(run) keyboard"
         addNote(title)
+        let list = app.buttons["notes.addButton"].firstMatch
         firstBlock.tap()
         let keyboard = app.keyboards.firstMatch
         XCTAssertTrue(keyboard.waitForExistence(timeout: 10), "the body took no keyboard")
         XCUIDevice.shared.orientation = .portrait
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 2)
-        toggleTree()
-        XCTAssertTrue(app.descendants(matching: .any)["notes.sidebar.root"].waitForExistence(timeout: 5))
-        Thread.sleep(forTimeInterval: 1)
-        XCTAssertTrue(treeShown(), "the split view's button did not show the tree")
-        attach("tree-shown-portrait-keyboard-up")
+        toggleList()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: false, timeout: 5), "the split view's button did not hide the list")
+        attach("list-hidden-portrait-keyboard-up")
         XCUIDevice.shared.orientation = .landscapeLeft
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 2)
         XCTAssertTrue(keyboard.exists, "the keyboard went down through the rotation")
-        XCTAssertFalse(treeShown(), "a rotation with the keyboard up kept the tree beside the page sidebar")
+        XCTAssertTrue(list.isHittable, "a rotation with the keyboard up kept the list hidden")
         attach("columns-back-after-rotation-keyboard-up")
 
-        // A relaunch lowers the keyboard: show the tree in portrait, then
+        // A relaunch lowers the keyboard: hide the list in portrait, then
         // the caret into the body.
         app.terminate()
         try openNotes()
@@ -521,17 +613,16 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 2)
         XCTAssertFalse(keyboard.exists, "the note opened with the keyboard up")
-        toggleTree()
-        XCTAssertTrue(app.descendants(matching: .any)["notes.sidebar.root"].waitForExistence(timeout: 5))
-        Thread.sleep(forTimeInterval: 1)
-        XCTAssertTrue(treeShown(), "the split view's button did not show the tree")
+        toggleList()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: false, timeout: 5), "the split view's button did not hide the list")
         firstBlock.tap()
         XCTAssertTrue(keyboard.waitForExistence(timeout: 10), "the body took no keyboard")
         Thread.sleep(forTimeInterval: 2)
-        XCTAssertTrue(treeShown(), "the keyboard showing took the tree the user showed")
-        attach("tree-kept-keyboard-up")
+        XCTAssertFalse(list.isHittable, "the keyboard showing brought back the list the user hid")
+        attach("list-kept-hidden-keyboard-up")
 
         XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "a rotation did not bring back the list")
         deleteNotes([title])
     }
 
@@ -785,11 +876,31 @@ final class NotesSplitUITests: XCTestCase {
         return on
     }
 
-    /// Whether the folder tree has a column on screen. Its root row's label
-    /// and icon share the identifier, so any hittable match counts.
-    private func treeShown() -> Bool {
-        let rows = app.descendants(matching: .any).matching(identifier: "notes.sidebar.root")
-        return rows.allElementsBoundByIndex.contains(where: \.isHittable)
+    /// The tab bar's frame: the buttons on the row of its Tasks tab. `.null`
+    /// while the page sidebar shows instead.
+    private func tabBar() -> CGRect {
+        let tasks = app.buttons["Tasks"].firstMatch
+        guard tasks.waitForExistence(timeout: 5), tasks.isHittable else { return .null }
+        return app.buttons.allElementsBoundByIndex
+            .filter { $0.isHittable && abs($0.frame.midY - tasks.frame.midY) < 2 }
+            .reduce(CGRect.null) { $0.union($1.frame) }
+    }
+
+    /// The tab bar's own sidebar button, on the row of its tabs.
+    private func tabBarSidebarToggle() -> XCUIElement? {
+        let tasks = app.buttons["Tasks"].firstMatch
+        guard tasks.waitForExistence(timeout: 5), tasks.isHittable else { return nil }
+        return app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
+            .first { $0.isHittable && abs($0.frame.midY - tasks.frame.midY) < 2 }
+    }
+
+    private func assertClear(_ control: XCUIElement, of tabBar: CGRect, line: UInt = #line) {
+        XCTAssertFalse(tabBar.isNull, "no tab bar on screen", line: line)
+        XCTAssertFalse(
+            tabBar.intersects(control.frame),
+            "\(control.label) at \(control.frame) is under the tab bar at \(tabBar)",
+            line: line
+        )
     }
 
     /// The app's page sidebar's own button, the leftmost sidebar toggle.
@@ -810,13 +921,12 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     /// The split view's sidebar button on the list column's toolbar row, in
-    /// either orientation (portrait hides the page sidebar's button).
-    private func toggleTree() {
+    /// either orientation (portrait shows the tab bar's button too).
+    private func toggleList() {
         let add = app.buttons["notes.addButton"].firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 5))
-        let toggles = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
-            .filter(\.isHittable)
-        let toggle = toggles.min { abs($0.frame.midY - add.frame.midY) < abs($1.frame.midY - add.frame.midY) }
+        let toggle = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
+            .first { $0.isHittable && abs($0.frame.midY - add.frame.midY) < 2 }
         XCTAssertNotNil(toggle, "no split view sidebar button")
         toggle?.tap()
     }
@@ -916,11 +1026,15 @@ final class NotesSplitUITests: XCTestCase {
             format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
         )).firstMatch
         let notes = sidebarRow("Notes")
+        // A failed run may have left the page sidebar hidden, which the
+        // launch restores: the tab bar's button brings it back.
+        let pageSidebar = app.buttons["ToggleSideBar"].firstMatch
         let deadline = Date().addingTimeInterval(90)
         while Date() < deadline, !notes.exists {
             if signIn.exists { throw XCTSkip("Signed out: open a vault on this simulator first.") }
             if app.buttons["Menu"].exists { throw XCTSkip("Compact width: run on a full-screen iPad simulator.") }
             if vault.exists { vault.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+            if app.buttons["Tasks"].firstMatch.isHittable, pageSidebar.isHittable { pageSidebar.tap() }
             Thread.sleep(forTimeInterval: 1)
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
