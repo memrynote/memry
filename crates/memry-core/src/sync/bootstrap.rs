@@ -43,9 +43,13 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{Value as Json, json};
 
+use crate::api::errors::ApiError;
 use crate::protocol::http::{
     ApiRequest, Auth, BOOTSTRAP_TOKEN_HEADER, HttpClient, RetryPolicy, VAULT_ID_HEADER,
 };
+use crate::seams::diagnostics::{BootstrapOutcome, CoreDiagnostic};
+
+use super::diagnostics::RunDiagnostics;
 
 /// §10.10, `BOOTSTRAP_SESSION_TTL_SECONDS`. The token's own life, renewable.
 pub const BOOTSTRAP_SESSION_TTL_SECONDS: i64 = 3_600;
@@ -145,6 +149,7 @@ impl Drop for CloseOnDrop {
 pub struct BootstrapClient {
     http: Arc<HttpClient>,
     vault_id: Option<String>,
+    diagnostics: Arc<RunDiagnostics>,
     inner: Mutex<Inner>,
 }
 
@@ -162,8 +167,15 @@ impl BootstrapClient {
         Self {
             http,
             vault_id: None,
+            diagnostics: RunDiagnostics::silent(),
             inner: Mutex::new(Inner::default()),
         }
+    }
+
+    /// Reports how the open answered (#5215).
+    pub fn with_diagnostics(mut self, diagnostics: Arc<RunDiagnostics>) -> Self {
+        self.diagnostics = diagnostics;
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -209,6 +221,8 @@ impl BootstrapClient {
             Ok(body) => body,
             Err(error) => {
                 self.lock().finished = true;
+                let (outcome, status) = open_failure(&error);
+                self.opened(outcome, status);
                 return BootstrapOpen {
                     session: None,
                     tail_cursor: 0,
@@ -223,6 +237,7 @@ impl BootstrapClient {
         let tail_cursor = read_tail_cursor(&body);
         let Some(session) = read_session(&body, now_s) else {
             self.lock().finished = true;
+            self.opened(BootstrapOutcome::NoToken, 200);
             return BootstrapOpen {
                 session: None,
                 tail_cursor,
@@ -231,6 +246,7 @@ impl BootstrapClient {
         };
 
         self.lock().session = Some(session.clone());
+        self.opened(BootstrapOutcome::Granted, 200);
         BootstrapOpen {
             session: Some(session),
             tail_cursor,
@@ -363,6 +379,11 @@ impl BootstrapClient {
         CloseOnDrop(Arc::clone(self))
     }
 
+    fn opened(&self, outcome: BootstrapOutcome, status: u16) {
+        self.diagnostics
+            .emit(CoreDiagnostic::BootstrapOpened { outcome, status });
+    }
+
     fn fall_back(&self) {
         let mut inner = self.lock();
         inner.session = None;
@@ -381,6 +402,32 @@ impl BootstrapClient {
         self.inner
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// What a failed open tells a log: the closed outcome, and the HTTP status, 0
+/// when no answer came back. The server's code is mapped here and never
+/// passed on as text.
+fn open_failure(error: &ApiError) -> (BootstrapOutcome, u16) {
+    match error {
+        ApiError::Status {
+            status: 409,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_NOT_ELIGIBLE" => (BootstrapOutcome::NotEligible, 409),
+        ApiError::Status {
+            status: 429,
+            code: Some(code),
+            ..
+        } if code == "BOOTSTRAP_SESSION_LIMIT" => (BootstrapOutcome::SessionLimit, 429),
+        ApiError::BootstrapUnavailable => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status: 501, .. } => (BootstrapOutcome::NotImplemented, 501),
+        ApiError::Status { status, .. } => (BootstrapOutcome::Failed, *status),
+        ApiError::RateLimited { .. } => (BootstrapOutcome::Failed, 429),
+        ApiError::Unauthorized { .. } => (BootstrapOutcome::Failed, 401),
+        ApiError::PaymentRequired { .. } => (BootstrapOutcome::Failed, 402),
+        ApiError::UpgradeRequired { .. } => (BootstrapOutcome::Failed, 426),
+        _ => (BootstrapOutcome::Failed, 0),
     }
 }
 

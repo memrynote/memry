@@ -59,10 +59,12 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
+use crate::seams::diagnostics::DiagnosticPhase;
 use crate::storage::{Db, nested_tx};
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
+use super::diagnostics::RunDiagnostics;
 use super::first_sync_store::{pending_metadata_ids, read_meta, record_ref, write_meta};
 use super::note_body_feed;
 use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
@@ -217,6 +219,7 @@ pub struct FirstSync {
     bootstrap: Option<Arc<BootstrapClient>>,
     packs: Option<Arc<PackBootstrap>>,
     progress: Arc<dyn ProgressSink>,
+    diagnostics: Arc<RunDiagnostics>,
 }
 
 impl FirstSync {
@@ -228,6 +231,7 @@ impl FirstSync {
             bootstrap: None,
             packs: None,
             progress: Arc::new(SilentProgress),
+            diagnostics: RunDiagnostics::silent(),
         }
     }
 
@@ -246,6 +250,14 @@ impl FirstSync {
 
     pub fn with_progress(mut self, progress: Arc<dyn ProgressSink>) -> Self {
         self.progress = progress;
+        self
+    }
+
+    /// Reports each phase's request statistics (#5215). The recorder must be
+    /// the one the run's HTTP clients were derived with, or no request is
+    /// counted.
+    pub fn with_diagnostics(mut self, diagnostics: Arc<RunDiagnostics>) -> Self {
+        self.diagnostics = diagnostics;
         self
     }
 
@@ -297,18 +309,35 @@ impl FirstSync {
 
         // Records first (#5232): packs, then the feed from where they end,
         // then the manifest decides, so the note list fills before any body.
-        let record_packs_used = self.record_packs_pass(report).await?;
-        self.refs_pass(report).await?;
+        let record_packs_used = self
+            .diagnostics
+            .phase(DiagnosticPhase::RecordPacks, self.record_packs_pass(report))
+            .await?;
+        self.diagnostics
+            .phase(DiagnosticPhase::Refs, self.refs_pass(report))
+            .await?;
         // The feed has been read to its end: the vault's total is known.
         self.records_progress(true).await?;
         if record_packs_used {
-            self.reconcile(report).await?;
+            self.diagnostics
+                .phase(DiagnosticPhase::Reconcile, self.reconcile(report))
+                .await?;
         }
-        self.metadata_pass(report).await?;
+        self.diagnostics
+            .phase(DiagnosticPhase::Metadata, self.metadata_pass(report))
+            .await?;
         // After the reconcile, so a document whose record is a tombstone or
         // absent takes no packed body (§8.10).
-        let body_packs_used = self.body_packs_pass(report).await?;
-        self.bodies_pass(report.window_start, body_packs_used, report)
+        let body_packs_used = self
+            .diagnostics
+            .phase(DiagnosticPhase::BodyPacks, self.body_packs_pass(report))
+            .await?;
+        let window_start = report.window_start;
+        self.diagnostics
+            .phase(
+                DiagnosticPhase::Bodies,
+                self.bodies_pass(window_start, body_packs_used, report),
+            )
             .await?;
         report.bodies_owed = read_body_counts(&self.db).await?.1 as usize;
 

@@ -55,6 +55,7 @@ use std::sync::Arc;
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
+use crate::api::diagnostics::run_diagnostics;
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::crypto::sodium;
@@ -413,16 +414,22 @@ impl VaultSync {
         let _held = gate.lock().await;
         let cipher = self.cipher().await?;
         let http = self.session.http();
+        // #5215: the run's own requests are counted, not the session's.
+        let diagnostics = run_diagnostics();
+        let counted = diagnostics.observe(&http);
 
         // Chapter 10 §10.6: a client SHOULD open an elevated window, and every
         // failure of it is silent — a 501 from a deployment that has none
         // (§10.12) changes nothing except how long the run takes.
-        let bootstrap =
-            Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&self.vault_id));
+        let bootstrap = Arc::new(
+            BootstrapClient::new(http)
+                .with_vault(&self.vault_id)
+                .with_diagnostics(Arc::clone(&diagnostics)),
+        );
 
         let pull = Arc::new(
             PullLoop::new(
-                Arc::clone(&http),
+                Arc::clone(&counted),
                 self.db.clone(),
                 Declaration::subscribed(),
                 cipher.clone(),
@@ -432,7 +439,7 @@ impl VaultSync {
         );
         let bodies = Arc::new(
             BodyPull::new(
-                Arc::clone(&http),
+                Arc::clone(&counted),
                 self.db.clone(),
                 Declaration::subscribed(),
                 cipher,
@@ -444,14 +451,15 @@ impl VaultSync {
         );
 
         let packs = Arc::new(
-            PackBootstrap::new(Arc::clone(&http), self.db.clone(), Arc::clone(&bodies))
+            PackBootstrap::new(counted, self.db.clone(), Arc::clone(&bodies))
                 .with_vault(&self.vault_id)
                 // Beside `data.db`: body packs wait here for their checks.
                 .with_spill_dir(std::path::Path::new(&self.directory).join("pack-spill")),
         );
         let mut run = FirstSync::new(pull, bodies, self.db.clone())
             .with_bootstrap(bootstrap)
-            .with_packs(packs);
+            .with_packs(packs)
+            .with_diagnostics(diagnostics);
         if let Some(listener) = progress {
             run = run.with_progress(Arc::new(ForeignProgress(listener)));
         }

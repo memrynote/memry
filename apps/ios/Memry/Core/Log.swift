@@ -18,8 +18,10 @@ import os
 //     data — `log.info("vault unlocked")` compiles, `log.info("vault \(id)")`
 //     does not, because a string interpolation is not a `StaticString`;
 //   * the only other thing a caller may pass is a ``LogDetail``, a closed set
-//     of four shapes that are provably not secrets: an ``ErrorCode`` (itself a
-//     string *literal* only), a count, a duration, a status;
+//     of five shapes that are provably not secrets: an ``ErrorCode`` (itself a
+//     string *literal* only), a count, a duration, a status, or a number under
+//     a ``MetricName`` (a string *literal* only, the same way). A line may
+//     carry several of them;
 //   * **no entry point on this type accepts a `String`.** There is nowhere to
 //     put a phrase, a token, or a note body.
 //
@@ -48,12 +50,27 @@ struct ErrorCode: Sendable, Hashable, CustomStringConvertible, ExpressibleByStri
     }
 }
 
+/// The label of one ``LogDetail/metric(_:_:)``. Constructible only from a
+/// string literal, for the same reason as ``ErrorCode``.
+struct MetricName: Sendable, Hashable, CustomStringConvertible, ExpressibleByStringLiteral {
+    typealias UnicodeScalarLiteralType = StaticString
+    typealias ExtendedGraphemeClusterLiteralType = StaticString
+    typealias StringLiteralType = StaticString
+
+    let description: String
+
+    init(stringLiteral value: StaticString) {
+        description = value.description
+    }
+}
+
 /// The only values that may ride alongside a message.
 ///
-/// Four cases, all closed: an identifier that can only be a literal, and three
-/// numbers. Adding a `case note(String)` here would be the one change that
-/// breaks the guarantee above, which is why the set is written down rather than
-/// left to a `CustomStringConvertible` parameter.
+/// Five cases, all closed: an identifier that can only be a literal, three
+/// numbers, and a number labelled by an identifier that can only be a literal.
+/// Adding a `case note(String)` here would be the one change that breaks the
+/// guarantee above, which is why the set is written down rather than left to a
+/// `CustomStringConvertible` parameter.
 enum LogDetail: Sendable, Hashable {
     /// The variant identity from `ErrorMapping`. Never the error object.
     case code(ErrorCode)
@@ -61,6 +78,9 @@ enum LogDetail: Sendable, Hashable {
     case milliseconds(UInt64)
     /// An HTTP status or an `OSStatus`. A number, never a server message.
     case status(Int)
+    /// A number the core reported, such as `p95_ms`. The label is a literal,
+    /// so one line can carry several numbers and say which is which.
+    case metric(MetricName, UInt64)
 
     var rendered: String {
         switch self {
@@ -68,6 +88,7 @@ enum LogDetail: Sendable, Hashable {
         case let .count(value): "count=\(value)"
         case let .milliseconds(value): "ms=\(value)"
         case let .status(value): "status=\(value)"
+        case let .metric(name, value): "\(name.description)=\(value)"
         }
     }
 }
@@ -127,6 +148,11 @@ struct Log: Sendable {
         telemetryCategory = nil
     }
 
+    /// A line with several details, rendered in order: `message [a=1 b=2]`.
+    func notice(_ message: StaticString, _ first: LogDetail, _ second: LogDetail, _ rest: LogDetail...) {
+        sink(.default, Log.line(message, [first, second] + rest))
+    }
+
     func debug(_ message: StaticString, _ detail: LogDetail? = nil) {
         sink(.debug, Log.line(message, detail))
     }
@@ -160,7 +186,11 @@ struct Log: Sendable {
     /// The one place text is assembled. Both halves are compile-time literals
     /// or numbers, so the result cannot contain a secret.
     static func line(_ message: StaticString, _ detail: LogDetail?) -> String {
-        guard let detail else { return message.description }
-        return "\(message.description) [\(detail.rendered)]"
+        line(message, detail.map { [$0] } ?? [])
+    }
+
+    static func line(_ message: StaticString, _ details: [LogDetail]) -> String {
+        guard !details.isEmpty else { return message.description }
+        return "\(message.description) [\(details.map(\.rendered).joined(separator: " "))]"
     }
 }

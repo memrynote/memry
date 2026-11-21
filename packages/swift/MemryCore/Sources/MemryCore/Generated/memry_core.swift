@@ -3188,6 +3188,218 @@ public func FfiConverterTypeDeviceLink_lower(_ value: DeviceLink) -> UInt64 {
 
 
 /**
+ * Where [`CoreDiagnostic`]s go.
+ *
+ * **Synchronous by contract**, as [`crate::api::sync::SyncProgressListener`]
+ * is: it is called from inside the sync it reports on, so an implementation
+ * that blocks stalls that sync. Write the line and return.
+ */
+public protocol DiagnosticsSink: AnyObject, Sendable {
+    
+    func record(event: CoreDiagnostic) 
+    
+}
+/**
+ * Where [`CoreDiagnostic`]s go.
+ *
+ * **Synchronous by contract**, as [`crate::api::sync::SyncProgressListener`]
+ * is: it is called from inside the sync it reports on, so an implementation
+ * that blocks stalls that sync. Write the line and return.
+ */
+open class DiagnosticsSinkImpl: DiagnosticsSink, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_diagnosticssink(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_diagnosticssink(handle, $0) }
+    }
+
+    
+
+    
+open func record(event: CoreDiagnostic)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_diagnosticssink_record(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeCoreDiagnostic_lower(event),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceDiagnosticsSink {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceDiagnosticsSink = UniffiVTableCallbackInterfaceDiagnosticsSink(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeDiagnosticsSink.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface DiagnosticsSink: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeDiagnosticsSink.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface DiagnosticsSink: handle missing in uniffiClone")
+            }
+        },
+        record: { (
+            uniffiHandle: UInt64,
+            event: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeDiagnosticsSink.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.record(
+                     event: try FfiConverterTypeCoreDiagnostic_lift(event)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceDiagnosticsSink> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceDiagnosticsSink>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitDiagnosticsSink() {
+    uniffi_memry_core_fn_init_callback_vtable_diagnosticssink(UniffiCallbackInterfaceDiagnosticsSink.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDiagnosticsSink: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<DiagnosticsSink>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = DiagnosticsSink
+
+    public static func lift(_ handle: UInt64) throws -> DiagnosticsSink {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return DiagnosticsSinkImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: DiagnosticsSink) -> UInt64 {
+         if let rustImpl = value as? DiagnosticsSinkImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DiagnosticsSink {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: DiagnosticsSink, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticsSink_lift(_ handle: UInt64) throws -> DiagnosticsSink {
+    return try FfiConverterTypeDiagnosticsSink.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticsSink_lower(_ value: DiagnosticsSink) -> UInt64 {
+    return FfiConverterTypeDiagnosticsSink.lower(value)
+}
+
+
+
+
+
+
+/**
  * Platform file attributes the core cannot set itself.
  */
 public protocol FileProtection: AnyObject, Sendable {
@@ -23831,6 +24043,131 @@ public func FfiConverterTypeRepeatRule_lower(_ value: RepeatRule) -> RustBuffer 
 
 
 /**
+ * Wire statistics of one phase, over its requests so far.
+ *
+ * `requests` counts every attempt put on the wire, retries included, and the
+ * latencies are each attempt's own wire time. Waits slept between attempts
+ * are in `rate_limit_wait_ms`, not in the latencies.
+ */
+public struct RequestStats: Equatable, Hashable {
+    public var requests: UInt32
+    public var p50Ms: UInt32
+    public var p95Ms: UInt32
+    public var maxMs: UInt32
+    /**
+     * Attempts repeated after a retryable answer or a transport failure by
+     * the retry ladder, plus each 429 pause taken outside it (documents put
+     * back by the bodies pass, packs waiting in the pack download).
+     */
+    public var retries: UInt32
+    /**
+     * Attempts the server answered 429.
+     */
+    public var rateLimited: UInt32
+    /**
+     * Time slept waiting out a 429: in the retry ladder, and in the pauses
+     * taken outside it.
+     */
+    public var rateLimitWaitMs: UInt64
+    /**
+     * Attempts the server answered 5xx.
+     */
+    public var serverErrors: UInt32
+    /**
+     * Attempts that got no HTTP answer at all.
+     */
+    public var transportErrors: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(requests: UInt32, p50Ms: UInt32, p95Ms: UInt32, maxMs: UInt32, 
+        /**
+         * Attempts repeated after a retryable answer or a transport failure by
+         * the retry ladder, plus each 429 pause taken outside it (documents put
+         * back by the bodies pass, packs waiting in the pack download).
+         */retries: UInt32, 
+        /**
+         * Attempts the server answered 429.
+         */rateLimited: UInt32, 
+        /**
+         * Time slept waiting out a 429: in the retry ladder, and in the pauses
+         * taken outside it.
+         */rateLimitWaitMs: UInt64, 
+        /**
+         * Attempts the server answered 5xx.
+         */serverErrors: UInt32, 
+        /**
+         * Attempts that got no HTTP answer at all.
+         */transportErrors: UInt32) {
+        self.requests = requests
+        self.p50Ms = p50Ms
+        self.p95Ms = p95Ms
+        self.maxMs = maxMs
+        self.retries = retries
+        self.rateLimited = rateLimited
+        self.rateLimitWaitMs = rateLimitWaitMs
+        self.serverErrors = serverErrors
+        self.transportErrors = transportErrors
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension RequestStats: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRequestStats: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RequestStats {
+        return
+            try RequestStats(
+                requests: FfiConverterUInt32.read(from: &buf), 
+                p50Ms: FfiConverterUInt32.read(from: &buf), 
+                p95Ms: FfiConverterUInt32.read(from: &buf), 
+                maxMs: FfiConverterUInt32.read(from: &buf), 
+                retries: FfiConverterUInt32.read(from: &buf), 
+                rateLimited: FfiConverterUInt32.read(from: &buf), 
+                rateLimitWaitMs: FfiConverterUInt64.read(from: &buf), 
+                serverErrors: FfiConverterUInt32.read(from: &buf), 
+                transportErrors: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RequestStats, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.requests, into: &buf)
+        FfiConverterUInt32.write(value.p50Ms, into: &buf)
+        FfiConverterUInt32.write(value.p95Ms, into: &buf)
+        FfiConverterUInt32.write(value.maxMs, into: &buf)
+        FfiConverterUInt32.write(value.retries, into: &buf)
+        FfiConverterUInt32.write(value.rateLimited, into: &buf)
+        FfiConverterUInt64.write(value.rateLimitWaitMs, into: &buf)
+        FfiConverterUInt32.write(value.serverErrors, into: &buf)
+        FfiConverterUInt32.write(value.transportErrors, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRequestStats_lift(_ buf: RustBuffer) throws -> RequestStats {
+    return try FfiConverterTypeRequestStats.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRequestStats_lower(_ value: RequestStats) -> RustBuffer {
+    return FfiConverterTypeRequestStats.lower(value)
+}
+
+
+/**
  * One review mark.
  *
  * `start` and `end` are **byte offsets into the note's flattened text**, not
@@ -29474,6 +29811,123 @@ public func FfiConverterTypeBlockEdit_lower(_ value: BlockEdit) -> RustBuffer {
 
 
 /**
+ * How `POST /sync/bootstrap` answered (chapter 10 §10.5), reduced to the
+ * cases a support reader acts on.
+ */
+
+public enum BootstrapOutcome: Equatable, Hashable {
+    
+    /**
+     * A session was granted: the run is elevated.
+     */
+    case granted
+    /**
+     * 409 `BOOTSTRAP_NOT_ELIGIBLE`: this device already pulled the vault and
+     * is past the resume window (§10.9).
+     */
+    case notEligible
+    /**
+     * 429 `BOOTSTRAP_SESSION_LIMIT`: the per-user concurrent cap.
+     */
+    case sessionLimit
+    /**
+     * 501: the deployment has no bootstrap key (§10.12).
+     */
+    case notImplemented
+    /**
+     * The server answered 2xx without a session token.
+     */
+    case noToken
+    /**
+     * Any other failure, with the status in [`CoreDiagnostic::BootstrapOpened`].
+     */
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BootstrapOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBootstrapOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = BootstrapOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BootstrapOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .granted
+        
+        case 2: return .notEligible
+        
+        case 3: return .sessionLimit
+        
+        case 4: return .notImplemented
+        
+        case 5: return .noToken
+        
+        case 6: return .failed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BootstrapOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .granted:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .notEligible:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .sessionLimit:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .notImplemented:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .noToken:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBootstrapOutcome_lift(_ buf: RustBuffer) throws -> BootstrapOutcome {
+    return try FfiConverterTypeBootstrapOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBootstrapOutcome_lower(_ value: BootstrapOutcome) -> RustBuffer {
+    return FfiConverterTypeBootstrapOutcome.lower(value)
+}
+
+
+
+/**
  * One optional-and-clearable text key of a patch.
  */
 
@@ -30111,6 +30565,112 @@ public func FfiConverterTypeCompressError_lower(_ value: CompressError) -> RustB
 
 
 /**
+ * One fact about a sync run. See the module doc for what it may carry.
+ */
+
+public enum CoreDiagnostic: Equatable, Hashable {
+    
+    /**
+     * The bootstrap session open finished. `status` is the HTTP status, or 0
+     * when there was no HTTP answer or the failure names none.
+     */
+    case bootstrapOpened(outcome: BootstrapOutcome, status: UInt16
+    )
+    /**
+     * A bodies pass probed its documents and is about to pull the rest.
+     * `concurrency` is the streams it runs, `documents` the window, and
+     * `up_to_date` those the probe showed current, which are skipped. `None`
+     * when the pass never measures it: a drain round probes chunk by chunk.
+     */
+    case bodyPassStarted(elevated: Bool, concurrency: UInt32, documents: UInt32, upToDate: UInt32?
+    )
+    /**
+     * A phase's requests so far. `finished` is `true` once the phase ended,
+     * `false` for an interim snapshot of one still running.
+     */
+    case phaseStats(phase: DiagnosticPhase, finished: Bool, elapsedMs: UInt64, requests: RequestStats
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CoreDiagnostic: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
+    typealias SwiftType = CoreDiagnostic
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CoreDiagnostic {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .bootstrapOpened(outcome: try FfiConverterTypeBootstrapOutcome.read(from: &buf), status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 2: return .bodyPassStarted(elevated: try FfiConverterBool.read(from: &buf), concurrency: try FfiConverterUInt32.read(from: &buf), documents: try FfiConverterUInt32.read(from: &buf), upToDate: try FfiConverterOptionUInt32.read(from: &buf)
+        )
+        
+        case 3: return .phaseStats(phase: try FfiConverterTypeDiagnosticPhase.read(from: &buf), finished: try FfiConverterBool.read(from: &buf), elapsedMs: try FfiConverterUInt64.read(from: &buf), requests: try FfiConverterTypeRequestStats.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CoreDiagnostic, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .bootstrapOpened(outcome,status):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeBootstrapOutcome.write(outcome, into: &buf)
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case let .bodyPassStarted(elevated,concurrency,documents,upToDate):
+            writeInt(&buf, Int32(2))
+            FfiConverterBool.write(elevated, into: &buf)
+            FfiConverterUInt32.write(concurrency, into: &buf)
+            FfiConverterUInt32.write(documents, into: &buf)
+            FfiConverterOptionUInt32.write(upToDate, into: &buf)
+            
+        
+        case let .phaseStats(phase,finished,elapsedMs,requests):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeDiagnosticPhase.write(phase, into: &buf)
+            FfiConverterBool.write(finished, into: &buf)
+            FfiConverterUInt64.write(elapsedMs, into: &buf)
+            FfiConverterTypeRequestStats.write(requests, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreDiagnostic_lift(_ buf: RustBuffer) throws -> CoreDiagnostic {
+    return try FfiConverterTypeCoreDiagnostic.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreDiagnostic_lower(_ value: CoreDiagnostic) -> RustBuffer {
+    return FfiConverterTypeCoreDiagnostic.lower(value)
+}
+
+
+
+/**
  * Failures of the CRDT tier (chapter 07, chapter 12 §12.5).
  */
 public 
@@ -30567,6 +31127,131 @@ public func FfiConverterTypeDevicePlatform_lift(_ buf: RustBuffer) throws -> Dev
 #endif
 public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> RustBuffer {
     return FfiConverterTypeDevicePlatform.lower(value)
+}
+
+
+
+/**
+ * The parts of a sync run that report their own request statistics.
+ */
+
+public enum DiagnosticPhase: Equatable, Hashable {
+    
+    /**
+     * Record packs on a fresh device (chapter 08 §8.4.2).
+     */
+    case recordPacks
+    /**
+     * `GET /sync/changes` to the end of the feed.
+     */
+    case refs
+    /**
+     * The manifest reconcile after record packs (§8.10).
+     */
+    case reconcile
+    /**
+     * `POST /sync/pull` over the records still metadata-only.
+     */
+    case metadata
+    /**
+     * Body packs (§8.4.3).
+     */
+    case bodyPacks
+    /**
+     * The first sync's item-granular bodies pass.
+     */
+    case bodies
+    /**
+     * One round of the foreground body drain.
+     */
+    case drainBodies
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DiagnosticPhase: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDiagnosticPhase: FfiConverterRustBuffer {
+    typealias SwiftType = DiagnosticPhase
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DiagnosticPhase {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .recordPacks
+        
+        case 2: return .refs
+        
+        case 3: return .reconcile
+        
+        case 4: return .metadata
+        
+        case 5: return .bodyPacks
+        
+        case 6: return .bodies
+        
+        case 7: return .drainBodies
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DiagnosticPhase, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .recordPacks:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .refs:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .reconcile:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .metadata:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .bodyPacks:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .bodies:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .drainBodies:
+            writeInt(&buf, Int32(7))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticPhase_lift(_ buf: RustBuffer) throws -> DiagnosticPhase {
+    return try FfiConverterTypeDiagnosticPhase.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDiagnosticPhase_lower(_ value: DiagnosticPhase) -> RustBuffer {
+    return FfiConverterTypeDiagnosticPhase.lower(value)
 }
 
 
@@ -37000,6 +37685,17 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * Registers the shell's sink, replacing any earlier one. Call it once, at
+ * launch, before the first sync.
+ */
+public func setDiagnosticsSink(sink: DiagnosticsSink)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_set_diagnostics_sink(
+        FfiConverterTypeDiagnosticsSink_lower(sink),uniffiCallStatus
+    )
+}
+}
+/**
  * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
  * actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
  * name, actual }] }`.
@@ -37282,6 +37978,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_set_diagnostics_sink() != 9088) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 24851) {
@@ -38457,6 +39156,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_codecapture_cancel() != 52096) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_diagnosticssink_record() != 4669) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notifications_permission() != 20630) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -38547,6 +39249,7 @@ private let initializationResult: InitializationResult = {
 
     uniffiCallbackInitBackgroundExec()
     uniffiCallbackInitCodeCapture()
+    uniffiCallbackInitDiagnosticsSink()
     uniffiCallbackInitFileProtection()
     uniffiCallbackInitLifecycleObserver()
     uniffiCallbackInitNotifications()
