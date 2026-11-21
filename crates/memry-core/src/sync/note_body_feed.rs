@@ -418,7 +418,7 @@ pub(super) fn land_and_advance(
         for doc_id in documents_with_body_state(&txn)? {
             body_debt::owe(&txn, &doc_id)?;
         }
-        write_meta(&txn, META_NOTE_BODY_LEGACY_PULL, "done")?;
+        finish_legacy_pull(&txn)?;
     } else if !fetched.served && store::read_cursor(&txn, RECORD_CURSOR_SCOPE)?.as_deref() != cursor
     {
         rearm_legacy_pull(&txn)?;
@@ -444,6 +444,15 @@ pub(super) fn rearm_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
     )
     .map_err(sqlite_failed)?;
     Ok(())
+}
+
+/// A completed first sync is the legacy pull: after its refs pass moved the
+/// record cursor, every live document was pulled to the server's head or owed,
+/// so every body row at or below the cursor is held or its document is owed.
+/// Without this, the first page that serves `noteBodies` owes every document
+/// again.
+pub(super) fn finish_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
+    write_meta(conn, META_NOTE_BODY_LEGACY_PULL, "done")
 }
 
 /// The `coversThrough` a snapshot push of `doc_id` may claim (chapter 07

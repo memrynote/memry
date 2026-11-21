@@ -813,7 +813,9 @@ async fn a_snapshot_whose_revision_is_not_held_is_taken_even_below_the_cursor() 
 
 /// #2299 review A-5/B-7: the refs pass moves the record cursor past body rows
 /// it never serves, so it re-arms the legacy pull and no push claims that
-/// cursor until a page that serves bodies has owed every held document.
+/// cursor until a page that serves bodies has owed every held document. A
+/// first sync that stops after it leaves the pull armed; only a completed one
+/// stands in for it.
 #[tokio::test]
 async fn the_refs_pass_re_arms_the_legacy_body_pull() {
     let db = scratch_db("refs-rearm");
@@ -830,14 +832,14 @@ async fn the_refs_pass_re_arms_the_legacy_body_pull() {
     })
     .expect("seed");
 
-    let transport = FakeTransport::new(vec![response(
-        200,
-        &changes_page(&[(NOTE, "note")], &[NOTE], 10, false),
-    )]);
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[NOTE], 10, true)),
+        error_response(403, "SYNC_VAULT_FORBIDDEN", "not your vault"),
+    ]);
     first_sync(&db, transport, public_key, RecordedProgress::new())
         .run(epoch(MODIFIED_AT) + 1_000)
         .await
-        .expect("the first sync");
+        .expect_err("the second refs page was refused");
 
     let legacy = db
         .call_blocking(|conn| read_meta(conn, META_NOTE_BODY_LEGACY_PULL))

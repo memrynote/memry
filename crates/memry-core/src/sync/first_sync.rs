@@ -366,7 +366,12 @@ impl FirstSync {
             .await?;
 
         self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                note_body_feed::finish_legacy_pull(&txn)?;
+                write_meta(&txn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string())?;
+                txn.commit().map_err(sqlite_failed)
+            })
             .await?;
         Ok(())
     }
