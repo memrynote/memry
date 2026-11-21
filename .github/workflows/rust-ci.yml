@@ -178,7 +178,12 @@ jobs:
     # took 59 and 62 minutes of 65 (runs 44769358824, 44816744246), and run 44872951677 (#5048) was
     # cancelled at the 65-minute limit (05:53:36Z to 06:58:48Z), in its last cargo step with every earlier
     # step green. The windows-2022 `tests` legs stay at 65: they took under 35 minutes in that run.
-    timeout-minutes: ${{ (startsWith(matrix.os, 'macos') || matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks') || (matrix.os == 'windows-2022' && matrix.part == 'checks')) && 90 || 65 }}
+    # The macOS `all` legs build BoringSSL five times (clippy, clippy with the e2e feature, the nextest
+    # build, and the clippy and the test build of the Electron profile step), about 2 minutes each. A full-ci run
+    # without it took 80 minutes (run 44881363926); with it, #5048 hit the 90-minute limit twice (run
+    # 44890333803, attempts 1 and 2), after all 7535 tests passed and in the memry-ml steps at the end.
+    # macOS gets 120: the job needs about 95 minutes.
+    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 120 || ((matrix.os == 'windows-11-arm' || (matrix.os == 'ubuntu-22.04' && matrix.part == 'checks') || (matrix.os == 'windows-2022' && matrix.part == 'checks')) && 90 || 65) }}
     strategy:
       fail-fast: false
       matrix:
