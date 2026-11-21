@@ -313,9 +313,36 @@ write-back that replaces it. A merge that fails falls back to the seed, and the
 note's unmerged flag routes that push to the non-pruning update endpoint.
 
 An editor open of an empty document seeds from the vault file only for a
-local-only note or a note the server provably holds nothing for (#5290).
-Otherwise, while its merge has not completed or the note still has an
-unmerged remote body, the document stays empty and waits (`awaitingMerge`).
+local-only note or a note the server provably holds nothing for (#5290). An
+editor open of a note created on this device that never synced also seeds when
+its merge does not complete, so the note opens editable offline (#5371). A
+seeded push of the same note keeps waiting, so the push stays owed. The open
+needs durable proof that the server holds nothing:
+
+- The app's create command made the note here: it has a `notes_created_here`
+  row. A file the vault ingest or the file watcher indexed has none, because a
+  folder shared through iCloud, Dropbox or git can bring a note another device
+  already synced. Notes created before this table existed have no row either.
+- `note_metadata.synced_at` is null, and its `note` create is still queued.
+- It has no `note_body_sync` row. Every body route records `sent` before its
+  request leaves: the outbox, and the single and batch snapshot pushes (the
+  scheduler, close, compaction). A stored push whose reply was lost still
+  counts.
+- The coordinator has no sign of a server body: no unmerged flag, no owed or
+  deferred pull, no counted failure, and no update applied this session.
+
+No snapshot push starts while the device is offline, as while sync is paused:
+the request could only fail after recording `sent`, and the note would reopen
+read-only offline. The edits wait in the outbox, and its flush once online
+requests the snapshot again.
+
+The bypass has one residual risk: device A creates a note offline, so it holds
+the marker; a shared folder carries the file to device B, and B syncs it before
+A does. When A then opens the note offline, it seeds beside B's server body,
+and the two copies merge into a duplicate once A is back online (#2536).
+
+Journals never qualify. Otherwise, while its merge has not completed or the
+note still has an unmerged remote body, the document stays empty and waits (`awaitingMerge`).
 An update Yjs parks as pending structs does not end the wait; the document has
 to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
 `awaitingRemote: 'merging'` and the renderer keeps its loading state until
@@ -339,7 +366,7 @@ signed-out editor returns to its loading state, and the next sync drains the
 owed pull. The pull that later merges the body, or a pull that proves the
 server holds nothing, ends the wait, and the editor binds. A reconnect retries
 the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
-is how a note the server never saw seeds after an offline open.
+is how any other note the server never saw seeds after an offline open.
 
 The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
 vault file only when the server answered with no snapshot and no updates for

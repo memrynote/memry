@@ -1445,6 +1445,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     return this.vaultKeyMissing
   }
 
+  /** `hasServerBodyEvidence`, or a server update this session applied to the note (#5371). */
+  knowsServerBody(noteId: string): boolean {
+    return this.lastAppliedSequence.has(noteId) || this.hasServerBodyEvidence(noteId)
+  }
+
   private async pullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
     const token = await this.ctx.deps.getAccessToken()
     if (!token) return null

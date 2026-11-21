@@ -102,6 +102,11 @@ export interface RemoteBodyQuery {
   signedOut: () => boolean
   /** The last pull found no vault key (a locked keychain); signing in does not fix it. */
   vaultLocked: () => boolean
+  /**
+   * Durable proof that the server holds nothing of the note: created here,
+   * never synced, and no sign of a server body (#5371).
+   */
+  neverSynced: (noteId: string) => boolean
 }
 
 /**
@@ -143,6 +148,7 @@ export interface SnapshotRefusal {
 
 const NO_COVERAGE: SnapshotCoverageReader = () => ({ unmerged: false })
 const NOT_PAUSED = (): boolean => false
+const ALWAYS_ONLINE = (): boolean => true
 
 /** The pre-encode read `encodeForPush` needs; only `readPushBase` makes one. */
 interface PushBase {
@@ -277,6 +283,8 @@ export class CrdtProvider {
   private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   /** See `setSyncPaused`. */
   private syncPaused: () => boolean = NOT_PAUSED
+  /** See `setNetworkOnline`. */
+  private networkOnline: () => boolean = ALWAYS_ONLINE
   private snapshotCoverage: SnapshotCoverageReader = NO_COVERAGE
   /** See `setSnapshotDeferral`. */
   private deferSnapshot: ((noteId: string) => void) | null = null
@@ -446,13 +454,17 @@ export class CrdtProvider {
    * duplicates it once the body merges (#2536). So the doc waits while the
    * merge did not complete or left server state unmerged. It seeds only when
    * the server provably holds nothing this device lacks, or for a local-only
-   * note. Offline and stuck notes keep waiting, and their editors show the
-   * vault file read-only (D-UNMERGED-OPEN-EXIT-2).
+   * note. An editor open (`editorOpen`) also seeds a note created here that
+   * provably never synced, which opens editable offline (#5371); a seeded
+   * push of one keeps waiting, so the push stays owed. Every other offline or
+   * stuck note keeps waiting, and its editors show the vault file read-only
+   * (D-UNMERGED-OPEN-EXIT-2).
    */
-  private waitsForRemoteBody(noteId: string, merged: boolean): boolean {
+  private waitsForRemoteBody(noteId: string, merged: boolean, editorOpen = false): boolean {
     const query = this.remoteBody
     if (!query || this.isNoteLocalOnly(noteId)) return false
-    return !merged || query.hasUnmerged(noteId)
+    if (query.hasUnmerged(noteId)) return true
+    return !merged && !(editorOpen && query.neverSynced(noteId))
   }
 
   /**
@@ -482,14 +494,30 @@ export class CrdtProvider {
     this.syncPaused = isPaused ?? NOT_PAUSED
   }
 
-  /** The snapshot push, or none while sync is paused. */
-  private snapshotSender(): SnapshotPushFn | null {
-    return this.snapshotPushFn && !this.syncPaused() ? this.snapshotPushFn : null
+  /**
+   * Wired by the sync runtime to its network monitor. While offline every
+   * snapshot path takes the same no-push branch as the pause: the runtime's
+   * push records `sent` before its request, so a send that can only fail
+   * would make a note created here look synced and reopen read-only offline
+   * (#5371). The edits wait in the outbox, which pauses offline, and its
+   * flush once online requests the snapshot again.
+   */
+  setNetworkOnline(isOnline: (() => boolean) | null): void {
+    this.networkOnline = isOnline ?? ALWAYS_ONLINE
   }
 
-  /** The batch snapshot push, or none while sync is paused. */
+  private snapshotsHeld(): boolean {
+    return this.syncPaused() || !this.networkOnline()
+  }
+
+  /** The snapshot push, or none while sync is paused or offline. */
+  private snapshotSender(): SnapshotPushFn | null {
+    return this.snapshotPushFn && !this.snapshotsHeld() ? this.snapshotPushFn : null
+  }
+
+  /** The batch snapshot push, or none while sync is paused or offline. */
   private snapshotBatchSender(): SnapshotBatchPushFn | null {
-    return this.snapshotBatchPushFn && !this.syncPaused() ? this.snapshotBatchPushFn : null
+    return this.snapshotBatchPushFn && !this.snapshotsHeld() ? this.snapshotBatchPushFn : null
   }
 
   /**
@@ -953,7 +981,7 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (entry?.doc !== doc) return
     const empty = doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
-    if (empty && this.waitsForRemoteBody(noteId, merged)) {
+    if (empty && this.waitsForRemoteBody(noteId, merged, true)) {
       // Still waiting even if something ended the wait without filling the doc.
       entry.awaitingMerge = true
       log.info('Editor opened empty until the server body merges', { noteId, merged })
@@ -1658,6 +1686,7 @@ export class CrdtProvider {
     this.snapshotPushFn = null
     this.snapshotBatchPushFn = null
     this.syncPaused = NOT_PAUSED
+    this.networkOnline = ALWAYS_ONLINE
     this.snapshotCoverage = NO_COVERAGE
     this.deferSnapshot = null
     this.oweRemoteMerge = null
