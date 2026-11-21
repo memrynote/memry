@@ -8,6 +8,7 @@
 //! | a colliding id does not take the note's body  | §5.12.1, §7.15              |
 //! | the deleted note leaves the bodies window     | §7.15, §A.2                 |
 //! | a purge that cannot run takes the delete with it | §7.15                    |
+//! | a delete drops the body's queued updates      | §7.15, #5379                |
 //!
 //! Real `rusqlite` on disk and the real `PullLoop`; the transport and the
 //! record cipher are the two seams the core does not own. **Nothing here
@@ -206,6 +207,18 @@ fn body_rows(db: &Db) -> usize {
     .expect("the plan")
 }
 
+fn queued_body_updates(db: &Db) -> i64 {
+    db.call_blocking(|conn| {
+        conn.query_row(
+            "SELECT count(*) FROM outbox WHERE item_id = ?1 AND op = ?2",
+            rusqlite::params![NOTE, outbox::OP_CRDT_UPDATE],
+            |row| row.get(0),
+        )
+        .map_err(storage_failure)
+    })
+    .expect("the outbox count")
+}
+
 fn record_deleted_at(db: &Db, item_type: &str) -> Option<i64> {
     db.call_blocking(|conn| Ok(sync_items::load(conn, item_type, NOTE)?.map(|row| row.deleted_at)))
         .expect("the row")
@@ -259,7 +272,59 @@ async fn an_untyped_delete_marks_every_type_and_purges_the_body() {
         "and the projection each type names"
     );
     assert_eq!(body_rows(&db), 0, "§7.15: the body log goes with it");
+    assert_eq!(queued_body_updates(&db), 0, "#5379: and its queued updates");
     assert_eq!(report.purged_documents, vec![NOTE.to_owned()]);
+}
+
+/// The untyped delete drops the queued update too (#5379), so the unseen text
+/// it carried is kept first, as the typed arm keeps it (#3029, rule 1).
+#[tokio::test]
+async fn an_untyped_delete_keeps_the_unsent_text_in_the_inbox() {
+    let db = scratch_db("untyped-keep");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+
+    deliver_untyped_delete(&db).await.expect("the page");
+
+    assert_eq!(queued_body_updates(&db), 0);
+    let kept: Vec<String> = db
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare("SELECT payload FROM sync_items WHERE item_type = 'inbox'")
+                .map_err(storage_failure)?;
+            let rows = statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(storage_failure)?;
+            let payloads: Vec<String> = rows.collect::<Result<_, _>>().map_err(storage_failure)?;
+            Ok(payloads
+                .iter()
+                .map(|payload| {
+                    let payload: Json = serde_json::from_str(payload).expect("json");
+                    payload["content"].as_str().unwrap_or_default().to_owned()
+                })
+                .collect())
+        })
+        .expect("the inbox");
+    assert_eq!(kept, vec!["still typing".to_owned()]);
+}
+
+/// #5379: an update queued before the delete must not reach the server after
+/// it. Pushed onto a purged document, it is the history a later revive of the
+/// id would pull back. The delete-keep copy has already saved its text.
+#[tokio::test]
+async fn a_typed_delete_drops_the_bodys_queued_updates() {
+    let db = scratch_db("queued");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+    assert_eq!(queued_body_updates(&db), 1);
+
+    let report = deliver_typed_delete(&db, "note").await.expect("the page");
+
+    assert_eq!(report.deleted, 1);
+    assert_eq!(body_rows(&db), 0);
+    assert_eq!(queued_body_updates(&db), 0, "the queued update goes too");
 }
 
 /// A **typed** delete for a type that is not a document leaves the document's
@@ -294,6 +359,11 @@ async fn a_delete_for_a_colliding_tag_name_leaves_the_notes_body_alone() {
     );
     assert_eq!(projected_deleted_at(&db, "notes", "id"), None);
     assert_eq!(body_rows(&db), 1, "§7.15 purges documents, not names");
+    assert_eq!(
+        queued_body_updates(&db),
+        1,
+        "and the note's queued update stays"
+    );
     assert!(
         report.purged_documents.is_empty(),
         "nothing was purged, and nothing claimed to be"

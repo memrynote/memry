@@ -933,7 +933,16 @@ an id pushes its first update before its record (the core sends every CRDT
 row ahead of every record row in a pass), so a live-record check would refuse
 the new body and stall that device's outbox. The server cannot tell an update
 authored on the purged body from one authored on the new body; that needs a
-body generation (#5361). An unclaimed snapshot of the purged body that arrives
+body generation (#5361). A refusal would also fail shipped clients (#5379):
+the core aborts the whole push wave on any error from this route and keeps the
+rows (`crates/memry-core/src/sync/push.rs:180`, `:328`), so the reviving
+device's outbox would stall on the update every pass and never reach the
+record that makes the id live; desktop drops the refused rows
+(`apps/desktop/src/main/sync/note-body-outbox.ts:314-350`). The client-side
+drop above narrows the case the fence would have covered. It leaves open
+updates queued by builds shipped before it, an edit typed after the tombstone
+into an editor still open on the document, and the unfenced server route until
+#5361. An unclaimed snapshot of the purged body that arrives
 after the re-create, which is every snapshot while the claim gate is closed,
 and a purge that ran before migration `0026`, are not fenced either.
 
@@ -1032,9 +1041,20 @@ port.
 | mark the record deleted                  | durable | fail the delete               |
 | mark every projection row deleted        | durable | fail the delete               |
 | purge the local update log and snapshots | durable | fail the delete               |
+| drop the document's queued body updates  | durable | fail the delete               |
 | release the resident in-memory document  | runtime | **report the id**             |
 
-**The three durable obligations MUST commit as one transaction.** Done as
+**Normative (client, #5379): a queued body update goes with the log.** An
+update authored on the purged body and pushed after the delete lands on the
+server's dead document, and a later revive of the id pulls it back. The core
+deletes the document's `crdt-update` outbox rows in the tombstone's
+transaction, after the delete-keep copy has read the queue
+(`crates/memry-core/src/sync/apply.rs:289`, `:378`); desktop drops them in the
+purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
+the clock rule skips, and a journal day held for the day merge, keep their
+queued updates with their body.
+
+**The durable obligations MUST commit as one transaction.** Done as
 separate statements, a crash between them leaves a record marked deleted with a
 live body log — which is precisely the state the second consequence above
 forbids, reached by a client that was trying to obey it. A component that

@@ -337,24 +337,28 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
         "delete-versus-edit has one answer: the arrival order of the record \
          feed and the body feed must not change whether the note exists"
     );
-    let note_rows = |state: &Resolution| -> Vec<(String, String)> {
+    let note_rows = |state: &Resolution, crdt: bool| -> Vec<(String, String)> {
         state
             .outbox
             .iter()
-            .filter(|(_, id)| id == NOTE)
+            .filter(|(op, id)| id == NOTE && (op == outbox::OP_CRDT_UPDATE) == crdt)
             .cloned()
             .collect()
     };
     assert_eq!(
-        note_rows(&a_state),
-        note_rows(&b_state),
-        "and neither order throws the edit away: both still owe the server \
-         the same push"
+        note_rows(&a_state, false),
+        note_rows(&b_state, false),
+        "the record tier owes the server the same push in either order"
     );
-    // #3029: A held text the delete never saw, so A also queued that text as
-    // an inbox capture. B applied the delete before it typed.
-    assert_eq!(a_state.outbox.len(), note_rows(&a_state).len() + 1);
-    assert_eq!(b_state.outbox.len(), note_rows(&b_state).len());
+    // #5379: A's edit was queued on the body the delete purged, so its push
+    // goes with that body; pushed, it would land on the server's dead
+    // document. The text is not lost: A held text the delete never saw, so
+    // #3029 queued it as an inbox capture. B typed after the delete, on a new
+    // body, and that push stays queued.
+    assert!(note_rows(&a_state, true).is_empty(), "{:?}", a_state.outbox);
+    assert_eq!(note_rows(&b_state, true).len(), 1);
+    assert_eq!(a_state.outbox.len(), note_rows(&a_state, false).len() + 1);
+    assert_eq!(b_state.outbox.len(), note_rows(&b_state, false).len() + 1);
 
     // The body tier is where the orders legitimately differ, and §7.15 is why.
     // The purge is what a client does **on applying** a tombstone, so A's edit
@@ -383,8 +387,10 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
 
 /// The body edit is **orphaned**, not a resurrection.
 ///
-/// The edit is real, durable, and still queued to push — §7.15 does not throw
-/// it away, and the server will keep it forever. What it must not do is put
+/// The edit was real, and its text survives as the #3029 inbox capture. Its
+/// queued push goes with the purged body (#5379): the server purges the
+/// deleted body too (§7.15), and a push that lands after that purge is what a
+/// later revive of the id would pull back. What the bytes must not do is put
 /// the note back: existence is a record-tier fact, and nothing on the CRDT
 /// tier writes a record row.
 #[tokio::test]
@@ -400,16 +406,13 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
     let after = observe(&db);
     assert_eq!(after.record_deleted_at, Some(DELETED_AT));
 
-    // The orphan: a queued push under a document id no live record names. The
-    // **outbox** row is what survives §7.15 — the purge takes the local log,
-    // not the pending push, because the edit really happened and the server
-    // will keep it forever.
+    // #5379: no push stays queued under a document id no live record names.
     assert!(
-        after
+        !after
             .outbox
             .iter()
             .any(|(op, id)| op == outbox::OP_CRDT_UPDATE && id == NOTE),
-        "the body edit is still queued: {:?}",
+        "the body edit's push went with the purged body: {:?}",
         after.outbox
     );
 
