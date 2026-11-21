@@ -773,6 +773,16 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     seedDevice({ lastCursor: null })
     await openSession()
     seedDevice({ deviceId: 'device-2', lastCursor: null })
+    const { authMiddleware } = await import('../middleware/auth')
+    const as = (deviceId: string): void => {
+      vi.mocked(authMiddleware).mockImplementationOnce(async (c: any, next: any) => {
+        c.set('userId', 'user-1')
+        c.set('deviceId', deviceId)
+        c.set('vaultId', 'vault-1')
+        await next()
+      })
+    }
+    as('device-2')
     const second = await createApp().request(
       '/sync/bootstrap',
       { method: 'POST' },
@@ -786,6 +796,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
 
     // #when — a third fresh device tries
     seedDevice({ deviceId: 'device-3', lastCursor: null })
+    as('device-3')
     const third = await createApp().request(
       '/sync/bootstrap',
       { method: 'POST' },

@@ -212,7 +212,7 @@ from another device or vault elevates nothing
 (`apps/sync-server/src/services/bootstrap-session.ts:251-260`, `:267-268`).
 
 Renewal reuses the same `jti` and only extends `expires_at`
-(`apps/sync-server/src/services/bootstrap-session.ts:475-479`).
+(`apps/sync-server/src/services/bootstrap-session.ts:491-494`).
 
 **Accepted residual, on record**: because elevation is stateless — it reads only
 the signature and `exp`, never the ledger — **a token whose session was
@@ -247,8 +247,19 @@ The concurrency cap, `MAX_CONCURRENT_BOOTSTRAP_SESSIONS = 2`
 (`apps/sync-server/src/services/bootstrap-session.ts:39`), applies to a
 resuming device exactly as to a fresh one, and is enforced
 **atomically inside a single INSERT with a COUNT subquery**
-(`:380-399`): `changes === 0` means the WHERE refused and the user is at cap
-(`:400-401`). There is no check-then-take interleaving point.
+(`:396-415`): `changes === 0` means the WHERE refused and the user is at cap
+(`:416-417`). There is no check-then-take interleaving point.
+
+**Normative. An open supersedes the same device's earlier sessions for the
+vault.** The same D1 batch first deletes every ledger row of that user, device
+and vault, then runs the capped INSERT (`:386-395`). A process killed during its
+first sync never sends `/close`, so before this its relaunch held a second slot
+until the dead session's TTL, up to 60 minutes, and two such relaunches put the
+user at cap. A device holds at most one slot per vault. A superseded token still
+elevates until its `exp` (§10.8), but its renewal answers
+`401 BOOTSTRAP_SESSION_INVALID`, so a client that kept it falls back to
+steady-state pacing (§10.11). The change is additive: no client builds or sends
+anything new.
 
 ## 10.10 Constants
 
@@ -282,7 +293,11 @@ as an error.** Concretely:
 3. **MUST NOT** open a second session within the same run: an expired session
    is not replaced mid-run. A run that resumes an interrupted first sync after
    the app relaunches MAY open a new one, and the server grants it while the
-   device is inside the resume window (§10.9).
+   device is inside the resume window (§10.9). The interrupted run lasts until
+   every body is current, not until the record pull reaches the head of the
+   feed: desktop keeps `bootstrapPending` until then
+   (`apps/desktop/src/main/sync/engine/full-sync-runner.ts:37-48`), so a kill
+   while pack-seeded docs settle or bodies drain also resumes elevated.
 
 **FR-028's progress reporting MUST survive the transition.** Progress is measured
 against `tailCursor` and the client's own cursor (§10.4), neither of which the

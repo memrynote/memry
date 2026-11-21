@@ -382,27 +382,38 @@ export const openBootstrapSession = async (
   // evaluated as part of the INSERT's own execution, and D1 serializes write
   // statements, so there is no interleaving point left between "check" and
   // "take". changes === 0 means the WHERE refused us → the user is at cap.
-  const inserted = await db
-    .prepare(
-      `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
+  //
+  // SUPERSEDE (#5328): an open replaces this device's earlier sessions for the
+  // vault, in the same batch. A killed process never closes its session, so
+  // its relaunch held a second slot for up to an hour, and two relaunches put
+  // the user at cap. One device runs one first sync of a vault at a time.
+  const [, inserted] = await db.batch([
+    db
+      .prepare(
+        'DELETE FROM bootstrap_sessions WHERE user_id = ? AND device_id = ? AND vault_id = ?'
+      )
+      .bind(identity.userId, identity.deviceId, identity.vaultId),
+    db
+      .prepare(
+        `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
        SELECT ?, ?, ?, ?, ?, ?
        WHERE (
          SELECT COUNT(*) FROM bootstrap_sessions
          WHERE user_id = ? AND expires_at > ?
        ) < ${MAX_CONCURRENT_BOOTSTRAP_SESSIONS}`
-    )
-    .bind(
-      session.jti,
-      identity.userId,
-      identity.deviceId,
-      identity.vaultId,
-      session.expiresAt,
-      now,
-      identity.userId,
-      now
-    )
-    .run()
-  if ((inserted.meta.changes ?? 0) === 0) {
+      )
+      .bind(
+        session.jti,
+        identity.userId,
+        identity.deviceId,
+        identity.vaultId,
+        session.expiresAt,
+        now,
+        identity.userId,
+        now
+      )
+  ])
+  if ((inserted?.meta.changes ?? 0) === 0) {
     logger.warn('Bootstrap open denied — session limit', {
       userId: identity.userId,
       deviceId: identity.deviceId

@@ -36,11 +36,14 @@ const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
  * `sync_state` key (#5234): `'1'` from the first full sync of a device with no
- * cursor until a pull delivers to the head of the feed. A relaunch that finds
- * it resumes the bootstrap from the persisted cursor, elevated and with packs,
- * instead of running as a steady-state device. The server owns the resume
- * window (BOOTSTRAP_RESUME_WINDOW_SECONDS, from device registration): its 409
- * on POST /sync/bootstrap deletes the key. Older builds ignore the row.
+ * cursor until the bootstrap closes with every body current (#5328), or, with
+ * no CRDT store, until a pull delivers to the head of the feed. A relaunch that
+ * finds it resumes the bootstrap from the persisted cursor, elevated and with
+ * packs, instead of running as a steady-state device. A key cleared at
+ * delivery sent a kill during the settle or the body drain into an unelevated
+ * relaunch that never closed its window. The server owns the resume window
+ * (BOOTSTRAP_RESUME_WINDOW_SECONDS, from device registration): its 409 on
+ * POST /sync/bootstrap deletes the key. Older builds ignore the row.
  */
 const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
 
@@ -49,8 +52,8 @@ const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
  * elevated bootstrap session is given up (#1837).
  *
  * Releasing on the first blocked tick was an unbounded regression. The session
- * is opened once per run while the bootstrap is pending (no cursor, or a first
- * pull that never delivered), so once it is released nothing re-opens it
+ * is opened once per engine while the bootstrap is pending and before its pull
+ * delivers, so once it is released nothing re-opens it
  * before a relaunch, and the rest of the bootstrap drains at base pacing for
  * the whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
  * therefore cost the entire remaining drain its elevation factor, which on a
@@ -383,7 +386,10 @@ export class FullSyncRunner {
       this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
       this.stateManager.setStateValue(BOOTSTRAP_PENDING_KEY, '1')
     }
-    const isFreshDevice = this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) != null
+    // Once a pull of this engine delivered, the packs and the session are
+    // spent: only a relaunch resumes them.
+    const isFreshDevice =
+      !this.bootstrapPullSucceeded && this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) != null
     // Before the first await: a pull the socket's `connected` scheduled while
     // the session opened took the lock, read the whole feed outside this run,
     // and left the repair unrecorded (#5234).
@@ -441,7 +447,10 @@ export class FullSyncRunner {
       pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
         this.bootstrapPullSucceeded = true
-        this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
+        // Without a CRDT store there is no body phase to wait for.
+        if (this.ctx.deps.crdtProvider == null) {
+          this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
+        }
         if (repairFrom !== null) {
           this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
         }
@@ -1026,6 +1035,7 @@ export class FullSyncRunner {
     if (!this.bootstrapPullSucceeded) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
+    if (this.bootstrapWindowOwned) this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
     this.bootstrapWindowOwned = false
     markBootstrapFullText()
     this.releaseBootstrapSession('completed')
