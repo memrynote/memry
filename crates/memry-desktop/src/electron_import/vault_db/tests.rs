@@ -172,8 +172,64 @@ fn check_1_fails_when_a_table_wrote_fewer_rows_than_it_read() {
     checks::row_counts(&report).unwrap();
 }
 
+/// The clock cap is the size guard: a well-formed clock over it is refused, one under it reads.
+#[test]
+fn a_clock_over_the_cap_is_refused_before_the_parse() {
+    use tables::records::{MAX_CLOCK_BYTES, parse_clock};
+    let clock = |devices: usize| {
+        let body: Vec<String> = (0..devices)
+            .map(|n| format!("\"device-{n:08}\":1"))
+            .collect();
+        format!("{{{}}}", body.join(","))
+    };
+    let small = clock(10);
+    assert!(parse_clock(Some(&small), "t", 1).unwrap().is_some());
+    let big = clock(MAX_CLOCK_BYTES / 16);
+    assert!(big.len() > MAX_CLOCK_BYTES);
+    assert!(matches!(
+        parse_clock(Some(&big), "t", 1),
+        Err(ImportError::MalformedRow {
+            what: "clock is over 64 KiB",
+            ..
+        })
+    ));
+}
+
+/// A clock nested past serde_json's recursion limit is a typed error on a 2 MiB stack, never an
+/// overflow.
+#[test]
+fn a_deeply_nested_clock_fails_closed_on_a_small_stack() {
+    let outcome = memry_test_kit::on_small_stack(|| {
+        let depth = 30_000;
+        let text = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
+        tables::records::parse_clock(Some(&text), "t", 1).map(|_| ())
+    });
+    assert!(matches!(
+        outcome,
+        Err(ImportError::MalformedRow {
+            what: "clock is not JSON",
+            ..
+        })
+    ));
+}
+
 proptest! {
     #![proptest_config(memry_test_kit::proptest_config(32))]
+
+    /// Any clock text reads as no clock, a JSON value equal to its parse, or a typed error.
+    #[test]
+    fn any_clock_text_reads_or_fails_typed(text in "(?s).{0,64}", json in "[\\[\\]{}\"a:1,0-9 nul]{0,32}") {
+        for text in [text, json] {
+            match tables::records::parse_clock(Some(&text), "t", 1) {
+                Ok(Some(value)) => prop_assert_eq!(serde_json::from_str::<serde_json::Value>(&text).ok(), Some(value)),
+                Ok(None) => prop_assert_eq!(text.trim(), "null"),
+                Err(error) => {
+                    let typed = matches!(error, ImportError::MalformedRow { .. });
+                    prop_assert!(typed);
+                }
+            }
+        }
+    }
 
     /// The `sqlite_master` text the preflight reads is the source's: any string, multibyte
     /// included, is classified without a panic.
@@ -182,18 +238,27 @@ proptest! {
         let _ = preflight::virtual_module(&sql);
         let _ = preflight::virtual_module(&format!("create virtual table x using {tail}{sql}"));
     }
+}
 
-    /// Any UTF-8 id comes back unchanged through copy, WAL replay and backup.
-    #[test]
-    fn any_text_id_round_trips(ids in prop::collection::btree_set("\\PC{1,24}", 1..8)) {
-        let dir = tempfile::tempdir().unwrap();
-        let pair = electron_db::create_pair(&dir.path().join(".memry"));
-        let conn = rusqlite::Connection::open(&pair.data).unwrap();
-        for id in &ids {
-            electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+/// Any UTF-8 id comes back unchanged through copy, WAL replay and backup. The Electron pair is
+/// built once, not per case: replaying its migrations is 580 commits, one fsync each, which took
+/// 3 to 9 s per case on the Windows runners and put 32 cases at the 300 s test limit.
+#[test]
+fn any_text_id_round_trips() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    proptest!(
+        memry_test_kit::proptest_config(32),
+        |(ids in prop::collection::btree_set("\\PC{1,24}", 1..8))| {
+            let conn = rusqlite::Connection::open(&pair.data).unwrap();
+            conn.execute("DELETE FROM note_metadata", []).unwrap();
+            for id in &ids {
+                electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+            }
+            drop(conn);
+            let staging = tempfile::tempdir_in(dir.path()).unwrap();
+            let read = ids_through_the_copy(&pair, staging.path());
+            prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
         }
-        drop(conn);
-        let read = ids_through_the_copy(&pair, &dir.path().join("staging"));
-        prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
-    }
+    );
 }

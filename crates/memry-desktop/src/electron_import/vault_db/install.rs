@@ -71,6 +71,22 @@ fn restore_index(paths: &Paths, aside: &Path) {
     sync_dir(&paths.core);
 }
 
+/// A run cut off between the two renames left the imported `index.db` in `core/` and the one it
+/// replaced in staging, and the vault then opened natively (`NativeFirst`): the imported index
+/// leaves `core/` with its sidecars and the replaced one goes back, before staging is removed.
+pub(super) fn restore_replaced_index(paths: &Paths) -> Result<(), ImportError> {
+    let aside = paths.staging.join(REPLACED_INDEX_DIR);
+    if !aside.join(INDEX_FILE).exists() {
+        return Ok(());
+    }
+    let imported = paths.staging.join("imported-index");
+    fs::create_dir_all(&imported).map_err(|e| ImportError::io(&imported, e))?;
+    move_index(&paths.core, &imported)?;
+    move_index(&aside, &paths.core)?;
+    sync_dir(&paths.core);
+    Ok(())
+}
+
 fn rename(from: &Path, to: &Path) -> Result<(), ImportError> {
     rename_no_replace(from, to).map_err(|e| match e.kind() {
         io::ErrorKind::AlreadyExists => ImportError::CoreFileExists(to.to_owned()),
@@ -118,8 +134,9 @@ impl StagedVault {
         crash::point("install:index-renamed");
 
         if let Err(error) = rename(&paths.staging.join(DATA_FILE), &data) {
-            // A native open raced the renames: the staged index leaves `core/` again.
-            match rename_no_replace(&index, &paths.staging.join(INDEX_FILE)) {
+            // A native open raced the renames: the staged index leaves `core/` again, with any
+            // WAL the native open wrote beside it, so none is replayed into the restored index.
+            match move_index(&paths.core, &paths.staging) {
                 Ok(()) => restore_index(&paths, &aside),
                 Err(e) => tracing::warn!(%e, "could not take the staged index.db back"),
             }
