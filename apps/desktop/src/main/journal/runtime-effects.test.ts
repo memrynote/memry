@@ -16,11 +16,14 @@ import { enqueueJournalDelete } from './runtime-effects'
 describe('enqueueJournalDelete', () => {
   it('raises the delete with the day doc loaded', async () => {
     const withDocLoaded = vi.fn(async (_id: string, enqueue: () => void) => enqueue())
-    vi.mocked(getCrdtProvider).mockReturnValue({ withDocLoaded } as never)
+    const purge = vi.fn(async () => undefined)
+    vi.mocked(getCrdtProvider).mockReturnValue({ withDocLoaded, purge } as never)
 
     await enqueueJournalDelete('j2026-10-09', '2026-10-09')
 
     expect(withDocLoaded).toHaveBeenCalledWith('j2026-10-09', expect.any(Function))
     expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('journal', 'j2026-10-09', '2026-10-09')
+    // #5353: a day written again after the delete starts a new body.
+    expect(purge).toHaveBeenCalledWith('j2026-10-09')
   })
 })
