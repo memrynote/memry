@@ -36,7 +36,8 @@ beforeEach(() => {
       providerResetHandlers.push(handler)
       return () => {}
     },
-    onCrdtProviderReady: () => () => {}
+    onCrdtProviderReady: () => () => {},
+    onCrdtDocLoaded: () => () => {}
   }
 })
 

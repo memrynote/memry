@@ -6,7 +6,7 @@ import { ready as sodiumReady } from 'libsodium-wrappers-sumo'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type { SyncContext } from './sync-context'
 import type { CrdtSnapshotMeta } from '../http-client'
 import type * as RetryModule from '@memry/sync-client/retry'
@@ -28,7 +28,10 @@ const h = vi.hoisted(() => ({
   persistence: null as unknown,
   updatesDelayMs: 0,
   versionsThrow: false,
-  canonical: null as null | Record<string, unknown>
+  canonical: null as null | Record<string, unknown>,
+  /** Signer devices whose key does not resolve. */
+  unresolvable: new Set<string>(),
+  broadcasts: [] as Array<{ channel: string; payload: unknown }>
 }))
 
 // A real, empty folder: the outside-vault check resolves every read against it.
@@ -40,6 +43,12 @@ vi.mock('electron', () => ({
     fromId: (id: number) =>
       id === EDITOR_WINDOW ? { isDestroyed: () => false, webContents: { send: () => {} } } : null,
     getAllWindows: () => []
+  }
+}))
+
+vi.mock('../../lib/window-broadcast', () => ({
+  broadcastToAllWindows: (channel: string, payload: unknown) => {
+    h.broadcasts.push({ channel, payload })
   }
 }))
 
@@ -186,6 +195,8 @@ import { NoteBodyOutbox } from '../note-body-outbox'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createTestDataDb } from '@tests/utils/test-db'
+import { crdtBodyDebtStore } from './crdt-body-debts'
+import { STUCK_BODY_PULL_FAILURES } from './crdt-pull-ledger'
 import { hasPendingWriteback } from '../crdt-writeback'
 import { feedExternalEditToCrdt } from '../crdt-external-feed'
 import { owesFileBody } from '../crdt-owed-file-body'
@@ -249,6 +260,8 @@ beforeEach(() => {
   h.updatesDelayMs = 0
   h.versionsThrow = false
   h.canonical = null
+  h.unresolvable.clear()
+  h.broadcasts = []
 })
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
@@ -462,7 +475,7 @@ describe('CrdtProvider with no store (#2536)', () => {
    * there was no snapshot. A full-state row is pushed when the test flushes
    * it, through the reader the runtime's outbox uses.
    */
-  async function startRuntime(options?: { store: boolean }): Promise<{
+  async function startRuntime(options?: { store?: boolean; durableDebts?: boolean }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
     pushUpdate: (state: Uint8Array) => void
@@ -477,7 +490,12 @@ describe('CrdtProvider with no store (#2536)', () => {
       },
       abortController: new AbortController()
     } as unknown as SyncContext
-    const coordinator = new CrdtSyncCoordinator(ctx, async () => new Uint8Array(32))
+    const coordinator = new CrdtSyncCoordinator(
+      ctx,
+      async (deviceId) => (h.unresolvable.has(deviceId) ? null : new Uint8Array(32)),
+      () => true,
+      options?.durableDebts ? crdtBodyDebtStore(createTestDataDb().db as never) : undefined
+    )
 
     const pushUpdate = (state: Uint8Array): void => {
       const server = h.server!
@@ -522,6 +540,10 @@ describe('CrdtProvider with no store (#2536)', () => {
     }
     await provider.init(outbox, pushSnapshot)
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
+    provider.setRemoteBodyQuery({
+      hasUnmerged: (id) => coordinator.hasUnmergedRemoteState(id),
+      isStuck: (id) => coordinator.isBodyPullStuck(id)
+    })
     // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
     return { provider, coordinator, pushUpdate, flushFullStates }
@@ -576,9 +598,9 @@ describe('CrdtProvider with no store (#2536)', () => {
     expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([typed, typed])
   })
 
-  it('an editor open seeds from the vault file when the merge does not finish', async () => {
+  it('an editor open waits for the server body when the merge does not finish (#5290)', async () => {
     await serveNoteWithPeerEdit()
-    const { provider } = await startRuntime()
+    const { provider, coordinator } = await startRuntime()
 
     const doc = await provider.openForEditor(
       NOTE,
@@ -586,8 +608,106 @@ describe('CrdtProvider with no store (#2536)', () => {
       () => new Promise<boolean>(() => {}),
       10
     )
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+    expect(provider.isAwaitingMerge(NOTE)).toBe(true)
 
-    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(ORIGINAL)
+    await coordinator.pullCrdtForNotes([NOTE])
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+      EXPECTED_BODY
+    )
+    expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+    expect(h.broadcasts).toContainEqual({
+      channel: CRDT_EVENTS.DOC_LOADED,
+      payload: { noteId: NOTE }
+    })
+  })
+
+  describe('a server body the pull could not merge (#5290)', () => {
+    it('an editor open waits instead of seeding, and shows the body once it merges', async () => {
+      // #given a server body signed by a device this one cannot resolve yet
+      await serveNoteWithPeerEdit()
+      h.unresolvable.add('device-b')
+      const { provider, coordinator } = await startRuntime()
+
+      // #when the editor opens the note
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+
+      // #then it opens empty and waiting, with no seed beside the server body
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+      expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+
+      // #when the signer resolves and the owed pull merges
+      h.unresolvable.clear()
+      await coordinator.pullCrdtForNote(NOTE)
+
+      // #then the editor shows the server body once
+      const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      expect(countTexts(fragment, 'Pack for the')).toBe(1)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EXPECTED_BODY
+      )
+      expect(h.broadcasts).toContainEqual({
+        channel: CRDT_EVENTS.DOC_LOADED,
+        payload: { noteId: NOTE }
+      })
+    })
+
+    it.each(['single', 'batch'] as const)(
+      'an editor stops waiting and opens the file once the %s pulls are stuck',
+      async (pullPath) => {
+        // #given a signer that never resolves
+        await serveNoteWithPeerEdit()
+        h.unresolvable.add('device-b')
+        const { provider, coordinator } = await startRuntime({ durableDebts: true })
+        const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+          coordinator.pullCrdtForNote(id)
+        )
+        expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+
+        // #when the owed pulls keep meeting it
+        for (let pass = 1; pass < STUCK_BODY_PULL_FAILURES; pass++) {
+          if (pullPath === 'single') await coordinator.pullCrdtForNote(NOTE)
+          else await coordinator.pullCrdtForNotes([NOTE])
+        }
+
+        // #then the editor opens the file and stops waiting
+        expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+        expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+          ORIGINAL
+        )
+        expect(h.broadcasts).toContainEqual({
+          channel: CRDT_EVENTS.DOC_LOADED,
+          payload: { noteId: NOTE }
+        })
+
+        // #and a later open of the stuck note seeds at once
+        await provider.close(NOTE, EDITOR_WINDOW)
+        const reopened = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+          coordinator.pullCrdtForNote(id)
+        )
+        expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+        expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+          ORIGINAL
+        )
+      }
+    )
+
+    it('a seeded push of the closed note pushes no seed beside the server body', async () => {
+      const peer = await serveNoteWithPeerEdit()
+      h.unresolvable.add('device-b')
+      const { provider } = await startRuntime()
+
+      expect(await provider.pushSnapshotForNote(NOTE)).toBe(false)
+
+      h.unresolvable.clear()
+      expect([await bodyAfterPull(), await bodyAfterPull(peer)]).toEqual([
+        EXPECTED_BODY,
+        EXPECTED_BODY
+      ])
+    })
   })
 
   it('an editor open of a note the server has never seen seeds from the vault file', async () => {

@@ -188,6 +188,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotDeferral: vi.fn(),
       setOweRemoteMerge: vi.fn(),
       setRemoteMerge: vi.fn(),
+      setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
       seedExistingDocs: vi.fn(),
       // `open` is what the issue is about, so it is a plain spy on a fake doc

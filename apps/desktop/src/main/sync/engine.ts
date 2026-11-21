@@ -497,6 +497,11 @@ export class SyncEngine extends SyncEventEmitter {
    * `CrdtSyncCoordinator.hasUnmergedRemoteState`. A debt a previous session left
    * is answered from `crdt_body_debts`, which `start()` hydrates (#2297).
    */
+  /** See `CrdtPullLedger.isBodyPullStuck`. */
+  isCrdtBodyPullStuck(noteId: string): boolean {
+    return this.crdtSync.isBodyPullStuck(noteId)
+  }
+
   hasUnmergedRemoteCrdtState(noteId: string): boolean {
     if (this.crdtSync.hasUnmergedRemoteState(noteId)) return true
     const woken = this.wakeCursorByNote.get(noteId)

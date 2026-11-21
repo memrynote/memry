@@ -11,6 +11,11 @@ export const CRDT_CHANNELS = {
 
 export const CRDT_EVENTS = {
   STATE_CHANGED: 'crdt:state-changed',
+  /**
+   * A doc opened with `awaitingRemote` stopped waiting for the server body: a
+   * pull merged it, or the note was seeded from its file (#5290). Payload:
+   * `{ noteId: string }`.
+   */
   DOC_LOADED: 'crdt:doc-loaded',
   DOC_ERROR: 'crdt:doc-error',
   /**
@@ -110,6 +115,12 @@ export interface CrdtOpenDocInput {
 export interface CrdtOpenDocResult {
   success: boolean
   error?: string
+  /**
+   * The doc opened empty and waits for the server body (no CRDT store, #5290).
+   * The editor holds its loading state until `CRDT_EVENTS.DOC_LOADED` names
+   * the note. Older mains never set it.
+   */
+  awaitingRemote?: boolean
 }
 
 export interface CrdtCloseDocInput {

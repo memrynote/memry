@@ -178,7 +178,7 @@ export interface MainIpcInvokeHandlers {
   "crdt:apply-update": (...args: [unknown]) => Awaited<Promise<void>>
   "crdt:close-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; }>>
   "crdt:get-health": (...args: []) => Awaited<Promise<CrdtHealth>>
-  "crdt:open-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
+  "crdt:open-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; error: string; awaitingRemote?: undefined; } | { success: boolean; awaitingRemote: boolean; error?: undefined; } | { success: boolean; error?: undefined; awaitingRemote?: undefined; }>>
   "crdt:sync-step-1": (...args: [{ noteId: string; stateVector: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<CrdtSyncStep1Result | null>>
   "crdt:sync-step-2": (...args: [{ noteId: string; diff: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<void>>
   "crypto:decrypt-item": (...args: [{ itemId: string; type: "filter" | "journal" | "inbox" | "note" | "task" | "project" | "canvas" | "template" | "calendar_event" | "bookmark" | "reminder" | "settings" | "tag_definition" | "tag_category" | "property_definition" | "folder_config" | "custom_icon" | "calendar_source" | "calendar_binding" | "calendar_external_event" | "agent_conversation" | "agent_message" | "canvas_folder" | "task_activity" | "home_page" | "vault_lock" | "sticky_draft"; encryptedKey: string; keyNonce: string; encryptedData: string; dataNonce: string; signature: string; operation?: "create" | "update" | "delete" | undefined; deletedAt?: number | undefined; metadata?: Record<string, unknown> | undefined; }]) => Awaited<Promise<DecryptItemResult>>

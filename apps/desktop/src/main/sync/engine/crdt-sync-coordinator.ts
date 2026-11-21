@@ -708,6 +708,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
             serverHeld,
             docOpen: postVector != null
           })
+          if (postVector && this.isBodyPullStuck(noteId)) {
+            await crdtProvider.releaseStuckEditorDoc(noteId)
+          }
         }
       } else if (!sawUnmerged && crdtProvider.hasPersistence() && owesFileBody(noteId)) {
         await crdtProvider.takeFileAfterMerge(noteId, doc)
@@ -1393,6 +1396,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         // single-note path. The drop owes the note, and its retry merges.
         if (isEmptyStateVector(postVector) && (serverHeld.has(noteId) || sawUnmerged.has(noteId))) {
           log.debug('applyCrdtBatch: no markdown seed, the doc holds no server body', { noteId })
+          if (this.isBodyPullStuck(noteId)) await crdtProvider.releaseStuckEditorDoc(noteId)
         } else if (isEmptyStateVector(postVector)) {
           await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {

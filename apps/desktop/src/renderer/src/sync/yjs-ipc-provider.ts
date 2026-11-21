@@ -34,6 +34,8 @@ export class YjsIpcProvider extends Observable<string> {
   private ipcCleanup: (() => void) | null = null
   private resetCleanup: (() => void) | null = null
   private readyCleanup: (() => void) | null = null
+  /** Ends `openDoc`'s wait for the server body when this provider is destroyed. */
+  private endLoadWait: (() => void) | null = null
   /**
    * Main dropped the provider this binding pointed at, and no replacement has
    * served us since. Set by the reset event, cleared only by a handshake that
@@ -155,6 +157,7 @@ export class YjsIpcProvider extends Observable<string> {
 
   destroy(): void {
     this.destroyed = true
+    this.endLoadWait?.()
     this.disconnect()
     // oxlint-disable-next-line typescript/no-deprecated -- same lib0 Observable base class as above
     super.destroy()
@@ -225,7 +228,21 @@ export class YjsIpcProvider extends Observable<string> {
     }
   }
 
+  /**
+   * Resolves once main's doc is ready to bind. A doc main opened empty to wait
+   * for the server body (`awaitingRemote`, #5290) is not: the binding waits
+   * for `crdt:doc-loaded`, so the editor shows its loading state instead of an
+   * empty note. The listener is attached before the open, so an event sent
+   * before the reply is not missed.
+   */
   private async openDoc(): Promise<void> {
+    let loaded = false
+    let onLoaded: (() => void) | null = null
+    const stopListening = window.api.onCrdtDocLoaded(({ noteId }) => {
+      if (noteId !== this.noteId) return
+      loaded = true
+      onLoaded?.()
+    })
     try {
       const result = await window.api.syncCrdt.openDoc(
         this.vaultPath === null
@@ -235,9 +252,19 @@ export class YjsIpcProvider extends Observable<string> {
       if (!result.success) {
         throw new Error(result.error ?? 'Failed to open CRDT doc')
       }
+      if (result.awaitingRemote && !loaded && !this.destroyed) {
+        log.info('Waiting for the server body before binding', { noteId: this.noteId })
+        await new Promise<void>((resolve) => {
+          onLoaded = resolve
+          this.endLoadWait = resolve
+        })
+      }
     } catch (err) {
       log.error('Failed to open doc', { noteId: this.noteId, error: err })
       throw err
+    } finally {
+      this.endLoadWait = null
+      stopListening()
     }
   }
 

@@ -15,6 +15,9 @@ import type { CrdtBodyDebtReason, CrdtBodyDebtStore } from './crdt-body-debts'
  */
 export type PassFailures = Set<string>
 
+/** See `CrdtPullLedger.isBodyPullStuck`. */
+export const STUCK_BODY_PULL_FAILURES = 3
+
 /**
  * A real failed body pull, raised by the note's own request: a server answer
  * other than a rate limit or an expired session, or a payload that would not
@@ -360,6 +363,16 @@ export class CrdtPullLedger {
    */
   hasUnmergedRemoteState(noteId: string): boolean {
     return this.unmergedRemoteNotes.has(noteId) || this.debts.isWithheld(noteId)
+  }
+
+  /**
+   * The note's pulls failed `STUCK_BODY_PULL_FAILURES` times in a row on an
+   * answer from the server (an unresolvable signer, a struct that never
+   * arrives), so merging may never finish. An editor waiting on its body then
+   * opens from the file (#5290). Offline and rate-limited passes count nothing.
+   */
+  isBodyPullStuck(noteId: string): boolean {
+    return this.debts.failures(noteId) >= STUCK_BODY_PULL_FAILURES
   }
 
   /**

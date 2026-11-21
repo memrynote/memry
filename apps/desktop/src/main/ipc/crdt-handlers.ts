@@ -119,14 +119,18 @@ export function registerCrdtIpcHandlers(): void {
       return { success: false, error: validation.error }
     }
 
-    // With no store, merge the server body before any seed (#2544).
+    // With no store, merge the server body before any seed (#2544). A doc
+    // still waiting for it opens empty, and the editor shows its loading state
+    // until crdt:doc-loaded (#5290).
     const engine = getSyncEngine()
     await provider.openForEditor(
       noteId,
       windowId,
       engine ? (id) => engine.mergeRemoteCrdtForNote(id) : null
     )
-    return { success: true }
+    return provider.isAwaitingMerge(noteId)
+      ? { success: true, awaitingRemote: true }
+      : { success: true }
   })
 
   ipcMain.handle(CRDT_CHANNELS.CLOSE_DOC, async (event, rawInput: unknown) => {

@@ -62,6 +62,17 @@ function broadcastProviderReady(data?: ReadyPayload): void {
   for (const callback of Array.from(readySubscribers)) callback(data)
 }
 
+/** Main's signal that a doc opened `awaitingRemote` holds its body (#5290). */
+const loadedSubscribers = new Set<(data: { noteId: string }) => void>()
+const mockOnCrdtDocLoaded = vi.fn((callback: (data: { noteId: string }) => void) => {
+  loadedSubscribers.add(callback)
+  return () => loadedSubscribers.delete(callback)
+})
+
+function broadcastDocLoaded(noteId: string): void {
+  for (const callback of Array.from(loadedSubscribers)) callback({ noteId })
+}
+
 /**
  * What main actually returns while the provider that owned this doc is being
  * torn down and no replacement has been initialized — `crdt-handlers.ts` gates
@@ -98,7 +109,8 @@ beforeEach(() => {
       },
       onCrdtStateChanged: mockOnCrdtStateChanged,
       onCrdtProviderReset: mockOnCrdtProviderReset,
-      onCrdtProviderReady: mockOnCrdtProviderReady
+      onCrdtProviderReady: mockOnCrdtProviderReady,
+      onCrdtDocLoaded: mockOnCrdtDocLoaded
     }
   }
 })
@@ -108,6 +120,7 @@ afterEach(() => {
   noteSubscribers.clear()
   resetSubscribers.clear()
   readySubscribers.clear()
+  loadedSubscribers.clear()
 })
 
 vi.mock('@/lib/logger', () => ({
@@ -126,6 +139,60 @@ vi.mock('@/lib/logger', () => ({
 import { YjsIpcProvider } from './yjs-ipc-provider'
 
 describe('YjsIpcProvider.connect', () => {
+  describe('a doc main opened waiting for the server body (#5290)', () => {
+    it('settles only once main reports the doc loaded', async () => {
+      mockOpenDoc.mockResolvedValueOnce({ success: true, awaitingRemote: true })
+      const doc = new Y.Doc()
+      const provider = new YjsIpcProvider({ noteId: 'note-waiting', doc })
+      let connected = false
+      const connecting = provider.connect().then(() => (connected = true))
+
+      await flushMicrotasks()
+      broadcastDocLoaded('another-note')
+      await flushMicrotasks()
+      expect(connected).toBe(false)
+      expect(mockSyncStep1).not.toHaveBeenCalled()
+
+      broadcastDocLoaded('note-waiting')
+      await connecting
+      expect(mockSyncStep1).toHaveBeenCalledTimes(1)
+      expect(provider.isSynced).toBe(true)
+      expect(loadedSubscribers.size).toBe(0)
+
+      provider.destroy()
+      doc.destroy()
+    })
+
+    it('does not wait for a load main reported before its open reply', async () => {
+      mockOpenDoc.mockImplementationOnce(async () => {
+        broadcastDocLoaded('note-early')
+        return { success: true, awaitingRemote: true }
+      })
+      const doc = new Y.Doc()
+      const provider = new YjsIpcProvider({ noteId: 'note-early', doc })
+
+      await provider.connect()
+      expect(provider.isSynced).toBe(true)
+
+      provider.destroy()
+      doc.destroy()
+    })
+
+    it('stops waiting when the provider is destroyed', async () => {
+      mockOpenDoc.mockResolvedValueOnce({ success: true, awaitingRemote: true })
+      const doc = new Y.Doc()
+      const provider = new YjsIpcProvider({ noteId: 'note-closed', doc })
+      const connecting = provider.connect()
+      await flushMicrotasks()
+
+      provider.destroy()
+      await connecting
+      expect(mockSyncStep1).not.toHaveBeenCalled()
+      expect(loadedSubscribers.size).toBe(0)
+      doc.destroy()
+    })
+  })
+
   it('rejects when openDoc returns an unsuccessful result', async () => {
     mockOpenDoc.mockResolvedValueOnce({ success: false, error: 'Note not found' })
     const doc = new Y.Doc()
