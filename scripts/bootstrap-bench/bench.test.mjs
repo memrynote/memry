@@ -306,6 +306,23 @@ describe('proxy', () => {
           ['r2', '/r2/p1?sig=a', 10]
         ]
       )
+      const absolute = await new Promise((resolve, reject) => {
+        const req = http.request(
+          {
+            host: '127.0.0.1',
+            port: new URL(proxy.url).port,
+            path: 'http://203.0.113.1/sync/packs?limit=50'
+          },
+          (res) => {
+            const chunks = []
+            res.on('data', (c) => chunks.push(c))
+            res.on('end', () => resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))))
+          }
+        )
+        req.on('error', reject)
+        req.end()
+      })
+      assert.ok(absolute.packs[0].url.startsWith(`${proxy.url}/__r2/`))
     } finally {
       await proxy.close()
       upstream.close()

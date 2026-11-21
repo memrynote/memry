@@ -95,6 +95,15 @@ export async function startProxy({ upstream, port = 0 }) {
   const upstreamUrl = new URL(upstream)
   const requests = []
   const routes = []
+  // Only the path and query of a worker request are the client's: an absolute
+  // request target never moves the proxy off the upstream origin.
+  const onUpstream = (requested) => {
+    const { pathname, search } = new URL(requested, 'http://upstream.invalid')
+    const target = new URL(upstreamUrl.origin)
+    target.pathname = pathname
+    target.search = search
+    return target
+  }
   const route = (url) => {
     routes.push(new URL(url))
     return `http://127.0.0.1:${address.port}${R2_PREFIX}${routes.length - 1}`
@@ -103,9 +112,7 @@ export async function startProxy({ upstream, port = 0 }) {
   const server = http.createServer((req, res) => {
     const startMs = Date.now()
     const isR2 = req.url.startsWith(R2_PREFIX)
-    const target = isR2
-      ? routes[Number(req.url.slice(R2_PREFIX.length))]
-      : new URL(req.url, upstreamUrl)
+    const target = isR2 ? routes[Number(req.url.slice(R2_PREFIX.length))] : onUpstream(req.url)
     if (!target) {
       res.writeHead(404)
       res.end()
