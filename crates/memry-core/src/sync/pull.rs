@@ -28,9 +28,10 @@
 //! - **A `/sync/pull` body that is not a pull envelope refuses the run and
 //!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
 //!   item: the page must still be there to re-pull once the server is fixed.
-//! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
-//!   overrides the declared `operation`, and an id in `deleted` with no ref row
-//!   has no type on the wire at all (§5.12.1).
+//! - **A tombstone's body is never applied** (§5.12), but its envelope opens
+//!   and its signature verifies like any record's before it deletes anything
+//!   (§5.14). A present `deletedAt` overrides the declared `operation`, and an
+//!   id in `deleted` with no ref row has no type on the wire at all (§5.12.1).
 //!
 //! The loop never parses a payload into a typed struct: it hands the decrypted
 //! bytes to [`super::apply::apply_page`], which chooses the item's merge

@@ -25,7 +25,7 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{Document, DocumentRegistry};
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -58,13 +58,19 @@ fn storage_failure(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-/// §5.12, §13.7.2: a delete is never decoded, so a cipher that opens nothing
-/// is enough to drive the whole path — and turns a delete that *did* reach a
-/// parser into a failure rather than a silent pass.
-struct NeverOpens;
+/// §5.12, §13.7.2: a delete's body is never applied, so a cipher that opens
+/// a delete to an empty payload and nothing else is enough to drive the whole
+/// path — and turns a delete that *did* reach a parser into a failure rather
+/// than a silent pass.
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -103,7 +109,7 @@ async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.

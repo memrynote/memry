@@ -899,6 +899,23 @@ every item sharing a chunk with one bad row.
 - An item that fails its schema (the envelope schema, or the handler's payload
   schema) is recorded, not dropped: the cursor moves on, and the client
   re-fetches it by id after an app update (#2285).
+- **A pulled delete verifies before it deletes** (#5334). The server is
+  untrusted, so an item whose `deletedAt` is set, or whose `operation` is
+  `delete`, MUST open like any other item, its signature verified under the
+  key the device directory holds for its `signerDeviceId`, before it is
+  applied. A delete with no key for its signer, a signature that does not
+  verify, or a payload that does not decrypt is **one corrupt item** under
+  this section's rules: it deletes nothing, records no tombstone clock, and
+  never costs its page-mates; a signature that does not verify also counts
+  toward the quarantine. There is no unsigned delete to accept: the pull item
+  schema requires `signature` (`packages/contracts/src/sync-api.ts:781`,
+  `:789`). Desktop: every pulled item, a delete included, goes through
+  `decryptPullBatch` (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:823`),
+  which fails an unknown signer (`apps/desktop/src/main/sync/sync-crypto-batch.ts:243`)
+  and a bad signature (`apps/desktop/src/main/sync/decrypt.ts:79`, `:87`,
+  quarantined at `pull-coordinator.ts:884`); only what it decrypted applies
+  (`pull-coordinator.ts:908`). Rust core: `crates/memry-core/src/sync/pull_decode.rs:51`
+  opens the item before `:58` reads it as a delete.
 - `purgedTombstones` and `blobMissing` entries are validated one by one, like
   items: a malformed entry is refused on its own and never costs its siblings or
   the page (#2302).

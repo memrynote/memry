@@ -18,7 +18,7 @@ use memry_core::crdt::update_log;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::convert::apply::CriticMarks;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
@@ -239,11 +239,16 @@ pub(crate) fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
     ))
 }
 
-/// A delete that opens no payload: the cipher is never asked (§5.12).
-struct NeverOpens;
+/// A delete opens to an empty payload (§5.14); its body is never applied (§5.12).
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -271,7 +276,7 @@ async fn pull_the_delete(f: &Fixture, day: &str, typed: bool) {
         http(transport),
         f.vault.db_handle(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     .with_clock_device("device-core")
     .pull_page()
