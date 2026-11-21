@@ -151,7 +151,7 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
     c.env.DB,
     userId,
     vaultId,
-    { limit: MAX_PACK_PAGE_LIMIT },
+    { limit: MAX_PACK_PAGE_LIMIT, coverageDisabled: c.env.PACK_COVERAGE_DISABLED },
     resolveR2PresignConfig(c.env)
   )
   // After the response: the per-bootstrap coverage log line, and compaction

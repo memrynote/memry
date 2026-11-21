@@ -719,7 +719,7 @@ const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
     c.env.DB,
     userId,
     vaultId,
-    { cursor: cursorParam ?? null, limit },
+    { cursor: cursorParam ?? null, limit, coverageDisabled: c.env.PACK_COVERAGE_DISABLED },
     resolveR2PresignConfig(c.env)
   )
   return c.json(result)
