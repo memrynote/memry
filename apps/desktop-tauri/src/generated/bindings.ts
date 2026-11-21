@@ -948,6 +948,8 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**  `inbox:retry-transcription`: transcribes a voice memo again and resolves when it is done. */
+	inboxRetryTranscription: (itemId: string) => __TAURI_INVOKE<TranscriptionResult>("inbox_retry_transcription", { itemId }),
 	/**
 	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
 	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
@@ -4417,6 +4419,13 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**  `TranscriptionResult`. */
+export type TranscriptionResult = {
+	success: boolean,
+	transcription?: string | null,
+	error?: string | null,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */

@@ -24,6 +24,7 @@ pub const COMMANDS: &[&str] = &[
     "custom_icons_add",
     "drop_stage_chunk",
     "home_pages_set_cover_upload",
+    "inbox_transcribe_audio",
     "notes_upload_attachment",
     "notes_upload_attachment_chunk",
 ];
@@ -40,6 +41,7 @@ pub fn handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'stat
         crate::commands::custom_icons::custom_icons_add,
         crate::commands::drop_stage::drop_stage_chunk,
         crate::commands::home_pages::home_pages_set_cover_upload,
+        crate::commands::voice::inbox_transcribe_audio,
         crate::commands::attachments::notes_upload_attachment,
         crate::commands::attachments::notes_upload_attachment_chunk
     ]

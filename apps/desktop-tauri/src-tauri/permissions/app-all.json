@@ -92,6 +92,8 @@
           "home_pages_set_cover_framing",
           "home_pages_set_cover_upload",
           "home_pages_update",
+          "inbox_retry_transcription",
+          "inbox_transcribe_audio",
           "ios_beta_join",
           "journal_create_entry",
           "journal_cross_into_notes",
