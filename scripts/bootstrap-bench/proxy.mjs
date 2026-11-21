@@ -11,8 +11,10 @@
 // The benchmark only reads the vault: the proxy answers every write under
 // /sync/ with 403 itself and never forwards it. It refuses a path with a `%`
 // too, since the Worker decodes `/%73ync/push` to `/sync/push`, and no shell
-// encodes a path. `/__r2/` takes only GET and HEAD, to R2 or the line probe. It keeps the type and
-// operation of each refused push item, and the `hasMore` of each feed page.
+// encodes a path, and a path starting with `//`. `/__r2/` takes only GET and
+// HEAD, to R2 or the line probe; the upgrade only `GET /sync/ws`. It keeps
+// the type and operation of each refused push item, and the `hasMore` of
+// each feed page.
 //
 // What it costs: the shell speaks HTTP/1.1 to localhost, and the proxy keeps
 // its own pooled TLS connections upstream. Electron's net.fetch opens at most
@@ -62,20 +64,22 @@ export function assertAllowedUpstream(upstream) {
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost'])
 const LINE_PROBE_HOST = 'speed.cloudflare.com'
+const SOCKET_PATH = '/sync/ws'
 
 /**
- * Whether `/__r2/` may fetch `url`: R2's S3 endpoint and the line probe, or
- * the loopback upstream itself when it runs locally.
+ * Whether `/__r2/` may fetch `url`: R2's S3 endpoint and the line probe on
+ * https's default port, or the loopback upstream itself when it runs locally.
  */
 export function isAllowedR2(upstream, url) {
-  const { hostname } = new URL(url)
-  if (hostname.endsWith('.r2.cloudflarestorage.com') || hostname === LINE_PROBE_HOST) return true
-  const upstreamHost = new URL(upstream).hostname
-  return LOOPBACK.has(upstreamHost) && hostname === upstreamHost
+  const { protocol, host, hostname } = new URL(url)
+  const remote = hostname.endsWith('.r2.cloudflarestorage.com') || hostname === LINE_PROBE_HOST
+  if (remote) return protocol === 'https:' && host === hostname
+  const upstreamUrl = new URL(upstream)
+  return LOOPBACK.has(upstreamUrl.hostname) && host === upstreamUrl.host
 }
 
 export function isWriteRoute(method, pathname) {
-  if (pathname.includes('%')) return true
+  if (pathname.includes('%') || pathname.startsWith('//')) return true
   if (!pathname.startsWith('/sync/') || method === 'GET' || method === 'HEAD') return false
   return !(method === 'POST' && READ_POSTS.has(pathname))
 }
@@ -186,7 +190,7 @@ export async function startProxy({ upstream, port = 0 }) {
 
     const refuse = isR2
       ? !(req.method === 'GET' || req.method === 'HEAD') || !isAllowedR2(upstream, target.href)
-      : isWriteRoute(req.method, target.pathname)
+      : req.url.startsWith('//') || isWriteRoute(req.method, target.pathname)
     if (refuse) {
       const chunks = []
       req.on('data', (chunk) => chunks.push(chunk))
@@ -260,6 +264,24 @@ export async function startProxy({ upstream, port = 0 }) {
 
   server.on('upgrade', (req, socket, head) => {
     const startMs = Date.now()
+    const target = new URL(req.url, upstreamUrl)
+    const path = target.pathname + target.search
+    if (req.method !== 'GET' || req.url.startsWith('//') || target.pathname !== SOCKET_PATH) {
+      requests.push({
+        startMs,
+        endMs: startMs,
+        method: req.method,
+        path,
+        host: 'worker',
+        status: 403,
+        reqBytes: 0,
+        resBytes: 0,
+        refused: true,
+        refusedItems: { other: 1 }
+      })
+      socket.end('HTTP/1.1 403 Forbidden\r\nconnection: close\r\ncontent-length: 0\r\n\r\n')
+      return
+    }
     const secure = upstreamUrl.protocol === 'https:'
     const upstreamSocket = secure
       ? tls.connect(Number(upstreamUrl.port || 443), upstreamUrl.hostname, {
@@ -267,7 +289,7 @@ export async function startProxy({ upstream, port = 0 }) {
         })
       : net.connect(Number(upstreamUrl.port || 80), upstreamUrl.hostname)
     upstreamSocket.on(secure ? 'secureConnect' : 'connect', () => {
-      const lines = [`${req.method} ${req.url} HTTP/1.1`, `host: ${upstreamUrl.host}`]
+      const lines = [`GET ${path} HTTP/1.1`, `host: ${upstreamUrl.host}`]
       for (let i = 0; i < req.rawHeaders.length; i += 2) {
         if (req.rawHeaders[i].toLowerCase() !== 'host') {
           lines.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`)
@@ -287,7 +309,7 @@ export async function startProxy({ upstream, port = 0 }) {
       startMs,
       endMs: startMs,
       method: 'WS',
-      path: req.url,
+      path,
       host: 'worker',
       status: 101,
       reqBytes: 0,

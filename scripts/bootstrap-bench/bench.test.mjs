@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import http from 'node:http'
+import net from 'node:net'
 import { describe, it } from 'node:test'
 
 import fs from 'node:fs'
@@ -424,7 +425,7 @@ describe('proxy guards', () => {
     }
   })
 
-  it('refuses a percent-encoded path, which the Worker would decode to a write', async () => {
+  it('refuses a percent-encoded or double-slash path, which reach a write', async () => {
     const seen = []
     const upstream = http.createServer((req, res) => {
       seen.push(`${req.method} ${req.url}`)
@@ -433,8 +434,26 @@ describe('proxy guards', () => {
     await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
     const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
     try {
-      for (const route of ['/%73ync/push', '/sync/%70ush', '/sync/crdt/snapshot/note%2D1']) {
-        const status = (await fetch(`${proxy.url}${route}`, { method: 'POST', body: '{}' })).status
+      for (const route of [
+        '/%73ync/push',
+        '/sync/%70ush',
+        '/sync/crdt/snapshot/note%2D1',
+        '//sync/push',
+        '/.//sync/push',
+        '/x/..//sync/push',
+        `//127.0.0.1:${upstream.address().port}/sync/pull`
+      ]) {
+        // http.request sends the path as written; fetch would normalise it.
+        const status = await new Promise((resolve, reject) => {
+          const port = Number(new URL(proxy.url).port)
+          http
+            .request({ host: '127.0.0.1', port, path: route, method: 'POST' }, (res) => {
+              res.resume()
+              resolve(res.statusCode)
+            })
+            .on('error', reject)
+            .end('{}')
+        })
         assert.equal(status, 403, route)
       }
       const read = await fetch(`${proxy.url}/sync/crdt/updates?note_id=a%2Fb`)
@@ -489,10 +508,61 @@ describe('proxy guards', () => {
     for (const refused of [
       'https://sync-staging.memrynote.com/sync/push',
       'http://127.0.0.1:8787/sync/push',
+      'https://speed.cloudflare.com:8443/__down',
+      'https://acct.r2.cloudflarestorage.com:8443/bucket/p1',
+      'http://acct.r2.cloudflarestorage.com/bucket/p1',
       'https://r2.cloudflarestorage.com.example.net/p1',
       'https://evilr2.cloudflarestorage.com/p1'
     ]) {
       assert.equal(isAllowedR2(staging, refused), false, refused)
+    }
+  })
+
+  it('pins a loopback /__r2/ to the upstream port', () => {
+    assert.equal(isAllowedR2('http://127.0.0.1:8787', 'http://127.0.0.1:8787/r2/p1'), true)
+    assert.equal(isAllowedR2('http://127.0.0.1:8787', 'http://127.0.0.1:9000/r2/p1'), false)
+  })
+
+  it('passes only a GET upgrade of /sync/ws, by its normalised path', async () => {
+    const seen = []
+    const upstream = http.createServer((req, res) => {
+      seen.push(`${req.method} ${req.url}`)
+      res.end('{}')
+    })
+    upstream.on('upgrade', (req, socket) => {
+      seen.push(`${req.method} ${req.url}`)
+      socket.end(
+        'HTTP/1.1 101 Switching Protocols\r\nconnection: upgrade\r\nupgrade: websocket\r\n\r\n'
+      )
+    })
+    await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
+    const proxy = await startProxy({ upstream: `http://127.0.0.1:${upstream.address().port}` })
+    const upgrade = (method, route) =>
+      new Promise((resolve, reject) => {
+        const socket = net.connect(Number(new URL(proxy.url).port), '127.0.0.1')
+        let reply = ''
+        socket.on('data', (chunk) => (reply += chunk.toString()))
+        socket.on('error', reject)
+        socket.on('close', () => resolve(reply.split(' ')[1]))
+        socket.end(
+          `${method} ${route} HTTP/1.1\r\nhost: x\r\nconnection: Upgrade\r\nupgrade: websocket\r\ncontent-length: 0\r\n\r\n`
+        )
+      })
+    try {
+      for (const [method, route] of [
+        ['POST', '/sync/push'],
+        ['POST', '/sync/ws'],
+        ['GET', '/%73ync/ws'],
+        ['GET', '//sync/ws'],
+        ['GET', '/sync/push']
+      ]) {
+        assert.equal(await upgrade(method, route), '403', `${method} ${route}`)
+      }
+      assert.equal(await upgrade('GET', '/sync/./ws?token=t'), '101')
+      assert.deepEqual(seen, ['GET /sync/ws?token=t'])
+    } finally {
+      await proxy.close()
+      upstream.close()
     }
   })
 
