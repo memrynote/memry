@@ -26,13 +26,18 @@
 //! row still live here can be one another device deleted. Before one is
 //! queued, `POST /sync/pull` names its id, which serves a marker whatever the
 //! cursor: a tombstone or a marker means the item was deleted, so nothing is
-//! queued and its clock is recorded ([`store::record_tombstone_clock`]); an
-//! answer that names nothing means the server lost the create, which is queued
+//! queued. Its clock is recorded ([`store::record_tombstone_clock`]) only when
+//! a device signed it: a marker [`purged::attest`] attests, or a tombstone
+//! whose envelope signature verifies under its signer's key. The server is
+//! untrusted, and a recorded clock is signed into a re-created journal day
+//! (`domain/recreate.rs`). An unverified answer records nothing and is asked
+//! about again at the next check. An answer that names nothing means the server lost the create, which is queued
 //! with a body snapshot (the driver asks for it); a failed request queues none
 //! of them until the next check. A row whose recorded delete clock its own
 //! clock does not follow is not asked about (Electron's `isNoteKnownDeleted`,
 //! `pending-deletes.ts:139-148`). Each is asked about once per check, so at
-//! most once per 30 minutes. Electron re-uploads them without asking and has
+//! most once per 30 minutes, and a check asks about at most [`MAX_PROBED`]
+//! rows: the rest wait for the next one. Electron re-uploads them without asking and has
 //! that hole (`pull-coordinator.ts:312,816`, `:179-224`).
 //!
 //! **Not re-uploaded:** the other types the server re-creates over a purged
@@ -50,13 +55,13 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value as Json, json};
 
 use crate::api::errors::StorageError;
-use crate::protocol::envelope::{self, SyncOperation};
+use crate::protocol::envelope::{self, RecordEnvelope, SyncOperation};
 use crate::sync::clock::{self, ClockOrder, VectorClock};
 use crate::sync::outbox::{self, Change};
 use crate::sync::pull::{MAX_PULL_IDS, PullError, PullLoop};
 use crate::sync::{refused_items, store};
 
-use super::quarantine;
+use super::{purged, quarantine};
 
 /// `MIN_INTERVAL_MS` (`manifest-check.ts:47`).
 pub const MIN_INTERVAL_MS: i64 = 30 * 60 * 1000;
@@ -86,6 +91,10 @@ pub const REUPLOADED: [&str; 14] = [
 /// The [`REUPLOADED`] types the server re-creates over a purged tombstone:
 /// asked about by id before one is queued (#4785).
 pub const PROBED: [&str; 3] = ["note", "journal", "bookmark"];
+
+/// The [`PROBED`] rows one check asks about: ten `POST /sync/pull` requests,
+/// well under the server's 120 a minute.
+pub const MAX_PROBED: usize = 10 * MAX_PULL_IDS;
 
 /// A live, clocked, fully stored, readable row with nothing queued.
 const UNSYNCED_LIVE: &str = "clock IS NOT NULL AND deleted_at IS NULL AND payload IS NOT NULL
@@ -176,7 +185,8 @@ type Keys = Vec<(String, String)>;
 /// What `POST /sync/pull` said about one asked id.
 #[derive(Debug)]
 enum Answer {
-    /// A tombstone or a marker of `item_type`, with its clock when it had one.
+    /// A tombstone or a marker of `item_type`, with its clock only when a
+    /// device signed it (an attested marker, a verified tombstone).
     Deleted {
         item_type: String,
         clock: Option<VectorClock>,
@@ -187,7 +197,11 @@ enum Answer {
 
 /// `POST /sync/pull` for `asked`, by id (§5.11.1). Nothing is applied: a
 /// marker read here is never a delete of the local row (`fetch_ids` would
-/// apply it). A body without `items` names every id it was asked about.
+/// apply it). A body without `items` names every id it was asked about. A
+/// marker keeps its clock only when [`purged::Entries::read`] admits it and
+/// [`purged::attest`] attests it, the pull's own checks; a tombstone only when
+/// its envelope verifies under its signer's key. A signer lookup that cannot
+/// complete fails the question.
 async fn ask(
     pull: &PullLoop,
     asked: &[(String, String)],
@@ -207,36 +221,65 @@ async fn ask(
         };
         let entries = |key: &str| body.get(key).and_then(Json::as_array).into_iter().flatten();
         let id_of = |entry: &Json| entry.get("id").and_then(Json::as_str).map(str::to_owned);
+        let mut tombstones: Vec<RecordEnvelope> = Vec::new();
         for item in items {
-            let answer = match envelope::from_json(item) {
+            match envelope::from_json(item) {
                 Ok(read)
                     if read.deleted_at.is_some() || read.operation == SyncOperation::Delete =>
                 {
-                    Answer::Deleted {
-                        item_type: read.item_type,
-                        clock: read.clock,
+                    tombstones.push(read);
+                }
+                _ => {
+                    if let Some(id) = id_of(item) {
+                        answers.entry(id).or_default().push(Answer::Held);
                     }
                 }
-                _ => Answer::Held,
-            };
-            if let Some(id) = id_of(item) {
-                answers.entry(id).or_default().push(answer);
             }
         }
+        let signers = tombstones
+            .iter()
+            .map(|read| read.signer_device_id.clone())
+            .collect();
+        let signed = purged::resolve_signers(signers, pull.signer_keys(), pull.http()).await?;
+        for read in tombstones {
+            let verified = signed
+                .get(&read.signer_device_id)
+                .and_then(Option::as_deref)
+                .is_some_and(|key| envelope::verify(&read, key).is_ok());
+            answers.entry(read.id).or_default().push(Answer::Deleted {
+                item_type: read.item_type,
+                clock: read.clock.filter(|_| verified),
+            });
+        }
         for marker in entries("purgedTombstones") {
-            let answer = Answer::Deleted {
-                item_type: marker
+            if let Some(id) = id_of(marker) {
+                let item_type = marker
                     .get("type")
                     .and_then(Json::as_str)
-                    .unwrap_or_default()
-                    .to_owned(),
-                clock: marker
-                    .get("clock")
-                    .and_then(|clock| serde_json::from_value(clock.clone()).ok()),
-            };
-            if let Some(id) = id_of(marker) {
-                answers.entry(id).or_default().push(answer);
+                    .unwrap_or_default();
+                answers.entry(id).or_default().push(Answer::Deleted {
+                    item_type: item_type.to_owned(),
+                    clock: None,
+                });
             }
+        }
+        let mut markers = purged::Entries::default();
+        markers.read(&body, chunk);
+        let attested = purged::attest(
+            markers.markers,
+            pull.signer_keys(),
+            pull.http(),
+            &mut markers.refused,
+        )
+        .await?;
+        for marker in attested {
+            answers
+                .entry(marker.item_id)
+                .or_default()
+                .push(Answer::Deleted {
+                    item_type: marker.item_type,
+                    clock: Some(marker.clock),
+                });
         }
         for lost in entries("blobMissing") {
             if let Some(id) = id_of(lost) {
@@ -429,11 +472,18 @@ fn diff(
         })
         .filter(|key| !server_spellings.contains(key))
         .partition(|(item_type, _)| PROBED.contains(&item_type.as_str()));
-    let mut unknown = Vec::with_capacity(asked.len());
+    let mut unknown = Vec::with_capacity(asked.len().min(MAX_PROBED));
     for (item_type, id) in asked {
         if !known_deleted(conn, &item_type, &id)? {
             unknown.push((item_type, id));
         }
+    }
+    if unknown.len() > MAX_PROBED {
+        eprintln!(
+            "memry-core: {} record(s) the manifest lacks wait for the next check",
+            unknown.len() - MAX_PROBED
+        );
+        unknown.truncate(MAX_PROBED);
     }
     if !reuploaded.is_empty() {
         let tx = conn.unchecked_transaction().map_err(failed)?;

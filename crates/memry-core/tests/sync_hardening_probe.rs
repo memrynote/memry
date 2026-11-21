@@ -5,11 +5,28 @@
 //! failed question queues nothing until the next check; the check, and so the
 //! question, runs at most once per 30 minutes.
 //!
-//! Real `HttpClient`, SQLite and pull, on `sync_hardening_repairs`'s scripted
-//! transport, which panics on an unscripted request: a script without a
-//! `/sync/pull` response proves the row was not asked about.
+//! The server is untrusted: a clock is recorded only when a device signed it
+//! (an attested marker, a tombstone whose envelope verifies), and no clock
+//! carries a tick above `MAX_TICK`, from the question or from a pull.
+//!
+//! Real `HttpClient`, SQLite, pull, attestation and envelope signatures, on
+//! `sync_hardening_repairs`'s scripted transport, which panics on an
+//! unscripted request: a script without a `/sync/pull` response proves the
+//! row was not asked about.
 
-use memry_core::sync::hardening::manifest::{ManifestCheck, ManifestOutcome};
+use std::collections::HashSet;
+use std::sync::Arc;
+
+use memry_core::api::errors::ApiError;
+use memry_core::crypto::{keys, sodium};
+use memry_core::protocol::delete_attestation::{claim_of, sign};
+use memry_core::protocol::envelope::{self, RecordMaterial, RecordRequest, SyncOperation};
+use memry_core::protocol::http::HttpClient;
+use memry_core::storage::Db;
+use memry_core::sync::clock::VectorClock;
+use memry_core::sync::hardening::manifest::{MAX_PROBED, ManifestCheck, ManifestOutcome};
+use memry_core::sync::hardening::purged::SignerKeys;
+use memry_core::sync::pull::PullLoop;
 use memry_core::sync::store;
 use serde_json::{Value as Json, json};
 
@@ -19,6 +36,81 @@ use crate::sync_hardening_repairs::{
 };
 
 const MINUTE_MS: i64 = 60_000;
+const DELETED_AT: i64 = 1_760_000_000_000;
+const PEER_SEED: u8 = 21;
+const STRANGER_SEED: u8 = 22;
+
+/// The account's one other device, `peer`, signing with [`PEER_SEED`].
+struct PeerKey;
+
+#[async_trait::async_trait]
+impl SignerKeys for PeerKey {
+    async fn signing_key(
+        &self,
+        _http: &HttpClient,
+        device_id: &str,
+    ) -> Result<Option<Vec<u8>>, ApiError> {
+        Ok((device_id == "peer").then(|| keypair(PEER_SEED).0))
+    }
+
+    fn known_devices(&self) -> Option<HashSet<String>> {
+        None
+    }
+}
+
+fn keypair(seed: u8) -> (Vec<u8>, Vec<u8>) {
+    let (public, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
+    (public.to_vec(), secret.to_vec())
+}
+
+fn keyed_pull(db: &Db, transport: Arc<FakeTransport>) -> PullLoop {
+    pull_loop(db, transport).with_signer_keys(Arc::new(PeerKey))
+}
+
+/// A note marker for `n1` at `clock`, attested as `signer` with `seed`'s key.
+fn marker(clock: Json, signer: Option<(&str, u8)>) -> Json {
+    let mut entry = json!({
+        "id": "n1", "type": "note", "clock": clock, "deletedAt": DELETED_AT,
+        "serverCursor": 7,
+    });
+    if let Some((device, seed)) = signer {
+        let clock: VectorClock = serde_json::from_value(clock).expect("a clock");
+        let claim = claim_of(
+            "note",
+            "n1",
+            SyncOperation::Delete,
+            Some(&clock),
+            Some(DELETED_AT),
+        )
+        .expect("an attestable delete");
+        entry["signerDeviceId"] = json!(device);
+        entry["deleteAttestation"] = json!(sign(&claim, &keypair(seed).1).expect("signed"));
+    }
+    json!({ "items": [], "purgedTombstones": [entry] })
+}
+
+/// A note tombstone for `n1` at `ticks`, sealed and signed as `signer` with
+/// `seed`'s key.
+fn tombstone(ticks: u64, signer: &str, seed: u8) -> Json {
+    let vault_key = keys::derive_vault_key(&[7; 32]).expect("the vault key");
+    let sealed = envelope::encrypt(
+        &RecordRequest {
+            id: "n1",
+            item_type: "note",
+            operation: SyncOperation::Delete,
+            content: b"{}",
+            vault_key: &vault_key,
+            signing_secret_key: &keypair(seed).1,
+            signer_device_id: signer,
+            clock: Some([("peer".to_owned(), ticks)].into()),
+            state_vector: None,
+            deleted_at: Some(DELETED_AT),
+        },
+        &RecordMaterial::random(),
+    )
+    .expect("sealed");
+    json!({ "items": [envelope::to_json(&sealed.envelope)] })
+}
 
 fn answer(body: Json) -> String {
     body.to_string()
@@ -44,7 +136,7 @@ async fn a_note_the_server_answers_deleted_stays_local(deleted: Json) {
         response(200, &manifest(&[])),
         response(200, &answer(deleted)),
     ]);
-    let pull = pull_loop(&db, transport.clone());
+    let pull = keyed_pull(&db, transport.clone());
     let check = ManifestCheck::default();
     let start = now_ms();
 
@@ -71,24 +163,164 @@ async fn a_note_the_server_answers_deleted_stays_local(deleted: Json) {
 }
 
 #[tokio::test]
-async fn a_note_whose_marker_the_server_answers_is_not_reuploaded() {
-    a_note_the_server_answers_deleted_stays_local(json!({
-        "items": [],
-        "purgedTombstones": [{
-            "id": "n1", "type": "note", "clock": { "peer": 2 },
-            "deletedAt": 1_760_000_000_000_i64, "serverCursor": 7,
-        }],
-    }))
-    .await;
+async fn a_note_whose_attested_marker_the_server_answers_is_not_reuploaded() {
+    let answer = marker(json!({ "peer": 2 }), Some(("peer", PEER_SEED)));
+    a_note_the_server_answers_deleted_stays_local(answer).await;
 }
 
 #[tokio::test]
-async fn a_note_whose_tombstone_the_server_answers_is_not_reuploaded() {
-    let mut tombstone = envelope("n1", "note");
-    tombstone["operation"] = json!("delete");
-    tombstone["deletedAt"] = json!(1_760_000_000_000_i64);
-    tombstone["clock"] = json!({ "peer": 2 });
-    a_note_the_server_answers_deleted_stays_local(json!({ "items": [tombstone] })).await;
+async fn a_note_whose_signed_tombstone_the_server_answers_is_not_reuploaded() {
+    a_note_the_server_answers_deleted_stays_local(tombstone(2, "peer", PEER_SEED)).await;
+}
+
+/// The server answers `deleted` with a clock no device signed for: the note
+/// is not re-uploaded this check, nothing is recorded, and the next check
+/// asks again.
+async fn an_unverified_answer_records_nothing(answer: Json) {
+    let db = holding_a_note().await;
+    let transport = FakeTransport::new(vec![
+        response(200, &manifest(&[])),
+        response(200, &answer.to_string()),
+    ]);
+    let pull = keyed_pull(&db, transport.clone());
+    let check = ManifestCheck::default();
+    let start = now_ms();
+
+    let outcome = check.run(&pull, start).await.expect("the check");
+    assert!(outcome.expect("not throttled").reuploaded.is_empty());
+    assert!(queued(&db).is_empty(), "{:?}", queued(&db));
+    assert_eq!(recorded(&db), None);
+
+    transport.push(response(200, &manifest(&[])));
+    transport.push(response(200, &answer.to_string()));
+    check
+        .run(&pull, start + 31 * MINUTE_MS)
+        .await
+        .expect("the next check");
+    assert_eq!(transport.calls_to("/sync/pull").len(), 2, "asked again");
+    assert!(queued(&db).is_empty());
+    assert_eq!(recorded(&db), None);
+}
+
+#[tokio::test]
+async fn an_unattested_marker_records_nothing() {
+    an_unverified_answer_records_nothing(marker(json!({ "peer": 9 }), None)).await;
+}
+
+#[tokio::test]
+async fn a_marker_with_a_bad_signature_records_nothing() {
+    let answer = marker(json!({ "peer": 9 }), Some(("peer", STRANGER_SEED)));
+    an_unverified_answer_records_nothing(answer).await;
+}
+
+#[tokio::test]
+async fn a_marker_from_an_unknown_signer_records_nothing() {
+    let answer = marker(json!({ "peer": 9 }), Some(("stranger", STRANGER_SEED)));
+    an_unverified_answer_records_nothing(answer).await;
+}
+
+#[tokio::test]
+async fn a_tombstone_with_a_bad_signature_records_nothing() {
+    an_unverified_answer_records_nothing(tombstone(9, "peer", STRANGER_SEED)).await;
+}
+
+#[tokio::test]
+async fn a_tombstone_from_an_unknown_signer_records_nothing() {
+    an_unverified_answer_records_nothing(tombstone(9, "stranger", STRANGER_SEED)).await;
+}
+
+/// A `u64::MAX` tick, even one a real device signed, is never recorded, so
+/// a revived journal day never signs it and `increment` never meets it.
+#[tokio::test]
+async fn a_signed_marker_with_a_u64_max_tick_records_nothing() {
+    let answer = marker(json!({ "peer": u64::MAX }), Some(("peer", PEER_SEED)));
+    an_unverified_answer_records_nothing(answer).await;
+}
+
+#[tokio::test]
+async fn a_signed_tombstone_with_a_u64_max_tick_records_nothing() {
+    an_unverified_answer_records_nothing(tombstone(u64::MAX, "peer", PEER_SEED)).await;
+}
+
+/// The same bound on the pull: a pulled tombstone whose clock carries a
+/// `u64::MAX` tick is one corrupt item. It deletes nothing and records no
+/// clock.
+#[tokio::test]
+async fn a_pulled_tombstone_with_a_u64_max_tick_is_not_applied() {
+    let db = holding_a_note().await;
+    let mut deleted = envelope("n1", "note");
+    deleted["operation"] = json!("delete");
+    deleted["deletedAt"] = json!(DELETED_AT);
+    deleted["clock"] = json!({ "peer": u64::MAX });
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"items": [{"id": "n1", "type": "note"}], "deleted": [],
+                    "hasMore": false, "nextCursor": "11"})
+            .to_string(),
+        ),
+        response(200, &json!({ "items": [deleted] }).to_string()),
+    ]);
+    let report = pull_loop(&db, transport).run(1).await.expect("the pull");
+    assert_eq!(report.corrupt, 1, "{report:?}");
+    assert_eq!(recorded(&db), None);
+    let deleted_at: Option<i64> = db
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT deleted_at FROM sync_items WHERE item_type = 'note' AND item_id = 'n1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("the row");
+    assert_eq!(deleted_at, None, "the note stays live");
+}
+
+/// One check asks about at most `MAX_PROBED` rows; the rest are asked at the
+/// next one.
+#[tokio::test]
+async fn a_check_asks_about_at_most_max_probed_rows_and_the_rest_next_time() {
+    let db = scratch_db();
+    db.call_blocking(|conn| {
+        for n in 0..=MAX_PROBED {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, clock, updated_at)
+                 VALUES ('note', ?1, '{}', 'full', '{\"peer\":1}', 1)",
+                [format!("n{n:05}")],
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        }
+        Ok(())
+    })
+    .expect("seeded");
+    let chunks = MAX_PROBED / 100;
+    let mut script = vec![response(200, &manifest(&[]))];
+    script.extend((0..chunks).map(|_| response(200, &answer(json!({ "items": [] })))));
+    let transport = FakeTransport::new(script);
+    let pull = pull_loop(&db, transport.clone());
+    let check = ManifestCheck::default();
+    let start = now_ms();
+
+    let outcome = check.run(&pull, start).await.expect("the check");
+    assert_eq!(outcome.expect("not throttled").reuploaded.len(), MAX_PROBED);
+    assert_eq!(transport.calls_to("/sync/pull").len(), chunks);
+
+    transport.push(response(200, &manifest(&[])));
+    transport.push(response(200, &answer(json!({ "items": [] }))));
+    let outcome = check
+        .run(&pull, start + 31 * MINUTE_MS)
+        .await
+        .expect("the next check");
+    assert_eq!(
+        outcome.expect("not throttled").reuploaded,
+        vec![pair("note", &format!("n{MAX_PROBED:05}"))]
+    );
+    assert_eq!(transport.calls_to("/sync/pull").len(), chunks + 1);
 }
 
 /// The bound: a note the server answers live for is asked about once per
