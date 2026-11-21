@@ -7,7 +7,7 @@ import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-sessio
 import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
-import { scheduleSeedDuplicateScan } from '../crdt-seed-duplicates'
+import { scheduleSeedDuplicateRepair } from '../crdt-seed-duplicates'
 import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext, SyncRunOutcome } from './sync-context'
 import { DELIVERED, INCOMPLETE, skipped } from './sync-run-outcome'
@@ -518,6 +518,12 @@ export class FullSyncRunner {
       } satisfies InitialSyncProgressEvent)
       this.lastRunCaughtUp = pullDelivered
       if (pullDelivered) markPullCompleted()
+      // The seed-duplicate repair (#5289) runs only when every body the server
+      // holds is merged here, so a body still downloading is never judged.
+      const provider = this.ctx.deps.crdtProvider
+      if (pullDelivered && provider != null && !this.owesNoteBodies()) {
+        scheduleSeedDuplicateRepair(provider, () => !this.owesNoteBodies())
+      }
       if (!pullDelivered && pull.status === 'skipped') return pull
       return pullDelivered && pushesDelivered ? DELIVERED : INCOMPLETE
     } catch (error) {
@@ -556,7 +562,6 @@ export class FullSyncRunner {
             this.queueLegacyNoteBodySweep()
           }
           this.sweepSettledOnThisEngine = true
-          scheduleSeedDuplicateScan(this.ctx.deps.crdtProvider)
         }
       }
       // flushPendingCrdtPulls() ends with pumpPacedCrdtPulls() +
@@ -564,6 +569,20 @@ export class FullSyncRunner {
       // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
+  }
+
+  /** Any note body still to pull, now or after a backoff, or a legacy sweep still to run. */
+  private owesNoteBodies(): boolean {
+    return (
+      !isIndexDatabaseInitialized() ||
+      !this.ctx.deps.network.online ||
+      this.pacedCrdtChunkInFlight ||
+      this.pacedCrdtPullQueue.size > 0 ||
+      this.crdtSync.pendingPullCount > 0 ||
+      this.crdtSync.nextDeferredPullAt() !== null ||
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP) ===
+        NOTE_BODY_LEGACY_SWEEP_PENDING
+    )
   }
 
   /**
