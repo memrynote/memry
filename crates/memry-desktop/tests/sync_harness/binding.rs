@@ -19,6 +19,7 @@ use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::registry::vaults::VaultRegistry;
 use memry_desktop::session::Session;
+use memry_desktop::vault::consumer::VaultTier;
 use tokio::sync::broadcast;
 
 use super::account::{CODE, install};
@@ -30,6 +31,16 @@ pub(super) fn wiring(
     account: &Arc<AccountService>,
     store: &Arc<dyn SecureStore>,
     session: &Session,
+) -> (Arc<SyncWiring>, Arc<Mutex<Vec<BindingState>>>) {
+    wiring_with_tier(account, store, session, None)
+}
+
+/// [`wiring`] with the vault tier pulled bodies reach the disk through, as the app wires it.
+pub(super) fn wiring_with_tier(
+    account: &Arc<AccountService>,
+    store: &Arc<dyn SecureStore>,
+    session: &Session,
+    tier: Option<Arc<VaultTier>>,
 ) -> (Arc<SyncWiring>, Arc<Mutex<Vec<BindingState>>>) {
     let changes = Arc::new(Mutex::new(Vec::new()));
     let seen = changes.clone();
@@ -47,7 +58,7 @@ pub(super) fn wiring(
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
-        tier: None,
+        tier,
         on_gate: Arc::new(|_| {}),
     });
     (wiring, changes)

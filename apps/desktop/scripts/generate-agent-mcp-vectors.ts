@@ -9,7 +9,9 @@
  *
  *   (examples.json below also holds calls that break each refinement.)
  * - desktop-ops.json: every desktop API operation with its tool, parameters and the JSON Schema
- *   of its argument array (`describeDesktopOperation`).
+ *   of its argument array (`describeDesktopOperation`); and `checks`, each zod check the JSON
+ *   Schema prints without its custom message or cannot print (`.refine`, `z.custom`,
+ *   `z.instanceof`), located by a JSON Pointer into that schema.
  * - examples.json: the calls of agent-api-examples.json and deterministic invalid variants of
  *   each, with Electron's verdict: for a tool, whether its handler ran, zod's issues and the
  *   SDK's error text; for an operation, the VALIDATION error `assertDesktopApiArgs` throws.
@@ -24,6 +26,13 @@ import { fileURLToPath } from 'node:url'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+
+import {
+  desktopArgsItemSchemas,
+  desktopOperationArgsSchema,
+  type DesktopArgsJsonSchema
+} from '@memry/contracts/agent-desktop-api-args'
 
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
 import type { AgentMcpDesktopOperation } from '@memry/contracts/agent-mcp-channels'
@@ -207,11 +216,118 @@ function describeOperation(operation: AgentMcpDesktopOperation): DesktopOperatio
   return describeDesktopOperation(operation) as DesktopOperationDescription
 }
 
+interface OperationCheck {
+  /** JSON Pointer into `argsSchema`'s `prefixItems` or `$defs`. */
+  at: string
+  /** zod's check name (`min_length`, `string_format`, ...), or `custom` / `instanceof`. */
+  check: string
+  format?: string
+  /** The class `z.instanceof` takes, which no JSON value is. */
+  expected?: string
+  message?: string
+}
+
+const CHECKS_MARK = 'x-memry-checks'
+
+/** A static `error` option's text; a function of the issue cannot be listed. */
+function staticMessage(where: string, error: unknown): string | undefined {
+  if (error === undefined) return undefined
+  const message: unknown = typeof error === 'function' ? error({}) : error
+  if (typeof message !== 'string') throw new Error(`${where}: an error message that is not static`)
+  return message
+}
+
+/** The checks of one zod schema that its JSON Schema leaves out. */
+function schemaChecks(where: string, schema: unknown): Array<Omit<OperationCheck, 'at'>> {
+  const def = zodDef(schema)
+  if (def === null) return []
+  const out: Array<Omit<OperationCheck, 'at'>> = []
+  if (def.type === 'custom') {
+    const bag = isRecord(schema) && isRecord(schema._zod) ? schema._zod.bag : undefined
+    const cls = isRecord(bag) ? bag.Class : undefined
+    out.push(
+      typeof cls === 'function'
+        ? { check: 'instanceof', expected: cls.name }
+        : { check: 'custom', message: staticMessage(where, def.error) ?? 'Invalid input' }
+    )
+  } else if (def.error !== undefined && def.type !== 'object') {
+    // strictDeep gives every object its unknown-key message, which the Rust walk writes itself.
+    throw new Error(`${where}: a ${String(def.type)} with its own type error message`)
+  }
+  for (const check of Array.isArray(def.checks) ? def.checks : []) {
+    const checkDef = zodDef(check)
+    if (checkDef === null) continue
+    const name = String(checkDef.check)
+    if (name === 'custom') {
+      if (checkDef.abort) throw new Error(`${where}: an aborting refinement`)
+      out.push({ check: name, message: staticMessage(where, checkDef.error) ?? 'Invalid input' })
+    } else if (checkDef.error !== undefined) {
+      const format = typeof checkDef.format === 'string' ? { format: checkDef.format } : {}
+      out.push({ check: name, ...format, message: staticMessage(where, checkDef.error) })
+    }
+  }
+  return out
+}
+
+function pointerSegment(key: string): string {
+  return key.replace(/~/g, '~0').replace(/\//g, '~1')
+}
+
+/** Moves each node's marked checks into `out`, with the node's pointer. */
+function takeChecks(node: unknown, at: string, out: OperationCheck[]): void {
+  if (Array.isArray(node)) {
+    node.forEach((item, index) => takeChecks(item, `${at}/${index}`, out))
+    return
+  }
+  if (!isRecord(node)) return
+  const marked = node[CHECKS_MARK]
+  if (Array.isArray(marked)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- operationChecks writes this array of checks
+    for (const check of marked as Array<Omit<OperationCheck, 'at'>>) out.push({ at, ...check })
+    delete node[CHECKS_MARK]
+  }
+  for (const [key, child] of Object.entries(node))
+    takeChecks(child, `${at}/${pointerSegment(key)}`, out)
+}
+
+/**
+ * The operation's checks that `argsSchema` leaves out, each at the JSON Schema node of its zod
+ * schema: zod's printer marks the nodes, and the marked print must equal `argsSchema`'s items
+ * and `$defs`, so every pointer resolves to the node it names.
+ */
+function operationChecks(
+  operation: AgentMcpDesktopOperation,
+  argsSchema: DesktopArgsJsonSchema
+): Json {
+  const schema = desktopOperationArgsSchema(operation)
+  const marked = z.toJSONSchema(schema, {
+    io: 'input',
+    unrepresentable: 'any',
+    override: (ctx) => {
+      const checks = schemaChecks(operation, ctx.zodSchema)
+      if (checks.length > 0) Object.assign(ctx.jsonSchema, { [CHECKS_MARK]: checks })
+    }
+  })
+  const checks: OperationCheck[] = []
+  takeChecks(marked, '', checks)
+  const items = toJson(desktopArgsItemSchemas(argsSchema))
+  const printed = toJson(marked)
+  const printedItems = isObject(printed) ? (printed.prefixItems ?? []) : []
+  const printedDefs = isObject(printed) ? (printed.$defs ?? null) : null
+  if (
+    JSON.stringify(printedItems) !== JSON.stringify(items) ||
+    JSON.stringify(printedDefs) !== JSON.stringify(toJson(argsSchema.$defs ?? null))
+  ) {
+    throw new Error(`${operation}: the marked print differs from argsSchema`)
+  }
+  return toJson(checks)
+}
+
 function desktopOpsFile(): JsonObject {
   return {
     meta: meta(
       'apps/desktop/src/main/agent/mcp/tools/desktop-api-describe.ts (describeDesktopOperation) over packages/contracts/src/agent-desktop-api-args.ts',
-      '`argsSchema` validates the whole `args` array of vault_desktop_read or vault_desktop_write; desktopArgsItemSchemas reads the per-argument schemas out of its prefixItems.'
+      '`argsSchema` validates the whole `args` array of vault_desktop_read or vault_desktop_write; desktopArgsItemSchemas reads the per-argument schemas out of its prefixItems. `checks` are the zod checks it prints without their custom message or cannot print, each at a JSON Pointer into `prefixItems` (of the longest call) or `$defs`.'
     ),
     operations: AgentMcpDesktopOperations.map((operation) => {
       const description = describeOperation(operation)
@@ -222,7 +338,8 @@ function desktopOpsFile(): JsonObject {
         requiresApproval: description.requires_approval,
         call: description.call,
         params: toJson(description.params),
-        argsSchema: toJson(argsSchema)
+        argsSchema: toJson(argsSchema),
+        checks: operationChecks(operation, description.args_schema)
       }
     })
   }
@@ -368,6 +485,94 @@ function operationCases(args: Json[], params: string[]): Array<[string, Json[]]>
   return cases
 }
 
+/** A JSON object of `count` keys. */
+function keysObject(count: number): JsonObject {
+  return Object.fromEntries(Array.from({ length: count }, (_, index) => [`k${index}`, index]))
+}
+
+/**
+ * Calls that break each of an operation's `checks`, and edge cases of them that pass, each named.
+ * The JSON Schema leaves these checks out, so these hold the Rust walk's `checks` to zod.
+ */
+function checkCases(operation: AgentMcpDesktopOperation, args: Json[]): Array<[string, Json[]]> {
+  const first = isObject(args[0]) ? args[0] : {}
+  const rest = args.slice(1)
+  const withFirst = (fields: JsonObject): Json[] => [{ ...first, ...fields }, ...rest]
+  switch (operation) {
+    case 'journal.getEntry':
+    case 'journal.getDayContext':
+    case 'journal.deleteEntry':
+      return [['date not YYYY-MM-DD', ['2026-1-5']]]
+    case 'journal.createEntry':
+    case 'journal.updateEntry':
+      return [['date not YYYY-MM-DD', withFirst({ date: '5 Oct 2026' })]]
+    case 'properties.get':
+    case 'properties.set':
+      return [['empty entity id', ['', ...rest]]]
+    case 'properties.rename':
+      return [
+        ['empty entity id', ['', 'owner', 'lead']],
+        ['empty old name', [args[0] ?? null, '', 'lead']],
+        ['empty new name', [args[0] ?? null, 'owner', '']]
+      ]
+    case 'tasks.create':
+    case 'tasks.update':
+      return [
+        ['dueDate 2026-02-30', withFirst({ dueDate: '2026-02-30' })],
+        ['startDate 2026-13-01', withFirst({ startDate: '2026-13-01' })],
+        ['dueDate null', withFirst({ dueDate: null })],
+        ['101 fields', withFirst({ fields: keysObject(101) })],
+        ['100 fields', withFirst({ fields: keysObject(100) })],
+        ['a field of 51 keys', withFirst({ fields: { size: keysObject(51) } })],
+        ['a nested field of 51 keys', withFirst({ fields: { size: [{ inner: keysObject(51) }] } })],
+        ['a field of 50 keys', withFirst({ fields: { size: keysObject(50) } })]
+      ]
+    case 'inbox.captureImage':
+    case 'inbox.captureVoice': {
+      const { data: _drop, ...noData } = first
+      return [
+        ['data a string', withFirst({ data: 'not bytes' })],
+        ['data empty', withFirst({ data: {} })],
+        ['data an array of bytes', withFirst({ data: [1, 2, 3] })],
+        ['data missing', [noData, ...rest]]
+      ]
+    }
+    case 'inbox.capturePdf':
+      return [['data an array of bytes', withFirst({ data: [37, 80, 68, 70] })]]
+    case 'notes.uploadAttachment':
+      return [['file without arrayBuffer', [args[0] ?? null, { name: 'photo.png' }]]]
+    default:
+      return []
+  }
+}
+
+/**
+ * Each check of `checks` needs a case it refuses, or the Rust run of it is untested. A
+ * `z.instanceof` refuses every JSON value, so any refused case of its own covers it.
+ */
+function assertEveryCheckBroken(opsFile: JsonObject, cases: Json[]): void {
+  for (const entry of Array.isArray(opsFile.operations) ? opsFile.operations : []) {
+    if (!isObject(entry) || !Array.isArray(entry.checks)) continue
+    for (const check of entry.checks) {
+      if (!isObject(check)) continue
+      const message = typeof check.message === 'string' ? check.message : ''
+      const broken = cases.some(
+        (item) =>
+          isObject(item) &&
+          item.operation === entry.operation &&
+          item.variant !== 'example' &&
+          item.error !== undefined &&
+          JSON.stringify(item.error).includes(message)
+      )
+      if (!broken) {
+        throw new Error(
+          `no case of ${JSON.stringify(entry.operation)} breaks ${JSON.stringify(check)}`
+        )
+      }
+    }
+  }
+}
+
 function operationVerdict(operation: AgentMcpDesktopOperation, args: Json[]): Json {
   try {
     assertDesktopApiArgs({ operation, args })
@@ -384,7 +589,8 @@ function operationExamples(examples: AgentApiExamples): Json[] {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the examples file holds JSON arguments
     const base = (example ? toJson(example.args) : []) as Json[]
     const params = describeOperation(operation).params.map((param) => param.name)
-    return operationCases(base, params).map(([variant, args]) => {
+    const cases = [...operationCases(base, params), ...checkCases(operation, base)]
+    return cases.map(([variant, args]) => {
       const error = operationVerdict(operation, args)
       return { operation, variant, args, valid: error === null, ...(error ? { error } : {}) }
     })
@@ -438,9 +644,11 @@ async function build(): Promise<Map<string, string>> {
       operations: operationExamples(examples)
     }
     assertEveryRefinementBroken(tools.refinements, examplesFile.tools)
+    const opsFile = desktopOpsFile()
+    assertEveryCheckBroken(opsFile, examplesFile.operations)
     return new Map([
       ['tools.json', render(tools)],
-      ['desktop-ops.json', render(desktopOpsFile())],
+      ['desktop-ops.json', render(opsFile)],
       ['examples.json', render(examplesFile)]
     ])
   } finally {
