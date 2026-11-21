@@ -45,6 +45,7 @@ import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-
 import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
+import { DownloadQueue } from './download-queue'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -706,5 +707,98 @@ describe('revived note attachments against the real sync-server', () => {
       }
     })
     expect(requests).toBe(0)
+  }, 120_000)
+})
+
+describe('a fresh device downloading many attachments through the download queue (#5329)', () => {
+  const FILES = 5
+
+  async function uploadFiles(deps: AttachmentSyncDeps): Promise<Map<string, Buffer>> {
+    const uploader = new AttachmentSyncService(deps)
+    const originals = new Map<string, Buffer>()
+    for (let i = 0; i < FILES; i++) {
+      const bytes = randomBytes(4 * 1024)
+      const { attachmentId } = await uploader.uploadAttachment(
+        'note-1',
+        await writeTempFile(`f${i}.bin`, bytes)
+      )
+      originals.set(attachmentId, bytes)
+    }
+    return originals
+  }
+
+  /** Every download eagerly through the queue, as the pull fan-out does; returns requests by endpoint. */
+  async function downloadAll(
+    deps: AttachmentSyncDeps,
+    originals: Map<string, Buffer>,
+    answer?: (url: string) => Response | null
+  ): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {}
+    const svc = new AttachmentSyncService({
+      ...deps,
+      fetchFn: async (input, init) => {
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        const route = new URL(url).pathname
+          .replace(
+            /^\/sync\/attachments\/(?!manifests\/)[^/]+\/manifest$/,
+            '/sync/attachments/:id/manifest'
+          )
+          .replace(/\/chunks\/.+$/, '/chunks/:hash')
+        const endpoint = `${init?.method ?? 'GET'} ${route}`
+        counts[endpoint] = (counts[endpoint] ?? 0) + 1
+        return answer?.(url) ?? fetch(input, init)
+      }
+    })
+    const queue = new DownloadQueue(svc.downloadAttachment.bind(svc))
+    await Promise.all(
+      [...originals].map(async ([attachmentId, bytes]) => {
+        const targetPath = path.join(tmpDir, `out-${attachmentId}.bin`)
+        await queue.enqueue({ ownerId: 'note-1', attachmentId, targetPath, source: 'eager' })
+        const { readFile } = await import('node:fs/promises')
+        expect(Buffer.compare(await readFile(targetPath), bytes)).toBe(0)
+      })
+    )
+    queue.dispose()
+    return counts
+  }
+
+  it('fetches every manifest in one batch call instead of one GET each', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+
+    const counts = await downloadAll(deps, originals)
+
+    expect(counts['GET /sync/attachments/:id/manifest'] ?? 0).toBe(0)
+    expect(counts['POST /sync/attachments/manifests/batch']).toBe(1)
+    // This deployment has no presign secrets: the first 501 stops every later call.
+    expect(counts['POST /sync/attachments/presign-batch']).toBe(1)
+    expect(counts['GET /sync/attachments/chunks/:hash']).toBe(FILES)
+  }, 120_000)
+
+  it('falls back to one manifest GET each on a server without the batch route', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+
+    const counts = await downloadAll(deps, originals, (url) =>
+      url.endsWith('/sync/attachments/manifests/batch')
+        ? new Response('Not Found', { status: 404 })
+        : null
+    )
+
+    expect(counts['POST /sync/attachments/manifests/batch']).toBe(1)
+    expect(counts['GET /sync/attachments/:id/manifest']).toBe(FILES)
   }, 120_000)
 })

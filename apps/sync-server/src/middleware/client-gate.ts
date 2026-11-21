@@ -16,7 +16,8 @@ const READ_POST_PATHS = new Set([
   '/sync/pull',
   '/sync/records/pull',
   '/sync/crdt/updates/batch',
-  '/sync/attachments/presign-batch'
+  '/sync/attachments/presign-batch',
+  '/sync/attachments/manifests/batch'
 ])
 
 /**

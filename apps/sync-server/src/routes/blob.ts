@@ -33,6 +33,7 @@ import {
   type UploadedChunkEntry
 } from '../services/upload-size'
 import {
+  AttachmentManifestBatchRequestSchema,
   ChunkHoldReleaseRequestSchema,
   ChunkHoldRequestSchema,
   DereferenceRequestSchema,
@@ -890,6 +891,34 @@ blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) =>
 
   const data = await obj.text()
   return c.json(JSON.parse(data))
+})
+
+/**
+ * The manifests of up to 100 attachments in one call (#5329). A fresh device
+ * downloads every attachment, and one GET per manifest was most of its requests.
+ * Each manifest is returned exactly as the single GET returns it; an id with no
+ * stored manifest is left out, so the client fetches it alone and sees the 404.
+ */
+blob.post('/attachments/manifests/batch', blobDownloadLimit, async (c) => {
+  const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
+  const parsed = AttachmentManifestBatchRequestSchema.safeParse(await c.req.json())
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid manifest batch: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+  const ids = [...new Set(parsed.data.attachmentIds)]
+  const found = await Promise.all(
+    ids.map(async (attachmentId) => {
+      const key = generateAttachmentManifestKey(userId, attachmentId, vaultId)
+      const obj = await getBlob(c.env.STORAGE, key, userId)
+      return obj ? ([attachmentId, JSON.parse(await obj.text())] as const) : null
+    })
+  )
+  return c.json({ manifests: Object.fromEntries(found.filter((entry) => entry !== null)) })
 })
 
 blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {

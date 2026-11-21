@@ -31,6 +31,7 @@ import {
   putChunkToPresignedUrl,
   type PresignedUrlWindow
 } from './attachment-presign'
+import { AttachmentDownloadPrefetch } from './attachment-download-prefetch'
 import { withRetry, DeadLetterError, type RetryOptions } from '@memry/sync-client/retry'
 import { ManifestSignatureError } from '@memry/sync-client/push'
 import { recordBootstrapBytes } from './bootstrap-metrics'
@@ -384,12 +385,20 @@ export class AttachmentSyncService {
    * instead of being re-probed on every download.
    */
   private readonly presigner: AttachmentPresigner
+  private readonly prefetch: AttachmentDownloadPrefetch
 
   constructor(deps: AttachmentSyncDeps) {
     this.deps = deps
     this.presigner = new AttachmentPresigner({
       getSyncServerUrl: deps.getSyncServerUrl,
       ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+    })
+    this.prefetch = new AttachmentDownloadPrefetch({
+      chunkHashesOf: async (encrypted) => {
+        const vaultKey = await deps.getVaultKey()
+        if (!vaultKey) throw new Error('Vault is locked — no vault key')
+        return this.manifestChunkHashes(encrypted, vaultKey)
+      }
     })
   }
 
@@ -722,7 +731,12 @@ export class AttachmentSyncService {
   async downloadAttachment(
     attachmentId: string,
     targetPath: string,
-    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback } & DownloadNetOptions
+    opts?: {
+      targetIsDir?: boolean
+      onProgress?: ProgressCallback
+      /** Attachment ids queued to download next; their manifests share one call. */
+      upcoming?: () => string[]
+    } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
     // Per-call callback wins over the shared slot, mirroring uploadAttachment:
@@ -746,7 +760,13 @@ export class AttachmentSyncService {
     if (opts?.isOnline) netOpts.isOnline = opts.isOnline
     if (opts?.signal) netOpts.signal = opts.signal
 
-    const encryptedManifest = await this.fetchManifest(token, attachmentId, netOpts)
+    const batchUrl = `${this.deps.getSyncServerUrl()}/sync/attachments/manifests/batch`
+    const encryptedManifest =
+      (await this.prefetch.takeManifest(attachmentId, opts?.upcoming, async (attachmentIds) => {
+        await netOpts.pace?.()
+        const body = JSON.stringify({ attachmentIds })
+        return binaryFetch('POST', batchUrl, token, body, this.deps.fetchFn)
+      })) ?? (await this.fetchManifest(token, attachmentId, netOpts))
 
     const signerPublicKey = await this.deps.getDevicePublicKey(encryptedManifest.signerDeviceId)
     if (!signerPublicKey) {
@@ -1248,6 +1268,13 @@ export class AttachmentSyncService {
       if (err instanceof SyncServerError && err.statusCode === 404) return []
       throw err
     }
+    return this.manifestChunkHashes(encrypted, vaultKey)
+  }
+
+  private async manifestChunkHashes(
+    encrypted: EncryptedAttachmentManifest,
+    vaultKey: Uint8Array
+  ): Promise<string[]> {
     const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
     if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
     const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
@@ -1394,7 +1421,9 @@ export class AttachmentSyncService {
     if (state.window && Date.now() < state.window.expiresAtMs) {
       return state.window.urls.get(hash) ?? null
     }
-    const window = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
+    const window = await this.prefetch.presignWindow(hash, pendingHashes, (hashes) =>
+      this.presigner.fetchBatch(token, hashes, netOpts)
+    )
     state.window = window
     return window?.urls.get(hash) ?? null
   }
