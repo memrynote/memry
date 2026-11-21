@@ -995,6 +995,28 @@ Consequences a conforming client MUST implement:
   the pack bootstrap (`crates/memry-core/src/sync/pack_bootstrap/bodies.rs:202`),
   the change feed (`crates/memry-core/src/sync/note_body_feed.rs:321`, `:356`),
   and the snapshot push (`crates/memry-core/src/crdt/snapshots.rs:324`, `:510`).
+- **Heal a body re-created before #5351 (#5354).** A build before the rule
+  above authored the revived document on the deleted body, so the server holds
+  only updates whose parents it purged, and every fresh device shows the
+  document empty. Only the author still holds the parents. The author re-pushes
+  its full state once, as one update on `POST /sync/crdt/updates` (§7.13,
+  which no purge fences), so it integrates on a fresh device and on a device
+  that already holds the pending updates. The deleted text comes back beside
+  the new text; that is accepted, because the alternative loses the new text.
+  A candidate is a live `note` or `journal` with a recorded tombstone clock, no
+  purge on this device (epoch 0, §7.16), nothing queued for it, and no earlier
+  verdict. The author reads the server's body into a scratch document and
+  pushes only when that body is pending and its own full state completes it
+  (`crates/memry-core/src/sync/revive_heal.rs:61`, `:95`, `:151`). The pass
+  runs the heal after the body step and before the push
+  (`crates/memry-core/src/api/sync/pass.rs:140`). Desktop, whose builds
+  before #5358 kept the deleted doc the same way, judges the same candidates
+  (it keeps no epoch, so a day revived since then is read once and found
+  healthy) and queues a full-state row on its note-body outbox
+  (`apps/desktop/src/main/sync/revive-heal.ts:52`, `:96`), every ten minutes
+  once a full sync has delivered (`apps/desktop/src/main/sync/runtime.ts:912`).
+  Each verdict is kept per document, so a document is read and pushed at most
+  once.
 
 ### 7.15.1 The three obligations are not all the same component's
 

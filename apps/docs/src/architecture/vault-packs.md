@@ -148,6 +148,16 @@ purge cannot publish it: it inserts the `pack_index` row and advances the waterm
 guarded on every packed snapshot row still existing with the packed blob and its note not dead.
 If the guard fails, it deletes the pack object and the next run reselects.
 
+A journal day re-created on a build before #5351 (core) or #5358 (desktop) shows the other side
+of the purge. That build wrote the new text on top of the deleted body, so after the purge the
+server holds only the new updates, and a fresh device holds them pending and shows the day empty.
+The author device still has the deleted body, so it repairs the day once
+(`apps/desktop/src/main/sync/revive-heal.ts`, `crates/memry-core/src/sync/revive_heal.rs`). For
+each live note or journal day it once deleted, it reads the server body into a scratch document.
+When that body is pending and the device's own state completes it, the device pushes its full
+state as one update. The day then reads on every device, and the deleted text comes back beside
+the new text. That is a known limitation: the alternative loses the new text.
+
 Rows larger than `MAX_PACKED_ITEM_BYTES` = 8 MB are excluded from packs permanently and stay on the
 item-granular tail. The largest legal record payload is roughly 7 MB of JSON text (a 5 MB decoded
 payload inflated by base64 and the envelope) and snapshots cap at 5 MB, so this excludes anything
