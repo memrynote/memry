@@ -3,6 +3,7 @@
 //! `packages/contracts/test-vectors/agent-mcp/tools.json`, and the call path every tool shares.
 //! Tool handlers live behind [`VaultToolHost`]; writes pass the [`WriteGate`] first.
 
+mod desktop_args;
 pub mod errors;
 mod refine;
 pub mod registry;
@@ -10,6 +11,7 @@ pub mod reply_cap;
 pub mod schemas;
 pub mod server;
 pub mod session;
+mod zod;
 
 pub use errors::{ToolError, ToolErrorCode};
 pub use registry::{

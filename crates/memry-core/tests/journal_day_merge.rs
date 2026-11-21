@@ -17,7 +17,7 @@ use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::update_log;
 use memry_core::domain::journal;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
@@ -51,6 +51,11 @@ struct ScriptedCipher(Mutex<Vec<(String, String)>>);
 
 impl RecordCipher for ScriptedCipher {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         self.0
             .lock()
             .unwrap()

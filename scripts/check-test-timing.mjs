@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url'
 // argument points the check at another tree; its tests use it.
 const repoRoot = resolve(process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..'))
 const ROOTS = ['crates', 'apps/desktop-tauri/src-tauri']
-const SKIP_DIRS = new Set(['node_modules', 'target', 'dist', 'Generated', '.git'])
+const SKIP_DIRS = new Set(['node_modules', 'target', 'dist', 'Generated', '.git', '.tmp'])
 const MIN_REASON = 10
 // A poll that gives up at a deadline this long is a timeout guard, not a timing claim; a shorter
 // one is what flakes on a loaded runner.

@@ -127,6 +127,11 @@ impl ReadwiseStore {
         })
     }
 
+    /// [`readwise::clear_run_state`].
+    pub fn clear_run_state(&self) -> Result<(), StorageError> {
+        self.db.call_blocking(readwise::clear_run_state)
+    }
+
     /// The synced `readwise` settings group as stored, `{}` when no device set one.
     pub fn settings_group(&self) -> Result<Value, StorageError> {
         self.db.read_blocking(|conn| {
