@@ -233,7 +233,7 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tombstone_in(&tx, canvas_id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(true)

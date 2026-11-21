@@ -316,7 +316,7 @@ fn settle(
     now_ms: i64,
 ) -> Result<(Keys, Keys), StorageError> {
     let (mut created, mut deleted) = (Vec::new(), Vec::new());
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (item_type, id) in asked {
         let Some(named) = answers.get(id) else {
             let unsynced: Option<i64> = tx

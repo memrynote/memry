@@ -9,6 +9,7 @@ use rusqlite::{Connection, params, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::domain::readwise::set_run_state;
+use crate::storage::nested_tx;
 
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
@@ -79,7 +80,7 @@ pub fn record(
     now_ms: i64,
     pending: impl FnOnce(&HashSet<i64>, Option<String>) -> Option<String>,
 ) -> Result<(), StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let ids: Vec<i64> = record.rows.iter().map(|row| row.highlight_id).collect();
     let known = known_ids(&tx, &ids)?;
     let stored = super::readwise::run_state(&tx, record.pending_key)?;

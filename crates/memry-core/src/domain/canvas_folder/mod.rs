@@ -22,6 +22,7 @@ use crate::api::errors::StorageError;
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, object};
 use crate::domain::recreate::write_over_tombstone;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -67,7 +68,7 @@ pub fn upsert(
     device_id: &str,
     now_ms: i64,
 ) -> Result<CanvasFolder, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let folder = upsert_in(&tx, vault_id, path, icon, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(folder)
@@ -191,7 +192,7 @@ pub fn delete(
     if get_any(conn, &id)?.is_none_or(|(_, deleted)| deleted) {
         return Ok(false);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     tombstone_in(&tx, &id, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(true)
