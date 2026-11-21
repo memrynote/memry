@@ -246,6 +246,20 @@ impl EditorHost {
         Ok((diff, live.editor.state_vector(note_id)?))
     }
 
+    /// The whole state of `note_id`'s document while a window holds it open, `None` while none
+    /// does: Electron answered `getCrdtDocMarkdown` only for a document an editor had loaded and
+    /// not yet closed (`apps/desktop/src/main/test-hooks.ts:552`). e2e reads only.
+    #[cfg(feature = "e2e")]
+    pub fn open_state(&self, note_id: &str) -> Result<Option<Vec<u8>>, EditorHostError> {
+        // The v1 encoding of the empty state vector (no clients): the diff is everything.
+        const EMPTY_STATE_VECTOR: [u8; 1] = [0];
+        let live = self.live()?;
+        if !live.editor.is_open(note_id) {
+            return Ok(None);
+        }
+        Ok(Some(live.editor.state_diff(note_id, &EMPTY_STATE_VECTOR)?))
+    }
+
     /// The window closed its editor of `note_id`.
     pub fn close(&self, note_id: &str, window_label: &str) {
         if let Ok(live) = self.live() {
