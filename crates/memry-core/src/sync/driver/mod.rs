@@ -44,6 +44,7 @@ pub mod progress;
 mod repairs;
 mod snapshots;
 
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use zeroize::Zeroizing;
@@ -104,6 +105,9 @@ pub struct DriverConfig {
     pub max_pages_per_pass: u32,
     /// Packs the first sync downloads at once.
     pub pack_concurrency: usize,
+    /// The vault folder a delete reads a note's file in when its body log
+    /// does not replay ([`PullLoop::with_vault_root`]).
+    pub vault_root: Option<PathBuf>,
 }
 
 impl DriverConfig {
@@ -116,6 +120,7 @@ impl DriverConfig {
             first_sync: FirstSyncLimits::ALL,
             max_pages_per_pass: super::engine::MAX_PAGES_PER_PASS,
             pack_concurrency: 3,
+            vault_root: None,
         }
     }
 }
@@ -229,7 +234,7 @@ impl SyncDriver {
         let declaration = config.declaration.clone();
 
         let pull_loop = || {
-            PullLoop::new(
+            let pull = PullLoop::new(
                 Arc::clone(&http),
                 db.clone(),
                 declaration.clone(),
@@ -240,7 +245,11 @@ impl SyncDriver {
             .with_observers(Arc::clone(&observers))
             .with_vault(&server_vault)
             .with_hardening()
-            .with_signer_keys(cipher.clone())
+            .with_signer_keys(cipher.clone());
+            match &config.vault_root {
+                Some(root) => pull.with_vault_root(root.clone()),
+                None => pull,
+            }
         };
         let stale_cursor = Arc::new(StaleCursor::default());
         reachability.observe(Arc::clone(&stale_cursor) as Arc<dyn ReachabilityObserver>);

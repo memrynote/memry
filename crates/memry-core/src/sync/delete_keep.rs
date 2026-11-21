@@ -22,8 +22,11 @@
 //!    body log holds an item it does not cover (#3037).
 //!
 //! The core never writes markdown, so the copy holds [`extract_text`]'s plain
-//! text: words, headings and list markers, without inline formatting.
+//! text: words, headings and list markers, without inline formatting. A body
+//! log with a blob that does not replay is read from the note's vault file,
+//! as Electron reads every body, and else from the blobs that replay (#5343).
 
+use std::path::Path;
 use std::sync::Arc;
 
 use base64::Engine as _;
@@ -40,6 +43,7 @@ use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::inbox::write::{NewCapture, capture_in};
 use crate::domain::journal;
 use crate::domain::journal_rules::canonical_journal_id;
+use crate::domain::note_files;
 use crate::storage::repositories::sync_items;
 
 use super::clock::{ClockOrder, VectorClock, compare};
@@ -133,6 +137,7 @@ pub(crate) fn keep(
     tombstone: Option<&VectorClock>,
     deleter_body_state_vector: Option<&str>,
     clock_device: Option<&str>,
+    vault_root: Option<&Path>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let Some(title) = copy_title(tx, item_type, item_id)? else {
@@ -172,45 +177,35 @@ pub(crate) fn keep(
         deleter_body_state_vector: deleter_body_state_vector.map(str::to_owned),
         local_body_state_vector: None,
     };
-    // A body log that does not replay keeps nothing and never fails the
-    // delete (#5343): Electron reads such a body as null and keeps nothing
-    // (`apps/desktop/src/main/sync/keep-unseen-text.ts:46-52`, `:70-71`), and
-    // the delete still applies (`item-handlers/note-handler.ts:750-760`).
+    // A body log with a blob that does not replay never fails the delete
+    // (#5343). Its text is read where Electron reads every body, the vault
+    // file (`apps/desktop/src/main/sync/keep-unseen-text.ts:46-52`,
+    // `item-handlers/note-handler.ts:750-760`), and from the blobs that did
+    // replay when there is no file to read, so readable text is never lost.
     let plan = update_log::load_plan(tx, item_id).map_err(crdt_failed(item_id))?;
-    let unreadable = |error: CrdtError| {
-        eprintln!(
-            "memry-core: the body of {item_id} (cursor {server_cursor:?}) does not replay, \
-             its delete keeps nothing: {error}"
-        );
-    };
-    let document = if facts.deleter_body_state_vector.is_some() {
-        let read =
-            replay(&plan, item_id).and_then(|document| Ok((document.state_vector()?, document)));
-        let (state_vector, document) = match read {
-            Ok(read) => read,
-            Err(error) => {
-                unreadable(error);
-                return Ok(());
-            }
-        };
-        facts.local_body_state_vector = Some(BASE64.encode(state_vector));
-        Some(document)
-    } else {
-        None
-    };
+    let (document, skipped) =
+        replay_readable(&plan, item_id, server_cursor).map_err(crdt_failed(item_id))?;
+    match document.state_vector() {
+        Ok(state_vector) => facts.local_body_state_vector = Some(BASE64.encode(state_vector)),
+        Err(error) => eprintln!("memry-core: no state vector for the body of {item_id}: {error}"),
+    }
     if !keeps_unseen_text(&facts) {
         return Ok(());
     }
-    let text = match document.map_or_else(|| replay(&plan, item_id), Ok) {
-        Ok(document) => extract_text(&document),
-        Err(error) => Err(error),
+    let file = if skipped > 0 {
+        vault_file_body(tx, vault_root, item_id)?
+    } else {
+        None
     };
-    let text = match text {
-        Ok(text) => text,
-        Err(error) => {
-            unreadable(error);
-            return Ok(());
-        }
+    let text = match file {
+        Some(text) => text,
+        None => match extract_text(&document) {
+            Ok(text) => text,
+            Err(error) => {
+                eprintln!("memry-core: the body of {item_id} has no text to keep: {error}");
+                return Ok(());
+            }
+        },
     };
     facts.body_blank = text.trim().is_empty();
     if !keeps_unseen_text(&facts) {
@@ -270,6 +265,48 @@ fn copy_title(
     }))
 }
 
+/// The body of `item_id`'s vault file without its frontmatter, `None` when
+/// there is no file to read: Electron's `readNoteFileBody`
+/// (`keep-unseen-text.ts:46-52`). A shell with no vault files (iOS) has none.
+fn vault_file_body(
+    tx: &Connection,
+    vault_root: Option<&Path>,
+    item_id: &str,
+) -> Result<Option<String>, StorageError> {
+    let Some(root) = vault_root else {
+        return Ok(None);
+    };
+    let Some(row) = note_files::by_id(tx, item_id)? else {
+        eprintln!(
+            "memry-core: {item_id} has no vault file, its delete keeps the text that replays"
+        );
+        return Ok(None);
+    };
+    match std::fs::read_to_string(root.join(&row.path)) {
+        Ok(raw) => Ok(Some(file_body(&raw))),
+        Err(error) => {
+            eprintln!(
+                "memry-core: the vault file of {item_id} cannot be read, its delete keeps \
+                 the text that replays: {error}"
+            );
+            Ok(None)
+        }
+    }
+}
+
+#[cfg(feature = "markdown")]
+fn file_body(raw: &str) -> String {
+    crate::markdown::frontmatter::split_frontmatter_block(raw)
+        .body
+        .to_owned()
+}
+
+/// Only desktop (`markdown`) reads vault files.
+#[cfg(not(feature = "markdown"))]
+fn file_body(raw: &str) -> String {
+    raw.to_owned()
+}
+
 /// Base64 Yjs v1 state vector of `doc_id`'s whole body log: the
 /// `bodyStateVector` a note or journal delete carries (§5.8, #3037).
 pub(crate) fn body_state_vector(tx: &Connection, doc_id: &str) -> Result<String, StorageError> {
@@ -289,6 +326,28 @@ fn replay(plan: &update_log::LoadPlan, doc_id: &str) -> Result<Arc<Document>, Cr
         document.apply_durable_update(blob)?;
     }
     Ok(document)
+}
+
+/// Replays every blob of `plan` that applies and counts the ones that do not,
+/// logging each with the delete's cursor.
+fn replay_readable(
+    plan: &update_log::LoadPlan,
+    doc_id: &str,
+    server_cursor: Option<i64>,
+) -> Result<(Arc<Document>, usize), CrdtError> {
+    let sink: UpdateSink = Arc::new(|_, _| {});
+    let document = DocumentRegistry::new(READER_DEVICE_ID, sink).get_or_open(doc_id)?;
+    let mut skipped = 0;
+    for (index, blob) in plan.blobs().into_iter().enumerate() {
+        if let Err(error) = document.apply_durable_update(blob) {
+            eprintln!(
+                "memry-core: blob {index} of the body of {doc_id} (cursor {server_cursor:?}) \
+                 does not replay before its delete: {error}"
+            );
+            skipped += 1;
+        }
+    }
+    Ok((document, skipped))
 }
 
 fn crdt_failed<E: std::fmt::Display>(doc_id: &str) -> impl Fn(E) -> StorageError + '_ {

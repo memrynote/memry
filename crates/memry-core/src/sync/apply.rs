@@ -43,6 +43,8 @@
 //! saw ([`super::delete_keep`]). The one ticked re-push is §6.11.4's heal of a
 //! versioned key the remote is behind on ([`super::versioned_apply`]), which
 //! §6.11.4 bounds so two clients never ping-pong.
+use std::path::Path;
+
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
@@ -160,6 +162,7 @@ pub(crate) fn apply_page(
         untyped,
         now_ms,
         clock_device,
+        None,
         at_rest,
         &mut totals,
     )?;
@@ -171,18 +174,22 @@ pub(crate) fn apply_page(
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy is clocked under. `at_rest` seals the agent records
-/// ([`crate::crypto::agent_payload`]).
+/// ([`crate::crypto::agent_payload`]). `vault_root` is where a deleted
+/// note's vault file is read when its body log does not replay
+/// ([`super::delete_keep`]); `None` in a shell with no vault files.
 ///
 /// The outcomes go into the caller's `totals`. Each record commits on its own,
 /// so on an error `totals` (its `feed` above all) still holds every record
 /// that committed before it: the pull tells the observers that part, because
 /// a re-pull reports those rows `Skipped` and a write-back would never run.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_page_into(
     conn: &Connection,
     pending: Vec<Pending>,
     untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
+    vault_root: Option<&Path>,
     at_rest: &AtRestKey,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
@@ -206,6 +213,7 @@ pub(crate) fn apply_page_into(
                     body_state_vector.as_deref(),
                     now_ms,
                     clock_device,
+                    vault_root,
                     totals,
                 )?;
                 refused_items::resolve(conn, &item_type, &item_id)?;
@@ -225,6 +233,7 @@ pub(crate) fn apply_page_into(
                         None,
                         now_ms,
                         clock_device,
+                        vault_root,
                         totals,
                     )?;
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;

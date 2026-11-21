@@ -24,6 +24,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{Document, DocumentRegistry};
+use memry_core::domain::note_files::{self, NoteFileStat};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
@@ -95,7 +96,12 @@ fn tombstone_item(item_type: &str) -> Json {
 
 /// One real pull page: a `/sync/changes` answer and the `/sync/pull` answer
 /// that follows it.
-async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport, PullError> {
+async fn pull_one_page(
+    db: &Db,
+    changes: Json,
+    items: Json,
+    vault_root: Option<PathBuf>,
+) -> Result<PullReport, PullError> {
     let transport = FakeTransport::new(vec![
         response(200, &changes.to_string()),
         response(200, &json!({ "items": items }).to_string()),
@@ -105,7 +111,7 @@ async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     );
-    PullLoop::new(
+    let pull = PullLoop::new(
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
@@ -113,13 +119,26 @@ async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.
-    .with_clock_device(DEVICE)
+    .with_clock_device(DEVICE);
+    match vault_root {
+        Some(root) => pull.with_vault_root(root),
+        None => pull,
+    }
     .pull_page()
     .await
 }
 
 /// A typed delete for `item_type`, carried by a ref row plus its signed item.
 async fn deliver_typed_delete(db: &Db, item_type: &str) -> Result<PullReport, PullError> {
+    deliver_typed_delete_in(db, item_type, None).await
+}
+
+/// [`deliver_typed_delete`] to a loop that reads note files under `vault_root`.
+async fn deliver_typed_delete_in(
+    db: &Db,
+    item_type: &str,
+    vault_root: Option<PathBuf>,
+) -> Result<PullReport, PullError> {
     pull_one_page(
         db,
         json!({
@@ -129,6 +148,7 @@ async fn deliver_typed_delete(db: &Db, item_type: &str) -> Result<PullReport, Pu
             "nextCursor": "77",
         }),
         json!([tombstone_item(item_type)]),
+        vault_root,
     )
     .await
 }
@@ -145,6 +165,7 @@ async fn deliver_bare_deleted_id(db: &Db) -> Result<PullReport, PullError> {
             "nextCursor": "77",
         }),
         json!([]),
+        None,
     )
     .await
 }
@@ -292,35 +313,95 @@ async fn a_delete_for_a_colliding_tag_name_leaves_the_notes_body_alone() {
     );
 }
 
-/// A signed delete over a body log that does not replay applies and purges
-/// it (#5343): the unsent text cannot be read, so nothing is kept, as
-/// Electron reads such a body as null and keeps nothing
-/// (`keep-unseen-text.ts:70-71`). It never fails the page.
-#[tokio::test]
-async fn a_delete_over_a_body_that_does_not_replay_applies_and_purges_it() {
-    let db = scratch_db("unreplayable");
-    seed_note(&db);
-    let registry = registry();
-    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+/// Appends a blob no build decodes to the note's body log (#5343).
+fn break_the_log(db: &Db) {
     db.call_blocking(|conn| {
         update_log::append_server_update(conn, NOTE, 1, &[0xff; 4], 1).map_err(storage_failure)
     })
     .expect("bytes no build decodes");
+}
 
-    let report = deliver_typed_delete(&db, "note")
+/// The inbox captures' contents.
+fn kept(db: &Db) -> Vec<String> {
+    db.call_blocking(|conn| {
+        let mut statement = conn
+            .prepare("SELECT content FROM inbox_items")
+            .map_err(storage_failure)?;
+        let rows = statement
+            .query_map([], |row| row.get(0))
+            .map_err(storage_failure)?;
+        rows.collect::<Result<_, _>>().map_err(storage_failure)
+    })
+    .expect("the captures")
+}
+
+/// A signed delete over a body log with a blob that does not replay applies,
+/// purges the log and never fails the page (#5343). The unsent text is kept
+/// from the note's vault file, where Electron reads every body
+/// (`apps/desktop/src/main/sync/keep-unseen-text.ts:46-52`,
+/// `item-handlers/note-handler.ts:750-760`).
+// The frontmatter split is desktop's (`markdown`), as are vault files.
+#[cfg(feature = "markdown")]
+#[tokio::test]
+async fn a_delete_over_a_body_that_does_not_replay_keeps_the_vault_files_text() {
+    let db = scratch_db("unreplayable");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+    break_the_log(&db);
+    let root = tempfile::tempdir().expect("the vault folder");
+    std::fs::write(
+        root.path().join("shared.md"),
+        "---\nid: abc123def456\n---\nstill typing in the file\n",
+    )
+    .expect("the note's file");
+    db.call_blocking(|conn| {
+        note_files::upsert_stats(
+            conn,
+            &[NoteFileStat {
+                note_id: NOTE.to_owned(),
+                path: "shared.md".to_owned(),
+                file_type: "markdown".to_owned(),
+                mime_type: None,
+                file_size: None,
+                content_hash: None,
+                file_hash: None,
+                indexed_at: NOW,
+            }],
+        )
+    })
+    .expect("the note's file row");
+
+    let report = deliver_typed_delete_in(&db, "note", Some(root.path().to_owned()))
         .await
         .expect("the page applies");
 
     assert_eq!((report.deleted, report.corrupt), (1, 0), "{report:?}");
     assert!(record_deleted_at(&db, "note").is_some());
     assert_eq!(body_rows(&db), 0, "the unreadable log is purged");
-    let kept: i64 = db
-        .call_blocking(|conn| {
-            conn.query_row("SELECT count(*) FROM inbox_items", [], |row| row.get(0))
-                .map_err(storage_failure)
-        })
-        .expect("count the captures");
-    assert_eq!(kept, 0, "nothing readable to keep");
+    assert_eq!(kept(&db), ["still typing in the file\n"]);
+}
+
+/// VERIFY-5338B's repro: with no vault file to read (a shell with no vault
+/// files), the unsent text in the blobs that do replay is kept, and the bad
+/// blob never fails the page.
+#[tokio::test]
+async fn a_delete_over_a_partly_unreadable_log_keeps_the_text_that_replays() {
+    let db = scratch_db("partly-unreadable");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+    break_the_log(&db);
+
+    let report = deliver_typed_delete(&db, "note")
+        .await
+        .expect("the page applies");
+
+    assert_eq!((report.deleted, report.corrupt), (1, 0), "{report:?}");
+    assert_eq!(body_rows(&db), 0, "the log is purged");
+    let kept = kept(&db);
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert!(kept[0].contains("still typing"), "{kept:?}");
 }
 
 /// The projection delete is what takes a tombstoned document out of the first

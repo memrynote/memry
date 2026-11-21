@@ -1,6 +1,8 @@
 //! The delete half of [`super::apply_page_into`]: a typed tombstone, the clock
 //! weighing #2409 adds to it, and §5.12.1's untyped delete.
 
+use std::path::Path;
+
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
@@ -55,6 +57,7 @@ pub(super) fn apply_tombstone(
     body_state_vector: Option<&str>,
     now_ms: i64,
     clock_device: Option<&str>,
+    vault_root: Option<&Path>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
@@ -77,6 +80,7 @@ pub(super) fn apply_tombstone(
         clock,
         body_state_vector,
         clock_device,
+        vault_root,
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
