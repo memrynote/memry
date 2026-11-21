@@ -292,6 +292,37 @@ async fn a_delete_for_a_colliding_tag_name_leaves_the_notes_body_alone() {
     );
 }
 
+/// A signed delete over a body log that does not replay applies and purges
+/// it (#5343): the unsent text cannot be read, so nothing is kept, as
+/// Electron reads such a body as null and keeps nothing
+/// (`keep-unseen-text.ts:70-71`). It never fails the page.
+#[tokio::test]
+async fn a_delete_over_a_body_that_does_not_replay_applies_and_purges_it() {
+    let db = scratch_db("unreplayable");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+    db.call_blocking(|conn| {
+        update_log::append_server_update(conn, NOTE, 1, &[0xff; 4], 1).map_err(storage_failure)
+    })
+    .expect("bytes no build decodes");
+
+    let report = deliver_typed_delete(&db, "note")
+        .await
+        .expect("the page applies");
+
+    assert_eq!((report.deleted, report.corrupt), (1, 0), "{report:?}");
+    assert!(record_deleted_at(&db, "note").is_some());
+    assert_eq!(body_rows(&db), 0, "the unreadable log is purged");
+    let kept: i64 = db
+        .call_blocking(|conn| {
+            conn.query_row("SELECT count(*) FROM inbox_items", [], |row| row.get(0))
+                .map_err(storage_failure)
+        })
+        .expect("count the captures");
+    assert_eq!(kept, 0, "nothing readable to keep");
+}
+
 /// The projection delete is what takes a tombstoned document out of the first
 /// sync's bodies window, and out of every projection-driven read with it.
 ///

@@ -33,6 +33,7 @@ use yrs::StateVector;
 use yrs::updates::decoder::Decode as _;
 
 use crate::api::errors::StorageError;
+use crate::crdt::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
@@ -128,6 +129,7 @@ pub(crate) fn keep(
     item_type: &str,
     item_id: &str,
     deleted_at: i64,
+    server_cursor: Option<i64>,
     tombstone: Option<&VectorClock>,
     deleter_body_state_vector: Option<&str>,
     clock_device: Option<&str>,
@@ -170,10 +172,28 @@ pub(crate) fn keep(
         deleter_body_state_vector: deleter_body_state_vector.map(str::to_owned),
         local_body_state_vector: None,
     };
+    // A body log that does not replay keeps nothing and never fails the
+    // delete (#5343): Electron reads such a body as null and keeps nothing
+    // (`apps/desktop/src/main/sync/keep-unseen-text.ts:46-52`, `:70-71`), and
+    // the delete still applies (`item-handlers/note-handler.ts:750-760`).
+    let plan = update_log::load_plan(tx, item_id).map_err(crdt_failed(item_id))?;
+    let unreadable = |error: CrdtError| {
+        eprintln!(
+            "memry-core: the body of {item_id} (cursor {server_cursor:?}) does not replay, \
+             its delete keeps nothing: {error}"
+        );
+    };
     let document = if facts.deleter_body_state_vector.is_some() {
-        let document = open_body(tx, item_id)?;
-        facts.local_body_state_vector =
-            Some(BASE64.encode(document.state_vector().map_err(crdt_failed(item_id))?));
+        let read =
+            replay(&plan, item_id).and_then(|document| Ok((document.state_vector()?, document)));
+        let (state_vector, document) = match read {
+            Ok(read) => read,
+            Err(error) => {
+                unreadable(error);
+                return Ok(());
+            }
+        };
+        facts.local_body_state_vector = Some(BASE64.encode(state_vector));
         Some(document)
     } else {
         None
@@ -181,11 +201,17 @@ pub(crate) fn keep(
     if !keeps_unseen_text(&facts) {
         return Ok(());
     }
-    let document = match document {
-        Some(document) => document,
-        None => open_body(tx, item_id)?,
+    let text = match document.map_or_else(|| replay(&plan, item_id), Ok) {
+        Ok(document) => extract_text(&document),
+        Err(error) => Err(error),
     };
-    let text = extract_text(&document).map_err(crdt_failed(item_id))?;
+    let text = match text {
+        Ok(text) => text,
+        Err(error) => {
+            unreadable(error);
+            return Ok(());
+        }
+    };
     facts.body_blank = text.trim().is_empty();
     if !keeps_unseen_text(&facts) {
         return Ok(());
@@ -253,14 +279,14 @@ pub(crate) fn body_state_vector(tx: &Connection, doc_id: &str) -> Result<String,
 
 fn open_body(tx: &Connection, doc_id: &str) -> Result<Arc<Document>, StorageError> {
     let plan = update_log::load_plan(tx, doc_id).map_err(crdt_failed(doc_id))?;
+    replay(&plan, doc_id).map_err(crdt_failed(doc_id))
+}
+
+fn replay(plan: &update_log::LoadPlan, doc_id: &str) -> Result<Arc<Document>, CrdtError> {
     let sink: UpdateSink = Arc::new(|_, _| {});
-    let document = DocumentRegistry::new(READER_DEVICE_ID, sink)
-        .get_or_open(doc_id)
-        .map_err(crdt_failed(doc_id))?;
+    let document = DocumentRegistry::new(READER_DEVICE_ID, sink).get_or_open(doc_id)?;
     for blob in plan.blobs() {
-        document
-            .apply_durable_update(blob)
-            .map_err(crdt_failed(doc_id))?;
+        document.apply_durable_update(blob)?;
     }
     Ok(document)
 }

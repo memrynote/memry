@@ -73,6 +73,7 @@ pub(super) fn apply_tombstone(
         item_type,
         item_id,
         deleted_at,
+        server_cursor,
         clock,
         body_state_vector,
         clock_device,
