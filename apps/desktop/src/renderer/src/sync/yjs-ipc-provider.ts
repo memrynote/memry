@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { Observable } from 'lib0/observable'
+import type { CrdtRemoteBodyWait as RemoteBodyWait } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('YjsIpcProvider')
@@ -22,6 +23,8 @@ export interface YjsIpcProviderConfig {
    * it when its provider serves another vault. Null outside a workspace.
    */
   vaultPath?: string | null
+  /** Told each change of `remoteWait` (#5290). */
+  onRemoteWait?: (wait: RemoteBodyWait | null) => void
 }
 
 // oxlint-disable-next-line typescript/no-deprecated -- lib0 Observable is deprecated for ObservableV2; migrating changes the event typing of every consumer
@@ -36,6 +39,7 @@ export class YjsIpcProvider extends Observable<string> {
   private readyCleanup: (() => void) | null = null
   /** Ends `openDoc`'s wait for the server body when this provider is destroyed. */
   private endLoadWait: (() => void) | null = null
+  private remoteWaitState: RemoteBodyWait | null = null
   /**
    * Main dropped the provider this binding pointed at, and no replacement has
    * served us since. Set by the reset event, cleared only by a handshake that
@@ -47,6 +51,7 @@ export class YjsIpcProvider extends Observable<string> {
   private rebinding: Promise<void> | null = null
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
   private readonly vaultPath: string | null
+  private readonly onRemoteWait: ((wait: RemoteBodyWait | null) => void) | undefined
   /** Vault of the provider main last announced ready; cleared on reset. */
   private readyVaultPath: string | null | undefined = undefined
 
@@ -57,6 +62,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.doc = config.doc
     this.canRebind = config.canRebind ?? (() => true)
     this.vaultPath = config.vaultPath ?? null
+    this.onRemoteWait = config.onRemoteWait
   }
 
   /**
@@ -151,6 +157,21 @@ export class YjsIpcProvider extends Observable<string> {
     this.emit('status', [{ status: 'disconnected' }])
   }
 
+  /**
+   * What `connect()` waits on before it binds (#5290): main's doc waits for
+   * the server body (`merging`), or that body cannot be merged for now
+   * (`stuck`). Reported to `YjsIpcProviderConfig.onRemoteWait` when it changes.
+   */
+  get remoteWait(): RemoteBodyWait | null {
+    return this.remoteWaitState
+  }
+
+  private setRemoteWait(next: RemoteBodyWait | null): void {
+    if (this.remoteWaitState === next) return
+    this.remoteWaitState = next
+    this.onRemoteWait?.(next)
+  }
+
   get isSynced(): boolean {
     return this.synced
   }
@@ -237,11 +258,17 @@ export class YjsIpcProvider extends Observable<string> {
    */
   private async openDoc(): Promise<void> {
     let loaded = false
+    let stuck = false
     let onLoaded: (() => void) | null = null
     const stopListening = window.api.onCrdtDocLoaded(({ noteId }) => {
       if (noteId !== this.noteId) return
       loaded = true
       onLoaded?.()
+    })
+    const stopStuck = window.api.onCrdtDocStuck(({ noteId }) => {
+      if (noteId !== this.noteId) return
+      stuck = true
+      if (this.remoteWaitState) this.setRemoteWait('stuck')
     })
     try {
       const result = await window.api.syncCrdt.openDoc(
@@ -254,6 +281,7 @@ export class YjsIpcProvider extends Observable<string> {
       }
       if (result.awaitingRemote && !loaded && !this.destroyed) {
         log.info('Waiting for the server body before binding', { noteId: this.noteId })
+        this.setRemoteWait(stuck ? 'stuck' : result.awaitingRemote)
         await new Promise<void>((resolve) => {
           onLoaded = resolve
           this.endLoadWait = resolve
@@ -265,6 +293,8 @@ export class YjsIpcProvider extends Observable<string> {
     } finally {
       this.endLoadWait = null
       stopListening()
+      stopStuck()
+      if (!this.destroyed) this.setRemoteWait(null)
     }
   }
 

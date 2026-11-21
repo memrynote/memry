@@ -114,6 +114,12 @@ export class CrdtPullLedger {
   /** The durable half of the two sets above; see `crdt-body-debts.ts`. */
   protected debts: CrdtBodyDebtStore
 
+  /**
+   * This session's failed body pulls per note, so `isBodyPullStuck` still
+   * counts when the debt store is session-only and its `failures` reads 0.
+   */
+  private sessionFailures = new Map<string, number>()
+
   constructor(
     protected ctx: SyncContext,
     debts: CrdtBodyDebtStore
@@ -278,6 +284,7 @@ export class CrdtPullLedger {
     const counted = failures !== undefined
     const failed = counted && !failures.has(noteId)
     failures?.add(noteId)
+    if (failed) this.sessionFailures.set(noteId, (this.sessionFailures.get(noteId) ?? 0) + 1)
     this.unmergedRemoteNotes.add(noteId)
     // Only a failed body pull is evidence about the note, so only it writes a
     // new row; pacing noise re-owes an existing debt and otherwise stays in
@@ -369,10 +376,12 @@ export class CrdtPullLedger {
    * The note's pulls failed `STUCK_BODY_PULL_FAILURES` times in a row on an
    * answer from the server (an unresolvable signer, a struct that never
    * arrives), so merging may never finish. An editor waiting on its body then
-   * opens from the file (#5290). Offline and rate-limited passes count nothing.
+   * shows the vault file read-only (#5290). Offline and rate-limited passes
+   * count nothing.
    */
   isBodyPullStuck(noteId: string): boolean {
-    return this.debts.failures(noteId) >= STUCK_BODY_PULL_FAILURES
+    const failures = Math.max(this.debts.failures(noteId), this.sessionFailures.get(noteId) ?? 0)
+    return failures >= STUCK_BODY_PULL_FAILURES
   }
 
   /**
@@ -405,6 +414,7 @@ export class CrdtPullLedger {
     for (const noteId of clean) {
       this.ctx.deps.crdtProvider?.recordWholeBodyMerged(noteId)
       if (stillOwed.has(noteId)) continue
+      this.sessionFailures.delete(noteId)
       this.unmergedRemoteNotes.delete(noteId)
       this.deferredPulls.delete(noteId)
       this.sessionFlagGenerations.delete(noteId)

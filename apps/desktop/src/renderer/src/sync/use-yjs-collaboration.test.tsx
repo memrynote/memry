@@ -37,7 +37,8 @@ beforeEach(() => {
       return () => {}
     },
     onCrdtProviderReady: () => () => {},
-    onCrdtDocLoaded: () => () => {}
+    onCrdtDocLoaded: () => () => {},
+    onCrdtDocStuck: () => () => {}
   }
 })
 

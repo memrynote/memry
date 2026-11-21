@@ -468,13 +468,18 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       await provider.init()
       syncEngine.current = { mergeRemoteCrdtForNote: vi.fn(async () => true) }
       vi.spyOn(provider, 'openForEditor').mockResolvedValue(new Y.Doc())
-      const awaiting = vi.spyOn(provider, 'isAwaitingMerge').mockReturnValue(true)
+      const awaiting = vi.spyOn(provider, 'remoteBodyWait').mockReturnValue('merging')
 
       expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
         success: true,
-        awaitingRemote: true
+        awaitingRemote: 'merging'
       })
-      awaiting.mockReturnValue(false)
+      awaiting.mockReturnValue('stuck')
+      expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
+        success: true,
+        awaitingRemote: 'stuck'
+      })
+      awaiting.mockReturnValue(null)
       expect(await invokeHandler(CRDT_CHANNELS.OPEN_DOC, { noteId: 'n1' })).toEqual({
         success: true
       })

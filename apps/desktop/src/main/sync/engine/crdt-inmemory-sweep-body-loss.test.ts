@@ -655,17 +655,21 @@ describe('CrdtProvider with no store (#2536)', () => {
       })
     })
 
-    it.each(['single', 'batch'] as const)(
-      'an editor stops waiting and opens the file once the %s pulls are stuck',
-      async (pullPath) => {
-        // #given a signer that never resolves
+    it.each([
+      { pullPath: 'single', durableDebts: true },
+      { pullPath: 'batch', durableDebts: true },
+      { pullPath: 'single', durableDebts: false }
+    ] as const)(
+      'a $pullPath pull that is stuck (durable debts: $durableDebts) leaves the doc unseeded, and the body merges once the signer resolves',
+      async ({ pullPath, durableDebts }) => {
+        // #given a signer that does not resolve
         await serveNoteWithPeerEdit()
         h.unresolvable.add('device-b')
-        const { provider, coordinator } = await startRuntime({ durableDebts: true })
+        const { provider, coordinator } = await startRuntime({ durableDebts })
         const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
           coordinator.pullCrdtForNote(id)
         )
-        expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+        expect(provider.remoteBodyWait(NOTE)).toBe('merging')
 
         // #when the owed pulls keep meeting it
         for (let pass = 1; pass < STUCK_BODY_PULL_FAILURES; pass++) {
@@ -673,24 +677,90 @@ describe('CrdtProvider with no store (#2536)', () => {
           else await coordinator.pullCrdtForNotes([NOTE])
         }
 
-        // #then the editor opens the file and stops waiting
-        expect(provider.isAwaitingMerge(NOTE)).toBe(false)
+        // #then the editor is told to show the file read-only, and the doc stays empty
+        expect(provider.remoteBodyWait(NOTE)).toBe('stuck')
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+        expect(h.broadcasts).toContainEqual({
+          channel: CRDT_EVENTS.DOC_STUCK,
+          payload: { noteId: NOTE }
+        })
+
+        // #when the signer resolves and the next pull merges
+        h.unresolvable.clear()
+        await coordinator.pullCrdtForNote(NOTE)
+
+        // #then the editor binds the server body, once
+        expect(provider.remoteBodyWait(NOTE)).toBeNull()
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(1)
         expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
-          ORIGINAL
+          EXPECTED_BODY
         )
         expect(h.broadcasts).toContainEqual({
           channel: CRDT_EVENTS.DOC_LOADED,
           payload: { noteId: NOTE }
         })
+      }
+    )
 
-        // #and a later open of the stuck note seeds at once
-        await provider.close(NOTE, EDITOR_WINDOW)
-        const reopened = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
-          coordinator.pullCrdtForNote(id)
-        )
-        expect(provider.isAwaitingMerge(NOTE)).toBe(false)
-        expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
-          ORIGINAL
+    it('an update parked as pending structs keeps the editor waiting', async () => {
+      // #given a server that holds the peer edit but not the base it builds on
+      await serveNoteWithPeerEdit()
+      const snapshot = h.server!.snapshot!
+      h.server!.snapshot = null
+      const { provider, coordinator } = await startRuntime()
+
+      // #when the editor opens the note
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+        coordinator.pullCrdtForNote(id)
+      )
+
+      // #then it keeps waiting instead of binding an empty doc
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+      expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+      expect(h.broadcasts.some((b) => b.channel === CRDT_EVENTS.DOC_LOADED)).toBe(false)
+
+      // #when the base arrives
+      h.server!.snapshot = snapshot
+      await coordinator.pullCrdtForNote(NOTE)
+
+      // #then the editor binds one body
+      expect(provider.remoteBodyWait(NOTE)).toBeNull()
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(1)
+      expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+        EXPECTED_BODY
+      )
+    })
+
+    it.each([
+      { case: 'a note the server never saw', serverHasBody: false },
+      { case: 'a note with a server body', serverHasBody: true }
+    ])(
+      'an editor opened offline waits, and $case loads once back online',
+      async ({ serverHasBody }) => {
+        // #given the device is offline when the editor opens the note
+        if (serverHasBody) await serveNoteWithPeerEdit()
+        else {
+          h.server = { snapshot: null, updates: [] }
+          putNoteInVault(ORIGINAL)
+        }
+        const { provider } = await startRuntime()
+        const offline = async (): Promise<boolean> => {
+          throw new TypeError('fetch failed')
+        }
+        const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, offline)
+
+        // #then the doc waits unseeded and is not stuck
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+        expect(provider.remoteBodyWait(NOTE)).toBe('merging')
+
+        // #when the network is back and the runtime retries the merge
+        await provider.resumeWaitingEditorDocs()
+
+        // #then the editor binds the note's body
+        expect(provider.remoteBodyWait(NOTE)).toBeNull()
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(1)
+        expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+          serverHasBody ? EXPECTED_BODY : ORIGINAL
         )
       }
     )

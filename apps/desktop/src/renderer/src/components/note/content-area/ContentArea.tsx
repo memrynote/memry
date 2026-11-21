@@ -68,6 +68,7 @@ import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { BodySyncPendingHint } from './body-sync-pending-hint'
+import { RemoteBodyWaitNotice, useRemoteBodyReadOnly } from './remote-body-wait-notice'
 import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callout-block'
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
@@ -3837,10 +3838,12 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // the next mount binds.
   const [mountedWithoutNote] = useState(!props.noteId)
   const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
-  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
-    noteId: props.noteId,
-    enabled: localDocLive
-  })
+  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner, remoteWait } =
+    useYjsCollaboration({
+      noteId: props.noteId,
+      enabled: localDocLive
+    })
+  const readOnlyReason = useRemoteBodyReadOnly(remoteWait)
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
@@ -3848,10 +3851,29 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // Hold the render until the binding has settled. `useCreateBlockNote` builds
   // its collaboration extension once and never rebuilds it, so the fragment has
   // to be there at editor-creation time or it can never attach — which is why
-  // this is a wait rather than a fail-open. It is bounded: connect() settles
-  // either way, and crdt:open-doc waits on the store instead of rejecting.
+  // this is a wait rather than a fail-open. A doc main opened empty to wait
+  // for the server body (#5290) can wait as long as the device is offline or
+  // the body cannot be merged; then the vault file shows read-only, with no
+  // CRDT binding and no saves, until crdt:doc-loaded.
   if (localDocLive && !isReady) {
-    return <ContentAreaPending className={props.className} />
+    if (!readOnlyReason) return <ContentAreaPending className={props.className} />
+    return (
+      <div className={cn('content-area h-full flex flex-col', props.className)}>
+        <RemoteBodyWaitNotice reason={readOnlyReason} />
+        <ContentAreaEditor
+          {...props}
+          className="flex-1"
+          editable={false}
+          runSideEffects={false}
+          onContentChange={undefined}
+          onMarkdownChange={undefined}
+          onInlineTagsChange={undefined}
+          flushMarkdownRef={undefined}
+          openTemplateInsertRef={undefined}
+          focusAtEndRef={undefined}
+        />
+      </div>
+    )
   }
 
   return (

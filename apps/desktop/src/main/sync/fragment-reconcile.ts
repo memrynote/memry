@@ -14,9 +14,36 @@
 
 import * as Y from 'yjs'
 
-/** A block's content, without the block ids a fresh parse assigns anew. */
-function blockKey(block: Y.XmlElement | Y.XmlText): string {
-  return block.toString().replace(/ id="[^"]*"/g, '')
+type XmlNode = Y.XmlElement | Y.XmlText | Y.XmlHook
+
+let hooksSeen = 0
+
+/**
+ * A block's structure and content, without the `id` a fresh parse assigns to
+ * each block anew. Only a `blockContainer`'s own `id` attribute is left out:
+ * text is compared by its delta, so ` id="..."` typed in a note is content. A
+ * hook never matches, so it is always replaced.
+ */
+function nodeKey(node: XmlNode): unknown {
+  if (node instanceof Y.XmlText) return ['text', node.toDelta()]
+  if (node instanceof Y.XmlElement) {
+    const attributes = Object.entries(node.getAttributes())
+      .filter(([name]) => !(name === 'id' && node.nodeName === 'blockContainer'))
+      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return ['element', node.nodeName, attributes, node.toArray().map(nodeKey)]
+  }
+  return ['hook', hooksSeen++]
+}
+
+function blockKey(block: XmlNode): string | null {
+  return block instanceof Y.XmlHook ? null : JSON.stringify(nodeKey(block))
+}
+
+/** Clones nodes for insertion; a hook has no place in a BlockNote body and is dropped. */
+function cloneNodes(nodes: XmlNode[]): Array<Y.XmlElement | Y.XmlText> {
+  const clones: Array<Y.XmlElement | Y.XmlText> = []
+  for (const node of nodes) if (!(node instanceof Y.XmlHook)) clones.push(node.clone())
+  return clones
 }
 
 /** The one block group a BlockNote fragment holds, or null for another shape. */
@@ -34,10 +61,7 @@ export function replaceKeepingUnchangedBlocks(live: Y.XmlFragment, next: Y.XmlFr
   const nextGroup = blockGroupOf(next)
   if (!liveGroup || !nextGroup || liveGroup.nodeName !== nextGroup.nodeName) {
     live.delete(0, live.length)
-    live.insert(
-      0,
-      next.toArray().map((node) => node.clone())
-    )
+    live.insert(0, cloneNodes(next.toArray()))
     return
   }
 
@@ -48,6 +72,7 @@ export function replaceKeepingUnchangedBlocks(live: Y.XmlFragment, next: Y.XmlFr
   while (
     start < liveKeys.length &&
     start < nextKeys.length &&
+    liveKeys[start] !== null &&
     liveKeys[start] === nextKeys[start]
   ) {
     start++
@@ -56,12 +81,13 @@ export function replaceKeepingUnchangedBlocks(live: Y.XmlFragment, next: Y.XmlFr
   while (
     end < liveKeys.length - start &&
     end < nextKeys.length - start &&
+    liveKeys[liveKeys.length - 1 - end] !== null &&
     liveKeys[liveKeys.length - 1 - end] === nextKeys[nextKeys.length - 1 - end]
   ) {
     end++
   }
 
   liveGroup.delete(start, liveKeys.length - start - end)
-  const inserted = nextBlocks.slice(start, nextBlocks.length - end).map((block) => block.clone())
+  const inserted = cloneNodes(nextBlocks.slice(start, nextBlocks.length - end))
   if (inserted.length > 0) liveGroup.insert(start, inserted)
 }

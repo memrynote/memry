@@ -126,6 +126,9 @@ export const onCrdtProviderReady = (
 export const onCrdtDocLoaded = (callback: (data: { noteId: string }) => void): (() => void) =>
   subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_LOADED, callback)
 
+export const onCrdtDocStuck = (callback: (data: { noteId: string }) => void): (() => void) =>
+  subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_STUCK, callback)
+
 /** A note's file could not be updated from its doc; once per run of failed passes. */
 export const onCrdtWriteBackFailed = (
   callback: (event: CrdtWriteBackFailedEvent) => void

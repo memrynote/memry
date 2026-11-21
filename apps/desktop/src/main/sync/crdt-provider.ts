@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import type { FileHandle } from 'fs/promises'
 import { BrowserWindow } from 'electron'
-import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { CRDT_EVENTS, CRDT_FRAGMENT_NAME, type CrdtRemoteBodyWait } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import {
@@ -425,15 +425,26 @@ export class CrdtProvider {
    * With no store, whether an empty doc must wait for the server body instead
    * of seeding from the file (#5290). A seed beside a body the server holds
    * duplicates it once the body merges (#2536). So the doc waits while the
-   * merge did not complete or left server state unmerged. It seeds when the
-   * server provably holds nothing this device lacks, for a local-only note,
-   * and once the note's pulls are stuck: the server answered and the device
-   * still could not merge (an unresolvable signer), which may never change.
+   * merge did not complete or left server state unmerged. It seeds only when
+   * the server provably holds nothing this device lacks, or for a local-only
+   * note. Offline and stuck notes keep waiting, and their editors show the
+   * vault file read-only (D-UNMERGED-OPEN-EXIT-2).
    */
   private waitsForRemoteBody(noteId: string, merged: boolean): boolean {
     const query = this.remoteBody
-    if (!query || this.isNoteLocalOnly(noteId) || query.isStuck(noteId)) return false
+    if (!query || this.isNoteLocalOnly(noteId)) return false
     return !merged || query.hasUnmerged(noteId)
+  }
+
+  /**
+   * What an editor of `noteId` waits on (#5290): null when its doc is ready,
+   * `stuck` when the note's pulls keep failing on a server answer, else
+   * `merging`. The editor shows the vault file read-only while `stuck` or
+   * offline, and binds once the wait ends.
+   */
+  remoteBodyWait(noteId: string): CrdtRemoteBodyWait | null {
+    if (!this.isAwaitingMerge(noteId)) return null
+    return this.remoteBody?.isStuck(noteId) ? 'stuck' : 'merging'
   }
 
   /**
@@ -852,9 +863,10 @@ export class CrdtProvider {
    * nothing. A merge that fails, outlasts the timeout (offline), or leaves
    * server state unmerged opens the doc empty and waiting (#5290,
    * `waitsForRemoteBody`): the IPC handler tells the editor, which shows its
-   * loading state until `crdt:doc-loaded`. The pull that later merges, the
-   * seed when it proves the server empty, or the release of a stuck note
-   * (`releaseStuckEditorDoc`) ends the wait.
+   * loading state, or the vault file read-only once the note is stuck or the
+   * device is offline, until `crdt:doc-loaded`. The pull that later merges, or
+   * the seed when it proves the server empty, ends the wait. A reconnect
+   * retries the merge (`resumeWaitingEditorDocs`).
    *
    * A note that owes its file body (#2646) takes the file on top of the
    * merged server body (`takeFileAfterMerge`), and only after a merge that
@@ -871,7 +883,20 @@ export class CrdtProvider {
 
     const doc = await this.open(noteId, windowId, { skipSeed: true })
     if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) return doc
+    await this.settleEditorDoc(noteId, doc, mergeRemote, timeoutMs)
+    return doc
+  }
 
+  /**
+   * Merges the server body into an editor's empty doc, then waits, takes the
+   * owed file, or seeds; see `openForEditor`.
+   */
+  private async settleEditorDoc(
+    noteId: string,
+    doc: Y.Doc,
+    mergeRemote: (noteId: string) => Promise<boolean>,
+    timeoutMs: number
+  ): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined
     let merged = false
     try {
@@ -888,29 +913,48 @@ export class CrdtProvider {
     }
 
     // The window may have closed the doc while the merge ran.
-    if (this.docs.get(noteId)?.doc !== doc) return doc
+    const entry = this.docs.get(noteId)
+    if (entry?.doc !== doc) return
     const empty = doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
     if (empty && this.waitsForRemoteBody(noteId, merged)) {
+      // Still waiting even if something ended the wait without filling the doc.
+      entry.awaitingMerge = true
       log.info('Editor opened empty until the server body merges', { noteId, merged })
-      return doc
+      return
     }
     if (merged) await this.takeFileAfterMerge(noteId, doc)
     else if (empty) await this.seedFromMarkdownPublic(noteId)
-    return doc
   }
 
   /**
-   * The coordinator's exit for an editor waiting on a note whose pulls are
-   * stuck (#5290): the doc seeds from the file, as before the wait existed.
-   * Only a doc an editor holds: a pull's own doc has nothing to show.
+   * Retries the merge of every editor doc still waiting for its server body,
+   * for the sync runtime once the network is back (#5290). A note the server
+   * never saw seeds here, since no pull would ever name it.
    */
-  async releaseStuckEditorDoc(noteId: string): Promise<void> {
+  async resumeWaitingEditorDocs(): Promise<void> {
+    const merge = this.mergeRemote
+    if (this.persistence || !merge) return
+    const waiting = [...this.docs].filter(
+      ([, entry]) => entry.awaitingMerge && !entry.closing && entry.windowIds.size > 0
+    )
+    for (const [noteId, entry] of waiting) {
+      await this.settleEditorDoc(noteId, entry.doc, merge, EDITOR_OPEN_MERGE_TIMEOUT_MS)
+    }
+  }
+
+  /**
+   * The coordinator's report that a waiting note's pulls are stuck (#5290):
+   * its editors switch to the vault file, read-only. The doc is never seeded
+   * here: a seed beside the server body would duplicate it once the signer
+   * resolves (D-UNMERGED-OPEN-EXIT-2).
+   */
+  reportStuckEditorDoc(noteId: string): void {
     const entry = this.docs.get(noteId)
     if (!entry || entry.closing || !entry.awaitingMerge || entry.windowIds.size === 0) return
-    log.warn('Seeding a waiting editor from its file: the server body cannot be merged', {
+    log.warn('A waiting editor shows its file read-only: the server body cannot be merged', {
       noteId
     })
-    await this.seedFromMarkdownPublic(noteId)
+    broadcastToAllWindows(CRDT_EVENTS.DOC_STUCK, { noteId })
   }
 
   /** Ends a doc's wait for the server body, and tells its editors (#5290). */
@@ -948,7 +992,11 @@ export class CrdtProvider {
     } catch (err) {
       log.warn('Server CRDT merge failed before a seeded push', { noteId, error: err })
     }
-    if (this.waitsForRemoteBody(noteId, merged)) return doc
+    if (this.waitsForRemoteBody(noteId, merged)) {
+      const entry = this.docs.get(noteId)
+      if (entry?.doc === doc) entry.awaitingMerge = true
+      return doc
+    }
     if (merged && (await this.takeFileAfterMerge(noteId, doc))) return doc
     return this.open(noteId)
   }
@@ -1394,7 +1442,13 @@ export class CrdtProvider {
     } finally {
       this.applyingRemoteEditedAtMs = undefined
     }
-    this.endAwaitingMerge(noteId, entry)
+    // An update Yjs parks as pending structs fills nothing, and an editor
+    // bound to the empty doc would type a second body beside the server's
+    // (#5290). With nothing pending, an empty fragment is the server's body.
+    const { pendingStructs } = entry.doc.store
+    if (entry.doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0 || pendingStructs === null) {
+      this.endAwaitingMerge(noteId, entry)
+    }
     return true
   }
 

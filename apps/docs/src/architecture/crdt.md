@@ -313,17 +313,25 @@ write-back that replaces it. A merge that fails falls back to the seed, and the
 note's unmerged flag routes that push to the non-pruning update endpoint.
 
 An editor open of an empty document seeds from the vault file only for a
-local-only note, a note the server provably holds nothing for, or a stuck note
-(#5290). Otherwise, while its merge has not completed or the note still has an
-unmerged remote body, the document stays empty and waits (`awaitingMerge`). The
-`crdt:open-doc` result carries `awaitingRemote: true`, the renderer keeps its
-loading state, and main broadcasts `crdt:doc-loaded` when a merge or a seed ends
-the wait. A seeded push of a waiting note pushes nothing. Offline, the note
-waits until sync merges it. A note whose body pull fails three times with an
-answer from the server (an unresolvable signer, pending structs, a server error;
-never offline, 429 or 401) counts as stuck. With the pull backoff that takes
-about three minutes. The pull then releases the waiting editor document with
-the vault file, and later opens of that note seed at once.
+local-only note or a note the server provably holds nothing for (#5290).
+Otherwise, while its merge has not completed or the note still has an
+unmerged remote body, the document stays empty and waits (`awaitingMerge`).
+An update Yjs parks as pending structs does not end the wait; the document has
+to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
+`awaitingRemote: 'merging'` and the renderer keeps its loading state until
+main broadcasts `crdt:doc-loaded`. A seeded push of a waiting note pushes
+nothing. The waiting document is never seeded from the file
+(D-UNMERGED-OPEN-EXIT-2). A note whose body pull fails three times with an
+answer from the server (an unresolvable signer, pending structs, a server
+error; never offline, 429 or 401) counts as stuck, about three minutes with the
+pull backoff; the count is kept in memory too, so it progresses when the debt
+table is unavailable. Main then broadcasts `crdt:doc-stuck`. While a note is
+stuck, or the device is offline, the editor shows the vault file read-only
+with a notice, with no binding and no saves. The pull that later merges the
+body, or a pull that proves the server holds nothing, ends the wait, and the
+editor binds. A reconnect retries the merge of every waiting editor document
+(`resumeWaitingEditorDocs`), which is how a note the server never saw seeds
+after an offline open.
 
 The CRDT pull (`applyCrdtIncrementals` and `applyCrdtBatch`) seeds a note from its
 vault file only when the server answered with no snapshot and no updates for

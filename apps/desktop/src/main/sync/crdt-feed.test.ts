@@ -118,9 +118,9 @@ describe('replaceNoteBodyInCrdt', () => {
     // #then the doc holds the new body, and A and C keep their Yjs items, so a
     // peer edit inside them still lands (#5319)
     expect(ok).toBe(true)
-    expect(fragment.toString()).toBe(
-      '<blockgroup><blockcontainer>A</blockcontainer><blockcontainer>X</blockcontainer><blockcontainer>C</blockcontainer></blockgroup>'
-    )
+    expect(
+      group.toArray().map((block) => ((block as Y.XmlElement).get(0) as Y.XmlText).toJSON())
+    ).toEqual(['A', 'X', 'C'])
     expect(group.get(0)).toBe(keptStart)
     expect(group.get(2)).toBe(keptEnd)
     expect(transactions).toHaveBeenCalledTimes(1)

@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Sincronizando — o conteúdo desta nota ainda pode estar a caminho",
+    "remoteBodyStuck": "Aguardando sincronização — somente leitura até o conteúdo sincronizado desta nota chegar",
+    "remoteBodyOffline": "Offline — somente leitura até esta nota sincronizar",
     "taskRemoval": {
       "title": "{count, plural, one {Tarefa removida desta nota} other {# tarefas removidas desta nota}}",
       "description": "{count, plural, one {Mantê-la em Tarefas ou excluí-la de todos os lugares?} other {Mantê-las em Tarefas ou excluí-las de todos os lugares?}}",
