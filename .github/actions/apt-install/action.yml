@@ -107,8 +107,12 @@ runs:
         echo "apt failed after 3 attempts" >&2
         exit 1
 
+    # One saver per key. A ref restores only what it saved itself, the default branch (feat/tauri-v2) and
+    # a PR's base saved, so a save from every PR and queue ref left one copy of the same key per ref in
+    # the repo's 10 GB cap. Only a push to feat/tauri-v2 or main, or a scheduled run, saves; every other
+    # ref restores that copy, and a miss installs from the network.
     - name: Save apt .debs
-      if: success() && steps.cache.outputs.cache-hit != 'true'
+      if: success() && steps.cache.outputs.cache-hit != 'true' && (github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main')))
       uses: actions/cache/save@v4
       with:
         path: ${{ steps.key.outputs.dir }}/*.deb
