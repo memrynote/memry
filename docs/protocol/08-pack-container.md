@@ -907,12 +907,16 @@ coverage ranges chain, and writes one pack that replaces them:
   the replacement, and MUST NOT retry the old URL beyond its transport retry
   or fail the sync.
 - **A network drop during the download.** A failure the network may cure is
-  not a gap yet: offline, a failed connection, an idle timeout, a 500, 502 or
-  503, or a 403 on a URL that expired while the transport retried. The Rust
-  core pauses the phase on one and downloads the lost packs again after each
-  of four doubling pauses from 30 s, re-listing at most once per pause for a
-  URL that expired meanwhile; a pack still failing after the fourth is a gap
-  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:115-151`, `:180-226`,
+  not a gap yet: offline, a failed connection, an idle timeout, a 500, 502,
+  503 or 504, a 429 (the pause lasts at least its `Retry-After`), or a 403 on
+  a URL that expired while the transport retried. The Rust core pauses the
+  phase on one and downloads the lost packs again after each of four
+  doubling pauses from 30 s, re-listing at most once per pause for a URL that
+  expired meanwhile. A re-list that fails the same curable way keeps its
+  pack lost for the next pause. A URL's expiry is judged by the later of the
+  wall clock and the phase's monotonic clock. A pack still failing after the
+  fourth pause is a gap
+  (`crates/memry-core/src/sync/pack_bootstrap/download.rs:120-170`, `:172-279`,
   #5374). A pack the re-list no longer names stays a gap. Desktop does not
   pause yet.
 

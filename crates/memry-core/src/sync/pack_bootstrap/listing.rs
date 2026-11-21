@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use serde_json::Value as Json;
 
+use crate::api::errors::ApiError;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 use crate::protocol::pack::PackKind;
 
@@ -60,12 +61,13 @@ pub struct Listing {
 }
 
 /// Walks `GET /sync/packs` newest first. `Err` means "no packs here": an old
-/// server's 404, any non-2xx, or a body that does not parse.
+/// server's 404, any non-2xx, or a body that does not parse. The error stays
+/// typed so a caller can tell a lost network from a final answer.
 pub async fn list(
     http: &HttpClient,
     vault_id: Option<&str>,
     now_s: i64,
-) -> Result<Listing, String> {
+) -> Result<Listing, ApiError> {
     let mut listing = Listing::default();
     let mut cursor: Option<String> = None;
     for page in 0..MAX_PACK_LIST_PAGES {
@@ -81,14 +83,13 @@ pub async fn list(
             request = request.header(VAULT_ID_HEADER, vault_id);
         }
         listing.pages += 1;
-        let body: Json = http
-            .send_json(request)
-            .await
-            .map_err(|error| error.to_string())?;
-        let listed = body
-            .get("packs")
-            .and_then(Json::as_array)
-            .ok_or("the pack list carried no `packs` array")?;
+        let body: Json = http.send_json(request).await?;
+        let listed = body.get("packs").and_then(Json::as_array).ok_or_else(|| {
+            ApiError::MalformedResponse {
+                path: path.clone(),
+                what: "the pack list carried no `packs` array".to_owned(),
+            }
+        })?;
         listing
             .packs
             .extend(listed.iter().filter_map(|pack| listed_pack(pack, now_s)));

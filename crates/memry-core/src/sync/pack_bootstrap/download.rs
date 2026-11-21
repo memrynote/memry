@@ -19,6 +19,7 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::task::{JoinError, JoinSet};
 use tokio::time::Instant;
@@ -74,19 +75,23 @@ async fn download(http: &HttpClient, pack: &PackSummary) -> Result<Vec<u8>, ApiE
 
 type Finished<T> = (PackSummary, T, Result<Vec<u8>, ApiError>);
 
+/// The longest `Retry-After` a pause honours: the last pause.
+const MAX_PAUSE_MS: u64 = PACK_RETRY_FIRST_PAUSE_MS << (PACK_RETRY_PAUSES - 1);
+
 /// One phase's pack downloads, [`RECORD_DOWNLOAD_WIDTH`] at a time. `T`
 /// rides along with each pack.
 pub(super) struct Downloads<T> {
     http: Arc<HttpClient>,
     vault_id: Option<String>,
-    /// The phase's clock: the caller's `now_s` when it began, plus the time
-    /// since, which a paused test clock drives.
+    /// The caller's `now_s` when the phase began; see [`phase_now`].
     now_s: i64,
     began: Instant,
     queue: VecDeque<(PackSummary, T)>,
     running: JoinSet<Finished<T>>,
     /// Packs the network lost, waiting for the pause to end.
     lost: Vec<(PackSummary, T)>,
+    /// The longest `Retry-After` among them.
+    retry_after_ms: u64,
     pauses: u32,
     /// The last re-list and the pause count it was made at.
     relisted: Option<(u32, Vec<PackSummary>)>,
@@ -107,6 +112,7 @@ impl<T: Send + 'static> Downloads<T> {
             queue: packs.into_iter().collect(),
             running: JoinSet::new(),
             lost: Vec::new(),
+            retry_after_ms: 0,
             pauses: 0,
             relisted: None,
         }
@@ -129,8 +135,9 @@ impl<T: Send + 'static> Downloads<T> {
                 if self.lost.is_empty() {
                     return Ok(None);
                 }
-                let pause = PACK_RETRY_FIRST_PAUSE_MS << self.pauses;
+                let pause = (PACK_RETRY_FIRST_PAUSE_MS << self.pauses).max(self.retry_after_ms);
                 self.pauses += 1;
+                self.retry_after_ms = 0;
                 self.http.sleep_ms(pause).await;
                 for lost in self.lost.drain(..).rev() {
                     self.queue.push_front(lost);
@@ -143,15 +150,23 @@ impl<T: Send + 'static> Downloads<T> {
                 Err(error)
                     if self.pauses < PACK_RETRY_PAUSES && self.lost_to_network(&pack, &error) =>
                 {
-                    self.lost.push((pack, carried));
+                    self.lose(pack, carried, &error);
                 }
                 Err(error) => reasons.push(format!("pack {}: {error}", pack.id)),
             }
         }
     }
 
-    fn now(&self) -> i64 {
-        self.now_s + self.began.elapsed().as_secs() as i64
+    fn lose(&mut self, pack: PackSummary, carried: T, error: &ApiError) {
+        if let ApiError::RateLimited {
+            retry_after_s: Some(after_s),
+            ..
+        } = error
+        {
+            let after_ms = after_s.saturating_mul(1_000).min(MAX_PAUSE_MS);
+            self.retry_after_ms = self.retry_after_ms.max(after_ms);
+        }
+        self.lost.push((pack, carried));
     }
 
     async fn start(&mut self, requests: &mut usize, reasons: &mut Vec<String>) {
@@ -159,11 +174,25 @@ impl<T: Send + 'static> Downloads<T> {
             let Some((mut pack, carried)) = self.queue.pop_front() else {
                 break;
             };
-            if !pack.live(self.now()) {
+            if !pack.live(phase_now(self.now_s, self.began)) {
                 match self.resign(&pack.id, requests).await {
-                    Some(url) => pack.url = url,
-                    None => {
+                    Ok(Some(fresh)) => {
+                        pack.url = fresh.url;
+                        pack.expires_at = fresh.expires_at;
+                    }
+                    Ok(None) => {
                         reasons.push(format!("pack {} expired and was not re-signed", pack.id));
+                        continue;
+                    }
+                    // The re-list met the same drop: the pack waits for the
+                    // pause with the others, and nothing new starts.
+                    Err(error) if self.pauses < PACK_RETRY_PAUSES => {
+                        self.lose(pack, carried, &error);
+                        break;
+                    }
+                    Err(error) => {
+                        self.relisted = Some((self.pauses, Vec::new()));
+                        reasons.push(format!("pack {} was not re-signed: {error}", pack.id));
                         continue;
                     }
                 }
@@ -179,53 +208,74 @@ impl<T: Send + 'static> Downloads<T> {
 
     /// URLs are signed once at listing time and live 300 s. A run that
     /// outlived them re-lists for fresh ones, at most once per pause (§8.12).
-    /// A pack a rollup replaced meanwhile is not found, and stays a gap.
-    async fn resign(&mut self, id: &str, requests: &mut usize) -> Option<String> {
-        let now = self.now();
+    /// A pack a rollup replaced meanwhile is not found, and stays a gap. A
+    /// re-list the network may cure is not remembered, so the next pause
+    /// lists again; the error comes back for the pack to wait.
+    async fn resign(
+        &mut self,
+        id: &str,
+        requests: &mut usize,
+    ) -> Result<Option<PackSummary>, ApiError> {
+        let now = phase_now(self.now_s, self.began);
         let fresh = |packs: &[PackSummary]| {
             packs
                 .iter()
                 .find(|pack| pack.id == id && pack.live(now))
-                .map(|pack| pack.url.clone())
+                .cloned()
         };
         if let Some((at, packs)) = &self.relisted {
-            if let Some(url) = fresh(packs) {
-                return Some(url);
+            if let Some(pack) = fresh(packs) {
+                return Ok(Some(pack));
             }
             if *at == self.pauses {
-                return None;
+                return Ok(None);
             }
         }
         *requests += 1;
-        let packs = list(&self.http, self.vault_id.as_deref(), now)
-            .await
-            .map(|listing| listing.packs)
-            .unwrap_or_default();
-        let url = fresh(&packs);
+        let packs = match list(&self.http, self.vault_id.as_deref(), now).await {
+            Ok(listing) => listing.packs,
+            Err(error) if curable(&error, u64::MAX) => return Err(error),
+            Err(_) => Vec::new(),
+        };
+        let pack = fresh(&packs);
         self.relisted = Some((self.pauses, packs));
-        url
+        Ok(pack)
     }
 
-    /// A failure the network may cure: no path, a dropped connection, an
-    /// idle stall, a 5xx, or a 403 on a URL that expired while the ladder
-    /// waited. A spent deadline, a 404 and a 403 on a live URL are final.
+    /// [`curable`] within the pack's deadline, or a 403 on a URL that
+    /// expired while the ladder waited.
     fn lost_to_network(&self, pack: &PackSummary, error: &ApiError) -> bool {
-        match error {
-            ApiError::Transport { source } => match source {
-                TransportError::Offline | TransportError::Failed { .. } => true,
-                TransportError::Timeout { elapsed_ms } => {
-                    *elapsed_ms < pack_deadline_ms(pack.byte_size)
-                }
-                _ => false,
-            },
-            ApiError::Status { status, .. } => match status {
-                500 | 502 | 503 => true,
-                403 => !pack.live(self.now()),
-                _ => false,
-            },
-            _ => false,
-        }
+        curable(error, pack_deadline_ms(pack.byte_size))
+            || matches!(error, ApiError::Status { status: 403, .. })
+                && !pack.live(phase_now(self.now_s, self.began))
     }
+}
+
+/// A failure the network may cure: no path, a dropped connection, a timeout
+/// short of `deadline_ms` (an idle stall), a 5xx gateway or server error, or
+/// a rate limit. A spent deadline, a 404 and a 401 are final.
+fn curable(error: &ApiError, deadline_ms: u64) -> bool {
+    match error {
+        ApiError::Transport { source } => match source {
+            TransportError::Offline | TransportError::Failed { .. } => true,
+            TransportError::Timeout { elapsed_ms } => *elapsed_ms < deadline_ms,
+            _ => false,
+        },
+        ApiError::Status { status, .. } => matches!(status, 500 | 502 | 503 | 504),
+        ApiError::RateLimited { .. } => true,
+        _ => false,
+    }
+}
+
+/// The phase's clock for URL expiry, in unix seconds: the caller's `now_s`
+/// plus the monotonic time since, which a paused test clock drives, or the
+/// wall clock when that is later. A monotonic clock stops while an Apple
+/// device sleeps, and a URL that expired meanwhile must not look live.
+fn phase_now(now_s: i64, began: Instant) -> i64 {
+    let wall = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.as_secs() as i64);
+    wall.max(now_s + began.elapsed().as_secs() as i64)
 }
 
 #[cfg(test)]
@@ -242,5 +292,17 @@ mod tests {
         assert_eq!(pack_deadline_ms(Some(24 * MIB)), 2_475_919);
         assert!(pack_deadline_ms(Some(32 * MIB)) < PACK_DEADLINE_CAP_MS);
         assert_eq!(pack_deadline_ms(Some(u64::MAX)), PACK_DEADLINE_CAP_MS);
+    }
+
+    /// REVIEW-5383: a phase begun at `now_s` that the monotonic clock says
+    /// is young still reads the wall clock once that is later.
+    #[test]
+    fn the_phase_clock_never_runs_behind_the_wall_clock() {
+        let wall = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        assert!(phase_now(wall - 3_600, Instant::now()) >= wall);
+        assert!(phase_now(wall + 3_600, Instant::now()) >= wall + 3_600);
     }
 }

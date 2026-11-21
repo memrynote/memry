@@ -102,9 +102,9 @@ impl PackBootstrap {
 
         let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
-            Err(reason) => {
+            Err(error) => {
                 report.requests += 1;
-                report.fallback_reasons.push(reason);
+                report.fallback_reasons.push(error.to_string());
                 report.used = !done.is_empty();
                 return Ok(report);
             }
