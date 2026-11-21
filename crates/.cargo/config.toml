@@ -38,3 +38,16 @@ xtask = "run -p xtask --"
 GGML_NATIVE = "OFF"
 CMAKE_POLICY_DEFAULT_CMP0091 = "NEW"
 CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded"
+
+# Test scratch directories land in `crates/target`, so `cargo clean` removes the ones tests leak
+# (`tempfile` `.keep()`, miniflare) instead of the system temp dir collecting them.
+# - `force`: macOS already sets TMPDIR. Windows ignores it (std reads TMP/TEMP), so Windows keeps
+#   its temp dir.
+# - Cargo applies `[env]` to rustc and build scripts too (libsodium's configure uses TMPDIR), so
+#   the directory must exist before the first build script, and no build script can create it.
+#   Cargo creates `crates/target` itself in the default layout.
+# - `relative` resolves against this file's parent, `crates/`, not the target dir. With
+#   `CARGO_TARGET_DIR` set elsewhere, run `mkdir -p crates/target` first: without it the first
+#   build script fails with "No such file or directory". The scratch directories stay in
+#   `crates/target`, not in the target dir.
+TMPDIR = { value = "target", relative = true, force = true }
