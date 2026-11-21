@@ -313,7 +313,12 @@ impl FirstSync {
         report.bodies_owed = read_body_counts(&self.db).await?.1 as usize;
 
         self.db
-            .call(move |conn| write_meta(conn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string()))
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                note_body_feed::finish_legacy_pull(&txn)?;
+                write_meta(&txn, META_FIRST_SYNC_COMPLETED, &now_ms.to_string())?;
+                txn.commit().map_err(sqlite_failed)
+            })
             .await?;
         Ok(())
     }

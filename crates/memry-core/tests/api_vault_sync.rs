@@ -94,7 +94,10 @@ fn descriptor() -> DeviceDescriptor {
 /// `unlocked` is false — the master key an unlock would have written.
 fn session(transport: Arc<FakeTransport>, unlocked: bool) -> Arc<AuthSession> {
     let store = FakeSecureStore::new();
-    store.put_text(SecureStoreKey::AccessToken, "access-1");
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &http_fakes::jwt(json!({"sub": "user-1", "device_id": DEVICE, "type": "access", "exp": 9_999_999_999u64})),
+    );
     if unlocked {
         store
             .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
@@ -460,4 +463,74 @@ async fn a_device_that_has_never_unlocked_refuses_before_it_asks_anything() {
     let error = sync.first_sync(None).await.expect_err("refused");
     assert_eq!(error, SyncError::Locked);
     assert_eq!(transport.call_count(), 0);
+}
+
+/// A first sync pulls every live body it holds to the head, so the first pass
+/// after it owes nothing. That pass's feed page serves `noteBodies` (empty), the
+/// one-time legacy pull's trigger (chapter 07 §7.17), and owing every held
+/// document there re-pulled the whole vault one document at a time.
+#[tokio::test]
+async fn the_first_pass_after_a_first_sync_owes_no_body_it_already_pulled() {
+    let dir: PathBuf = std::env::temp_dir().join(format!(
+        "memry-api-vault-sync-no-reowe-{}-{}",
+        std::process::id(),
+        SCRATCH.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir_all(&dir).expect("the scratch directory");
+    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
+    let owed = || {
+        side.call_blocking(|conn| memry_core::sync::body_debt::owed(conn))
+            .expect("the debts")
+    };
+    let (public, secret) = keypair();
+
+    let update = body_update("Hello from the server");
+    let mut script = first_sync_script(&public, secret.clone(), RECENT);
+    script.push(http_fakes::probe_refused());
+    script.push(response(
+        200,
+        &json!({ "snapshot": Json::Null }).to_string(),
+    ));
+    script.push(response(
+        200,
+        &json!({"updates": [{
+            "sequenceNum": 1,
+            "data": packed_base64(&update, &secret),
+            "createdAt": 1_700_000_000_000i64,
+            "signerDeviceId": DEVICE,
+        }], "hasMore": false})
+        .to_string(),
+    ));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone(), true));
+    assert_eq!(
+        sync.first_sync(None).await.expect("the first sync").bodies,
+        1
+    );
+    assert!(
+        owed().is_empty(),
+        "the first sync pulled the body to its head"
+    );
+
+    let transport = FakeTransport::new(vec![
+        devices_response(&public),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": 10, "noteBodies": []})
+                .to_string(),
+        ),
+    ]);
+    let pass = vault
+        .sync(session(transport.clone(), true))
+        .sync_now()
+        .await
+        .expect("the pass");
+
+    assert_eq!(pass.bodies, 0, "{pass:?}");
+    assert!(
+        owed().is_empty(),
+        "nothing the first sync pulled is owed again"
+    );
+    assert_eq!(transport.calls_to("/sync/crdt/updates/batch").len(), 0);
 }
