@@ -9,6 +9,7 @@ import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodie
 import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import {
   getNoteSyncState,
@@ -276,7 +277,7 @@ describe('note sync state (#2647)', () => {
   })
 
   describe('a note the server provably never saw (#5371)', () => {
-    const createdHere = (id: string, syncedAt: string | null = null) => {
+    const indexedFromFile = (id: string, syncedAt: string | null = null) => {
       data.db
         .insert(noteMetadata)
         .values({
@@ -300,7 +301,17 @@ describe('note sync state (#2647)', () => {
         })
         .run()
     }
+    const createdHere = (id: string, syncedAt: string | null = null) => {
+      indexedFromFile(id, syncedAt)
+      data.db.insert(notesCreatedHere).values({ noteId: id, createdAt: T0 }).run()
+    }
     const neverSynced = (id: string) => isNeverSyncedLocalNote(dbs.data, id)
+
+    it('fails for a note the ingest or the watcher indexed from a file', () => {
+      indexedFromFile('n1')
+
+      expect(neverSynced('n1')).toBe(false)
+    })
 
     it('holds for a note created here whose create and body never left', () => {
       createdHere('n1')

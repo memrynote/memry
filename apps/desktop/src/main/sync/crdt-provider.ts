@@ -448,16 +448,18 @@ export class CrdtProvider {
    * of seeding from the file (#5290). A seed beside a body the server holds
    * duplicates it once the body merges (#2536). So the doc waits while the
    * merge did not complete or left server state unmerged. It seeds only when
-   * the server provably holds nothing this device lacks, for a local-only
-   * note, or for a note created here that provably never synced, which opens
-   * editable offline (#5371). Every other offline or stuck note keeps waiting,
-   * and its editors show the vault file read-only (D-UNMERGED-OPEN-EXIT-2).
+   * the server provably holds nothing this device lacks, or for a local-only
+   * note. An editor open (`editorOpen`) also seeds a note created here that
+   * provably never synced, which opens editable offline (#5371); a seeded
+   * push of one keeps waiting, so the push stays owed. Every other offline or
+   * stuck note keeps waiting, and its editors show the vault file read-only
+   * (D-UNMERGED-OPEN-EXIT-2).
    */
-  private waitsForRemoteBody(noteId: string, merged: boolean): boolean {
+  private waitsForRemoteBody(noteId: string, merged: boolean, editorOpen = false): boolean {
     const query = this.remoteBody
     if (!query || this.isNoteLocalOnly(noteId)) return false
     if (query.hasUnmerged(noteId)) return true
-    return !merged && !query.neverSynced(noteId)
+    return !merged && !(editorOpen && query.neverSynced(noteId))
   }
 
   /**
@@ -944,7 +946,7 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (entry?.doc !== doc) return
     const empty = doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0
-    if (empty && this.waitsForRemoteBody(noteId, merged)) {
+    if (empty && this.waitsForRemoteBody(noteId, merged, true)) {
       // Still waiting even if something ended the wait without filling the doc.
       entry.awaitingMerge = true
       log.info('Editor opened empty until the server body merges', { noteId, merged })

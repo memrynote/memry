@@ -313,14 +313,26 @@ write-back that replaces it. A merge that fails falls back to the seed, and the
 note's unmerged flag routes that push to the non-pruning update endpoint.
 
 An editor open of an empty document seeds from the vault file only for a
-local-only note or a note the server provably holds nothing for (#5290). A
-note created on this device that never synced also seeds when its merge does
-not complete, so it opens editable offline (#5371). That needs durable proof
-the server holds nothing: `note_metadata.synced_at` is null, its `note` create
-is still queued, it has no `note_body_sync` row, and the coordinator has no
-sign of a server body (no unmerged flag, owed or deferred pull, counted
-failure, or update applied this session). Journals never qualify. Otherwise, while its merge has not completed or the note still has an
-unmerged remote body, the document stays empty and waits (`awaitingMerge`).
+local-only note or a note the server provably holds nothing for (#5290). An
+editor open of a note created on this device that never synced also seeds when
+its merge does not complete, so the note opens editable offline (#5371). A
+seeded push of the same note keeps waiting, so the push stays owed. The open
+needs durable proof that the server holds nothing:
+
+- The app's create command made the note here: it has a `notes_created_here`
+  row. A file the vault ingest or the file watcher indexed has none, because a
+  folder shared through iCloud, Dropbox or git can bring a note another device
+  already synced. Notes created before this table existed have no row either.
+- `note_metadata.synced_at` is null, and its `note` create is still queued.
+- It has no `note_body_sync` row. Every body route records `sent` before its
+  request leaves: the outbox, and the single and batch snapshot pushes (the
+  scheduler, close, compaction). A stored push whose reply was lost still
+  counts.
+- The coordinator has no sign of a server body: no unmerged flag, no owed or
+  deferred pull, no counted failure, and no update applied this session.
+
+Journals never qualify. Otherwise, while its merge has not completed or the
+note still has an unmerged remote body, the document stays empty and waits (`awaitingMerge`).
 An update Yjs parks as pending structs does not end the wait; the document has
 to hold a body, or nothing may be pending. The `crdt:open-doc` result carries
 `awaitingRemote: 'merging'` and the renderer keeps its loading state until

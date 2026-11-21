@@ -644,6 +644,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
         onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
+        onSending: (noteId) => recordNoteBodyPush(noteId, 'sent', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof RateLimitError) snapshotScheduler.request(noteId)
           if (err instanceof SyncServerError && err.statusCode === 401) {
@@ -682,6 +683,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
         },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onSending: (noteIds) => {
+          for (const noteId of noteIds) recordNoteBodyPush(noteId, 'sent', Date.now(), db)
+        },
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413

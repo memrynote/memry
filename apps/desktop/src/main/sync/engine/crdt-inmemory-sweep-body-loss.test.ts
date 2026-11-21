@@ -206,6 +206,7 @@ import { generateContentHash, parseNote } from '../../vault/frontmatter'
 import { isNeverSyncedLocalNote } from '../note-sync-state'
 import { recordNoteBodyPush } from '../note-body-push-record'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
 import type { DataDb } from '../../database/client'
 
 const NOTE = 'c8c29h5sqvgt'
@@ -1653,6 +1654,12 @@ describe('CrdtProvider with no store (#2536)', () => {
 
     /** A note created on this device: its create is still queued, nothing pushed. */
     function createNoteHere(): void {
+      indexNoteFromFile()
+      ;(h.db as DataDb).insert(notesCreatedHere).values({ noteId: NOTE, createdAt: 1 }).run()
+    }
+
+    /** A note the ingest or the watcher indexed: create queued, no create-command marker. */
+    function indexNoteFromFile(): void {
       putNoteInVault(ORIGINAL)
       h.db = createTestDataDb().db
       h.canonical = { id: NOTE, syncedAt: null }
@@ -1730,6 +1737,41 @@ describe('CrdtProvider with no store (#2536)', () => {
 
       expect(provider.isAwaitingMerge(NOTE)).toBe(true)
       expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+    })
+
+    it('a note a shared folder brought stays read-only and shows the server body once (#5371)', async () => {
+      // #given a file another device already synced, indexed here from a shared folder
+      await serveNoteWithPeerEdit()
+      indexNoteFromFile()
+      const { provider, coordinator } = await startRuntime()
+
+      // #when the editor opens it while the merge cannot reach the server
+      const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, OFFLINE, 10)
+
+      // #then it waits instead of seeding beside the server body
+      expect(provider.isAwaitingMerge(NOTE)).toBe(true)
+      expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+      // #when the pull merges once online
+      await coordinator.pullCrdtForNote(NOTE)
+
+      // #then the body appears once
+      expect(countTexts(doc.getXmlFragment(CRDT_FRAGMENT_NAME), 'Pack for the')).toBe(1)
+    })
+
+    it('a seeded push of a closed never-synced note whose merge failed keeps the push owed', async () => {
+      // #given a note created here, closed, and a merge that cannot finish
+      h.server = { snapshot: null, updates: [] }
+      createNoteHere()
+      const { provider } = await startRuntime()
+      provider.setRemoteMerge(async () => false)
+
+      // #when a snapshot push opens it
+      const pushed = await provider.pushSnapshotForNote(NOTE)
+
+      // #then nothing is seeded or sent; the push stays owed
+      expect(pushed).toBe(false)
+      expect(h.server).toEqual({ snapshot: null, updates: [] })
     })
 
     it('stays read-only when this session already pulled a server body for it', async () => {
