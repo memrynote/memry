@@ -480,6 +480,9 @@ mod tests {
             // count can never be added without this test seeing it.
             purged_documents: Vec::new(),
             advanced_documents: Vec::new(),
+            // Set only by the first sync's pull by id, which this command
+            // never runs.
+            uncovered: 0,
         };
         let rendered = format_pull(&report);
         assert!(rendered.contains("applied 7"), "{rendered}");
