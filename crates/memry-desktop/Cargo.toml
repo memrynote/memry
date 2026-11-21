@@ -103,6 +103,8 @@ pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac"] }
 sha1 = "0.11.0"
 hmac = "0.13.0"
 md-5 = "0.11"
+# The CalDAV multistatus reader (`calendar_providers::caldav_xml`); already in the lock through plist.
+quick-xml = "0.42.0"
 rusty-leveldb = "4.0.2"
 snap = "1.1.2"
 tempfile = "3"

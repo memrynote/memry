@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 mod ai_fake;
+mod caldav_server;
 mod capture_support;
 mod device_key;
 mod electron_profile;
@@ -111,6 +112,10 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_caldav.rs"]
+mod calendar_caldav;
+#[path = "calendar_caldav_connect.rs"]
+mod calendar_caldav_connect;
 #[path = "calendar_eventkit.rs"]
 mod calendar_eventkit;
 #[path = "calendar_feeds.rs"]
