@@ -482,6 +482,8 @@ mod sync_body_heal;
 mod sync_body_observers;
 #[path = "sync_body_packs.rs"]
 mod sync_body_packs;
+#[path = "sync_body_pass_writer.rs"]
+mod sync_body_pass_writer;
 #[path = "sync_body_route_batch.rs"]
 mod sync_body_route_batch;
 #[path = "sync_body_step_budget.rs"]
