@@ -57,6 +57,7 @@ const { blobRateLimiterOptions } = vi.hoisted(() => ({
     keyPrefix: string
     maxRequests: number
     windowSeconds: number
+    cost?: (c: unknown) => Promise<number> | number
   }>
 }))
 
@@ -758,6 +759,40 @@ describe('blob routes', () => {
     )
   })
 
+  it('returns the stored manifests of a batch and leaves out the missing ones', async () => {
+    vi.mocked(getBlob).mockImplementation(async (_storage, key) =>
+      key.includes('/attachments/missing/')
+        ? null
+        : (createR2Object({ text: vi.fn().mockResolvedValue(JSON.stringify({ key })) }) as never)
+    )
+
+    const res = await app.request(
+      '/attachments/manifests/batch',
+      { method: 'POST', body: JSON.stringify({ attachmentIds: ['att-1', 'missing', 'att-2'] }) },
+      env
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      manifests: {
+        'att-1': { key: 'user-1/vaults/vault-1/attachments/att-1/manifest' },
+        'att-2': { key: 'user-1/vaults/vault-1/attachments/att-2/manifest' }
+      }
+    })
+  })
+
+  it('rejects a manifest batch over the cap or with an id that is not one key segment', async () => {
+    const over = Array.from({ length: 101 }, (_, i) => `att-${i}`)
+    for (const attachmentIds of [over, ['../x/y'], []]) {
+      const res = await app.request(
+        '/attachments/manifests/batch',
+        { method: 'POST', body: JSON.stringify({ attachmentIds }) },
+        env
+      )
+      expect(res.status).toBe(400)
+    }
+  })
+
   it('returns session errors for missing or expired upload sessions', async () => {
     state.session = null
     let res = await app.request('/attachments/upload/missing', { method: 'GET' }, env)
@@ -776,6 +811,15 @@ describe('blob routes', () => {
       // #then — the #1829 download queue paces against this exact bucket key
       // and window; only the numeric ceiling is allowed to move.
       expect(optionsFor('blob_download')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+    })
+
+    it('charges a manifest batch one blob_download token per distinct id', async () => {
+      const batch = blobRateLimiterOptions.find((o) => o.keyPrefix === 'blob_download' && o.cost)
+      const costOf = (body: unknown) => batch!.cost!({ req: { json: async () => body } })
+
+      expect(batch).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+      expect(await costOf({ attachmentIds: ['a', 'b', 'a', 'c'] })).toBe(3)
+      expect(await costOf({ attachmentIds: [] })).toBe(1)
     })
 
     it('gives chunk_upload room for concurrent large-file uploads', () => {

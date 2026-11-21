@@ -118,6 +118,7 @@ export type DownloadFn = (
     onProgress?: ProgressCallback
     pace?: () => Promise<void>
     isOnline?: () => boolean
+    upcoming?: () => string[]
   }
 ) => Promise<DownloadResult>
 
@@ -165,6 +166,8 @@ export class DownloadQueue {
   /** keyOf(request) -> unsettled item, for dedupe (queued or running). */
   private byKey = new Map<string, QueueItem>()
   private running = 0
+  /** Items whose download has started and not settled. */
+  private readonly started = new Set<QueueItem>()
   private backoffUntil = 0
   /** Global network-error backoff deadline — one blip pauses ALL items. */
   private networkBackoffUntil = 0
@@ -343,13 +346,27 @@ export class DownloadQueue {
     this.wakeBackoff?.()
   }
 
+  /**
+   * Attachment ids in flight, then queued in the order takeNext starts them, so
+   * the service fetches their manifests in one batch (#5329). Downloads that
+   * started together are included: with three in flight, the first one's batch
+   * covers the other two. The service leaves out ids whose manifest it already
+   * handed to a download.
+   */
+  private upcomingAttachmentIds(): string[] {
+    const queued = this.queue.toSorted(compareItems)
+    return [...this.started, ...queued].map((item) => item.request.attachmentId)
+  }
+
   private async processItem(item: QueueItem): Promise<void> {
     const { request } = item
+    this.started.add(item)
     try {
       const result = await this.downloadFn(request.attachmentId, request.targetPath, {
         ...(request.targetIsDir ? { targetIsDir: true } : {}),
         ...(request.onProgress ? { onProgress: request.onProgress } : {}),
         pace: () => this.pacer.acquire(),
+        upcoming: () => this.upcomingAttachmentIds(),
         ...(this.network ? { isOnline: () => this.network!.online } : {})
       })
       // A completed transfer proves the network works (see UploadQueue).
@@ -392,6 +409,8 @@ export class DownloadQueue {
       }
       this.byKey.delete(this.keyOf(request))
       item.reject(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      this.started.delete(item)
     }
   }
 }

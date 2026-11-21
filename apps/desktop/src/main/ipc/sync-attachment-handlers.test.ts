@@ -459,7 +459,11 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
       '/vault/attachments/file.pdf',
-      { onProgress: expect.any(Function), pace: expect.any(Function) }
+      {
+        onProgress: expect.any(Function),
+        pace: expect.any(Function),
+        upcoming: expect.any(Function)
+      }
     )
     // The shared slot is never touched, so nothing can clear a concurrent
     // transfer's progress.
@@ -613,7 +617,7 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
       '/vault/attachments/canvas-1.png',
-      { pace: expect.any(Function) }
+      { pace: expect.any(Function), upcoming: expect.any(Function) }
     )
   })
 

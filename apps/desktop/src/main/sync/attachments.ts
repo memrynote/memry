@@ -28,9 +28,9 @@ import {
   AttachmentPresigner,
   PRESIGN_EXPIRY_SAFETY_MS,
   fetchChunkFromPresignedUrl,
-  putChunkToPresignedUrl,
-  type PresignedUrlWindow
+  putChunkToPresignedUrl
 } from './attachment-presign'
+import { AttachmentDownloadPrefetch } from './attachment-download-prefetch'
 import { withRetry, DeadLetterError, type RetryOptions } from '@memry/sync-client/retry'
 import { ManifestSignatureError } from '@memry/sync-client/push'
 import { recordBootstrapBytes } from './bootstrap-metrics'
@@ -180,14 +180,13 @@ interface UploadState {
 }
 
 /**
- * Per-transfer state of the direct-to-R2 download path (#1836). The window is
- * a batch of presigned GETs armed over the remaining chunks; one refresh is
+ * Per-transfer state of the direct-to-R2 download path (#1836). URLs come from
+ * the service's shared cache (AttachmentDownloadPrefetch); one refresh is
  * allowed on an expired/rejected URL before the transfer drops to the proxied
  * path for good — that keeps a broken presign deployment from doubling every
  * chunk's latency forever.
  */
 interface DirectDownloadState {
-  window: PresignedUrlWindow | null
   refreshUsed: boolean
   fallbackToProxied: boolean
 }
@@ -384,12 +383,20 @@ export class AttachmentSyncService {
    * instead of being re-probed on every download.
    */
   private readonly presigner: AttachmentPresigner
+  private readonly prefetch: AttachmentDownloadPrefetch
 
   constructor(deps: AttachmentSyncDeps) {
     this.deps = deps
     this.presigner = new AttachmentPresigner({
       getSyncServerUrl: deps.getSyncServerUrl,
       ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+    })
+    this.prefetch = new AttachmentDownloadPrefetch({
+      chunkHashesOf: async (encrypted) => {
+        const vaultKey = await deps.getVaultKey()
+        if (!vaultKey) throw new Error('Vault is locked — no vault key')
+        return this.manifestChunkHashes(encrypted, vaultKey)
+      }
     })
   }
 
@@ -722,7 +729,12 @@ export class AttachmentSyncService {
   async downloadAttachment(
     attachmentId: string,
     targetPath: string,
-    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback } & DownloadNetOptions
+    opts?: {
+      targetIsDir?: boolean
+      onProgress?: ProgressCallback
+      /** Attachment ids queued to download next; their manifests share one call. */
+      upcoming?: () => string[]
+    } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
     // Per-call callback wins over the shared slot, mirroring uploadAttachment:
@@ -746,7 +758,14 @@ export class AttachmentSyncService {
     if (opts?.isOnline) netOpts.isOnline = opts.isOnline
     if (opts?.signal) netOpts.signal = opts.signal
 
-    const encryptedManifest = await this.fetchManifest(token, attachmentId, netOpts)
+    const batchUrl = `${this.deps.getSyncServerUrl()}/sync/attachments/manifests/batch`
+    const encryptedManifest =
+      (await this.prefetch.takeManifest(attachmentId, opts?.upcoming, async (attachmentIds) => {
+        // The server charges one blob_download token per id, so the pacer does too.
+        for (let i = 0; i < attachmentIds.length; i++) await netOpts.pace?.()
+        const body = JSON.stringify({ attachmentIds })
+        return binaryFetch('POST', batchUrl, token, body, this.deps.fetchFn)
+      })) ?? (await this.fetchManifest(token, attachmentId, netOpts))
 
     const signerPublicKey = await this.deps.getDevicePublicKey(encryptedManifest.signerDeviceId)
     if (!signerPublicKey) {
@@ -835,7 +854,6 @@ export class AttachmentSyncService {
       // remaining chunks and degrade to the proxied path on any presign
       // trouble (server unavailable, expired URL past its one refresh).
       const directState: DirectDownloadState = {
-        window: null,
         refreshUsed: false,
         fallbackToProxied: false
       }
@@ -1248,6 +1266,13 @@ export class AttachmentSyncService {
       if (err instanceof SyncServerError && err.statusCode === 404) return []
       throw err
     }
+    return this.manifestChunkHashes(encrypted, vaultKey)
+  }
+
+  private async manifestChunkHashes(
+    encrypted: EncryptedAttachmentManifest,
+    vaultKey: Uint8Array
+  ): Promise<string[]> {
     const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
     if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
     const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
@@ -1337,9 +1362,14 @@ export class AttachmentSyncService {
         log.info('presigned chunk URL rejected; refreshing batch once', {
           hash: encryptedHash.slice(0, 12)
         })
-        const refreshed = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
-        state.window = refreshed
-        const retryUrl = refreshed?.urls.get(encryptedHash)
+        for (const h of pendingHashes) this.prefetch.forget(h)
+        const retryUrl = await this.nextPresignedDownloadUrl(
+          token,
+          encryptedHash,
+          pendingHashes,
+          state,
+          netOpts
+        )
         if (retryUrl) {
           try {
             return await this.fetchPresignedChunk(retryUrl, netOpts)
@@ -1378,10 +1408,10 @@ export class AttachmentSyncService {
   }
 
   /**
-   * Return the still-valid URL for `hash`, arming a fresh batch window over
-   * `pendingHashes` when absent or expired. Null means "use the proxied path"
-   * without flipping any fallback state — the NEXT chunk may legitimately get
-   * URLs again (e.g. this one was simply outside the batch).
+   * Return a live URL for `hash`, presigning `pendingHashes` when it has none.
+   * Null means "use the proxied path" without flipping any fallback state — the
+   * NEXT chunk may legitimately get URLs again (the presign call failed
+   * transiently).
    */
   private async nextPresignedDownloadUrl(
     token: string,
@@ -1391,12 +1421,9 @@ export class AttachmentSyncService {
     netOpts?: DownloadNetOptions
   ): Promise<string | null> {
     if (state.fallbackToProxied || !this.presigner.available) return null
-    if (state.window && Date.now() < state.window.expiresAtMs) {
-      return state.window.urls.get(hash) ?? null
-    }
-    const window = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
-    state.window = window
-    return window?.urls.get(hash) ?? null
+    return this.prefetch.presignedUrl(hash, pendingHashes, (hashes) =>
+      this.presigner.fetchBatch(token, hashes, netOpts)
+    )
   }
 
   /**

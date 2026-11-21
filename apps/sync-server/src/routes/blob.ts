@@ -33,6 +33,7 @@ import {
   type UploadedChunkEntry
 } from '../services/upload-size'
 import {
+  AttachmentManifestBatchRequestSchema,
   ChunkHoldReleaseRequestSchema,
   ChunkHoldRequestSchema,
   DereferenceRequestSchema,
@@ -93,7 +94,7 @@ const blobUploadLimit = createRateLimiter({
 // bucket. 600 matches the crdt_pull ceiling and is still trivial load per
 // request (one indexed D1 row + one R2 read). Only the number may change here:
 // the key prefix and 60s window are a contract with the client's pacing.
-const blobDownloadLimit = createRateLimiter({
+const blobDownloadBucket = {
   keyPrefix: 'blob_download',
   maxRequests: 600,
   windowSeconds: 60,
@@ -101,6 +102,22 @@ const blobDownloadLimit = createRateLimiter({
   // The client pacer multiplies its own 150/min by the granted factor, so the
   // widened ceiling stays a safety margin rather than the shaping force.
   getElevatedLimits: bootstrapRateLimitElevation
+}
+const blobDownloadLimit = createRateLimiter(blobDownloadBucket)
+
+/**
+ * `blob_download` charged one token per requested id: a manifest batch does
+ * the R2 reads of that many single manifest GETs (#5329). Invalid JSON costs
+ * one token and answers 500; a body that fails the schema costs one and 400.
+ */
+const manifestBatchLimit = createRateLimiter({
+  ...blobDownloadBucket,
+  cost: async (c) => {
+    const parsed = AttachmentManifestBatchRequestSchema.safeParse(
+      await c.req.json().catch(() => null)
+    )
+    return parsed.success ? new Set(parsed.data.attachmentIds).size : 1
+  }
 })
 
 // 300/min (was 100): chunks are ~1MB, so 100/min capped uploads at ~100MB/min
@@ -890,6 +907,35 @@ blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) =>
 
   const data = await obj.text()
   return c.json(JSON.parse(data))
+})
+
+/**
+ * The manifests of up to 100 attachments in one call (#5329). A fresh device
+ * downloads every attachment, and one GET per manifest was most of its requests.
+ * It spends one `blob_download` token per id, like the GETs it replaces.
+ * Each manifest is returned exactly as the single GET returns it; an id with no
+ * stored manifest is left out, so the client fetches it alone and sees the 404.
+ */
+blob.post('/attachments/manifests/batch', manifestBatchLimit, async (c) => {
+  const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
+  const parsed = AttachmentManifestBatchRequestSchema.safeParse(await c.req.json())
+  if (!parsed.success) {
+    throw new AppError(
+      ErrorCodes.VALIDATION_ERROR,
+      `Invalid manifest batch: ${parsed.error.issues[0]?.message ?? 'validation failed'}`,
+      400
+    )
+  }
+  const ids = [...new Set(parsed.data.attachmentIds)]
+  const found = await Promise.all(
+    ids.map(async (attachmentId) => {
+      const key = generateAttachmentManifestKey(userId, attachmentId, vaultId)
+      const obj = await getBlob(c.env.STORAGE, key, userId)
+      return obj ? ([attachmentId, JSON.parse(await obj.text())] as const) : null
+    })
+  )
+  return c.json({ manifests: Object.fromEntries(found.filter((entry) => entry !== null)) })
 })
 
 blob.put('/attachments/:attachment_id/manifest', blobUploadLimit, async (c) => {

@@ -223,8 +223,10 @@ export const verifyBootstrapSession = async (
  *   crdt_batch_pull  x5   30 →  150/min. One indexed query per POST; the
  *                        client spends ~3/min elevated (4s floor ÷ 5).
  *   blob_download    x5  600 → 3000/min. One indexed D1 row + one R2 class-B
- *                        read per chunk GET. The #1829 pacer rides 150/min × 5
- *                        = 750/min against it — half the ceiling.
+ *                        read per chunk GET; a manifest GET is one R2 read,
+ *                        no D1. A manifest batch spends one token per id
+ *                        (#5329), so tokens still bound R2 reads. The #1829
+ *                        pacer rides 150/min × 5 = 750/min — a quarter of it.
  *   sync_pull        x3  120 →  360/min. The expensive one: up to 100 R2
  *                        reads per POST (pullItems caps concurrency at 25),
  *                        so 6/s × bursts of 25 ≈ 150 R2 ops/s worst case —
