@@ -8,7 +8,11 @@
 use super::ImportError;
 use super::TableCtx;
 
+pub mod js_json;
 pub mod records;
+mod row_dumps;
+mod tags;
+pub mod unknown_fields;
 
 /// The Electron database a table lives in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -132,7 +136,7 @@ pub const LEDGER_TABLE: &str = "__drizzle_migrations";
 
 #[rustfmt::skip]
 pub const TABLE_MAP: &[TableMapping] = &[
-    // data.db, 65 tables.
+    // data.db, 64 tables (and sync_unknown_fields, last).
     map!(Data Migration "agent_conversations" [16, Convert, "36b"]: "core agent_conversation record table of Step 16; clocks and version 1 ciphertext envelope copied byte for byte"),
     map!(Data Migration "agent_messages" [16, Convert, "36b"]: "core agent_message record table of Step 16; sealed content ciphertext kept byte for byte"),
     map!(Data Migration "attachment_download_failures" [18, Reseed]: "retry state; rows are dropped and the Step 18 redrive recomputes failures from the manifest"),
@@ -152,7 +156,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "crdt_body_debts" [17, Convert, "36c"]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
     map!(Data Migration "crdt_body_withheld" [17, Convert, "36c"]: "each row becomes a core body debt sync.body_owed:<docId>"),
     map!(Data Migration "crdt_owed_file_bodies" [12, Convert, "36c"]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
-    map!(Data Migration "custom_icons" [13, Convert, "36b"]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
+    map!(Data Migration "custom_icons" [13, Convert => row_dumps::custom_icons]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
     map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
     map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
@@ -185,15 +189,14 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "sync_queue" [17, Convert, "36c"]: "core outbox rows; note_body rows become crdt-update rows"),
     map!(Data Migration "sync_state" [17, Convert, "36c"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "sync_tombstone_clocks" [17, Copy, "36c"]: "core sync_tombstone_clocks table (data 0005), identical columns"),
-    map!(Data Migration "sync_unknown_fields" [16, Convert, "36b"]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
-    map!(Data Migration "tag_categories" [13, Convert, "36b"]: "core tag_categories table"),
-    map!(Data Migration "tag_definitions" [13, Convert, "36b"]: "core tag_definitions table"),
+    map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
+    map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
     map!(Data Migration "task_activity" [21, Convert, "36d2"]: "core task_activity table"),
     map!(Data Migration "task_canvases" [21, Convert, "36d2"]: "payload linkedCanvasIds of the task; task_links rebuilt afterwards"),
     map!(Data Migration "task_notes" [21, Convert, "36d2"]: "core tasks.linked_note_ids and payload linkedNoteIds; task_links rebuilt afterwards"),
     map!(Data Migration "task_tags" [21, Convert, "36d2"]: "core tasks.tags JSON column and tags of the payload"),
     map!(Data Migration "tasks" [21, Convert, "36d2"]: "core tasks table; 16 field clocks kept"),
-    map!(Data Migration "templates" [13, Convert, "36b"]: "core templates table"),
+    map!(Data Migration "templates" [13, Convert => row_dumps::templates]: "core templates table"),
     map!(Data Migration "vault_lock_baselines" [14, Convert, "36b"]: "Step 14 vault_lock_baselines (data 0025)"),
     map!(Data Migration "vault_lock_file_modes" [14, Convert, "36b"]: "Step 14 vault_lock_file_modes (data 0025)"),
     map!(Data Migration "vault_locks" [14, Convert, "36b"]: "core vault_lock record type; table vault_locks (data 0025)"),
@@ -225,6 +228,8 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Index Code "vec_images" [23, Copy, "36e"]: "same rule as vec_notes, with image_embedding_state"),
     map!(Index Code "vec_voice" [23, Copy, "36e"]: "same rule as vec_notes, with voice_embedding_state"),
     map!(Index Code "voice_embedding_state" [23, Copy, "36e"]: "copied with vec_voice (same width and input_version rule), else dropped with it"),
+    // Last: it counts the merge into the records every table above wrote.
+    map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
 ];
 
 pub fn mapping(db: SourceDb, table: &str) -> Option<&'static TableMapping> {
