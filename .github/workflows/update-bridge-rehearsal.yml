@@ -98,11 +98,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
+      # BoringSSL (btls-sys, under the Inbox web fetch) assembles its x86 code with NASM; ARM64 builds it
+      # without assembly (the btls-sys patch in crates/Cargo.toml).
+      - if: runner.arch == 'X64'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
@@ -146,7 +149,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
@@ -253,7 +255,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'

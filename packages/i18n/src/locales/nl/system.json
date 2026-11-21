@@ -17,6 +17,7 @@
       "filterAll": "Alle bestanden"
     },
     "exportCancelled": "Exporteren geannuleerd",
+    "exportVaultChanged": "Er werd een andere kluis geopend terwijl je koos waar je wilde opslaan. Exporteer de notitie opnieuw.",
     "dataDbRecovery": {
       "title": "Kluisdatabase herstellen",
       "message": "De database van Memry voor deze kluis is beschadigd.",

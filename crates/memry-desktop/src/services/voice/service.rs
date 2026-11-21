@@ -15,10 +15,17 @@ use serde::Serialize;
 
 use super::engine::LocalEngine;
 use super::key::OpenAiKey;
-use super::openai::OpenAi;
+use super::openai::{self, OpenAi};
 use super::{VoiceProvider, VoiceSettings, naming};
 use crate::embedding::service::ModelProgress;
 use crate::vault::paths::open_vault_file;
+
+/// The largest recording an engine takes: the worker's frame cap, which is above OpenAI's 25 MB.
+pub const MAX_AUDIO_BYTES: usize = if MAX_TRANSCRIBE_BYTES > openai::MAX_BYTES {
+    MAX_TRANSCRIBE_BYTES
+} else {
+    openai::MAX_BYTES
+};
 
 /// Where the local engine reports its model load (`VoiceModelProgressEvent`).
 pub type Progress = Arc<dyn Fn(ModelProgress) + Send + Sync>;
@@ -252,13 +259,13 @@ fn read_memo(vault: &Path, rel: &str) -> Result<(Vec<u8>, String), String> {
         .map_err(|error| format!("Audio file not readable: {rel}: {error}"))?
         .ok_or_else(|| format!("Audio file not found: {rel}"))?;
     let mut audio = Vec::new();
-    file.take(MAX_TRANSCRIBE_BYTES as u64 + 1)
+    file.take(MAX_AUDIO_BYTES as u64 + 1)
         .read_to_end(&mut audio)
         .map_err(|error| format!("Audio file not readable: {rel}: {error}"))?;
-    if audio.len() > MAX_TRANSCRIBE_BYTES {
+    if audio.len() > MAX_AUDIO_BYTES {
         return Err(format!(
             "Audio file too large. Maximum size is {}MB.",
-            MAX_TRANSCRIBE_BYTES >> 20
+            MAX_AUDIO_BYTES >> 20
         ));
     }
     Ok((audio, ext))

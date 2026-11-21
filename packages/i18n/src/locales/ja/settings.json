@@ -1398,6 +1398,7 @@
       "selectModel": "モデルを選択してください",
       "apiKey": "API キー",
       "apiKeyDescription": "ローカルに保存され、プロバイダーにのみ送信されます",
+      "apiKeyKeychainDescription": "OS のキーチェーンに保存され、プロバイダーにのみ送信されます",
       "apiKeyPlaceholder": "{provider} API キーを入力してください",
       "ollamaUrl": "Ollama の URL",
       "ollamaUrlDescription": "ローカルサーバーアドレス",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "前の保管庫",
           "description": "サイドバーの前の保管庫に移動します"
+        },
+        "todayJournal": {
+          "label": "今日のジャーナル",
+          "description": "今日のエントリでジャーナルを開きます"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "このデバイスのキーは復元されましたが、この Vault はまだアカウントと同期するよう設定されていません。同期メニューから同期方法を選んでください。",
         "vault-foreign": "このデバイスのキーは復元されましたが、この Vault は別のアカウントのものです。このデバイス上でローカルのまま残ります。",
         "entitlement": "このデバイスのキーは復元されましたが、同期には有効な Sync プランが必要です。",
-        "unavailable": "このデバイスのキーは復元されましたが、同期を開始できませんでした。再試行されます。改善しない場合は Memry を再起動してください。"
+        "unavailable": "このデバイスのキーは復元されましたが、同期を開始できませんでした。再試行されます。改善しない場合は Memry を再起動してください。",
+        "unavailable-restart": "このデバイスのキーは復元されましたが、同期を開始できませんでした。Memry を再起動してください。それでも同期が始まらない場合は、サインアウトしてから再度サインインしてください。"
       }
     },
     "pagesSettingsAiInlineSection": {

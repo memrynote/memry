@@ -232,16 +232,26 @@ impl BootstrapClient {
 
         let request = self
             .request("POST", "/sync/bootstrap/renew")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::polled())
             .json(&json!({}));
 
         match self.http.send_json::<Json>(request).await {
             Ok(body) => match read_session(&body, now_s) {
                 Some(renewed) => {
-                    self.lock().session = Some(renewed);
+                    let mut inner = self.lock();
+                    // A close that ran while this renewal was in flight ended
+                    // the window; writing the token back would reopen it.
+                    if inner.finished {
+                        return false;
+                    }
+                    inner.session = Some(renewed);
                     true
                 }
                 None => {
+                    eprintln!(
+                        "memry-core: bootstrap renewal response carried no session, continuing at steady-state pacing"
+                    );
                     self.fall_back();
                     false
                 }
@@ -250,7 +260,10 @@ impl BootstrapClient {
             // BOOTSTRAP_SESSION_EXPIRED` — the six-hour absolute lifetime
             // spent mid-run — is the expected one and is not distinguished,
             // because the reaction is identical for all of them.
-            Err(_) => {
+            Err(error) => {
+                eprintln!(
+                    "memry-core: bootstrap renewal failed, continuing at steady-state pacing: {error}"
+                );
                 self.fall_back();
                 false
             }
@@ -291,15 +304,26 @@ impl BootstrapClient {
     /// device until its `exp` regardless. Closing is a courtesy to the
     /// concurrency cap, not a security boundary.
     pub async fn close(&self) {
-        if self.lock().session.take().is_none() {
-            return;
-        }
-        self.lock().finished = true;
+        let session = {
+            let mut inner = self.lock();
+            let Some(session) = inner.session.take() else {
+                return;
+            };
+            inner.finished = true;
+            session
+        };
+        // The server finds the session to delete through this header alone.
         let request = self
             .request("POST", "/sync/bootstrap/close")
+            .header(BOOTSTRAP_TOKEN_HEADER, &session.token)
             .retry(RetryPolicy::never())
             .json(&json!({}));
-        let _ = self.http.send_json::<Json>(request).await;
+        if let Err(error) = self.http.send_json::<Json>(request).await {
+            eprintln!(
+                "memry-core: bootstrap session close failed, its slot frees at expiry {}: {error}",
+                session.expires_at
+            );
+        }
     }
 
     fn fall_back(&self) {

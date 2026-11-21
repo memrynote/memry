@@ -1398,6 +1398,7 @@
       "selectModel": "Pilih model",
       "apiKey": "Kunci API",
       "apiKeyDescription": "Disimpan secara lokal, dikirim hanya ke penyedia",
+      "apiKeyKeychainDescription": "Disimpan di rantai kunci OS Anda, dikirim hanya ke penyedia",
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat server lokal",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Brankas sebelumnya",
           "description": "Pindah ke brankas sebelumnya di bilah samping"
+        },
+        "todayJournal": {
+          "label": "Jurnal hari ini",
+          "description": "Buka jurnal pada entri hari ini"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "Kunci perangkat ini sudah dipulihkan, tetapi vault ini belum diatur untuk disinkronkan dengan akun Anda. Pilih cara menyinkronkannya dari menu sinkronisasi.",
         "vault-foreign": "Kunci perangkat ini sudah dipulihkan, tetapi vault ini milik akun lain. Vault tetap lokal di perangkat ini.",
         "entitlement": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi memerlukan paket Sync yang aktif.",
-        "unavailable": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Akan dicoba lagi; mulai ulang Memry jika tidak berhasil."
+        "unavailable": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Akan dicoba lagi; mulai ulang Memry jika tidak berhasil.",
+        "unavailable-restart": "Kunci perangkat ini sudah dipulihkan, tetapi sinkronisasi tidak dapat dimulai. Mulai ulang Memry; jika sinkronisasi masih belum dimulai, keluar lalu masuk lagi."
       }
     },
     "pagesSettingsAiInlineSection": {

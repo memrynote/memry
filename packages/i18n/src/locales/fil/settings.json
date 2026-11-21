@@ -1398,6 +1398,7 @@
       "selectModel": "Pumili ng modelo",
       "apiKey": "API key",
       "apiKeyDescription": "Nakaimbak nang lokal, ipinapadala lang sa provider",
+      "apiKeyKeychainDescription": "Naka-store sa iyong OS keychain, ipinapadala lang sa provider",
       "apiKeyPlaceholder": "Ilagay ang API key ng {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Lokal na address ng server",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Nakaraang vault",
           "description": "Lumipat sa nakaraang vault sa sidebar"
+        },
+        "todayJournal": {
+          "label": "Talaarawan ngayong araw",
+          "description": "Buksan ang talaarawan sa entry ngayong araw"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "Naibalik na ang mga key ng device na ito, pero hindi pa naka-set ang vault na ito na mag-sync sa iyong account. Piliin sa sync menu kung paano ito isi-sync.",
         "vault-foreign": "Naibalik na ang mga key ng device na ito, pero sa ibang account ang vault na ito. Mananatili itong lokal sa device na ito.",
         "entitlement": "Naibalik na ang mga key ng device na ito, pero kailangan ng sync ng aktibong Sync plan.",
-        "unavailable": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. Susubukan itong ulitin; i-restart ang Memry kung hindi."
+        "unavailable": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. Susubukan itong ulitin; i-restart ang Memry kung hindi.",
+        "unavailable-restart": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. I-restart ang Memry; kung hindi pa rin magsimula ang sync, mag-sign out at mag-sign in ulit."
       }
     },
     "pagesSettingsAiInlineSection": {

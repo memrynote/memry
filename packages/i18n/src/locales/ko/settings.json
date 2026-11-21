@@ -1398,6 +1398,7 @@
       "selectModel": "모델 선택",
       "apiKey": "API 키",
       "apiKeyDescription": "로컬에 저장되며 제공자에게만 전송됩니다.",
+      "apiKeyKeychainDescription": "OS 키체인에 저장되며 제공자에게만 전송됩니다.",
       "apiKeyPlaceholder": "{provider} API 키 입력",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "로컬 서버 주소",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "이전 볼트",
           "description": "사이드바의 이전 볼트로 이동"
+        },
+        "todayJournal": {
+          "label": "오늘의 저널",
+          "description": "오늘 항목으로 저널을 엽니다"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "이 기기의 키는 복원되었지만 이 볼트가 아직 계정과 동기화되도록 설정되지 않았습니다. 동기화 메뉴에서 동기화 방법을 선택하세요.",
         "vault-foreign": "이 기기의 키는 복원되었지만 이 볼트는 다른 계정에 속해 있습니다. 이 기기에서 로컬로만 유지됩니다.",
         "entitlement": "이 기기의 키는 복원되었지만 동기화에는 활성 Sync 요금제가 필요합니다.",
-        "unavailable": "이 기기의 키는 복원되었지만 동기화를 시작하지 못했습니다. 다시 시도하며, 그래도 안 되면 Memry를 다시 시작하세요."
+        "unavailable": "이 기기의 키는 복원되었지만 동기화를 시작하지 못했습니다. 다시 시도하며, 그래도 안 되면 Memry를 다시 시작하세요.",
+        "unavailable-restart": "이 기기의 키는 복원되었지만 동기화를 시작하지 못했습니다. Memry를 다시 시작하세요. 그래도 동기화가 시작되지 않으면 로그아웃한 후 다시 로그인하세요."
       }
     },
     "pagesSettingsAiInlineSection": {

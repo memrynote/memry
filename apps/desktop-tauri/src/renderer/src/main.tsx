@@ -27,6 +27,7 @@ import { setActiveLocale } from './lib/active-locale'
 import { THEME_STORAGE_KEY } from './lib/startup-theme'
 import { getStartupLocale } from './lib/startup-locale'
 import { prefetchRestoredTabPage } from './lib/launch-restore'
+import { reportLaunchMarks } from './lib/launch-marks'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
 import { installNotPortedShim } from './lib/not-ported'
@@ -133,7 +134,11 @@ const rootComponentReady: Promise<React.ComponentType> = isQuickCaptureWindow
 // to restore, so a wrong guess costs one speculative chunk fetch. Skipped for
 // the secondary windows, which never render a note tab and would just be
 // paying for a chunk they never use.
-if (!isSecondaryWindow) prefetchRestoredTabPage()
+if (!isSecondaryWindow) {
+  prefetchRestoredTabPage()
+  // The main window's launch timings, for `scripts/launch-bench.mjs`.
+  reportLaunchMarks()
+}
 
 // Started at module scope rather than inside boot(): the locale is already
 // known, so there is nothing left for the 11 locale namespace chunks to wait

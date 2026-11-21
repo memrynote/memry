@@ -69,7 +69,7 @@ describe('inbox-service', () => {
     const [command, body, meta] = invokeBinary.mock.calls[0]
     expect(command).toBe('inbox_transcribe_audio')
     expect(Array.from(body as Uint8Array)).toEqual([82, 73, 70, 70])
-    expect(meta).toEqual({ format: 'wav' })
+    expect(meta).toEqual({ format: 'wav', duration: 2 })
     expect(api.inbox.transcribeAudio).not.toHaveBeenCalled()
   })
 

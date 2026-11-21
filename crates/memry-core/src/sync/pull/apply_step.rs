@@ -8,7 +8,7 @@ use super::items::field;
 use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
 use crate::sync::body_debt;
-use crate::sync::driver::observer::AppliedFeed;
+use crate::sync::driver::observer::{AppliedFeed, AppliedOutcome, AppliedRecord};
 use crate::sync::hardening::{corrupt, quarantine};
 use crate::sync::refused_items::{self, CORE_BUILD};
 
@@ -33,6 +33,7 @@ impl PullLoop {
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
+        let vault_root = self.vault_root.clone();
         let at_rest = self.at_rest.clone();
         let (mut totals, applied) = self
             .db
@@ -50,6 +51,7 @@ impl PullLoop {
                         untyped,
                         now,
                         clock_device.as_deref(),
+                        vault_root.as_deref(),
                         &at_rest,
                         &mut totals,
                     )?;
@@ -141,7 +143,7 @@ impl PullLoop {
             .collect();
         let mut answered = BTreeSet::new();
         let mut pending = Vec::new();
-        let mut warnings = Vec::new();
+        let mut marked = Vec::new();
         let fetched: Result<bool, PullError> = async {
             for chunk in ids.chunks(MAX_PULL_IDS) {
                 let mut body = self.fetch_bodies(chunk).await?;
@@ -163,7 +165,7 @@ impl PullLoop {
                             if corrupt.contains(&key)
                                 || (self.hardened && failure.signature_invalid) =>
                         {
-                            warnings.extend(self.record_corrupt(&item, &failure).await?);
+                            marked.extend(self.record_corrupt(&item, &failure).await?);
                         }
                         Err(failure) => eprintln!(
                             "memry-core: refused {} {} still does not decode: {}",
@@ -176,9 +178,9 @@ impl PullLoop {
             Ok(true)
         }
         .await;
-        // The warnings already counted reach the observers on every exit.
+        // The marks already written reach the observers on every exit.
         if !matches!(fetched, Ok(true)) {
-            self.warn(warnings).await;
+            self.warn(marked).await;
             return fetched.map(drop);
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
@@ -186,8 +188,22 @@ impl PullLoop {
         let applied = self
             .apply_all(pending, Vec::new(), self.bodies.is_some(), &mut feed)
             .await;
+        // A corrupt row that applied is recovered (`item-recovery.ts:78`); a
+        // skip changed nothing.
+        let recovered: Vec<AppliedRecord> = feed
+            .records
+            .iter()
+            .filter(|record| {
+                record.outcome != AppliedOutcome::Skipped
+                    && corrupt.contains(&(record.item_type.clone(), record.item_id.clone()))
+            })
+            .cloned()
+            .collect();
         self.tell(feed).await;
-        self.warn(warnings).await;
+        self.warn(marked).await;
+        if let Some(observers) = &self.observers {
+            observers.recovered(recovered).await;
+        }
         applied?;
         let gone: Vec<(String, String)> = refused.difference(&answered).cloned().collect();
         self.db

@@ -1398,6 +1398,7 @@
       "selectModel": "Vyberte model",
       "apiKey": "Klíč API",
       "apiKeyDescription": "Uložen místně, odesílán pouze poskytovateli",
+      "apiKeyKeychainDescription": "Uložen v úložišti klíčů systému, odesílán pouze poskytovateli",
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Předchozí trezor",
           "description": "Přejít na předchozí trezor v bočním panelu"
+        },
+        "todayJournal": {
+          "label": "Dnešní deník",
+          "description": "Otevřít deník na dnešním záznamu"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "Klíče tohoto zařízení jsou obnoveny, ale tento trezor zatím není nastaven k synchronizaci s vaším účtem. Způsob synchronizace zvolte v nabídce synchronizace.",
         "vault-foreign": "Klíče tohoto zařízení jsou obnoveny, ale tento trezor patří jinému účtu. Zůstane jen na tomto zařízení.",
         "entitlement": "Klíče tohoto zařízení jsou obnoveny, ale synchronizace vyžaduje aktivní plán Sync.",
-        "unavailable": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Zkusí to znovu; pokud ne, restartujte Memry."
+        "unavailable": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Zkusí to znovu; pokud ne, restartujte Memry.",
+        "unavailable-restart": "Klíče tohoto zařízení jsou obnoveny, ale synchronizaci se nepodařilo spustit. Restartujte Memry; pokud se synchronizace ani pak nespustí, odhlaste se a znovu přihlaste."
       }
     },
     "pagesSettingsAiInlineSection": {

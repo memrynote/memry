@@ -1398,6 +1398,7 @@
       "selectModel": "Välj en modell",
       "apiKey": "API-nyckel",
       "apiKeyDescription": "Lagras lokalt, skickas bara till leverantören",
+      "apiKeyKeychainDescription": "Sparas i operativsystemets nyckelring, skickas bara till leverantören",
       "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "Föregående valv",
           "description": "Gå till föregående valv i sidofältet"
+        },
+        "todayJournal": {
+          "label": "Dagens dagbok",
+          "description": "Öppna dagboken på dagens inlägg"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "Den här enhetens nycklar är återställda, men det här valvet är inte inställt på att synkas med ditt konto ännu. Välj hur det ska synkas i synkmenyn.",
         "vault-foreign": "Den här enhetens nycklar är återställda, men det här valvet tillhör ett annat konto. Det förblir lokalt på den här enheten.",
         "entitlement": "Den här enhetens nycklar är återställda, men synk kräver en aktiv Sync-plan.",
-        "unavailable": "Den här enhetens nycklar är återställda, men synken kunde inte starta. Den försöker igen; starta om Memry om den inte gör det."
+        "unavailable": "Den här enhetens nycklar är återställda, men synken kunde inte starta. Den försöker igen; starta om Memry om den inte gör det.",
+        "unavailable-restart": "Den här enhetens nycklar är återställda, men synken kunde inte starta. Starta om Memry; om synken fortfarande inte startar, logga ut och logga in igen."
       }
     },
     "pagesSettingsAiInlineSection": {

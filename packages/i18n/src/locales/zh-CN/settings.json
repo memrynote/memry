@@ -1398,6 +1398,7 @@
       "selectModel": "选择一个模型",
       "apiKey": "API 密钥",
       "apiKeyDescription": "存储在本地，仅发送给提供商",
+      "apiKeyKeychainDescription": "存储在系统钥匙串中，仅发送给提供商",
       "apiKeyPlaceholder": "输入 {provider} API 密钥",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本地服务器地址",
@@ -2238,6 +2239,10 @@
         "prevVault": {
           "label": "上一个仓库",
           "description": "切换到侧边栏中的上一个仓库"
+        },
+        "todayJournal": {
+          "label": "今日日记",
+          "description": "在今天的条目打开日记"
         }
       },
       "tabs": {
@@ -2431,7 +2436,8 @@
         "vault-binding": "此设备的密钥已恢复，但此保险库尚未设置为与你的账户同步。请从同步菜单中选择同步方式。",
         "vault-foreign": "此设备的密钥已恢复，但此保险库属于另一个账户。它将仅保留在此设备上。",
         "entitlement": "此设备的密钥已恢复，但同步需要有效的同步方案。",
-        "unavailable": "此设备的密钥已恢复，但同步无法启动。它会自动重试；如果没有，请重启 Memry。"
+        "unavailable": "此设备的密钥已恢复，但同步无法启动。它会自动重试；如果没有，请重启 Memry。",
+        "unavailable-restart": "此设备的密钥已恢复，但同步无法启动。请重启 Memry；如果同步仍未启动，请退出登录后重新登录。"
       }
     },
     "pagesSettingsAiInlineSection": {
