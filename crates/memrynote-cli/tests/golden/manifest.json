@@ -1,0 +1,1767 @@
+[
+  {
+    "key": "settings list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 22
+  },
+  {
+    "key": "settings groups",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 25
+  },
+  {
+    "key": "settings group",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 28
+  },
+  {
+    "key": "settings set-group",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 35
+  },
+  {
+    "key": "settings ai",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 45
+  },
+  {
+    "key": "settings set-ai",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 48
+  },
+  {
+    "key": "settings get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 54
+  },
+  {
+    "key": "settings set",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 61
+  },
+  {
+    "key": "settings delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 71
+  },
+  {
+    "key": "locale get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 86
+  },
+  {
+    "key": "locale set",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 89
+  },
+  {
+    "key": "locale list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 92
+  },
+  {
+    "key": "reminders create",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 102
+  },
+  {
+    "key": "reminders get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 122
+  },
+  {
+    "key": "reminders update",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 129
+  },
+  {
+    "key": "reminders list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 141
+  },
+  {
+    "key": "reminders for-target",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 158
+  },
+  {
+    "key": "reminders due",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 168
+  },
+  {
+    "key": "reminders upcoming",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 171
+  },
+  {
+    "key": "reminders dismiss",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 178
+  },
+  {
+    "key": "reminders snooze",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 185
+  },
+  {
+    "key": "reminders count-pending",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 195
+  },
+  {
+    "key": "reminders bulk-dismiss",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 198
+  },
+  {
+    "key": "reminders delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 201
+  },
+  {
+    "key": "templates list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 216
+  },
+  {
+    "key": "templates get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 219
+  },
+  {
+    "key": "templates create",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 226
+  },
+  {
+    "key": "templates update",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 239
+  },
+  {
+    "key": "templates duplicate",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 252
+  },
+  {
+    "key": "templates delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 262
+  },
+  {
+    "key": "bookmarks list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 277
+  },
+  {
+    "key": "bookmarks get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 280
+  },
+  {
+    "key": "bookmarks get-by-item",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 287
+  },
+  {
+    "key": "bookmarks list-by-type",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 297
+  },
+  {
+    "key": "bookmarks add",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 306
+  },
+  {
+    "key": "bookmarks toggle",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 316
+  },
+  {
+    "key": "bookmarks remove",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 326
+  },
+  {
+    "key": "bookmarks delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 334
+  },
+  {
+    "key": "bookmarks has",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 340
+  },
+  {
+    "key": "bookmarks reorder",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 348
+  },
+  {
+    "key": "bookmarks bulk-create",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 351
+  },
+  {
+    "key": "bookmarks bulk-delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 373
+  },
+  {
+    "key": "saved-filters list",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 387
+  },
+  {
+    "key": "saved-filters get",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 390
+  },
+  {
+    "key": "saved-filters create",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 397
+  },
+  {
+    "key": "saved-filters update",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 407
+  },
+  {
+    "key": "saved-filters reorder",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 417
+  },
+  {
+    "key": "saved-filters delete",
+    "file": "apps/cli/src/cli-commands-library.ts",
+    "line": 424
+  },
+  {
+    "key": "calendar external list",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 104
+  },
+  {
+    "key": "calendar external get",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 116
+  },
+  {
+    "key": "calendar external promote",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 123
+  },
+  {
+    "key": "calendar bindings list",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 140
+  },
+  {
+    "key": "calendar bindings get",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 152
+  },
+  {
+    "key": "calendar events create",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 170
+  },
+  {
+    "key": "calendar events get",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 185
+  },
+  {
+    "key": "calendar events list",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 188
+  },
+  {
+    "key": "calendar events update",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 199
+  },
+  {
+    "key": "calendar events delete",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 218
+  },
+  {
+    "key": "sync status",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 233
+  },
+  {
+    "key": "sync queue-size",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 236
+  },
+  {
+    "key": "sync history",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 239
+  },
+  {
+    "key": "sync devices",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 249
+  },
+  {
+    "key": "sync storage",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 252
+  },
+  {
+    "key": "sync quarantine",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 255
+  },
+  {
+    "key": "sync check-device",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 258
+  },
+  {
+    "key": "sync pause",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 261
+  },
+  {
+    "key": "sync resume",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 264
+  },
+  {
+    "key": "sync settings",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 267
+  },
+  {
+    "key": "sync update-setting",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 270
+  },
+  {
+    "key": "agent backends",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 295
+  },
+  {
+    "key": "agent models",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 298
+  },
+  {
+    "key": "agent local-settings",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 307
+  },
+  {
+    "key": "agent set-local-settings",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 310
+  },
+  {
+    "key": "graph data",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 342
+  },
+  {
+    "key": "graph local",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 345
+  },
+  {
+    "key": "search stats",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 362
+  },
+  {
+    "key": "search reasons",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 365
+  },
+  {
+    "key": "search add-reason",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 368
+  },
+  {
+    "key": "search clear-reasons",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 380
+  },
+  {
+    "key": "search tags",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 383
+  },
+  {
+    "key": "search rebuild-index",
+    "file": "apps/cli/src/cli-commands-misc.ts",
+    "line": 386
+  },
+  {
+    "key": "vault init",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 26
+  },
+  {
+    "key": "vault status",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 27
+  },
+  {
+    "key": "vault open",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 28
+  },
+  {
+    "key": "vault config",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 31
+  },
+  {
+    "key": "vault update-config",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 34
+  },
+  {
+    "key": "vault reindex",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 41
+  },
+  {
+    "key": "vault set-icon",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 42
+  },
+  {
+    "key": "vault activity",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 43
+  },
+  {
+    "key": "vault locks",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 44
+  },
+  {
+    "key": "vault list",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 59
+  },
+  {
+    "key": "vault current",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 62
+  },
+  {
+    "key": "vault use",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 68
+  },
+  {
+    "key": "vault remove",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 75
+  },
+  {
+    "key": "notes create",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 96
+  },
+  {
+    "key": "notes list",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 111
+  },
+  {
+    "key": "notes get",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 121
+  },
+  {
+    "key": "notes exists",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 128
+  },
+  {
+    "key": "notes preview",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 133
+  },
+  {
+    "key": "notes resolve",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 140
+  },
+  {
+    "key": "notes links",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 149
+  },
+  {
+    "key": "notes update",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 156
+  },
+  {
+    "key": "notes rename",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 172
+  },
+  {
+    "key": "notes move",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 182
+  },
+  {
+    "key": "notes set-local-only",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 192
+  },
+  {
+    "key": "notes local-only-count",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 202
+  },
+  {
+    "key": "notes delete",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 205
+  },
+  {
+    "key": "notes attach",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 211
+  },
+  {
+    "key": "notes attachments",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 221
+  },
+  {
+    "key": "notes delete-attachment",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 228
+  },
+  {
+    "key": "notes import-files",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 237
+  },
+  {
+    "key": "notes export-html",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 247
+  },
+  {
+    "key": "notes export-pdf",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 263
+  },
+  {
+    "key": "notes export-markdown",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 281
+  },
+  {
+    "key": "notes snapshot",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 291
+  },
+  {
+    "key": "notes versions",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 305
+  },
+  {
+    "key": "notes version",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 315
+  },
+  {
+    "key": "notes restore-version",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 322
+  },
+  {
+    "key": "notes delete-version",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 329
+  },
+  {
+    "key": "folders list",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 345
+  },
+  {
+    "key": "folders create",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 348
+  },
+  {
+    "key": "folders rename",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 355
+  },
+  {
+    "key": "folders delete",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 365
+  },
+  {
+    "key": "properties get",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 381
+  },
+  {
+    "key": "properties set",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 388
+  },
+  {
+    "key": "properties rename",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 398
+  },
+  {
+    "key": "properties definitions",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 409
+  },
+  {
+    "key": "properties define",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 412
+  },
+  {
+    "key": "properties update-definition",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 425
+  },
+  {
+    "key": "properties delete-definition",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 437
+  },
+  {
+    "key": "folder-view config",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 456
+  },
+  {
+    "key": "folder-view set-config",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 463
+  },
+  {
+    "key": "folder-view views",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 473
+  },
+  {
+    "key": "folder-view set-view",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 480
+  },
+  {
+    "key": "folder-view delete-view",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 493
+  },
+  {
+    "key": "folder-view list",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 503
+  },
+  {
+    "key": "folder-view properties",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 514
+  },
+  {
+    "key": "folder-view suggestions",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 521
+  },
+  {
+    "key": "folder-view exists",
+    "file": "apps/cli/src/cli-commands-vault.ts",
+    "line": 528
+  },
+  {
+    "key": "tasks create",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 25
+  },
+  {
+    "key": "tasks list",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 52
+  },
+  {
+    "key": "tasks get",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 79
+  },
+  {
+    "key": "tasks update",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 82
+  },
+  {
+    "key": "tasks done",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 115
+  },
+  {
+    "key": "tasks complete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 116
+  },
+  {
+    "key": "tasks reopen",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 119
+  },
+  {
+    "key": "tasks archive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 122
+  },
+  {
+    "key": "tasks unarchive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 125
+  },
+  {
+    "key": "tasks move",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 128
+  },
+  {
+    "key": "tasks get-subtasks",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 142
+  },
+  {
+    "key": "tasks get-linked-tasks",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 149
+  },
+  {
+    "key": "tasks today",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 156
+  },
+  {
+    "key": "tasks upcoming",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 159
+  },
+  {
+    "key": "tasks overdue",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 171
+  },
+  {
+    "key": "tasks stats",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 174
+  },
+  {
+    "key": "tasks tags",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 177
+  },
+  {
+    "key": "tasks convert-to-subtask",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 180
+  },
+  {
+    "key": "tasks convert-to-task",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 190
+  },
+  {
+    "key": "tasks duplicate",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 197
+  },
+  {
+    "key": "tasks bulk-done",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 200
+  },
+  {
+    "key": "tasks bulk-complete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 201
+  },
+  {
+    "key": "tasks bulk-archive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 204
+  },
+  {
+    "key": "tasks bulk-move",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 207
+  },
+  {
+    "key": "tasks bulk-delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 213
+  },
+  {
+    "key": "tasks reorder",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 221
+  },
+  {
+    "key": "tasks delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 226
+  },
+  {
+    "key": "projects list",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 244
+  },
+  {
+    "key": "projects get",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 247
+  },
+  {
+    "key": "projects create",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 254
+  },
+  {
+    "key": "projects update",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 266
+  },
+  {
+    "key": "projects archive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 278
+  },
+  {
+    "key": "projects unarchive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 285
+  },
+  {
+    "key": "projects delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 292
+  },
+  {
+    "key": "projects reorder",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 298
+  },
+  {
+    "key": "projects statuses",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 306
+  },
+  {
+    "key": "projects status-create",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 313
+  },
+  {
+    "key": "projects status-update",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 324
+  },
+  {
+    "key": "projects status-delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 339
+  },
+  {
+    "key": "projects status-reorder",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 347
+  },
+  {
+    "key": "inbox capture",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 364
+  },
+  {
+    "key": "inbox capture-link",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 375
+  },
+  {
+    "key": "inbox capture-file",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 385
+  },
+  {
+    "key": "inbox get",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 397
+  },
+  {
+    "key": "inbox list",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 400
+  },
+  {
+    "key": "inbox tags",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 410
+  },
+  {
+    "key": "inbox stats",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 413
+  },
+  {
+    "key": "inbox patterns",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 416
+  },
+  {
+    "key": "inbox archived",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 419
+  },
+  {
+    "key": "inbox filing-history",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 430
+  },
+  {
+    "key": "inbox stale-threshold",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 439
+  },
+  {
+    "key": "inbox set-stale-threshold",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 442
+  },
+  {
+    "key": "inbox update",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 451
+  },
+  {
+    "key": "inbox add-tag",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 461
+  },
+  {
+    "key": "inbox remove-tag",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 471
+  },
+  {
+    "key": "inbox mark-viewed",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 481
+  },
+  {
+    "key": "inbox convert-note",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 488
+  },
+  {
+    "key": "inbox convert-task",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 495
+  },
+  {
+    "key": "inbox link-note",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 502
+  },
+  {
+    "key": "inbox snooze",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 513
+  },
+  {
+    "key": "inbox unsnooze",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 524
+  },
+  {
+    "key": "inbox snoozed",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 531
+  },
+  {
+    "key": "inbox bulk-tag",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 534
+  },
+  {
+    "key": "inbox bulk-snooze",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 541
+  },
+  {
+    "key": "inbox bulk-archive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 552
+  },
+  {
+    "key": "inbox archive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 555
+  },
+  {
+    "key": "inbox unarchive",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 562
+  },
+  {
+    "key": "inbox delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 569
+  },
+  {
+    "key": "journal get",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 585
+  },
+  {
+    "key": "journal write",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 592
+  },
+  {
+    "key": "journal append",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 602
+  },
+  {
+    "key": "journal delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 612
+  },
+  {
+    "key": "journal month",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 618
+  },
+  {
+    "key": "journal heatmap",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 628
+  },
+  {
+    "key": "journal stats",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 635
+  },
+  {
+    "key": "journal context",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 644
+  },
+  {
+    "key": "journal tags",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 651
+  },
+  {
+    "key": "journal streak",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 654
+  },
+  {
+    "key": "journal properties",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 657
+  },
+  {
+    "key": "tags list",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 671
+  },
+  {
+    "key": "tags notes",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 674
+  },
+  {
+    "key": "tags color",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 677
+  },
+  {
+    "key": "tags set-color",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 678
+  },
+  {
+    "key": "tags rename",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 688
+  },
+  {
+    "key": "tags remove-from-note",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 698
+  },
+  {
+    "key": "tags merge",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 708
+  },
+  {
+    "key": "tags delete",
+    "file": "apps/cli/src/cli-commands-work.ts",
+    "line": 718
+  },
+  {
+    "key": "agent conversations",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 12
+  },
+  {
+    "key": "agent conversation",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 15
+  },
+  {
+    "key": "agent preferences",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 22
+  },
+  {
+    "key": "agent set-preferences",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 25
+  },
+  {
+    "key": "agent local-models",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 28
+  },
+  {
+    "key": "agent test-local",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 31
+  },
+  {
+    "key": "agent mcp-status",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 34
+  },
+  {
+    "key": "agent mcp",
+    "file": "apps/cli/src/commands/agent.ts",
+    "line": 37
+  },
+  {
+    "key": "calendar ics subscribe",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 29
+  },
+  {
+    "key": "calendar ics unsubscribe",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 41
+  },
+  {
+    "key": "calendar ics update",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 50
+  },
+  {
+    "key": "calendar ics refresh",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 67
+  },
+  {
+    "key": "calendar events",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 85
+  },
+  {
+    "key": "calendar linked-notes",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 98
+  },
+  {
+    "key": "calendar providers",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 108
+  },
+  {
+    "key": "calendar provider-calendars",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 111
+  },
+  {
+    "key": "calendar refresh",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 114
+  },
+  {
+    "key": "calendar set-default-calendar",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 117
+  },
+  {
+    "key": "calendar ics",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 132
+  },
+  {
+    "key": "calendar retry-sync",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 135
+  },
+  {
+    "key": "calendar writer-compat",
+    "file": "apps/cli/src/commands/calendar.ts",
+    "line": 138
+  },
+  {
+    "key": "canvas list",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 17
+  },
+  {
+    "key": "canvas get",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 20
+  },
+  {
+    "key": "canvas create",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 32
+  },
+  {
+    "key": "canvas duplicate",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 46
+  },
+  {
+    "key": "canvas delete",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 53
+  },
+  {
+    "key": "canvas export",
+    "file": "apps/cli/src/commands/canvas.ts",
+    "line": 65
+  },
+  {
+    "key": "home-pages list",
+    "file": "apps/cli/src/commands/home-pages.ts",
+    "line": 7
+  },
+  {
+    "key": "home-pages get",
+    "file": "apps/cli/src/commands/home-pages.ts",
+    "line": 10
+  },
+  {
+    "key": "icons list",
+    "file": "apps/cli/src/commands/icons.ts",
+    "line": 15
+  },
+  {
+    "key": "icons add",
+    "file": "apps/cli/src/commands/icons.ts",
+    "line": 18
+  },
+  {
+    "key": "icons rename",
+    "file": "apps/cli/src/commands/icons.ts",
+    "line": 28
+  },
+  {
+    "key": "icons delete",
+    "file": "apps/cli/src/commands/icons.ts",
+    "line": 37
+  },
+  {
+    "key": "import sources",
+    "file": "apps/cli/src/commands/import.ts",
+    "line": 8
+  },
+  {
+    "key": "import preview",
+    "file": "apps/cli/src/commands/import.ts",
+    "line": 11
+  },
+  {
+    "key": "import start",
+    "file": "apps/cli/src/commands/import.ts",
+    "line": 12
+  },
+  {
+    "key": "inbox file",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 49
+  },
+  {
+    "key": "inbox bulk-file",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 62
+  },
+  {
+    "key": "inbox file-all-stale",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 74
+  },
+  {
+    "key": "inbox convert-event",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 80
+  },
+  {
+    "key": "inbox convert-reminder",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 94
+  },
+  {
+    "key": "inbox suggestions",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 105
+  },
+  {
+    "key": "inbox undo",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 112
+  },
+  {
+    "key": "inbox capture-image",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 127
+  },
+  {
+    "key": "inbox capture-pdf",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 128
+  },
+  {
+    "key": "inbox capture-voice",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 129
+  },
+  {
+    "key": "inbox jobs",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 144
+  },
+  {
+    "key": "inbox retry",
+    "file": "apps/cli/src/commands/inbox.ts",
+    "line": 154
+  },
+  {
+    "key": "notes aliases",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 51
+  },
+  {
+    "key": "notes resolve",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 65
+  },
+  {
+    "key": "notes apply-template",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 71
+  },
+  {
+    "key": "notes unlinked-mentions",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 82
+  },
+  {
+    "key": "notes link-mention",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 85
+  },
+  {
+    "key": "notes carried-tasks",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 96
+  },
+  {
+    "key": "notes similar",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 106
+  },
+  {
+    "key": "notes suggest-tags",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 108
+  },
+  {
+    "key": "notes positions",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 110
+  },
+  {
+    "key": "notes reorder",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 113
+  },
+  {
+    "key": "notes read-lines",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 116
+  },
+  {
+    "key": "notes grep",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 127
+  },
+  {
+    "key": "notes attachment-rename",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 134
+  },
+  {
+    "key": "notes attachments",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 145
+  },
+  {
+    "key": "notes attach",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 149
+  },
+  {
+    "key": "properties ensure",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 211
+  },
+  {
+    "key": "properties option-add",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 221
+  },
+  {
+    "key": "properties option-remove",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 232
+  },
+  {
+    "key": "properties option-rename",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 240
+  },
+  {
+    "key": "properties option-color",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 251
+  },
+  {
+    "key": "properties merge",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 262
+  },
+  {
+    "key": "properties resolve-refs",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 272
+  },
+  {
+    "key": "properties calendar-names",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 276
+  },
+  {
+    "key": "properties calendar-visibility",
+    "file": "apps/cli/src/commands/note-tools.ts",
+    "line": 279
+  },
+  {
+    "key": "projects link",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 74
+  },
+  {
+    "key": "projects unlink",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 81
+  },
+  {
+    "key": "projects links",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 86
+  },
+  {
+    "key": "projects for-item",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 93
+  },
+  {
+    "key": "projects pin",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 98
+  },
+  {
+    "key": "projects unpin",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 99
+  },
+  {
+    "key": "projects contents",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 110
+  },
+  {
+    "key": "projects set-home-note",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 133
+  },
+  {
+    "key": "projects capture-url",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 143
+  },
+  {
+    "key": "projects import-files",
+    "file": "apps/cli/src/commands/project-links.ts",
+    "line": 152
+  },
+  {
+    "key": "readwise status",
+    "file": "apps/cli/src/commands/readwise.ts",
+    "line": 49
+  },
+  {
+    "key": "readwise list-deleted",
+    "file": "apps/cli/src/commands/readwise.ts",
+    "line": 52
+  },
+  {
+    "key": "readwise set-options",
+    "file": "apps/cli/src/commands/readwise.ts",
+    "line": 55
+  },
+  {
+    "key": "sync trigger",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 8
+  },
+  {
+    "key": "sync note-state",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 11
+  },
+  {
+    "key": "sync large-notes",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 18
+  },
+  {
+    "key": "sync unsent-notes",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 21
+  },
+  {
+    "key": "sync binding",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 24
+  },
+  {
+    "key": "sync progress",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 27
+  },
+  {
+    "key": "sync rename-device",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 30
+  },
+  {
+    "key": "sync remove-device",
+    "file": "apps/cli/src/commands/sync.ts",
+    "line": 35
+  },
+  {
+    "key": "tags schema show",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 98
+  },
+  {
+    "key": "tags schema add-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 101
+  },
+  {
+    "key": "tags schema remove-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 111
+  },
+  {
+    "key": "tags schema rename-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 123
+  },
+  {
+    "key": "tags schema add-preset",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 127
+  },
+  {
+    "key": "tags schema move-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 129
+  },
+  {
+    "key": "tags schema set-relation",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 137
+  },
+  {
+    "key": "tags schema set-template",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 145
+  },
+  {
+    "key": "tags schema set-extends",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 155
+  },
+  {
+    "key": "tags impact remove-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 177
+  },
+  {
+    "key": "tags impact rename-field",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 184
+  },
+  {
+    "key": "tags impact delete-tag",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 187
+  },
+  {
+    "key": "tags impact become-objects",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 188
+  },
+  {
+    "key": "tags impact set-extends",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 191
+  },
+  {
+    "key": "tags categories list",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 212
+  },
+  {
+    "key": "tags categories create",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 215
+  },
+  {
+    "key": "tags categories rename",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 218
+  },
+  {
+    "key": "tags categories delete",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 225
+  },
+  {
+    "key": "tags categories reorder",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 231
+  },
+  {
+    "key": "tags schema",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 242
+  },
+  {
+    "key": "tags impact",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 245
+  },
+  {
+    "key": "tags fill-status",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 248
+  },
+  {
+    "key": "tags fill-fields",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 249
+  },
+  {
+    "key": "tags objects",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 253
+  },
+  {
+    "key": "tags linked-here",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 266
+  },
+  {
+    "key": "tags categories",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 276
+  },
+  {
+    "key": "tags set-icon",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 279
+  },
+  {
+    "key": "tags pin",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 288
+  },
+  {
+    "key": "tags unpin",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 289
+  },
+  {
+    "key": "tags reorder",
+    "file": "apps/cli/src/commands/tag-fields.ts",
+    "line": 301
+  },
+  {
+    "key": "vault reindex",
+    "file": "apps/cli/src/commands/vault-admin.ts",
+    "line": 57
+  },
+  {
+    "key": "vault set-icon",
+    "file": "apps/cli/src/commands/vault-admin.ts",
+    "line": 60
+  },
+  {
+    "key": "vault activity",
+    "file": "apps/cli/src/commands/vault-admin.ts",
+    "line": 65
+  },
+  {
+    "key": "vault locks",
+    "file": "apps/cli/src/commands/vault-admin.ts",
+    "line": 67
+  }
+]

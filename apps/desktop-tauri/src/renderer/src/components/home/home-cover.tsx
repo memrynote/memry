@@ -36,6 +36,7 @@ import { useVault } from '@/hooks/use-vault'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { toMemryFileUrl, toWebviewUrl } from '@/lib/memry-file-url'
+import { homePagesService } from '@/services/home-pages-service'
 
 const logger = createLogger('HomeCover')
 
@@ -69,7 +70,7 @@ const refOf = (page: HomePage) => page.cover?.ref ?? ''
  * fallback for the tab, as it does for a note.
  */
 function boardCoverImageTarget(boardId: string): CoverImageTarget {
-  const set = (source: HomePageCoverSource) => window.api.homePages.setCover(boardId, source)
+  const set = (source: HomePageCoverSource) => homePagesService.setCover(boardId, source)
   return {
     key: boardId,
     upload: async (file) => {
@@ -152,7 +153,7 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
   // A cover synced from another device names a file this one may not have yet.
   const materialize = useCallback(() => {
     if (!stored?.attachmentId) return
-    window.api.homePages
+    homePagesService
       .materializeCover(board.id)
       .then(() => setLoadAttempt((n) => n + 1))
       .catch((err: unknown) => logger.warn('Board cover download failed', err))
@@ -172,12 +173,12 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
           creditUrl={stored?.creditUrl ?? null}
           onChange={(event) => onPickerAnchorChange(coverPickerAnchorFrom(event))}
           onRemove={() => {
-            window.api.homePages
+            homePagesService
               .removeCover(board.id)
               .catch((err: unknown) => fail('Failed to remove the board cover', err))
           }}
           onFramingChange={(changes) => {
-            window.api.homePages
+            homePagesService
               .setCoverFraming(board.id, changes)
               .catch((err: unknown) => fail('Failed to save the board cover position', err))
           }}
@@ -194,7 +195,7 @@ export function HomeCover({ board, pickerAnchor, onPickerAnchorChange }: HomeCov
         onApply={(value, { reposition }) => {
           // Image sources were saved by main already; see the module comment.
           if (value.kind === 'wash') {
-            window.api.homePages
+            homePagesService
               .setCover(board.id, { kind: 'wash', id: value.id })
               .then((result) => {
                 if (!result.ok) throw new Error()

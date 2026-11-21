@@ -381,7 +381,7 @@ hash the manifest already records.
 `src/main/file-text/ocr-languages.ts` owns the languages on desktop. The choice lives in the
 machine-local `memry-config.json` as `ocrLanguages`. Null means the app language plus English, so
 it follows the app language until the user picks. English is always on.
-`ocr-language-data.ts` pins every downloadable file's `{bytes, sha256}` as the manifest records
+`packages/contracts/src/ocr-language-data.ts` pins every downloadable file's `{bytes, sha256}` as the manifest records
 it. `syncOcrLanguages` converges `userData/ocr-languages/` on the choice, one file at a time. It
 deletes files of languages not chosen, checks a file an earlier run left against its pin, and
 downloads the rest with `net.fetch` from the sync server URL into a temp file. A file is renamed

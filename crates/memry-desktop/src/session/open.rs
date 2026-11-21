@@ -43,7 +43,7 @@ fn now_ms() -> i64 {
 /// `initVault` for a folder with no `.memry` yet, then `.memry/core/` (mode 0700 on Unix),
 /// which proves the folder is writable. The init comes first: afterwards `.memry` exists and
 /// the folder would read as initialised.
-pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
+pub(crate) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     if !path.is_dir() {
         return Err(SessionError::Invalid(
             "Selected path is not a valid directory".into(),
@@ -82,7 +82,7 @@ pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
 /// (or failed here) gets it at the next one; until then no id is minted beside Electron's
 /// database. A core with Electron's database beside it when this first runs counts as created
 /// over it.
-fn record_origin(path: &Path, vault: &Vault) {
+pub(super) fn record_origin(path: &Path, vault: &Vault) {
     let origin = if path.join(".memry").join("data.db").is_file() {
         Origin::OverElectron
     } else {

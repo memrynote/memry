@@ -12,17 +12,27 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::editor::Editor;
+use memry_core::crdt::BODY_FRAGMENT;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::resident::EDITOR_LIFECYCLE;
+use memry_core::domain::write_back::BodyRead;
+use memry_core::markdown::convert::NoEmbeds;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::pm::model::{any_to_json, json_to_any};
+use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::markdown::shared::critic_markup::{CriticMarkupMark, serialize_critic_markup};
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
+use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use serde_json::{Value, json};
 use yrs::updates::decoder::Decode;
-use yrs::{Any, Array as _, Doc, ReadTxn as _, StateVector, Transact as _, Update};
+use yrs::{
+    Any, Array as _, Doc, ReadTxn as _, StateVector, Text as _, Transact as _, Update,
+    XmlFragment as _, XmlOut,
+};
 
 use crate::index_support::until;
 use crate::vault_env::{Env, env, indexed};
@@ -102,8 +112,9 @@ fn window_copy(state: &[u8]) -> Doc {
     doc
 }
 
-/// What the window authors writing `marks` over its copy (`writeCriticMarkupMarksToYDoc`:
-/// the whole array deleted, then the marks pushed).
+/// What a window that rewrites the whole array authors over its copy: the
+/// array deleted, then `marks` pushed. Frozen Electron writes this way;
+/// `writeCriticMarkupMarksToYDoc` now writes per id (protocol 12.5.1).
 fn window_writes_marks(copy: &Doc, marks: &[Value]) -> Vec<u8> {
     let before = copy.transact().state_vector();
     let array = copy.get_or_insert_array(MARKS);
@@ -326,6 +337,40 @@ fn a_late_journal_save_leaves_the_marks_of_an_open_day_to_its_window() {
     );
 }
 
+/// FIX-5196B: a day another device made holds a suggestion its window left at a stale range,
+/// and no file here. The create writes the day's file from its body with the suggestion on its
+/// words: there is no file to map the range against, so nothing refuses it.
+#[test]
+fn a_held_days_first_file_keeps_its_stale_suggestion() {
+    let (e, notes, store) = opened(&[]);
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store.clone()).unwrap();
+    let edit = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "beta Alpha".into(),
+        new_block_id: "b-synced".into(),
+    };
+    journal.edit_day("2025-01-17".into(), edit).unwrap();
+    let id = "j2025-01-17";
+    let editor = open.vault.editor(store).unwrap();
+    let copy = window_copy(&editor.open(id, WINDOW).unwrap().state);
+    let stale = json!({
+        "id": "s1", "kind": "substitution", "visibleText": "Alpha", "originalText": "Old",
+        "start": 0, "end": 5,
+    });
+    editor
+        .apply_update(id, &window_writes_marks(&copy, &[stale]), WINDOW)
+        .unwrap();
+
+    let day = NewDay {
+        date: "2025-01-17".into(),
+        ..NewDay::default()
+    };
+    notes.create_day(&open, day).unwrap();
+    let file = e.read("journal/2025-01-17.md");
+    assert!(file.contains("beta {~~Old~>Alpha~~}"), "{file}");
+}
+
 /// A save whose text differs from the document's only in its marks leaves the body of an open
 /// note as it is: rewriting it would replace every block under the window.
 #[test]
@@ -345,4 +390,86 @@ fn a_marks_only_save_of_an_open_note_leaves_its_body_as_it_is() {
     notes.update(&open, save(&id, &both)).unwrap();
 
     assert_eq!(state_of(&editor, &id), before, "the save rewrote the body");
+}
+
+/// S14-24: the window moves its marks with its typing and keeps those offsets (#4425), so the
+/// document's stay where the marks were when it last wrote them. The user types `beta. ` before
+/// a suggestion on "Alpha" and a comment on "beta", and the window saves. The write-back that
+/// follows the save writes the document's body over that file: it keeps both marks where the
+/// save put them, instead of moving the comment to the first "beta" and dropping the suggestion
+/// with the text it replaced.
+#[test]
+fn the_write_back_after_a_typed_save_keeps_the_windows_mark_places() {
+    let suggestion = |start: i64| {
+        json!({
+            "id": "s1",
+            "kind": "substitution",
+            "visibleText": "Alpha",
+            "originalText": "Old",
+            "start": start,
+            "end": start + 5,
+        })
+    };
+    let marks = |shift: i64| -> Vec<CriticMarkupMark> {
+        [suggestion(shift), comment("c2", "beta", 10 + shift)]
+            .into_iter()
+            .map(|mark| serde_json::from_value(mark).unwrap())
+            .collect()
+    };
+    let (e, notes, store) = opened(&[("Plan.md", &serialize_critic_markup(PLAIN, &marks(0)))]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    editor.open(&id, WINDOW).unwrap();
+
+    let typed = serialize_critic_markup(&format!("beta. {PLAIN}"), &marks(6));
+    notes.update(&open, save(&id, &typed)).unwrap();
+
+    let converter = Converter::new(CalloutTypes::new(Vec::new()));
+    let Ok(BodyRead::Body(body)) =
+        e.core()
+            .write_back()
+            .body(&converter, &id, "Plan.md", Some(&typed), &NoEmbeds)
+    else {
+        panic!("the document has no body to write");
+    };
+    assert_eq!(
+        body.markdown.trim_end(),
+        typed.trim_end(),
+        "the write-back moved or dropped a mark"
+    );
+    // The window types on after its save, and only a write-back puts that text in the file.
+    // The document's text is now ahead of the file, so the marks take the file's places moved
+    // past the typing.
+    let copy = window_copy(&editor.open(&id, WINDOW).unwrap().state);
+    let typing = window_types(&copy, "Hi ");
+    editor.apply_update(&id, &typing, WINDOW).unwrap();
+    e.tier.schedule(&id);
+    until("the write-back wrote the typing", || {
+        e.read("Plan.md").starts_with("Hi ")
+    });
+    assert_eq!(
+        e.read("Plan.md"),
+        serialize_critic_markup(&format!("Hi beta. {PLAIN}"), &marks(9)),
+        "the scheduled write-back moved or dropped a mark"
+    );
+}
+
+/// Types `text` at the start of the document's first text, as the window's editor does, and
+/// returns the update it sends.
+fn window_types(copy: &Doc, text: &str) -> Vec<u8> {
+    let before = copy.transact().state_vector();
+    let fragment = copy.get_or_insert_xml_fragment(BODY_FRAGMENT);
+    let mut txn = copy.transact_mut();
+    let mut node = fragment.get(&txn, 0).expect("a block");
+    let first = loop {
+        node = match node {
+            XmlOut::Text(first) => break first,
+            XmlOut::Element(element) => element.get(&txn, 0).expect("a child"),
+            XmlOut::Fragment(_) => panic!("a fragment in the body"),
+        };
+    };
+    first.insert(&mut txn, 0, text);
+    drop(txn);
+    copy.transact().encode_diff_v1(&before)
 }

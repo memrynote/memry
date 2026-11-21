@@ -1688,6 +1688,9 @@ importers:
       '@memry/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      yjs:
+        specifier: ^13.6.29
+        version: 13.6.29
 
   packages/storage-data:
     dependencies:

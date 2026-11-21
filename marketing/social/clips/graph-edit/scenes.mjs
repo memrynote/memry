@@ -163,7 +163,7 @@ export const scenes = {
     const b = await pos(page, target)
     const z = Math.max(
       1.5,
-      Math.min(1.9, 1600 / (Math.abs(a.x - b.x) + 360), 738 / (Math.abs(a.y - b.y) + 200))
+      Math.min(1.9, 1440 / (Math.abs(a.x - b.x) + 360), 648 / (Math.abs(a.y - b.y) + 200))
     )
     zoom((a.x + b.x) / 2, (a.y + b.y) / 2 + 81 / z, z)
     await sleep(500)

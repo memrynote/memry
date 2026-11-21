@@ -10,15 +10,16 @@
 // write-back's `lastMarkdown` normalize exactly the bytes under test.
 //
 // Electron needed a signed-in sync pair to put the save on the write-back path; the Tauri editor
-// always edits the app's document, so these specs need no sync. Each case reads the file and the
-// UI in one poll, so a failure names the layer that gave way. Electron's third layer, the shared
-// doc's markdown (`getCrdtDocMarkdown`), and its source-record probes (`getCrdtMarkdownSourceState`,
-// `sourceRestore`) have no Tauri command: `e2e_writeback_debug_state` reports `sourceRestore` as
-// null because the app keeps the author's spelling without a separate restore step. "Closed"
-// means the tab closed and the app quit: the quit runs every scheduled pass, so a final
+// always edits the app's document, so these specs need no sync. Each case reads the file, the
+// open document's markdown (`e2e_get_crdt_doc_body`) and the UI in one poll, so a failure names
+// the layer that gave way. `e2e_writeback_debug_state` reports `sourceRestore` as null because
+// the app keeps the author's spelling without a separate restore step, so the #1915 case asserts
+// the source record (`e2e_get_crdt_markdown_source`) and the file. "Closed" means the tab closed,
+// no window holds the document, and the app quit: the quit runs every scheduled pass, so a final
 // write-back cannot land after the read.
 import * as fs from 'node:fs'
 
+import { getCrdtDocBodyById, getCrdtMarkdownSourceById } from '../../harness/note-sync-helpers'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import {
@@ -234,11 +235,18 @@ async function seedAndOpen(
   return { id: baseline.id, bytes: baseline.bytes, absPath }
 }
 
-/** Closes the tab, quits the app and answers the file as the quit left it. */
-async function closeAndQuit(app: TauriApp, page: Page, title: string, absPath: string) {
+/** Closes the tab, waits until no window holds the document, quits the app and answers the file
+ * as the quit left it. */
+async function closeAndQuit(
+  app: TauriApp,
+  page: Page,
+  note: { id: string; absPath: string },
+  title: string
+) {
   await closeNoteTab(page, title)
+  await expect.poll(() => getCrdtDocBodyById(app, note.id), { timeout: 30_000 }).toBeNull()
   await gracefulClose(app)
-  return readWithMtime(absPath)
+  return readWithMtime(note.absPath)
 }
 
 test.describe('Foreign markdown round-trip', () => {
@@ -256,15 +264,16 @@ test.describe('Foreign markdown round-trip', () => {
       .poll(
         async () => ({
           file: fs.readFileSync(note.absPath, 'utf8'),
+          doc: await getCrdtDocBodyById(app, note.id),
           ui: (await visibleBlocks(page)).map((block) => block.text)
         }),
         { timeout: 30_000 }
       )
-      .toEqual({ file: note.bytes, ui: ['Line one Line two'] })
+      .toEqual({ file: note.bytes, doc: HARD_BREAK_BODY, ui: ['Line one Line two'] })
     expect((await writebackDebug(app, note.id))?.lastError).toBeNull()
 
     const settled = readWithMtime(note.absPath)
-    expect(await closeAndQuit(app, page, title, note.absPath)).toEqual(settled)
+    expect(await closeAndQuit(app, page, note, title)).toEqual(settled)
   })
 
   test('a reference link and the definition it points at both survive a save (#1909)', async ({
@@ -285,6 +294,7 @@ test.describe('Foreign markdown round-trip', () => {
             file,
             definition: file.includes(`[d]: ${REFERENCE_DESTINATION}`),
             inlined: file.includes(`](${REFERENCE_DESTINATION})`),
+            doc: await getCrdtDocBodyById(app, note.id),
             ui: await editorLinks(page)
           }
         },
@@ -294,6 +304,7 @@ test.describe('Foreign markdown round-trip', () => {
         file: note.bytes,
         definition: true,
         inlined: false,
+        doc: REFERENCE_BODY,
         ui: [
           { text: 'a', href: REFERENCE_DESTINATION },
           { text: 'b', href: REFERENCE_DESTINATION }
@@ -302,7 +313,7 @@ test.describe('Foreign markdown round-trip', () => {
     expect((await writebackDebug(app, note.id))?.lastError).toBeNull()
 
     const settled = readWithMtime(note.absPath)
-    expect(await closeAndQuit(app, page, title, note.absPath)).toEqual(settled)
+    expect(await closeAndQuit(app, page, note, title)).toEqual(settled)
   })
 
   test('an Obsidian Kanban settings fence stays untagged through a save (#1909)', async ({
@@ -322,10 +333,13 @@ test.describe('Foreign markdown round-trip', () => {
       .poll(
         async () => {
           const file = fs.readFileSync(note.absPath, 'utf8')
+          const doc = (await getCrdtDocBodyById(app, note.id)) ?? ''
           return {
             fileFenceTag: openingFenceInfo(file),
             fileFenced: fencedBody(file),
             taggedJavascript: file.includes('```javascript'),
+            docFenceTag: openingFenceInfo(doc),
+            docFenced: fencedBody(doc),
             ui: await editorCommentSources(page)
           }
         },
@@ -335,12 +349,14 @@ test.describe('Foreign markdown round-trip', () => {
         fileFenceTag: '',
         fileFenced: KANBAN_SETTINGS_JSON,
         taggedJavascript: false,
+        docFenceTag: '',
+        docFenced: KANBAN_SETTINGS_JSON,
         ui: [KANBAN_COMMENT]
       })
     expect((await writebackDebug(app, note.id))?.lastError).toBeNull()
 
     const settled = readWithMtime(note.absPath)
-    const afterClose = await closeAndQuit(app, page, title, note.absPath)
+    const afterClose = await closeAndQuit(app, page, note, title)
     // Closing the note wrote nothing further, and the closed file still opens a bare fence.
     expect(afterClose).toEqual(settled)
     expect(openingFenceInfo(afterClose.bytes)).toBe('')
@@ -358,15 +374,18 @@ test.describe('Foreign markdown round-trip', () => {
     await nudgeDocument(page)
     await waitForWritebackToSettle(app, note.id)
 
+    // The record rides along so a failure names the layer: no record after the seed, or a
+    // write-back that did not keep the spelling.
     await expect
       .poll(
         async () => ({
           file: fs.readFileSync(note.absPath, 'utf8'),
+          recordPresent: (await getCrdtMarkdownSourceById(app, note.id)) !== null,
           lastError: (await writebackDebug(app, note.id))?.lastError
         }),
         { timeout: 30_000 }
       )
-      .toEqual({ file: note.bytes, lastError: null })
+      .toEqual({ file: note.bytes, recordPresent: true, lastError: null })
     // The editor read a heading, a paragraph and a list, not literal underline and bullets.
     expect((await visibleBlocks(page)).map((block) => block.type).slice(0, 3)).toEqual([
       'heading',
@@ -375,7 +394,7 @@ test.describe('Foreign markdown round-trip', () => {
     ])
 
     // Closing the note wrote nothing further.
-    expect((await closeAndQuit(app, page, title, note.absPath)).bytes).toBe(note.bytes)
+    expect((await closeAndQuit(app, page, note, title)).bytes).toBe(note.bytes)
   })
 
   test('editing one paragraph of a CRLF note changes only that line (#2615)', async ({
@@ -409,16 +428,18 @@ test.describe('Foreign markdown round-trip', () => {
       .poll(
         async () => ({
           file: fs.readFileSync(note.absPath, 'utf8'),
+          docHasCarriageReturn: (await getCrdtDocBodyById(app, note.id))?.includes('\r') ?? null,
           lastError: (await writebackDebug(app, note.id))?.lastError
         }),
         { timeout: 30_000 }
       )
       .toEqual({
         file: note.bytes.replace(CRLF_EDIT_LINE, `${CRLF_EDIT_LINE} EDITED`),
+        docHasCarriageReturn: false,
         lastError: null
       })
 
     const settled = readWithMtime(note.absPath)
-    expect(await closeAndQuit(app, page, title, note.absPath)).toEqual(settled)
+    expect(await closeAndQuit(app, page, note, title)).toEqual(settled)
   })
 })
