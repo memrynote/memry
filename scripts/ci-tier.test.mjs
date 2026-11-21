@@ -673,7 +673,7 @@ describe('ci tier on the repo itself', () => {
 })
 
 // The matrices the workflows build from the tier outputs (rust-legs.jq, tauri-builds.jq).
-function rustLegEntries(out) {
+function rustLegEntries(out, warm = false) {
   const result = spawnSync(
     'jq',
     [
@@ -696,6 +696,7 @@ function rustLegEntries(out) {
       '--arg',
       'mac',
       out.rust_macos,
+      ...(warm ? ['--arg', 'warm', 'true'] : []),
       '-f',
       join(tierDir, 'rust-legs.jq')
     ],
@@ -706,7 +707,7 @@ function rustLegEntries(out) {
 }
 
 const legName = (l) => `${l.os} ${l.part}${l.partition ? ` ${l.partition}` : ''}`
-const rustLegs = (out) => rustLegEntries(out).map(legName)
+const rustLegs = (out, warm = false) => rustLegEntries(out, warm).map(legName)
 // The jobs that run the ML model steps (`models: true`).
 const modelLegs = (out) =>
   rustLegEntries(out)
@@ -1335,5 +1336,49 @@ describe('ci concurrency of the feat/tauri-v2 push runs', () => {
       pushMain: false,
       ...others
     })
+  })
+})
+
+// The daily cache-warm run of rust-ci.yml adds the `checks` leg of each OS the merge queue runs, with the
+// steps the queue gives it: the entry it saves is the one the queue's checks legs restore, and a leg
+// with fewer steps would save an entry that lacks what the queue builds (an exact hit saves nothing).
+describe('ci tier cache-warm legs', () => {
+  const scheduled = (scheduleTested) =>
+    tier({
+      event: 'schedule',
+      ref: 'refs/heads/feat/tauri-v2',
+      base: '',
+      files: [],
+      listed: false,
+      scheduleTested
+    })
+  const queue = tier({ event: 'merge_group', base: '', files: ['crates/memry-core/src/lib.rs'] })
+  const warmed = ['ubuntu-22.04 checks', 'windows-2022 checks', 'windows-11-arm checks']
+
+  it('runs the warm legs on a scheduled SHA that already passed, and beside the macOS leg otherwise', () => {
+    const covered = scheduled(true)
+    assert.equal(covered.post_merge, 'covered')
+    assert.deepEqual(rustLegs(covered, true), warmed)
+    assert.deepEqual(rustLegs(scheduled(false), true), ['macos-15 all', ...warmed])
+  })
+
+  it('gives each warm leg exactly the queue leg it warms', () => {
+    const queueChecks = rustLegEntries(queue).filter((leg) => leg.part === 'checks')
+    assert.deepEqual(rustLegEntries(scheduled(true), true), queueChecks)
+  })
+
+  it('adds nothing to a run that is not the warm run', () => {
+    assert.deepEqual(rustLegs(scheduled(true)), [])
+    assert.deepEqual(rustLegs(scheduled(false)), ['macos-15 all'])
+  })
+
+  it('names a cron that rust-ci.yml schedules', () => {
+    const text = readFileSync(join(repo, '.github/workflows/rust-ci.yml'), 'utf8')
+    const crons = [...text.matchAll(/- cron: '([^']+)'/g)].map((m) => m[1])
+    const named = [...text.matchAll(/github\.event\.schedule == '([^']+)'/g)].map((m) => m[1])
+    assert.ok(named.length >= 2, 'the plan job and the concurrency group both name the warm cron')
+    assert.equal(new Set(named).size, 1)
+    assert.ok(crons.includes(named[0]), `${named[0]} is not in ${crons}`)
+    assert.ok(crons.length >= 2, 'the warm cron is not the 6-hourly one')
   })
 })
