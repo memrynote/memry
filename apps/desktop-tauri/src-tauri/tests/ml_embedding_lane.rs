@@ -165,11 +165,13 @@ impl Lane {
         }
     }
 
-    /// Every queued event projected and the open's reconcile ended.
+    /// Every queued event projected and the open's reconcile ended. The app wires two lanes here
+    /// (note and voice memo; no PDF worker, so no image lane), one thread each; a third is a
+    /// reconcile pass still running.
     fn settled(&self) {
         let runtime = self.session.projections().expect("open");
         assert!(runtime.flush(WAIT));
-        self.until("the reconcile ends", || runtime.live_threads() <= 1);
+        self.until("the reconcile ends", || runtime.live_threads() <= 2);
     }
 
     /// Writes the file and waits for the tier to apply it.
