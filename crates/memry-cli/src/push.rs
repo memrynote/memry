@@ -282,6 +282,23 @@ mod tests {
         );
     }
 
+    /// #5373: the plan's vault cap is a `PaymentRequired` on every sync route,
+    /// so the transcript says the plan is full instead of a bare `402`.
+    #[test]
+    fn a_vault_limit_refusal_prints_as_needing_a_plan() {
+        let source = memry_core::api::errors::ApiError::PaymentRequired {
+            code: Some("SYNC_VAULT_LIMIT_EXCEEDED".to_string()),
+            message: "plus allows 1 synced vaults".to_string(),
+        };
+        let mut refused = outcome(WriteGate::Open);
+        refused.refused = Some(source.to_string());
+        let rendered = format_push(&refused);
+        assert!(
+            rendered.contains("refused sync needs a plan: plus allows 1 synced vaults"),
+            "{rendered}"
+        );
+    }
+
     #[test]
     fn a_drained_wave_prints_every_count_the_report_carries() {
         let mut drained = outcome(WriteGate::Open);
