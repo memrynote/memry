@@ -185,7 +185,7 @@ fn resolve_canvas(conn: &Connection, id: &str) -> Result<Option<Resolution>, Sto
 mod tests {
     use super::*;
     use crate::storage::Db;
-    use crate::storage::migrations::{DATA_MIGRATIONS, run};
+    use crate::storage::migrations::{DATA_MIGRATIONS, latest_version, run};
 
     fn with_db(test: impl FnOnce(&Connection) -> Result<(), StorageError>) {
         let db = Db::open_in_memory().expect("open");
@@ -297,6 +297,8 @@ mod tests {
                 .map_err(failed)?;
                 record(conn, "canvas", id, 1)?;
             }
+            // The raw rows bypass the projector; project them as an open does.
+            sync_items::heal_projections(conn)?;
             let items = list(conn, 50)?;
             assert_eq!(items.len(), 1);
             assert_eq!(items[0].item_id, "c1");
@@ -324,7 +326,7 @@ mod tests {
         db.call_blocking(|conn| {
             run(conn, &DATA_MIGRATIONS[..34])?;
             note(conn, "a");
-            assert_eq!(run(conn, DATA_MIGRATIONS)?, 35);
+            assert_eq!(run(conn, DATA_MIGRATIONS)?, latest_version(DATA_MIGRATIONS));
             assert!(list(conn, 50)?.is_empty());
             record(conn, "note", "a", 1)?;
             assert_eq!(ids(conn, 50), ["a"]);

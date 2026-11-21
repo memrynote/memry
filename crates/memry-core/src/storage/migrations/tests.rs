@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 35);
+    assert_eq!(version, 38);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -115,7 +115,7 @@ fn a_fresh_index_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 11);
+    assert_eq!(version, 12);
 
     let names = table_names(&db);
     for expected in [
@@ -210,9 +210,9 @@ fn a_migration_interrupted_between_commit_and_pragma_recovers() {
 
     db.call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("migrate");
-    // The crash window §A.0's ordering leaves open: the statements committed
-    // but the counter never moved.
-    db.call_blocking(|conn| set_user_version(conn, 0))
+    // Earlier builds' crash window: the statements committed, the counter did not.
+    db.call_blocking(|conn| Ok(conn.execute_batch("PRAGMA user_version = 0")))
+        .expect("call")
         .expect("rewind");
 
     let version = db

@@ -118,6 +118,11 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
+	/**
+	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
+	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
+	 */
+	calendarEventkitRequestAccess: () => __TAURI_INVOKE<EventKitAuthorizationStatus>("calendar_eventkit_request_access"),
 	/**  `calendar:refresh-ics`: a feed failure is already recorded on the source, which shows it. */
 	calendarRefreshIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_refresh_ics", { input }),
 	/**  `calendar:subscribe-ics`. */
@@ -227,6 +232,28 @@ export const commands = {
 	 *  own name).
 	 */
 	folderViewSetView: (scope: ViewScope, view: { [key in string]: Value }, previousName: string | null) => __TAURI_INVOKE<null>("folder_view_set_view", { scope, view, previousName }),
+	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
+	/**  `false` when there was no such board. */
+	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
+	homePagesGet: (id: string) => __TAURI_INVOKE<HomePageView | null>("home_pages_get", { id }),
+	/**  Every live board in the order every device agrees on. */
+	homePagesList: () => __TAURI_INVOKE<HomePageView[]>("home_pages_list"),
+	/**
+	 *  Brings the board's cover files in line with its cover. Until Step 30f syncs cover bytes,
+	 *  this only prunes files the cover no longer names.
+	 */
+	homePagesMaterializeCover: (id: string) => __TAURI_INVOKE<null>("home_pages_materialize_cover", { id }),
+	homePagesRemoveCover: (id: string) => __TAURI_INVOKE<HomePageView>("home_pages_remove_cover", { id }),
+	/**  Puts the boards in the order of `ids`. */
+	homePagesReorder: (ids: string[]) => __TAURI_INVOKE<null>("home_pages_reorder", { ids }),
+	/**
+	 *  A board's new banner from a wash, a link, Unsplash or an image already in the vault. Every
+	 *  image is copied into the board's own folder and the board saved in the same call.
+	 */
+	homePagesSetCover: (id: string, source: HomePageCoverSourceInput) => __TAURI_INVOKE<SetCoverOutcome>("home_pages_set_cover", { id, source }),
+	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
+	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
+	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -339,6 +366,8 @@ export const commands = {
 	 *  on the size, the type or the note id before any byte is sent. Returns the upload's id.
 	 */
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
+	/**  `notes:export-html`: the note as a self-contained HTML file where the save dialog says. */
+	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -368,10 +397,7 @@ export const commands = {
 	notesRevealFolderInFinder: (folderPath: string) => __TAURI_INVOKE<null>("notes_reveal_folder_in_finder", { folderPath }),
 	/**  `notes:set-folder-config`: the icon, template and `inherit`; the folder's views stay. */
 	notesSetFolderConfig: (folderPath: string, config: FolderConfigInput) => __TAURI_INVOKE<null>("notes_set_folder_config", { folderPath, config }),
-	/**
-	 *  `notes:create`, from a template when one is named or a tag names one. `plainChecklists`
-	 *  (Step 32) is not read: the renderer's service refuses it until its step.
-	 */
+	/**  `notes:create`, from a template when one is named or a tag names one. */
 	notesCreate: (input: NoteCreateInput) => __TAURI_INVOKE<NoteView>("notes_create", { input }),
 	/**
 	 *  `notes:delete`. A file holding text the note never read goes to the OS trash; where the
@@ -440,6 +466,17 @@ export const commands = {
 	 *  `notes:tags-changed` when its tags changed; its `notes:updated` comes from its row fact.
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
+	/**
+	 *  `notes:import-files`: copies the files into the folder, vault-relative, or the vault's
+	 *  default note folder. One file that fails leaves the others; a path neither dropped nor
+	 *  picked, a folder outside the vault or a locked one refuses the call.
+	 */
+	notesImportFiles: (input: ImportFilesInput) => __TAURI_INVOKE<ImportFilesResult>("notes_import_files", { input }),
+	/**
+	 *  `notes:show-import-dialog`: files to import, from the supported types or any. What it returns
+	 *  is what `notes_import_files` may read next.
+	 */
+	notesShowImportDialog: () => __TAURI_INVOKE<ImportDialogResult>("notes_show_import_dialog"),
 	/**
 	 *  `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
 	 *  target's body. The renderer removes them from the source only once this answers; a refused
@@ -635,6 +672,11 @@ export const commands = {
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
 	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
+	/**
+	 *  A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+	 *  this build does not know (`settings:getCalendarProviderSettings`).
+	 */
+	settingsGetCalendarProvider: (provider: string) => __TAURI_INVOKE<Value | null>("settings_get_calendar_provider", { provider }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -655,6 +697,12 @@ export const commands = {
 	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
+	/**
+	 *  Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+	 *  provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+	 *  `settings_invalid_value`, and nothing is written.
+	 */
+	settingsSetCalendarProvider: (provider: string, updates: Value) => __TAURI_INVOKE<null>("settings_set_calendar_provider", { provider, updates }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -710,7 +758,11 @@ export const commands = {
 	syncResume: (input: SyncControlInput) => __TAURI_INVOKE<ResumeSyncResult>("sync_resume", { input }),
 	/**  `sync:trigger-sync` (Sync Now). */
 	syncTrigger: () => __TAURI_INVOKE<TriggerSyncResult>("sync_trigger"),
-	/**  `sync:update-synced-setting`. */
+	/**
+	 *  `sync:update-synced-setting`: written through the settings owner and announced as
+	 *  `settings-changed`. The Wry-only follow-ups of a settings write (tray, login item, menu) are
+	 *  not run: no renderer path sends a field they read through this channel.
+	 */
 	syncUpdateSyncedSetting: (input: UpdateSyncedSettingInput) => __TAURI_INVOKE<UpdateSyncedSettingResult>("sync_update_synced_setting", { input }),
 	/**  `account:sign-out`. */
 	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
@@ -718,6 +770,12 @@ export const commands = {
 	syncGetVaultBinding: () => __TAURI_INVOKE<VaultBindingState>("sync_get_vault_binding"),
 	/**  `sync:auth-logout`. */
 	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
+	/**
+	 *  `sync:repair-device-keys`: a listed device restarts sync and answers whether its gate lets it
+	 *  run (`reasonSyncDidNotStart`, `device-registration.ts:400-413`); otherwise the device signed
+	 *  out keeping its master key and queue.
+	 */
+	syncRepairDeviceKeys: () => __TAURI_INVOKE<RepairDeviceKeysResult>("sync_repair_device_keys"),
 	/**
 	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
 	 *  `success: false` with the state unchanged, as Electron answers.
@@ -791,6 +849,10 @@ export const commands = {
 	templatesList: () => __TAURI_INVOKE<TemplateListItem[]>("templates_list"),
 	/**  Saves the fields `input` names; a built-in is refused. */
 	templatesUpdate: (input: TemplateUpdateInput) => __TAURI_INVOKE<TemplateView>("templates_update", { input }),
+	settingsGetTerminalCommandStatus: () => __TAURI_INVOKE<TerminalCommandStatus>("settings_get_terminal_command_status"),
+	settingsInstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_install_terminal_command"),
+	settingsSetTerminalCommandDefaultVault: (vaultPath: string) => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_set_terminal_command_default_vault", { vaultPath }),
+	settingsUninstallTerminalCommand: () => __TAURI_INVOKE<TerminalCommandMutationResult>("settings_uninstall_terminal_command"),
 	/**
 	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
 	 *  without a request.
@@ -892,6 +954,8 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**  `inbox:retry-transcription`: transcribes a voice memo again and resolves when it is done. */
+	inboxRetryTranscription: (itemId: string) => __TAURI_INVOKE<TranscriptionResult>("inbox_retry_transcription", { itemId }),
 	/**
 	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
 	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
@@ -936,6 +1000,9 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
+	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
+	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1219,11 +1286,12 @@ export type AppendedBlocks = {
 	targetPath: string,
 };
 
-/**  `ApplyTemplateSchema`, the fields this step reads. */
+/**  `ApplyTemplateSchema`. */
 export type ApplyTemplateInput = {
 	noteId: string,
 	templateId: string,
 	mode: TemplateMode,
+	plainChecklists?: boolean,
 };
 
 /**  The kinds of a note whose file is not markdown. */
@@ -1498,6 +1566,20 @@ export type ContextMenuItem = {
 };
 
 /**
+ *  `HomePageCoverFailure`: why a picked cover was not set. Each picker tab
+ *  shows the ones it knows.
+ */
+export type CoverFailure = "not-configured" | "offline" | "rate-limited" | "failed" | "write-failed" | "not-an-image" | "too-large";
+
+/**  `HomePageSetCoverFramingSchema.changes`: only the fields that changed. */
+export type CoverFramingInput = {
+	focusX?: number | null,
+	focusY?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+};
+
+/**
  *  Whether this install's edits reach disk (`crdt:get-health`). Pulled by the renderer: the
  *  verdict lands while the window loads, before anything listens.
  */
@@ -1733,9 +1815,41 @@ export type ErrorDetail = {
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
 
+/**  `EKAuthorizationStatus` for events. `write_only` (macOS 14+) cannot read. */
+export type EventKitAuthorizationStatus = "not_determined" | "restricted" | "denied" | "write_only" | "full_access";
+
 export type ExistingTagView = {
 	key: string,
 	usage: number,
+};
+
+/**  Why an export wrote nothing; `cancelled` when the user dismissed the save dialog. */
+export type ExportFailure = "cancelled" | "not_found" | "failed";
+
+/**
+ *  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
+ *  webview never names the file to write, so the command always asks the user through the save
+ *  dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
+ *  Electron, whose handler writes to the renderer's `outputPath`). The headless export is
+ *  [`export_html_to`], reachable in process only.
+ */
+export type ExportNoteInput = {
+	noteId: string,
+	/**  On when absent. */
+	includeMetadata?: boolean | null,
+	/**  The PDF page; the HTML export ignores it. */
+	pageSize?: PageSize | null,
+	/**  Off when absent. */
+	includeTaskMarkers?: boolean | null,
+};
+
+/**  `{ success: true, path }` or `{ success: false, code, error }`. */
+export type ExportResult = {
+	success: boolean,
+	path?: string | null,
+	code?: ExportFailure | null,
+	/**  Localized, for the failure toast. */
+	error?: string | null,
 };
 
 export type FailureDetail = {
@@ -2086,6 +2200,66 @@ export type HeatmapEntryView = {
 	level: number,
 };
 
+/**  `HomePageCoverSource` less `upload`, which is the binary command. */
+export type HomePageCoverSourceInput = { kind: "wash"; id: string } | { kind: "url"; url: string } | { kind: "unsplash"; photo: UnsplashPhoto } | { kind: "vaultFile"; ownerNoteId: string; filename: string };
+
+/**
+ *  `HomePageCoverSync`: the fields the band reads. The record keeps every
+ *  other key a newer build wrote.
+ */
+export type HomePageCoverView = {
+	ref: string,
+	focus?: number | null,
+	focusX?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+	credit?: string | null,
+	creditUrl?: string | null,
+	attachmentId?: string | null,
+};
+
+/**  `HomePageCreateSchema`. */
+export type HomePageCreateInput = {
+	name: string,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board was made (`home-pages:created`). */
+export type HomePageCreatedEvent = {
+	id: string,
+};
+
+/**  A board was deleted (`home-pages:deleted`). */
+export type HomePageDeletedEvent = {
+	id: string,
+};
+
+/**  `HomePageUpdateSchema`: an absent field stays as it is. */
+export type HomePageUpdateInput = {
+	id: string,
+	name?: string | null,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board's name, widgets, position or cover changed (`home-pages:updated`). */
+export type HomePageUpdatedEvent = {
+	id: string,
+};
+
+/**  `HomePage`. */
+export type HomePageView = {
+	id: string,
+	name: string,
+	icon?: string | null,
+	position: number | null,
+	widgets: WidgetView[],
+	cover?: HomePageCoverView | null,
+};
+
 export type HttpMethod = "GET" | "POST";
 
 /**  `IcsFeedErrorCode` (`packages/contracts/src/calendar-api.ts`). */
@@ -2116,6 +2290,37 @@ export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | 
 
 /**  `ImpactResult`. */
 export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
+
+/**  `{ canceled, filePaths }` of `notes:show-import-dialog`. */
+export type ImportDialogResult = {
+	canceled: boolean,
+	filePaths: string[],
+};
+
+/**  `ImportFilesSchema`. */
+export type ImportFilesInput = {
+	sourcePaths: string[],
+	targetFolder?: string | null,
+	options?: PlainChecklistsOption | null,
+};
+
+/**  `ImportFilesResult`. */
+export type ImportFilesResult = {
+	success: boolean,
+	imported: number,
+	failed: number,
+	errors: string[],
+	importedFiles: ImportedFileInfo[],
+};
+
+/**  `ImportedFileInfo`. */
+export type ImportedFileInfo = {
+	/**  Absolute, as Electron's `path.join(targetDir, destFilename)`. */
+	destPath: string,
+	/**  The name the file had where it came from. */
+	filename: string,
+	fileType: FileType,
+};
 
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
@@ -2668,10 +2873,7 @@ export type NoteClustersResponse = {
 	missing: string[],
 };
 
-/**
- *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
- *  refuses until then.
- */
+/**  `NoteCreateSchema`. */
 export type NoteCreateInput = {
 	title: string,
 	content?: string | null,
@@ -2683,6 +2885,8 @@ export type NoteCreateInput = {
 	template?: string | null,
 	/**  Absent: the template's icon, if any; `null`: no icon. */
 	emoji?: string | null,
+	/**  The body's checkbox lines stay checklists (`NewNoteFile::plain_checklists`). */
+	plainChecklists?: boolean | null,
 };
 
 /**  A note was made, by the app or from a file that appeared (`notes:created`). */
@@ -2698,8 +2902,11 @@ export type NoteDeletedEvent = {
 	source: NoteEventSource,
 };
 
-/**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
-export type NoteEventSource = "internal" | "external";
+/**
+ *  Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+ *  from another device, which an open editor does not remount for (Electron `source: 'sync'`).
+ */
+export type NoteEventSource = "internal" | "external" | "sync";
 
 /**
  *  Note events were dropped because their forwarder fell behind (no Electron channel: Electron
@@ -3027,10 +3234,17 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+export type PageSize = "A4" | "Letter" | "Legal";
+
 /**  `PauseSyncResult`. */
 export type PauseSyncResult = {
 	success: boolean,
 	wasPaused: boolean,
+};
+
+/**  `PlainChecklistsOptionSchema`. */
+export type PlainChecklistsOption = {
+	plainChecklists?: boolean | null,
 };
 
 export type PlanChangePeriod = "monthly" | "annual";
@@ -3357,6 +3571,9 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `RepairDeviceKeysResult` (`ipc-sync-ops.ts`). */
+export type RepairDeviceKeysResult = { status: "repaired" } | { status: "sync-not-started"; reason: SyncNotStartedReason } | { status: "sign-in-required" };
+
 /**  `ResolveVaultBindingResult`. */
 export type ResolveVaultBindingResult = {
 	success: boolean,
@@ -3591,6 +3808,9 @@ export type SelectVaultResponse = {
 /**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
 export type SessionExpiredReason = "refresh_rejected";
 
+/**  What a set-cover call came to: `HomePageSetCoverResult`. */
+export type SetCoverOutcome = { status: "saved"; page: HomePageView } | { status: "failed"; reason: CoverFailure };
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -3796,7 +4016,10 @@ export type SyncHistoryEntry = {
 	type: string,
 	itemCount: number,
 	direction?: string | null,
-	/**  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`). */
+	/**
+	 *  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`);
+	 *  absent for empty text, as Electron's `r.details ? ... : undefined`.
+	 */
 	details?: Value | null,
 	durationMs?: number | null,
 	createdAt: number,
@@ -3826,12 +4049,13 @@ export type SyncItemRecoveredEvent = {
 	type: string,
 };
 
-/**  `sync:item-synced`: one item went up or came down. */
+/**
+ *  `sync:item-synced`, once per committed pull page: every record the page changed, each once
+ *  with its last operation. Notes and journals come from the vault tier's events instead.
+ */
 export type SyncItemSyncedEvent = {
-	itemId: string,
-	type: string,
 	operation: SyncDirection,
-	itemOperation?: SyncItemOperation | null,
+	items: SyncedItem[],
 };
 
 /**  A link this device started was approved (`sync:linking-approved`). */
@@ -3854,6 +4078,9 @@ export type SyncLinkingRequestedEvent = {
 	newDeviceName: string,
 	newDevicePlatform: string,
 };
+
+/**  `SyncNotStartedReason` in `ipc-sync-ops.ts`. */
+export type SyncNotStartedReason = "vault-binding" | "vault-foreign" | "entitlement" | "unavailable";
 
 /**
  *  Why Sync Now sent and received nothing. `busy` is in the contract and never produced here:
@@ -3899,6 +4126,13 @@ export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_
 
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
+
+/**  One record of a [`SyncItemSyncedEvent`]. */
+export type SyncedItem = {
+	itemId: string,
+	type: string,
+	itemOperation: SyncItemOperation,
+};
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
@@ -4146,6 +4380,39 @@ export type TemplateView = {
 };
 
 /**
+ *  `TerminalCommandMutationResult`: `{ success: true, status }` or
+ *  `{ success: false, error, status? }`.
+ */
+export type TerminalCommandMutationResult = {
+	success: boolean,
+	error?: string | null,
+	status?: TerminalCommandStatus | null,
+};
+
+export type TerminalCommandPlatform = "darwin" | "linux" | "win32";
+
+/**  `TerminalCommandStatus` (`packages/rpc/src/settings.ts`). */
+export type TerminalCommandStatus = {
+	supported: boolean,
+	installed: boolean,
+	command: string,
+	platform: TerminalCommandPlatform,
+	shimPath: string,
+	binDir: string,
+	targetPath: string,
+	inPath: boolean,
+	pathHint: string | null,
+	defaultVaultPath: string | null,
+	vaults: TerminalCommandVault[],
+};
+
+export type TerminalCommandVault = {
+	path: string,
+	name: string,
+	isDefault: boolean,
+};
+
+/**
  *  The outcome of the settings screen's Test button. `detail` is the translated reason of a
  *  failure, `None` when `ok`.
  */
@@ -4158,6 +4425,13 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**  `TranscriptionResult`. */
+export type TranscriptionResult = {
+	success: boolean,
+	transcription?: string | null,
+	error?: string | null,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */
@@ -4629,6 +4903,34 @@ export type VoiceRecordingReadiness = {
 export type WaitingMove = {
 	noteId: string,
 	path: string,
+};
+
+/**
+ *  `WidgetInstanceSchema`. Written back in its key order, which is the order
+ *  `JSON.stringify` gives the parsed object in Electron.
+ */
+export type WidgetInput = {
+	id: string,
+	type: string,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	config?: { [key in string]: Value },
+};
+
+/**
+ *  `WidgetInstance` as the grid reads it. A widget of a type this build does
+ *  not know comes through like any other.
+ */
+export type WidgetView = {
+	id: string,
+	type: string,
+	x: number | null,
+	y: number | null,
+	w: number | null,
+	h: number | null,
+	config: { [key in string]: Value },
 };
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */

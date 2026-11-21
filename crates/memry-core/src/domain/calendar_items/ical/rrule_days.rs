@@ -91,7 +91,9 @@ fn month_span(year: i64, month: u32) -> Option<(CivilDate, CivilDate)> {
 }
 
 pub(super) fn monthly_days(rule: &Rule, start: CivilDate, first: CivilDate) -> Vec<CivilDate> {
-    if !rule.by_month.is_empty() && !rule.by_month.contains(&first.month) {
+    if !budget::step(rule.by_month.len())
+        || (!rule.by_month.is_empty() && !rule.by_month.contains(&first.month))
+    {
         return Vec::new();
     }
     let Some((from, to)) = month_span(first.year, first.month) else {
@@ -103,7 +105,7 @@ pub(super) fn monthly_days(rule: &Rule, start: CivilDate, first: CivilDate) -> V
     } else {
         rule.by_day.len()
     };
-    if !budget::step(rule.by_month.len() + 31 * walk) {
+    if !budget::step(31 * walk) {
         return Vec::new();
     }
     let days: Vec<CivilDate> = if !rule.by_day.is_empty() {

@@ -45,8 +45,7 @@ use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
 use crate::startup::{self, Stage};
 
-/// The registry file, beside the rest of the app data (`memry-config.json` of Electron).
-pub const CONFIG_FILE: &str = "memry-config.json";
+pub use memry_desktop::registry::CONFIG_FILE;
 
 /// The vault the window is created for, read by `create_main_window`.
 #[derive(Default)]

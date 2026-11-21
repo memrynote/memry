@@ -10,7 +10,7 @@ use memry_desktop::calendar_providers::ics_fetch::{
 };
 
 use crate::on_warning::logged;
-use crate::unsplash_server::{Harness, Reply, Seen, serve, serve_plain};
+use crate::unsplash_server::{Harness, Reply, Seen, install_provider, serve, serve_plain};
 
 const FEED: &str = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n";
 
@@ -209,6 +209,7 @@ async fn an_http_feed_is_fetched_and_a_link_off_the_web_is_refused_without_a_req
 /// without the link.
 #[test]
 fn a_failed_request_logs_no_part_of_the_link() {
+    install_provider();
     let closed = std::net::TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .expect("a free port")

@@ -22,6 +22,7 @@ pub mod errors;
 pub mod excluded_paths;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
+pub mod home_pages;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_enrich;
@@ -41,6 +42,7 @@ pub mod note_positions;
 pub mod notes;
 pub mod notes_write;
 pub mod projects;
+pub mod readwise;
 pub mod recently_opened;
 pub mod relation_targets;
 pub mod runtime;

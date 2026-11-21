@@ -1,9 +1,10 @@
-import type { OcrLanguage } from '@memry/contracts/ocr-languages-api'
+import type { OcrLanguage } from './ocr-languages-api'
 
 /**
  * The data the sync server serves at /ocr/v1/<lang>.traineddata.gz, pinned to
  * its exact bytes: `ocr/v1/manifest.json` as apps/sync-server/scripts/upload-ocr-language-data.ts
- * writes it. A download is used only when it matches. English ships with the app.
+ * writes it. A download is used only when it matches. English ships with the app. Electron and
+ * the Tauri app (`apps/desktop-tauri/scripts/generate-ocr-language-data.mjs`) read the same pins.
  */
 export const OCR_LANGUAGE_DATA: Record<
   Exclude<OcrLanguage, 'eng'>,

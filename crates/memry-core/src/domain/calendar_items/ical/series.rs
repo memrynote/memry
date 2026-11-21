@@ -7,7 +7,8 @@ use std::collections::{HashMap, HashSet};
 use super::parse::{Component, IcalTime, TimeZoneRef, parse_duration, time_of, times_of};
 use super::rrule::{Occurrences, Until, parse_rule};
 use super::{
-    IcalInstance, IcalWindow, InstanceKey, MAX_INSTANCES_PER_SERIES, MAX_RECURRENCE_STEPS, Resolver,
+    IcalInstance, IcalWindow, InstanceKey, MAX_INSTANCES_PER_SERIES, MAX_RECURRENCE_STEPS,
+    Resolver, WallClock,
 };
 use super::{budget, vevent_extras};
 use crate::domain::calendar::CivilDate;
@@ -18,17 +19,6 @@ pub(super) struct Context<'a> {
     pub unresolved: Option<&'a str>,
     pub key_for: InstanceKey<'a>,
     pub resolver: &'a Resolver<'a>,
-}
-
-/// DTEND, else DTSTART + DURATION, else DTSTART (+ 1 day for a DATE).
-pub(super) fn end_of(
-    event: &Component,
-    start: &IcalTime,
-    resolver: &Resolver<'_>,
-    unresolved: Option<&str>,
-) -> Option<IcalTime> {
-    let seconds = duration_seconds(event, start, resolver, unresolved);
-    Some(start.with_wall_seconds(start.wall_seconds() + seconds))
 }
 
 /// `event.duration`: DTEND − DTSTART as instants (so two zones subtract
@@ -55,60 +45,111 @@ fn duration_seconds(
     if start.is_date { 86_400 } else { 0 }
 }
 
-pub(super) fn to_instance(
-    event: &Component,
-    start: &IcalTime,
-    end: Option<&IcalTime>,
-    key: String,
-    context: &Context<'_>,
-) -> Option<IcalInstance> {
-    // Each `text` / `first` below scans the event's properties.
-    budget::step(event.properties.len());
-    let status = event.text("STATUS").map(|s| s.to_ascii_uppercase());
-    if status.as_deref() == Some("CANCELLED") {
+/// What every instance of one event copies, read once per event.
+struct EventText {
+    title: String,
+    description: Option<String>,
+    location: Option<String>,
+    /// `None` when the event is cancelled.
+    status: Option<&'static str>,
+    remote_updated_at: Option<String>,
+    attendees: Option<serde_json::Value>,
+    reminders: Option<serde_json::Value>,
+    visibility: Option<String>,
+    color_id: Option<String>,
+}
+
+impl EventText {
+    fn of(event: &Component, resolver: &Resolver<'_>) -> Self {
+        // Each `text` / `first` below scans the event's properties.
+        budget::step(event.properties.len());
+        let status = event.text("STATUS").map(|s| s.to_ascii_uppercase());
+        let updated = event
+            .first("LAST-MODIFIED")
+            .and_then(time_of)
+            .or_else(|| event.first("DTSTAMP").and_then(time_of));
+        Self {
+            title: event
+                .text("SUMMARY")
+                .unwrap_or_else(|| "Untitled event".to_owned()),
+            description: event.text("DESCRIPTION"),
+            location: event.text("LOCATION"),
+            status: match status.as_deref() {
+                Some("CANCELLED") => None,
+                Some("TENTATIVE") => Some("tentative"),
+                _ => Some("confirmed"),
+            },
+            remote_updated_at: updated.map(|u| iso(resolver.instant_ms(&u, None))),
+            attendees: vevent_extras::attendees(event),
+            reminders: vevent_extras::reminders(event),
+            visibility: vevent_extras::visibility(event),
+            color_id: vevent_extras::color_id(event),
+        }
+    }
+
+    /// The instance at `start_ms`, `None` when the event is cancelled.
+    fn instance(
+        &self,
+        key: String,
+        start_ms: i64,
+        end_ms: i64,
+        is_all_day: bool,
+        timezone: Option<String>,
+    ) -> Option<IcalInstance> {
+        Some(IcalInstance {
+            remote_event_id: key,
+            title: self.title.clone(),
+            description: self.description.clone(),
+            location: self.location.clone(),
+            start_at: iso(start_ms),
+            end_at: (end_ms > start_ms).then(|| iso(end_ms)),
+            is_all_day,
+            timezone,
+            status: self.status?.to_owned(),
+            remote_updated_at: self.remote_updated_at.clone(),
+            attendees: self.attendees.clone(),
+            reminders: self.reminders.clone(),
+            visibility: self.visibility.clone(),
+            color_id: self.color_id.clone(),
+        })
+    }
+}
+
+/// The zone an instance starting at `start` is shown in.
+fn timezone_of(start: &IcalTime, context: &Context<'_>) -> Option<String> {
+    if start.is_date {
         return None;
     }
-    let resolver = context.resolver;
-    let updated = event
-        .first("LAST-MODIFIED")
-        .and_then(time_of)
-        .or_else(|| event.first("DTSTAMP").and_then(time_of));
-    let start_ms = resolver.instant_ms(start, context.unresolved);
-    let end_ms = end.map(|e| resolver.instant_ms(e, context.unresolved));
-    let timezone = if start.is_date {
-        None
-    } else {
-        match &start.zone {
-            // An undefined TZID reads as floating in `ical.js`.
-            TimeZoneRef::Named(id) if context.resolver.known(id).is_some() => Some(id.clone()),
-            TimeZoneRef::Named(_) => context.unresolved.map(str::to_owned),
-            TimeZoneRef::Utc => Some("UTC".to_owned()),
-            TimeZoneRef::Floating => context.unresolved.map(str::to_owned),
-        }
-    };
-    Some(IcalInstance {
-        remote_event_id: key,
-        title: event
-            .text("SUMMARY")
-            .unwrap_or_else(|| "Untitled event".to_owned()),
-        description: event.text("DESCRIPTION"),
-        location: event.text("LOCATION"),
-        start_at: iso(start_ms),
-        end_at: end_ms.filter(|e| *e > start_ms).map(iso),
-        is_all_day: start.is_date,
-        timezone,
-        status: if status.as_deref() == Some("TENTATIVE") {
-            "tentative"
-        } else {
-            "confirmed"
-        }
-        .to_owned(),
-        remote_updated_at: updated.map(|u| iso(resolver.instant_ms(&u, None))),
-        attendees: vevent_extras::attendees(event),
-        reminders: vevent_extras::reminders(event),
-        visibility: vevent_extras::visibility(event),
-        color_id: vevent_extras::color_id(event),
-    })
+    match &start.zone {
+        // An undefined TZID reads as floating in `ical.js`.
+        TimeZoneRef::Named(id) if context.resolver.known(id).is_some() => Some(id.clone()),
+        TimeZoneRef::Named(_) | TimeZoneRef::Floating => context.unresolved.map(str::to_owned),
+        TimeZoneRef::Utc => Some("UTC".to_owned()),
+    }
+}
+
+/// A single event or an override at its own DTSTART; `None` when it is
+/// cancelled or misses the window.
+pub(super) fn place(
+    event: &Component,
+    start: &IcalTime,
+    key: String,
+    context: &Context<'_>,
+    window: IcalWindow,
+) -> Option<IcalInstance> {
+    let (resolver, unresolved) = (context.resolver, context.unresolved);
+    let end = start.with_wall_seconds(
+        start.wall_seconds() + duration_seconds(event, start, resolver, unresolved),
+    );
+    EventText::of(event, resolver)
+        .instance(
+            key,
+            resolver.instant_ms(start, unresolved),
+            resolver.instant_ms(&end, unresolved),
+            start.is_date,
+            timezone_of(start, context),
+        )
+        .filter(|instance| overlaps(instance, window))
 }
 
 pub(super) fn overlaps(instance: &IcalInstance, window: IcalWindow) -> bool {
@@ -157,11 +198,11 @@ pub(super) fn expand_series(
     };
     let resolver = context.resolver;
     let unresolved = context.unresolved;
-    let to_utc_seconds = |wall: i64| {
-        resolver
-            .instant_ms(&start.with_wall_seconds(wall), unresolved)
-            .div_euclid(1_000)
+    let clock = WallClock {
+        zone: resolver.zone_of(&start, unresolved),
+        is_date: start.is_date,
     };
+    let to_utc_seconds = |wall: i64| clock.instant_ms(wall).div_euclid(1_000);
     let reader = until_reader(&start);
     let rule = master
         .first("RRULE")
@@ -169,9 +210,7 @@ pub(super) fn expand_series(
     let mut walls: Vec<i64> = match &rule {
         Some(rule) => Occurrences::new(rule, start.wall_seconds(), &to_utc_seconds)
             .take(MAX_RECURRENCE_STEPS)
-            .take_while(|wall| {
-                resolver.instant_ms(&start.with_wall_seconds(*wall), unresolved) < window.end_ms
-            })
+            .take_while(|wall| clock.instant_ms(*wall) < window.end_ms)
             .collect(),
         None => vec![start.wall_seconds()],
     };
@@ -180,11 +219,10 @@ pub(super) fn expand_series(
             if !budget::step(1) {
                 return Vec::new();
             }
-            let ms = resolver.instant_ms(&time, unresolved);
             walls.push(if time.is_date {
                 time.wall_seconds()
             } else {
-                resolver.to_wall(ms, &start, unresolved)
+                clock.wall_of(resolver.instant_ms(&time, unresolved))
             });
         }
     }
@@ -214,37 +252,41 @@ pub(super) fn expand_series(
         .collect();
     let duration = duration_seconds(master, &start, resolver, unresolved);
 
+    let master_text = EventText::of(master, resolver);
+    let master_zone = timezone_of(&start, context);
     let mut instances = Vec::new();
     for wall in walls {
         if !budget::step(1) {
             return Vec::new();
         }
-        let occurrence = start.with_wall_seconds(wall);
-        let rid_ms = resolver.instant_ms(&occurrence, unresolved);
+        let rid_ms = clock.instant_ms(wall);
         if rid_ms >= window.end_ms {
             break;
         }
-        if excluded_days.contains(&occurrence.date) || excluded_ms.contains(&rid_ms) {
+        let day = CivilDate::from_days_since_epoch(wall.div_euclid(86_400));
+        if excluded_days.contains(&day) || excluded_ms.contains(&rid_ms) {
+            continue;
+        }
+        let exception = override_by_rid.get(&rid_ms);
+        let end_ms = clock.instant_ms(wall + duration);
+        // An occurrence that ends before the window is never built: its text
+        // would be copied only to be dropped. An override can move into it.
+        if exception.is_none() && rid_ms.max(end_ms) < window.start_ms {
             continue;
         }
         let key = (context.key_for)(context.uid, Some(&iso(rid_ms)));
-        let instance = match override_by_rid.get(&rid_ms) {
+        let instance = match exception {
             Some(exception) => {
                 let Some(own_start) = exception.first("DTSTART").and_then(time_of) else {
                     continue;
                 };
-                let end = end_of(exception, &own_start, resolver, unresolved);
-                to_instance(exception, &own_start, end.as_ref(), key, context)
+                place(exception, &own_start, key, context, window)
             }
-            None => {
-                let end = occurrence.with_wall_seconds(wall + duration);
-                to_instance(master, &occurrence, Some(&end), key, context)
-            }
+            None => master_text
+                .instance(key, rid_ms, end_ms, start.is_date, master_zone.clone())
+                .filter(|instance| overlaps(instance, window)),
         };
         let Some(instance) = instance else { continue };
-        if !overlaps(&instance, window) {
-            continue;
-        }
         if !budget::emit(text_bytes(&instance)) {
             return Vec::new();
         }
@@ -284,10 +326,7 @@ pub(super) fn overrides_moved_into_window(
         if placed.contains(&key) {
             continue;
         }
-        let end = end_of(exception, &start, context.resolver, context.unresolved);
-        if let Some(instance) = to_instance(exception, &start, end.as_ref(), key.clone(), context)
-            && overlaps(&instance, window)
-        {
+        if let Some(instance) = place(exception, &start, key.clone(), context, window) {
             if !budget::emit(text_bytes(&instance)) {
                 return Vec::new();
             }
