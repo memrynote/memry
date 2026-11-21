@@ -11,7 +11,18 @@ export const CRDT_CHANNELS = {
 
 export const CRDT_EVENTS = {
   STATE_CHANGED: 'crdt:state-changed',
+  /**
+   * A doc opened with `awaitingRemote` stopped waiting for the server body: a
+   * pull merged it, or the note was seeded from its file (#5290). Payload:
+   * `{ noteId: string }`.
+   */
   DOC_LOADED: 'crdt:doc-loaded',
+  /**
+   * A doc waiting for the server body is stuck: its pulls keep failing on a
+   * server answer. The editor shows the vault file read-only until
+   * `DOC_LOADED` (#5290). Payload: `{ noteId: string }`.
+   */
+  DOC_STUCK: 'crdt:doc-stuck',
   DOC_ERROR: 'crdt:doc-error',
   /**
    * Main dropped the provider that owned every open Y.Doc, so each renderer
@@ -107,9 +118,19 @@ export interface CrdtOpenDocInput {
   noteId: string
 }
 
+/** What an editor's doc waits on before it binds; see `CrdtOpenDocResult.awaitingRemote`. */
+export type CrdtRemoteBodyWait = 'merging' | 'stuck'
+
 export interface CrdtOpenDocResult {
   success: boolean
   error?: string
+  /**
+   * The doc opened empty and waits for the server body (no CRDT store, #5290):
+   * `stuck` when the note's pulls keep failing on a server answer. The editor
+   * shows its loading state, or the vault file read-only while stuck or
+   * offline, until `CRDT_EVENTS.DOC_LOADED` names the note.
+   */
+  awaitingRemote?: CrdtRemoteBodyWait
 }
 
 export interface CrdtCloseDocInput {

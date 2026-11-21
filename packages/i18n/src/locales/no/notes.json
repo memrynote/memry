@@ -190,6 +190,8 @@
   },
   "editor": {
     "bodySyncPending": "Synkroniserer – innholdet i dette notatet kan fortsatt være på vei",
+    "remoteBodyStuck": "Venter på synkronisering — skrivebeskyttet til notatets synkroniserte innhold kommer",
+    "remoteBodyOffline": "Frakoblet — skrivebeskyttet til notatet er synkronisert",
     "taskRemoval": {
       "title": "{count, plural, one {Oppgave fjernet fra dette notatet} other {# oppgaver fjernet fra dette notatet}}",
       "description": "{count, plural, one {Vil du beholde den i Oppgaver eller slette den overalt?} other {Vil du beholde dem i Oppgaver eller slette dem overalt?}}",

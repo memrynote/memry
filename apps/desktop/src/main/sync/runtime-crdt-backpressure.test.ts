@@ -28,6 +28,7 @@ const fixture = vi.hoisted(() => ({
     setSnapshotCoverage: vi.fn(),
     setOweRemoteMerge: vi.fn(),
     setRemoteMerge: vi.fn(),
+    setRemoteBodyQuery: vi.fn(),
     setSnapshotDeferral: vi.fn(),
     isNoteLocalOnly: () => false,
     isNoteSyncable: () => true,

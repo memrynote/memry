@@ -864,6 +864,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       )
       crdtProvider.setOweRemoteMerge((noteId, reason) => engine.oweCrdtPull(noteId, reason))
       crdtProvider.setRemoteMerge((noteId) => engine.mergeRemoteCrdtForNote(noteId))
+      crdtProvider.setRemoteBodyQuery({
+        hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
+        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId)
+      })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may
       // owe bodies the feed skipped: flagged, it claims nothing until its own

@@ -13,7 +13,11 @@ const h = vi.hoisted(() => ({
   crashAfterWrite: false,
   indexDb: null as unknown,
   store: new Map<string, Uint8Array[]>(),
-  contentHash: (_raw: string): string => ''
+  contentHash: (_raw: string): string => '',
+  /** Set to hold the next vault file read until it resolves. */
+  readGate: null as null | Promise<void>,
+  /** Set to stop the process when the index would record the fed file. */
+  crashBeforeIndex: false
 }))
 
 // A real, empty folder: the outside-vault check resolves every read against it.
@@ -76,8 +80,12 @@ vi.mock('../vault/notes', () => ({
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof PathsModule>()),
-  readVaultFile: async (_vault: string, relative: string) =>
-    h.files.get(`/vault/${relative}`) ?? null
+  readVaultFile: async (_vault: string, relative: string) => {
+    const gate = h.readGate
+    h.readGate = null
+    await gate
+    return h.files.get(`/vault/${relative}`) ?? null
+  }
 }))
 vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
@@ -97,6 +105,10 @@ vi.mock('../vault/note-sync', async () => {
   return {
     // The projector's update of a row the real index holds (note-derived-state-projector.ts).
     syncNoteToCache: (db: never, input: { id: string; fileContent: string }) => {
+      if (h.crashBeforeIndex) {
+        h.crashBeforeIndex = false
+        throw new Error('crashed before the index recorded the file')
+      }
       if (q.getNoteCacheById(db, input.id)) {
         q.updateNoteCache(db, input.id, { contentHash: h.contentHash(input.fileContent) })
       }
@@ -118,7 +130,7 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: vi.fn()
 }))
 
-import { getCrdtProvider } from './crdt-provider'
+import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { hasPendingWriteback, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
@@ -188,7 +200,7 @@ describe('write-back after the file changed while the app was closed (#2539)', (
     h.contentHash = generateContentHash
   })
 
-  it('ingests the changed file on launch and writes later edits to it', async () => {
+  it('ingests the changed file on launch, keeps the peer edit, and writes later edits to it', async () => {
     const author = new Y.Doc()
     await markdownToYFragment(
       '# Morning\n\nMake coffee.',
@@ -232,8 +244,115 @@ describe('write-back after the file changed while the app was closed (#2539)', (
     await settleWriteback()
 
     expect(h.files.get(FILE)).toBe(
-      `${FRONTMATTER}# Morning\n\nMake coffee.\n\nStretch for ten minutes. Then shower.`
+      `${FRONTMATTER}# Morning routine\n\nMake coffee.\n\nStretch for ten minutes. Then shower.`
     )
+  })
+})
+
+describe('an edit made outside Memry while the app was closed, then a peer edit (#5319)', () => {
+  const OUTSIDE = 'Stretch for ten minutes.'
+
+  beforeAll(() => {
+    h.contentHash = generateContentHash
+  })
+
+  /**
+   * The last session's doc in the store and its file on disk as the baseline,
+   * then the file edited outside Memry. Returns the peer's edit of the stored
+   * body, which the next pull brings.
+   */
+  async function closedAppEdit(id: string, notePath: string): Promise<Uint8Array> {
+    const author = new Y.Doc()
+    await markdownToYFragment(
+      '# Morning\n\nMake coffee.',
+      author.getXmlFragment(CRDT_FRAGMENT_NAME),
+      notePath
+    )
+    const lastSession = (await yDocToMarkdown(author, CRDT_FRAGMENT_NAME, { notePath }))!
+    h.store.set(id, [Y.encodeStateAsUpdate(author)])
+    seedRow(rowFor(id, notePath, lastSession))
+    h.files.set(`/vault/${notePath}`, `${lastSession}\n\n${OUTSIDE}`)
+    return editOf(author, 'Morning', ' routine')
+  }
+
+  async function bodyOf(id: string, notePath: string): Promise<string | null> {
+    const doc = await getCrdtProvider().open(id, undefined, { skipSeed: true })
+    return yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })
+  }
+
+  const BOTH = `# Morning routine\n\nMake coffee.\n\n${OUTSIDE}`
+
+  it('keeps both edits when the start-up pull opens the doc and lands the peer edit', async () => {
+    // #given the app closed, the file edited outside, the app started
+    const id = 'offline-then-pull'
+    const notePath = 'Offline/Pull.md'
+    const peerEdit = await closedAppEdit(id, notePath)
+    const provider = getCrdtProvider()
+    await provider.initPersistence()
+
+    // #when the pull opens the doc and applies the peer's edit
+    await provider.open(id, undefined, { skipSeed: true })
+    provider.applyRemoteUpdate(id, peerEdit)
+    await settleWriteback(id)
+
+    // #then the doc and the file hold both edits
+    expect(await bodyOf(id, notePath)).toBe(BOTH)
+    expect(h.files.get(`/vault/${notePath}`)).toBe(BOTH)
+  })
+
+  it('applies a peer edit that arrives while the open is taking in the file after it', async () => {
+    // #given an editor open whose read of the edited file has not returned
+    const id = 'offline-during-open'
+    const notePath = 'Offline/During.md'
+    const peerEdit = await closedAppEdit(id, notePath)
+    const provider = getCrdtProvider()
+    await provider.initPersistence()
+    let release!: () => void
+    h.readGate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const opening = provider.open(id, 1)
+    await vi.waitFor(() => expect(provider.getDoc(id)).toBeDefined())
+
+    // #when the pull opens the same doc and lands the peer edit meanwhile
+    const landing = provider
+      .open(id, undefined, { skipSeed: true })
+      .then(() => provider.applyRemoteUpdate(id, peerEdit))
+    release()
+    await Promise.all([opening, landing])
+    await settleWriteback(id)
+
+    // #then the outside edit did not replace the peer edit
+    expect(await bodyOf(id, notePath)).toBe(BOTH)
+    expect(h.files.get(`/vault/${notePath}`)).toBe(BOTH)
+  })
+
+  it('takes the file again after a crash between the feed and the index, then keeps the peer edit', async () => {
+    // #given an open that fed and stored the file, and crashed before the
+    // index recorded it as the baseline
+    const id = 'offline-crash'
+    const notePath = 'Offline/Crash.md'
+    const peerEdit = await closedAppEdit(id, notePath)
+    let provider = getCrdtProvider()
+    await provider.initPersistence()
+    h.crashBeforeIndex = true
+    await provider.open(id, undefined, { skipSeed: true })
+    await provider.whenPersisted(id)
+    expect(h.crashBeforeIndex).toBe(false)
+    await provider.destroy()
+    resetCrdtProvider()
+    resetWritebackState()
+
+    // #when the app starts again and the pull lands the peer edit
+    provider = getCrdtProvider()
+    await provider.initPersistence()
+    await provider.open(id, undefined, { skipSeed: true })
+    provider.applyRemoteUpdate(id, peerEdit)
+    await settleWriteback(id)
+
+    // #then each edit is in the doc and the file once
+    expect(await bodyOf(id, notePath)).toBe(BOTH)
+    expect(h.files.get(`/vault/${notePath}`)).toBe(BOTH)
   })
 })
 

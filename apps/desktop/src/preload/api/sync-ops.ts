@@ -122,6 +122,13 @@ export const onCrdtProviderReady = (
 ): (() => void) =>
   subscribe<{ vaultPath: string | null } | undefined>(SYNC_EVENTS.PROVIDER_READY, callback)
 
+/** A doc opened with `awaitingRemote` stopped waiting for the server body (#5290). */
+export const onCrdtDocLoaded = (callback: (data: { noteId: string }) => void): (() => void) =>
+  subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_LOADED, callback)
+
+export const onCrdtDocStuck = (callback: (data: { noteId: string }) => void): (() => void) =>
+  subscribe<{ noteId: string }>(SYNC_EVENTS.DOC_STUCK, callback)
+
 /** A note's file could not be updated from its doc; once per run of failed passes. */
 export const onCrdtWriteBackFailed = (
   callback: (event: CrdtWriteBackFailedEvent) => void

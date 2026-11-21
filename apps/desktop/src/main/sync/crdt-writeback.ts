@@ -12,13 +12,8 @@ import type { SourceRestoreOutcome } from './blocknote-converter'
 import type { NoteBody } from './writing-markdown'
 import { readyWritebackConverter } from './converter-worker-bridge'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
-import {
-  isWritingFrontmatterValue,
-  writingFrontmatterOf,
-  toWritingFrontmatterValue,
-  WRITING_FRONTMATTER_KEY,
-  type WritingFrontmatter
-} from '@memry/shared'
+import { writingFrontmatterOf } from '@memry/shared'
+import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
@@ -30,7 +25,6 @@ import {
   parseNote,
   serializeNote,
   serializeParsedNote,
-  type NoteFrontmatter,
   type ParsedNote
 } from '../vault/frontmatter'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
@@ -51,7 +45,6 @@ import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import { CRDT_EVENTS, type CrdtWriteBackFailedEvent } from '@memry/contracts/ipc-crdt'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import path from 'path'
-import { isDeepStrictEqual } from 'node:util'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
@@ -821,6 +814,21 @@ async function ingestOutsideEditFirst(
   return true
 }
 
+/** The write-back's outside-edit ingest, run at a doc's first open (#5319, `takeOfflineEdit`). */
+async function ingestOfflineEdit(noteId: string): Promise<void> {
+  const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, noteId)
+  const raw = cached?.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
+  if (!cached || raw === null || !isOutsideEdit(indexDb, noteId, cached, raw)) return
+  await ingestOutsideEditFirst(
+    indexDb,
+    noteId,
+    cached,
+    raw,
+    parseNote(raw, toAbsolutePath(cached.path))
+  )
+}
+
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -1077,102 +1085,6 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   log.info('Deleted from sync', { noteId })
 }
 
-interface MergedFrontmatter {
-  frontmatter: NoteFrontmatter
-  /** True only when the merge actually altered a frontmatter value */
-  changed: boolean
-}
-
-/**
- * Merge write-back frontmatter: user keys pass through verbatim. No Memry keys
- * are ever injected. `changed` stays false when the CRDT state matches the
- * file, so the raw block survives verbatim.
- *
- * The file owns its `tags:` list: header edits land in the file and sync with
- * the note record. The doc's `tags` array can be stale (a header edit made
- * while the note was closed never reaches its stored doc) or hold body tags (a
- * doc an older build seeded with header and inline tags), so it only seeds the
- * list of a file the write-back creates.
- */
-function mergeFrontmatter(
-  existing: NoteFrontmatter | null,
-  doc: Y.Doc,
-  writing: WritingFrontmatter
-): MergedFrontmatter {
-  const merged: NoteFrontmatter = { ...existing }
-  let changed = mergeWritingFrontmatter(merged, writing)
-  const yjsTags = existing === null ? getYjsTags(doc) : []
-  if (yjsTags.length > 0) {
-    merged.tags = yjsTags
-    changed = true
-  }
-  return { frontmatter: merged, changed }
-}
-
-function mergeJournalFrontmatter(
-  date: string,
-  existing: NoteFrontmatter | null,
-  doc: Y.Doc,
-  writing: WritingFrontmatter
-): MergedFrontmatter {
-  const yjsTags = getYjsTags(doc)
-  const merged: NoteFrontmatter = { ...existing, date }
-  let changed = normalizeDateValue(existing?.date) !== date
-  if (mergeWritingFrontmatter(merged, writing)) changed = true
-  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
-    merged.tags = yjsTags
-    changed = true
-  }
-  return { frontmatter: merged, changed }
-}
-
-/**
- * The doc's writing tools data onto `frontmatter.writing`; true when that
- * changed it. A `writing` key that is not writing tools data is the author's
- * property and is left alone, at the cost of not writing ours.
- */
-function mergeWritingFrontmatter(
-  frontmatter: NoteFrontmatter,
-  writing: WritingFrontmatter
-): boolean {
-  const current = frontmatter[WRITING_FRONTMATTER_KEY]
-  if (current !== undefined && !isWritingFrontmatterValue(current)) return false
-  const next = toWritingFrontmatterValue(writing)
-  if (isDeepStrictEqual(current, next)) return false
-  if (next === undefined) delete frontmatter[WRITING_FRONTMATTER_KEY]
-  else frontmatter[WRITING_FRONTMATTER_KEY] = next
-  return true
-}
-
-function sameTags(existing: unknown, next: string[]): boolean {
-  return (
-    Array.isArray(existing) &&
-    existing.length === next.length &&
-    existing.every((v, i) => String(v) === next[i])
-  )
-}
-
-/** YAML gives `date: 2026-07-05` back as a Date object — compare by day. */
-function normalizeDateValue(value: unknown): string | null {
-  if (value instanceof Date) return value.toISOString().slice(0, 10)
-  if (typeof value === 'string') return value
-  if (value == null) return null
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-    return String(value)
-  }
-  return JSON.stringify(value)
-}
-
-function getYjsTags(doc: Y.Doc): string[] {
-  const tagArray = doc.getArray('tags')
-  const tags: string[] = []
-  for (let i = 0; i < tagArray.length; i++) {
-    const val = tagArray.get(i)
-    if (typeof val === 'string') tags.push(val)
-  }
-  return tags
-}
-
 /**
  * A body writer fed the doc and then failed to write the file
  * (`landBodyEdit`): the next pass writes it. A closed doc is opened for it.
@@ -1188,6 +1100,7 @@ function retryWriteback(noteId: string): void {
 }
 
 registerCrdtWritebackPort({
+  ingestOfflineEdit,
   retryWriteback,
   scheduleWriteback,
   cancelWriteback,
