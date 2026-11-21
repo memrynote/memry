@@ -171,7 +171,7 @@ impl VaultSync {
             cipher,
         )
         .with_vault(&self.vault_id);
-        let bodies = body_step::run(&self.db, &body_pull).await?;
+        let bodies = body_step::run(&self.db, &body_pull).await?.pulled;
         // Foreign journal ids owed to their canonical day (#2939). Queues
         // the merged body and the tombstones for the push below.
         journal_day_merge::drain(&self.db, &body_pull, &self.session.device_id()?).await?;

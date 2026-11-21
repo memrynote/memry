@@ -338,15 +338,16 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
             200,
             &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
         ),
-        // goodnote1234: no snapshot, no updates. A clean pull.
-        response(200, &json!({"snapshot": null}).to_string()),
-        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
-        // stopnote1234: an update this device cannot open, so a stop at the gap.
-        response(200, &json!({"snapshot": null}).to_string()),
+        // One batch probe, whose pages are the pulls. goodnote1234: no
+        // snapshot, no updates, a clean pull. stopnote1234: an update this
+        // device cannot open, so a stop at the gap.
         response(
             200,
-            &json!({"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false})
-                .to_string(),
+            &json!({"notes": {
+                "goodnote1234": {"updates": [], "hasMore": false, "floor": 0},
+                "stopnote1234": {"updates": [{"sequenceNum": 1, "data": "AAAA", "signerDeviceId": device_id}], "hasMore": false, "floor": 0}
+            }, "snapshotMeta": {}})
+            .to_string(),
         ),
     ]);
     let session = Arc::new(

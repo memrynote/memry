@@ -16,6 +16,7 @@
 //! | refs progress counts items, not cursors  | §10.11; FR-028                      |
 //! | elevated bodies run in parallel          | §10.7; the body pass's concurrency  |
 //! | a 429 in the bodies pass is paused out   | §7.10 `retryOn429: false`           |
+//! | a resumed bodies pass skips finished docs | §7.8 via the batch probe           |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -267,17 +268,16 @@ async fn a_first_sync_fills_yjs_updates_so_extract_text_returns_the_body() {
             200,
             &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
         ),
-        // Pass three: the cursor is 0, so §7.8's first clause takes the
-        // snapshot first. This document has none.
-        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        // Pass three: one batch probe from cursor 0. No `snapshotMeta`
+        // entry is no server snapshot (§7.11), so its page is the body.
         response(
             200,
-            &json!({"updates": [{
+            &json!({"notes": {NOTE: {"updates": [{
                 "sequenceNum": 1,
                 "data": packed_base64(NOTE, &update, &secret_key),
                 "createdAt": 1_700_000_000_000i64,
                 "signerDeviceId": "device-a"
-            }], "hasMore": false})
+            }], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
             .to_string(),
         ),
     ]);
@@ -355,19 +355,19 @@ async fn a_kill_mid_first_sync_resumes_without_re_pulling_or_skipping() {
             &json!({"items": [record_envelope(NOTE, "note"), record_envelope(other, "note")]})
                 .to_string(),
         ),
-        // Bodies, both documents: baseline probe then incrementals.
-        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        // Bodies, both documents: one batch probe, whose pages are the bodies.
         response(
             200,
-            &json!({"updates": [{
-                "sequenceNum": 1,
-                "data": packed_base64(NOTE, &update, &secret_key),
-                "signerDeviceId": "device-a"
-            }], "hasMore": false})
+            &json!({"notes": {
+                NOTE: {"updates": [{
+                    "sequenceNum": 1,
+                    "data": packed_base64(NOTE, &update, &secret_key),
+                    "signerDeviceId": "device-a"
+                }], "hasMore": false, "floor": 0},
+                other: {"updates": [], "hasMore": false, "floor": 0}
+            }, "snapshotMeta": {}})
             .to_string(),
         ),
-        response(200, &json!({"snapshot": Json::Null}).to_string()),
-        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
     ]);
     let report = first_sync(
         &db,
@@ -406,17 +406,16 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
         memry_core::crypto::sodium::sign_seed_keypair(&[11u8; 32]).expect("keypair");
 
     let transport = FakeTransport::new(vec![
-        // The baseline probe: no snapshot.
-        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        // The batch probe: no snapshot, and the first page.
         response(
             200,
-            &json!({"updates": [
+            &json!({"notes": {NOTE: {"updates": [
                 {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "signerDeviceId": "device-a"},
                 // §7.9: an unresolvable signer. Everything after it must stay
                 // unpulled, or the cursor would step over update 2 forever.
                 {"sequenceNum": 2, "data": packed_base64(NOTE, &body_update("second"), &secret_key), "signerDeviceId": "device-unknown"},
                 {"sequenceNum": 3, "data": packed_base64(NOTE, &body_update("third"), &secret_key), "signerDeviceId": "device-a"}
-            ], "hasMore": true})
+            ], "hasMore": true, "floor": 0}}, "snapshotMeta": {}})
             .to_string(),
         ),
     ]);
@@ -451,7 +450,7 @@ async fn an_update_this_client_cannot_open_stops_the_document_at_that_update() {
     );
     // `hasMore` was true and the page had more entries: the stop wins over
     // both.
-    assert_eq!(transport.call_count(), 2);
+    assert_eq!(transport.call_count(), 1);
 }
 
 #[tokio::test]
@@ -463,16 +462,13 @@ async fn a_pulled_update_is_stamped_with_this_devices_clock_not_the_servers() {
     let db = scratch_db("apply-stamp");
     let (public_key, secret_key) =
         memry_core::crypto::sodium::sign_seed_keypair(&[12u8; 32]).expect("keypair");
-    let transport = FakeTransport::new(vec![
-        response(200, &json!({"snapshot": Json::Null}).to_string()),
-        response(
-            200,
-            &json!({"updates": [
-                {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "createdAt": 1_700_000_000i64, "signerDeviceId": "device-a"}
-            ], "hasMore": false})
-            .to_string(),
-        ),
-    ]);
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({"notes": {NOTE: {"updates": [
+            {"sequenceNum": 1, "data": packed_base64(NOTE, &body_update("first"), &secret_key), "createdAt": 1_700_000_000i64, "signerDeviceId": "device-a"}
+        ], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
+        .to_string(),
+    )]);
     let bodies = BodyPull::new(
         http(transport),
         db.clone(),
@@ -524,20 +520,14 @@ async fn a_baseline_is_taken_when_the_advertised_revision_differs_and_not_otherw
 
     let transport = FakeTransport::new(vec![
         // The batch probe: §7.8, ahead of the cursor (8 > 5), but the revision
-        // is the one already stored, so no baseline.
+        // is the one already stored, so no baseline, and its page is applied.
         response(
             200,
             &json!({
-                "notes": {NOTE: {"updates": [], "hasMore": false}},
-                "snapshotMeta": {NOTE: {"sequenceNum": 8, "revision": "rev-1"}}
-            })
-            .to_string(),
-        ),
-        response(
-            200,
-            &json!({
-                "updates": [{"sequenceNum": 6, "data": packed_base64(NOTE, &body_update("six"), &secret_key), "signerDeviceId": "device-a"}],
-                "hasMore": false,
+                "notes": {NOTE: {
+                    "updates": [{"sequenceNum": 6, "data": packed_base64(NOTE, &body_update("six"), &secret_key), "signerDeviceId": "device-a"}],
+                    "hasMore": false, "floor": 0
+                }},
                 "snapshotMeta": {NOTE: {"sequenceNum": 8, "revision": "rev-1"}}
             })
             .to_string(),
@@ -601,7 +591,7 @@ async fn a_snapshot_that_pruned_past_the_cursor_is_taken_from_the_probe() {
         response(
             200,
             &json!({
-                "notes": {NOTE: {"updates": [], "hasMore": false}},
+                "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 0}},
                 "snapshotMeta": {NOTE: {"sequenceNum": 24, "revision": "rev-2"}}
             })
             .to_string(),
@@ -645,6 +635,8 @@ async fn a_snapshot_answered_503_fails_the_pull_and_moves_no_cursor() {
         memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
     let unavailable = || error_response(503, "STORAGE_BLOB_NOT_FOUND", "retry");
     let transport = FakeTransport::new(vec![
+        // The batch probe, refused: the snapshot GET decides alone.
+        unavailable(),
         unavailable(),
         unavailable(),
         unavailable(),
@@ -821,7 +813,9 @@ async fn a_snapshot_whose_revision_is_not_held_is_taken_even_below_the_cursor() 
 
 /// #2299 review A-5/B-7: the refs pass moves the record cursor past body rows
 /// it never serves, so it re-arms the legacy pull and no push claims that
-/// cursor until a page that serves bodies has owed every held document.
+/// cursor until a page that serves bodies has owed every held document. A
+/// first sync that stops after it leaves the pull armed; only a completed one
+/// stands in for it.
 #[tokio::test]
 async fn the_refs_pass_re_arms_the_legacy_body_pull() {
     let db = scratch_db("refs-rearm");
@@ -838,14 +832,14 @@ async fn the_refs_pass_re_arms_the_legacy_body_pull() {
     })
     .expect("seed");
 
-    let transport = FakeTransport::new(vec![response(
-        200,
-        &changes_page(&[(NOTE, "note")], &[NOTE], 10, false),
-    )]);
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[NOTE], 10, true)),
+        error_response(403, "SYNC_VAULT_FORBIDDEN", "not your vault"),
+    ]);
     first_sync(&db, transport, public_key, RecordedProgress::new())
         .run(epoch(MODIFIED_AT) + 1_000)
         .await
-        .expect("the first sync");
+        .expect_err("the second refs page was refused");
 
     let legacy = db
         .call_blocking(|conn| read_meta(conn, META_NOTE_BODY_LEGACY_PULL))
@@ -1135,9 +1129,10 @@ async fn an_elevated_first_sync_pulls_bodies_in_parallel_with_the_session_token(
     assert!(report.elevated);
     assert_eq!(report.bodies.documents, notes.len());
 
-    // Every document still costs its snapshot and its updates page...
+    // A batch answer without `notes` serves no document, so each still
+    // costs its snapshot and its updates page...
     let crdt = transport.crdt_calls();
-    assert_eq!(crdt.len(), notes.len() * 2);
+    assert_eq!(crdt.len(), 1 + notes.len() * 2);
     // ...and each of them carries the token, so `crdt_pull` runs at the
     // elevated ceiling rather than at 600/min.
     assert!(crdt.iter().all(|call| {
@@ -1193,6 +1188,7 @@ async fn a_rate_limited_document_is_paused_out_and_retried_rather_than_failing_t
             200,
             &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
         ),
+        http_fakes::probe_refused(),
         // `crdt_pull` is `retryOn429: false`: before, this one answer failed
         // the whole first sync.
         http_fakes::response_with_header(
@@ -1275,6 +1271,7 @@ async fn an_unwindowed_first_sync_pulls_a_note_older_than_the_window() {
             200,
             &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
         ),
+        http_fakes::probe_refused(),
         response(200, &json!({"snapshot": Json::Null}).to_string()),
         response(
             200,
@@ -1349,6 +1346,7 @@ async fn a_first_sync_that_dies_before_a_body_arrives_leaves_its_document_owed()
         ),
         // The bodies pass: the network is gone.
         Err(memry_core::api::errors::TransportError::Cancelled),
+        Err(memry_core::api::errors::TransportError::Cancelled),
     ]);
     let run = first_sync(&db, transport, public_key, RecordedProgress::new())
         .run(epoch(MODIFIED_AT) + 1_000)
@@ -1372,6 +1370,7 @@ async fn a_record_applied_without_a_debt_is_owed_by_the_bodies_pass_before_it_pu
             &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
         ),
         Err(memry_core::api::errors::TransportError::Cancelled),
+        Err(memry_core::api::errors::TransportError::Cancelled),
     ]);
     let run = first_sync(
         &db,
@@ -1388,6 +1387,7 @@ async fn a_record_applied_without_a_debt_is_owed_by_the_bodies_pass_before_it_pu
 
     let resumed = FakeTransport::new(vec![
         response(200, &changes_page(&[], &[], 10, false)),
+        Err(memry_core::api::errors::TransportError::Cancelled),
         Err(memry_core::api::errors::TransportError::Cancelled),
     ]);
     let run = first_sync(&db, resumed, public_key, RecordedProgress::new())
@@ -1414,6 +1414,7 @@ async fn a_window_document_whose_pull_stopped_stays_owed_and_a_merged_one_is_set
                 .to_string(),
         ),
         // Newest first: NOTE merges to the server's head.
+        http_fakes::probe_refused(),
         response(200, &json!({"snapshot": Json::Null}).to_string()),
         response(
             200,
@@ -1485,6 +1486,7 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
             &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
         ),
         Err(memry_core::api::errors::TransportError::Cancelled),
+        Err(memry_core::api::errors::TransportError::Cancelled),
     ]);
     let run = first_sync(&db, dying, public_key.clone(), RecordedProgress::new())
         .run(epoch(MODIFIED_AT) + 1_000)
@@ -1555,6 +1557,7 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
     let seeded = authored.lock().unwrap().remove(0);
     let resumed = FakeTransport::new(vec![
         response(200, &changes_page(&[], &[], 10, false)),
+        http_fakes::probe_refused(),
         response(200, &json!({"snapshot": Json::Null}).to_string()),
         response(
             200,
@@ -1580,4 +1583,120 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
         "the edit landed on the server body, not beside it: {text:?}"
     );
     assert!(text.contains("A line typed in another editor"), "{text:?}");
+}
+
+/// A first sync iOS killed in the bodies pass resumes without pulling the
+/// documents it finished. Before, the relaunch restarted the bar at 0 and sent
+/// every finished document a probe and an updates page again.
+#[tokio::test]
+async fn a_resumed_bodies_pass_counts_finished_documents_and_pulls_them_no_more() {
+    let db = scratch_db("resume-bodies");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[41u8; 32]).expect("keypair");
+    let other = "def456abc789";
+
+    // The first run finishes one empty document, then dies on the second.
+    let dying = FakeTransport::new(vec![
+        response(
+            200,
+            &changes_page(&[(NOTE, "note"), (other, "note")], &[], 10, false),
+        ),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note"), record_envelope(other, "note")]})
+                .to_string(),
+        ),
+        http_fakes::probe_refused(),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let killed = first_sync(&db, dying, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(killed.is_err(), "the run died mid-bodies");
+    let held = |doc: &str| {
+        let scope = crdt_cursor_scope(doc);
+        db.call_blocking(move |conn| store::read_cursor(conn, &scope))
+            .expect("cursor")
+    };
+    let (done, left) = if held(NOTE).is_some() {
+        (NOTE, other)
+    } else {
+        (other, NOTE)
+    };
+    assert_eq!(held(done).as_deref(), Some("0"));
+    assert_eq!(held(left), None);
+
+    let resumed = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[], 10, false)),
+        // One probe for both: still empty, and no snapshot (the key is
+        // present, so the server advertises snapshots). Its page serves the
+        // unfinished document too.
+        response(
+            200,
+            &json!({"notes": {
+                done: {"updates": [], "hasMore": false, "floor": 0},
+                left: {"updates": [], "hasMore": false, "floor": 0}
+            }, "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    let progress = RecordedProgress::new();
+    let report = first_sync(&db, resumed.clone(), public_key, progress.clone())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await
+        .expect("the resumed run");
+
+    assert_eq!(report.bodies.documents, 2);
+    assert!(
+        resumed.calls().iter().all(|call| !call
+            .url
+            .contains(&format!("/sync/crdt/snapshot/{done}"))
+            && !call.url.contains(&format!("note_id={done}"))),
+        "the finished document was pulled again"
+    );
+    assert_eq!(resumed.calls_to("/sync/crdt/updates/batch").len(), 1);
+    let bodies_progress: Vec<(u64, u64)> = progress
+        .seen()
+        .iter()
+        .filter(|p| p.phase == FirstSyncPhase::Bodies)
+        .map(|p| (p.completed, p.total))
+        .collect();
+    assert_eq!(bodies_progress, vec![(1, 2), (2, 2)]);
+}
+
+#[tokio::test]
+async fn a_probe_showing_nothing_new_and_the_held_snapshot_sends_no_pull() {
+    let db = scratch_db("probe-current");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[43u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        update_log::put_server_snapshot(conn, NOTE, b"unused", 4, Some("rev-1"), 1).map_err(
+            |error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            },
+        )?;
+        store::write_cursor(conn, &crdt_cursor_scope(NOTE), Some("5"), 1)
+    })
+    .expect("seed");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 0}},
+            "snapshotMeta": {NOTE: {"sequenceNum": 4, "revision": "rev-1"}}
+        })
+        .to_string(),
+    )]);
+    let bodies = BodyPull::new(
+        http(transport.clone()),
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    );
+
+    let report = bodies.pull_document(NOTE).await.expect("the pull");
+    assert!(report.merged());
+    assert_eq!(report.requests, 1);
+    assert_eq!(transport.call_count(), 1);
 }

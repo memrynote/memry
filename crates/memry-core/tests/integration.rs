@@ -6,6 +6,7 @@
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
 // The desktop record tests seed `vault_locks`, which exists only with `markdown` (desktop builds).
+mod body_pack_server;
 #[cfg(feature = "markdown")]
 mod desktop_relay;
 mod driver_fakes;
@@ -479,6 +480,14 @@ mod snapshot_embeds;
 mod sync_applied_records;
 #[path = "sync_body_heal.rs"]
 mod sync_body_heal;
+#[path = "sync_body_observers.rs"]
+mod sync_body_observers;
+#[path = "sync_body_packs.rs"]
+mod sync_body_packs;
+#[path = "sync_body_route_batch.rs"]
+mod sync_body_route_batch;
+#[path = "sync_body_step_budget.rs"]
+mod sync_body_step_budget;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
 #[path = "sync_empty_body_pull.rs"]
@@ -514,8 +523,6 @@ mod sync_note_attachment_union;
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
 mod sync_outbox;
-#[path = "sync_pack_bootstrap.rs"]
-mod sync_pack_bootstrap;
 #[cfg(feature = "markdown")]
 #[path = "sync_project_nested_arrays.rs"]
 mod sync_project_nested_arrays;
@@ -523,6 +530,8 @@ mod sync_project_nested_arrays;
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
 mod sync_realtime_run;
+#[path = "sync_record_packs.rs"]
+mod sync_record_packs;
 #[path = "sync_refused_items.rs"]
 mod sync_refused_items;
 #[cfg(feature = "markdown")]

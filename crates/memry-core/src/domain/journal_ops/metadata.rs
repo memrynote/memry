@@ -27,6 +27,7 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::notes::{failed, iso, names, next_clock, require_payload};
 use crate::domain::properties::{self, PropertyError};
 use crate::domain::tags;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -258,7 +259,7 @@ pub fn open_with(
     device_id: &str,
     now_ms: i64,
 ) -> Result<OpenedWith, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
     let stored = require_payload(&tx, ITEM_TYPE, &opened.id)?;
     let object = stored.object();
@@ -318,7 +319,7 @@ fn write_day<T, E>(
 where
     E: From<StorageError>,
 {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let (out, wrote) = write_day_in(&tx, date, creates, device_id, now_ms, plan)?;
     // Dropping the transaction rolls back what wrote nothing.
     if wrote {

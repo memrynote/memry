@@ -29,6 +29,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::notes::{iso, next_clock, object, require_payload};
 use crate::domain::recreate::write_over_tombstone;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -216,7 +217,7 @@ pub fn seed_unsynced(
     if rows.is_empty() {
         return Ok(0);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for (id, kind, target, locked, created_at, updated_at) in &rows {
         let payload = lock_payload(kind, target, *locked, *created_at, *updated_at)?;
         write_over_tombstone(&tx, ITEM_TYPE, id, payload, device_id, now_ms)?;

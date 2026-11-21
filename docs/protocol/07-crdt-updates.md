@@ -583,6 +583,54 @@ snapshot first when:
 
 Otherwise pull incrementals from `since = cursor`.
 
+**A probe can settle a document without a pull.** The Rust core probes every
+document it pulls through the batch route, from its cursor or from `0` when it
+holds none, with the sweep `limit` of §7.3.1
+(`crates/memry-core/src/sync/body_pull/probe.rs:59`,
+`crates/memry-core/src/sync/body_pull/probe.rs:67-72`), and sends that
+document no further request when the answer proves the pull would fetch
+nothing (`crates/memry-core/src/sync/body_pull.rs:293-295`). It is proven only
+when the answer is trusted and all of these hold
+(`crates/memry-core/src/sync/body_pull/probe.rs:109-121`): no update and
+`hasMore: false`; the document holds a cursor; and either the document has no
+server snapshot, or the cursor is at or past the snapshot's `sequenceNum` and
+the snapshot's `revision` is the one stored (`baseline_due` is false). A held
+revision is a taken baseline at any cursor, `0` included: a snapshot pushed
+before any update row has `sequenceNum` 0. Anything else, a failed probe
+included, takes the ordinary pull, so a missed skip costs one request and a
+skip never hides an update or a baseline.
+
+**A trusted answer** (`crates/memry-core/src/sync/body_pull/probe.rs:81-108`)
+has a `snapshotMeta` object, so the server is new enough to advertise its
+snapshots; the document's `snapshotMeta` entry absent, `null` or parsed; the
+document a key of `notes` whose entry is a whole page: `updates` an array
+whose every entry parses, and `hasMore` a boolean; and, when no snapshot is
+advertised, a `floor` at or below `since`, since a log purged above `since`
+with no snapshot to take instead contradicts §7.11.
+
+**The probe's answer is the first page** (#5293). A trusted answer decides §7.8 for that
+document: a baseline when the advertised `revision` is not the one stored,
+whatever the cursor, and none when no server snapshot is advertised.
+
+**Reuse is bound to the revision.** The answer's page belongs to the
+snapshot the probe saw. It is applied as the first page, with paging going on
+`hasMore`, only when no baseline was due, or when the baseline taken holds
+the probe's own `revision`
+(`crates/memry-core/src/sync/body_pull.rs:300-337`,
+`crates/memry-core/src/sync/body_pull.rs:370-373`). Any other outcome of the
+snapshot GET fetches the page afresh: no snapshot, a rewritten one, or a
+re-created document's. A snapshot's `sequenceNum` cannot tell the
+generations apart, because a claimed push after a purge can land below the
+deleted generation's rows (#5323). The server pages `sequenceNum > since` in
+order (`apps/sync-server/src/services/crdt.ts:270`). After a baseline of the
+probe's revision, the page's rows above the new cursor are therefore the
+start of the cursor's own page, and the rows at or below it are skipped as
+replays (§7.9). A page asked from above the cursor is never used. The page moves to the worker that pulls the
+document and is dropped once applied. Without a trusted answer, the document
+pages through the single-document route as before. A resumed first sync counts
+the settled documents as done before its first body request
+(`crates/memry-core/src/sync/first_sync/body_pass.rs:186-193`).
+
 The rule exists precisely because of pruning (§7.7): updates at or below the
 snapshot watermark are answered with silence, so a `since` under the watermark
 MUST take the snapshot first
@@ -600,7 +648,13 @@ cursor only if the snapshot's sequence number is ahead (`:195-197`).
 
 - an update whose `sequenceNum <= cursor` is **skipped as a replay** (`:226`);
 - each accepted update is decrypted, persisted, and the watermark advanced and
-  written **per update, not per page** (`:246-248`);
+  written **per update, not per page** (`:246-248`). What the rule protects is
+  that the watermark never leads a stored update. The Rust core writes a page's
+  accepted updates and the watermark of the last one in **one** transaction
+  (`crates/memry-core/src/sync/body_pull/log_writes.rs:34-53`), so a kill
+  mid-page leaves the watermark at the previous page and the page is pulled
+  again; a replayed row is ignored (`INSERT OR IGNORE`,
+  `crates/memry-core/src/crdt/update_log.rs:136`);
 - **on an unresolvable signer the document's pull stops at that update** and the
   watermark is not advanced past it, so a later pass retries (`:227-237`).
 

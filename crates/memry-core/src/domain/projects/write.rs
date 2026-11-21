@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::field_merge::{PROJECT_SYNCABLE_FIELDS, init_all_field_clocks};
@@ -168,7 +169,7 @@ fn first_clocks(device_id: &str) -> Result<(Value, Value), StorageError> {
 /// desktop's `seedUnclocked` does, so every device still meets on the one id.
 /// Returns whether it wrote one.
 pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let exists: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 OR is_inbox = 1)
@@ -209,7 +210,7 @@ pub fn seed_unclocked(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let ids: Vec<String> = {
         let mut statement = tx
             .prepare(

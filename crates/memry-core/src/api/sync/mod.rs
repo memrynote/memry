@@ -438,7 +438,9 @@ impl VaultSync {
 
         let packs = Arc::new(
             PackBootstrap::new(Arc::clone(&http), self.db.clone(), Arc::clone(&bodies))
-                .with_vault(&self.vault_id),
+                .with_vault(&self.vault_id)
+                // Beside `data.db`: body packs wait here for their checks.
+                .with_spill_dir(std::path::Path::new(&self.directory).join("pack-spill")),
         );
         let mut run = FirstSync::new(pull, bodies, self.db.clone())
             .with_bootstrap(bootstrap)

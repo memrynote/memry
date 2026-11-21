@@ -60,7 +60,7 @@ use super::feed_restart;
 use super::hardening::orphans::OrphanRepair;
 use super::hardening::purged::{self, SignerKeys};
 use super::hardening::stale_cursor::{self, StaleCursor};
-use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
+use super::note_body_feed::NOTE_BODY_SYNC_TYPE;
 
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
@@ -91,6 +91,8 @@ mod apply_step;
 mod items;
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
+
+mod shared_apply;
 
 /// The pull loop. One per vault; cheap to clone through the `Arc`s it holds.
 pub struct PullLoop {
@@ -441,53 +443,37 @@ impl PullLoop {
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
         let mut feed = AppliedFeed::default();
-        let landed = async {
-            let outcomes = self
-                .apply_all(pending, Vec::new(), owe_bodies, &mut feed)
-                .await?;
-            report.applied += outcomes.applied;
-            report.deleted += outcomes.deleted;
-            report.skipped += outcomes.skipped;
-            report.corrupt += outcomes.corrupt;
-            report.expired += outcomes.expired;
-            report.purged_documents.extend(outcomes.purged_documents);
-            // §5.14's breaker, all three conditions or none.
-            let yielded = report.applied + report.deleted + report.skipped + report.expired;
-            report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
-            // A refused page at the head is still the head: the cursor moves past it, so a
-            // run from cursor 0 ends there and the next run's markers apply (§5.12.3).
-            let at_head = !report.has_more;
-
-            // §5.11: only now, and in the transaction that lands the bodies.
-            let advanced = page.next_cursor.clone().or(cursor);
-            let stored = advanced.clone();
-            report.advanced_documents = self
-                .db
-                .call(move |conn| {
-                    // Stamped under the writer, as `body_pull::store_update` says why.
-                    note_body_feed::land_and_advance(
-                        conn,
-                        bodies,
-                        stored.as_deref(),
-                        at_head,
-                        now_ms(),
-                    )
-                })
-                .await?;
-            report.cursor = advanced;
-            if let Some(observers) = &self.observers {
-                observers
-                    .bodies_applied(report.advanced_documents.clone())
-                    .await;
-            }
-            Ok::<(), PullError>(())
-        }
-        .await;
-        // Each record committed on its own, so a failure after some of them
-        // still tells those: a re-pull reports them `Skipped`, and an observer
-        // that missed them now would never write their files (#3534).
+        let requested = !ids.is_empty();
+        let advanced = page.next_cursor.clone().or(cursor);
+        let advance = apply_step::Advance {
+            bodies,
+            cursor: advanced.clone(),
+            at_head: !report.has_more,
+        };
+        let (outcomes, advanced_documents) = self
+            .apply_all(pending, Vec::new(), owe_bodies, Some(advance), &mut feed)
+            .await?;
+        report.applied += outcomes.applied;
+        report.deleted += outcomes.deleted;
+        report.skipped += outcomes.skipped;
+        report.corrupt += outcomes.corrupt;
+        report.expired += outcomes.expired;
+        report.purged_documents.extend(outcomes.purged_documents);
+        // §5.14's breaker, all three conditions or none.
+        report.refused = breaker(
+            report.applied + report.deleted + report.skipped + report.expired,
+            report.corrupt,
+            requested,
+        );
+        report.advanced_documents = advanced_documents;
+        report.cursor = advanced;
+        // Told after the page committed, never inside it: an observer reads the row.
         self.tell(feed).await;
-        landed?;
+        if let Some(observers) = &self.observers {
+            observers
+                .bodies_applied(report.advanced_documents.clone())
+                .await;
+        }
 
         Ok(report)
     }
@@ -519,9 +505,10 @@ impl PullLoop {
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
-        let applied = self.apply_all(pending, Vec::new(), true, &mut feed).await;
+        let (outcomes, _) = self
+            .apply_all(pending, Vec::new(), true, None, &mut feed)
+            .await?;
         self.tell(feed).await;
-        let outcomes = applied?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -576,6 +563,12 @@ impl PullLoop {
         }
         request
     }
+}
+
+/// §5.14's breaker: a page that requested items, yielded none and met
+/// corruption is refused.
+fn breaker(yielded: usize, corrupt: usize, requested: bool) -> bool {
+    yielded == 0 && corrupt > 0 && requested
 }
 
 fn typed_covers(pending: &[Pending], id: &str) -> bool {

@@ -22,6 +22,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::{agent_conversation, agent_message};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox::{self, Change};
 
@@ -79,7 +80,7 @@ fn in_transaction<T>(
     if !conn.is_autocommit() {
         return body(conn);
     }
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = body(&transaction)?;
     transaction.commit().map_err(failed)?;
     Ok(value)
@@ -103,7 +104,7 @@ pub fn enqueue_existing(
     ids: &[String],
     now_ms: i64,
 ) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let queued = enqueue(&transaction, item_type, ids, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(queued)
@@ -142,7 +143,7 @@ fn enqueue(
 /// period is deleted there. Runs only while the backfill is pending, and
 /// clears it in the same transaction. Returns how many it queued.
 pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let pending: bool = transaction
         .query_row(
             "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",

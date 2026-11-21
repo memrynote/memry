@@ -189,6 +189,9 @@ export class PullCoordinator {
         if (!fetchedAll) runState.refused = true
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
+        // The bootstrap benchmark's records mark (#5223): every record is applied,
+        // the run's last body batch is not.
+        if (!runState.refused) log.debug('Pull records applied', { pulled: runState.pulledCount })
         // Records these applied off their page pull their whole bodies here: a
         // rowless feed body on that page was dropped in reliance on it (#2297).
         await this.applyCrdtBatch(runState)

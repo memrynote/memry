@@ -47,6 +47,7 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::projectors::agent::is_sealed_pending;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
@@ -338,7 +339,7 @@ impl PushCoordinator {
         report.rejected += deferred.len();
         self.db
             .call(move |conn| {
-                let tx = conn.unchecked_transaction().map_err(failed)?;
+                let tx = nested_tx::begin(conn).map_err(failed)?;
                 outbox::ack(&tx, &acked)?;
                 for (ids, reason, at) in &deferred {
                     outbox::defer(&tx, ids, reason, Some(*at))?;

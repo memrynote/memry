@@ -25,10 +25,11 @@
 //!   and owes the document a re-pull; the chapter is explicit that a
 //!   conforming client takes the stop-at-gap side, because it is the only one
 //!   under which no update can be skipped permanently.
-//! - **Durable before the cursor advances.** The update row and the cursor
-//!   move in **one** transaction, per update rather than per page (§7.9), so a
-//!   process killed mid-document resumes at the last update it actually
-//!   stored and neither re-pulls nor skips.
+//! - **Durable before the cursor advances.** A page's update rows and the
+//!   cursor of its last one move in **one** transaction (§7.9, #5231), so a
+//!   process killed mid-page resumes at the last page it actually stored and
+//!   pulls that page again; `INSERT OR IGNORE` makes the replay a no-op and
+//!   nothing is skipped.
 //!
 //! **`revision` is an opaque token compared only for equality** (§7.5). It is
 //! never parsed, ordered or generated here.
@@ -45,9 +46,14 @@
 //! The single-document route carries no `snapshotMeta`, though, so a
 //! document above cursor `0` could never meet §7.8's second clause: once a
 //! peer's snapshot pruned the log past this device's cursor, the document
-//! went silent for good. Documents that hold a cursor are therefore probed
-//! first through the batch route (desktop's `CRDT batch chunk probed`), one
-//! request per hundred documents, for the meta alone.
+//! went silent for good. Every document is therefore probed first through the
+//! batch route (desktop's `CRDT batch chunk probed`), one request per hundred
+//! documents, for the meta and the first page (#5293). A probe that shows
+//! nothing above the cursor and no baseline due settles the document with no
+//! further request, as desktop's probe phase does, so a resumed first sync
+//! does not pull its finished documents again. The probe's page is the
+//! document's first page, after a baseline too: its rows at or below the
+//! snapshot are replays.
 
 use std::sync::Arc;
 
@@ -71,10 +77,14 @@ use super::store;
 
 mod baseline;
 mod log_writes;
+mod manifest;
 mod pack_seed;
 mod probe;
+use probe::ProbeAnswer;
 
-pub use pack_seed::PackSeed;
+pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;
+pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
+pub(super) use probe::Probed;
 
 /// §7.3: the client's own page size for a sweep, matching the reference's
 /// `CRDT_UPDATES_PAGE_LIMIT`.
@@ -225,15 +235,21 @@ impl BodyPull {
 
     /// Tells `observers` of each document whose stored body changed, once
     /// the write has committed: a pull that stored a baseline or an update,
-    /// and a pack seed that applied.
+    /// and the body pack phase's settled documents.
     pub fn with_observers(mut self, observers: Arc<Observers>) -> Self {
         self.observers = Some(observers);
         self
     }
 
     async fn tell_observers(&self, doc_id: &str) {
+        self.tell_observers_of(vec![doc_id.to_owned()]).await;
+    }
+
+    /// One call for every document: a pack phase settles about 17k on a
+    /// large vault, and the desktop observer only queues each write-back.
+    pub(crate) async fn tell_observers_of(&self, doc_ids: Vec<String>) {
         if let Some(observers) = &self.observers {
-            observers.bodies_applied(vec![doc_id.to_owned()]).await;
+            observers.bodies_applied(doc_ids).await;
         }
     }
 
@@ -266,9 +282,9 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let probed = self.probe_snapshot_meta(chunk, &mut total.requests).await?;
+            let mut probed = self.probe(chunk, &mut total.requests).await?;
             for doc_id in chunk {
-                total.absorb(self.pull_with(doc_id, probed.get(doc_id)).await?);
+                total.absorb(self.pull_with(doc_id, probed.remove(doc_id)).await?);
             }
         }
         Ok(total)
@@ -277,10 +293,8 @@ impl BodyPull {
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
         let mut probes = 0;
-        let probed = self
-            .probe_snapshot_meta(&[doc_id.to_owned()], &mut probes)
-            .await?;
-        let mut report = self.pull_with(doc_id, probed.get(doc_id)).await?;
+        let mut probed = self.probe(&[doc_id.to_owned()], &mut probes).await?;
+        let mut report = self.pull_with(doc_id, probed.remove(doc_id)).await?;
         report.requests += probes;
         Ok(report)
     }
@@ -288,15 +302,27 @@ impl BodyPull {
     pub(super) async fn pull_with(
         &self,
         doc_id: &str,
-        probed: Option<&SnapshotMeta>,
+        probed: Option<Probed>,
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut report = BodyPullReport {
             documents: 1,
             ..BodyPullReport::default()
         };
+        // Taken by value: the probe page moves into the first page below
+        // and is dropped once applied, never copied.
+        let Probed {
+            meta,
+            current,
+            answer,
+        } = probed.unwrap_or_default();
+        if current {
+            return Ok(report);
+        }
         // Told on the error path too: a page that fails after earlier pages
         // committed leaves those updates stored.
-        let pulled = self.pull_stored(doc_id, probed, &mut report).await;
+        let pulled = self
+            .pull_stored(doc_id, meta.as_ref(), answer, &mut report)
+            .await;
         if report.baselines + report.updates > 0 {
             self.tell_observers(doc_id).await;
         }
@@ -306,42 +332,87 @@ impl BodyPull {
     async fn pull_stored(
         &self,
         doc_id: &str,
-        probed: Option<&SnapshotMeta>,
+        meta: Option<&SnapshotMeta>,
+        answer: Option<ProbeAnswer>,
         report: &mut BodyPullReport,
     ) -> Result<(), BodyPullError> {
         let mut cursor = self.read_cursor(doc_id).await?;
+        let mut first_page = None;
 
-        // §7.8, first clause: a cursor of 0 always takes the snapshot first.
-        // There is no incremental that could have told us about it, because
-        // everything at or below the watermark is answered with silence.
-        if cursor == 0 {
-            if self.fetch_baseline(doc_id, cursor, report).await? {
-                cursor = self.read_cursor(doc_id).await?;
-            } else if !report.stopped.is_empty() {
-                // A baseline that exists and could not be used: paging on
-                // from 0 would store the updates above the watermark and move
-                // the cursor past the state below it for good.
-                return Ok(());
+        if let Some(answer) = answer {
+            // §7.8 from the batch answer: a baseline when the server's
+            // snapshot is not the one held, whatever the cursor (a cursor of
+            // 0 holds none, unless a snapshot at `sequenceNum` 0 was taken).
+            // No server snapshot (§7.11) takes none.
+            let due = match meta {
+                Some(meta) => self.baseline_due(doc_id, meta).await?,
+                None => false,
+            };
+            // D-REUSE-REVISION: the page belongs to the snapshot the probe
+            // saw. It stands in for the updates GET only when no baseline was
+            // due, or the baseline taken is that very revision. Any other
+            // answer (no snapshot, a rewrite, a re-created document) may
+            // pair the page with a different generation's rows, so the page
+            // is fetched afresh (REVIEW-5311, VERIFY-5311).
+            let mut held = !due;
+            if due {
+                if self.fetch_baseline(doc_id, cursor, report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                    held = match meta {
+                        Some(meta) => !self.baseline_due(doc_id, meta).await?,
+                        None => true,
+                    };
+                } else if !report.stopped.is_empty() {
+                    return Ok(());
+                }
             }
-        }
-        // §7.8, second clause, from the probe: a server before #2299 sends no
-        // `snapshotMeta` on the single-document route, so without it a
-        // snapshot that pruned the log above this cursor would leave the
-        // document silent forever.
-        if cursor > 0
-            && let Some(meta) = probed
-            && self.baseline_due(doc_id, meta).await?
-        {
-            if self.fetch_baseline(doc_id, cursor, report).await? {
-                cursor = self.read_cursor(doc_id).await?;
-            } else if !report.stopped.is_empty() {
-                return Ok(());
+            // #5293: the answer is this document's first page already. The
+            // server pages `sequence_num > since` in order
+            // (`apps/sync-server/src/services/crdt.ts` `planUpdatePage`), so
+            // from a `since` at or below the cursor its rows above the cursor
+            // are the start of the cursor's own page, after a baseline too
+            // (#5232); the loop skips the rest as replays (§7.9). A page from
+            // above the cursor would leave a hole, so that one is fetched.
+            if answer.since <= cursor && held {
+                first_page = Some(answer.page);
+            }
+        } else {
+            // §7.8, first clause: a cursor of 0 always takes the snapshot
+            // first. There is no incremental that could have told us about
+            // it, because everything at or below the watermark is answered
+            // with silence.
+            if cursor == 0 {
+                if self.fetch_baseline(doc_id, cursor, report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    // A baseline that exists and could not be used: paging on
+                    // from 0 would store the updates above the watermark and
+                    // move the cursor past the state below it for good.
+                    return Ok(());
+                }
+            }
+            // §7.8, second clause, from a probe whose meta is all it gave: a
+            // server before #2299 sends no `snapshotMeta` on the
+            // single-document route, so without it a snapshot that pruned the
+            // log above this cursor would leave the document silent forever.
+            if cursor > 0
+                && let Some(meta) = meta
+                && self.baseline_due(doc_id, meta).await?
+            {
+                if self.fetch_baseline(doc_id, cursor, report).await? {
+                    cursor = self.read_cursor(doc_id).await?;
+                } else if !report.stopped.is_empty() {
+                    return Ok(());
+                }
             }
         }
 
         let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
-            let page = self.fetch_page(doc_id, cursor, report).await?;
+            let page = match first_page.take() {
+                Some(page) => page,
+                None => self.fetch_page(doc_id, cursor, report).await?,
+            };
 
             // §7.8, second clause, widened by #2299: the server advertises a
             // snapshot whose revision differs from the stored one.
@@ -357,9 +428,11 @@ impl BodyPull {
 
             let mut stopped = false;
             let has_more_here = page.has_more;
+            let mut opened_page = Vec::new();
             for (entry, opened) in self.open_page(doc_id, cursor, page.updates).await? {
                 // §7.9: a replay, already applied.
-                if entry.sequence_num <= cursor {
+                let last = opened_page.last().map_or(cursor, |(seq, _)| *seq);
+                if entry.sequence_num <= last {
                     report.replays += 1;
                     continue;
                 }
@@ -372,10 +445,13 @@ impl BodyPull {
                     stopped = true;
                     break;
                 };
-                self.store_update(doc_id, entry.sequence_num, update)
-                    .await?;
-                cursor = entry.sequence_num;
-                report.updates += 1;
+                opened_page.push((entry.sequence_num, update));
+            }
+            // The updates before a gap are stored; the cursor stops there.
+            if let Some(&(last, _)) = opened_page.last() {
+                report.updates += opened_page.len();
+                self.store_updates(doc_id, opened_page).await?;
+                cursor = last;
                 if report.advanced_documents.last().map(String::as_str) != Some(doc_id) {
                     report.advanced_documents.push(doc_id.to_owned());
                 }
@@ -453,12 +529,17 @@ impl BodyPull {
     }
 
     async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
+        Ok(self.stored_cursor(doc_id).await?.unwrap_or(0))
+    }
+
+    /// `None` when this device never pulled the document.
+    async fn stored_cursor(&self, doc_id: &str) -> Result<Option<i64>, BodyPullError> {
         let scope = crdt_cursor_scope(doc_id);
         let stored = self
             .db
             .call(move |conn| store::read_cursor(conn, &scope))
             .await?;
-        Ok(stored.and_then(|text| text.parse().ok()).unwrap_or(0))
+        Ok(stored.and_then(|text| text.parse().ok()))
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {

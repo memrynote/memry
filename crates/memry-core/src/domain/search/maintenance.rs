@@ -36,6 +36,7 @@ use crate::domain::body_tags;
 #[cfg(feature = "markdown")]
 use crate::domain::file_text;
 use crate::domain::wiki_target::{WikiNames, settle_name_keys};
+use crate::storage::nested_tx;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
@@ -109,7 +110,7 @@ pub fn reindex_until(
     // reads only its matches again (`wiki_target`).
     settle_name_keys(data)?;
 
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     let indexed = meta_number(&transaction, DATA_VERSION_KEY)?;
     let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
     let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;

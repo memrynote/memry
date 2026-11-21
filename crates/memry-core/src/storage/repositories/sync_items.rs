@@ -31,6 +31,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, DATA_MIGRATIONS};
+use crate::storage::nested_tx;
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
@@ -136,7 +137,7 @@ pub fn apply_remote(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<ApplyOutcome, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let outcome = apply_remote_in(&transaction, record, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(outcome)
@@ -203,7 +204,7 @@ pub fn apply_local_edit(
     changes: &[(&str, Change)],
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let merged = apply_local_edit_in(&transaction, item_type, item_id, changes, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(merged)
@@ -404,7 +405,7 @@ pub fn heal_projections(conn: &Connection) -> Result<usize, StorageError> {
     if newer {
         return Ok(0);
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let healed = replay(
         &tx,
         "SELECT s.item_type, s.item_id FROM sync_items s

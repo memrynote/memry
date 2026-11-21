@@ -22,6 +22,7 @@ pub mod guard;
 pub mod import;
 pub mod index_db;
 pub mod migrations;
+pub mod nested_tx;
 pub(crate) mod pool;
 pub mod pragmas;
 pub(crate) mod quarantine;
