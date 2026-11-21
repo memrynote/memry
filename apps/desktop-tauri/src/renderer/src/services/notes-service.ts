@@ -60,6 +60,7 @@ import {
   commands,
   events,
   type DefinitionInput,
+  type ExportFailure,
   type FileView,
   type FolderConfigUpdatedEvent,
   type NoteListItemView,
@@ -660,6 +661,10 @@ const ported = {
     return response.status === 'saved'
       ? { ok: true as const, ref: response.ref }
       : { ok: false as const, reason: response.reason }
+  },
+  exportHtml: async (input: ExportNoteInput): Promise<ExportNoteResult> => {
+    const { success, path, code, error } = await commands.notesExportHtml(input)
+    return { success, path: path ?? undefined, code: code ?? undefined, error: error ?? undefined }
   }
 } satisfies Partial<NotesClientAPI>
 
@@ -700,13 +705,26 @@ export type NoteSaveResponse = NoteUpdateResponse &
  */
 export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'target_not_taken' }
 
+/**
+ * `ExportNoteResponse` with why nothing was written (`commands/export.rs`): the export dialog
+ * tells a cancel by `code`, which reads the same in every locale. Tauri only.
+ */
+export type ExportNoteResult = ExportNoteResponse & { code?: ExportFailure }
+
 // Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
 type NotesServiceApi = Omit<
   NotesClientAPI,
-  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
+  | PortedLargeFileMethod
+  | 'update'
+  | 'appendBlocks'
+  | 'exportHtml'
+  | 'getSimilar'
+  | 'getTagSuggestions'
+  | 'cluster'
 > & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
+  exportHtml: (input: ExportNoteInput) => Promise<ExportNoteResult>
 }
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<

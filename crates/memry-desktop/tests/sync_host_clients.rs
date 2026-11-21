@@ -58,6 +58,14 @@ const ALLOWED: &[(&str, &str)] = &[
     ),
     ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
     (
+        "crates/memry-desktop/src/calendar_providers/ics_fetch.rs",
+        "user-chosen ICS feed hosts: a conditional GET with no credentials, redirects followed by hand over http(s)",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_ics.rs",
+        "user-chosen ICS feed hosts, through calendar_providers::ics_fetch",
+    ),
+    (
         "crates/memry-desktop/src/services/voice/openai.rs",
         "api.openai.com, the voice transcription's OpenAI engine, with only the person's OpenAI key",
     ),
