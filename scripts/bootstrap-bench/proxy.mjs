@@ -47,7 +47,8 @@ const READ_POSTS = new Set([
   '/sync/bootstrap',
   '/sync/bootstrap/renew',
   '/sync/bootstrap/close',
-  '/sync/attachments/presign-batch'
+  '/sync/attachments/presign-batch',
+  '/sync/attachments/manifests/batch'
 ])
 
 export function assertAllowedUpstream(upstream) {
@@ -181,6 +182,7 @@ export async function startProxy({ upstream, port = 0 }) {
 
     const client = target.protocol === 'http:' ? http : https
     const agent = agents[target.protocol]
+    let upstreamDone = false
     const upstreamReq = client.request(target, { method: req.method, headers, agent }, (up) => {
       entry.status = up.statusCode ?? 0
       const outHeaders = forwardHeaders(up.headers, undefined)
@@ -192,6 +194,7 @@ export async function startProxy({ upstream, port = 0 }) {
         if (!isPackList) res.write(chunk)
       })
       up.on('end', () => {
+        upstreamDone = true
         entry.endMs = Date.now()
         if (isFeedPage && entry.status === 200) {
           entry.hasMore = feedHasMore(Buffer.concat(chunks), up.headers['content-encoding'])
@@ -215,11 +218,22 @@ export async function startProxy({ upstream, port = 0 }) {
       if (!isPackList) res.writeHead(entry.status, outHeaders)
     })
     upstreamReq.on('error', (error) => {
+      if (entry.error) return
       entry.endMs = Date.now()
       entry.error = error.message
       requests.push(entry)
       if (!res.headersSent) res.writeHead(502)
       res.end()
+    })
+    // A client that drops its request before the response ends: log it and
+    // drop the upstream request too, so it neither shows as open nor holds a
+    // pooled socket.
+    res.on('close', () => {
+      if (upstreamDone || entry.error) return
+      entry.endMs = Date.now()
+      entry.error = 'client aborted'
+      requests.push(entry)
+      upstreamReq.destroy()
     })
     req.pipe(upstreamReq)
   })
