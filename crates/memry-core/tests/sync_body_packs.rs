@@ -14,9 +14,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use body_pack_server::{
-    BodyPack, Manifest, NOW_MS, Routes, Server, ServerDoc, bootstrap, first_sync, has_snapshot,
-    holds_exactly, is_owed, seed_records, snapshot_item_as, snapshot_items, update_item,
-    update_items, update_seqs,
+    BodyPack, MANIFEST_RETRY_AFTER_S, Manifest, NOW_MS, Routes, Server, ServerDoc, bootstrap,
+    first_sync, has_snapshot, holds_exactly, is_owed, seed_records, snapshot_item_as,
+    snapshot_items, update_item, update_items, update_seqs,
 };
 use memry_core::storage::Db;
 use memry_core::sync::first_sync::META_FIRST_SYNC_BODY_PACKS;
@@ -228,6 +228,89 @@ async fn a_failed_or_malformed_manifest_page_falls_back_to_the_batch_route() {
         holds_the_three_shapes(&db, &routes);
         assert_eq!((report.settled, report.owed), (0, 3));
     }
+}
+
+/// Seventeen documents, one manifest page each, as a 17k-document vault reads
+/// in 17 pages (#5349).
+fn seventeen_pages() -> (Vec<ServerDoc>, Vec<BodyPack>, Vec<String>) {
+    let docs: Vec<ServerDoc> = (0..17)
+        .map(|at| ServerDoc::new(&format!("d{at:011}"), 2).snapshot_at(1))
+        .collect();
+    let refs: Vec<&ServerDoc> = docs.iter().collect();
+    let packs = vec![
+        BodyPack::new("s1", snapshot_items(&refs)),
+        BodyPack::new("u1", update_items(&refs)),
+    ];
+    let ids = docs.iter().map(|doc| doc.id.clone()).collect();
+    (docs, packs, ids)
+}
+
+/// Every document settled from the held packs through the manifest: no batch
+/// route, nothing owed to the item-granular passes.
+fn settled_from_the_packs(db: &Db, routes: &Routes, ids: &[String], report: &BodyPackReport) {
+    assert!(report.ran && report.manifest, "{report:?}");
+    assert!(report.fallback_reasons.is_empty(), "{report:?}");
+    assert_eq!((report.settled, report.owed), (17, 0));
+    assert_eq!(routes.count("/sync/crdt/updates/batch"), 0);
+    let server = routes.server.lock().unwrap();
+    for id in ids {
+        holds_exactly(db, server.doc(id), 2);
+        assert!(!is_owed(db, id), "{id}");
+    }
+}
+
+#[tokio::test]
+async fn a_rate_limited_manifest_page_waits_out_the_window_and_keeps_the_held_packs() {
+    let (db, dir) = body_pack_server::scratch("manifest-429");
+    let (docs, packs, ids) = seventeen_pages();
+    seed_records(
+        &db,
+        &ids.iter().map(String::as_str).collect::<Vec<_>>(),
+        &[],
+    );
+    let mut server = Server::new(docs, packs);
+    server.manifest_page = 1;
+    server.manifest_window = Some(14);
+    let routes = Routes::new(server);
+
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    settled_from_the_packs(&db, &routes, &ids, &report);
+    assert_eq!(routes.slept(), [MANIFEST_RETRY_AFTER_S * 1_000]);
+    // One listing page, two downloads, 17 manifest pages, and page 15 again.
+    assert_eq!(routes.count("/sync/crdt/manifest"), 18);
+    assert_eq!(routes.calls().len(), 1 + 2 + 18, "{:?}", routes.calls());
+}
+
+#[tokio::test]
+async fn a_relaunch_inside_the_window_of_a_killed_manifest_read_still_settles_from_the_packs() {
+    let (db, dir) = body_pack_server::scratch("manifest-relaunch");
+    let (docs, packs, ids) = seventeen_pages();
+    seed_records(
+        &db,
+        &ids.iter().map(String::as_str).collect::<Vec<_>>(),
+        &[],
+    );
+    let mut server = Server::new(docs, packs);
+    server.manifest_page = 1;
+    server.manifest_window = Some(30);
+    // Killed when the 17th page is asked for, after the packs are held.
+    server.hang = Some(format!("cursor={}", ids[15]));
+    let routes = Routes::new(server);
+    killed_while(&routes, run_bodies(&db, &routes, &dir), || {
+        spilled(&dir, "s1") && spilled(&dir, "u1")
+    })
+    .await;
+    assert_eq!(routes.count("/sync/crdt/manifest"), 17);
+
+    routes.server.lock().unwrap().hang = None;
+    routes.clear_calls();
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    settled_from_the_packs(&db, &routes, &ids, &report);
+    assert_eq!(routes.slept(), [MANIFEST_RETRY_AFTER_S * 1_000]);
+    assert_eq!(routes.count("/packs/"), 0, "no held pack downloaded again");
+    assert_eq!(routes.count("/sync/crdt/manifest"), 18);
 }
 
 #[tokio::test]

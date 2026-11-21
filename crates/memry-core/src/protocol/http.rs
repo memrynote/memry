@@ -49,6 +49,11 @@ pub const DEFAULT_MAX_RETRIES: u32 = 3;
 pub const MAX_RETRY_DELAY_MS: u64 = 30_000;
 pub const DEFAULT_BASE_DELAY_MS: u64 = 2_000;
 
+/// The longest a [`RetryPolicy::walk`] waits: one rate-limit window of the
+/// routes a walk reads, which answer `Retry-After` with the rest of a 60 s
+/// window (`apps/sync-server/src/middleware/rate-limit.ts`).
+pub const MAX_WALK_RETRY_DELAY_MS: u64 = 60_000;
+
 pub const CLIENT_HEADER: &str = "x-memry-client";
 pub const SYNC_TYPES_HEADER: &str = "x-memry-sync-types";
 pub const VAULT_ID_HEADER: &str = "x-memry-vault-id";
@@ -69,6 +74,8 @@ pub struct RetryPolicy {
     pub base_delay_ms: u64,
     pub retry_on_429: bool,
     pub retry_on_5xx: bool,
+    /// A wait longer than this returns the error instead of sleeping.
+    pub max_delay_ms: u64,
 }
 
 impl Default for RetryPolicy {
@@ -78,6 +85,7 @@ impl Default for RetryPolicy {
             base_delay_ms: DEFAULT_BASE_DELAY_MS,
             retry_on_429: true,
             retry_on_5xx: true,
+            max_delay_ms: MAX_RETRY_DELAY_MS,
         }
     }
 }
@@ -99,6 +107,17 @@ impl RetryPolicy {
     pub fn push() -> Self {
         Self {
             retry_on_5xx: false,
+            ..Self::default()
+        }
+    }
+
+    /// One page of a bounded walk that answers nothing unless every page is
+    /// read, the body manifest (chapter 08 §8.4.3). No poll comes back for
+    /// the page, and a walk dropped on one `429` costs far more than its wait
+    /// (#5349), so it honours `Retry-After` up to a whole window.
+    pub fn walk() -> Self {
+        Self {
+            max_delay_ms: MAX_WALK_RETRY_DELAY_MS,
             ..Self::default()
         }
     }
@@ -322,7 +341,7 @@ impl HttpClient {
                     // the ceiling the wait is the caller's to make, so the
                     // rate-limit error — which carries `retry_after_s` — is
                     // returned and the user is told how long it is.
-                    if delay > MAX_RETRY_DELAY_MS {
+                    if delay > request.retry.max_delay_ms {
                         return Err(error);
                     }
                     attempt += 1;

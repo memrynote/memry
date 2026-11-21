@@ -623,6 +623,13 @@ before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3
 `retryOn429: false`
 (`packages/sync-client/src/pull/crdt-pull.ts:70-76`).
 
+**Exception: the body manifest read.** Each page of `GET /sync/crdt/manifest`
+retries a `429`, waiting the `retry-after` it carries up to one 60 s window,
+because the read is one bounded walk that answers nothing unless every page
+is read (chapter 08 §8.4.3), and no poll comes back for it
+(`crates/memry-core/src/protocol/http.rs:118-123`,
+`crates/memry-core/src/sync/body_pull/manifest.rs:42`, #5349).
+
 **CRDT rate limits are per device, not per account**, because body sync is
 device-local work (`apps/sync-server/src/routes/sync.ts:761-811`):
 
