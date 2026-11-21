@@ -413,7 +413,7 @@ fn text_of(
         &converter_for(settings.as_ref()),
         &opened.id,
         rel,
-        "",
+        None,
         &embeds,
     )?;
     let why = match read {

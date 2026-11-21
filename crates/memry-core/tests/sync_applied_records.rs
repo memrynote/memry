@@ -1,7 +1,8 @@
 //! The applied-record feed through the real pull (#3534 L2): every observer
 //! hears one record per item of a committed page, after the page committed
-//! (its cursor included); a failure after some records committed still tells
-//! those; and the first sync's id fetch, the refused-records refetch and a
+//! (its cursor included); a failure after some records committed, or in the
+//! middle of the page, still tells those; a tombstone for an item never live
+//! here counts as skipped; and the first sync's id fetch, the refused-records refetch and a
 //! losing note tombstone reach the observers too.
 //!
 //! Real `HttpClient`, SQLite and apply; the transport and the record cipher
@@ -240,6 +241,63 @@ async fn a_failure_after_records_committed_still_tells_the_committed_records() {
             reader.name
         );
     }
+}
+
+/// A record whose write fails mid-page (a trigger on `sticky-5`'s insert) aborts the page, and
+/// the records stored before it are heard as `Created` before the error propagates: each
+/// record is heard once it commits (`apply_step`), and a write-back observer still writes their
+/// files.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_record_that_fails_mid_page_leaves_the_records_before_it_heard() {
+    let db = scratch_db();
+    let (ids, payloads, script) = ten_drafts(&db);
+    db.call_blocking(|conn| {
+        conn.execute_batch(
+            "CREATE TRIGGER injected_record_failure BEFORE INSERT ON sync_items
+             WHEN NEW.item_id = 'sticky-5'
+             BEGIN SELECT RAISE(ABORT, 'injected record failure'); END;",
+        )
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the injected failure");
+    let (pull, readers) = pull_loop(&db, &[TYPE], payloads, script);
+
+    let error = pull.pull_page().await.expect_err("sticky-5's write fails");
+    assert!(
+        error.to_string().contains("injected record failure"),
+        "{error}"
+    );
+
+    for reader in readers {
+        assert_eq!(
+            *reader.heard.lock().unwrap(),
+            expected(&ids, None)[..5],
+            "{}",
+            reader.name
+        );
+    }
+}
+
+/// A tombstone for an id this device never held live deletes nothing: the run
+/// counts it skipped, as the feed reports it. A bare id in `deleted` with no
+/// item applies nothing at all (§5.12.1, #5340), so it is not counted.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tombstone_for_an_item_never_live_here_counts_as_skipped() {
+    let db = scratch_db();
+    let mut tombstone = envelope_of(TYPE, "ghost");
+    tombstone["deletedAt"] = json!(NOW);
+    let script = vec![
+        changes(&[(TYPE, "ghost")], &["untyped"], "10"),
+        pulled(vec![tombstone]),
+    ];
+    let payloads = BTreeMap::from([("ghost".to_owned(), sticky("ghost"))]);
+    let (pull, _readers) = pull_loop(&db, &[TYPE], payloads, script);
+
+    let report = pull.pull_page().await.expect("the page");
+
+    assert_eq!((report.deleted, report.skipped), (0, 1), "{report:?}");
 }
 
 /// The first sync's metadata pass ([`PullLoop::fetch_ids`]) tells what it

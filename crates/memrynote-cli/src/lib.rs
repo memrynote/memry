@@ -13,6 +13,7 @@ mod migrate_installer;
 pub mod output;
 pub mod parse;
 mod registry;
+pub mod shim;
 mod values;
 mod vault;
 mod vault_admin;

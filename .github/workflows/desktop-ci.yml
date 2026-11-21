@@ -125,7 +125,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -212,9 +211,16 @@ jobs:
       - name: Check HTML text vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:html-text:check
 
+      # The agent MCP contract vectors come from Electron's tool schemas and MCP server the same way.
+      - name: Check agent MCP vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:agent-mcp:check
+
       # The note export vectors come from Electron's export-utils.ts and export-image-inliner.ts.
       - name: Check note export vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:export:check
+      # The superseded activity id vectors come from Electron's tasks/activity-log.ts the same way.
+      - name: Check task superseded id vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:task-superseded:check
 
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
@@ -292,7 +298,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
@@ -376,7 +381,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         env:
@@ -477,7 +481,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -544,7 +547,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary
@@ -625,7 +627,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install dependencies
         shell: bash
@@ -741,7 +742,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Cache Electron binary
         uses: ./.github/actions/cache-electron-binary

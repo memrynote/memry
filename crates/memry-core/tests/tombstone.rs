@@ -47,7 +47,7 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log::{self, Namespace};
 use memry_core::crdt::{Document, DocumentRegistry, extract_text};
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -82,16 +82,21 @@ fn storage_failure(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-/// A cipher that refuses everything.
+/// A cipher that opens only a delete, to an empty payload.
 ///
-/// §5.12 and §13.7.2: a tombstone's body is **never decoded**, so a cipher
-/// that cannot open anything is enough to drive the whole delete path. If the
-/// delete ever reaches a parser this test stops compiling its way around the
-/// problem and fails outright.
-struct NeverOpens;
+/// §5.12 and §13.7.2: a tombstone's body is **never applied**, so a delete
+/// that opens to nothing is enough to drive the whole delete path (§5.14
+/// verifies it first). If the delete ever reaches a parser this test fails
+/// outright.
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -116,7 +121,9 @@ fn tombstone_item() -> Json {
 
 /// Runs one real pull page carrying the other device's delete, and hands back
 /// what the pull reported.
-async fn deliver_the_delete(db: &Db) -> PullReport {
+/// `live` says whether the note held a live record here; a delete that took none counts as
+/// skipped (S17-5).
+async fn deliver_the_delete(db: &Db, live: bool) -> PullReport {
     let transport = FakeTransport::new(vec![
         response(
             200,
@@ -139,7 +146,7 @@ async fn deliver_the_delete(db: &Db) -> PullReport {
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.
@@ -148,7 +155,12 @@ async fn deliver_the_delete(db: &Db) -> PullReport {
     .await
     .expect("the page");
 
-    assert_eq!(report.deleted, 1, "the delete was recorded");
+    let counted = if live { (1, 0) } else { (0, 1) };
+    assert_eq!(
+        (report.deleted, report.skipped),
+        counted,
+        "the delete was recorded"
+    );
     assert_eq!(
         report.corrupt, 0,
         "§6.9.2: a tombstone bypasses the merge, so it can never be recorded \
@@ -234,7 +246,7 @@ fn edit_the_body(db: &Db, document: &Document, text: &str) -> Vec<u8> {
 struct Resolution {
     /// The record tier's verdict.
     record_deleted_at: Option<i64>,
-    /// Whether the delete left the stored payload alone (§5.12: never decoded).
+    /// Whether the delete left the stored payload alone (§5.12: never applied).
     record_has_payload: bool,
     /// The projection the body-pull window is chosen from.
     projected_deleted_at: Option<i64>,
@@ -310,14 +322,14 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
     let a_registry = registry();
     let a_doc = a_registry.get_or_open(NOTE).expect("open");
     let a_update = edit_the_body(&a, &a_doc, "typed before the delete arrived");
-    deliver_the_delete(&a).await;
+    deliver_the_delete(&a, true).await;
 
     // --- device B: delete, then edit ---
     let b = scratch_db("delete-then-edit");
     seed_note(&b);
     let b_registry = registry();
     let b_doc = b_registry.get_or_open(NOTE).expect("open");
-    deliver_the_delete(&b).await;
+    deliver_the_delete(&b, true).await;
     let b_update = edit_the_body(&b, &b_doc, "typed before the delete arrived");
 
     // The two devices authored the same edit under the same Yjs client id
@@ -373,7 +385,7 @@ async fn a_delete_and_a_concurrent_body_edit_resolve_identically_in_either_order
     );
     assert!(
         a_state.record_has_payload,
-        "§5.12: the delete never decoded the body, so the stored payload is \
+        "§5.12: the delete never applied a body, so the stored payload is \
          exactly the bytes that were already there"
     );
 }
@@ -392,7 +404,7 @@ async fn the_concurrent_body_edit_is_orphaned_and_never_resurrects_the_note() {
     let document = registry.get_or_open(NOTE).expect("open");
     let update = edit_the_body(&db, &document, "still typing");
 
-    deliver_the_delete(&db).await;
+    deliver_the_delete(&db, true).await;
 
     let after = observe(&db);
     assert_eq!(after.record_deleted_at, Some(DELETED_AT));
@@ -465,7 +477,7 @@ async fn the_tombstone_purge_empties_both_namespaces_and_the_document() {
         "both namespaces are loaded before the delete arrives"
     );
 
-    let report = deliver_the_delete(&db).await;
+    let report = deliver_the_delete(&db, true).await;
 
     let after = observe(&db);
     assert_eq!((after.server_updates, after.local_updates), (0, 0));
@@ -526,7 +538,7 @@ async fn a_delete_for_a_note_this_device_only_ever_had_a_body_for_is_still_recor
     // No `seed_note`: no record row at all, only body bytes.
     edit_the_body(&db, &document, "a body with no record");
 
-    deliver_the_delete(&db).await;
+    deliver_the_delete(&db, false).await;
 
     db.call_blocking(|conn| {
         let row = sync_items::load(conn, "note", NOTE)?.expect("the delete minted the row");

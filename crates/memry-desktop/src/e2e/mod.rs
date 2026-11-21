@@ -4,6 +4,8 @@
 #[cfg(feature = "e2e")]
 pub mod ai_inline;
 pub mod control;
+#[cfg(feature = "e2e")]
+pub mod crdt_body;
 pub mod debug;
 pub mod dialog_queue;
 mod gate;

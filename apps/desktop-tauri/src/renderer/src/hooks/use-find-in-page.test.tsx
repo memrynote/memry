@@ -452,6 +452,41 @@ describe('useFindInPage', () => {
       expect(describeRanges(highlights.get('find-matches'))).toEqual(['alpha[0-5]'])
     })
 
+    it('leaves the viewport alone when a DOM mutation re-runs the search', async () => {
+      const hook = renderHook(() => useFindInPage(ref))
+      act(() => hook.result.current.open())
+      typeQuery(hook, 'alpha')
+      act(() => hook.result.current.next())
+      expect(hook.result.current.currentIndex).toBe(1)
+      const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView)
+      scrollIntoView.mockClear()
+
+      // Scrolling moves content under the pointer, and hover UI (a code block
+      // toolbar) mounts inside the editor container.
+      await act(async () => {
+        container.append(document.createElement('div'))
+        await Promise.resolve()
+        vi.advanceTimersByTime(300)
+      })
+      expect(scrollIntoView).not.toHaveBeenCalled()
+      expect(hook.result.current.currentIndex).toBe(1)
+      expect(describeRanges(highlights.get('find-current'))).toEqual(['Alpha beta alpha[11-16]'])
+
+      // An edit that removes the current match moves the current index, still in place.
+      await act(async () => {
+        container.innerHTML = '<p>alpha</p>'
+        await Promise.resolve()
+        vi.advanceTimersByTime(300)
+      })
+      expect(scrollIntoView).not.toHaveBeenCalled()
+      expect(hook.result.current.currentIndex).toBe(0)
+      expect(describeRanges(highlights.get('find-current'))).toEqual(['alpha[0-5]'])
+
+      // Navigating is what scrolls.
+      act(() => hook.result.current.next())
+      expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    })
+
     it('cancels the pending search on unmount', () => {
       const hook = renderHook(() => useFindInPage(ref))
       act(() => hook.result.current.open())

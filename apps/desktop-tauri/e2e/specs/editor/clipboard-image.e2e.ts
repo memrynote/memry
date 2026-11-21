@@ -12,25 +12,15 @@ import type { Page } from '../../harness/pw-compat/page'
 import '../../harness/vault-commands'
 import { test, expect } from '../../harness/test'
 
-type ImagePath = 'webview' | 'app'
-
 /**
- * Which writer puts the mind map's PNG on the clipboard, per OS, as observed in CI and locally.
- * WebKit takes the image `ClipboardItem` only while the click's gesture is live after the async
- * export: WKWebView took it on a local macOS 15 run and refused it on the slower CI `macos-arm64`
- * runner. WebKitGTK 2.50 (ubuntu-22.04) refuses it. WebView2 takes it on windows-arm64 and refuses
- * it on windows-x64 ("Document is not focused"). Each refusal goes to `clipboard_write_image`,
- * and the second test forces that path on every OS. The `['webview', 'app']` rows (darwin, win32)
- * are informational: the path is `webview` or `app` by construction, so they cannot fail. The
- * assertion there is the clipboard poll, which holds the image whichever writer put it there; only
- * the linux row (`['app']`) pins a writer.
+ * Which writer puts the mind map's PNG on the clipboard depends on what the webview can do, not on
+ * the OS. WebKit takes the image `ClipboardItem` only while the click's gesture is live after the
+ * async export: WKWebView took it on a local macOS 15 run and refused it on the slower CI
+ * `macos-arm64` runner. WebKitGTK 2.50 (ubuntu-22.04) refuses it and 2.52.6 (ubuntu-24.04) takes
+ * it. WebView2 takes it on windows-arm64 and refuses it on windows-x64 ("Document is not
+ * focused"). So the first test asserts what the user gets either way, the image on the clipboard,
+ * and logs the writer; the second forces the webview's refusal on every OS and pins the app path.
  */
-const IMAGE_PATH: Record<'darwin' | 'win32' | 'linux', ImagePath[]> = {
-  darwin: ['webview', 'app'],
-  win32: ['webview', 'app'],
-  linux: ['app']
-}
-
 interface Recorded {
   /** The PNG's size as its IHDR declares it. */
   size: [number, number] | null
@@ -137,13 +127,9 @@ for (const refuse of [false, true]) {
         await expect.poll(async () => (await recorded(page)).webview).not.toBeNull()
         await expect.poll(async () => (await recorded(page)).size).not.toBeNull()
         const { size, webview, error } = await recorded(page)
-        const platform = process.platform as keyof typeof IMAGE_PATH
         console.log(
-          `clipboard-image on ${platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
+          `clipboard-image on ${process.platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
         )
-        const path: ImagePath = webview === 'accepted' ? 'webview' : 'app'
-        if (refuse) expect(path).toBe('app')
-        else expect(IMAGE_PATH[platform]).toContain(path)
         expect(size?.every((side) => side > 0)).toBe(true)
         await expect.poll(() => clipboardImage(app)).toEqual(size)
       })

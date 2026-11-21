@@ -21,6 +21,7 @@ on:
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
       - '.github/actions/free-disk/**'
+      - '.github/actions/libsodium-dist/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
       - '.github/actions/tesseract-sources/**'
@@ -59,6 +60,10 @@ env:
   # Line tables keep file:line in panics and backtraces of the debug builds this workflow uploads;
   # full debug info only made every link slower and the cargo cache larger.
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  # Swatinem/rust-cache exported this in every job that ran it. No job here caches cargo any more (its
+  # 11 entries were 13 GB per full push against the repo's 10 GB cap), and incremental data would only
+  # grow a target dir nothing saves.
+  CARGO_INCREMENTAL: 0
 
 jobs:
   # Tiering: a PR whose base is not main (feat/tauri-v2 or a stacked PR's branch) runs the fast
@@ -132,7 +137,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|libsodium-dist|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
@@ -181,7 +186,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install Linux system libraries
         uses: ./.github/actions/apt-install
@@ -205,26 +209,6 @@ jobs:
         timeout-minutes: 5
         with:
           toolchain: '1.98.1'
-
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
-      - name: Cache cargo
-        id: cargo-cache
-        uses: Swatinem/rust-cache@v2
-        timeout-minutes: 8
-        continue-on-error: true
-        env:
-          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
-        with:
-          workspaces: crates
-          key: ubuntu-22.04
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
-
-      # A restore cut off at the step timeout can leave half an archive on disk. Start the
-      # build cold rather than from files cargo might trust.
-      - name: Drop a partial cargo cache
-        if: steps.cargo-cache.outcome == 'failure'
-        run: rm -rf crates/target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -281,7 +265,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       # Only the Tauri app and the workspace packages it depends on: this job never runs the
       # Electron app, the extension or the sites, and their dependencies were a quarter of the
@@ -343,7 +326,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
@@ -371,26 +353,10 @@ jobs:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
 
-      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
-      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
-      - name: Cache cargo
-        id: cargo-cache
-        uses: Swatinem/rust-cache@v2
-        timeout-minutes: 8
-        continue-on-error: true
-        env:
-          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
-        with:
-          workspaces: crates
-          key: ${{ matrix.os }}-${{ matrix.variant }}-${{ matrix.triple }}
-          # Of two e2e shards, the first saves the entry both restore.
-          save-if: ${{ matrix.shard != 2 && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
-
-      # A restore cut off at the step timeout can leave half an archive on disk. Start the
-      # build cold rather than from files cargo might trust.
-      - name: Drop a partial cargo cache
-        if: steps.cargo-cache.outcome == 'failure'
-        run: rm -rf crates/target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+      # libsodium-sys-stable downloads its MSVC archive without a retry on Windows (build.rs:405
+      # "Peer disconnected"); this caches it, fetches it with retries and sets SODIUM_DIST_DIR.
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
 
       # Only the Tauri app and the workspace packages it depends on: this job never runs the
       # Electron app, the extension or the sites, and their dependencies were a quarter of the

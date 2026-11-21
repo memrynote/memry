@@ -137,6 +137,8 @@ fn an_apply_that_is_not_concurrent_queues_nothing() {
     .expect("ordered applies");
 }
 
+/// The `create` case passes without the queued-row check too (the requeue's upsert keeps a
+/// queued `create` as `create`): it guards a future change of that collapse.
 #[test]
 fn a_merge_keeps_a_queued_create_or_delete_as_it_is() {
     let dir = temp_dir("requeue-queued");

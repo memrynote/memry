@@ -17,6 +17,7 @@
 //! The session is synchronous: its methods block and the Tauri adapters call them from
 //! `spawn_blocking`.
 
+pub mod at_rest_key;
 mod headless;
 mod hooks;
 mod open;
@@ -43,6 +44,7 @@ use memry_core::api::vault::Vault;
 pub use headless::{HeadlessOpen, open_headless};
 pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
+pub(crate) use open::prepare_core_dir;
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;

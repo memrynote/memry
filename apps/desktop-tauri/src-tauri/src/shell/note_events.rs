@@ -26,6 +26,10 @@
 //! journal day renamed by a date format change sends nothing, as Electron's
 //! `journal-format-migration` sends nothing (one event per day would refetch the lists once
 //! per file).
+//!
+//! A pulled change the write-back gave a note's file (`ChangeSource::Sync`: its place or its
+//! frontmatter) sends a `sync` `notes:updated`, and pulled tags `notes:tags-changed`, as
+//! Electron's `applyUpsert` does; an open editor ignores a `sync` update (`use-note-body.ts`).
 
 use memry_desktop::notes::read;
 use memry_desktop::notes::view::NoteView;
@@ -38,7 +42,7 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
     NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteMovedEvent,
-    NoteOutsideEditKeptEvent, NoteRenamedEvent, NoteUpdatedEvent, broadcast,
+    NoteOutsideEditKeptEvent, NoteRenamedEvent, NoteTagsChangedEvent, NoteUpdatedEvent, broadcast,
 };
 
 /// Generic over the runtime so a test drives it on a mock app.
@@ -79,6 +83,7 @@ enum Outgoing {
     OutsideEditKept {
         note_id: String,
     },
+    TagsChanged,
 }
 
 fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
@@ -87,6 +92,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     };
     let outgoing = match outgoing {
         Outgoing::Deleted(event) => return broadcast(app, event),
+        Outgoing::TagsChanged => return broadcast(app, NoteTagsChangedEvent),
         Outgoing::Moved(event) => return broadcast(app, event),
         outgoing => outgoing,
     };
@@ -140,7 +146,7 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
                 );
             }
         },
-        Outgoing::Deleted(_) | Outgoing::Moved(_) => {}
+        Outgoing::Deleted(_) | Outgoing::Moved(_) | Outgoing::TagsChanged => {}
     }
 }
 
@@ -151,11 +157,20 @@ fn file_title(path: &str) -> &str {
 }
 
 /// An edit in the app also says the header tags and the icon, as Electron's `updateNote` does.
+/// A pulled change leaves the text out: Electron's `applyUpsert` never sends `content`, so an
+/// open editor does not remount on a pull that did not touch its text (`note-handler.ts:563`).
 fn updated(note: &NoteView, source: NoteEventSource) -> NoteUpdatedEvent {
     let mut changes = note.changes();
-    if source == NoteEventSource::Internal {
-        changes.insert("headerTags".into(), json!(note.header_tags));
-        changes.insert("emoji".into(), json!(note.emoji));
+    match source {
+        NoteEventSource::Internal => {
+            changes.insert("headerTags".into(), json!(note.header_tags));
+            changes.insert("emoji".into(), json!(note.emoji));
+        }
+        NoteEventSource::Sync => {
+            changes.remove("content");
+            changes.remove("snippet");
+        }
+        NoteEventSource::External => {}
     }
     NoteUpdatedEvent {
         id: note.id.clone(),
@@ -178,7 +193,8 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
                 source @ (ChangeSource::Watcher
                 | ChangeSource::AppEdit
                 | ChangeSource::LinkRewrite
-                | ChangeSource::Save),
+                | ChangeSource::Save
+                | ChangeSource::Sync),
             ..
         } => Some(Outgoing::Updated {
             note_id,
@@ -212,6 +228,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             MoveKind::JournalFormat => None,
         },
         Applied::OutsideEditKept { note_id, .. } => Some(Outgoing::OutsideEditKept { note_id }),
+        Applied::TagsPulled { .. } => Some(Outgoing::TagsChanged),
         _ => None,
     }
 }
@@ -223,6 +240,7 @@ fn source_of(source: ChangeSource) -> NoteEventSource {
         | ChangeSource::Walk
         | ChangeSource::AppEdit
         | ChangeSource::LinkRewrite => NoteEventSource::External,
+        ChangeSource::Sync => NoteEventSource::Sync,
     }
 }
 
@@ -359,5 +377,55 @@ mod tests {
         );
         // Electron's journal format migration sends no note event.
         assert_eq!(outgoing(renamed(MoveKind::JournalFormat)), None);
+    }
+
+    /// A pulled place or frontmatter the write-back gave the file (#5309) is a `sync`
+    /// `notes:updated`, and pulled tags are `notes:tags-changed` (Electron `applyUpsert`).
+    #[test]
+    fn a_pulled_change_sends_a_sync_update_and_its_tags() {
+        assert_eq!(
+            outgoing(changed(ChangeSource::Sync)),
+            Some(Outgoing::Updated {
+                note_id: "n".into(),
+                source: NoteEventSource::Sync,
+            })
+        );
+        let tags = Applied::TagsPulled {
+            note_id: "n".into(),
+        };
+        assert_eq!(outgoing(tags), Some(Outgoing::TagsChanged));
+    }
+
+    /// A pulled change's `notes:updated` leaves out the text and its snippet, as Electron's
+    /// `applyUpsert` does (L563-567); an outside edit's carries them.
+    #[test]
+    fn a_pulled_update_carries_no_text() {
+        let note = NoteView {
+            id: "n".into(),
+            path: "n.md".into(),
+            title: "N".into(),
+            content: "Some text".into(),
+            frontmatter: Default::default(),
+            created: 1,
+            modified: 2,
+            tags: vec!["t".into()],
+            header_tags: Vec::new(),
+            aliases: Vec::new(),
+            word_count: 2,
+            properties: Default::default(),
+            emoji: None,
+            local_only: false,
+            size_class: memry_desktop::notes::view::SizeClass::Note,
+            large_file: None,
+            content_omitted: false,
+        };
+        let pulled = updated(&note, NoteEventSource::Sync).changes;
+        assert!(!pulled.contains_key("content"), "{pulled:?}");
+        assert!(!pulled.contains_key("snippet"), "{pulled:?}");
+        assert_eq!(pulled["title"], "N");
+        assert_eq!(pulled["tags"], json!(["t"]));
+        let outside = updated(&note, NoteEventSource::External).changes;
+        assert_eq!(outside["content"], "Some text");
+        assert!(outside.contains_key("snippet"));
     }
 }

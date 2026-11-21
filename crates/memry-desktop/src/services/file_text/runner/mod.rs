@@ -7,7 +7,8 @@
 //! tier does not write for them until #4209; until then only attachments are read.
 //!
 //! One loop, one file at a time, one page at a time. A PDF page with a text layer is read from
-//! it; a page without one, and every image, goes through OCR. A run without OCR (a build before
+//! it (pdfium's `text().all()`, whose line breaks can differ from pdf.js's in Electron; the words
+//! are the same); a page without one, and every image, goes through OCR. A run without OCR (a build before
 //! #3542 lane F) stores those parts unreadable without rendering or reading them, reads on past
 //! them, and fails the job `OCR unavailable`, so the app-version retry reads them again. Every
 //! page is stored as it finishes, and a job reads only the pages it has no row for, so a restart

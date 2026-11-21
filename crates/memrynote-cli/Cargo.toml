@@ -21,6 +21,10 @@ memry-core = { path = "../memry-core", default-features = false, features = ["ma
 memry-desktop = { path = "../memry-desktop" }
 serde_json = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
+# `O_NOFOLLOW` and `access(W_OK)` for the terminal command shim.
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
 
