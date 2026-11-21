@@ -43,3 +43,22 @@ pub struct TaskMovedEvent {
 pub struct TaskActivityCreatedEvent {
     pub task_id: String,
 }
+
+/// A project was made (`tasks:project-created`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ProjectCreatedEvent {
+    pub id: String,
+}
+
+/// A project's metadata, statuses, links, home note, archive or position changed
+/// (`tasks:project-updated`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ProjectUpdatedEvent {
+    pub id: String,
+}
+
+/// A project was deleted with its tasks (`tasks:project-deleted`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct ProjectDeletedEvent {
+    pub id: String,
+}

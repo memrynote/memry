@@ -77,6 +77,11 @@ impl Fixture {
         change.created[0].clone()
     }
 
+    /// The vault's folder on disk.
+    pub(crate) fn root(&self) -> &std::path::Path {
+        self._dir.path()
+    }
+
     /// Empties the outbox, so a test sees only its own writes.
     pub(crate) fn pushed(&self) {
         self.vault
