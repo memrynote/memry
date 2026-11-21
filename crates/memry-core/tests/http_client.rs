@@ -471,6 +471,42 @@ async fn the_device_limit_is_its_own_terminal_error() {
     assert_eq!(transport.call_count(), 1);
 }
 
+/// #5373: the plan's vault cap reaches every `/sync/*` route, not only
+/// `POST /sync/vaults`, so the shell can say the plan is full instead of
+/// showing a generic refusal. A `SYNC_PAYMENT_REQUIRED` stays a `Status`,
+/// which is the one fact `sync::policy` reads to demote the entitlement.
+#[tokio::test]
+async fn the_vault_limit_needs_a_plan_on_any_sync_route() {
+    let transport = FakeTransport::new(vec![
+        error_response(
+            402,
+            "SYNC_VAULT_LIMIT_EXCEEDED",
+            "plus allows 1 synced vaults",
+        ),
+        error_response(402, "SYNC_PAYMENT_REQUIRED", "no plan"),
+    ]);
+    let client = make_client(transport.clone(), RecordingSleeper::new());
+
+    let error = client
+        .send(ApiRequest::post("/sync/pull"))
+        .await
+        .unwrap_err();
+    match error {
+        ApiError::PaymentRequired { code, message } => {
+            assert_eq!(code.as_deref(), Some("SYNC_VAULT_LIMIT_EXCEEDED"));
+            assert_eq!(message, "plus allows 1 synced vaults");
+        }
+        other => panic!("{other:?}"),
+    }
+
+    let error = client
+        .send(ApiRequest::post("/sync/push"))
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ApiError::Status { status: 402, .. }));
+    assert_eq!(transport.call_count(), 2);
+}
+
 #[tokio::test]
 async fn a_revoked_device_is_terminal_on_any_status() {
     let transport = FakeTransport::new(vec![error_response(409, "AUTH_DEVICE_REVOKED", "gone")]);

@@ -117,7 +117,11 @@ final class AccountModel {
         return value > 10_000_000_000 ? value / 1000 : value
     }
 
+    /// The screen's first account call, so it starts the round: the notice
+    /// shows what this round refused, never a refusal from an earlier one
+    /// (#5373).
     func load() async {
+        failure = nil
         await refreshPending()
         guard let session else { return }
         do {
@@ -174,6 +178,7 @@ final class AccountModel {
         if succeeded {
             local.lastSyncedAt = .now
             isOffline = false
+            failure = nil
         } else {
             isOffline = true
         }
