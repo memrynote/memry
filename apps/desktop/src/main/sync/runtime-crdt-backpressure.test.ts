@@ -25,6 +25,7 @@ const fixture = vi.hoisted(() => ({
       (outbox: NoteBodyOutbox, single: SnapshotPushFn, batch: SnapshotBatchPushFn) => Promise<void>
     >(),
     setSyncPaused: vi.fn(),
+    setNetworkOnline: vi.fn(),
     setSnapshotCoverage: vi.fn(),
     setOweRemoteMerge: vi.fn(),
     setRemoteMerge: vi.fn(),
@@ -478,7 +479,15 @@ describe('runtime CRDT backpressure through durable SQLite and HTTP', () => {
       }
       expect(outcome).toEqual(expected[kind])
       expect(fixture.provider.recordPushedSnapshot).not.toHaveBeenCalled()
-      expect(data.db.select().from(noteBodySync).all()).toEqual([])
+      // Recorded as sent before the request (#5371), never as stored.
+      expect(data.db.select().from(noteBodySync).all()).toEqual([
+        expect.objectContaining({
+          noteId: 'snapshot-note',
+          lastSentAt: expect.any(Number),
+          lastConfirmedAt: null,
+          lastSnapshotAt: null
+        })
+      ])
       await attempt
     }
   )

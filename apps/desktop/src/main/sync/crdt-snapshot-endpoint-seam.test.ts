@@ -189,6 +189,7 @@ const runtimeMocks = vi.hoisted(() => {
       setRemoteMerge: vi.fn(),
       setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
+      setNetworkOnline: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushAllSnapshots: vi.fn(),
@@ -279,7 +280,10 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({
+  SyncQueueManager: runtimeMocks.SyncQueueManager,
+  NOTE_BODY_QUEUE_TYPE: 'note_body'
+}))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 /**

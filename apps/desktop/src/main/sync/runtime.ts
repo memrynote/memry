@@ -101,6 +101,7 @@ import {
 import { getRemoteSyncAdapter } from './item-handlers'
 import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
+import { isNeverSyncedLocalNote } from './note-sync-state'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotBatchPushFn } from './crdt-provider'
@@ -645,6 +646,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
         onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
+        onSending: (noteId) => recordNoteBodyPush(noteId, 'sent', Date.now(), db),
         onError: (noteId, err) => {
           if (err instanceof RateLimitError) snapshotScheduler.request(noteId)
           if (err instanceof SyncServerError && err.statusCode === 401) {
@@ -683,6 +685,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           return getCrdtProvider().recordPushedSnapshot(noteId, pushed)
         },
         onNotCovered: (noteId, refusal) => engine.recordSnapshotRefusal(noteId, refusal),
+        onSending: (noteIds) => {
+          for (const noteId of noteIds) recordNoteBodyPush(noteId, 'sent', Date.now(), db)
+        },
         onBatchError: (err) => {
           // Same two conditions the single push handles, and for the same
           // reasons — see the comments in snapshotPushFn. A body-limit 413
@@ -712,8 +717,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         return results
       }
 
+      // Built before the provider's init so every snapshot path sees it; it
+      // polls only once started, below.
+      const network = new NetworkMonitor()
       const crdtProvider = getCrdtProvider()
       crdtProvider.setSyncPaused(isSyncPaused)
+      crdtProvider.setNetworkOnline(() => network.online)
       await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
       // Once, then the pre-#2298 file is gone: its notes become full-state rows.
       importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
@@ -729,7 +738,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         log.error('Sync worker failed to start — continuing with main-thread crypto', err)
       }
 
-      const network = new NetworkMonitor()
       network.start()
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
@@ -876,7 +884,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
         signedOut: () => engine.isCrdtPullSignedOut(),
-        vaultLocked: () => engine.isCrdtPullVaultKeyMissing()
+        vaultLocked: () => engine.isCrdtPullVaultKeyMissing(),
+        neverSynced: (noteId) =>
+          !engine.knowsCrdtServerBody(noteId) && isNeverSyncedLocalNote(db, noteId)
       })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may

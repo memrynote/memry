@@ -31,6 +31,7 @@ vi.mock('./runtime-effects', () => ({
 }))
 
 vi.mock('../sync/crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
+vi.mock('../sync/note-sync-state', () => ({ recordNoteCreatedHere: vi.fn() }))
 
 vi.mock('../vault-locks/registry', () => ({
   assertNoteWritable: vi.fn((noteId: string) => {
@@ -48,6 +49,7 @@ import {
 } from './domain'
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
+import * as noteSyncState from '../sync/note-sync-state'
 
 /** What `updateNote` resolves to for a write that left the header list as it was. */
 function outcome(note: Record<string, unknown>): Awaited<ReturnType<typeof noteVault.updateNote>> {
@@ -86,6 +88,7 @@ describe('notes domain adapter', () => {
       content: 'Hello world #inline'
     })
     expect(runtimeEffects.syncNoteCreate).toHaveBeenCalledWith('note-1', 'Test Note', ['focus'])
+    expect(noteSyncState.recordNoteCreatedHere).toHaveBeenCalledWith('note-1')
   })
 
   it('routes local-only changes through the notes domain adapter', async () => {

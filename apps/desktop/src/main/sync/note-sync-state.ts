@@ -26,11 +26,13 @@
  * @module sync/note-sync-state
  */
 
-import { and, gt, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm'
 import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodies'
 import { noteBodySync, type NoteBodySyncRow } from '@memry/db-schema/schema/note-body-sync'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { notesCreatedHere } from '@memry/db-schema/schema/notes-created-here'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { getNoteMetadataById } from '@memry/storage-data'
 import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import type {
@@ -206,6 +208,60 @@ export function readLocalBodyFacts(db: DataDb, noteId: string): LocalBodyFacts {
       (rejected !== null && rejected > (pushes?.lastSnapshotAt ?? -1)),
     confirmedAt: pushes?.lastConfirmedAt ?? null,
     pushedStateVector: pushes?.pushedStateVector ?? null
+  }
+}
+
+/**
+ * Marks a note the app's create command made on this device (#5371). Never
+ * throws: a lost marker only keeps the note's read-only exit.
+ */
+export function recordNoteCreatedHere(noteId: string, db?: DataDb): void {
+  try {
+    ;(db ?? getDatabase())
+      .insert(notesCreatedHere)
+      .values({ noteId, createdAt: Date.now() })
+      .onConflictDoNothing()
+      .run()
+  } catch (err) {
+    log.warn('Could not mark a note as created on this device', { noteId, error: err })
+  }
+}
+
+/**
+ * Durable proof that the server holds nothing of this note (#5371): the app's
+ * create command made it here (`notes_created_here`; a file the ingest or the
+ * watcher indexed may come from a shared folder another device synced), no
+ * pull or confirmed record push stamped its row, its `create` is still queued
+ * (the queue keeps an unacked create, `coalesceSyncOperations`), and no body
+ * push ever started (a `note_body_sync` row of any kind; every body route
+ * records `sent` before its request). Journals never qualify: their record
+ * type is not `note`. Anything unreadable answers false.
+ */
+export function isNeverSyncedLocalNote(db: DataDb, noteId: string): boolean {
+  try {
+    const createdHere = db
+      .select({ noteId: notesCreatedHere.noteId })
+      .from(notesCreatedHere)
+      .where(eq(notesCreatedHere.noteId, noteId))
+      .get()
+    if (!createdHere) return false
+    const meta = getNoteMetadataById(db, noteId)
+    if (meta?.syncedAt !== null) return false
+    const create = db
+      .select({ id: syncQueue.id })
+      .from(syncQueue)
+      .where(
+        and(
+          eq(syncQueue.itemId, noteId),
+          eq(syncQueue.type, 'note'),
+          eq(syncQueue.operation, 'create')
+        )
+      )
+      .get()
+    return create !== undefined && !readPushes(db, [noteId]).has(noteId)
+  } catch (err) {
+    log.warn('Could not read whether a note ever reached the server', { noteId, error: err })
+    return false
   }
 }
 
