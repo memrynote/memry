@@ -45,8 +45,14 @@ impl ClaimGate {
         }
     }
 
+    pub(super) fn claim(&self) -> Result<Claim, StorageError> {
+        Claim::read(&self.store)
+    }
+
     fn held_elsewhere(&self) -> Result<bool, StorageError> {
-        Ok(Claim::read(&self.store)?.held_elsewhere((self.this_device)().as_deref()))
+        Ok(self
+            .claim()?
+            .held_elsewhere((self.this_device)().as_deref()))
     }
 
     /// `releaseTokenIfClaimedElsewhere`: true when it dropped a token. Blocking (the keychain).

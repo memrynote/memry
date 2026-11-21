@@ -271,6 +271,8 @@ mod domain_tasks;
 mod domain_tasks_lifecycle;
 #[path = "domain_tasks_list.rs"]
 mod domain_tasks_list;
+#[path = "domain_tasks_reopen.rs"]
+mod domain_tasks_reopen;
 #[path = "domain_tasks_spawn.rs"]
 mod domain_tasks_spawn;
 #[path = "domain_tasks_update.rs"]
@@ -491,6 +493,8 @@ mod sync_engine_seed;
 mod sync_equal_clock;
 #[path = "sync_first_sync.rs"]
 mod sync_first_sync;
+#[path = "sync_hardening_deletes.rs"]
+mod sync_hardening_deletes;
 #[path = "sync_hardening_ledgers.rs"]
 mod sync_hardening_ledgers;
 #[path = "sync_hardening_orphans.rs"]

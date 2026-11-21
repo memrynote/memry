@@ -1,11 +1,12 @@
 //! The calendar domain's commands, kept out of `registry.rs` to stay under the line ceiling.
 
-/// `collect_commands!` over `before`, the calendar commands, then `after`. `Builder::commands`
-/// takes one `Commands`, so the registry cannot assemble the list from several calls; this
-/// splices the calendar paths into the middle of the single call to keep the list in domain order.
+/// `with_task_commands!(collect_commands![...])` over `before`, the calendar commands, then
+/// `after`; the task macro (`registry/tasks.rs`) appends its commands. `Builder::commands` takes
+/// one `Commands`, so the registry cannot assemble the list from several calls; this splices the
+/// calendar paths into the middle of the single call to keep the list in domain order.
 macro_rules! collect_commands_with_calendar {
     ([$($before:tt)*] [$($after:tt)*]) => {
-        ::tauri_specta::collect_commands![
+        with_task_commands!(collect_commands![
             $($before)*
             // calendar
             crate::commands::calendar::calendar_create_event::<::tauri::Wry>,
@@ -20,7 +21,7 @@ macro_rules! collect_commands_with_calendar {
             crate::commands::calendar::calendar_update_event::<::tauri::Wry>,
             crate::commands::calendar::calendar_update_source_selection::<::tauri::Wry>,
             $($after)*
-        ]
+        ])
     };
 }
 

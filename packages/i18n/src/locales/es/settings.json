@@ -1398,6 +1398,7 @@
       "selectModel": "Seleccionar un modelo",
       "apiKey": "Clave de API",
       "apiKeyDescription": "Se guarda localmente y solo se envía al proveedor",
+      "apiKeyKeychainDescription": "Se guarda en el llavero de tu sistema operativo y solo se envía al proveedor",
       "apiKeyPlaceholder": "Introducir la clave de API de {provider}",
       "ollamaUrl": "URL de Ollama",
       "ollamaUrlDescription": "Dirección del servidor local",

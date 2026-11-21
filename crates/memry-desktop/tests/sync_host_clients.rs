@@ -70,6 +70,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "user-chosen CalDAV hosts: the password goes only to the origin the person typed, redirects followed by hand, never logged",
     ),
     (
+        "crates/memry-desktop/src/calendar_providers/caldav_dav.rs",
+        "user-chosen CalDAV hosts, only the method type; requests go through calendar_providers::caldav_transport",
+    ),
+    (
         "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
         "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
     ),

@@ -46,6 +46,7 @@ fn use_and_remove_keep_every_key_they_do_not_own() {
         data_dir: Some(dir.path().to_path_buf()),
         cwd: dir.path().to_path_buf(),
         home: None,
+        electron_profile: None,
     };
 
     run(&deps, &["vault", "use", "b"]);
@@ -62,12 +63,14 @@ fn use_and_remove_keep_every_key_they_do_not_own() {
     };
     expected["vaults"] = json!([only]);
     assert_eq!(stored, expected);
-    // The vault's files are never touched: the registry is the only file the commands write.
-    let names: Vec<_> = std::fs::read_dir(dir.path())
+    // The vault's files are never touched: the registry, and the lock that serialises its
+    // writers across processes, are the only files the commands write.
+    let mut names: Vec<_> = std::fs::read_dir(dir.path())
         .expect("dir")
         .map(|entry| entry.expect("entry").file_name())
         .collect();
-    assert_eq!(names, ["memry-config.json"]);
+    names.sort();
+    assert_eq!(names, ["memry-config.json", "memry-config.json.lock"]);
 }
 
 #[derive(Default)]
@@ -98,6 +101,7 @@ fn a_bad_registry_fails_the_command_and_is_left_for_the_app() {
         data_dir: Some(dir.path().to_path_buf()),
         cwd: dir.path().to_path_buf(),
         home: None,
+        electron_profile: None,
     };
     let run = |args: &[&str]| {
         let args: Vec<String> = args.iter().map(|arg| (*arg).to_owned()).collect();

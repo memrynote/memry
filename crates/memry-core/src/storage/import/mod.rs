@@ -17,8 +17,10 @@ use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
+mod notes;
 mod records;
 
+pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use records::ImportRecord;
 
 /// `meta` key a finished import writes into the staged `data.db`, last. Its

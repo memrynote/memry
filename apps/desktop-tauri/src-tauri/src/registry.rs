@@ -2,9 +2,13 @@
 //! per line, domains in alphabetical order, and its module under `src/commands/`.
 
 use tauri::Wry;
-use tauri_specta::{Builder, ErrorHandlingMode, collect_events};
+use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::startup::StartupState;
+
+// The task domain's commands and events (`registry/tasks.rs`).
+#[macro_use]
+mod tasks;
 
 mod calendar;
 mod dispatch;
@@ -78,6 +82,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::calendar_providers::calendar_connect_provider,
             crate::commands::calendar_providers::calendar_disconnect_provider,
             crate::commands::calendar_providers::calendar_discover_provider_calendars,
+            crate::commands::calendar_providers::calendar_refresh_provider,
             // canvas (the asset and live-canvas commands are not ported yet)
             crate::commands::canvas::canvas_create::<Wry>,
             crate::commands::canvas::canvas_delete::<Wry>,
@@ -373,22 +378,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_unpin_note_from_tag::<Wry>,
             crate::commands::tags::tags_update_color,
             crate::commands::tags::tags_update_icon,
-            // tasks
-            crate::commands::tasks::tasks_get::<Wry>,
-            crate::commands::tasks::tasks_get_linked_tasks::<Wry>,
-            crate::commands::tasks::tasks_get_overdue::<Wry>,
-            crate::commands::tasks::tasks_get_stats::<Wry>,
-            crate::commands::tasks::tasks_get_subtasks::<Wry>,
-            crate::commands::tasks::tasks_get_tags::<Wry>,
-            crate::commands::tasks::tasks_get_today::<Wry>,
-            crate::commands::tasks::tasks_get_upcoming::<Wry>,
-            crate::commands::tasks::tasks_list::<Wry>,
-            crate::commands::tasks::tasks_status_create::<Wry>,
-            crate::commands::tasks::tasks_status_delete::<Wry>,
-            crate::commands::tasks::tasks_status_list::<Wry>,
-            crate::commands::tasks::tasks_status_reorder::<Wry>,
-            crate::commands::tasks::tasks_status_update::<Wry>,
-            crate::commands::tasks::tasks_update::<Wry>,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -464,7 +453,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_set_caption_rects,
             crate::commands::shell::window_toggle_maximize,
         ]))
-        .events(collect_events![
+        .events(with_task_events!(collect_events![
             // account
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
@@ -562,10 +551,6 @@ pub fn builder() -> Builder<Wry> {
             crate::events::TagNotesChangedEvent,
             crate::events::TagRenamedEvent,
             crate::events::TagsProgressEvent,
-            // tasks
-            crate::events::TaskActivityCreatedEvent,
-            crate::events::TaskCreatedEvent,
-            crate::events::TaskUpdatedEvent,
             // vault
             crate::events::VaultActivityChangedEvent,
             crate::events::VaultConfigChangedEvent,
@@ -584,7 +569,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,
             crate::events::WindowChromeStateChangedEvent,
-        ])
+        ]))
         .typ::<StartupState>()
         // `ai_provider_request` is a binary command; its argument and answer still get types.
         .typ::<memry_desktop::ai::proxy::AiProviderRequest>()

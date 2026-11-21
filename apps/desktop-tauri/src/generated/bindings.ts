@@ -163,6 +163,12 @@ export const commands = {
 	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
 	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
 	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
+	/**
+	 *  `calendar:refresh-provider` (`caldav-provider.ts:91-115`): the push drain, then with `sourceId`
+	 *  that calendar's pull (its Retry), otherwise every account's (or `accountId`'s). A failure
+	 *  answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
+	 */
+	calendarRefreshProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_refresh_provider", { input }),
 	/**  `canvas:create`. */
 	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
 	/**  `canvas:delete`: the document goes to the OS trash. */
@@ -885,21 +891,6 @@ export const commands = {
 	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
 	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
 	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
-	tasksGet: (id: string) => __TAURI_INVOKE<TaskListItemView | null>("tasks_get", { id }),
-	tasksGetLinkedTasks: (noteId: string) => __TAURI_INVOKE<TaskView[]>("tasks_get_linked_tasks", { noteId }),
-	tasksGetOverdue: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_overdue"),
-	tasksGetStats: () => __TAURI_INVOKE<TaskStatsView>("tasks_get_stats"),
-	tasksGetSubtasks: (parentId: string) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_subtasks", { parentId }),
-	tasksGetTags: () => __TAURI_INVOKE<TaskTagCount[]>("tasks_get_tags"),
-	tasksGetToday: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_today"),
-	tasksGetUpcoming: (days: number | null) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_upcoming", { days }),
-	tasksList: (input: TaskListInput) => __TAURI_INVOKE<TaskPageView>("tasks_list", { input }),
-	tasksStatusCreate: (input: StatusCreateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_create", { input }),
-	tasksStatusDelete: (id: string) => __TAURI_INVOKE<StatusMutation>("tasks_status_delete", { id }),
-	tasksStatusList: (projectId: string) => __TAURI_INVOKE<StatusView[]>("tasks_status_list", { projectId }),
-	tasksStatusReorder: (input: StatusReorderInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_reorder", { input }),
-	tasksStatusUpdate: (input: StatusUpdateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_update", { input }),
-	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -1049,6 +1040,37 @@ export const commands = {
 	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
 	/**  Maximizes the calling window, or restores it when it is maximized. */
 	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
+	tasksArchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_archive", { id }),
+	tasksBulkArchive: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_archive", { input }),
+	tasksBulkComplete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_complete", { input }),
+	tasksBulkDelete: (input: BulkIdsInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_delete", { input }),
+	tasksBulkMove: (input: BulkMoveInput) => __TAURI_INVOKE<BulkMutation>("tasks_bulk_move", { input }),
+	tasksComplete: (input: TaskCompleteInput) => __TAURI_INVOKE<TaskCompletion>("tasks_complete", { input }),
+	tasksConvertToSubtask: (input: ConvertToSubtaskInput) => __TAURI_INVOKE<TaskMutation>("tasks_convert_to_subtask", { input }),
+	tasksConvertToTask: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_convert_to_task", { id }),
+	tasksCreate: (input: TaskCreateInput) => __TAURI_INVOKE<TaskMutation>("tasks_create", { input }),
+	tasksDelete: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_delete", { id }),
+	tasksDuplicate: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_duplicate", { id }),
+	tasksGet: (id: string) => __TAURI_INVOKE<TaskListItemView | null>("tasks_get", { id }),
+	tasksGetActivity: (input: TaskActivityListInput) => __TAURI_INVOKE<TaskActivityPageView>("tasks_get_activity", { input }),
+	tasksGetLinkedTasks: (noteId: string) => __TAURI_INVOKE<TaskView[]>("tasks_get_linked_tasks", { noteId }),
+	tasksGetOverdue: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_overdue"),
+	tasksGetStats: () => __TAURI_INVOKE<TaskStatsView>("tasks_get_stats"),
+	tasksGetSubtasks: (parentId: string) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_subtasks", { parentId }),
+	tasksGetTags: () => __TAURI_INVOKE<TaskTagCount[]>("tasks_get_tags"),
+	tasksGetToday: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_today"),
+	tasksGetUpcoming: (days: number | null) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_upcoming", { days }),
+	tasksList: (input: TaskListInput) => __TAURI_INVOKE<TaskPageView>("tasks_list", { input }),
+	tasksMove: (input: TaskMoveInput) => __TAURI_INVOKE<TaskMutation>("tasks_move", { input }),
+	tasksReorder: (input: TaskReorderInput) => __TAURI_INVOKE<TaskAck>("tasks_reorder", { input }),
+	tasksStatusCreate: (input: StatusCreateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_create", { input }),
+	tasksStatusDelete: (id: string) => __TAURI_INVOKE<StatusMutation>("tasks_status_delete", { id }),
+	tasksStatusList: (projectId: string) => __TAURI_INVOKE<StatusView[]>("tasks_status_list", { projectId }),
+	tasksStatusReorder: (input: StatusReorderInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_reorder", { input }),
+	tasksStatusUpdate: (input: StatusUpdateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_update", { input }),
+	tasksUnarchive: (id: string) => __TAURI_INVOKE<TaskAck>("tasks_unarchive", { id }),
+	tasksUncomplete: (id: string) => __TAURI_INVOKE<TaskMutation>("tasks_uncomplete", { id }),
+	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
 };
 
 /** Events */
@@ -1123,7 +1145,10 @@ export const events = {
 	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
 	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
 	taskActivityCreatedEvent: makeEvent<TaskActivityCreatedEvent, TaskActivityCreatedEvent>("task-activity-created-event"),
+	taskCompletedEvent: makeEvent<TaskCompletedEvent, TaskCompletedEvent>("task-completed-event"),
 	taskCreatedEvent: makeEvent<TaskCreatedEvent, TaskCreatedEvent>("task-created-event"),
+	taskDeletedEvent: makeEvent<TaskDeletedEvent, TaskDeletedEvent>("task-deleted-event"),
+	taskMovedEvent: makeEvent<TaskMovedEvent, TaskMovedEvent>("task-moved-event"),
 	taskUpdatedEvent: makeEvent<TaskUpdatedEvent, TaskUpdatedEvent>("task-updated-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
@@ -1573,6 +1598,24 @@ export type BuiltInColumnView = {
 	id: string,
 	displayName: string,
 	type: string,
+};
+
+/**  `BulkIdsSchema`. */
+export type BulkIdsInput = {
+	ids: string[],
+};
+
+/**  `BulkMoveSchema`. */
+export type BulkMoveInput = {
+	ids: string[],
+	projectId: string,
+};
+
+/**  A bulk write's envelope: `{ success, count }`, or `{ success: false, error }`. */
+export type BulkMutation = {
+	success: boolean,
+	count: number,
+	error?: string | null,
 };
 
 /**  `CalendarProjectionBinding`. */
@@ -2084,7 +2127,7 @@ export type CommandError = {
 };
 
 /**  `CaldavConnectErrorCode`. */
-export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices";
+export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices" | "sync_failed";
 
 /**  `ContentType`. */
 export type ContentType = "note" | "journal" | "task" | "inbox";
@@ -2099,6 +2142,12 @@ export type ContextMenuItem = {
 	accelerator?: string | null,
 	disabled?: boolean | null,
 	type?: ItemKind | null,
+};
+
+/**  `ConvertToSubtaskSchema`. */
+export type ConvertToSubtaskInput = {
+	taskId: string,
+	parentId: string,
 };
 
 /**
@@ -4835,6 +4884,12 @@ export type TagsProgressEvent = {
 	total: number,
 };
 
+/**  The `{ success, error? }` envelope of a write that answers no task. */
+export type TaskAck = {
+	success: boolean,
+	error?: string | null,
+};
+
 /**
  *  A task's activity log grew (`task-activity:created`): a pulled peer row or a `superseded` row
  *  this device wrote, sent once its row committed (`SyncEvent::TaskActivityCreated`), so the
@@ -4844,11 +4899,91 @@ export type TaskActivityCreatedEvent = {
 	taskId: string,
 };
 
+/**  `TaskActivityEntry`. */
+export type TaskActivityEntryView = {
+	id: string,
+	taskId: string,
+	action: string,
+	field: string | null,
+	oldValue: string | null,
+	newValue: string | null,
+	actor: string,
+	isThisDevice: boolean,
+	/**  Empty for a row that carries no time. */
+	createdAt: string,
+};
+
+/**  `TaskActivityListSchema`. */
+export type TaskActivityListInput = {
+	taskId: string,
+	limit?: number | null,
+	offset?: number | null,
+	actions?: string[] | null,
+};
+
+/**  `TaskActivityListResponse`. */
+export type TaskActivityPageView = {
+	entries: TaskActivityEntryView[],
+	total: number,
+	hasMore: boolean,
+};
+
+/**  `TaskCompleteSchema`. */
+export type TaskCompleteInput = {
+	id: string,
+	/**  An ISO instant (`z.iso.datetime()`); absent is now. */
+	completedAt?: string | null,
+	/**  A completion recorded from elsewhere: closes without rolling a repeat series. */
+	recordOnly?: boolean | null,
+};
+
+/**  A task was completed (`tasks:completed`). */
+export type TaskCompletedEvent = {
+	id: string,
+};
+
+/**  `completeTask`'s envelope: `{ success, task, nextOccurrence }`, or the refusal. */
+export type TaskCompletion = {
+	success: boolean,
+	task: TaskListItemView | null,
+	nextOccurrence: TaskListItemView | null,
+	error?: string | null,
+};
+
+/**  `TaskCreateSchema`. Nullish fields are `None` for both absent and `null`. */
+export type TaskCreateInput = {
+	projectId: string,
+	title: string,
+	description?: string | null,
+	priority?: number | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	dueDate?: string | null,
+	dueTime?: string | null,
+	durationMinutes?: number | null,
+	startDate?: string | null,
+	/**  Derived from `repeatConfig`; a sent value is ignored. */
+	isRepeating?: boolean | null,
+	repeatConfig?: Value | null,
+	repeatFrom?: string | null,
+	tags?: string[] | null,
+	linkedNoteIds?: string[] | null,
+	linkedCanvasIds?: string[] | null,
+	sourceNoteId?: string | null,
+	position?: number | null,
+	fields?: { [key in string]: Value } | null,
+};
+
 /**
  *  A task was made, by a create or as the next occurrence of a completed repeating task
  *  (`tasks:created`).
  */
 export type TaskCreatedEvent = {
+	id: string,
+};
+
+/**  A task was deleted (`tasks:deleted`). */
+export type TaskDeletedEvent = {
 	id: string,
 };
 
@@ -4877,6 +5012,20 @@ export type TaskListItemView = {
 	completedSubtaskCount: number,
 } & TaskView;
 
+/**  `TaskMoveSchema`. Absent `targetStatusId`/`targetParentId` keep the value, `null` clears it. */
+export type TaskMoveInput = {
+	taskId: string,
+	targetProjectId?: string | null,
+	targetStatusId?: string | null,
+	targetParentId?: string | null,
+	position: number,
+};
+
+/**  A task changed project, status, parent or position through a move (`tasks:moved`). */
+export type TaskMovedEvent = {
+	id: string,
+};
+
 /**  The `withDb` envelope of a task write: `{ success, task, error }`. */
 export type TaskMutation = {
 	success: boolean,
@@ -4889,6 +5038,12 @@ export type TaskPageView = {
 	tasks: TaskListItemView[],
 	total: number,
 	hasMore: boolean,
+};
+
+/**  `TaskReorderSchema`. */
+export type TaskReorderInput = {
+	taskIds: string[],
+	positions: number[],
 };
 
 /**  `TaskResultMetadata`. */

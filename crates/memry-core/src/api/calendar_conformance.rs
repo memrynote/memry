@@ -400,6 +400,7 @@ fn writes_section(section: &Value) -> Result<Value, StorageError> {
                 is_all_day: input.get("isAllDay").and_then(Value::as_bool),
                 target_calendar_id: text_patch(input, "targetCalendarId"),
                 color: text_patch(input, "color"),
+                ..EventPatch::default()
             };
             write::update_event(conn, &scratch_id, &patch, &device, now)?;
             updates.push(normalise(
