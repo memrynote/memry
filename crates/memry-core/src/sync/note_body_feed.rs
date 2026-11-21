@@ -415,9 +415,7 @@ pub(super) fn land_and_advance(
     // The one-time legacy pull, as debts: every held document is owed once,
     // and the pass's body step works them off with per-document progress.
     if fetched.served && read_meta(&txn, META_NOTE_BODY_LEGACY_PULL)?.is_none() {
-        for doc_id in documents_with_body_state(&txn)? {
-            body_debt::owe(&txn, &doc_id)?;
-        }
+        owe_held_bodies(&txn)?;
         finish_legacy_pull(&txn)?;
     } else if !fetched.served && store::read_cursor(&txn, RECORD_CURSOR_SCOPE)?.as_deref() != cursor
     {
@@ -446,9 +444,21 @@ pub(super) fn rearm_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
     Ok(())
 }
 
+/// Owes a body pull for every held document: the legacy pull, and a first sync
+/// resumed past its body packs, whose re-run refs pass moved the record cursor
+/// past body rows the packs never saw.
+pub(super) fn owe_held_bodies(conn: &Connection) -> Result<(), StorageError> {
+    for doc_id in documents_with_body_state(conn)? {
+        body_debt::owe(conn, &doc_id)?;
+    }
+    Ok(())
+}
+
 /// A completed first sync is the legacy pull: after its refs pass moved the
 /// record cursor, every live document was pulled to the server's head or owed,
 /// so every body row at or below the cursor is held or its document is owed.
+/// `bodies_pass` keeps the window half of that, `body_packs_pass` the resumed
+/// half.
 /// Without this, the first page that serves `noteBodies` owes every document
 /// again.
 pub(super) fn finish_legacy_pull(conn: &Connection) -> Result<(), StorageError> {
