@@ -282,7 +282,8 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('@memry/sync-client/queue', () => ({
   SyncQueueManager: runtimeMocks.SyncQueueManager,
-  NOTE_BODY_FULL_STATE_PAYLOAD: ''
+  NOTE_BODY_FULL_STATE_PAYLOAD: '',
+  NOTE_BODY_QUEUE_TYPE: 'note_body'
 }))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))

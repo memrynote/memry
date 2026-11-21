@@ -100,6 +100,7 @@ import {
 import { getRemoteSyncAdapter } from './item-handlers'
 import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
+import { isNeverSyncedLocalNote } from './note-sync-state'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider, type SnapshotBatchPushFn } from './crdt-provider'
@@ -874,7 +875,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
         signedOut: () => engine.isCrdtPullSignedOut(),
-        vaultLocked: () => engine.isCrdtPullVaultKeyMissing()
+        vaultLocked: () => engine.isCrdtPullVaultKeyMissing(),
+        neverSynced: (noteId) =>
+          !engine.knowsCrdtServerBody(noteId) && isNeverSyncedLocalNote(db, noteId)
       })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may

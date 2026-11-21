@@ -337,7 +337,10 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({
+  SyncQueueManager: runtimeMocks.SyncQueueManager,
+  NOTE_BODY_QUEUE_TYPE: 'note_body'
+}))
 // runtime.ts lazy-imports the cover service; unmocked, that import resolves late
 // on a slow runner and calls getDatabase() inside a later test.
 vi.mock('../home/cover-service', () => ({

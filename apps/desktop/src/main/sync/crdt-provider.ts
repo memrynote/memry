@@ -100,6 +100,11 @@ export interface RemoteBodyQuery {
   signedOut: () => boolean
   /** The last pull found no vault key (a locked keychain); signing in does not fix it. */
   vaultLocked: () => boolean
+  /**
+   * Durable proof that the server holds nothing of the note: created here,
+   * never synced, and no sign of a server body (#5371).
+   */
+  neverSynced: (noteId: string) => boolean
 }
 
 /**
@@ -443,14 +448,16 @@ export class CrdtProvider {
    * of seeding from the file (#5290). A seed beside a body the server holds
    * duplicates it once the body merges (#2536). So the doc waits while the
    * merge did not complete or left server state unmerged. It seeds only when
-   * the server provably holds nothing this device lacks, or for a local-only
-   * note. Offline and stuck notes keep waiting, and their editors show the
-   * vault file read-only (D-UNMERGED-OPEN-EXIT-2).
+   * the server provably holds nothing this device lacks, for a local-only
+   * note, or for a note created here that provably never synced, which opens
+   * editable offline (#5371). Every other offline or stuck note keeps waiting,
+   * and its editors show the vault file read-only (D-UNMERGED-OPEN-EXIT-2).
    */
   private waitsForRemoteBody(noteId: string, merged: boolean): boolean {
     const query = this.remoteBody
     if (!query || this.isNoteLocalOnly(noteId)) return false
-    return !merged || query.hasUnmerged(noteId)
+    if (query.hasUnmerged(noteId)) return true
+    return !merged && !query.neverSynced(noteId)
   }
 
   /**
