@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
 import type * as PathsModule from '../lib/paths'
@@ -107,11 +107,11 @@ const mocks = vi.hoisted(() => {
     resetWritebackState: vi.fn(),
     writebackNow: vi.fn(),
     persistenceInstances: [] as Array<{
-      getYDoc: ReturnType<typeof vi.fn>
-      clearDocument: ReturnType<typeof vi.fn>
+      getYDoc: Mock<(noteId: string) => Promise<Y.Doc>>
+      clearDocument: Mock<(noteId: string) => Promise<void>>
       destroy: ReturnType<typeof vi.fn>
-      storeUpdate: ReturnType<typeof vi.fn>
-      flushDocument: ReturnType<typeof vi.fn>
+      storeUpdate: Mock<(noteId: string, update: Uint8Array) => Promise<void>>
+      flushDocument: Mock<(noteId: string) => Promise<void>>
       getMeta: ReturnType<typeof vi.fn>
       setMeta: ReturnType<typeof vi.fn>
     }>
@@ -365,7 +365,6 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 
 /** The store holds merged state for the next doc it opens, so that doc can vouch for a claim. */
 const withPersistedDoc = (): void => {
-  // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
   mocks.persistenceInstances[0].getYDoc.mockImplementationOnce(async (noteId: string) => {
     const doc = new Y.Doc({ guid: `${noteId}:persisted` })
     doc.getMap('meta').set('merged', true)
@@ -1302,6 +1301,138 @@ describe('CrdtProvider', () => {
     expect(fresh.getMap('meta').get('date')).toBe('2026-05-01')
   })
 
+  describe('a journal day deleted while its body is in flight', () => {
+    const dayId = 'j2026-05-02'
+    let fileText: string
+
+    beforeEach(() => {
+      fileText = 'old text'
+      mocks.markdownToYFragment.mockImplementation(
+        async (_content: string, fragment: Y.XmlFragment) => {
+          fragment.insert(0, [new Y.XmlText(fileText)])
+          return true
+        }
+      )
+    })
+
+    /** What a fresh device builds from the snapshots and body rows this device pushed. */
+    const freshDeviceDoc = (): Y.Doc => {
+      const fresh = new Y.Doc()
+      for (const [id, state] of pushSnapshot.mock.calls) {
+        if (id === dayId) Y.applyUpdate(fresh, state)
+      }
+      for (const [id, update] of queue.enqueue.mock.calls as Array<[string, Uint8Array]>) {
+        if (id === dayId) Y.applyUpdate(fresh, update)
+      }
+      return fresh
+    }
+
+    // #5359: a keystroke that reaches main while the purge flushes the closing
+    // doc must not queue an old-generation row after the purge dropped the rest.
+    it('drops a keystroke that arrives while the purge closes the doc', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const store = mocks.persistenceInstances.at(-1)!
+      createWindow(1)
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.open(dayId, 1)
+      const renderer = new Y.Doc()
+      Y.applyUpdate(renderer, Y.encodeStateAsUpdate(singleton.getDoc(dayId)!))
+
+      let releaseFlush!: () => void
+      store.flushDocument.mockImplementationOnce(
+        () => new Promise<void>((resolve) => (releaseFlush = resolve))
+      )
+      const deleted = enqueueJournalDelete(dayId, '2026-05-02')
+      await vi.waitFor(() => expect(store.flushDocument).toHaveBeenCalledWith(dayId))
+      queue.enqueue.mockClear()
+      pushSnapshot.mockClear()
+      const sv = Y.encodeStateVector(renderer)
+      ;(renderer.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlText).insert(0, 'LATE ')
+      singleton.applyIpcUpdate(dayId, Y.encodeStateAsUpdate(renderer, sv), 1)
+      singleton.applyIpcSyncStep2(dayId, Y.encodeStateAsUpdate(renderer, sv))
+      releaseFlush()
+      await deleted
+
+      fileText = 'new text'
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.close(dayId)
+
+      const fresh = freshDeviceDoc()
+      const body = fresh.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+      expect(fresh.store.pendingStructs).toBeNull()
+      expect(body).toContain('new text')
+      expect(body).not.toContain('LATE')
+    })
+
+    // The drop above is the purge's alone: a plain close keeps the edit and
+    // stores it, so closing a tab never loses the last keystrokes.
+    it('keeps a keystroke that arrives while a plain close flushes the doc', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const store = mocks.persistenceInstances.at(-1)!
+      createWindow(1)
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.open(dayId, 1)
+      const renderer = new Y.Doc()
+      Y.applyUpdate(renderer, Y.encodeStateAsUpdate(singleton.getDoc(dayId)!))
+
+      let releaseFlush!: () => void
+      store.flushDocument.mockImplementationOnce(
+        () => new Promise<void>((resolve) => (releaseFlush = resolve))
+      )
+      const closed = singleton.close(dayId, 1)
+      await vi.waitFor(() => expect(store.flushDocument).toHaveBeenCalledWith(dayId))
+      store.storeUpdate.mockClear()
+      const sv = Y.encodeStateVector(renderer)
+      ;(renderer.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlText).insert(0, 'LAST ')
+      const update = Y.encodeStateAsUpdate(renderer, sv)
+      singleton.applyIpcUpdate(dayId, update, 1)
+      releaseFlush()
+      await closed
+
+      expect(store.storeUpdate).toHaveBeenCalledWith(dayId, update)
+    })
+
+    // #5358 covered only a day open in an editor. A closed day's body lives
+    // in the store, which the delete must clear before the day is written again.
+    it('starts a new body for a closed day deleted and written again', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const persisted = new Map<string, Uint8Array[]>()
+      const store = mocks.persistenceInstances.at(-1)!
+      store.storeUpdate.mockImplementation(async (id: string, update: Uint8Array) => {
+        persisted.set(id, [...(persisted.get(id) ?? []), update])
+      })
+      store.getYDoc.mockImplementation(async (id: string) => {
+        const doc = new Y.Doc({ guid: `${id}:persisted` })
+        for (const update of persisted.get(id) ?? []) Y.applyUpdate(doc, update)
+        return doc
+      })
+      store.clearDocument.mockImplementation(async (id: string) => {
+        persisted.delete(id)
+      })
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.close(dayId)
+      expect(persisted.get(dayId)?.length).toBeGreaterThan(0)
+
+      await enqueueJournalDelete(dayId, '2026-05-02')
+      queue.enqueue.mockClear()
+      pushSnapshot.mockClear()
+      fileText = 'new text'
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.close(dayId)
+
+      const fresh = freshDeviceDoc()
+      const body = fresh.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+      expect(fresh.store.pendingStructs).toBeNull()
+      expect(body).toContain('new text')
+      expect(body).not.toContain('old text')
+      const reread = await store.getYDoc(dayId)
+      expect(reread.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()).not.toContain('old text')
+    })
+  })
+
   describe('purging the doc of a note the user deleted', () => {
     beforeEach(async () => {
       await provider.open('note-1', undefined, { skipSeed: true })
@@ -1671,7 +1802,7 @@ describe('CrdtProvider', () => {
     await provider.compactDoc('note-1')
 
     const store = mocks.persistenceInstances[0]
-    const storedUpdates = store.storeUpdate.mock.calls.map(([, update]) => update as Uint8Array)
+    const storedUpdates = store.storeUpdate.mock.calls.map(([, update]) => update)
 
     // The snapshot is written by compactDoc itself; seeding newDoc with it must
     // not send it through onDocUpdate and store it a second time.
