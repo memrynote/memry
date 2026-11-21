@@ -2894,8 +2894,11 @@ export type NoteDeletedEvent = {
 	source: NoteEventSource,
 };
 
-/**  Who made a note change (`NoteEventSource`): the app, or an edit outside it. */
-export type NoteEventSource = "internal" | "external";
+/**
+ *  Who made a note change (`NoteEventSource`): the app, an edit outside it, or a change pulled
+ *  from another device, which an open editor does not remount for (Electron `source: 'sync'`).
+ */
+export type NoteEventSource = "internal" | "external" | "sync";
 
 /**
  *  Note events were dropped because their forwarder fell behind (no Electron channel: Electron

@@ -123,6 +123,38 @@ fn every_item_of_a_page_is_one_record_with_its_outcome() {
     .expect("the pages");
 }
 
+/// A pulled note carries the title this device held before it applied: none for a create, the
+/// old title for a rename, the same title for a change that keeps it (#5316).
+#[test]
+fn a_pulled_note_says_the_title_it_had_before() {
+    let dir = temp_dir("feed-title-before");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        let renamed = |title: &str, clock: Value| {
+            let mut payload = note(clock);
+            payload["title"] = json!(title);
+            record("note", "note00000001", payload)
+        };
+        let totals = page(
+            conn,
+            vec![
+                renamed("Plan", json!({"peer": 1})),
+                renamed("Later", json!({"peer": 2})),
+                renamed("Later", json!({"peer": 3})),
+            ],
+        );
+        let before: Vec<_> = totals
+            .feed
+            .records
+            .iter()
+            .map(|r| r.title_before.as_deref())
+            .collect();
+        assert_eq!(before, [None, Some("Plan"), Some("Later")]);
+        Ok(())
+    })
+    .expect("the page");
+}
+
 /// Electron's `note-handler.ts:740-746`: a tombstone older than the local edit
 /// is skipped and the note revived; a re-pulled identical note asks for its
 /// attachments again (#2294), a note the local edit beat does not.

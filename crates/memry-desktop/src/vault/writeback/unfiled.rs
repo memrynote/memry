@@ -65,7 +65,7 @@ impl Pass {
             raw: skeleton,
         };
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
-        let output = match output_over(made, note_id, &rel, &file) {
+        let output = match output_over(made, note_id, &rel, &file, None) {
             Ok(output) => output,
             Err(outcome) => return outcome,
         };
