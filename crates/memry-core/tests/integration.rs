@@ -105,6 +105,8 @@ mod body_edit_restore;
 mod body_tags_reindex;
 #[path = "calendar_cursor_device_local.rs"]
 mod calendar_cursor_device_local;
+#[path = "calendar_desktop_reads.rs"]
+mod calendar_desktop_reads;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feed_untrusted.rs"]

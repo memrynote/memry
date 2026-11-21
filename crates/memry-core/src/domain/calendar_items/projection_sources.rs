@@ -138,6 +138,7 @@ pub(crate) fn reminders(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             }
         })
         .collect())
@@ -190,6 +191,7 @@ pub(crate) fn note_date_reminders(
                 source_type: "note_date".to_owned(),
                 description_preview: description_preview(row.note.as_deref()),
                 is_triggered: Some(row.status == "triggered" || row.status == "dismissed"),
+                task: None,
                 source_id: row.id,
                 title,
                 start_at: start,
@@ -274,6 +276,7 @@ pub(crate) fn inbox_snoozes(
             note_id: None,
             anchor_id: None,
             is_triggered: None,
+            task: None,
         })
         .collect())
 }
@@ -386,6 +389,7 @@ pub(crate) fn external_events(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }
@@ -467,6 +471,7 @@ pub(crate) fn note_items(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }
@@ -508,6 +513,7 @@ pub(crate) fn note_items(
                 note_id: None,
                 anchor_id: None,
                 is_triggered: None,
+                task: None,
             });
         }
     }

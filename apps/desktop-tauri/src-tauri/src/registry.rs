@@ -10,6 +10,7 @@ use crate::startup::StartupState;
 #[macro_use]
 mod tasks;
 
+mod calendar;
 mod dispatch;
 mod permission;
 
@@ -27,7 +28,7 @@ pub fn builder() -> Builder<Wry> {
         .dangerously_cast_bigints_to_number()
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
-        .commands(with_task_commands!(collect_commands![
+        .commands(calendar::collect_commands_with_calendar!([
             // account
             crate::commands::account::account_get_info,
             crate::commands::account::auth_cancel_oauth,
@@ -69,6 +70,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_preview_plan_change,
             crate::commands::billing::account_refresh_billing_status,
             crate::commands::billing::account_start_checkout,
+        ] [
             // calendar macOS (EventKit)
             crate::commands::calendar_eventkit::calendar_eventkit_request_access,
             // calendar feeds
@@ -463,6 +465,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,
+            // calendar
+            crate::events::CalendarChangedEvent,
             // canvas
             crate::events::CanvasCreatedEvent,
             crate::events::CanvasDeletedEvent,

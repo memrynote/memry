@@ -6,6 +6,7 @@ pub mod agent;
 pub mod ai;
 pub mod attachments;
 pub mod billing;
+pub mod calendar;
 pub mod calendar_providers;
 pub mod canvas;
 pub mod command_failure;

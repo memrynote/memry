@@ -118,6 +118,32 @@ export const commands = {
 	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
 	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
 	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
+	/**  `calendar:create-event`. */
+	calendarCreateEvent: (input: CalendarCreateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_create_event", { input }),
+	/**  `calendar:delete-event`. */
+	calendarDeleteEvent: (id: string) => __TAURI_INVOKE<CalendarDeleteView>("calendar_delete_event", { id }),
+	/**  `calendar:get-event`: `null` when there is no such event. */
+	calendarGetEvent: (id: string) => __TAURI_INVOKE<CalendarEventView | null>("calendar_get_event", { id }),
+	/**  `calendar:get-external-event`. */
+	calendarGetExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarExternalEventDetailsView>("calendar_get_external_event", { input }),
+	/**  `calendar:get-range`. */
+	calendarGetRange: (input: CalendarRangeInput) => __TAURI_INVOKE<CalendarRangeView>("calendar_get_range", { input }),
+	/**  `calendar:list-linked-notes`. */
+	calendarListLinkedNotes: (input: CalendarLinkedNotesInput) => __TAURI_INVOKE<CalendarLinkedNotesView>("calendar_list_linked_notes", { input }),
+	/**  `calendar:list-sources`. */
+	calendarListSources: (input: CalendarListSourcesInput | null) => __TAURI_INVOKE<CalendarSourceListView>("calendar_list_sources", { input }),
+	/**
+	 *  `calendar:promote-external-event`. A gone, read-only or orphaned mirror answers
+	 *  `success: false` with the reason, as the handler's three error classes did. It sends no
+	 *  calendar event, as the handler sent none.
+	 */
+	calendarPromoteExternalEvent: (input: CalendarExternalEventInput) => __TAURI_INVOKE<CalendarPromoteView>("calendar_promote_external_event", { input }),
+	/**  `calendar:search-events`. */
+	calendarSearchEvents: (input: CalendarSearchInput) => __TAURI_INVOKE<CalendarEventSearchView>("calendar_search_events", { input }),
+	/**  `calendar:update-event` (also move and resize). */
+	calendarUpdateEvent: (input: CalendarUpdateEventInput) => __TAURI_INVOKE<CalendarEventMutationView>("calendar_update_event", { input }),
+	/**  `calendar:update-source-selection`. It sends no calendar event, as the handler sent none. */
+	calendarUpdateSourceSelection: (input: CalendarSourceSelectionInput) => __TAURI_INVOKE<CalendarSourceMutationView>("calendar_update_source_selection", { input }),
 	/**
 	 *  `calendar_eventkit_request_access`: the status after the request; a failure throws its code
 	 *  (`unsupported_platform`, `unavailable`, `permission_denied`, `sync_failed`).
@@ -1057,6 +1083,7 @@ export const events = {
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
 	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
+	calendarChangedEvent: makeEvent<CalendarChangedEvent, CalendarChangedEvent>("calendar-changed-event"),
 	canvasCreatedEvent: makeEvent<CanvasCreatedEvent, CanvasCreatedEvent>("canvas-created-event"),
 	canvasDeletedEvent: makeEvent<CanvasDeletedEvent, CanvasDeletedEvent>("canvas-deleted-event"),
 	canvasFolderCreatedEvent: makeEvent<CanvasFolderCreatedEvent, CanvasFolderCreatedEvent>("canvas-folder-created-event"),
@@ -1591,10 +1618,322 @@ export type BulkMutation = {
 	error?: string | null,
 };
 
+/**  `CalendarProjectionBinding`. */
+export type CalendarBindingView = {
+	provider: string,
+	remoteCalendarId: string,
+	remoteEventId: string,
+	ownershipMode: string,
+	writebackMode: string,
+};
+
+/**  `CalendarChangeEntityType`: what kind of record changed. */
+export type CalendarChangeEntityType = "calendar_event" | "calendar_source" | "calendar_binding" | "calendar_external_event" | "projection";
+
+/**  A calendar record changed (`calendar:changed`): the calendar views refetch their range. */
+export type CalendarChangedEvent = {
+	entityType: CalendarChangeEntityType,
+	id: string,
+};
+
 export type CalendarCounts = {
 	total: number,
 	selected: number,
 	memryManaged: number,
+};
+
+/**
+ *  `CreateCalendarEventSchema`. `recurrenceRule` and `recurrenceExceptions` are not taken:
+ *  the core's event has no field for them, and no renderer path sends them.
+ */
+export type CalendarCreateEventInput = {
+	title: string,
+	description?: string | null,
+	location?: string | null,
+	startAt: string,
+	endAt?: string | null,
+	timezone?: string | null,
+	isAllDay?: boolean | null,
+	targetCalendarId?: string | null,
+	color?: CalendarEventColor | null,
+};
+
+/**  `CalendarDeleteResponse`. */
+export type CalendarDeleteView = {
+	success: boolean,
+	error?: string | null,
+};
+
+/**  `CalendarProjectionEditability`. */
+export type CalendarEditabilityView = {
+	canMove: boolean,
+	canResize: boolean,
+	canEditText: boolean,
+	canDelete: boolean,
+};
+
+/**  `CalendarEventColor` (`calendar-colors.ts` `CALENDAR_EVENT_COLORS`). */
+export type CalendarEventColor = "tomato" | "flamingo" | "tangerine" | "banana" | "sage" | "basil" | "peacock" | "blueberry" | "lavender" | "grape" | "graphite";
+
+/**  `CalendarEventMutationResponse`. */
+export type CalendarEventMutationView = {
+	success: boolean,
+	event: CalendarEventView | null,
+	error?: string | null,
+};
+
+/**  `CalendarEventSearchItem`: native events carry no `kind`. */
+export type CalendarEventSearchItemView = {
+	id: string,
+	title: string,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+	kind?: CalendarEventSearchKind | null,
+};
+
+/**  `CalendarEventSearchItem.kind`. */
+export type CalendarEventSearchKind = "event" | "external_event";
+
+/**  `CalendarEventSearchResponse`. */
+export type CalendarEventSearchView = {
+	events: CalendarEventSearchItemView[],
+};
+
+/**
+ *  `CalendarEventRecord`. The core keeps no recurrence exceptions, parent event, original
+ *  start, archive or sync time on an event, so those are always `null`.
+ */
+export type CalendarEventView = {
+	id: string,
+	title: string,
+	description: string | null,
+	location: string | null,
+	startAt: string,
+	endAt: string | null,
+	timezone: string,
+	isAllDay: boolean,
+	recurrenceRule: Value | null,
+	recurrenceExceptions: string[] | null,
+	attendees: Value | null,
+	reminders: Value | null,
+	visibility: string | null,
+	colorId: string | null,
+	color: CalendarEventColor | null,
+	conferenceData: Value | null,
+	parentEventId: string | null,
+	originalStartTime: string | null,
+	targetCalendarId: string | null,
+	archivedAt: string | null,
+	syncedAt: string | null,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**  `GetExternalEventResponse`. */
+export type CalendarExternalEventDetailsView = {
+	event: CalendarExternalEventView | null,
+};
+
+/**  `GetExternalEventSchema` and `PromoteExternalEventSchema`. */
+export type CalendarExternalEventInput = {
+	externalEventId: string,
+};
+
+/**  `CalendarExternalEventDetails`. */
+export type CalendarExternalEventView = {
+	id: string,
+	title: string,
+	description: string | null,
+	location: string | null,
+	startAt: string,
+	endAt: string | null,
+	timezone: string | null,
+	isAllDay: boolean,
+	status: string,
+	recurrenceRule: Value | null,
+	attendees: Value | null,
+	reminders: Value | null,
+	conferenceData: Value | null,
+	source: CalendarExternalSourceView | null,
+};
+
+/**  `CalendarExternalEventDetails.source`. */
+export type CalendarExternalSourceView = {
+	id: string,
+	provider: string,
+	title: string,
+	color: string | null,
+	accountTitle: string | null,
+};
+
+/**  `CalendarProjectionSourceMeta`. */
+export type CalendarItemSourceView = {
+	provider: string | null,
+	calendarSourceId: string | null,
+	title: string | null,
+	color: string | null,
+	kind: CalendarSourceKind | null,
+	isMemryManaged: boolean,
+};
+
+/**  `CalendarLinkedNote`. */
+export type CalendarLinkedNoteView = {
+	id: string,
+	title: string,
+	emoji: string | null,
+};
+
+/**  `ListLinkedNotesSchema`. */
+export type CalendarLinkedNotesInput = {
+	sourceType: CalendarLinkedSourceType,
+	sourceId: string,
+};
+
+/**  `CalendarLinkedNotesResponse`. */
+export type CalendarLinkedNotesView = {
+	notes: CalendarLinkedNoteView[],
+};
+
+/**  `ListLinkedNotesSchema.sourceType`. */
+export type CalendarLinkedSourceType = "event" | "external_event";
+
+/**  `ListCalendarSourcesSchema`. */
+export type CalendarListSourcesInput = {
+	provider?: string | null,
+	kind?: CalendarSourceKind | null,
+	selectedOnly?: boolean | null,
+};
+
+/**  `CalendarProjectionItem`. The keys the contract marks optional are left out when unset. */
+export type CalendarProjectionItemView = {
+	projectionId: string,
+	sourceType: CalendarProjectionSourceType,
+	sourceId: string,
+	title: string,
+	descriptionPreview: string | null,
+	startAt: string,
+	endAt: string | null,
+	isAllDay: boolean,
+	timezone: string,
+	visualType: CalendarProjectionVisualType,
+	editability: CalendarEditabilityView,
+	source: CalendarItemSourceView,
+	binding: CalendarBindingView | null,
+	snoozeOffsetMinutes: number | null,
+	noteId?: string | null,
+	anchorId?: string | null,
+	isTriggered?: boolean | null,
+	color?: CalendarEventColor | null,
+	displayColor?: string | null,
+	task?: CalendarTaskMetaView | null,
+};
+
+/**  `CalendarProjectionSourceType`. */
+export type CalendarProjectionSourceType = "event" | "task" | "reminder" | "inbox_snooze" | "external_event" | "note" | "note_date";
+
+/**  `CalendarProjectionVisualType`. */
+export type CalendarProjectionVisualType = "event" | "task" | "reminder" | "snooze" | "external_event" | "note" | "note_date";
+
+/**  `PromoteExternalEventResponse`. */
+export type CalendarPromoteView = {
+	success: boolean,
+	eventId: string | null,
+	error?: string | null,
+};
+
+/**  `GetCalendarRangeSchema`. */
+export type CalendarRangeInput = {
+	startAt: string,
+	endAt: string,
+	includeUnselectedSources?: boolean | null,
+	includeCompletedTasks?: boolean | null,
+	includeExternal?: boolean | null,
+	externalProviders?: string[] | null,
+};
+
+/**  `CalendarRangeResponse`. */
+export type CalendarRangeView = {
+	items: CalendarProjectionItemView[],
+};
+
+/**  `SearchCalendarEventsSchema`. */
+export type CalendarSearchInput = {
+	query: string,
+	limit?: number | null,
+	includeExternal?: boolean | null,
+};
+
+/**  `CalendarSourceKind`. */
+export type CalendarSourceKind = "account" | "calendar";
+
+/**  `CalendarSourceListResponse`. */
+export type CalendarSourceListView = {
+	sources: CalendarSourceView[],
+};
+
+/**  `CalendarSourceMutationResponse`. */
+export type CalendarSourceMutationView = {
+	success: boolean,
+	source: CalendarSourceView | null,
+	error?: string | null,
+};
+
+/**  `UpdateCalendarSourceSelectionSchema`. */
+export type CalendarSourceSelectionInput = {
+	id: string,
+	isSelected: boolean,
+};
+
+/**  `CalendarSourceSyncStatus`. */
+export type CalendarSourceSyncStatus = "idle" | "ok" | "error" | "pending";
+
+/**
+ *  `CalendarSourceRecord`. The core's source record has no sync, creation or change time, so
+ *  those are `null`; nothing in the renderer reads them.
+ */
+export type CalendarSourceView = {
+	id: string,
+	provider: string,
+	kind: CalendarSourceKind,
+	accountId: string | null,
+	remoteId: string,
+	title: string,
+	timezone: string | null,
+	color: string | null,
+	isPrimary: boolean,
+	isSelected: boolean,
+	isMemryManaged: boolean,
+	syncCursor: string | null,
+	syncStatus: CalendarSourceSyncStatus,
+	lastSyncedAt: string | null,
+	lastError: string | null,
+	metadata: Value | null,
+	archivedAt: string | null,
+	syncedAt: string | null,
+	createdAt: string | null,
+	modifiedAt: string | null,
+};
+
+/**  `CalendarProjectionItem.task`. */
+export type CalendarTaskMetaView = {
+	projectId: string,
+	statusId: string | null,
+	isCompleted: boolean,
+};
+
+/**  `UpdateCalendarEventSchema`: an absent key keeps the field, `null` clears it. */
+export type CalendarUpdateEventInput = {
+	id: string,
+	title?: string | null,
+	description?: string | null,
+	location?: string | null,
+	startAt?: string | null,
+	endAt?: string | null,
+	timezone?: string | null,
+	isAllDay?: boolean | null,
+	targetCalendarId?: string | null,
+	color?: CalendarEventColor | null,
 };
 
 /**  `CanvasCreateSchema`. */

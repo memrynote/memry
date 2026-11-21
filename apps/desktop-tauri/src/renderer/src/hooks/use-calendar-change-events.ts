@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { onCalendarChanged } from '@/services/calendar-service'
+import { onSettingsChanged } from '@/services/settings-service'
 import { calendarRangeKeys } from './use-calendar-range'
 
 /**
@@ -31,7 +32,7 @@ export function useCalendarChangeEvents(): void {
 
     // Calendar settings (e.g. "show notes on calendar") change what the projection
     // returns for a range, so they invalidate the same keys.
-    const unsubscribeSettings = window.api.onSettingsChanged((event) => {
+    const unsubscribeSettings = onSettingsChanged((event) => {
       if (event.key === 'calendar') invalidate()
     })
 

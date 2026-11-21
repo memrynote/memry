@@ -16,6 +16,7 @@ use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
 mod ai;
+mod calendar;
 mod canvas;
 mod home_pages;
 mod sync;
@@ -25,6 +26,7 @@ mod voice;
 
 pub use account::*;
 pub use ai::*;
+pub use calendar::*;
 pub use canvas::*;
 pub use home_pages::*;
 pub use sync::*;

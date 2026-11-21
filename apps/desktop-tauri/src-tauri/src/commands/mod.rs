@@ -9,6 +9,7 @@ pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
 pub mod billing;
+pub mod calendar;
 pub mod calendar_eventkit;
 pub mod calendar_ics;
 pub mod calendar_providers;
