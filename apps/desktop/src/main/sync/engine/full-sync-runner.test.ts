@@ -48,7 +48,8 @@ const mocks = vi.hoisted(() => ({
   abandonBootstrap: vi.fn(),
   openBootstrapSession: vi.fn(),
   closeBootstrapSession: vi.fn(),
-  trackMainEvent: vi.fn()
+  trackMainEvent: vi.fn(),
+  scheduleSeedDuplicateRepair: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -76,6 +77,10 @@ vi.mock('../bootstrap-metrics', () => ({
 vi.mock('../bootstrap-session', () => ({
   openBootstrapSession: (...args: unknown[]) => mocks.openBootstrapSession(...args),
   closeBootstrapSession: (...args: unknown[]) => mocks.closeBootstrapSession(...args)
+}))
+
+vi.mock('../crdt-seed-duplicates', () => ({
+  scheduleSeedDuplicateRepair: (...args: unknown[]) => mocks.scheduleSeedDuplicateRepair(...args)
 }))
 
 vi.mock('../initial-seed', () => ({
@@ -973,6 +978,62 @@ describe('FullSyncRunner', () => {
 
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-owed'], expect.anything())
       expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('#given the seed-duplicate repair (#5289) #when a full sync ends', () => {
+    function settledHarness(options: { online?: boolean } = {}): Harness {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ...options })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'done' : undefined
+      )
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      return h
+    }
+
+    it('#then a delivered run with no body owed schedules it', async () => {
+      const h = settledHarness()
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).toHaveBeenCalledWith(h.ctx.deps.crdtProvider)
+    })
+
+    it('#then a failed run does not', async () => {
+      const h = settledHarness()
+      h.actions.push.mockRejectedValue(new Error('push exploded'))
+
+      await expect(h.runner.run()).rejects.toThrow('push exploded')
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then a run that still owes a note body does not', async () => {
+      const h = settledHarness()
+      h.crdtSync.addPendingPull('note-owed')
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then a run with a pending legacy sweep does not', async () => {
+      const h = settledHarness()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.NOTE_BODY_LEGACY_SWEEP ? 'pending' : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
+    })
+
+    it('#then an offline run does not', async () => {
+      const h = settledHarness({ online: false })
+
+      await h.runner.run()
+
+      expect(mocks.scheduleSeedDuplicateRepair).not.toHaveBeenCalled()
     })
   })
 

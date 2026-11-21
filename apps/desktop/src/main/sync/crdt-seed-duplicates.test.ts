@@ -5,11 +5,21 @@ import path from 'path'
 import * as Y from 'yjs'
 import { LeveldbPersistence, PREFERRED_TRIM_SIZE } from 'y-leveldb'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { markdownToYFragment } from './blocknote-converter'
+import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { readOnlyStore, type CrdtStoreReader } from './crdt-persistence'
-import { classifyBody, scanSeedDuplicates } from './crdt-seed-duplicates'
+import {
+  classifyBody,
+  removeSeedCopy,
+  repairSeedDuplicates,
+  scanSeedDuplicates,
+  scheduleSeedDuplicateRepair,
+  type SeedRepairHost
+} from './crdt-seed-duplicates'
+
+const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() }))
 
 vi.mock('electron', () => ({ app: { getPath: () => tmpdir() } }))
+vi.mock('../lib/logger', () => ({ createLogger: () => log }))
 
 const BODY = '# Trip\n\nPack the passport.\n\nBook the flights before Friday.'
 
@@ -20,8 +30,8 @@ async function seeded(markdown: string): Promise<Y.Doc> {
 }
 
 /** #2536 shape: a device seeds its empty doc from the file, then merges the server body. */
-async function seedOverServerBody(markdown: string): Promise<Y.Doc> {
-  const server = await seeded(markdown)
+async function seedOverServerBody(markdown: string, serverMarkdown = markdown): Promise<Y.Doc> {
+  const server = await seeded(serverMarkdown)
   const device = await seeded(markdown)
   Y.applyUpdate(device, Y.encodeStateAsUpdate(server))
   return device
@@ -40,7 +50,43 @@ function memoryStore(docs: Map<string, Y.Doc | null>): CrdtStoreReader & { reads
   return store
 }
 
+function liveRoots(doc: Y.Doc): number {
+  return doc.getXmlFragment(CRDT_FRAGMENT_NAME).length
+}
+
+function copiesOf(doc: Y.Doc, text: string): number {
+  return doc.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON().split(text).length - 1
+}
+
+/** The provider's doc ops over plain Y.Docs, with the marker in a map like the store's meta. */
+function memoryHost(docs: Map<string, Y.Doc>): SeedRepairHost & { marked: Set<string> } {
+  const marked = new Set<string>()
+  return {
+    marked,
+    readOnlyStore: () => memoryStore(docs),
+    holdDoc: () => async () => {},
+    open: async (noteId) => {
+      const doc = docs.get(noteId)
+      if (!doc) throw new Error(`no doc ${noteId}`)
+      return doc
+    },
+    seedRepairDone: async (noteId) => marked.has(noteId),
+    markSeedRepairDone: async (noteId) => {
+      marked.add(noteId)
+    }
+  }
+}
+
 describe('classifyBody', () => {
+  it('calls a seed of the same markdown over the server body exact', async () => {
+    expect(classifyBody(await seedOverServerBody(BODY))).toBe('exact')
+  })
+
+  it('keeps a seed whose text only contains the server body as duplicated, not exact', async () => {
+    const doc = await seedOverServerBody(`${BODY}\n\nAnd the hotel.`, BODY)
+    expect(classifyBody(doc)).toBe('duplicated')
+  })
+
   it('flags a body seeded from markdown over the server body', async () => {
     const doc = await seedOverServerBody(BODY)
     expect(
@@ -49,7 +95,7 @@ describe('classifyBody', () => {
         .toJSON()
         .match(/Pack the passport/g)
     ).toHaveLength(2)
-    expect(classifyBody(doc)).toBe('duplicated')
+    expect(classifyBody(doc)).toBe('exact')
   })
 
   it('passes a body that repeats a paragraph on purpose', async () => {
@@ -94,6 +140,7 @@ describe('scanSeedDuplicates', () => {
       scanned: 5,
       forked: 2,
       duplicated: ['note-dup', 'j2026-11-19'],
+      exact: ['note-dup', 'j2026-11-19'],
       unreadable: 0
     })
   })
@@ -113,6 +160,151 @@ describe('scanSeedDuplicates', () => {
     expect(reads).toBe(ids.length)
     expect(scan.scanned).toBe(ids.length)
     expect(scan.duplicated).toEqual(['note-0', 'note-1000', 'note-2000', 'note-3000', 'note-4000'])
+  })
+})
+
+describe('removeSeedCopy', () => {
+  it('removes the second copy and leaves the markdown as it was', async () => {
+    const doc = await seedOverServerBody(BODY)
+    const before = await yDocToMarkdown(doc)
+
+    expect(removeSeedCopy(doc)).toBe(true)
+
+    expect(liveRoots(doc)).toBe(1)
+    expect(copiesOf(doc, 'Pack the passport')).toBe(1)
+    expect(classifyBody(doc)).toBe('clean')
+    expect(await yDocToMarkdown(doc)).toBe(before)
+  })
+
+  it('reaches a fresh device as one copy', async () => {
+    const doc = await seedOverServerBody(BODY)
+    removeSeedCopy(doc)
+
+    const fresh = new Y.Doc()
+    Y.applyUpdate(fresh, Y.encodeStateAsUpdate(doc))
+
+    expect(copiesOf(fresh, 'Pack the passport')).toBe(1)
+    expect(await yDocToMarkdown(fresh)).toBe(await yDocToMarkdown(doc))
+  })
+
+  it('converges to one copy when two devices repair the same body concurrently', async () => {
+    const laptop = await seedOverServerBody(BODY)
+    const desktop = new Y.Doc()
+    Y.applyUpdate(desktop, Y.encodeStateAsUpdate(laptop))
+
+    expect(removeSeedCopy(laptop)).toBe(true)
+    expect(removeSeedCopy(desktop)).toBe(true)
+    Y.applyUpdate(laptop, Y.encodeStateAsUpdate(desktop))
+    Y.applyUpdate(desktop, Y.encodeStateAsUpdate(laptop))
+
+    for (const doc of [laptop, desktop]) {
+      expect(liveRoots(doc)).toBe(1)
+      expect(copiesOf(doc, 'Pack the passport')).toBe(1)
+    }
+    expect(await yDocToMarkdown(laptop)).toBe(await yDocToMarkdown(desktop))
+  })
+
+  it.each([
+    ['one block differs', BODY.replace('Friday', 'Monday')],
+    ['the seed has extra trailing text', `${BODY}\n\nAnd the hotel.`],
+    ['the seed lost a block', '# Trip\n\nPack the passport.']
+  ])('keeps both copies when %s', async (_case, seedMarkdown) => {
+    const doc = await seedOverServerBody(seedMarkdown, BODY)
+    const before = Y.encodeStateAsUpdate(doc)
+
+    expect(removeSeedCopy(doc)).toBe(false)
+
+    expect(liveRoots(doc)).toBe(2)
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  it('keeps a paragraph repeated inside one body', async () => {
+    const doc = await seeded('Chorus line.\n\nChorus line.')
+    expect(removeSeedCopy(doc)).toBe(false)
+    expect(copiesOf(doc, 'Chorus line.')).toBe(2)
+  })
+
+  it('keeps a copy the user edited after the duplication', async () => {
+    const doc = await seedOverServerBody(BODY)
+    const second = doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(1)
+    if (!(second instanceof Y.XmlElement)) throw new Error('expected a block group')
+    second.insert(0, [new Y.XmlElement('blockContainer')])
+
+    expect(removeSeedCopy(doc)).toBe(false)
+    expect(liveRoots(doc)).toBe(2)
+  })
+})
+
+describe('repairSeedDuplicates', () => {
+  it('removes exact copies once, keeps near-duplicates, and logs ids only at info', async () => {
+    const docs = new Map<string, Y.Doc>([
+      ['note-dup', await seedOverServerBody(BODY)],
+      ['note-near', await seedOverServerBody(BODY.replace('Friday', 'Monday'), BODY)],
+      ['note-clean', await seeded(BODY)]
+    ])
+    const host = memoryHost(docs)
+
+    await repairSeedDuplicates(host)
+
+    expect(copiesOf(docs.get('note-dup')!, 'Pack the passport')).toBe(1)
+    expect(liveRoots(docs.get('note-near')!)).toBe(2)
+    expect([...host.marked]).toEqual(['note-dup'])
+    expect(log.info).toHaveBeenCalledWith(
+      'Seed duplicate repair finished',
+      expect.objectContaining({ removed: 1, noteIds: ['note-dup'] })
+    )
+    const shipped = JSON.stringify(log.warn.mock.calls)
+    expect(shipped).toContain('"removed":1')
+    expect(shipped).not.toMatch(/note-/)
+  })
+
+  it('never removes a copy from a note it repaired before', async () => {
+    const doc = await seedOverServerBody(BODY)
+    const host = memoryHost(new Map([['note-dup', doc]]))
+    host.marked.add('note-dup')
+
+    await repairSeedDuplicates(host)
+
+    expect(liveRoots(doc)).toBe(2)
+  })
+
+  it('rechecks the open doc and leaves it when it no longer matches', async () => {
+    const stored = await seedOverServerBody(BODY)
+    const live = new Y.Doc()
+    Y.applyUpdate(live, Y.encodeStateAsUpdate(stored))
+    const second = live.getXmlFragment(CRDT_FRAGMENT_NAME).get(1)
+    if (!(second instanceof Y.XmlElement)) throw new Error('expected a block group')
+    second.insert(0, [new Y.XmlElement('blockContainer')])
+    const host = {
+      ...memoryHost(new Map([['note-dup', stored]])),
+      open: async () => live
+    }
+
+    await repairSeedDuplicates(host)
+
+    expect(liveRoots(live)).toBe(2)
+    expect(host.marked.size).toBe(0)
+  })
+})
+
+describe('scheduleSeedDuplicateRepair', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('repairs ten minutes after the call, once per process', async () => {
+    vi.useFakeTimers()
+    const doc = await seedOverServerBody(BODY)
+    const host = memoryHost(new Map([['note-dup', doc]]))
+    const storeRead = vi.spyOn(host, 'readOnlyStore')
+
+    scheduleSeedDuplicateRepair(host)
+    scheduleSeedDuplicateRepair(host)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 1)
+    expect(storeRead).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    await vi.waitFor(() => expect(host.marked.has('note-dup')).toBe(true))
+
+    expect(storeRead).toHaveBeenCalledTimes(1)
+    expect(liveRoots(doc)).toBe(1)
   })
 })
 
