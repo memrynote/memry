@@ -26,6 +26,7 @@
 //! | [`bootstrap`]     | 10                     | the elevated window, and the silent fallback      |
 //! | [`socket`]        | 09                     | the hint channel, which is never a data path      |
 //! | `socket_frame`    | 09 §9.5, §9.12         | one socket message parsed into one hint           |
+//! | [`diagnostics`]   | #5215                  | a run's request statistics, told to the shell's log |
 //! | [`first_sync`]    | §C.3, FR-028           | refs, then metadata, then bodies for the window   |
 //! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
 //!
@@ -47,6 +48,7 @@ mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
 pub mod delete_keep;
+pub mod diagnostics;
 pub mod engine;
 mod feed_restart;
 pub mod field_merge;

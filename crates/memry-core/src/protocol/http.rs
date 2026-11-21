@@ -23,16 +23,19 @@ use std::sync::Arc;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use tokio::time::Instant;
 
 use crate::api::errors::{ApiError, TransportError};
 use crate::seams::transport::{HttpRequest, HttpResponse, Transport};
 
 mod error_body;
 mod identity;
+mod observer;
 mod retry;
 
 pub use error_body::{ErrorBody, parse_error_body};
 pub use identity::{CLIENT_PLATFORMS, ClientIdentity};
+pub use observer::RequestObserver;
 pub use retry::{
     DEFAULT_BASE_DELAY_MS, DEFAULT_MAX_RETRIES, MAX_RETRY_DELAY_MS, MAX_WALK_RETRY_DELAY_MS,
     RetryPolicy,
@@ -174,6 +177,7 @@ pub struct HttpClient {
     identity: ClientIdentity,
     tokens: Option<Arc<dyn TokenProvider>>,
     sleeper: Arc<dyn Sleeper>,
+    observer: Option<Arc<dyn RequestObserver>>,
 }
 
 impl HttpClient {
@@ -184,6 +188,7 @@ impl HttpClient {
             identity,
             tokens: None,
             sleeper: Arc::new(TokioSleeper),
+            observer: None,
         }
     }
 
@@ -195,6 +200,20 @@ impl HttpClient {
     pub fn with_sleeper(mut self, sleeper: Arc<dyn Sleeper>) -> Self {
         self.sleeper = sleeper;
         self
+    }
+
+    /// A client over the same transport, tokens and sleeper that reports each
+    /// attempt to `observer`. The original is untouched, so only the run that
+    /// holds the derived client is counted, not the whole session.
+    pub fn observed(&self, observer: Arc<dyn RequestObserver>) -> HttpClient {
+        HttpClient {
+            transport: Arc::clone(&self.transport),
+            base_url: self.base_url.clone(),
+            identity: self.identity.clone(),
+            tokens: self.tokens.clone(),
+            sleeper: Arc::clone(&self.sleeper),
+            observer: Some(observer),
+        }
     }
 
     pub async fn sleep_ms(&self, ms: u64) {
@@ -221,7 +240,14 @@ impl HttpClient {
         let mut refreshed = false;
         loop {
             let (wire, sent_token) = self.build(&request).await;
-            let outcome = match self.transport.send(wire).await {
+            let started = Instant::now();
+            let sent = self.transport.send(wire).await;
+            let answered = sent.as_ref().ok().map(|response| response.status);
+            if let Some(observer) = &self.observer {
+                let elapsed = started.elapsed().as_millis();
+                observer.attempt(answered, u64::try_from(elapsed).unwrap_or(u64::MAX));
+            }
+            let outcome = match sent {
                 Ok(response) => self.classify(&request, response),
                 Err(error) => Outcome::Transport(error),
             };
@@ -268,6 +294,7 @@ impl HttpClient {
                         return Err(error);
                     }
                     attempt += 1;
+                    self.retrying(answered, delay);
                     self.sleeper.sleep_ms(delay).await;
                 }
 
@@ -282,9 +309,16 @@ impl HttpClient {
                     }
                     let delay = request.retry.backoff_ms(attempt);
                     attempt += 1;
+                    self.retrying(answered, delay);
                     self.sleeper.sleep_ms(delay).await;
                 }
             }
+        }
+    }
+
+    fn retrying(&self, answered: Option<u16>, wait_ms: u64) {
+        if let Some(observer) = &self.observer {
+            observer.retry(answered, wait_ms);
         }
     }
 
@@ -398,6 +432,15 @@ impl HttpClient {
             }
             (426, "CLIENT_UPGRADE_REQUIRED") => Outcome::Fatal(ApiError::UpgradeRequired {
                 min_version: body.min_version,
+                message,
+            }),
+            // Chapter 10 §10.2: the concurrent cap does not clear inside one
+            // ladder, and a `RateLimited` would drop the code a log needs to
+            // tell it from a plain rate limit. Kept as a `Status`, like
+            // `STORAGE_PRESIGN_UNAVAILABLE`.
+            (429, "BOOTSTRAP_SESSION_LIMIT") => Outcome::Fatal(ApiError::Status {
+                status,
+                code: body.code,
                 message,
             }),
             (401, _) => {

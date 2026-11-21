@@ -18,9 +18,12 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::protocol::http::RequestObserver;
+use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
 use crate::sync::body_debt;
 use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
+use crate::sync::diagnostics::RunDiagnostics;
 use crate::sync::first_sync_store::{
     owe_out_of_window, read_meta, recent_document_ids, write_meta,
 };
@@ -183,6 +186,7 @@ impl FirstSync {
             elevated,
             (done, live),
             &self.progress,
+            &self.diagnostics,
         )
         .await?;
         let unfinished: HashSet<String> = pulled
@@ -230,6 +234,7 @@ async fn pull_parallel(
     elevated: bool,
     (done, live): (u64, u64),
     progress: &Arc<dyn ProgressSink>,
+    diagnostics: &Arc<RunDiagnostics>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
     let mut probed = HashMap::new();
@@ -248,6 +253,12 @@ async fn pull_parallel(
     }
     .min(pending.len());
 
+    diagnostics.emit(CoreDiagnostic::BodyPassStarted {
+        elevated,
+        concurrency: u32::try_from(workers).unwrap_or(u32::MAX),
+        documents: u32::try_from(current.len() + pending.len()).unwrap_or(u32::MAX),
+        up_to_date: u32::try_from(current.len()).unwrap_or(u32::MAX),
+    });
     let completed = done + current.len() as u64;
     let total = live.max(completed + pending.len() as u64);
     let queue = Arc::new(BodyQueue::new(
@@ -256,6 +267,7 @@ async fn pull_parallel(
         completed,
         probed,
         Arc::clone(progress),
+        Arc::clone(diagnostics),
     ));
     let mut running = JoinSet::new();
     for _ in 0..workers {
@@ -287,6 +299,7 @@ struct BodyQueue {
     /// [`PROBE_CHUNK`], so the map holds at most 5 x 8 MiB = 40 MiB.
     probed: Mutex<HashMap<String, Probed>>,
     progress: Arc<dyn ProgressSink>,
+    diagnostics: Arc<RunDiagnostics>,
 }
 
 struct QueueState {
@@ -305,6 +318,7 @@ impl BodyQueue {
         completed: u64,
         probed: HashMap<String, Probed>,
         progress: Arc<dyn ProgressSink>,
+        diagnostics: Arc<RunDiagnostics>,
     ) -> Self {
         if completed > 0 {
             progress.progress(FirstSyncProgress {
@@ -323,6 +337,7 @@ impl BodyQueue {
             total,
             probed: Mutex::new(probed),
             progress,
+            diagnostics,
         }
     }
 
@@ -372,13 +387,19 @@ impl BodyQueue {
         if state.pauses > MAX_RATE_LIMIT_PAUSES {
             return false;
         }
-        let until = Instant::now() + Duration::from_secs(retry_after_s);
-        state.paused_until = Some(
-            state
-                .paused_until
-                .map_or(until, |current| current.max(until)),
-        );
+        let now = Instant::now();
+        let until = now + Duration::from_secs(retry_after_s);
+        let held_until = state.paused_until.filter(|held| *held > now);
+        let paused_until = held_until.map_or(until, |held| held.max(until));
+        state.paused_until = Some(paused_until);
         state.pending.push_front(doc_id);
+        // The wait this pause adds: what another worker's pause already holds
+        // is counted once.
+        let waited = paused_until.duration_since(held_until.unwrap_or(now));
+        self.diagnostics.retry(
+            Some(429),
+            u64::try_from(waited.as_millis()).unwrap_or(u64::MAX),
+        );
         true
     }
 }

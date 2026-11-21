@@ -34,10 +34,14 @@ use memry_core::protocol::crdt_envelope::{CrdtMaterial, CrdtRequest, pack, unpac
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{BOOTSTRAP_TOKEN_HEADER, ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
+use memry_core::seams::diagnostics::{
+    BootstrapOutcome, CoreDiagnostic, DiagnosticPhase, DiagnosticsSink, RequestStats,
+};
 use memry_core::storage::repositories::instants;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::bootstrap::BootstrapClient;
+use memry_core::sync::diagnostics::RunDiagnostics;
 use memry_core::sync::first_sync::{
     BODY_CONCURRENCY_ELEVATED, FirstSync, FirstSyncPhase, FirstSyncProgress, ProgressSink,
 };
@@ -1152,6 +1156,141 @@ async fn a_rate_limited_document_is_paused_out_and_retried_rather_than_failing_t
             .len(),
         2,
         "the refused request was sent again"
+    );
+}
+
+#[derive(Default)]
+struct CapturedDiagnostics(Mutex<Vec<CoreDiagnostic>>);
+
+impl DiagnosticsSink for CapturedDiagnostics {
+    fn record(&self, event: CoreDiagnostic) {
+        self.0.lock().unwrap().push(event);
+    }
+}
+
+/// #5215: the incident's first sync. The bootstrap open is refused 409, so the
+/// run is unelevated, and the one document's pull meets a 5xx probe and a 429.
+/// The sink gets what a support reader needs to see why it was slow, from
+/// numbers alone.
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_tells_the_sink_its_bootstrap_result_concurrency_and_per_phase_requests() {
+    let db = scratch_db("diagnostics");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let update = body_update("After the pause");
+    let transport = FakeTransport::new(vec![
+        error_response(409, "BOOTSTRAP_NOT_ELIGIBLE", "this device already pulled"),
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        http_fakes::probe_refused(),
+        http_fakes::response_with_header(
+            429,
+            r#"{"error":{"code":"RATE_LIMITED","message":"Too many requests"}}"#,
+            ("retry-after", "7"),
+        ),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &update, &secret_key),
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
+    let diagnostics = RunDiagnostics::new(sink.clone());
+    let plain = http(transport.clone());
+    let counted = diagnostics.observe(&plain);
+    let pull = Arc::new(PullLoop::new(
+        Arc::clone(&counted),
+        db.clone(),
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+    ));
+    let bootstrap =
+        Arc::new(BootstrapClient::new(plain).with_diagnostics(Arc::clone(&diagnostics)));
+    let bodies = Arc::new(
+        BodyPull::new(
+            counted,
+            db.clone(),
+            Declaration::subscribed(),
+            RealCrdtCipher::with("device-a", public_key),
+        )
+        .with_bootstrap(Arc::clone(&bootstrap)),
+    );
+
+    FirstSync::new(pull, bodies, db.clone())
+        .with_bootstrap(bootstrap)
+        .with_diagnostics(diagnostics)
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync survives a 429");
+
+    // The counts are the contract; elapsed time is the run's own clock.
+    let events: Vec<CoreDiagnostic> = sink
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|event| match *event {
+            CoreDiagnostic::PhaseStats {
+                phase,
+                finished,
+                requests,
+                ..
+            } => CoreDiagnostic::PhaseStats {
+                phase,
+                finished,
+                elapsed_ms: 0,
+                requests,
+            },
+            other => other,
+        })
+        .collect();
+    let finished = |phase, requests| CoreDiagnostic::PhaseStats {
+        phase,
+        finished: true,
+        elapsed_ms: 0,
+        requests,
+    };
+    let one_request = RequestStats {
+        requests: 1,
+        ..RequestStats::default()
+    };
+    assert_eq!(
+        events,
+        vec![
+            CoreDiagnostic::BootstrapOpened {
+                outcome: BootstrapOutcome::NotEligible,
+                status: 409,
+            },
+            finished(DiagnosticPhase::Refs, one_request),
+            finished(DiagnosticPhase::Metadata, one_request),
+            CoreDiagnostic::BodyPassStarted {
+                elevated: false,
+                concurrency: 1,
+                documents: 1,
+                up_to_date: 0,
+            },
+            // The refused probe, the 429, the snapshot and the updates: the
+            // document went back on the queue and waited out the Retry-After.
+            finished(
+                DiagnosticPhase::Bodies,
+                RequestStats {
+                    requests: 4,
+                    retries: 1,
+                    rate_limited: 1,
+                    rate_limit_wait_ms: 7_000,
+                    server_errors: 1,
+                    ..RequestStats::default()
+                }
+            ),
+        ]
     );
 }
 

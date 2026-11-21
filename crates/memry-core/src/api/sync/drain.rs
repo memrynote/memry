@@ -4,8 +4,10 @@
 use std::sync::Arc;
 
 use super::{ForeignProgress, SyncProgressListener, VaultSync, count, now_ms, pass};
+use crate::api::diagnostics::run_diagnostics;
 use crate::api::errors::SyncError;
 use crate::protocol::types::Declaration;
+use crate::seams::diagnostics::{CoreDiagnostic, DiagnosticPhase};
 use crate::sync::body_drain;
 use crate::sync::body_pull::BodyPull;
 use crate::sync::bootstrap::BootstrapClient;
@@ -60,14 +62,23 @@ impl VaultSync {
 
         let cipher = self.cipher().await?;
         let http = self.session.http();
-        let bootstrap =
-            Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&self.vault_id));
+        let diagnostics = run_diagnostics();
+        let bootstrap = Arc::new(
+            BootstrapClient::new(Arc::clone(&http))
+                .with_vault(&self.vault_id)
+                .with_diagnostics(Arc::clone(&diagnostics)),
+        );
         let _close = bootstrap.close_on_drop();
         let elevated = bootstrap.open(now_ms() / 1_000).await.elevated();
         let bodies = Arc::new(
-            BodyPull::new(http, self.db.clone(), Declaration::subscribed(), cipher)
-                .with_vault(&self.vault_id)
-                .with_bootstrap(Arc::clone(&bootstrap)),
+            BodyPull::new(
+                diagnostics.observe(&http),
+                self.db.clone(),
+                Declaration::subscribed(),
+                cipher,
+            )
+            .with_vault(&self.vault_id)
+            .with_bootstrap(Arc::clone(&bootstrap)),
         );
         let workers = if elevated {
             BODY_CONCURRENCY_ELEVATED
@@ -78,7 +89,18 @@ impl VaultSync {
             Some(listener) => Arc::new(ForeignProgress(listener)),
             None => Arc::new(SilentProgress),
         };
-        let round = body_drain::run(&self.db, &bodies, due, workers, sink).await;
+        diagnostics.emit(CoreDiagnostic::BodyPassStarted {
+            elevated,
+            concurrency: count(workers.min(due.len())),
+            documents: count(due.len()),
+            up_to_date: 0,
+        });
+        let round = diagnostics
+            .phase(
+                DiagnosticPhase::DrainBodies,
+                body_drain::run(&self.db, &bodies, due, workers, sink),
+            )
+            .await;
         bootstrap.close().await;
         let round = round?;
         Ok(BodyDrainSummary {
