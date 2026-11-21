@@ -239,10 +239,11 @@ interface ActiveDoc {
   localOnly: boolean
   closing?: boolean
   /**
-   * Set by `purge` before it awaits anything. The renderer's edits to a doc
-   * being purged are dropped: applied, they would queue an old-generation row
-   * after the purge dropped the rest (#5359). A plain `close` leaves this unset
-   * and keeps the edits that reach it, so the flush still persists them.
+   * Set by `purge` before it awaits anything. `onDocUpdate` neither stores,
+   * queues nor broadcasts an edit to a doc being purged, whatever its source
+   * (an editor keystroke, a body save's feed): it would land an old-generation
+   * row after the purge dropped the rest (#5359). A plain `close` leaves this
+   * unset and keeps the edits that reach it, so the flush still persists them.
    */
   purging?: boolean
   /**
@@ -2257,6 +2258,14 @@ export class CrdtProvider {
   private onDocUpdate(noteId: string, update: Uint8Array, origin: unknown): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
+    if (entry.purging) {
+      log.warn('Dropping an update to a doc being purged', {
+        noteId,
+        origin: isIpcOrigin(origin) ? `ipc:${origin.windowId}` : String(origin),
+        bytes: update.byteLength
+      })
+      return
+    }
 
     this.touchDoc(entry)
     // Both counters stay honest for a local-only note. accumulatedBytes drives
@@ -2750,14 +2759,6 @@ export class CrdtProvider {
   applyIpcUpdate(noteId: string, update: Uint8Array, sourceWindowId: number): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
-    if (entry.purging) {
-      log.warn('Dropping an editor update for a doc being purged', {
-        noteId,
-        windowId: sourceWindowId,
-        bytes: update.byteLength
-      })
-      return
-    }
     this.touchDoc(entry)
 
     const origin: IpcOrigin = { source: 'ipc', windowId: sourceWindowId }
@@ -2767,13 +2768,6 @@ export class CrdtProvider {
   applyIpcSyncStep2(noteId: string, diff: Uint8Array): void {
     const entry = this.docs.get(noteId)
     if (!entry) return
-    if (entry.purging) {
-      log.warn('Dropping an editor sync step for a doc being purged', {
-        noteId,
-        bytes: diff.byteLength
-      })
-      return
-    }
     this.touchDoc(entry)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }

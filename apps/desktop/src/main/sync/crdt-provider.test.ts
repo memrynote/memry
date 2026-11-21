@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 
 import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
 import type * as PathsModule from '../lib/paths'
+import type * as BlockNoteConverter from './blocknote-converter'
 
 type PreflightVerdict = {
   ok: boolean
@@ -272,7 +273,9 @@ vi.mock('../vault/frontmatter', () => ({
   generateContentHash: (content: unknown) => `hash:${String(content)}`
 }))
 
-vi.mock('./blocknote-converter', () => ({
+// The real parse under the mocked seed, so a body save's feed runs as shipped.
+vi.mock('./blocknote-converter', async (importOriginal) => ({
+  ...(await importOriginal<typeof BlockNoteConverter>()),
   setVaultEmbedResolver: () => {},
   markdownToYFragment: (...args: unknown[]) => mocks.markdownToYFragment(...args),
   repairEmptyBlockIds: (...args: unknown[]) => mocks.repairEmptyBlockIds(...args)
@@ -293,7 +296,8 @@ vi.mock('./crdt-writeback-port', () => ({
 }))
 
 vi.mock('./crdt-network-update', () => ({
-  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args)
+  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
+  wasRecentNetworkUpdate: () => false
 }))
 
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
@@ -335,6 +339,7 @@ import { NoteBodyOutbox, type NoteBodyPushFn } from './note-body-outbox'
 // The real toggle, so the local-only suite crosses the seam for real.
 import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 import { enqueueJournalDelete, initializeJournalCrdt } from '../journal/runtime-effects'
+import { feedExternalEditToCrdt } from './crdt-external-feed'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 mocks.vaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-vault-'))
@@ -1363,6 +1368,42 @@ describe('CrdtProvider', () => {
       expect(fresh.store.pendingStructs).toBeNull()
       expect(body).toContain('new text')
       expect(body).not.toContain('LATE')
+    })
+
+    // The body save (journal:updateEntry -> landBodyEdit) feeds the doc through
+    // its owner too, and must not queue a row the purge already dropped.
+    it('drops a body save fed while the purge closes the doc', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const store = mocks.persistenceInstances.at(-1)!
+      createWindow(1)
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.open(dayId, 1)
+
+      let releaseFlush!: () => void
+      store.flushDocument.mockImplementationOnce(
+        () => new Promise<void>((resolve) => (releaseFlush = resolve))
+      )
+      const deleted = enqueueJournalDelete(dayId, '2026-05-02')
+      await vi.waitFor(() => expect(store.flushDocument).toHaveBeenCalledWith(dayId))
+      queue.enqueue.mockClear()
+      pushSnapshot.mockClear()
+      store.storeUpdate.mockClear()
+      fileText = 'FED text'
+      await feedExternalEditToCrdt(dayId, 'FED text')
+      expect(store.storeUpdate).not.toHaveBeenCalled()
+      releaseFlush()
+      await deleted
+
+      fileText = 'new text'
+      await initializeJournalCrdt(dayId, '2026-05-02', [])
+      await singleton.close(dayId)
+
+      const fresh = freshDeviceDoc()
+      const body = fresh.getXmlFragment(CRDT_FRAGMENT_NAME).toJSON()
+      expect(fresh.store.pendingStructs).toBeNull()
+      expect(body).toContain('new text')
+      expect(body).not.toContain('FED')
     })
 
     // The drop above is the purge's alone: a plain close keeps the edit and
