@@ -14,6 +14,16 @@ inputs produce the **same winner and the same conflict set**, with no appeal to
 
 - A vector clock is a map from device id to a non-negative integer. **A missing
   key reads as 0** (`:11`, `:17`, `:29-30`).
+- A tick is at most `2^53 - 1`: `VectorClockSchema` is
+  `z.number().int().nonnegative()` (`packages/contracts/src/sync-api.ts:386`),
+  and zod 4's `int()` accepts safe integers only. The server is untrusted, so a
+  client MUST refuse a clock read off the wire with a larger tick. The Rust core
+  reads every envelope and purged-tombstone clock through `read_tick`
+  (`crates/memry-core/src/sync/clock.rs:43`;
+  `crates/memry-core/src/protocol/envelope.rs:532`;
+  `crates/memry-core/src/sync/hardening/purged.rs:238`). A pulled record or
+  tombstone carrying one is one corrupt item, and a marker carrying one is
+  refused. Its `increment` saturates rather than wraps (`clock.rs:58`).
 - `increment(clock, deviceId)` adds exactly 1 and is non-mutating (`:9-12`).
 - `merge(a, b)` is the **pointwise maximum** and is commutative (`:14-20`).
 - `compare(a, b)` returns `equal | before | after | concurrent`, computed over

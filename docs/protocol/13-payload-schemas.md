@@ -99,7 +99,7 @@ the `x-memry-client` header: the refusal is the core's decision, and iOS reports
 one marketing version across its builds. The first page of every run refetches
 by id each `(type, id)` another core build recorded and nobody tried within the
 last hour, desktop's `CORRUPT_ITEM_COOLDOWN_MS`, and stamps it as tried
-(`crates/memry-core/src/sync/pull.rs:352-353`,
+(`crates/memry-core/src/sync/pull.rs:357-358`,
 `crates/memry-core/src/sync/refused_items.rs:98-124`). It reads only the
 requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:81-129`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
@@ -230,7 +230,7 @@ plaintext in `data.db`. The exception is bounded:
   rules 3 and 4 hold for what leaves the device. A pending record is already
   the wire value and goes as stored, with or without a key
   (`crates/memry-core/src/crypto/agent_payload.rs:99-121`,
-  `crates/memry-core/src/sync/push.rs:382-385`).
+  `crates/memry-core/src/sync/push.rs:384-387`).
 - **Installing a key** through `Vault::set_at_rest_key` binds the vault's local
   key verifier (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) to
   the first key installed when none is stored, in the same call that checks
