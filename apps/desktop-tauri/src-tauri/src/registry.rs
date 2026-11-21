@@ -67,6 +67,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::billing::account_start_checkout,
             // calendar macOS (EventKit)
             crate::commands::calendar_eventkit::calendar_eventkit_request_access,
+            // calendar feeds
+            crate::commands::calendar_ics::calendar_refresh_ics,
+            crate::commands::calendar_ics::calendar_subscribe_ics,
+            crate::commands::calendar_ics::calendar_unsubscribe_ics,
             // canvas (the asset and live-canvas commands are not ported yet)
             crate::commands::canvas::canvas_create::<Wry>,
             crate::commands::canvas::canvas_delete::<Wry>,

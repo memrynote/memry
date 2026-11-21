@@ -10,6 +10,7 @@ pub mod attachment_sources;
 pub mod attachments;
 pub mod billing;
 pub mod calendar_eventkit;
+pub mod calendar_ics;
 pub mod canvas;
 pub mod canvas_folders;
 pub mod clipboard;
