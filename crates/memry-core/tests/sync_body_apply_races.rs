@@ -7,6 +7,8 @@
 //! The last test seeds and pulls a body desktop wrote with yjs through the
 //! chunk paths and the real crypto, and checks it converges with desktop's
 //! document (`tests/fixtures/desktop_yjs_body.gen.mjs` makes the fixture).
+//! The revive tests (#5356) hold that a purge between the fetch and the store
+//! drops what was fetched: it belongs to the body the purge removed.
 
 mod http_fakes;
 
@@ -15,15 +17,23 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::text_extract::extract_text;
 use memry_core::crdt::update_log;
 use memry_core::crypto::sodium;
+use memry_core::domain::journal;
+use memry_core::domain::journal_ops::body;
 use memry_core::protocol::crdt_envelope::{self, CrdtMaterial, CrdtRequest};
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackEntrySeed, PackSeed, PackedUpdate};
+use memry_core::sync::body_pull::{
+    BodyPull, CrdtCipher, PackEntrySeed, PackSeed, PackUpdateSeed, PackedUpdate,
+};
 use memry_core::sync::store;
+use rusqlite::Connection;
 use serde_json::{Value as Json, json};
 use yrs::updates::decoder::Decode as _;
 use yrs::updates::encoder::Encode as _;
@@ -116,8 +126,10 @@ async fn seed_with(label: &str, interleave: Interleave) -> (Db, PackSeed) {
         sequence_num: 5,
         revision: "rev-pack",
     }];
-    let seeded = body_pull(&db, cipher, Vec::new())
-        .seed_pack_chunk(&seeds)
+    let pull = body_pull(&db, cipher, Vec::new());
+    let epochs = pull.body_epochs().await.expect("the epochs");
+    let seeded = pull
+        .seed_pack_chunk(&seeds, &epochs)
         .await
         .expect("the seed");
     (db, seeded[0])
@@ -262,8 +274,10 @@ async fn a_bulk_applied_body_converges_with_a_desktop_edit() {
         sequence_num: 5,
         revision: "rev-5",
     }];
-    let seeded = body_pull(&db, Arc::clone(&cipher), Vec::new())
-        .seed_pack_chunk(&seeds)
+    let pull = body_pull(&db, Arc::clone(&cipher), Vec::new());
+    let epochs = pull.body_epochs().await.expect("the epochs");
+    let seeded = pull
+        .seed_pack_chunk(&seeds, &epochs)
         .await
         .expect("the seed");
     assert_eq!(seeded, vec![PackSeed::Applied]);
@@ -348,5 +362,185 @@ async fn a_bulk_applied_body_converges_with_a_desktop_edit() {
         ydoc.transact()
             .encode_state_as_update_v1(&StateVector::default()),
         before
+    );
+}
+
+/// #5356: a purge mid-chunk is a new body for the document (§7.15), so the
+/// packed baseline of the old one is not laid under it, though the record is
+/// live again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_document_purged_mid_chunk_takes_no_baseline_of_its_old_body() {
+    let (db, seeded) = seed_with(
+        "purged",
+        Box::new(|db| {
+            db.call_blocking(|conn| {
+                update_log::purge_in(conn, DOC).expect("the purge");
+                Ok(())
+            })
+            .expect("purge the document");
+        }),
+    )
+    .await;
+    assert_ne!(seeded, PackSeed::Applied);
+    assert_eq!(snapshot(&db), None, "no old body under the new one");
+    assert_eq!(cursor(&db, DOC), None);
+}
+
+/// #5356: a packed update run of the purged body is not stored either, though
+/// it starts at the reset cursor plus one.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_document_purged_mid_chunk_takes_no_update_of_its_old_body() {
+    let db = scratch("purged-updates");
+    live_record(&db, DOC);
+    let purge: Interleave = Box::new(|db| {
+        db.call_blocking(|conn| {
+            update_log::purge_in(conn, DOC).expect("the purge");
+            Ok(())
+        })
+        .expect("purge the document");
+    });
+    let cipher = Arc::new(Interleaving {
+        db: db.clone(),
+        interleave: Mutex::new(Some(purge)),
+    });
+    let seeds = [PackUpdateSeed {
+        doc_id: DOC,
+        sequence_num: 1,
+        signer_device_id: "device-a",
+        packed: b"UPDATE-OLD",
+    }];
+    let pull = body_pull(&db, cipher, Vec::new());
+    let epochs = pull.body_epochs().await.expect("the epochs");
+    let (stored, stopped) = pull
+        .seed_pack_updates(&seeds, &epochs)
+        .await
+        .expect("the seed");
+    assert_eq!(stored, 0);
+    assert!(stopped.contains(DOC));
+    assert_eq!(cursor(&db, DOC), None);
+}
+
+const DAY: &str = "2099-06-15";
+const DAY_ID: &str = "j2099-06-15";
+
+fn write_day(conn: &Connection, text: &str, block: &str, device: &str, now_ms: i64) {
+    let edit = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: text.to_owned(),
+        new_block_id: block.to_owned(),
+    };
+    body::edit_day(conn, DAY, &edit, device, now_ms).expect("the edit");
+}
+
+/// The body updates this device queued, in order: what a fresh device
+/// bootstraps once they are pushed.
+fn queued_updates(db: &Db) -> Vec<Vec<u8>> {
+    db.call_blocking(|conn| {
+        let mut read = conn
+            .prepare("SELECT payload FROM outbox WHERE op = 'crdt-update' ORDER BY id")
+            .expect("prepare");
+        let rows = read
+            .query_map([], |row| row.get::<_, Vec<u8>>(0))
+            .expect("query")
+            .map(|row| row.expect("row"))
+            .collect();
+        Ok(rows)
+    })
+    .expect("read the outbox")
+}
+
+fn day_text(db: &Db) -> String {
+    let blobs: Vec<Vec<u8>> = db
+        .call_blocking(|conn| {
+            let plan = update_log::load_plan(conn, DAY_ID).expect("the load plan");
+            Ok(plan.blobs().into_iter().map(<[u8]>::to_vec).collect())
+        })
+        .expect("load the body");
+    let reader = DocumentRegistry::new("reader", Arc::new(|_, _| {}))
+        .get_or_open(DAY_ID)
+        .expect("open");
+    for blob in &blobs {
+        reader.apply_durable_update(blob).expect("apply");
+    }
+    extract_text(&reader).expect("text")
+}
+
+/// #5356: a page fetched before the day was deleted, purged and written again
+/// is the deleted body's. Stored, it lands in the new body, and the next edit
+/// builds on content the server purged, so a fresh device holds it pending.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_page_pulled_across_a_revive_is_not_stored_in_the_new_body() {
+    // Another device's edit of the day before the delete: the server's log.
+    let other = scratch("revive-other");
+    other
+        .call_blocking(|conn| {
+            write_day(conn, "Deleted words.", "b-old", "device-a", 1);
+            Ok(())
+        })
+        .expect("the other device's edit");
+    let old = queued_updates(&other);
+    assert_eq!(old.len(), 1);
+
+    let db = scratch("revive-pull");
+    db.call_blocking(|conn| {
+        write_day(conn, "Local words.", "b-local", "device-b", 1);
+        conn.execute("DELETE FROM outbox", []).expect("pushed");
+        Ok(())
+    })
+    .expect("the live day");
+
+    // Between the page's fetch and its store: the day is deleted (the
+    // tombstone's purge), then written again here.
+    let revive: Interleave = Box::new(|db| {
+        db.call_blocking(|conn| {
+            assert!(journal::delete_day(conn, DAY, "device-b", 2).expect("delete"));
+            conn.execute("DELETE FROM outbox", []).expect("pushed");
+            write_day(conn, "Back again.", "b-new", "device-b", 3);
+            Ok(())
+        })
+        .expect("revive the day");
+    });
+    let cipher = Arc::new(Interleaving {
+        db: db.clone(),
+        interleave: Mutex::new(Some(revive)),
+    });
+    let page = json!({
+        "updates": [{
+            "sequenceNum": 1,
+            "data": BASE64.encode(&old[0]),
+            "signerDeviceId": "device-a",
+        }],
+        "hasMore": false,
+    })
+    .to_string();
+    let script = vec![
+        json!({ "notes": {} }).to_string(),
+        json!({ "snapshot": null }).to_string(),
+        page,
+    ];
+    body_pull(&db, cipher, script)
+        .pull_document(DAY_ID)
+        .await
+        .expect("the pull");
+
+    let text = day_text(&db);
+    assert!(!text.contains("Deleted words."), "{text:?}");
+    assert!(text.contains("Back again."), "{text:?}");
+    assert_eq!(cursor(&db, DAY_ID), None, "no cursor of the old body");
+
+    db.call_blocking(|conn| {
+        write_day(conn, "And more.", "b-more", "device-b", 4);
+        Ok(())
+    })
+    .expect("the next edit");
+    let fresh = yrs::Doc::new();
+    let mut txn = fresh.transact_mut();
+    for update in queued_updates(&db) {
+        txn.apply_update(Update::decode_v1(&update).expect("decode"))
+            .expect("apply");
+    }
+    assert!(
+        txn.store().pending_update().is_none(),
+        "a fresh device integrates every update pushed after the revive"
     );
 }

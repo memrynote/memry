@@ -35,7 +35,7 @@ use tokio::task::JoinSet;
 use crate::api::errors::StorageError;
 use crate::protocol::pack::{PackEntry, PackKind};
 
-use super::super::body_pull::{BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
+use super::super::body_pull::{BodyEpochs, BodyPullError, PackEntrySeed, PackSeed, PackUpdateSeed};
 use super::super::first_sync_store::{body_states, settle_pack_bodies};
 use super::body_plan::{BodyCheck, ServerSnapshot, plan_packed_updates, updates_may_follow};
 use super::listing::{PackSummary, list};
@@ -197,6 +197,9 @@ impl PackBootstrap {
         now_s: i64,
         report: &mut BodyPackReport,
     ) -> Result<(), BodyPullError> {
+        // Before anything is fetched: a body purged after this, by a delete
+        // or a revive, takes nothing the packs hold (#5356).
+        let epochs = self.bodies.body_epochs().await?;
         let listing = match list(&self.http, self.vault_id.as_deref(), now_s).await {
             Ok(listing) => listing,
             Err(reason) => {
@@ -236,8 +239,9 @@ impl PackBootstrap {
                     .await?
             }
         };
-        self.apply_snapshots(&held, &checks, report).await?;
-        self.apply_updates(&held, &checks, report).await?;
+        self.apply_snapshots(&held, &checks, &epochs, report)
+            .await?;
+        self.apply_updates(&held, &checks, &epochs, report).await?;
 
         let manifest = report.manifest.then_some(checks);
         let (settled, owed) = self
@@ -341,6 +345,7 @@ impl PackBootstrap {
         &self,
         held: &Held,
         checks: &HashMap<String, BodyCheck>,
+        epochs: &BodyEpochs,
         report: &mut BodyPackReport,
     ) -> Result<(), BodyPullError> {
         let mut todo: Vec<(&str, &HeldSnapshot)> = Vec::new();
@@ -378,7 +383,7 @@ impl PackBootstrap {
                     None => report.entries_unconfirmed += 1,
                 }
             }
-            for seeded in self.bodies.seed_pack_chunk(&seeds).await? {
+            for seeded in self.bodies.seed_pack_chunk(&seeds, epochs).await? {
                 match seeded {
                     PackSeed::Applied => report.snapshots_applied += 1,
                     PackSeed::Stale => {}
@@ -393,6 +398,7 @@ impl PackBootstrap {
         &self,
         held: &Held,
         checks: &HashMap<String, BodyCheck>,
+        epochs: &BodyEpochs,
         report: &mut BodyPackReport,
     ) -> Result<(), BodyPullError> {
         let mut docs: Vec<String> = held
@@ -456,7 +462,7 @@ impl PackBootstrap {
                     }
                 }
             }
-            let (stored, stops) = self.bodies.seed_pack_updates(&seeds).await?;
+            let (stored, stops) = self.bodies.seed_pack_updates(&seeds, epochs).await?;
             applied += stored;
             stopped.extend(stops);
         }

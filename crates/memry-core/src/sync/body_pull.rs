@@ -72,13 +72,13 @@ use crate::storage::Db;
 
 use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
-use super::store;
 
 mod log_writes;
 mod manifest;
 mod pack_seed;
 mod probe;
 
+pub use log_writes::BodyEpochs;
 pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;
 pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
 pub(super) use probe::Probed;
@@ -176,7 +176,9 @@ pub struct BodyPullReport {
     pub advanced_documents: Vec<String>,
     /// Documents whose pull yielded at [`MAX_PAGES_PER_DOCUMENT`] with the
     /// server still reporting `hasMore`. Nothing was skipped, but the log does
-    /// not reach the server's head yet, so a body debt is not settled.
+    /// not reach the server's head yet, so a body debt is not settled. Also
+    /// documents purged mid-pull (#5356): what was fetched was the purged
+    /// body's and is dropped, and the next pass pulls the new one.
     pub incomplete: Vec<String>,
     /// Requests this pull sent, so a caller can hold a per-pass budget.
     pub requests: usize,
@@ -294,10 +296,12 @@ impl BodyPull {
             return Ok(report);
         }
         let meta = meta.as_ref();
+        let epoch = self.body_epoch(doc_id).await?;
         let mut cursor = self.read_cursor(doc_id).await?;
         let mut first_page = None;
 
-        if let Some(answer) = answer {
+        // A purge since the probe (#5356) left its answer to the purged body.
+        if let Some(answer) = answer.filter(|answer| answer.epoch == epoch) {
             // §7.8 from the batch answer: a baseline when the server's
             // snapshot is not the one held, whatever the cursor (a cursor of
             // 0 holds none, unless a snapshot at `sequenceNum` 0 was taken).
@@ -314,13 +318,16 @@ impl BodyPull {
             // is fetched afresh (REVIEW-5311, VERIFY-5311).
             let mut held = !due;
             if due {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self
+                    .fetch_baseline(doc_id, epoch, cursor, &mut report)
+                    .await?
+                {
                     cursor = self.read_cursor(doc_id).await?;
                     held = match meta {
                         Some(meta) => !self.baseline_due(doc_id, meta).await?,
                         None => true,
                     };
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(report);
                 }
             }
@@ -340,9 +347,12 @@ impl BodyPull {
             // it, because everything at or below the watermark is answered
             // with silence.
             if cursor == 0 {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self
+                    .fetch_baseline(doc_id, epoch, cursor, &mut report)
+                    .await?
+                {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     // A baseline that exists and could not be used: paging on
                     // from 0 would store the updates above the watermark and
                     // move the cursor past the state below it for good.
@@ -357,9 +367,12 @@ impl BodyPull {
                 && let Some(meta) = meta
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self
+                    .fetch_baseline(doc_id, epoch, cursor, &mut report)
+                    .await?
+                {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(report);
                 }
             }
@@ -377,9 +390,12 @@ impl BodyPull {
             if let Some(meta) = page.snapshot_meta.as_ref()
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self
+                    .fetch_baseline(doc_id, epoch, cursor, &mut report)
+                    .await?
+                {
                     cursor = self.read_cursor(doc_id).await?;
-                } else if !report.stopped.is_empty() {
+                } else if !report.merged() {
                     return Ok(report);
                 }
             }
@@ -415,8 +431,12 @@ impl BodyPull {
             }
             // The updates before a gap are stored; the cursor stops there.
             if let Some(&(last, _)) = opened_page.last() {
-                report.updates += opened_page.len();
-                self.store_updates(doc_id, opened_page).await?;
+                let count = opened_page.len();
+                if !self.store_updates(doc_id, epoch, opened_page).await? {
+                    report.incomplete.push(doc_id.to_owned());
+                    return Ok(report);
+                }
+                report.updates += count;
                 cursor = last;
                 if report.advanced_documents.last().map(String::as_str) != Some(doc_id) {
                     report.advanced_documents.push(doc_id.to_owned());
@@ -435,7 +455,7 @@ impl BodyPull {
         // Without a cursor the feed treats the document as never fetched and
         // drops every update typed into it afterwards.
         if cursor == 0 && report.merged() {
-            self.hold_empty_body(doc_id).await?;
+            self.hold_empty_body(doc_id, epoch).await?;
         }
 
         Ok(report)
@@ -446,6 +466,7 @@ impl BodyPull {
     async fn fetch_baseline(
         &self,
         doc_id: &str,
+        epoch: i64,
         cursor: i64,
         report: &mut BodyPullReport,
     ) -> Result<bool, BodyPullError> {
@@ -490,8 +511,13 @@ impl BodyPull {
             .and_then(Json::as_str)
             .map(str::to_owned);
 
-        self.store_baseline(doc_id, snapshot, sequence_num, revision, cursor)
-            .await?;
+        if !self
+            .store_baseline(doc_id, epoch, snapshot, sequence_num, revision, cursor)
+            .await?
+        {
+            report.incomplete.push(doc_id.to_owned());
+            return Ok(false);
+        }
         report.baselines += 1;
         Ok(true)
     }
@@ -537,20 +563,6 @@ impl BodyPull {
             .send_json(self.request("GET", &path).retry(RetryPolicy::polled()))
             .await?;
         Ok(read_update_page(&body, doc_id))
-    }
-
-    async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
-        Ok(self.stored_cursor(doc_id).await?.unwrap_or(0))
-    }
-
-    /// `None` when this device never pulled the document.
-    async fn stored_cursor(&self, doc_id: &str) -> Result<Option<i64>, BodyPullError> {
-        let scope = crdt_cursor_scope(doc_id);
-        let stored = self
-            .db
-            .call(move |conn| store::read_cursor(conn, &scope))
-            .await?;
-        Ok(stored.and_then(|text| text.parse().ok()))
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {

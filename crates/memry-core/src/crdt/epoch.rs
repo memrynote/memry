@@ -9,6 +9,7 @@
 //! Each purge moves the document to a new epoch, and each epoch authors under
 //! its own client id, so no `(client, clock)` pair is minted twice.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
@@ -30,6 +31,31 @@ pub(crate) fn bump_in(conn: &Connection, doc_id: &str) -> Result<(), CrdtError> 
     Ok(())
 }
 
+/// `doc_id`'s epoch: 0 until this device first purges it.
+pub(crate) fn read(conn: &Connection, doc_id: &str) -> Result<i64, CrdtError> {
+    Ok(conn
+        .prepare_cached("SELECT epoch FROM yjs_doc_epochs WHERE doc_id = ?1")
+        .and_then(|mut statement| {
+            statement
+                .query_row(params![doc_id], |row| row.get(0))
+                .optional()
+        })
+        .map_err(failed("read the document epoch"))?
+        .unwrap_or(0))
+}
+
+/// Every document's epoch above 0.
+pub(crate) fn read_all(conn: &Connection) -> Result<HashMap<String, i64>, CrdtError> {
+    Ok(conn
+        .prepare_cached("SELECT doc_id, epoch FROM yjs_doc_epochs")
+        .and_then(|mut statement| {
+            statement
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .collect::<Result<_, _>>()
+        })
+        .map_err(failed("read the document epochs"))?)
+}
+
 /// The client id `device_id` authors `doc_id` under. Epoch 0, a document this
 /// device never purged, keeps the device's own id (§7.16).
 pub(crate) fn client_id(
@@ -37,16 +63,7 @@ pub(crate) fn client_id(
     device_id: &str,
     doc_id: &str,
 ) -> Result<u64, CrdtError> {
-    let epoch: i64 = conn
-        .query_row(
-            "SELECT epoch FROM yjs_doc_epochs WHERE doc_id = ?1",
-            params![doc_id],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(failed("read the document epoch"))?
-        .unwrap_or(0);
-    Ok(match epoch {
+    Ok(match read(conn, doc_id)? {
         0 => client_id_from_device_id(device_id),
         epoch => client_id_from_device_id(&format!("{device_id}\0epoch{epoch}")),
     })
