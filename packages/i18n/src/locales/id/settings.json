@@ -1398,6 +1398,7 @@
       "selectModel": "Pilih model",
       "apiKey": "Kunci API",
       "apiKeyDescription": "Disimpan secara lokal, dikirim hanya ke penyedia",
+      "apiKeyKeychainDescription": "Disimpan di rantai kunci OS Anda, dikirim hanya ke penyedia",
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat server lokal",
