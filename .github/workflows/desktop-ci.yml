@@ -212,6 +212,17 @@ jobs:
       - name: Check HTML text vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:html-text:check
 
+      # The agent MCP contract vectors come from Electron's tool schemas and MCP server the same way.
+      - name: Check agent MCP vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:agent-mcp:check
+
+      # The note export vectors come from Electron's export-utils.ts and export-image-inliner.ts.
+      - name: Check note export vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:export:check
+      # The superseded activity id vectors come from Electron's tasks/activity-log.ts the same way.
+      - name: Check task superseded id vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:task-superseded:check
+
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
       # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the
@@ -310,6 +321,22 @@ jobs:
       - name: Run CLI tests
         if: matrix.shard == 1
         run: pnpm test:cli
+
+      # The goldens of crates/memrynote-cli come from the TypeScript CLI (needs better-sqlite3
+      # built for Node, done above): a stale manifest or expected file fails here.
+      - name: memrynote goldens match the TypeScript CLI
+        if: matrix.shard == 1
+        run: |
+          node crates/memrynote-cli/tests/golden/generate.mjs --manifest --check
+          node crates/memrynote-cli/tests/golden/generate.mjs --check
+
+      - name: memrynote pending.json only shrinks
+        if: matrix.shard == 1 && github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          node crates/memrynote-cli/tests/golden/generate.mjs --pending-base FETCH_HEAD
 
       - name: Run desktop tests with coverage (shard ${{ matrix.shard }}/4)
         # Threshold enforcement is deferred to the separate "Coverage thresholds"

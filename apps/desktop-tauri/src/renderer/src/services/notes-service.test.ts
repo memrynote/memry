@@ -6,6 +6,8 @@ import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
+  notesImportFiles: vi.fn(),
+  notesShowImportDialog: vi.fn(),
   notesDelete: vi.fn(),
   notesGet: vi.fn(),
   notesGetByPath: vi.fn(),
@@ -47,6 +49,7 @@ const commands = vi.hoisted(() => ({
   notesUploadAttachmentBegin: vi.fn(),
   notesUploadAttachmentAbort: vi.fn(),
   notesDownloadAttachmentFromUrl: vi.fn(),
+  notesExportHtml: vi.fn(),
   notesGetVersions: vi.fn(),
   notesGetVersion: vi.fn(),
   notesRestoreVersion: vi.fn(),
@@ -70,9 +73,17 @@ const events = vi.hoisted(() => {
     noteMovedEvent: event('moved'),
     noteTagsChangedEvent: event('tags'),
     folderConfigUpdatedEvent: event('folderConfig'),
-    noteEventsDroppedEvent: event('dropped')
+    noteEventsDroppedEvent: event('dropped'),
+    syncItemSyncedEvent: {
+      listen: async (handler: (event: { payload: unknown }) => void) => {
+        pulled.add(handler)
+        return () => pulled.delete(handler)
+      }
+    }
   }
 })
+// Every live listener of pulled pages; `listeners` keeps one per event name.
+const pulled = vi.hoisted(() => new Set<(event: { payload: unknown }) => void>())
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
 const invokeBinary = vi.hoisted(() => vi.fn())
@@ -88,7 +99,6 @@ import {
   onNoteEventsDropped,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange,
   onTagsChanged,
   onFolderConfigUpdated
 } from './notes-service'
@@ -354,11 +364,12 @@ describe('notes-service', () => {
       template: 'weekly',
       emoji: null
     })
-    // Plain checklists (Step 32) would be dropped, so the create is refused.
-    await expect(notesService.create({ title: 'T', plainChecklists: true })).rejects.toMatchObject({
-      name: 'NotPortedError'
-    })
-    expect(commands.notesCreate).toHaveBeenCalledTimes(2)
+    // Plain checklists reach the command (Step 32h1).
+    await notesService.create({ title: 'T', plainChecklists: true })
+    expect(commands.notesCreate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: 'T', plainChecklists: true })
+    )
+    expect(commands.notesCreate).toHaveBeenCalledTimes(3)
     // A failure answers as Electron's handler does, with the command's message.
     commands.notesDelete.mockRejectedValue({
       kind: 'not_found',
@@ -765,11 +776,42 @@ describe('notes-service', () => {
       note: null
     })
 
-    commands.notesApplyTemplate.mockClear()
-    await expect(notesService.applyTemplate({ ...input, plainChecklists: true })).rejects.toThrow(
-      'notes.applyTemplate({ plainChecklists }) is not ported'
-    )
-    expect(commands.notesApplyTemplate).not.toHaveBeenCalled()
+    commands.notesApplyTemplate.mockResolvedValue(view)
+    await notesService.applyTemplate({ ...input, plainChecklists: true })
+    expect(commands.notesApplyTemplate).toHaveBeenLastCalledWith({
+      ...input,
+      plainChecklists: true
+    })
+  })
+
+  it('imports files and shows the import dialog through their commands', async () => {
+    const result = {
+      success: true,
+      imported: 1,
+      failed: 0,
+      errors: [],
+      importedFiles: [{ destPath: '/vault/work/a.pdf', filename: 'a.pdf', fileType: 'pdf' }]
+    }
+    commands.notesImportFiles.mockResolvedValue(result)
+    commands.notesShowImportDialog.mockResolvedValue({ canceled: false, filePaths: ['/x/a.pdf'] })
+
+    await expect(
+      notesService.importFiles(['/staged/a.pdf'], 'work', { plainChecklists: true })
+    ).resolves.toEqual(result)
+    expect(commands.notesImportFiles).toHaveBeenCalledWith({
+      sourcePaths: ['/staged/a.pdf'],
+      targetFolder: 'work',
+      options: { plainChecklists: true }
+    })
+    await expect(notesService.showImportDialog()).resolves.toEqual({
+      canceled: false,
+      filePaths: ['/x/a.pdf']
+    })
+
+    // A refused path rejects, as Electron's handler threw.
+    const refused = { kind: 'Invalid', code: 'import_path_refused', message: 'refused' }
+    commands.notesImportFiles.mockRejectedValue(refused)
+    await expect(notesService.importFiles(['/etc/passwd'])).rejects.toEqual(refused)
   })
 
   // "Move to" removes the block from the source only on `success`: a refused move must answer
@@ -1145,6 +1187,28 @@ describe('notes-service', () => {
     })
   })
 
+  it('exports HTML through Rust and keeps why nothing was written', async () => {
+    commands.notesExportHtml.mockResolvedValueOnce({ success: true, path: '/out/Plan.html' })
+    await expect(
+      notesService.exportHtml({ noteId: 'note-1', includeMetadata: false })
+    ).resolves.toEqual({ success: true, path: '/out/Plan.html' })
+    expect(commands.notesExportHtml).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      includeMetadata: false
+    })
+
+    commands.notesExportHtml.mockResolvedValueOnce({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
+    })
+    await expect(notesService.exportHtml({ noteId: 'note-1' })).resolves.toEqual({
+      success: false,
+      code: 'cancelled',
+      error: 'Export cancelled'
+    })
+  })
+
   it('forwards the export helpers', async () => {
     api.notes.exportPdf = vi.fn().mockResolvedValue({ success: true })
 
@@ -1238,13 +1302,26 @@ describe('notes-service', () => {
     await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(false))
   })
 
-  it('registers the note event subscription not yet ported on window.api', () => {
-    const unsubscribe = vi.fn()
-    api.onNoteExternalChange = vi.fn(() => unsubscribe)
-    const handler = vi.fn()
+  it('tells the tag and folder listeners about pulled tag definitions and folder configs', async () => {
+    vi.useFakeTimers()
+    try {
+      const tags = vi.fn()
+      const folders = vi.fn()
+      const stops = [onTagsChanged(tags), onFolderConfigUpdated(folders)]
+      await vi.advanceTimersByTimeAsync(0)
+      const items = [
+        { itemId: 'work', type: 'tag_definition', itemOperation: 'update' },
+        { itemId: 'Work/Plans', type: 'folder_config', itemOperation: 'delete' }
+      ]
+      for (const handler of pulled) handler({ payload: { operation: 'pull', items } })
+      await vi.advanceTimersByTimeAsync(150)
 
-    expect(onNoteExternalChange(handler)).toBe(unsubscribe)
-    expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
+      expect(tags).toHaveBeenCalledTimes(1)
+      expect(folders).toHaveBeenCalledWith({ path: 'Work/Plans' })
+      for (const stop of stops) stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   describe('position operations', () => {

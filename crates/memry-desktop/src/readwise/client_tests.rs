@@ -75,6 +75,16 @@ fn a_page_cursor_reaches_the_url_as_one_encoded_value() {
     assert_eq!(pairs, [("pageCursor".to_owned(), hostile.to_owned())]);
 }
 
+#[test]
+fn the_token_header_is_sensitive() {
+    let client = client();
+    let request = client.http.get(client.url("/api/v2/auth/", &[]));
+    let request = with_token(request, "secret-token").build().unwrap();
+    let header = request.headers().get(AUTHORIZATION).unwrap();
+    assert_eq!(header, "Token secret-token");
+    assert!(header.is_sensitive());
+}
+
 proptest! {
     #![proptest_config(proptest_config(256))]
 

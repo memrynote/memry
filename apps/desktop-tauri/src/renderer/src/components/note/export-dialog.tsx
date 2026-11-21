@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileText, FileCode, Loader2, CheckCircle } from '@/lib/icons'
-import { notesService, type ExportNoteResponse } from '@/services/notes-service'
+import { notesService, type ExportNoteResult } from '@/services/notes-service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -102,7 +102,7 @@ export function ExportDialog({
     setExportSuccess(false)
 
     try {
-      let result: ExportNoteResponse
+      let result: ExportNoteResult
 
       if (format === 'pdf') {
         result = await notesService.exportPdf({
@@ -144,7 +144,7 @@ export function ExportDialog({
             setIncludeMetadata(true)
           }, 200)
         }, 800)
-      } else if (result.error === 'Export cancelled') {
+      } else if (result.code === 'cancelled') {
         // User cancelled - do nothing
       } else {
         trackRendererError('note_export_failed', result.error)

@@ -32,10 +32,12 @@ import type { NoteCreateInput } from '../../vault/notes-crud'
 import type * as IdModule from '../../lib/id'
 import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
-import type { Importer, ImportInput } from '../types'
+import type { Importer, ImportInput, ImportSummary } from '../types'
 import { createImportContext } from '../import-context'
+import { bearImporter } from '../bear/bear-importer'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
+import { googleKeepImporter } from '../google-keep/google-keep-importer'
 
 const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
 
@@ -110,6 +112,14 @@ interface VectorCase {
 
 const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
   {
+    source: 'bear',
+    importer: bearImporter,
+    cases: [
+      { name: 'backup', sources: ['export.bear2bk'] },
+      { name: 'two-zips', sources: ['export.bear2bk', 'more.zip'] }
+    ]
+  },
+  {
     source: 'markdown',
     importer: markdownImporter,
     cases: [
@@ -131,6 +141,18 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
         sources: ['edge.csv', 'crlf.csv', 'empty.csv', 'keys.csv'],
         preview: true
       }
+    ]
+  },
+  {
+    source: 'google-keep',
+    importer: googleKeepImporter,
+    cases: [
+      { name: 'takeout', sources: ['Takeout.zip'] },
+      {
+        name: 'loose',
+        sources: ['loose/Loose note.json', 'loose/bad.json', 'loose/readme.txt', 'loose/array.json']
+      },
+      { name: 'mixed', sources: ['loose/Loose note.json', 'Takeout.zip'] }
     ]
   }
 ]
@@ -193,18 +215,20 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
     const preview = c.preview ? await importer.preview?.(input, controller.signal) : undefined
     const ctx = createImportContext('vector', controller.signal)
     await importer.run(input, ctx)
-    const summary = ctx.toSummary()
+    // A failed item names the picked file; a `done` snapshot an importer emits carries it too.
+    const unrootSummary = (summary: ImportSummary): ImportSummary => ({
+      ...summary,
+      failed: summary.failed.map(({ item, error }) => ({ item: unroot(item), error }))
+    })
     return {
       ...c,
       ...(preview ? { preview } : {}),
       timeline: rec.timeline.map((entry) => {
-        const e = entry as { op: string; input?: NoteCreateInput }
-        return e.op === 'createNote' && e.input ? noteRecord(e.input) : entry
+        const e = entry as { op: string; input?: NoteCreateInput; summary?: ImportSummary }
+        if (e.op === 'createNote' && e.input) return noteRecord(e.input)
+        return e.summary ? { ...e, summary: unrootSummary(e.summary) } : entry
       }),
-      summary: {
-        ...summary,
-        failed: summary.failed.map(({ item, error }) => ({ item: unroot(item), error }))
-      }
+      summary: unrootSummary(ctx.toSummary())
     }
   } finally {
     fs.rmSync(work, { recursive: true, force: true })

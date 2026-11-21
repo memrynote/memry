@@ -16,12 +16,14 @@ use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
 mod ai;
+mod home_pages;
 mod sync;
 mod tags;
 mod voice;
 
 pub use account::*;
 pub use ai::*;
+pub use home_pages::*;
 pub use sync::*;
 pub use tags::*;
 pub use voice::*;
@@ -472,6 +474,11 @@ pub struct AppNavigationRequestedEvent {
 pub struct FlushRequestedEvent {
     pub request_id: String,
 }
+
+/// A sticky draft was written or deleted (`sticky:drafts-changed`), sent to every window; the
+/// edge tab and the sticky read the list again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct StickyDraftsChangedEvent;
 
 /// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
 /// (#3544), a clicked inbox notification.

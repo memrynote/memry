@@ -324,7 +324,9 @@ impl Lane {
         self.settled();
     }
 
-    /// Every lane event published so far, and every reconcile pass, has run.
+    /// Every event published so far to a foreground lane has run, and no reconcile pass is
+    /// running. The embedding lane is a background one, which `flush` skips: a test that needs
+    /// its work done waits on the stored vectors ([`Self::embedded`], [`Self::all_embedded`]).
     pub fn settled(&self) {
         let runtime = self.e.session.projections().expect("open");
         assert!(runtime.flush(WAIT));

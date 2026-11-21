@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Még nincsenek széfek",
       "openVault": "Széf megnyitása",
+      "createVault": "Széf létrehozása",
+      "openFolderAsVault": "Mappa megnyitása széfként",
       "settings": "Beállítások",
       "remove": "Eltávolítás: „",
       "removeVaultTitle": "Eltávolítja a(z) „{name}” széfet a listáról?",

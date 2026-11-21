@@ -23,23 +23,48 @@ impl Session {
         folder: &Path,
         server_vault_id: &str,
     ) -> Result<(), SessionError> {
+        self.provision(folder, server_vault_id, false)
+    }
+
+    /// [`Self::provision_dormant`] into a folder this call makes with `create_dir`: a folder that
+    /// exists already, because it appeared after the caller picked the name, is refused with
+    /// [`SessionError::FolderExists`] and never bound, registered or cleaned up.
+    pub fn provision_new_dormant(
+        &self,
+        folder: &Path,
+        server_vault_id: &str,
+    ) -> Result<(), SessionError> {
+        self.provision(folder, server_vault_id, true)
+    }
+
+    fn provision(
+        &self,
+        folder: &Path,
+        server_vault_id: &str,
+        new_folder: bool,
+    ) -> Result<(), SessionError> {
         let server_vault_id = server_vault_id.trim();
         if server_vault_id.is_empty() {
             return Err(SessionError::Invalid("the account vault has no id".into()));
         }
         let _queue = lock(&self.inner.lifecycle);
-        if let Some(open) = self.current().filter(|open| open.path == folder) {
+        if !new_folder && let Some(open) = self.current().filter(|open| open.path == folder) {
             open.vault.bind_server_vault(server_vault_id)?;
             return Ok(());
         }
-        self.ensure_not_held(folder)?;
         let created = first_missing(folder);
-        let provisioned = std::fs::create_dir_all(folder)
-            .map_err(|e| {
-                SessionError::Invalid(format!("Could not create {}: {e}", folder.display()))
-            })
-            .and_then(|()| self.provision_in(folder, server_vault_id));
-        if let (Err(error), Some(first)) = (&provisioned, created) {
+        // A new folder is made before the held check: a held vault's folder exists, so it is
+        // refused as taken at once and a download moves on to the next name.
+        let made = if new_folder {
+            create_new_dir(folder).and_then(|()| self.ensure_not_held(folder))
+        } else {
+            self.ensure_not_held(folder)?;
+            std::fs::create_dir_all(folder).map_err(|e| not_created(folder, &e))
+        };
+        let provisioned = made.and_then(|()| self.provision_in(folder, server_vault_id));
+        if let (Err(error), Some(first)) = (&provisioned, created)
+            && !matches!(error, SessionError::FolderExists(_))
+        {
             tracing::warn!(%error, "vault provisioning failed; removing the folders it created");
             remove_created_empty_dirs(folder, &first);
         }
@@ -73,6 +98,21 @@ impl Session {
         tracing::info!("provisioned a dormant vault");
         Ok(())
     }
+}
+
+/// Makes `folder`'s missing parents, then `folder` itself, refusing one that exists.
+fn create_new_dir(folder: &Path) -> Result<(), SessionError> {
+    if let Some(parent) = folder.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| not_created(parent, &e))?;
+    }
+    std::fs::create_dir(folder).map_err(|e| match e.kind() {
+        io::ErrorKind::AlreadyExists => SessionError::FolderExists(folder.display().to_string()),
+        _ => not_created(folder, &e),
+    })
+}
+
+fn not_created(folder: &Path, error: &io::Error) -> SessionError {
+    SessionError::Invalid(format!("Could not create {}: {error}", folder.display()))
 }
 
 /// The topmost ancestor of `folder` (itself included) that does not exist yet: what
@@ -208,6 +248,69 @@ mod tests {
         remove_created_empty_dirs(&attempt, &dir.path().join("a"));
         assert!(attempt.join(".memry/config.json").is_file());
         assert!(attempt.join("attachments").is_dir());
+    }
+
+    /// A download names its folder, then makes it: a folder that appeared in between (another
+    /// app, a sync client) is someone else's and must not be bound to the account and synced.
+    #[test]
+    fn a_new_vault_refuses_a_folder_that_exists_and_leaves_it_alone() {
+        let f = fixture();
+        let taken = f.dir.path().join("parent").join("work");
+        std::fs::create_dir_all(&taken).unwrap();
+        std::fs::write(taken.join("theirs.txt"), "not a vault").unwrap();
+
+        let error = f
+            .session
+            .provision_new_dormant(&taken, "server-vault-uuid")
+            .unwrap_err();
+
+        assert!(matches!(error, SessionError::FolderExists(_)), "{error:?}");
+        assert!(!taken.join(crate::vault::layout::MEMRY_DIR).exists());
+        assert!(f.session.registry().stored().is_empty());
+        assert_eq!(
+            std::fs::read_to_string(taken.join("theirs.txt")).unwrap(),
+            "not a vault"
+        );
+    }
+
+    /// A closed vault still held by an overrunning thread keeps its folder: a download refuses
+    /// it as taken, so it moves on to the next name instead of waiting for the thread and failing.
+    #[test]
+    fn a_new_vault_refuses_a_held_folder_as_taken() {
+        let f = fixture();
+        let taken = f.vault("work");
+        f.session.open(&taken, OpenSource::Select).expect("open");
+        let _held = f.session.current().expect("open").vault;
+        f.session.close();
+
+        let error = f
+            .session
+            .provision_new_dormant(&taken, "server-vault-uuid")
+            .unwrap_err();
+
+        assert!(matches!(error, SessionError::FolderExists(_)), "{error:?}");
+    }
+
+    /// The folder of a held vault was deleted: the name is free on disk but its databases are
+    /// still held, so the new folder is refused and removed again. Unix only: Windows cannot
+    /// delete a folder whose databases are open.
+    #[cfg(unix)]
+    #[test]
+    fn a_new_vault_in_a_held_path_whose_folder_is_gone_is_refused_and_removed() {
+        let f = fixture_with(Duration::from_millis(100));
+        let path = f.vault("work");
+        f.session.open(&path, OpenSource::Select).expect("open");
+        let _held = f.session.current().expect("open").vault;
+        f.session.close();
+        std::fs::remove_dir_all(&path).unwrap();
+
+        let error = f
+            .session
+            .provision_new_dormant(&path, "server-vault-uuid")
+            .unwrap_err();
+
+        assert!(matches!(error, SessionError::Held(_)), "{error:?}");
+        assert!(!path.exists());
     }
 
     #[test]
