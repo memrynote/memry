@@ -113,6 +113,29 @@ async fn snapshots_and_updates_confirmed_by_the_manifest_apply_and_settle() {
     );
 }
 
+/// #5374: a drop that outlasts the transport ladder of both pack GETs
+/// pauses the phase, and the packs download after it.
+#[tokio::test]
+async fn body_packs_lost_to_a_network_drop_download_after_the_pause() {
+    let (db, dir) = body_pack_server::scratch("drop");
+    let (docs, packs) = three_shapes();
+    seed_records(&db, &SHAPES.map(|(id, _)| id), &[]);
+    let mut server = Server::new(docs, packs);
+    server.dropped_gets = 2 * 4;
+    let routes = Routes::new(server);
+
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    assert!(
+        report.ran && report.fallback_reasons.is_empty(),
+        "{report:?}"
+    );
+    assert_eq!(report.packs_held, 2);
+    assert_eq!((report.settled, report.owed), (3, 0));
+    holds_the_three_shapes(&db, &routes);
+    assert_eq!(routes.slept().iter().filter(|ms| **ms == 30_000).count(), 1);
+}
+
 #[tokio::test]
 async fn a_purged_then_recreated_document_and_a_deleted_one_take_no_packed_body() {
     let (db, dir) = body_pack_server::scratch("floor");

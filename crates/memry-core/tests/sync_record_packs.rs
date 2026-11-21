@@ -10,10 +10,10 @@ mod http_fakes;
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use http_fakes::{body_json, bytes_response, response};
+use http_fakes::{body_json, bytes_response, response, response_with_header};
 use memry_core::api::errors::TransportError;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{
@@ -27,7 +27,9 @@ use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate};
 use memry_core::sync::first_sync::{FirstSync, FirstSyncError, FirstSyncReport};
 use memry_core::sync::first_sync_store::read_meta;
-use memry_core::sync::pack_bootstrap::{META_RECORD_PACKS_DONE, PackBootstrap, pack_deadline_ms};
+use memry_core::sync::pack_bootstrap::{
+    META_RECORD_PACKS_DONE, PACK_RETRY_PAUSES, PackBootstrap, pack_deadline_ms,
+};
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use serde_json::{Value as Json, json};
 use sha2::{Digest as _, Sha256};
@@ -182,6 +184,56 @@ struct Server {
     byte_size: Option<u64>,
     /// Every record pack GET times out on this timer.
     pack_timeout: Option<Timer>,
+    /// Record pack GETs answer offline until this instant of the paused
+    /// test clock: the network dropped.
+    offline_until: Option<tokio::time::Instant>,
+    /// What a dropped request answers; offline when unset.
+    dropped_as: Option<Dropped>,
+    /// Every `GET /sync/packs` after the first is dropped too.
+    relists_dropped: bool,
+    listings: AtomicUsize,
+    /// Presigned URLs live this long on the test clock, and a GET on an
+    /// expired one answers 403. Unset, every URL lives past the run.
+    presign: Option<Presign>,
+}
+
+/// What the network answers while it is down.
+#[derive(Clone, Copy)]
+enum Dropped {
+    Status(u16),
+    /// A 429 with `Retry-After` in seconds.
+    RateLimited(u64),
+}
+
+impl Server {
+    fn dropped(&self) -> Option<Result<HttpResponse, TransportError>> {
+        if !self
+            .offline_until
+            .is_some_and(|until| tokio::time::Instant::now() < until)
+        {
+            return None;
+        }
+        Some(match self.dropped_as {
+            None => Err(TransportError::Offline),
+            Some(Dropped::Status(status)) => response(status, "{}"),
+            Some(Dropped::RateLimited(after_s)) => {
+                response_with_header(429, "{}", ("retry-after", &after_s.to_string()))
+            }
+        })
+    }
+}
+
+/// Signs the record pack URLs on the paused test clock: `wall_s` at `at`.
+struct Presign {
+    wall_s: i64,
+    at: tokio::time::Instant,
+    life_s: i64,
+}
+
+impl Presign {
+    fn now(&self) -> i64 {
+        self.wall_s + self.at.elapsed().as_secs() as i64
+    }
 }
 
 /// Which timer ended a pack GET (chapter 00 §0.6).
@@ -206,12 +258,16 @@ impl Server {
             .packs
             .iter()
             .map(|pack| {
+                let expires_at = self
+                    .presign
+                    .as_ref()
+                    .map_or(4_000_000_000i64, |presign| presign.now() + presign.life_s);
                 let mut listed = json!({"id": pack.id, "itemKind": "record", "packKey": "k",
                     "minCursor": pack.entries.first().map_or(0, |e| e.cursor),
                     "maxCursor": pack.entries.last().map_or(0, |e| e.cursor),
                     "itemCount": pack.entries.len(), "byteSize": self.byte_size.unwrap_or(10), "createdAt": 1,
-                    "url": format!("https://r2.example/packs/{}", pack.id),
-                    "expiresAt": 4_000_000_000i64});
+                    "url": format!("https://r2.example/packs/{}?exp={expires_at}", pack.id),
+                    "expiresAt": expires_at});
                 if let Some((from, through)) = pack.cover {
                     listed["coverFrom"] = json!(from);
                     listed["coverThrough"] = json!(through);
@@ -241,7 +297,18 @@ impl Server {
             return None;
         }
         let url = request.url.as_str();
-        if let Some(id) = url.strip_prefix("https://r2.example/packs/") {
+        if let Some(rest) = url.strip_prefix("https://r2.example/packs/") {
+            let (id, expires_at) = rest.split_once("?exp=").unwrap_or((rest, ""));
+            if let Some(dropped) = self.dropped() {
+                return Some(dropped);
+            }
+            if let Some(presign) = &self.presign
+                && expires_at
+                    .parse::<i64>()
+                    .is_ok_and(|expires_at| expires_at <= presign.now())
+            {
+                return Some(response(403, "{}"));
+            }
             if let Some(timer) = self.pack_timeout {
                 let elapsed_ms = match timer {
                     Timer::Deadline => request.timeout_ms,
@@ -263,6 +330,13 @@ impl Server {
             return Some(bytes_response(bytes));
         }
         if url.contains("/sync/packs") {
+            let relist = self.listings.fetch_add(1, Ordering::Relaxed) > 0;
+            if relist
+                && self.relists_dropped
+                && let Some(dropped) = self.dropped()
+            {
+                return Some(dropped);
+            }
             let offset = url
                 .split("cursor=")
                 .nth(1)
@@ -575,10 +649,12 @@ async fn a_pack_get_gets_a_deadline_scaled_to_its_listed_size() {
 }
 
 /// #5331: a pack GET that ran out its deadline spent minutes on the line, so
-/// it is not sent again from byte 0. One that went idle is retried.
+/// it is not sent again from byte 0. One that went idle is retried: on the
+/// transport ladder, then after each of the phase's pauses (#5374).
 #[tokio::test(start_paused = true)]
 async fn a_pack_get_past_its_deadline_is_not_retried_but_an_idle_one_is() {
-    for (timer, sends) in [(Timer::Deadline, 1), (Timer::Idle, 4)] {
+    let idle_sends = 4 * (1 + PACK_RETRY_PAUSES as usize);
+    for (timer, sends) in [(Timer::Deadline, 1), (Timer::Idle, idle_sends)] {
         let db = scratch_db("deadline-retry");
         let mut server = covered_vault(40, 40);
         server.byte_size = Some(8 * 1024 * 1024);
@@ -593,6 +669,116 @@ async fn a_pack_get_past_its_deadline_is_not_retried_but_an_idle_one_is() {
             .count();
         assert_eq!(packs, sends, "{calls:?}");
     }
+}
+
+/// Seven record packs, whose GETs the network drops for `drop_s` seconds of
+/// the paused clock from the start of the run, signed for `life_s` seconds.
+fn dropped_vault(drop_s: u64, life_s: Option<i64>) -> Arc<Routes> {
+    Routes::new(dropped_server(drop_s, life_s))
+}
+
+fn dropped_server(drop_s: u64, life_s: Option<i64>) -> Server {
+    let mut server = covered_vault(70, 10);
+    server.offline_until =
+        Some(tokio::time::Instant::now() + std::time::Duration::from_secs(drop_s));
+    server.presign = life_s.map(|life_s| Presign {
+        wall_s: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64,
+        at: tokio::time::Instant::now(),
+        life_s,
+    });
+    server
+}
+
+fn pack_gets(routes: &Routes) -> usize {
+    routes.count("https://r2.example/packs/")
+}
+
+/// #5374: a 30 s drop at the first pack GETs used to end all seven packs
+/// inside the transport ladder's 14 s, leaving every record to the manifest.
+#[tokio::test(start_paused = true)]
+async fn a_pack_lost_to_a_network_drop_downloads_once_the_network_returns() {
+    let db = scratch_db("drop");
+    let routes = dropped_vault(30, None);
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
+    assert!(
+        report.record_packs.fallback_reasons.is_empty(),
+        "{report:?}"
+    );
+    assert_eq!(report.record_packs.tail_start, 70);
+    assert_eq!(report.reconcile_pulled, 0);
+    assert_eq!(routes.count("/sync/pull"), 0, "{:?}", routes.calls());
+    assert_eq!(live_ids(&db).len(), 70);
+}
+
+/// A drop that outlives the 300 s presigned URLs: the retry re-lists for
+/// fresh URLs instead of sending the expired ones (§8.12).
+#[tokio::test(start_paused = true)]
+async fn a_retry_past_the_url_lifetime_re_lists_before_it_downloads() {
+    let db = scratch_db("drop-relist");
+    let routes = dropped_vault(300, Some(300));
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
+    assert_eq!(report.reconcile_pulled, 0);
+    assert_eq!(routes.count("/sync/packs"), 2, "{:?}", routes.calls());
+    assert_eq!(live_ids(&db).len(), 70);
+}
+
+/// REVIEW-5383: the re-list a retry needs fails while the network is still
+/// down. The packs wait for the next pause instead of becoming gaps.
+#[tokio::test(start_paused = true)]
+async fn a_re_list_lost_to_the_drop_keeps_its_packs_for_the_next_pause() {
+    let db = scratch_db("drop-relist-offline");
+    let mut server = dropped_server(200, Some(60));
+    server.relists_dropped = true;
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
+    assert!(report.record_packs.used);
+    assert_eq!(live_ids(&db).len(), 70);
+}
+
+/// A 504 is as curable as a 503, and a 429 pauses for at least its
+/// `Retry-After`: a 95 s limit is waited out in one pause, not three.
+#[tokio::test(start_paused = true)]
+async fn a_504_and_a_429_pause_the_phase_and_the_429_waits_its_retry_after() {
+    for (dropped, drop_s) in [(Dropped::Status(504), 30), (Dropped::RateLimited(100), 95)] {
+        let db = scratch_db("drop-status");
+        let mut server = dropped_server(drop_s, None);
+        server.dropped_as = Some(dropped);
+        let routes = Routes::new(server);
+        let report = run(&db, &routes, &[]).await;
+
+        assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
+        assert_eq!(live_ids(&db).len(), 70);
+        if let Dropped::RateLimited(_) = dropped {
+            assert_eq!(pack_gets(&routes), 3 + 7, "{:?}", routes.calls());
+        }
+    }
+}
+
+/// A network that never comes back costs bounded waiting, then every pack is
+/// a gap and the manifest reconcile still brings every record.
+#[tokio::test(start_paused = true)]
+async fn a_drop_longer_than_every_pause_leaves_gaps_the_manifest_fills() {
+    let db = scratch_db("drop-forever");
+    let routes = dropped_vault(86_400, None);
+    let began = tokio::time::Instant::now();
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 0, "{report:?}");
+    assert_eq!(report.record_packs.fallback_reasons.len(), 7, "{report:?}");
+    assert_eq!(report.record_packs.tail_start, 0);
+    assert_eq!(live_ids(&db).len(), 70);
+    // Four pauses of 30, 60, 120 and 240 s, and the ladders between them.
+    assert!(began.elapsed() < std::time::Duration::from_secs(20 * 60));
+    assert!(pack_gets(&routes) < 100, "{}", pack_gets(&routes));
 }
 
 #[tokio::test]

@@ -378,6 +378,8 @@ pub struct Server {
     pub gone: HashSet<String>,
     /// Packs whose download the network drops.
     pub dropped: HashSet<String>,
+    /// The next pack GETs the network drops, counted down.
+    pub dropped_gets: usize,
     /// `GET /sync/packs` answers 404 from this call on (0 is the first).
     pub listing_missing_from: Option<usize>,
     listings: usize,
@@ -403,6 +405,7 @@ impl Server {
             corrupt: HashSet::new(),
             gone: HashSet::new(),
             dropped: HashSet::new(),
+            dropped_gets: 0,
             listing_missing_from: None,
             listings: 0,
             batch_rewrite: None,
@@ -538,6 +541,10 @@ impl Server {
         if let Some(id) = url.strip_prefix(R2) {
             if id == "r0" {
                 return Some(bytes_response(self.record_pack()));
+            }
+            if self.dropped_gets > 0 {
+                self.dropped_gets -= 1;
+                return Some(Err(TransportError::Offline));
             }
             if self.dropped.contains(id) {
                 return Some(Err(TransportError::Failed {
