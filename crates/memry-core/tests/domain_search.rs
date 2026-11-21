@@ -15,6 +15,7 @@
 
 mod support;
 
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::domain::search::{
     self, HitKind, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, SearchHit, TASKS_WATERMARK_KEY,
 };
@@ -121,7 +122,8 @@ fn the_title_weight_outranks_the_content_weight() {
         r#"{"title":"Something else"}"#,
         NOW,
     );
-    memry_core::crdt::update_log::append_server_update(&data, "in-body", 1, &update, NOW)
+    HeldBody::never_purged(&data, "in-body")
+        .and_then(|held| held.append_server_update(1, &update, NOW))
         .expect("append the body");
 
     reindex(&data, &index, NOW);
@@ -141,7 +143,8 @@ fn the_body_column_is_extract_text_output() {
     let (data, index) = databases();
     let (update, expected) = body_vector();
     put(&data, "note", "body", r#"{"title":"A note"}"#, NOW);
-    memry_core::crdt::update_log::append_server_update(&data, "body", 1, &update, NOW)
+    HeldBody::never_purged(&data, "body")
+        .and_then(|held| held.append_server_update(1, &update, NOW))
         .expect("append");
 
     reindex(&data, &index, NOW);
@@ -247,7 +250,8 @@ fn a_body_update_alone_re_indexes_the_note() {
     assert_eq!(first.notes_indexed, 1);
 
     let later = NOW + 1_000;
-    memry_core::crdt::update_log::append_server_update(&data, "body", 1, &update, later)
+    HeldBody::never_purged(&data, "body")
+        .and_then(|held| held.append_server_update(1, &update, later))
         .expect("append");
     let second = reindex(&data, &index, later);
 
@@ -305,7 +309,8 @@ fn a_dropped_index_rebuilds_to_the_same_answers() {
         r#"{"title":"Protocol task","projectId":"p"}"#,
         NOW,
     );
-    memry_core::crdt::update_log::append_server_update(&data, "n1", 1, &update, NOW)
+    HeldBody::never_purged(&data, "n1")
+        .and_then(|held| held.append_server_update(1, &update, NOW))
         .expect("append");
     reindex(&data, &index, NOW);
     let before = notes(&data, &index, "Protocol");
@@ -349,7 +354,8 @@ fn a_corrupt_row_is_counted_and_an_unreadable_one_is_an_error() {
         .expect("the row exists");
     assert!(flagged.is_some(), "the apply path flagged it");
 
-    memry_core::crdt::update_log::append_server_update(&data, "bad", 1, &body_vector().0, NOW)
+    HeldBody::never_purged(&data, "bad")
+        .and_then(|held| held.append_server_update(1, &body_vector().0, NOW))
         .expect("append");
     let pass = reindex(&data, &index, NOW);
     assert_eq!(pass.corrupt_skipped, 1, "already reported once, not twice");
@@ -363,7 +369,8 @@ fn a_corrupt_row_is_counted_and_an_unreadable_one_is_an_error() {
         [],
     )
     .expect("unflag the row");
-    memry_core::crdt::update_log::append_server_update(&data, "bad", 2, &body_vector().0, later)
+    HeldBody::never_purged(&data, "bad")
+        .and_then(|held| held.append_server_update(2, &body_vector().0, later))
         .expect("append");
 
     let error = search::reindex(&data, &index, later)

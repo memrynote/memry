@@ -8,6 +8,11 @@
 //! has items `(client, 0..n)`: it takes the new ones for those and drops them.
 //! Each purge moves the document to a new epoch, and each epoch authors under
 //! its own client id, so no `(client, clock)` pair is minted twice.
+//!
+//! The epoch also tells a write from the network which body it belongs to
+//! (#5356). [`HeldBody`] is the only writer of the server namespace, and it
+//! exists only for a document still at the epoch read before the fetch or the
+//! push, so rows of a purged body cannot land in a revived one.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -83,6 +88,80 @@ pub(crate) fn open_for_write(
         document.apply_durable_update(blob)?;
     }
     Ok(document)
+}
+
+/// `doc_id`'s body, still at the epoch read before a fetch or a push, inside
+/// the transaction `conn` holds (#5356, chapter 07 §7.15). Every purge, a
+/// delete's or a revive's, moves the epoch. Rows fetched before it belong to
+/// the purged body, and stored in a revived one they give the next edit
+/// parents the server purged (#5351).
+pub struct HeldBody<'c> {
+    conn: &'c Connection,
+    doc_id: &'c str,
+}
+
+impl<'c> HeldBody<'c> {
+    /// `None` when a purge moved `doc_id` off `epoch`: store nothing.
+    pub fn check(
+        conn: &'c Connection,
+        doc_id: &'c str,
+        epoch: i64,
+    ) -> Result<Option<Self>, CrdtError> {
+        Ok((read(conn, doc_id)? == epoch).then_some(Self { conn, doc_id }))
+    }
+
+    /// A document this device never purged, for a write that fetched nothing
+    /// first, such as a fixture. Fails for a purged one.
+    pub fn never_purged(conn: &'c Connection, doc_id: &'c str) -> Result<Self, CrdtError> {
+        Self::check(conn, doc_id, 0)?.ok_or_else(|| {
+            StorageError::Failed {
+                what: format!("{doc_id} was purged here: its server rows need a held epoch"),
+            }
+            .into()
+        })
+    }
+
+    pub(crate) fn conn(&self) -> &'c Connection {
+        self.conn
+    }
+
+    pub(crate) fn doc_id(&self) -> &'c str {
+        self.doc_id
+    }
+
+    /// [`update_log::append_server_update`] for this body.
+    pub fn append_server_update(
+        &self,
+        sequence_num: i64,
+        update_blob: &[u8],
+        created_at: i64,
+    ) -> Result<(), CrdtError> {
+        update_log::append_server_update(
+            self.conn,
+            self.doc_id,
+            sequence_num,
+            update_blob,
+            created_at,
+        )
+    }
+
+    /// [`update_log::put_server_snapshot`] for this body.
+    pub fn put_server_snapshot(
+        &self,
+        snapshot_bytes: &[u8],
+        server_sequence_num: i64,
+        revision: Option<&str>,
+        compacted_at: i64,
+    ) -> Result<(), CrdtError> {
+        update_log::put_server_snapshot(
+            self.conn,
+            self.doc_id,
+            snapshot_bytes,
+            server_sequence_num,
+            revision,
+            compacted_at,
+        )
+    }
 }
 
 fn failed(what: &'static str) -> impl Fn(rusqlite::Error) -> StorageError {

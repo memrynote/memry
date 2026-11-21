@@ -14,8 +14,9 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::errors::{SecureStoreError, StorageError};
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
@@ -90,11 +91,11 @@ impl Fixture {
         let update = paragraph_update(&id, links);
         self.db
             .call_blocking(|conn: &mut Connection| {
-                update_log::append_server_update(conn, &id, 1, &update, 1).map_err(|error| {
-                    StorageError::Failed {
+                HeldBody::never_purged(conn, &id)
+                    .and_then(|held| held.append_server_update(1, &update, 1))
+                    .map_err(|error| StorageError::Failed {
                         what: error.to_string(),
-                    }
-                })
+                    })
             })
             .expect("the body");
         id
@@ -309,11 +310,11 @@ fn a_rename_keeps_a_link_cards_display_attributes() {
     let source = f.note("Source", None);
     let update = card_update(&source, "Plan");
     f.db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, &source, 1, &update, 1).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, &source)
+            .and_then(|held| held.append_server_update(1, &update, 1))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     })
     .expect("the body");
 

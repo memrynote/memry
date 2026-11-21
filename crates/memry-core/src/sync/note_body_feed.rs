@@ -13,7 +13,9 @@
 //! - [`land_and_advance`] is **one transaction**: the bodies stored, the
 //!   debts recorded, then the record cursor. A body that cannot land is owed
 //!   before the cursor moves past it, and a storage failure rolls the whole
-//!   thing back with the cursor unmoved (§5.11).
+//!   thing back with the cursor unmoved (§5.11). A body purged since
+//!   [`held_bodies`] read its epoch, by a delete or a revive, is owed rather
+//!   than landed (#5356): what was fetched is the purged body's.
 //!
 //! Landing appends to the server namespace of the update log, the same rows
 //! [`super::body_pull`] writes; a resident document merges them on its next
@@ -31,6 +33,7 @@ use yrs::Update;
 use yrs::updates::decoder::Decode as _;
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::crdt::epoch::{self, HeldBody};
 use crate::crdt::update_log::{self, Namespace};
 use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
 use crate::storage::nested_tx;
@@ -75,6 +78,8 @@ pub(super) struct FetchedBodies {
     pub(super) owed: Vec<String>,
     /// The page carried `noteBodies` at all, so the server serves bodies.
     pub(super) served: bool,
+    /// [`HeldBodies::epochs`], checked again where the bodies land.
+    pub(super) epochs: HashMap<String, i64>,
 }
 
 /// The request builder and client [`fetch`] sends through, so its requests
@@ -108,6 +113,7 @@ pub(super) async fn fetch(
 ) -> FetchedBodies {
     let mut fetched = FetchedBodies {
         served: entries.is_some(),
+        epochs: held.epochs.clone(),
         ..FetchedBodies::default()
     };
     let mut rate_limited = false;
@@ -280,6 +286,8 @@ pub(super) struct HeldBodies {
     pub(super) cursors: HashMap<String, i64>,
     /// The server snapshot revision, where one is stored.
     pub(super) revisions: HashMap<String, String>,
+    /// Each known document's epoch (§7.16), read before the fetch (#5356).
+    pub(super) epochs: HashMap<String, i64>,
 }
 
 pub(super) fn held_bodies(
@@ -310,6 +318,8 @@ pub(super) fn held_bodies(
             continue;
         }
         held.known.insert(doc_id.to_owned());
+        let epoch = epoch::read(conn, doc_id).map_err(crdt_failed)?;
+        held.epochs.insert(doc_id.to_owned(), epoch);
         if let Some(at) = cursor.and_then(|text| text.parse::<i64>().ok()) {
             held.cursors.insert(doc_id.to_owned(), at);
         }
@@ -341,6 +351,15 @@ pub(super) fn land_and_advance(
         if body_debt::is_deleted_document(&txn, &doc_id)? {
             continue;
         }
+        let epoch = fetched.epochs.get(&doc_id).copied();
+        let body = match epoch {
+            Some(epoch) => HeldBody::check(&txn, &doc_id, epoch).map_err(crdt_failed)?,
+            None => None,
+        };
+        let Some(body) = body else {
+            body_debt::owe(&txn, &doc_id)?;
+            continue;
+        };
         let scope = crdt_cursor_scope(&doc_id);
         let at = store::read_cursor(&txn, &scope)?
             .and_then(|text| text.parse::<i64>().ok())
@@ -357,7 +376,7 @@ pub(super) fn land_and_advance(
                 // Stamped with this device's clock, as the per-note pull does:
                 // the search index re-reads log rows newer than its own
                 // epoch-ms watermark (`domain::search::maintenance`).
-                update_log::append_server_update(&txn, &doc_id, sequence_num, &update, now_ms)
+                body.append_server_update(sequence_num, &update, now_ms)
                     .map_err(crdt_failed)?;
                 if sequence_num == at + 1 {
                     store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), now_ms)?;
@@ -371,15 +390,8 @@ pub(super) fn land_and_advance(
                 snapshot,
                 ..
             } => {
-                update_log::put_server_snapshot(
-                    &txn,
-                    &doc_id,
-                    &snapshot,
-                    sequence_num,
-                    revision.as_deref(),
-                    now_ms,
-                )
-                .map_err(crdt_failed)?;
+                body.put_server_snapshot(&snapshot, sequence_num, revision.as_deref(), now_ms)
+                    .map_err(crdt_failed)?;
                 if sequence_num > at {
                     store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), now_ms)?;
                 }

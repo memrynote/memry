@@ -15,6 +15,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::update_log;
 use memry_core::domain::journal;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
@@ -249,7 +250,8 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
             sync_items::apply_remote(conn, &held, 1)?,
             ApplyOutcome::Applied
         );
-        update_log::append_server_update(conn, OTHER_FOREIGN, 1, &text_update(7, "held"), 1)
+        HeldBody::never_purged(conn, OTHER_FOREIGN)
+            .and_then(|held| held.append_server_update(1, &text_update(7, "held"), 1))
             .map_err(|e| StorageError::Failed {
                 what: e.to_string(),
             })?;
@@ -447,11 +449,11 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     let merged = updates[0].clone();
     late.call_blocking(move |conn| {
         journal::open_day(conn, DATE, "device-d", 1)?;
-        update_log::append_server_update(conn, CANONICAL, 1, &merged, 2).map_err(|e| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, CANONICAL)
+            .and_then(|held| held.append_server_update(1, &merged, 2))
+            .map_err(|e| StorageError::Failed {
                 what: e.to_string(),
-            }
-        })?;
+            })?;
         let foreign = record(FOREIGN, &journal_payload(json!({"device-b": 1})));
         apply_inbound_on(conn, &foreign, 1, Some("device-d"))?;
         Ok(())
@@ -475,11 +477,11 @@ async fn two_devices_merging_the_same_foreign_day_converge_on_one_copy() {
     for (db, peer_update) in devices.iter().zip(updates.iter().rev()) {
         let peer_update = peer_update.clone();
         db.call_blocking(move |conn| {
-            update_log::append_server_update(conn, CANONICAL, 1, &peer_update, 2).map_err(|e| {
-                StorageError::Failed {
+            HeldBody::never_purged(conn, CANONICAL)
+                .and_then(|held| held.append_server_update(1, &peer_update, 2))
+                .map_err(|e| StorageError::Failed {
                     what: e.to_string(),
-                }
-            })?;
+                })?;
             assert_eq!(text_of(conn, CANONICAL), "once");
             Ok(())
         })

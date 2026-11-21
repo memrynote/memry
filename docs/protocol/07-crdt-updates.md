@@ -931,16 +931,21 @@ Consequences a conforming client MUST implement:
   revive does (`crates/memry-core/src/domain/journal.rs:231-267`). An update
   authored on the deleted body depends on structs the server purged, so a
   device that bootstraps afterwards holds it pending and shows the day empty.
-- **Store nothing fetched before a purge (#5356).** A body pull or a pack seed
-  that fetched rows for a document, and then sees that document deleted or
-  re-created before it stores them, drops them: they are the purged body's,
-  and stored into a re-created one they are the same orphaned parents. The
-  core reads each document's epoch (§7.16) before it fetches, and the store
-  transaction requires it unchanged
-  (`crates/memry-core/src/sync/body_pull/log_writes.rs:284-286`). Every purge
-  moves the epoch, the one a tombstone's apply runs (§7.15.1) included. The pack
-  bootstrap reads every epoch before its listing
-  (`crates/memry-core/src/sync/pack_bootstrap/bodies.rs:202`).
+- **Store nothing fetched before a purge (#5356).** Server-namespace body
+  rows (updates and snapshots) that a device fetched or pushed for a document
+  that was deleted or re-created before it stores them are dropped, and the
+  document owes a pull. They are the purged body's, and stored into a
+  re-created one they are the same orphaned parents. The core reads each
+  document's epoch (§7.16) before the network call. Every purge moves the
+  epoch, including the purge a tombstone's apply runs (§7.15.1). The core
+  writes those rows only through `HeldBody`, which exists only while the
+  epoch is unchanged inside the store transaction
+  (`crates/memry-core/src/crdt/epoch.rs:98-122`;
+  `crates/memry-core/src/crdt/update_log.rs:129`, `:279` are private to it).
+  This covers the body pull (`crates/memry-core/src/sync/body_pull.rs:299`),
+  the pack bootstrap (`crates/memry-core/src/sync/pack_bootstrap/bodies.rs:202`),
+  the change feed (`crates/memry-core/src/sync/note_body_feed.rs:321`, `:356`),
+  and the snapshot push (`crates/memry-core/src/crdt/snapshots.rs:324`, `:510`).
 
 ### 7.15.1 The three obligations are not all the same component's
 

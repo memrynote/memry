@@ -15,6 +15,7 @@
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{DocumentRegistry, update_log};
@@ -92,7 +93,9 @@ fn paragraph_update(device: &str, doc_id: &str, text: &str) -> Vec<u8> {
 /// A body update pulled from the server.
 fn pulled_body(conn: &Connection, doc_id: &str, seq: i64, text: &str) {
     let update = paragraph_update("device-b", doc_id, text);
-    update_log::append_server_update(conn, doc_id, seq, &update, NOW).expect("append");
+    HeldBody::never_purged(conn, doc_id)
+        .and_then(|held| held.append_server_update(seq, &update, NOW))
+        .expect("append");
 }
 
 /// A body update written on this device.

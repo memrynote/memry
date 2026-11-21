@@ -19,6 +19,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::text_extract::extract_text;
 use memry_core::crdt::update_log;
 use memry_core::crypto::sodium;
@@ -167,7 +168,8 @@ async fn a_newer_baseline_stored_mid_chunk_is_kept() {
         "newer",
         Box::new(|db| {
             db.call_blocking(|conn| {
-                update_log::put_server_snapshot(conn, DOC, b"NEWER", 10, Some("rev-new"), 1)
+                HeldBody::never_purged(conn, DOC)
+                    .and_then(|held| held.put_server_snapshot(b"NEWER", 10, Some("rev-new"), 1))
                     .expect("the newer snapshot");
                 store::write_cursor(conn, &format!("crdt:{DOC}"), Some("10"), 1)
             })
@@ -189,7 +191,9 @@ async fn updates_pulled_mid_chunk_are_not_shadowed_by_an_older_baseline() {
         Box::new(|db| {
             db.call_blocking(|conn| {
                 for seq in 1..=7 {
-                    update_log::append_server_update(conn, DOC, seq, b"u", 1).expect("an update");
+                    HeldBody::never_purged(conn, DOC)
+                        .and_then(|held| held.append_server_update(seq, b"u", 1))
+                        .expect("an update");
                 }
                 store::write_cursor(conn, &format!("crdt:{DOC}"), Some("7"), 1)
             })

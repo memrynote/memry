@@ -19,9 +19,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::DocumentRegistry;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::crdt::registry::UpdateSink;
-use memry_core::crdt::{DocumentRegistry, update_log};
 use memry_core::domain::{folders, notes};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
@@ -278,11 +279,11 @@ fn a_body_this_device_has_not_pulled_is_not_an_empty_note() {
 
     let update = body_update("note-root", "from a peer");
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "note-root", 1, &update, NOW).map_err(|error| {
-            StorageError::Failed {
+        HeldBody::never_purged(conn, "note-root")
+            .and_then(|held| held.append_server_update(1, &update, NOW))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            }
-        })
+            })
     })
     .expect("append");
 
@@ -300,11 +301,11 @@ fn an_undecodable_update_throws_and_never_reads_as_empty_text() {
     let db = behind(&dir);
     seed(&db);
     db.call_blocking(|conn: &mut Connection| {
-        update_log::append_server_update(conn, "note-root", 1, b"not a v1 update", NOW).map_err(
-            |error| StorageError::Failed {
+        HeldBody::never_purged(conn, "note-root")
+            .and_then(|held| held.append_server_update(1, b"not a v1 update", NOW))
+            .map_err(|error| StorageError::Failed {
                 what: error.to_string(),
-            },
-        )
+            })
     })
     .expect("append");
 

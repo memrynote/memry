@@ -120,12 +120,13 @@ impl LoadPlan {
     }
 }
 
-/// Records an update the server numbered.
+/// Records an update the server numbered. Written only through
+/// [`super::epoch::HeldBody`] (#5356).
 ///
 /// `sequence_num` comes from the server and from nowhere else: a client never
 /// proposes one (chapter 07 §7.4). `INSERT OR IGNORE`, because a replayed pull
 /// answering the same sequence twice is a duplicate delivery, not new data.
-pub fn append_server_update(
+pub(super) fn append_server_update(
     conn: &Connection,
     doc_id: &str,
     sequence_num: i64,
@@ -270,11 +271,12 @@ pub fn snapshot(
 }
 
 /// Stores the snapshot the server answered with, at the sequence the server
-/// gave it and under the server's opaque `revision` token.
+/// gave it and under the server's opaque `revision` token. Written only
+/// through [`super::epoch::HeldBody`] (#5356).
 ///
 /// The revision is compared for equality and for nothing else (chapter 07
 /// §7.5).
-pub fn put_server_snapshot(
+pub(super) fn put_server_snapshot(
     conn: &Connection,
     doc_id: &str,
     snapshot_bytes: &[u8],

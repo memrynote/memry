@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::blocks::extract_blocks;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crdt::markdown_seed::seed_document;
 use memry_core::crdt::registry::{Document, UpdateSink};
 use memry_core::crdt::{DocumentRegistry, update_log};
@@ -326,7 +327,9 @@ fn a_revived_day_starts_a_new_body_from_the_template_without_the_deleted_one() {
             .expect("open");
         seed_document(&written, "Written by hand").expect("seed");
         let bytes = written.encode_state().expect("encode");
-        update_log::append_server_update(conn, "j2099-06-15", 1, &bytes, NOW).expect("store");
+        HeldBody::never_purged(conn, "j2099-06-15")
+            .and_then(|held| held.append_server_update(1, &bytes, NOW))
+            .expect("store");
         let mut tombstone = inbound("journal", "j2099-06-15", json!({"date": DAY}));
         tombstone.deleted_at = Some(NOW + 1);
         sync_items::apply_remote(conn, &tombstone, NOW + 1)?;

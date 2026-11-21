@@ -17,6 +17,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::vault::Vault;
+use memry_core::crdt::epoch::HeldBody;
 use memry_core::crypto::{keys, sodium};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
@@ -646,7 +647,8 @@ async fn a_tombstoned_owed_document_is_never_body_pulled() {
             what: error.to_string(),
         })?;
         memry_core::sync::store::write_cursor(conn, "crdt:deadnotexxxx", Some("1"), 1)?;
-        memry_core::crdt::update_log::append_server_update(conn, "deadnotexxxx", 1, &[0, 0], 1)
+        HeldBody::never_purged(conn, "deadnotexxxx")
+            .and_then(|held| held.append_server_update(1, &[0, 0], 1))
             .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
             })?;
