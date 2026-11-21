@@ -859,6 +859,21 @@ export const commands = {
 	tagsUpdateColor: (tag: string, color: string) => __TAURI_INVOKE<null>("tags_update_color", { tag, color }),
 	/**  `icon` is an emoji or `icon:Name`; `None` clears it. */
 	tagsUpdateIcon: (tag: string, icon: string | null) => __TAURI_INVOKE<null>("tags_update_icon", { tag, icon }),
+	tasksGet: (id: string) => __TAURI_INVOKE<TaskListItemView | null>("tasks_get", { id }),
+	tasksGetLinkedTasks: (noteId: string) => __TAURI_INVOKE<TaskView[]>("tasks_get_linked_tasks", { noteId }),
+	tasksGetOverdue: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_overdue"),
+	tasksGetStats: () => __TAURI_INVOKE<TaskStatsView>("tasks_get_stats"),
+	tasksGetSubtasks: (parentId: string) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_subtasks", { parentId }),
+	tasksGetTags: () => __TAURI_INVOKE<TaskTagCount[]>("tasks_get_tags"),
+	tasksGetToday: () => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_today"),
+	tasksGetUpcoming: (days: number | null) => __TAURI_INVOKE<TaskListItemView[]>("tasks_get_upcoming", { days }),
+	tasksList: (input: TaskListInput) => __TAURI_INVOKE<TaskPageView>("tasks_list", { input }),
+	tasksStatusCreate: (input: StatusCreateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_create", { input }),
+	tasksStatusDelete: (id: string) => __TAURI_INVOKE<StatusMutation>("tasks_status_delete", { id }),
+	tasksStatusList: (projectId: string) => __TAURI_INVOKE<StatusView[]>("tasks_status_list", { projectId }),
+	tasksStatusReorder: (input: StatusReorderInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_reorder", { input }),
+	tasksStatusUpdate: (input: StatusUpdateInput) => __TAURI_INVOKE<StatusMutation>("tasks_status_update", { input }),
+	tasksUpdate: (input: TaskUpdateInput) => __TAURI_INVOKE<TaskMutation>("tasks_update", { input }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -1080,6 +1095,9 @@ export const events = {
 	tagNotesChangedEvent: makeEvent<TagNotesChangedEvent, TagNotesChangedEvent>("tag-notes-changed-event"),
 	tagRenamedEvent: makeEvent<TagRenamedEvent, TagRenamedEvent>("tag-renamed-event"),
 	tagsProgressEvent: makeEvent<TagsProgressEvent, TagsProgressEvent>("tags-progress-event"),
+	taskActivityCreatedEvent: makeEvent<TaskActivityCreatedEvent, TaskActivityCreatedEvent>("task-activity-created-event"),
+	taskCreatedEvent: makeEvent<TaskCreatedEvent, TaskCreatedEvent>("task-created-event"),
+	taskUpdatedEvent: makeEvent<TaskUpdatedEvent, TaskUpdatedEvent>("task-updated-event"),
 	templateCreatedEvent: makeEvent<TemplateCreatedEvent, TemplateCreatedEvent>("template-created-event"),
 	templateDeletedEvent: makeEvent<TemplateDeletedEvent, TemplateDeletedEvent>("template-deleted-event"),
 	templateUpdatedEvent: makeEvent<TemplateUpdatedEvent, TemplateUpdatedEvent>("template-updated-event"),
@@ -4112,6 +4130,49 @@ export type StatusAccount = {
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
 
+/**  `StatusCreateSchema`. */
+export type StatusCreateInput = {
+	projectId: string,
+	name: string,
+	color?: string | null,
+	isDone?: boolean | null,
+};
+
+/**  The `withDb` envelope of a status write: `{ success, status?, error? }`. */
+export type StatusMutation = {
+	success: boolean,
+	status?: StatusView | null,
+	error?: string | null,
+};
+
+/**  `StatusReorderSchema`. */
+export type StatusReorderInput = {
+	statusIds: string[],
+	positions: number[],
+};
+
+/**  `StatusUpdateSchema`. */
+export type StatusUpdateInput = {
+	id: string,
+	name?: string | null,
+	color?: string | null,
+	position?: number | null,
+	isDefault?: boolean | null,
+	isDone?: boolean | null,
+};
+
+/**  `Status`. `createdAt` is empty for an entry that carries none. */
+export type StatusView = {
+	id: string,
+	projectId: string,
+	name: string,
+	color: string,
+	position: number,
+	isDefault: boolean,
+	isDone: boolean,
+	createdAt: string,
+};
+
 /**  `StickyDraft` of `@memry/contracts/sticky-api`. */
 export type StickyDraftView = {
 	id: string,
@@ -4435,6 +4496,62 @@ export type TagsProgressEvent = {
 	total: number,
 };
 
+/**
+ *  A task's activity log grew (`task-activity:created`): a pulled peer row or a `superseded` row
+ *  this device wrote, sent once its row committed (`SyncEvent::TaskActivityCreated`), so the
+ *  open activity list refetches.
+ */
+export type TaskActivityCreatedEvent = {
+	taskId: string,
+};
+
+/**
+ *  A task was made, by a create or as the next occurrence of a completed repeating task
+ *  (`tasks:created`).
+ */
+export type TaskCreatedEvent = {
+	id: string,
+};
+
+/**  `TaskListSchema`. Absent `statusId`/`parentId` match any value, `null` matches none. */
+export type TaskListInput = {
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	includeCompleted?: boolean | null,
+	includeArchived?: boolean | null,
+	dueBefore?: string | null,
+	dueAfter?: string | null,
+	tags?: string[] | null,
+	/**  Accepted and ignored, as desktop's `listTasks` reads no search. */
+	search?: string | null,
+	sortBy?: TaskSortBy | null,
+	sortOrder?: TaskSortOrder | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+/**  `TaskListItem`: the task and its direct subtasks' counts. */
+export type TaskListItemView = {
+	hasSubtasks: boolean,
+	subtaskCount: number,
+	completedSubtaskCount: number,
+} & TaskView;
+
+/**  The `withDb` envelope of a task write: `{ success, task, error }`. */
+export type TaskMutation = {
+	success: boolean,
+	task: TaskListItemView | null,
+	error?: string | null,
+};
+
+/**  `TaskListResponse`. */
+export type TaskPageView = {
+	tasks: TaskListItemView[],
+	total: number,
+	hasMore: boolean,
+};
+
 /**  `TaskResultMetadata`. */
 export type TaskResultMetadata = {
 	projectId: string,
@@ -4446,6 +4563,83 @@ export type TaskResultMetadata = {
 	priority: number,
 	completedAt: string | null,
 	createdAt: string | null,
+};
+
+/**  `TaskListSchema.sortBy`. */
+export type TaskSortBy = "position" | "dueDate" | "priority" | "created" | "modified";
+
+/**  `TaskListSchema.sortOrder`. */
+export type TaskSortOrder = "asc" | "desc";
+
+/**  `TaskStats`. */
+export type TaskStatsView = {
+	total: number,
+	completed: number,
+	overdue: number,
+	dueToday: number,
+	dueThisWeek: number,
+};
+
+/**  One entry of `tasks:get-tags`. */
+export type TaskTagCount = {
+	tag: string,
+	count: number,
+};
+
+/**  `TaskUpdateSchema`. A nullish field is absent (keep), `null` (clear) or a value. */
+export type TaskUpdateInput = {
+	id: string,
+	title?: string | null,
+	description?: string | null,
+	priority?: number | null,
+	projectId?: string | null,
+	statusId?: string | null,
+	parentId?: string | null,
+	dueDate?: string | null,
+	dueTime?: string | null,
+	durationMinutes?: number | null,
+	startDate?: string | null,
+	/**  `isRepeating` is derived from `repeatConfig`; a sent value is ignored. */
+	isRepeating?: boolean | null,
+	repeatConfig?: Value | null,
+	repeatFrom?: string | null,
+	tags?: string[] | null,
+	linkedNoteIds?: string[] | null,
+	linkedCanvasIds?: string[] | null,
+	fields?: { [key in string]: Value } | null,
+};
+
+/**  A task's fields changed (`tasks:updated`). */
+export type TaskUpdatedEvent = {
+	id: string,
+};
+
+/**  `Task`. `createdAt`/`modifiedAt` are empty for a payload that carries none. */
+export type TaskView = {
+	id: string,
+	projectId: string,
+	statusId: string | null,
+	parentId: string | null,
+	title: string,
+	description: string | null,
+	priority: number,
+	position: number,
+	dueDate: string | null,
+	dueTime: string | null,
+	durationMinutes: number | null,
+	startDate: string | null,
+	isRepeating: boolean,
+	repeatConfig: Value | null,
+	repeatFrom: string | null,
+	sourceNoteId: string | null,
+	completedAt: string | null,
+	archivedAt: string | null,
+	createdAt: string,
+	modifiedAt: string,
+	tags: string[],
+	linkedNoteIds: string[],
+	linkedCanvasIds: string[],
+	fields: { [key in string]: Value },
 };
 
 export type TelemetryEvent = {
