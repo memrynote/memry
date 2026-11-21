@@ -325,6 +325,11 @@ impl Loop {
 
     /// Takes in what one pass did and says how a Sync Now caller sees it.
     fn record(&mut self, report: &PassReport) -> TriggerSyncResult {
+        let clean = report.error().is_none();
+        let online = !matches!(report.final_state, SyncState::Offline | SyncState::Refused);
+        // A pass stopped at the page cap left pages on the server (`full-sync-runner.ts:482`).
+        self.signals
+            .set_caught_up(clean && online && !report.pull.has_more);
         // A pass the pause cut failed nothing: the pass after the resume goes on from it.
         if report.error().is_some_and(SyncError::is_cancelled) {
             return TriggerSyncResult::blocked(Blocked::Paused, None);

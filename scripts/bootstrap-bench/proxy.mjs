@@ -3,7 +3,7 @@
 // Every shell can point its sync server URL at it, so it counts requests the
 // same way for all of them with no production code. Pack downloads are
 // presigned R2 URLs on another host: the proxy rewrites the `url` of every
-// pack it lists to `/__r2/<url>` and forwards those too, so R2 requests and
+// pack it lists to `/__r2/<n>` and forwards those too, so R2 requests and
 // bytes land in the same log. The WebSocket upgrade is passed through.
 // Attachment downloads use presigned URLs the proxy does not rewrite; they
 // are out of the benchmark's scope.
@@ -73,37 +73,51 @@ function forwardHeaders(headers, host) {
   return out
 }
 
-function rewritePackUrls(body, base) {
+function rewritePackUrls(body, route) {
   const json = JSON.parse(body.toString('utf8'))
   for (const pack of json.packs ?? []) {
     if (typeof pack.url === 'string') {
-      pack.url = throughProxy(base, pack.url)
+      pack.url = route(pack.url)
     }
   }
   return Buffer.from(JSON.stringify(json))
 }
 
-/** The proxy URL that fetches `url` through the proxy's R2 route. */
-export function throughProxy(proxyUrl, url) {
-  return `${proxyUrl}${R2_PREFIX}${Buffer.from(url).toString('base64url')}`
-}
-
 /**
  * Starts the proxy. `requests` fills with one entry per finished request:
  * `{ startMs, endMs, method, path, host: 'worker' | 'r2', status, reqBytes, resBytes }`,
- * plus `refused: true` on a write the proxy answered itself.
+ * plus `refused: true` on a write the proxy answered itself. `route(url)` returns
+ * the proxy URL that fetches `url` on the R2 route. That route forwards only URLs
+ * registered this way, by index, so the proxy never fetches a URL a client names.
  */
 export async function startProxy({ upstream, port = 0 }) {
   assertAllowedUpstream(upstream)
   const upstreamUrl = new URL(upstream)
   const requests = []
+  const routes = []
+  // Only the path and query of a worker request are the client's: an absolute
+  // request target never moves the proxy off the upstream origin.
+  const onUpstream = (requested) => {
+    const { pathname, search } = new URL(requested, 'http://upstream.invalid')
+    const target = new URL(upstreamUrl.origin)
+    target.pathname = pathname
+    target.search = search
+    return target
+  }
+  const route = (url) => {
+    routes.push(new URL(url))
+    return `http://127.0.0.1:${address.port}${R2_PREFIX}${routes.length - 1}`
+  }
 
   const server = http.createServer((req, res) => {
     const startMs = Date.now()
     const isR2 = req.url.startsWith(R2_PREFIX)
-    const target = isR2
-      ? new URL(Buffer.from(req.url.slice(R2_PREFIX.length), 'base64url').toString('utf8'))
-      : new URL(req.url, upstreamUrl)
+    const target = isR2 ? routes[Number(req.url.slice(R2_PREFIX.length))] : onUpstream(req.url)
+    if (!target) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
     const isPackList = !isR2 && req.method === 'GET' && target.pathname.endsWith('/packs')
     const headers = forwardHeaders(req.headers, target.host)
     if (isPackList) headers['accept-encoding'] = 'identity'
@@ -147,7 +161,7 @@ export async function startProxy({ upstream, port = 0 }) {
         entry.endMs = Date.now()
         requests.push(entry)
         if (isPackList && entry.status === 200) {
-          const body = rewritePackUrls(Buffer.concat(chunks), `http://127.0.0.1:${address.port}`)
+          const body = rewritePackUrls(Buffer.concat(chunks), route)
           delete outHeaders['content-length']
           delete outHeaders['content-encoding']
           res.writeHead(entry.status, { ...outHeaders, 'content-length': body.length })
@@ -214,6 +228,7 @@ export async function startProxy({ upstream, port = 0 }) {
   const address = server.address()
   return {
     url: `http://127.0.0.1:${address.port}`,
+    route,
     requests,
     close: () =>
       new Promise((resolve) => {

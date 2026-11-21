@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { parseKeychainDump } from '../../apps/desktop/scripts/purge-e2e-keychain.mjs'
 import { electronMarks, followLog, parseMainLog } from './electron-log.mjs'
 import { formatReport, summarize } from './metrics.mjs'
-import { startProxy, throughProxy } from './proxy.mjs'
+import { startProxy } from './proxy.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const OUT_DIR = path.join(ROOT, '.perf/bootstrap-bench')
@@ -249,7 +249,7 @@ async function runElectron(proxy) {
 /** Mbit/s of one large GET through the proxy, so the limiter judges the real line. */
 async function measureLine(proxy) {
   const startedMs = Date.now()
-  const response = await fetch(throughProxy(proxy.url, LINE_PROBE))
+  const response = await fetch(proxy.route(LINE_PROBE))
   const bytes = (await response.arrayBuffer()).byteLength
   const elapsedMs = Date.now() - startedMs
   proxy.requests.length = 0
