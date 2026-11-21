@@ -111,6 +111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * and merging its server body would let the write-back re-create it.
    */
   private hasNoteRow: (noteId: string) => boolean
+  /** The last body pull found no access token or vault key; see `isSignedOut`. */
+  private signedOut = false
 
   constructor(
     ctx: SyncContext,
@@ -1423,6 +1425,23 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
   }
 
+  /**
+   * This device cannot pull as its user: the last body pull found no access
+   * token (the session expired) or no vault key. An editor waiting on its
+   * server body then shows the vault file read-only with a sign-in notice
+   * (#5342), and the pull owed meanwhile merges once the user signs in.
+   */
+  isSignedOut(): boolean {
+    return this.signedOut
+  }
+
+  private async pullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
+    const token = await this.ctx.deps.getAccessToken()
+    const vaultKey = token ? await this.ctx.deps.getVaultKey() : null
+    this.signedOut = !token || !vaultKey
+    return token && vaultKey ? { token, vaultKey } : null
+  }
+
   /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */
   async pullCrdtForNote(noteId: string): Promise<boolean> {
     log.debug('pullCrdtForNote entered', { noteId })
@@ -1436,17 +1455,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // Owed on both misses, exactly as the group sibling does. This is the entry
     // point a `crdt_updated` broadcast uses, so returning silently here left a
     // note the server had just named unpulled, unflagged and unretried.
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
+    const credentials = await this.pullCredentials()
+    if (!credentials) {
       this.owePendingPull(noteId)
       return false
     }
-
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      this.owePendingPull(noteId)
-      return false
-    }
+    const { token, vaultKey } = credentials
 
     const localAbort = new AbortController()
     try {
@@ -1484,17 +1498,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     if (noteIds.length === 0) return noCost()
     log.debug('pullCrdtForNotes entered', { count: noteIds.length })
 
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) {
+    const credentials = await this.pullCredentials()
+    if (!credentials) {
       for (const noteId of noteIds) this.owePendingPull(noteId)
       return noCost()
     }
-
-    const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) {
-      for (const noteId of noteIds) this.owePendingPull(noteId)
-      return noCost()
-    }
+    const { token, vaultKey } = credentials
 
     // A caller that can outlive this group passes its own signal: the paced
     // sweep spans minutes, so without one a group already in flight would keep

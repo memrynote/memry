@@ -2992,7 +2992,7 @@ describe('ContentArea', () => {
 
   describe('waiting for its server body (#5290)', () => {
     const yjs = (): typeof contentAreaMocks.yjsState & {
-      remoteWait?: 'merging' | 'stuck' | null
+      remoteWait?: 'merging' | 'stuck' | 'signed-out' | null
     } => contentAreaMocks.yjsState
 
     afterEach(() => {
@@ -3001,7 +3001,7 @@ describe('ContentArea', () => {
       vi.mocked(useSyncOptional).mockReturnValue(null)
     })
 
-    function waitOn(remoteWait: 'merging' | 'stuck', status: string): void {
+    function waitOn(remoteWait: 'merging' | 'stuck' | 'signed-out', status: string): void {
       yjs().isReady = false
       yjs().remoteWait = remoteWait
       vi.mocked(useSyncOptional).mockReturnValue({ state: { status } } as never)
@@ -3018,7 +3018,8 @@ describe('ContentArea', () => {
 
     it.each([
       { remoteWait: 'stuck' as const, status: 'idle', notice: /Waiting for sync/ },
-      { remoteWait: 'merging' as const, status: 'offline', notice: /Offline/ }
+      { remoteWait: 'merging' as const, status: 'offline', notice: /Offline/ },
+      { remoteWait: 'signed-out' as const, status: 'error', notice: /Signed out/ }
     ])(
       'shows the file read-only, unbound and unsaved, when $remoteWait and $status',
       ({ remoteWait, status, notice }) => {

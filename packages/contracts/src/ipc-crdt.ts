@@ -119,15 +119,16 @@ export interface CrdtOpenDocInput {
 }
 
 /** What an editor's doc waits on before it binds; see `CrdtOpenDocResult.awaitingRemote`. */
-export type CrdtRemoteBodyWait = 'merging' | 'stuck'
+export type CrdtRemoteBodyWait = 'merging' | 'stuck' | 'signed-out'
 
 export interface CrdtOpenDocResult {
   success: boolean
   error?: string
   /**
    * The doc opened empty and waits for the server body (no CRDT store, #5290):
-   * `stuck` when the note's pulls keep failing on a server answer. The editor
-   * shows its loading state, or the vault file read-only while stuck or
+   * `stuck` when the note's pulls keep failing on a server answer, and
+   * `signed-out` when no pull can run as this user (#5342). The editor shows
+   * its loading state, or the vault file read-only while signed out, stuck or
    * offline, until `CRDT_EVENTS.DOC_LOADED` names the note.
    */
   awaitingRemote?: CrdtRemoteBodyWait

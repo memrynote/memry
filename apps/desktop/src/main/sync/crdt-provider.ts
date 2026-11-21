@@ -91,6 +91,8 @@ export interface RemoteBodyQuery {
   hasUnmerged: (noteId: string) => boolean
   /** The note's pulls keep failing on a server answer, so merging may never finish. */
   isStuck: (noteId: string) => boolean
+  /** No pull runs as this user until they sign in again: no access token or no vault key. */
+  signedOut: () => boolean
 }
 
 /**
@@ -438,12 +440,14 @@ export class CrdtProvider {
 
   /**
    * What an editor of `noteId` waits on (#5290): null when its doc is ready,
-   * `stuck` when the note's pulls keep failing on a server answer, else
-   * `merging`. The editor shows the vault file read-only while `stuck` or
-   * offline, and binds once the wait ends.
+   * `signed-out` when no pull can run as this user (#5342), `stuck` when the
+   * note's pulls keep failing on a server answer, else `merging`. The editor
+   * shows the vault file read-only while `signed-out`, `stuck` or offline,
+   * and binds once the wait ends.
    */
   remoteBodyWait(noteId: string): CrdtRemoteBodyWait | null {
     if (!this.isAwaitingMerge(noteId)) return null
+    if (this.remoteBody?.signedOut()) return 'signed-out'
     return this.remoteBody?.isStuck(noteId) ? 'stuck' : 'merging'
   }
 

@@ -192,6 +192,7 @@
     "bodySyncPending": "Synchronizowanie – treść tej notatki może być jeszcze w drodze",
     "remoteBodyStuck": "Oczekiwanie na synchronizację — tylko do odczytu, dopóki nie dotrze zsynchronizowana treść notatki",
     "remoteBodyOffline": "Offline — tylko do odczytu, dopóki notatka się nie zsynchronizuje",
+    "remoteBodySignedOut": "Wylogowano — tylko do odczytu, dopóki się nie zalogujesz i notatka się nie zsynchronizuje",
     "taskRemoval": {
       "title": "{count, plural, one {Usunięto zadanie z tej notatki} few {Usunięto # zadania z tej notatki} many {Usunięto # zadań z tej notatki} other {Usunięto # zadania z tej notatki}}",
       "description": "{count, plural, one {Zachować je w Zadaniach czy usunąć wszędzie?} few {Zachować je w Zadaniach czy usunąć wszędzie?} many {Zachować je w Zadaniach czy usunąć wszędzie?} other {Zachować je w Zadaniach czy usunąć wszędzie?}}",

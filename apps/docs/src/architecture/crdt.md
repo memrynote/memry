@@ -325,9 +325,12 @@ nothing. The waiting document is never seeded from the file
 answer from the server (an unresolvable signer, pending structs, a server
 error; never offline, 429 or 401) counts as stuck, about three minutes with the
 pull backoff; the count is kept in memory too, so it progresses when the debt
-table is unavailable. Main then broadcasts `crdt:doc-stuck`. While a note is
-stuck, or the device is offline, the editor shows the vault file read-only
-with a notice, with no binding and no saves. The pull that later merges the
+table is unavailable. Main then broadcasts `crdt:doc-stuck`. When the last
+body pull found no access token or no vault key (the session expired), the
+open result carries `awaitingRemote: 'signed-out'` and the pull stays owed
+(#5342). While a note is stuck or signed out, or the device is offline, the
+editor shows the vault file read-only with a notice, with no binding and no
+saves. After sign-in, the next sync drains the owed pull and the editor binds. The pull that later merges the
 body, or a pull that proves the server holds nothing, ends the wait, and the
 editor binds. A reconnect retries the merge of every waiting editor document
 (`resumeWaitingEditorDocs`), which is how a note the server never saw seeds

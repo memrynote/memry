@@ -475,17 +475,22 @@ describe('CrdtProvider with no store (#2536)', () => {
    * there was no snapshot. A full-state row is pushed when the test flushes
    * it, through the reader the runtime's outbox uses.
    */
-  async function startRuntime(options?: { store?: boolean; durableDebts?: boolean }): Promise<{
+  async function startRuntime(options?: {
+    store?: boolean
+    durableDebts?: boolean
+    session?: { signedIn: boolean }
+  }): Promise<{
     provider: ReturnType<typeof getCrdtProvider>
     coordinator: CrdtSyncCoordinator
     pushUpdate: (state: Uint8Array) => void
     flushFullStates: () => Promise<void>
   }> {
     const provider = getCrdtProvider()
+    const session = options?.session ?? { signedIn: true }
     const ctx = {
       deps: {
         crdtProvider: provider,
-        getAccessToken: async () => 'token',
+        getAccessToken: async () => (session.signedIn ? 'token' : null),
         getVaultKey: async () => new Uint8Array(32)
       },
       abortController: new AbortController()
@@ -542,7 +547,8 @@ describe('CrdtProvider with no store (#2536)', () => {
     provider.setRemoteMerge((id) => coordinator.pullCrdtForNote(id))
     provider.setRemoteBodyQuery({
       hasUnmerged: (id) => coordinator.hasUnmergedRemoteState(id),
-      isStuck: (id) => coordinator.isBodyPullStuck(id)
+      isStuck: (id) => coordinator.isBodyPullStuck(id),
+      signedOut: () => coordinator.isSignedOut()
     })
     // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
     if (!options?.store) expect(provider.storeId).toBeNull()
@@ -762,6 +768,47 @@ describe('CrdtProvider with no store (#2536)', () => {
         expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
           serverHasBody ? EXPECTED_BODY : ORIGINAL
         )
+      }
+    )
+
+    it.each([
+      { case: 'a note the server never saw', serverHasBody: false },
+      { case: 'a note with a server body', serverHasBody: true }
+    ])(
+      'an editor opened with an expired session waits, and $case loads once signed in (#5342)',
+      async ({ serverHasBody }) => {
+        // #given the session expired before the editor opens the note
+        if (serverHasBody) await serveNoteWithPeerEdit()
+        else {
+          h.server = { snapshot: null, updates: [] }
+          putNoteInVault(ORIGINAL)
+        }
+        const session = { signedIn: false }
+        const { provider, coordinator } = await startRuntime({ session })
+        const doc = await provider.openForEditor(NOTE, EDITOR_WINDOW, (id) =>
+          coordinator.pullCrdtForNote(id)
+        )
+
+        // #then the editor is told to show the file read-only, and the doc stays unseeded
+        expect(provider.remoteBodyWait(NOTE)).toBe('signed-out')
+        expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+
+        // #when the user signs in and the next sync drains the owed pull
+        session.signedIn = true
+        await coordinator.pullCrdtForNotes(coordinator.drainPendingPulls())
+
+        // #then the editor binds the note's body, once
+        expect(provider.remoteBodyWait(NOTE)).toBeNull()
+        const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+        expect(fragment.length).toBe(1)
+        expect(countTexts(fragment, 'Pack for the')).toBe(1)
+        expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath: NOTE_PATH })).toBe(
+          serverHasBody ? EXPECTED_BODY : ORIGINAL
+        )
+        expect(h.broadcasts).toContainEqual({
+          channel: CRDT_EVENTS.DOC_LOADED,
+          payload: { noteId: NOTE }
+        })
       }
     )
 

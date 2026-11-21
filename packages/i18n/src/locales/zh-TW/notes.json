@@ -192,6 +192,7 @@
     "bodySyncPending": "同步中——這則筆記的內容可能還在傳送中",
     "remoteBodyStuck": "等待同步 — 在此筆記的同步內容送達前為唯讀",
     "remoteBodyOffline": "離線 — 在此筆記同步前為唯讀",
+    "remoteBodySignedOut": "已登出 — 在你登入且此筆記同步前為唯讀",
     "taskRemoval": {
       "title": "{count, plural, other {已從這則筆記移除 # 項任務}}",
       "description": "{count, plural, other {要保留在任務中，還是從所有地方刪除？}}",

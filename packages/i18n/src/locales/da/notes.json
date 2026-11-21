@@ -192,6 +192,7 @@
     "bodySyncPending": "Synkroniserer – indholdet af denne note er muligvis stadig på vej",
     "remoteBodyStuck": "Venter på synkronisering — skrivebeskyttet, indtil notens synkroniserede indhold ankommer",
     "remoteBodyOffline": "Offline — skrivebeskyttet, indtil noten er synkroniseret",
+    "remoteBodySignedOut": "Logget ud — skrivebeskyttet, indtil du logger ind, og noten er synkroniseret",
     "taskRemoval": {
       "title": "{count, plural, one {Opgave fjernet fra denne note} other {# opgaver fjernet fra denne note}}",
       "description": "{count, plural, one {Vil du beholde den i Opgaver eller slette den overalt?} other {Vil du beholde dem i Opgaver eller slette dem overalt?}}",

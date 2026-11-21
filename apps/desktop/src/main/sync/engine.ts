@@ -494,6 +494,11 @@ export class SyncEngine extends SyncEventEmitter {
     return this.crdtSync.isBodyPullStuck(noteId)
   }
 
+  /** See `CrdtSyncCoordinator.isSignedOut`. */
+  isCrdtPullSignedOut(): boolean {
+    return this.crdtSync.isSignedOut()
+  }
+
   /**
    * `true` when this device knows it has not merged the server's state for this
    * note — an unverifiable signer, a failed or aborted pass, or a pull that is

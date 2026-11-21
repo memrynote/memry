@@ -866,7 +866,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       crdtProvider.setRemoteMerge((noteId) => engine.mergeRemoteCrdtForNote(noteId))
       crdtProvider.setRemoteBodyQuery({
         hasUnmerged: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
-        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId)
+        isStuck: (noteId) => engine.isCrdtBodyPullStuck(noteId),
+        signedOut: () => engine.isCrdtPullSignedOut()
       })
       crdtProvider.setSnapshotDeferral((noteId) => snapshotScheduler.request(noteId))
       // A full-state row queued with no runtime (a note leaving local-only) may
