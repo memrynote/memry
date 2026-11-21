@@ -24,6 +24,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{Document, DocumentRegistry};
+#[cfg(feature = "markdown")]
 use memry_core::domain::note_files::{self, NoteFileStat};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
