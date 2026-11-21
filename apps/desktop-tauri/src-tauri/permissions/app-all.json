@@ -130,6 +130,7 @@
           "notes_edit_aliases",
           "notes_ensure_property_definition",
           "notes_exists",
+          "notes_export_html",
           "notes_get",
           "notes_get_all_positions",
           "notes_get_by_path",
