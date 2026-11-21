@@ -323,6 +323,67 @@ async fn a_check_asks_about_at_most_max_probed_rows_and_the_rest_next_time() {
     assert_eq!(transport.calls_to("/sync/pull").len(), chunks + 1);
 }
 
+/// Unattested markers for `n{from:05}` to `n{to:05}`: deleted there, and never
+/// resolved here.
+fn unattested_markers(from: usize, to: usize) -> String {
+    let markers: Vec<Json> = (from..=to)
+        .map(|n| {
+            json!({
+                "id": format!("n{n:05}"), "type": "note", "clock": { "peer": 9 },
+                "deletedAt": DELETED_AT, "serverCursor": 7,
+            })
+        })
+        .collect();
+    answer(json!({ "items": [], "purgedTombstones": markers }))
+}
+
+/// The first `MAX_PROBED` rows never resolve (unattested markers), and the
+/// row behind them is still asked about by the second check: the window
+/// starts after the last row asked and wraps around.
+#[tokio::test]
+async fn rows_that_never_resolve_do_not_starve_the_rest() {
+    let db = scratch_db();
+    db.call_blocking(|conn| {
+        for n in 0..=MAX_PROBED {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, clock, updated_at)
+                 VALUES ('note', ?1, '{}', 'full', '{\"peer\":1}', 1)",
+                [format!("n{n:05}")],
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        }
+        Ok(())
+    })
+    .expect("seeded");
+    let chunks = MAX_PROBED / 100;
+    let mut script = vec![response(200, &manifest(&[]))];
+    script.extend((0..chunks).map(|_| response(200, &unattested_markers(0, MAX_PROBED - 1))));
+    let transport = FakeTransport::new(script);
+    let pull = keyed_pull(&db, transport.clone());
+    let check = ManifestCheck::default();
+    let start = now_ms();
+    let last = pair("note", &format!("n{MAX_PROBED:05}"));
+
+    let first = check.run(&pull, start).await.expect("the check");
+    let mut reuploaded = first.expect("not throttled").reuploaded;
+
+    transport.push(response(200, &manifest(&[])));
+    for _ in 0..chunks {
+        transport.push(response(200, &unattested_markers(0, MAX_PROBED - 1)));
+    }
+    let second = check
+        .run(&pull, start + 31 * MINUTE_MS)
+        .await
+        .expect("the next check");
+    reuploaded.extend(second.expect("not throttled").reuploaded);
+
+    assert_eq!(reuploaded, vec![last.clone()]);
+    assert!(queued(&db).contains(&(last.0, last.1, "create".to_owned())));
+    assert_eq!(transport.calls_to("/sync/pull").len(), 2 * chunks);
+}
+
 /// The bound: a note the server answers live for is asked about once per
 /// check, and the check runs at most once per 30 minutes.
 #[tokio::test]
