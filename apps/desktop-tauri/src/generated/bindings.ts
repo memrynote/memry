@@ -137,6 +137,11 @@ export const commands = {
 	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
 	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
 	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
+	/**
+	 *  `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
+	 *  with no sync. The editor then keeps new images inline in the scene.
+	 */
+	canvasCanUploadAsset: () => __TAURI_INVOKE<CanvasCanUploadAssetResponse>("canvas_can_upload_asset"),
 	/**  `canvas:create`. */
 	canvasCreate: (input: CanvasCreateInput) => __TAURI_INVOKE<CanvasView>("canvas_create", { input }),
 	/**  `canvas:delete`: the document goes to the OS trash. */
@@ -145,18 +150,31 @@ export const commands = {
 	canvasDuplicate: (id: string) => __TAURI_INVOKE<CanvasSummaryView | null>("canvas_duplicate", { id }),
 	/**  `canvas:get`: `null` for a deleted canvas. */
 	canvasGet: (id: string) => __TAURI_INVOKE<CanvasView | null>("canvas_get", { id }),
+	/**  `canvas:get-asset`. */
+	canvasGetAsset: (canvasId: string, fileId: string) => __TAURI_INVOKE<CanvasGetAssetResponse>("canvas_get_asset", { canvasId, fileId }),
 	/**  `canvas:library-list`. */
 	canvasLibraryList: () => __TAURI_INVOKE<CanvasLibraryListResponse>("canvas_library_list"),
 	/**  `canvas:library-save`. */
 	canvasLibrarySave: (input: CanvasLibrarySaveInput) => __TAURI_INVOKE<CanvasLibrarySaveResponse>("canvas_library_save", { input }),
 	/**  `canvas:list`. */
 	canvasList: () => __TAURI_INVOKE<CanvasListResponse>("canvas_list"),
+	/**  `canvas:list-assets`. */
+	canvasListAssets: (canvasId: string) => __TAURI_INVOKE<CanvasListAssetsResponse>("canvas_list_assets", { canvasId }),
+	/**  `canvas:live-closed`: only the window that owns the canvas releases it. */
+	canvasLiveClosed: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_closed", { canvasId }),
+	/**  `canvas:live-opened`: the calling window now has the canvas in its editor. */
+	canvasLiveOpened: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_opened", { canvasId }),
 	/**  `canvas:open-external`: the document in the OS default app. */
 	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
 	/**  `canvas:reveal-in-finder`. */
 	canvasRevealInFinder: (id: string) => __TAURI_INVOKE<null>("canvas_reveal_in_finder", { id }),
 	/**  `canvas:update`. A conflict or a missing canvas fails with Electron's message. */
 	canvasUpdate: (input: CanvasUpdateInput) => __TAURI_INVOKE<CanvasUpdateResponse>("canvas_update", { input }),
+	/**
+	 *  `canvas:upload-asset`: only bytes this vault already stores (a dedup hit); the upload of new
+	 *  bytes is 30f's.
+	 */
+	canvasUploadAsset: (input: CanvasUploadAssetInput) => __TAURI_INVOKE<UploadedAsset>("canvas_upload_asset", { input }),
 	/**  `canvasFolder:create`: a directory and its record under `parent` (`null` the root). */
 	canvasFolderCreate: (parent: string | null, name: string) => __TAURI_INVOKE<CanvasFolderMutationResponse>("canvas_folder_create", { parent, name }),
 	/**  `canvasFolder:delete`: one [`CanvasDeletedEvent`] per canvas it took, then the folder's. */
@@ -1554,6 +1572,11 @@ export type CalendarCounts = {
 	memryManaged: number,
 };
 
+/**  `CanvasCanUploadAssetResponse`. */
+export type CanvasCanUploadAssetResponse = {
+	canUpload: boolean,
+};
+
 /**  `CanvasCreateSchema`. */
 export type CanvasCreateInput = {
 	title?: string | null,
@@ -1618,6 +1641,11 @@ export type CanvasFolderView = {
 	updatedAt: number,
 };
 
+/**  `CanvasGetAssetResponse`. */
+export type CanvasGetAssetResponse = {
+	ref: string | null,
+};
+
 /**  `CanvasLibraryListResponse`. */
 export type CanvasLibraryListResponse = {
 	libraryItems: Value[],
@@ -1633,8 +1661,18 @@ export type CanvasLibrarySaveResponse = {
 	changed: number,
 };
 
+/**  `CanvasListAssetsResponse`. */
+export type CanvasListAssetsResponse = {
+	assets: MemryAssetDescriptor[],
+};
+
 export type CanvasListResponse = {
 	canvases: CanvasSummaryView[],
+};
+
+/**  The `{ ok }` of `canvas:live-opened` and `canvas:live-closed`. */
+export type CanvasLiveAck = {
+	ok: boolean,
 };
 
 /**  `CanvasSummary`. */
@@ -1684,6 +1722,14 @@ export type CanvasUpdateResponse = {
 /**  A canvas was saved, renamed or moved (`canvas:updated`). */
 export type CanvasUpdatedEvent = {
 	canvas: CanvasSummaryView,
+};
+
+/**  `canvas:upload-asset`'s input; the bytes come as Electron's `number[]`. */
+export type CanvasUploadAssetInput = {
+	canvasId: string,
+	fileId: string,
+	mimeType: string,
+	data: number[],
 };
 
 /**
@@ -2931,6 +2977,17 @@ export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
 
 /**  `MatchType`. */
 export type MatchType = "exact" | "prefix" | "fuzzy";
+
+/**  `MemryAssetDescriptor`: one image a canvas shows, as the sidecar carries it. */
+export type MemryAssetDescriptor = {
+	fileId: string,
+	attachmentId: string,
+	contentHash: string,
+	chunkHashes: string[],
+	mimeType: string,
+	sizeBytes: number,
+	filename: string,
+};
 
 /**
  *  A native menu item that the renderer runs as a command was clicked. `command` is the
@@ -4934,6 +4991,13 @@ export type UpdateSyncedSettingResult = {
 export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
+
+/**  `CanvasUploadAssetResponse`. */
+export type UploadedAsset = {
+	ref: string,
+	descriptor: MemryAssetDescriptor,
+	deduped: boolean,
+};
 
 /**  `kind: 'url'` of `CalendarProviderConnectionSchema`. */
 export type UrlConnectionInput = {
