@@ -18,7 +18,7 @@ pub const MAX_CLOCK_BYTES: usize = 64 * 1024;
 /// The `vault_metadata` row Electron reads (`agent/storage/vault-id.ts:7`).
 const SINGLETON_ID: &str = "singleton";
 
-fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
+pub(super) fn malformed(table: &'static str, rowid: i64, what: &'static str) -> ImportError {
     ImportError::MalformedRow { table, rowid, what }
 }
 
@@ -47,8 +47,9 @@ fn text(row: &Row<'_>, column: &str) -> Result<Option<String>, ImportError> {
     row.get(column).map_err(|e| source_error(SourceDb::Data, e))
 }
 
-/// Reads every row of `sql` (which selects `rowid`) through `build` and writes the records.
-fn records(
+/// Reads every row of `sql` (which selects `rowid`) through `build` and writes the records,
+/// each with its `sync_unknown_fields` remainder merged in as Electron's push does.
+pub(super) fn records(
     ctx: &mut TableCtx<'_>,
     sql: &str,
     build: impl Fn(&Row<'_>, i64) -> Result<ImportRecord, ImportError>,
@@ -66,7 +67,9 @@ fn records(
             let rowid: i64 = row
                 .get("rowid")
                 .map_err(|e| source_error(SourceDb::Data, e))?;
-            records.push(build(row, rowid)?);
+            let mut record = build(row, rowid)?;
+            super::unknown_fields::merge_into(ctx.source, &mut record)?;
+            records.push(record);
         }
         records
     };

@@ -15,6 +15,7 @@
 //! | a journal day created on A gets its day file on B        | the write-back files an unfiled day   |
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
+//! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
 //! | a note create the server lost reaches a second device     | the manifest check asks, then re-uploads |
 //! | a deleted note stays deleted after a run from cursor 0    | a marker answered, nothing re-uploaded |
 //! | a deleted note stays deleted after a first sync           | a marker answered, nothing re-uploaded |
@@ -25,6 +26,8 @@
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "sync_disk_harness/note_events.rs"]
+mod note_events;
 #[path = "sync_disk_harness/reupload.rs"]
 mod reupload;
 #[path = "sync_disk_harness/unfiled.rs"]

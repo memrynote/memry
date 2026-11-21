@@ -29,11 +29,22 @@ runs:
         echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
 
     # actions/cache saves in its post step, and only when the job succeeded, so archives that failed
-    # build.rs's signature check are never saved.
-    - name: Restore the libsodium archives
-      if: runner.os == 'Windows'
-      id: cache
+    # build.rs's signature check are never saved. One saver per key (apt-install has the reason): only
+    # a push to feat/tauri-v2 or main, or a scheduled run, uses actions/cache; every other ref restores
+    # with actions/cache/restore and writes nothing. The two steps are exclusive and take the same
+    # path and key, so exactly one of them sets cache-hit.
+    - name: Restore and save the libsodium archives
+      if: runner.os == 'Windows' && (github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main')))
+      id: cache-save
       uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/libsodium-dist
+        key: libsodium-dist-${{ steps.crate.outputs.version }}-${{ hashFiles('.github/actions/libsodium-dist/action.yml') }}
+
+    - name: Restore the libsodium archives
+      if: runner.os == 'Windows' && !(github.event_name == 'schedule' || (github.event_name == 'push' && (github.ref == 'refs/heads/feat/tauri-v2' || github.ref == 'refs/heads/main')))
+      id: cache-restore
+      uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/libsodium-dist
         key: libsodium-dist-${{ steps.crate.outputs.version }}-${{ hashFiles('.github/actions/libsodium-dist/action.yml') }}
@@ -42,7 +53,7 @@ runs:
     # MSVC zip, and reads both from SODIUM_DIST_DIR once that is set. The zip name is read from the
     # crate's build.rs, so a crate bump needs no edit here.
     - name: Fetch the libsodium archives
-      if: runner.os == 'Windows' && steps.cache.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && steps.cache-save.outputs.cache-hit != 'true' && steps.cache-restore.outputs.cache-hit != 'true'
       shell: bash
       env:
         VERSION: ${{ steps.crate.outputs.version }}
@@ -81,5 +92,5 @@ runs:
       shell: bash
       run: |
         dist="$(cygpath -m "$RUNNER_TEMP")/libsodium-dist"
-        echo "SODIUM_DIST_DIR=$dist (cache hit: ${{ steps.cache.outputs.cache-hit || 'false' }}): $(ls "$dist" | tr '\n' ' ')"
+        echo "SODIUM_DIST_DIR=$dist (cache hit: ${{ steps.cache-save.outputs.cache-hit || steps.cache-restore.outputs.cache-hit || 'false' }}): $(ls "$dist" | tr '\n' ' ')"
         echo "SODIUM_DIST_DIR=$dist" >> "$GITHUB_ENV"

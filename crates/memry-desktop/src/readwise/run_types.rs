@@ -33,7 +33,9 @@ pub trait RunObserver {
     fn planned(&self, _total: usize) {}
     /// A book is about to be written.
     fn writing(&self, _title: &str) {}
-    /// A book is done.
+    /// `count` more items (Reader documents) will be looked at, on top of `planned`.
+    fn more(&self, _count: usize) {}
+    /// A book or a Reader document is done.
     fn book(&self, _event: &BookEvent) {}
     /// The import runner writes its own summary, so it answers false.
     fn log_activity(&self) -> bool {
@@ -70,6 +72,8 @@ pub struct RunResult {
     /// Another device took Readwise over, so the run stopped at the next book (D8).
     pub claim_lost: bool,
     pub counts: RunCounts,
+    /// Reader notes created for saved documents without highlights (D11).
+    pub documents: u64,
 }
 
 #[derive(Debug, thiserror::Error)]
