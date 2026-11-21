@@ -5,6 +5,7 @@ use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::domain::projects;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -45,7 +46,14 @@ pub(super) fn write(
 
     let publish = |tx: &Connection| {
         sync_items::apply_local_edit_in(tx, item_type, item_id, &changes, now_ms)?;
-        outbox::enqueue(tx, &outbox::Change::upsert(item_type, item_id), now_ms).map(drop)
+        outbox::enqueue(tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
+        if item_type == "note" {
+            // A markdown note's `project` property is its project membership;
+            // its projects' `links` follow it in this same transaction.
+            let names = projects::project_names(values.get(projects::PROJECT_PROPERTY_KEY));
+            projects::sync_links_from_property(tx, item_id, &names, device_id, now_ms)?;
+        }
+        Ok::<(), StorageError>(())
     };
     // Inside a caller's transaction (a file mirror and its baseline), as part of it.
     if !conn.is_autocommit() {

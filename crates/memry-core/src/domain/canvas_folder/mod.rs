@@ -67,48 +67,116 @@ pub fn upsert(
     device_id: &str,
     now_ms: i64,
 ) -> Result<CanvasFolder, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let folder = upsert_in(&tx, vault_id, path, icon, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(folder)
+}
+
+/// [`upsert`] inside a transaction the caller holds, with its outbox row.
+pub(crate) fn upsert_in(
+    tx: &Connection,
+    vault_id: &str,
+    path: &str,
+    icon: Option<Option<&str>>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<CanvasFolder, StorageError> {
     if path.is_empty() {
         return Err(StorageError::Invalid {
             what: "a canvas folder needs a path".to_owned(),
         });
     }
     let id = sync_id(path);
-    let current = get_any(conn, &id)?;
+    let current = get_any(tx, &id)?;
     if let Some(folder) = current.as_ref().filter(|(_, deleted)| !deleted) {
         let folder = &folder.0;
         if icon.is_none_or(|icon| icon == folder.icon.as_deref()) {
             return Ok(folder.clone());
         }
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
+    let record = sync_items::load(tx, ITEM_TYPE, &id)?;
+    if record.is_some_and(|row| row.deleted_at.is_none()) {
+        // Live, or a peer's soft delete stated in the payload.
+        let stored = live(tx, ITEM_TYPE, &id, "canvas folder")?;
+        let mut changes = vec![("deletedAt", Change::Set(Value::Null))];
+        if let Some(icon) = icon {
+            changes.push(("icon", Change::Set(json!(icon))));
+        }
+        desktop_records::edit(tx, ITEM_TYPE, &id, &stored, changes, device_id, now_ms)?;
+    } else {
+        write_over_tombstone(
+            tx,
+            ITEM_TYPE,
+            &id,
+            new_payload(&id, vault_id, path, icon.flatten()),
+            device_id,
+            now_ms,
+        )?;
+    }
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
+    read_back(tx, &id)
+}
+
+/// Electron's `insertFolderRowIfAbsent`: writes the folder at `path` only when
+/// no record of it exists, live or deleted, and queues it. `deleted` writes it
+/// as a tombstone and queues a delete. `false` when a record was there.
+pub(crate) fn insert_if_absent_in(
+    tx: &Connection,
+    vault_id: &str,
+    path: &str,
+    deleted: bool,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let id = sync_id(path);
+    if sync_items::load(tx, ITEM_TYPE, &id)?.is_some() {
+        return Ok(false);
+    }
+    write_over_tombstone(
+        tx,
+        ITEM_TYPE,
+        &id,
+        new_payload(&id, vault_id, path, None),
+        device_id,
         now_ms,
-        |tx| {
-            let record = sync_items::load(tx, ITEM_TYPE, &id)?;
-            if record.is_some_and(|row| row.deleted_at.is_none()) {
-                // Live, or a peer's soft delete stated in the payload.
-                let stored = live(tx, ITEM_TYPE, &id, "canvas folder")?;
-                let mut changes = vec![("deletedAt", Change::Set(Value::Null))];
-                if let Some(icon) = icon {
-                    changes.push(("icon", Change::Set(json!(icon))));
-                }
-                desktop_records::edit(tx, ITEM_TYPE, &id, &stored, changes, device_id, now_ms)?;
-            } else {
-                let payload = object(json!({
-                    "id": id,
-                    "vaultId": vault_id,
-                    "path": path,
-                    "icon": icon.flatten(),
-                    "clock": Value::Null,
-                    "deletedAt": null,
-                }));
-                write_over_tombstone(tx, ITEM_TYPE, &id, payload, device_id, now_ms)?;
-            }
-            read_back(tx, &id)
-        },
-    )
-    .map(outbox::Durable::acknowledge)
+    )?;
+    if deleted {
+        tombstone_in(tx, &id, device_id, now_ms)?;
+    } else {
+        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
+    }
+    Ok(true)
+}
+
+/// Tombstones the live folder record `id` and queues the delete.
+pub(crate) fn tombstone_in(
+    tx: &Connection,
+    id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = live(tx, ITEM_TYPE, id, "canvas folder")?;
+    let changes = vec![("deletedAt", Change::set(now_ms))];
+    desktop_records::tombstone(tx, ITEM_TYPE, id, &stored, changes, device_id, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, id), now_ms)?;
+    Ok(())
+}
+
+fn new_payload(
+    id: &str,
+    vault_id: &str,
+    path: &str,
+    icon: Option<&str>,
+) -> crate::storage::repositories::schema::Object {
+    object(json!({
+        "id": id,
+        "vaultId": vault_id,
+        "path": path,
+        "icon": icon,
+        "clock": Value::Null,
+        "deletedAt": null,
+    }))
 }
 
 /// Deletes the folder at `path` and queues the delete. `false` when there was
@@ -123,17 +191,18 @@ pub fn delete(
     if get_any(conn, &id)?.is_none_or(|(_, deleted)| deleted) {
         return Ok(false);
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, &id),
-        now_ms,
-        |tx| {
-            let stored = live(tx, ITEM_TYPE, &id, "canvas folder")?;
-            let changes = vec![("deletedAt", Change::set(now_ms))];
-            desktop_records::tombstone(tx, ITEM_TYPE, &id, &stored, changes, device_id, now_ms)
-        },
-    )?;
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    tombstone_in(&tx, &id, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(true)
+}
+
+/// The live folder whose id is `path`'s ([`sync_id`]), in the spelling it was
+/// stored with.
+pub fn get(conn: &Connection, path: &str) -> Result<Option<CanvasFolder>, StorageError> {
+    Ok(get_any(conn, &sync_id(path))?
+        .filter(|(_, deleted)| !deleted)
+        .map(|(folder, _)| folder))
 }
 
 /// Every live folder, by path.

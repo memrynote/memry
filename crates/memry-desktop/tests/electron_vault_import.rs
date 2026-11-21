@@ -115,7 +115,7 @@ impl Vault {
 
 fn staged(outcome: StageOutcome) -> memry_desktop::electron_import::vault_db::StagedVault {
     match outcome {
-        StageOutcome::Staged(staged) => staged,
+        StageOutcome::Staged(staged) => *staged,
         StageOutcome::AlreadyImported => panic!("AlreadyImported"),
         StageOutcome::NativeFirst => panic!("NativeFirst"),
     }

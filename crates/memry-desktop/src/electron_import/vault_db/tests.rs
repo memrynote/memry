@@ -404,18 +404,27 @@ proptest! {
         let _ = preflight::virtual_module(&sql);
         let _ = preflight::virtual_module(&format!("create virtual table x using {tail}{sql}"));
     }
+}
 
-    /// Any UTF-8 id comes back unchanged through copy, WAL replay and backup.
-    #[test]
-    fn any_text_id_round_trips(ids in prop::collection::btree_set("\\PC{1,24}", 1..8)) {
-        let dir = tempfile::tempdir().unwrap();
-        let pair = electron_db::create_pair(&dir.path().join(".memry"));
-        let conn = rusqlite::Connection::open(&pair.data).unwrap();
-        for id in &ids {
-            electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+/// Any UTF-8 id comes back unchanged through copy, WAL replay and backup. The Electron pair is
+/// built once, not per case: replaying its migrations is 580 commits, one fsync each, which took
+/// 3 to 9 s per case on the Windows runners and put 32 cases at the 300 s test limit.
+#[test]
+fn any_text_id_round_trips() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    proptest!(
+        memry_test_kit::proptest_config(32),
+        |(ids in prop::collection::btree_set("\\PC{1,24}", 1..8))| {
+            let conn = rusqlite::Connection::open(&pair.data).unwrap();
+            conn.execute("DELETE FROM note_metadata", []).unwrap();
+            for id in &ids {
+                electron_db::seed(&conn, "note_metadata", &[("id", Value::Text(id.clone()))]);
+            }
+            drop(conn);
+            let staging = tempfile::tempdir_in(dir.path()).unwrap();
+            let read = ids_through_the_copy(&pair, staging.path());
+            prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
         }
-        drop(conn);
-        let read = ids_through_the_copy(&pair, &dir.path().join("staging"));
-        prop_assert_eq!(read, ids.into_iter().collect::<Vec<_>>());
-    }
+    );
 }

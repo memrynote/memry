@@ -59,7 +59,11 @@ export const scenes = {
     const c = await rec.center(picker)
     await rec.glide(c.x - 20, c.y + 2, 800)
     await sleep(450)
-    await picker.selectOption('css')
+    // WebDriver has no selectOption: set the value the way React reads it, then fire change.
+    await picker.evaluate((el, value) => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, value)
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    }, 'css')
     await sleep(400)
     await rec.glide(c.x - 120, c.y + 90, 900)
   },
@@ -108,7 +112,7 @@ export const scenes = {
 // The take's own vault copy (agent-app's state file in this slot's temp dir).
 const note = () => {
   const { vaultPath } = JSON.parse(
-    fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app.json'), 'utf8')
+    fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app-tauri.json'), 'utf8')
   )
   return fs.readFileSync(path.join(vaultPath, 'Meetings/Brand workshop with Lea.md'), 'utf8')
 }

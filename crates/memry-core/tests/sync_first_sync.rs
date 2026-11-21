@@ -13,6 +13,7 @@
 //! | an unopenable update stops the document  | §7.9's stop-at-gap                  |
 //! | a baseline is taken only when §7.8 says  | §7.8, §7.5                          |
 //! | a tombstoned document is not body-pulled | §7.15                               |
+//! | refs progress counts items, not cursors  | §10.11; FR-028                      |
 //! | elevated bodies run in parallel          | §10.7; the body pass's concurrency  |
 //! | a 429 in the bodies pass is paused out   | §7.10 `retryOn429: false`           |
 
@@ -691,6 +692,61 @@ async fn a_tombstoned_document_is_never_body_pulled() {
     assert_eq!(transport.call_count(), 1);
 }
 
+/// §10.11: the refs pass counts the items it listed (refs and tombstones),
+/// with one more page while the feed has more, as Electron's
+/// `initial-sync-progress.ts` does. The server cursor is a per-user sequence
+/// over every vault and every edit, so it is never a count.
+#[tokio::test]
+async fn the_refs_pass_reports_items_listed_not_server_cursors() {
+    let db = scratch_db("refs-progress");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &changes_page(
+                &[(NOTE, "note"), ("def456abc789", "note")],
+                &["aaa111bbb222"],
+                50_000,
+                true,
+            ),
+        ),
+        response(
+            200,
+            &changes_page(
+                &[("ccc333ddd444", "note")],
+                &["eee555fff666"],
+                50_002,
+                false,
+            ),
+        ),
+        // The metadata pass never answers: only the refs pass is under test.
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let progress = RecordedProgress::new();
+    let run = first_sync(&db, transport, public_key, progress.clone())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(run.is_err(), "the run stops in the metadata pass");
+
+    let refs: Vec<(u64, u64)> = progress
+        .seen()
+        .iter()
+        .filter(|p| p.phase == FirstSyncPhase::Refs)
+        .map(|p| (p.completed, p.total))
+        .collect();
+    assert_eq!(refs, vec![(3, 503), (5, 5)]);
+    assert!(
+        progress
+            .seen()
+            .iter()
+            .all(|p| p.completed < 50_000 && p.total < 50_000),
+        "{:?}",
+        progress.seen()
+    );
+}
+
 /// #2299 review A-5: a coversThrough push moves the server's watermark, so a
 /// per-document cursor can sit between the old and the new one; the single
 /// update route now advertises the snapshot, and a revision this device does
@@ -818,6 +874,85 @@ fn first_sync(
         RealCrdtCipher::with("device-a", signer_public_key),
     ));
     FirstSync::new(pull, bodies, db.clone()).with_progress(progress)
+}
+
+fn bootstrap_opened()
+-> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError> {
+    response(
+        200,
+        &json!({"session": {"token": "boot-token", "expiresAt": 4_000_000_000i64}, "tailCursor": 10})
+            .to_string(),
+    )
+}
+
+fn closed_with_token(transport: &FakeTransport) -> Vec<Option<String>> {
+    transport
+        .calls_to("/sync/bootstrap/close")
+        .iter()
+        .map(|call| call.headers.get(BOOTSTRAP_TOKEN_HEADER).cloned())
+        .collect()
+}
+
+#[tokio::test]
+async fn a_first_sync_that_fails_mid_run_still_closes_its_bootstrap_session() {
+    // #5281: an early error return used to skip the close, so the session
+    // held one of the user's two slots until it expired.
+    let db = scratch_db("close-on-error");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        bootstrap_opened(),
+        error_response(400, "VALIDATION_ERROR", "the change feed refused"),
+        response(200, &json!({"success": true}).to_string()),
+    ]);
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+
+    let failed = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_bootstrap(bootstrap)
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+
+    assert!(failed.is_err(), "the change feed failure fails the run");
+    assert_eq!(
+        closed_with_token(&transport),
+        [Some("boot-token".to_string())]
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_cancelled_mid_run_still_closes_its_bootstrap_session() {
+    // A shell cancels by dropping the run (a foreign future, an aborted
+    // task), which no `.await` after the passes survives.
+    let db = scratch_db("close-on-cancel");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[38u8; 32]).expect("keypair");
+    let transport = FakeTransport::slow(
+        vec![
+            bootstrap_opened(),
+            response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+            response(200, &json!({"success": true}).to_string()),
+        ],
+        50,
+    );
+    let bootstrap = Arc::new(BootstrapClient::new(http(transport.clone())));
+    let run = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_bootstrap(Arc::clone(&bootstrap));
+
+    // The open answers at 50 ms; at 75 ms the change feed is still in flight.
+    let cancelled = tokio::time::timeout(
+        std::time::Duration::from_millis(75),
+        run.run(epoch(MODIFIED_AT) + 1_000),
+    )
+    .await;
+    assert!(cancelled.is_err(), "the run was dropped mid-feed");
+    assert_eq!(transport.call_count(), 2, "the open and the change feed");
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    assert_eq!(
+        closed_with_token(&transport),
+        [Some("boot-token".to_string())]
+    );
+    assert_eq!(bootstrap.header(0), None);
 }
 
 #[test]
@@ -1008,6 +1143,24 @@ async fn an_elevated_first_sync_pulls_bodies_in_parallel_with_the_session_token(
     assert!(crdt.iter().all(|call| {
         call.headers.get(BOOTSTRAP_TOKEN_HEADER).map(String::as_str) == Some("boot-token")
     }));
+    // The close names its session, or the server answers 401 and the user's
+    // concurrent-session slot stays held until the token expires (§10.2).
+    let closes: Vec<_> = transport
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|call| call.url.ends_with("/sync/bootstrap/close"))
+        .cloned()
+        .collect();
+    assert_eq!(closes.len(), 1);
+    assert_eq!(
+        closes[0]
+            .headers
+            .get(BOOTSTRAP_TOKEN_HEADER)
+            .map(String::as_str),
+        Some("boot-token")
+    );
 
     // Overlapping, and never wider than the elevated cap.
     let widest = transport.max_in_flight.load(Ordering::SeqCst) as usize;

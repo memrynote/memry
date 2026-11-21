@@ -27,12 +27,23 @@ ort = { workspace = true, features = ["download-binaries", "tls-rustls", "coreml
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
+# whisper.cpp for voice transcription (`whisper`, #3541), with Metal on macOS. Its build reads the
+# `GGML_*` and `CMAKE_*` entries of `crates/.cargo/config.toml`. Windows ARM64 has none yet:
+# ggml's ARM CPU code needs clang, and the MSVC build there refuses it (crates/AGENTS.md).
+whisper-rs = { version = "=0.16.0", optional = true, features = ["metal"] }
+
+[target.'cfg(not(any(target_os = "macos", all(windows, target_arch = "aarch64"))))'.dependencies]
+whisper-rs = { version = "=0.16.0", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_System_Threading"] }
+
+[features]
+# Speech to text on whisper.cpp (`WhisperEngine`), for the worker's transcription ops.
+whisper = ["dep:whisper-rs"]
 
 # The static VC runtime of the Windows archives (build.rs); the version tauri-build uses.
 [build-dependencies]

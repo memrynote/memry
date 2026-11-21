@@ -49,7 +49,7 @@ use serde_json::{Map, Value};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::{FileFields, file_fields};
 use crate::session::OpenVault;
-use crate::vault::config::read_vault_config;
+use crate::vault::config::{VaultConfig, read_vault_config};
 use crate::vault::journal_format::JournalDays;
 use crate::vault::paths::open_vault_file;
 
@@ -119,7 +119,11 @@ pub fn day_of_file(root: &Path, path: &str) -> Option<String> {
 
 /// Where the file of `date` goes under the vault's config (`getJournalRelativePath`).
 pub(crate) fn day_path(root: &Path, date: &str) -> Result<String, NotesError> {
-    let config = read_vault_config(root);
+    day_path_in(&read_vault_config(root), date)
+}
+
+/// [`day_path`] under `config`.
+pub(crate) fn day_path_in(config: &VaultConfig, date: &str) -> Result<String, NotesError> {
     JournalDays::new(&config.journal_folder, &config.journal_date_format)
         .path_of(date)
         .ok_or_else(|| NotesError::NotFound(date.to_owned()))
