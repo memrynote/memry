@@ -23,12 +23,15 @@ use super::{AccountError, AccountService};
 use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
-use crate::sync::backend::{SyncBackend, VaultSyncBackend};
-use crate::sync::gate::SyncStartGate;
+use crate::sync::backend::{SyncBackend, VaultSyncBackend, read_auth_facts};
+use crate::sync::disk::DiskObserver;
+use crate::sync::events::OnSyncEvent;
+use crate::sync::gate::{self, GateDecision, SyncNotStartedReason, SyncStartGate};
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
 use crate::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use crate::telemetry::Service;
+use crate::vault::consumer::VaultTier;
 
 /// `BINDING_RETRY_MS`: how long an `Unknown` binding waits before the next check.
 pub const BINDING_RETRY: Duration = Duration::from_secs(60);
@@ -41,14 +44,18 @@ pub struct OpenVaultBinding {
 
 struct Slot {
     gate: Weak<SyncStartGate>,
-    state: BindingState,
+    /// `None` until the first decision, which is always reported: the vault before may have
+    /// been held, and the renderer still shows its binding.
+    state: Option<BindingState>,
 }
 
 impl OpenVaultBinding {
     /// The binding of the vault sync runs for; `Bound` when none runs (`NEUTRAL_STATE`).
     pub fn state(&self) -> BindingState {
         match lock(&self.slot).as_ref() {
-            Some(slot) if slot.gate.strong_count() > 0 => slot.state.clone(),
+            Some(slot) if slot.gate.strong_count() > 0 => {
+                slot.state.clone().unwrap_or(BindingState::Bound)
+            }
             _ => BindingState::Bound,
         }
     }
@@ -77,9 +84,11 @@ impl OpenVaultBinding {
     }
 
     fn track(&self, gate: &Arc<SyncStartGate>) {
+        // Reads as Electron's neutral `Bound` until the first decision, as with no supervisor: a
+        // read right after sign-in is not `unknown`.
         *lock(&self.slot) = Some(Slot {
             gate: Arc::downgrade(gate),
-            state: BindingState::Unknown,
+            state: None,
         });
     }
 
@@ -94,10 +103,10 @@ impl OpenVaultBinding {
             return false;
         };
         gate.set_binding(state.gate());
-        if current.state == *state {
+        if current.state.as_ref() == Some(state) {
             return false;
         }
-        current.state = state.clone();
+        current.state = Some(state.clone());
         true
     }
 }
@@ -118,11 +127,15 @@ pub struct SyncWiring {
     pub keychain_recovered: broadcast::Sender<()>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    pub on_event: OnSyncEvent,
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// The vault tier pulled bodies and locks reach the disk through (`sync::disk`); `None` in a
+    /// test that serves no vault files.
+    pub tier: Option<Arc<VaultTier>>,
     /// Each new gate, before its supervisor starts: billing tells it the plan
     /// (`BillingService::attach_gate`).
     pub on_gate: GateHook,
@@ -160,6 +173,17 @@ impl HeldOpen {
 }
 
 impl SyncWiring {
+    /// What the open vault's gate decides now, read off its binding and entitlement and the
+    /// account's facts; `Unavailable` with no supervisor (blocking: reads the master key).
+    pub fn start_decision(&self) -> GateDecision {
+        let Some(gate) = self.bindings.gate() else {
+            return GateDecision::NotStarted(SyncNotStartedReason::Unavailable);
+        };
+        let (signed_in, recovery_confirmed) = self.account.sync_facts();
+        let facts = read_auth_facts(signed_in, recovery_confirmed, self.store.as_ref());
+        gate::evaluate(&gate.inputs(facts))
+    }
+
     /// The factory `Session::attach_sync` takes.
     pub fn factory(self: Arc<Self>) -> SupervisorFactory {
         Arc::new(move |open: &OpenVault, signals: &AuthSignals| Some(self.start(open, signals)))
@@ -179,6 +203,14 @@ impl SyncWiring {
             Arc::new(move || account.sync_facts()),
             self.account.at_rest_keys(),
         );
+        let backend = match &self.tier {
+            Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
+                Arc::clone(tier),
+                open.path.clone(),
+                Arc::clone(&open.vault),
+            ))),
+            None => backend,
+        };
         let supervisor = SyncSupervisor::start(
             &self.runtime,
             SupervisorParts {
@@ -191,6 +223,7 @@ impl SyncWiring {
                 telemetry: self.telemetry.clone(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
+                on_event: Arc::clone(&self.on_event),
             },
         );
         self.runtime
@@ -201,6 +234,10 @@ impl SyncWiring {
     /// Decides the vault's binding, tells its gate, and retries `Unknown` while the gate lives.
     async fn bind(self: Arc<Self>, held: HeldOpen, gate: Weak<SyncStartGate>) {
         loop {
+            // A closed vault or a stopped sync (a sign-out detaches it) decides nothing.
+            if gate.upgrade().is_none() {
+                return;
+            }
             let Some(open) = held.get() else { return };
             let state = match self
                 .account
@@ -280,8 +317,9 @@ mod tests {
         let open = Arc::new(SyncStartGate::default());
         bindings.track(&open);
 
+        assert_eq!(bindings.state(), BindingState::Bound, "before any decision");
         assert!(!bindings.publish(&closed, &BindingState::Foreign));
-        assert_eq!(bindings.state(), BindingState::Unknown);
+        assert_eq!(bindings.state(), BindingState::Bound);
         assert!(bindings.publish(&open, &BindingState::LocalOnly));
         assert!(
             !bindings.publish(&open, &BindingState::LocalOnly),
@@ -292,5 +330,21 @@ mod tests {
         drop(open);
         assert_eq!(bindings.state(), BindingState::Bound);
         assert!(bindings.gate().is_none());
+    }
+
+    /// A switch from a held vault to a bound one reports `Bound`, so the renderer leaves the
+    /// held vault's binding prompt.
+    #[test]
+    fn a_switch_from_a_held_vault_to_a_bound_one_is_reported() {
+        let bindings = OpenVaultBinding::default();
+        let held = Arc::new(SyncStartGate::default());
+        bindings.track(&held);
+        assert!(bindings.publish(&held, &BindingState::LocalOnly));
+
+        let bound = Arc::new(SyncStartGate::default());
+        bindings.track(&bound);
+
+        assert!(bindings.publish(&bound, &BindingState::Bound));
+        assert_eq!(bindings.state(), BindingState::Bound);
     }
 }

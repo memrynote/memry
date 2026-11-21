@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "generatedAt": "2026-01-14T12:00:00.000Z",
+  "timezone": "UTC",
+  "counts": {
+    "notes": 98,
+    "journal entries": 71,
+    "files": 4,
+    "projects": 4,
+    "tasks": 52,
+    "inbox items": 19,
+    "calendar events": 30,
+    "reminders": 7,
+    "bookmarks": 11,
+    "templates": 7,
+    "saved filters": 3,
+    "tags": 29,
+    "tags with fields": 7,
+    "tasks with fields": 5,
+    "task activity": 19,
+    "versions": 3,
+    "canvases": 2
+  }
+}

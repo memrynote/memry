@@ -42,9 +42,17 @@ const events = vi.hoisted(() => {
     tagNotesChangedEvent: event('notes'),
     tagRenamedEvent: event('renamed'),
     tagDeletedEvent: event('deleted'),
-    tagsProgressEvent: event('progress')
+    tagsProgressEvent: event('progress'),
+    syncItemSyncedEvent: {
+      listen: async (handler: (event: { payload: unknown }) => void) => {
+        pulled.add(handler)
+        return () => pulled.delete(handler)
+      }
+    }
   }
 })
+// Every live listener of pulled pages; `listeners` keeps one per event name.
+const pulled = vi.hoisted(() => new Set<(event: { payload: unknown }) => void>())
 
 vi.mock('../../../generated/bindings', () => ({ commands, events }))
 
@@ -366,5 +374,36 @@ describe('tags-service', () => {
     listeners.get('deleted')?.({ payload: { tag: 'work', affectedNotes: 2 } })
     expect(deleted).toHaveBeenCalledWith({ tag: 'work', affectedNotes: 2 })
     stop()
+  })
+
+  it('tells the tag listeners about pulled tag definitions, categories and properties', async () => {
+    vi.useFakeTimers()
+    try {
+      const deleted = vi.fn()
+      const categories = vi.fn()
+      const definitions = vi.fn()
+      const stops = [
+        onTagDeleted(deleted),
+        onTagCategoriesChanged(categories),
+        onPropertyDefinitionChanged(definitions)
+      ]
+      await vi.advanceTimersByTimeAsync(0)
+      const items = [
+        { itemId: 'work', type: 'tag_definition', itemOperation: 'delete' },
+        { itemId: 'home', type: 'tag_definition', itemOperation: 'update' },
+        { itemId: 'cat-1', type: 'tag_category', itemOperation: 'create' },
+        { itemId: 'Role', type: 'property_definition', itemOperation: 'update' }
+      ]
+      for (const handler of pulled) handler({ payload: { operation: 'pull', items } })
+      await vi.advanceTimersByTimeAsync(150)
+
+      // Electron's handler named only the tag of a delete.
+      expect(deleted.mock.calls).toEqual([[{ tag: 'work', affectedNotes: 0 }]])
+      expect(categories).toHaveBeenCalledTimes(1)
+      expect(definitions.mock.calls).toEqual([[{ name: 'Role' }]])
+      for (const stop of stops) stop()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

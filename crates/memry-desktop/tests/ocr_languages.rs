@@ -362,6 +362,33 @@ async fn a_language_no_longer_chosen_loses_its_pack_and_its_unpacked_data() {
     assert_eq!(fx.fetched_langs().len(), 1);
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_stale_part_file_of_a_chosen_language_is_pruned_from_the_cache() {
+    let fx = Fixture::new().await;
+    let ocr = fx.service();
+    ocr.set(&[Deu]).expect("set");
+    ocr.sync().await;
+    let datapath = ocr.datapath(&[Eng, Deu]).expect("datapath");
+    // An unpack an earlier run never finished, and one in progress now.
+    let stale = datapath.join("deu.1234.part");
+    std::fs::write(&stale, b"half").expect("part");
+    let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    std::fs::File::options()
+        .write(true)
+        .open(&stale)
+        .and_then(|file| file.set_modified(old))
+        .expect("age the part");
+    std::fs::write(datapath.join("deu.5678.part"), b"half").expect("part");
+
+    ocr.retry();
+    ocr.sync().await;
+
+    assert_eq!(
+        names(&datapath),
+        ["deu.5678.part", "deu.source-sha256", "deu.traineddata"]
+    );
+}
+
 /// An earlier run, Electron's included: the pack is the gzip the server served.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_pack_an_earlier_run_downloaded_is_used_without_a_fetch_and_unpacks() {

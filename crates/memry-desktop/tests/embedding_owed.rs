@@ -76,7 +76,7 @@ fn an_edit_closed_within_the_write_back_debounce_is_embedded_on_reopen() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
 
     // The close flushes the scheduled pass after the session let go of the vault, so the
     // write-back's own fact reaches no lane.
@@ -96,7 +96,7 @@ fn an_edit_on_disk_while_closed_is_embedded_on_reopen() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
     l.e.close();
     l.e.write("a.md", &format!("{EDITED}\n"));
 
@@ -114,7 +114,7 @@ fn a_rename_on_disk_while_closed_is_embedded_on_reopen() {
     let mut l = lane();
     let id = l.write("alpha-note.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
     until_titled(&l, &id, "alpha-note");
     l.e.close();
     std::fs::rename(
@@ -136,7 +136,7 @@ fn a_rename_whose_event_embedded_nothing_before_the_close_is_embedded_on_reopen(
     let mut l = lane();
     let id = l.write("alpha-note.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
 
     // The rename's event reaches the lane while it defers (an index build), and the close
     // drops what the drain would have run.
@@ -176,7 +176,7 @@ fn a_refused_outside_edit_records_the_hash_of_the_bytes_it_embedded() {
     let mut l = lane();
     let id = l.write("a.md", ALPHA);
     l.embedded(&id);
-    l.settled();
+    l.all_embedded();
 
     // As the tier leaves a file whose outside edit the document refused: the document's hash
     // in `note_files`, the file's bytes in `note_file_hashes`.
@@ -192,9 +192,12 @@ fn a_refused_outside_edit_records_the_hash_of_the_bytes_it_embedded() {
                 .unwrap())
         })
         .unwrap();
+    let embeds = l.embeds();
     l.publish(&id);
-    l.settled();
-    l.embedded(&id);
+    l.until("the lane embedded the published note", |l| {
+        l.embeds() > embeds
+    });
+    l.all_embedded();
 
     assert_eq!(
         recorded_hash(&l, &id),
@@ -214,7 +217,7 @@ fn an_index_from_before_the_hashes_embeds_once_and_keeps_every_vector() {
     for id in &ids {
         l.embedded(id);
     }
-    l.settled();
+    l.all_embedded();
     l.e.close();
 
     // As a build without migration 0011 left it: vectors and state rows, no hashes.
@@ -234,8 +237,7 @@ fn an_index_from_before_the_hashes_embeds_once_and_keeps_every_vector() {
         assert!(l.head(id).is_some(), "{id} lost its vector while owed");
     }
     gate.release();
-    l.until("every note embedded again", |l| l.owed().is_empty());
-    l.settled();
+    l.all_embedded();
     let upgraded = l.embeds();
     assert_eq!(
         upgraded - embeds,
@@ -245,6 +247,6 @@ fn an_index_from_before_the_hashes_embeds_once_and_keeps_every_vector() {
 
     l.e.close();
     reopen(&mut l);
-    l.settled();
+    l.all_embedded();
     assert_eq!(l.embeds(), upgraded, "the next open embedded again");
 }

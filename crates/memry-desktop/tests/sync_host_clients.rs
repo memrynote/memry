@@ -56,6 +56,27 @@ const ALLOWED: &[(&str, &str)] = &[
         "apps/desktop-tauri/src-tauri/src/commands/unsplash.rs",
         "api.unsplash.com",
     ),
+    ("crates/memry-desktop/src/readwise/client.rs", "readwise.io"),
+    (
+        "crates/memry-desktop/src/calendar_providers/ics_fetch.rs",
+        "user-chosen ICS feed hosts: a conditional GET with no credentials, redirects followed by hand over http(s)",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_ics.rs",
+        "user-chosen ICS feed hosts, through calendar_providers::ics_fetch",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_transport.rs",
+        "user-chosen CalDAV hosts: the password goes only to the origin the person typed, redirects followed by hand, never logged",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_providers.rs",
+        "user-chosen CalDAV hosts, through calendar_providers::caldav_transport",
+    ),
     (
         "crates/memry-desktop/src/ai/catalog.rs",
         "the inline AI provider the person picked (OpenAI, Anthropic, Google, OpenRouter) or their local Ollama",
@@ -99,6 +120,14 @@ const ALLOWED: &[(&str, &str)] = &[
     (
         "apps/desktop-tauri/src-tauri/src/commands/agent.rs",
         "the local agent provider the person configured, through ai::local_provider::probe",
+    ),
+    (
+        "crates/memry-desktop/src/services/capture/mod.rs",
+        "none: hyper's server types serve the extension's capture API on 127.0.0.1, no request",
+    ),
+    (
+        "crates/memry-desktop/src/agent/mcp/server.rs",
+        "none: hyper's server types serve the loopback MCP endpoint on 127.0.0.1, no request",
     ),
     (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",

@@ -76,7 +76,7 @@ pub(crate) fn cursor_and_from_zero(
 }
 
 /// Ends a run from cursor 0: called in the transaction that lands a page at
-/// the head that was not refused.
+/// the head, a refused one included, since the cursor moves past it.
 pub(crate) fn end_from_zero(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM meta WHERE key = ?1", params![META_FROM_ZERO])
         .map_err(|error| StorageError::Failed {
@@ -102,9 +102,9 @@ pub trait SignerKeys: Send + Sync {
     /// (Electron's `readKnownDeviceIds`).
     fn known_devices(&self) -> Option<HashSet<String>>;
 
-    /// A pull run starts: forget the signers the last run did not find, as
-    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`).
-    fn begin_run(&self) {}
+    /// A pull run starts or ends: forget the signers it did not find, as
+    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`, `:587`).
+    fn forget_absent(&self) {}
 }
 
 /// Why a marker applies nothing, logged by reason (Electron's
