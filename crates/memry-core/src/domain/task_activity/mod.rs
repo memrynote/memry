@@ -12,8 +12,9 @@
 //! `fieldClocks`, and its own outbox row. Rows are immutable, so there is no
 //! edit path. The caller records rows for its own local task writes only:
 //! logging on the inbound path would make every device log every peer's
-//! change and sync the rows back. `superseded` rows are never written here
-//! (see [`super::tasks`]).
+//! change and sync the rows back. The one inbound row is `superseded`, a
+//! local edit that lost a concurrent merge ([`superseded`]): no peer writes
+//! it for this device.
 //!
 //! The encoding is desktop's exactly: `oldValue`/`newValue` are
 //! `JSON.stringify` of the value, `null` when the value is null; `position` and
@@ -31,6 +32,7 @@
 //! rule.
 
 mod read;
+pub mod superseded;
 
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
@@ -56,12 +58,14 @@ pub const ACTION_COMPLETED: &str = "completed";
 pub const ACTION_UNCOMPLETED: &str = "uncompleted";
 pub const ACTION_MOVED: &str = "moved";
 pub const ACTION_DELETED: &str = "deleted";
-/// Read only: written by desktop on a lost merge, never by this core.
+/// A local edit that lost a concurrent merge ([`superseded`]).
 pub const ACTION_SUPERSEDED: &str = "superseded";
 
-/// The only actor this core writes. Desktop also reads `google_calendar` and
-/// `sync`.
+/// The actor of every row but `superseded`. Desktop also reads
+/// `google_calendar`.
 pub const ACTOR_USER: &str = "user";
+/// The actor of a `superseded` row.
+pub const ACTOR_SYNC: &str = "sync";
 
 /// Desktop's page size when the caller names none.
 pub const DEFAULT_PAGE_LIMIT: usize = 50;
@@ -225,29 +229,42 @@ fn record(
         return Ok(Vec::new());
     }
     valid_item_id(task_id)?;
-    let created_at = iso(now_ms)?;
     in_transaction(conn, |tx| {
         let mut ids = Vec::with_capacity(rows.len());
         for row in rows {
             let id = mint_id();
-            let payload = object(json!({
-                "taskId": task_id,
-                "action": row.action,
-                "field": row.field,
-                "oldValue": row.old_value,
-                "newValue": row.new_value,
-                "actor": ACTOR_USER,
-                "deviceId": device_id,
-                "clock": next_clock(&Object::new(), device_id)?,
-                "createdAt": created_at,
-            }));
-            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &id), now_ms)?;
+            insert_row(tx, &id, task_id, row, ACTOR_USER, device_id, now_ms)?;
             ids.push(id);
         }
         prune_in(tx, now_ms)?;
         Ok(ids)
     })
+}
+
+/// Stores one row under `id` and queues it.
+fn insert_row(
+    tx: &Connection,
+    id: &str,
+    task_id: &str,
+    row: &NewActivity,
+    actor: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let payload = object(json!({
+        "taskId": task_id,
+        "action": row.action,
+        "field": row.field,
+        "oldValue": row.old_value,
+        "newValue": row.new_value,
+        "actor": actor,
+        "deviceId": device_id,
+        "clock": next_clock(&Object::new(), device_id)?,
+        "createdAt": iso(now_ms)?,
+    }));
+    insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, id), now_ms)?;
+    Ok(())
 }
 
 fn updated_rows(changes: &[FieldChange<'_>]) -> Vec<NewActivity> {

@@ -10,14 +10,16 @@
 //!   * `|text` holds at least one character and no `]`, and the link ends at `]]`;
 //!   * matches do not overlap, and a failed match moves on by one character.
 //!
-//! A context is the text from [`CONTEXT_RADIUS`] UTF-16 units before the link to as many after
-//! it, `...` where it was cut, every run of newlines read as one space, trimmed. Offsets are
-//! UTF-16 units into the snippet, as the renderer slices it.
+//! The text around the links is the plain text a note preview shows
+//! ([`markdown_plain_text`]: no style spans, heading marks, link targets or emphasis markers,
+//! white space collapsed), with each link kept as written, its newline runs read as one space
+//! (#3509). Each link stands in the projection as [`LINK_MARK`], which no pattern may drop, so
+//! every link is in the plain text, in order: a link nested where the projection would drop
+//! text (a markdown link's target, an image) keeps that text as written.
 //!
-//! Differences from the reference, both stated: the reference measures `linkStart` before it
-//! folds newlines and trims, so a highlight after a folded run is off by the characters it
-//! dropped; here the offsets name the link in the snippet as returned. A cut never splits a
-//! surrogate pair: the reference can leave half of one at a cut.
+//! A context is the plain text from [`CONTEXT_RADIUS`] UTF-16 units before the link to as many
+//! after it, `...` where it was cut. Offsets are UTF-16 units into the snippet, as the renderer
+//! slices it. A cut never splits a surrogate pair.
 //!
 //! Untrusted input: the scan keeps one cached position of the next `]`, so it is linear in the
 //! text times the title's length ([`steps`]), and the snippets of one text stop once they hold
@@ -28,10 +30,16 @@
 
 use std::cell::Cell;
 
+use crate::domain::journal_rules::preview::markdown_plain_text;
+
 /// UTF-16 units of text kept on each side of a link.
 pub const CONTEXT_RADIUS: usize = 75;
 
 const LEAD: &str = "...";
+
+/// A noncharacter, which text interchange never carries: one in the note reads as U+FFFD, so a
+/// mark always names a link.
+const LINK_MARK: char = '\u{FDD0}';
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkContext {
@@ -86,8 +94,7 @@ pub fn link_contexts(content: &str, title: &str) -> LinkContexts {
     if title.is_empty() {
         return out;
     }
-    let budget = 8 * content.len() + 64;
-    let mut used = 0;
+    let mut links = Vec::new();
     // The byte index of the first `]` at or after `from` for the latest `from` that needed one,
     // or the length when there is none. Each `from` is past the last, so a cached `]` still at
     // or after it is the first one, and the text is searched for `]` only once overall.
@@ -136,18 +143,66 @@ pub fn link_contexts(content: &str, title: &str) -> LinkContexts {
         };
         out.count += 1;
         at = end;
-        if out.truncated {
-            continue;
-        }
-        let context = around(content, open, end);
+        links.push(open..end);
+    }
+    if links.is_empty() {
+        return out;
+    }
+
+    let (text, spans) = plain_text_with_links(content, &links);
+    let budget = 8 * content.len() + 64;
+    let mut used = 0;
+    for (open, end) in spans {
+        let context = around(&text, open, end);
         used += context.snippet.len();
         if used > budget {
             out.truncated = true;
-            continue;
+            break;
         }
         out.contexts.push(context);
     }
     out
+}
+
+/// `content` as plain text with every link in `links` as written, and the byte range of each
+/// link in that text.
+fn plain_text_with_links(
+    content: &str,
+    links: &[std::ops::Range<usize>],
+) -> (String, Vec<(usize, usize)>) {
+    let unmark = |c: char| if c == LINK_MARK { '\u{FFFD}' } else { c };
+    let mut marked = String::with_capacity(content.len());
+    let mut from = 0;
+    for link in links {
+        marked.extend(content[from..link.start].chars().map(unmark));
+        marked.push(LINK_MARK);
+        from = link.end;
+    }
+    marked.extend(content[from..].chars().map(unmark));
+    let plain = markdown_plain_text(&marked, Some(LINK_MARK));
+    step(plain.len());
+
+    let mut text = String::with_capacity(plain.len() + content.len());
+    let mut spans = Vec::with_capacity(links.len());
+    let mut next = links.iter();
+    for c in plain.chars() {
+        let Some(link) = (c == LINK_MARK).then(|| next.next()).flatten() else {
+            text.push(c);
+            continue;
+        };
+        let open = text.len();
+        let mut in_run = false;
+        for c in content[link.clone()].chars() {
+            if c != '\n' {
+                text.push(c);
+            } else if !in_run {
+                text.push(' ');
+            }
+            in_run = c == '\n';
+        }
+        spans.push((open, text.len()));
+    }
+    (text, spans)
 }
 
 fn around(content: &str, open: usize, end: usize) -> LinkContext {
@@ -174,49 +229,12 @@ fn around(content: &str, open: usize, end: usize) -> LinkContext {
 
     let lead = if start > 0 { LEAD } else { "" };
     let trail = if stop < content.len() { LEAD } else { "" };
-    let raw = format!("{lead}{}{trail}", &content[start..stop]);
-    let (link_open, link_close) = (lead.len() + open - start, lead.len() + end - start);
-
-    // Newline runs folded, with the link's UTF-16 offsets taken as the text is built.
-    let mut snippet = String::with_capacity(raw.len());
-    let (mut units, mut link_start, mut link_end) = (0, 0, 0);
-    let mut in_run = false;
-    for (i, c) in raw.char_indices() {
-        if i == link_open {
-            link_start = units;
-        }
-        if i == link_close {
-            link_end = units;
-        }
-        if c == '\n' {
-            if !in_run {
-                snippet.push(' ');
-                units += 1;
-            }
-            in_run = true;
-            continue;
-        }
-        in_run = false;
-        snippet.push(c);
-        units += c.len_utf16();
-    }
-    if link_close == raw.len() {
-        link_end = units;
-    }
-
-    // JavaScript's `trim`: Unicode white space and U+FEFF, not U+0085.
-    let blank = |c: char| c != '\u{0085}' && (c.is_whitespace() || c == '\u{FEFF}');
-    let kept = snippet.trim_start_matches(blank);
-    let dropped: usize = snippet[..snippet.len() - kept.len()]
-        .chars()
-        .map(char::len_utf16)
-        .sum();
-    let kept = kept.trim_end_matches(blank);
-    let total: usize = kept.chars().map(char::len_utf16).sum();
+    let units = |text: &str| text.encode_utf16().count();
+    let link_start = lead.len() + units(&content[start..open]);
     LinkContext {
-        snippet: kept.to_owned(),
-        link_start: link_start.saturating_sub(dropped).min(total),
-        link_end: link_end.saturating_sub(dropped).min(total),
+        snippet: format!("{lead}{}{trail}", &content[start..stop]),
+        link_start,
+        link_end: link_start + units(&content[open..end]),
     }
 }
 
@@ -246,11 +264,11 @@ mod tests {
             ),
             [
                 (
-                    "See [[Plan]] and [[plan|the plan]] but not [[Planner]].".to_owned(),
+                    "See [[Plan]] and [[plan|the plan]] but not Planner.".to_owned(),
                     "[[Plan]]".to_owned()
                 ),
                 (
-                    "See [[Plan]] and [[plan|the plan]] but not [[Planner]].".to_owned(),
+                    "See [[Plan]] and [[plan|the plan]] but not Planner.".to_owned(),
                     "[[plan|the plan]]".to_owned()
                 ),
             ]
@@ -272,7 +290,7 @@ mod tests {
         assert_eq!(link, "[[Plan]]");
         assert_eq!(
             snippet,
-            &format!("...{} [[Plan]] {}...", "a".repeat(72), "b".repeat(74))
+            &format!("...{} [[Plan]] {}...", "a".repeat(74), "b".repeat(74))
         );
     }
 
@@ -299,6 +317,34 @@ mod tests {
         assert_eq!(
             (short.count, short.truncated, short.contexts.len()),
             (2, false, 2)
+        );
+    }
+
+    #[test]
+    fn the_text_around_a_link_is_plain_text() {
+        let source = "# Notes\nPlain <span style=\"color:#e03e3e\">red</span> \
+            <span style=\"text-decoration:underline\">under</span> **bold**[[Plan]]\
+            <span style=\"color:blue\">_tail_</span> [site](https://x.y) end.";
+        assert_eq!(
+            shown(source, "Plan"),
+            [(
+                "Notes Plain red under bold[[Plan]]tail site end.".to_owned(),
+                "[[Plan]]".to_owned()
+            )]
+        );
+        // Emphasis around the link goes; a link nested where the text would drop it stays.
+        assert_eq!(
+            shown("**see [[Plan]]** and [site]([[Plan]])", "Plan"),
+            [
+                (
+                    "see [[Plan]] and [site]([[Plan]])".to_owned(),
+                    "[[Plan]]".to_owned()
+                ),
+                (
+                    "see [[Plan]] and [site]([[Plan]])".to_owned(),
+                    "[[Plan]]".to_owned()
+                ),
+            ]
         );
     }
 

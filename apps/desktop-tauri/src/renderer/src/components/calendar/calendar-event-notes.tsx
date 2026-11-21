@@ -17,6 +17,8 @@ import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { calendarService } from '@/services/calendar-service'
 import { notesService, onNoteDeleted, onNoteRenamed, onNoteUpdated } from '@/services/notes-service'
 import { propertiesService } from '@/services/properties-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from '@/hooks/use-notes-query'
 import { useRelationSearch } from '@/components/note/info-section/editors/use-relation-search'
 
 import { CalendarCardSection } from './calendar-card'
@@ -83,10 +85,19 @@ export function CalendarEventNotes({
         void queryClient.invalidateQueries({ queryKey: ['calendar', 'linked-notes'] })
       }, REFRESH_DELAY_MS)
     }
-    const offs = [onNoteUpdated(refresh), onNoteRenamed(refresh), onNoteDeleted(refresh)]
+    // The linked notes are read on mount, and a change before these listeners went live sent its
+    // event to nobody (#4270): they are read again then.
+    const stop = subscribeToEvents(
+      [
+        (live) => onNoteUpdated(refresh, live),
+        (live) => onNoteRenamed(refresh, live),
+        (live) => onNoteDeleted(refresh, live)
+      ],
+      () => rereadQueries(queryClient, ['calendar', 'linked-notes'])
+    )
     return () => {
       if (timer) clearTimeout(timer)
-      offs.forEach((off) => off())
+      stop()
     }
   }, [queryClient])
 

@@ -1,0 +1,78 @@
+{
+  "name": "registry-list",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[\n  {\n    \"path\": \"<tmp>/a\",\n    \"name\": \"Alpha\",\n    \"isDefault\": true,\n    \"lastOpened\": \"<iso>\"\n  },\n  {\n    \"path\": \"<tmp>/b\",\n    \"name\": \"Beta\",\n    \"isDefault\": false,\n    \"lastOpened\": \"<iso>\"\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "[{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":true,\"lastOpened\":\"<iso>\"},{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"path\": \"<tmp>/a\",\n  \"name\": \"Alpha\",\n  \"isDefault\": true,\n  \"lastOpened\": \"<iso>\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current",
+        "--json"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":true,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--vault",
+        "{tmp}/b",
+        "--json",
+        "vault",
+        "current"
+      ],
+      "exit": 0,
+      "stdout": "{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "current",
+        "--vault",
+        "{tmp}/elsewhere"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"path\": \"<tmp>/elsewhere\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "list",
+        "extra",
+        "--flag"
+      ],
+      "exit": 0,
+      "stdout": "[{\"path\":\"<tmp>/a\",\"name\":\"Alpha\",\"isDefault\":true,\"lastOpened\":\"<iso>\"},{\"path\":\"<tmp>/b\",\"name\":\"Beta\",\"isDefault\":false,\"lastOpened\":\"<iso>\"}]\n",
+      "stderr": ""
+    }
+  ]
+}

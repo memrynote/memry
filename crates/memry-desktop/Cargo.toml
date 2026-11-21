@@ -14,8 +14,9 @@ memry-core = { path = "../memry-core", default-features = false, features = ["ma
 # The PDF worker's frames and supervisor only: the pdfium side is the sidecar binary, never linked.
 memry-ml-worker = { path = "../memry-ml-worker", default-features = false }
 serde = { workspace = true }
-# `float_roundtrip`: the Electron import re-serialises JSON numbers as V8 parsed them, and the
-# default parser can land one ULP off.
+# `float_roundtrip`: Readwise payload numbers (`location`, `published_date`) parse correctly
+# rounded, as `JSON.parse` does, and the Electron import re-serialises JSON numbers as V8 parsed
+# them; the default parser can land one ULP off.
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 thiserror = { workspace = true }
 # Device name and OS version for registration (Step 19); both already in the lockfile.
@@ -25,6 +26,9 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt", "env-filter"] }
 tracing-appender = "0.2.5"
 sha2 = { workspace = true }
+# The platform data folder of `paths::default_data_dir`: the crate and version Tauri's path
+# resolver uses, so the command line and the app agree on the app data folder.
+dirs = "7.0.0"
 # `e2e::debug` runs read-only statements on a pooled reader of the core databases.
 rusqlite = { workspace = true }
 hex = { workspace = true }
@@ -42,11 +46,20 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The IANA zones Readwise highlight dates are written in (`readwise::text::format_day`), as
+# Electron's `Intl.DateTimeFormat` reads them.
+chrono-tz = "0.10.4"
+# The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
+# chrono's `clock` feature already builds it, so the lockfile gains no crate.
+iana-time-zone = "0.1.65"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
 # reader's jsdom (`services/file_text/html`). Everything else parses with the htmlparser2 port.
 html5ever = "0.40.1"
+# Zip exports (Google Keep Takeout), read the way yauzl did: stored and deflated entries only, no
+# legacy decoders. 9.0.5 is the first release past GHSA-m665-v7pm-7grj and the 9.0.0 advisories.
+zip = { version = "9.0.5", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
 # The large-file viewer's scans (`large_file/`): newlines with memchr, an ASCII case-folding
@@ -93,9 +106,14 @@ snap = "1.1.2"
 tempfile = "3"
 uuid = { workspace = true }
 # The shutdown sequence and the flush table are async and tauri-free.
-tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] }
+tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util", "process"] }
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
+# The capture server's own serve loop (`services/capture/mod.rs`): header and request timeouts
+# and a connection cap, which `axum::serve` lacks. Already in the lockfile through axum.
+hyper = { version = "1", default-features = false, features = ["http1", "server"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+http-body-util = "0.1"
 tokio-util = { version = "0.7.19", features = ["io"] }
 # The sign-in loopback compares `state` in constant time; already in the lockfile.
 subtle = "2.6.1"
@@ -113,6 +131,8 @@ image = { workspace = true }
 memry-media = { path = "../memry-media" }
 # The OCR language packs are gzip; native Tesseract reads them unpacked (`services::ocr_languages`).
 flate2 = { workspace = true }
+# Note export (Step 34, #3551): markdown rendered as `marked` renders it, without the CLI and highlighting defaults.
+comrak = { version = "=0.57.0", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -138,8 +158,9 @@ windows-native-keyring-store = { version = "1.1.0", default-features = false }
 # CI-only tests against the live OS secret store: tests/electron_secrets_live.rs.
 live-os-secrets = []
 # `KeyringStore::new` returns an in-memory store while `MEMRY_E2E=1`, so a headless CI box with no
-# keyring never hangs. Never part of a release build (the e2e feature of memry-tauri).
-e2e = []
+# keyring never hangs, and `AccountService::bootstrap_e2e_device`. Never part of a release build (the
+# e2e feature of memry-tauri).
+e2e = ["memry-core/e2e"]
 # The test hooks of the note services (`NotesService::move_checked`, the `fail_next_*_feed`): the
 # crate's own tests turn it on (the dev-dependency on itself below); no app build does.
 test-hooks = []
@@ -186,12 +207,24 @@ doc = false
 # (tests/integration.rs), and a target of its own for each file that needs one.
 
 [[test]]
+name = "export_vectors"
+path = "tests/export_vectors.rs"
+
+[[test]]
+name = "export_untrusted"
+path = "tests/export_untrusted.rs"
+
+[[test]]
 name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
 name = "electron_vault_import"
 path = "tests/electron_vault_import.rs"
+
+[[test]]
+name = "obsidian_task_local_zone"
+path = "tests/obsidian_task_local_zone.rs"
 
 [[test]]
 name = "activity_log_memory"
@@ -230,12 +263,24 @@ name = "sync_harness"
 path = "tests/sync_harness.rs"
 
 [[test]]
+name = "attachments_harness"
+path = "tests/attachments_harness.rs"
+
+[[test]]
 name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
 
 [[test]]
 name = "sync_supervisor_harness"
 path = "tests/sync_supervisor_harness.rs"
+
+[[test]]
+name = "sync_disk_harness"
+path = "tests/sync_disk_harness.rs"
+
+[[test]]
+name = "attachment_holds_harness"
+path = "tests/attachment_holds_harness.rs"
 
 [[test]]
 name = "keyring_live"
@@ -274,12 +319,32 @@ name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
 
 [[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
+
+[[test]]
+name = "sandbox_replay"
+path = "tests/sandbox_replay.rs"
+
+[[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
 
 [[test]]
 name = "file_text_worker"
 path = "tests/file_text_worker.rs"
+
+[[test]]
+name = "readwise_vectors"
+path = "tests/readwise_vectors.rs"
+
+[[test]]
+name = "readwise_untrusted"
+path = "tests/readwise_untrusted.rs"
+
+[[test]]
+name = "readwise_client"
+path = "tests/readwise_client.rs"
 
 [[test]]
 name = "watch_perf"

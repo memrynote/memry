@@ -86,7 +86,7 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
         &converter,
         &id,
         "n.md",
-        "first words\n",
+        Some("first words\n"),
         &memry_core::markdown::convert::NoEmbeds,
     ) else {
         panic!("the committed document has no body to write");

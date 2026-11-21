@@ -499,6 +499,37 @@ async fn a_signer_the_directory_lacks_is_looked_up_once_per_run() {
     assert_eq!(desktop.server.count("/auth/devices"), lookups + 2);
 }
 
+/// A run's misses end with it (Electron's `cleanupAfterPull`,
+/// `pull-coordinator.ts:587`): the manifest check after the run looks the
+/// signer up again instead of reusing the run's answer.
+#[tokio::test]
+async fn a_signer_a_run_missed_is_looked_up_again_after_the_run() {
+    let desktop = holding_a_task().await;
+    let ghost = |id: &str| {
+        marker(
+            "task",
+            id,
+            json!({ PEER: 2 }),
+            DELETED_AT,
+            Some(("ghost", 14)),
+        )
+    };
+    serve(&desktop, ghost("t1"));
+    // Listed live by the manifest, so the check fetches it by id.
+    desktop.server.purge(ghost("t2"));
+    desktop.server.put("task", "t2", json!({ "title": "t2" }));
+    let lookups = desktop.server.count("/auth/devices");
+
+    desktop.pass().await;
+
+    assert_eq!(desktop.server.count("/sync/manifest"), 1, "the check ran");
+    assert_eq!(
+        desktop.server.count("/auth/devices"),
+        lookups + 2,
+        "one lookup in the run, one in the manifest check"
+    );
+}
+
 #[tokio::test]
 async fn the_first_sync_refs_pass_reads_the_feed_without_purged_tombstones() {
     let desktop = Desktop::open_with(Declaration::desktop(), |_| Ok(())).await;
@@ -520,4 +551,42 @@ async fn the_first_sync_refs_pass_reads_the_feed_without_purged_tombstones() {
             .iter()
             .all(|header| header.contains("purged_tombstones"))
     );
+}
+
+/// A device reset to cursor 0 holding a note a peer deleted. Its run from cursor 0 skips the
+/// note's marker (§5.12.3) and keeps no trace of it, so the note stays live here while the
+/// server's manifest lacks it. The manifest check queues nothing: the server re-creates a note
+/// over its marker, so a `create` would bring the deleted note back on every device
+/// (REVIEW-5066, #4785).
+#[tokio::test]
+async fn a_note_whose_marker_a_run_from_zero_skipped_is_not_reuploaded() {
+    let desktop = Desktop::open_with(Declaration::desktop(), |conn| {
+        hold(conn, "note", "n1", Some(json!({ PEER: 1 })), 1_000)
+    })
+    .await;
+    desktop.server.purge(peer_marker("note", "n1"));
+    desktop.server.deleted_page(&["n1"], "1", false);
+    desktop.pass().await;
+    assert_eq!(
+        deleted_at(&desktop, "note", "n1"),
+        None,
+        "the marker was skipped"
+    );
+
+    desktop.server.deleted_page(&[], "2", false);
+    desktop.pass().await;
+
+    assert!(
+        desktop.server.pushed().is_empty(),
+        "{:?}",
+        desktop.server.pushed()
+    );
+    let queued: i64 = desktop
+        .db
+        .call_blocking(|conn| {
+            conn.query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
+                .map_err(failed)
+        })
+        .expect("the outbox");
+    assert_eq!(queued, 0);
 }

@@ -11,7 +11,6 @@ import {
 } from '@memry/contracts/commands'
 import { useT } from '@memry/i18n/renderer'
 import { runCommand, useAvailableCommands } from '@/commands'
-import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import {
   ArrowRight,
   CheckSquare,
@@ -31,7 +30,7 @@ import {
   type AppIcon
 } from '@/lib/icons'
 import { getShortcutBinding, useShortcutOverrides } from '@/lib/shortcut-bindings'
-import { bindingParts, type ShortcutId } from '@/lib/shortcut-catalog'
+import { bindingParts, formatBinding } from '@/lib/shortcut-catalog'
 import { trackTelemetry } from '@/lib/telemetry'
 import { SearchActionBar, type SearchAction } from '@/components/search/search-action-bar'
 import { SearchInputBar } from '@/components/search/search-input-bar'
@@ -62,10 +61,6 @@ const GROUP_ICONS: Record<CommandGroup, AppIcon> = {
   sync: RefreshCw,
   help: HelpCircle
 }
-
-/** The keys as one string: ⌘K on macOS, Ctrl+K elsewhere. */
-const bindingText = (id: ShortcutId): string =>
-  bindingParts(getShortcutBinding(id)).join(isMac ? '' : '+')
 
 /**
  * The commands palette (⌘P). It lists what can run right now and runs the pick
@@ -162,7 +157,7 @@ function CommandsPaletteBody({ onRun }: { onRun: (id: CommandId) => void }): Rea
   // (the query changed) falls back to the first row here.
   const selectedValue = values.some((id) => id === selected) ? selected : (values[0] ?? '')
 
-  const searchKeys = bindingText('nav.search')
+  const searchKeys = formatBinding(getShortcutBinding('nav.search'))
   const runSelected = (): void =>
     rootRef.current?.querySelector<HTMLElement>('[cmdk-item][data-selected="true"]')?.click()
   const searchNotes: SearchAction = {
