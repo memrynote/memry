@@ -154,17 +154,19 @@ describe('removeTaskLineFromSourceNote', () => {
     )
   })
 
-  it('marks the write ignored before writing and feeds the CRDT after', async () => {
+  // Doc first (D-DOC-FIRST): a crash before the file write leaves the doc
+  // ahead of the file, which the write-back then writes.
+  it('marks the write ignored before writing after feeding the doc', async () => {
     seedNote('note-1', 'Plan.md', '# Plan\n\n- [ ] Drop {task:t2}\n')
 
     await removeTaskLineFromSourceNote('t2', 'note-1')
 
     expect(calls).toEqual([
       'markWritebackIgnored',
+      'feedExternalEditToCrdt',
       'atomicWrite',
       'syncNoteToCache',
-      'emitNoteEvent',
-      'feedExternalEditToCrdt'
+      'emitNoteEvent'
     ])
     expect(feedCalls).toEqual([{ noteId: 'note-1', content: '# Plan\n' }])
   })

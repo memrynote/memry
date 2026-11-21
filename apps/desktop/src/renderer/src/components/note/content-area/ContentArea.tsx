@@ -3833,7 +3833,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // An editor mounted with no note (an empty journal day) stays unbound for its
   // lifetime. Its first save creates the note and hands in the id mid-typing;
   // binding then would unmount the editor being typed in and drop keystrokes.
-  // Its markdown saves still reach the doc (main's feedJournalBodyToCrdt), and
+  // Its markdown saves still reach the doc (main's updateJournalEntry), and
   // the next mount binds.
   const [mountedWithoutNote] = useState(!props.noteId)
   const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)

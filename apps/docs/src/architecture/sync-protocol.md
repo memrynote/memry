@@ -1853,9 +1853,13 @@ reads the server's own `devices.created_at`, not anything the client sends, and 
 already earns a new device row, so it grants no elevation a new sign-in would not. The per-user cap
 of two concurrent sessions still applies. Desktop opens a session while its first sync is pending:
 the `bootstrapPending` sync-state key is written at the first full sync of a device with no
-`LAST_CURSOR` and deleted once a pull delivers to the head of the feed. A relaunch that finds it
-resumes from the persisted cursor, opens a session and asks for packs again, so a quit during packs
-or the record pull costs the pages already read, not the elevation. The server judges the resume
+`LAST_CURSOR` and deleted when the bootstrap closes with every body current, the moment the
+`Bootstrap window closed` line is logged. A device with no CRDT store has no body phase and deletes
+it once a pull delivers to the head of the feed. A relaunch that finds the key resumes from the
+persisted cursor, opens a session and asks for packs again, so a quit during packs, the record
+pull, the settle of pack-seeded docs or the body drain costs the work already done, not the
+elevation. An earlier build deleted the key at delivery: a kill in the 15-minute settle and drain
+of a large vault relaunched unelevated and never closed its bootstrap window. The server judges the resume
 window from the device's registration: when `POST /sync/bootstrap` answers 409, desktop deletes the
 key and syncs as steady state from the next run. Builds that predate the key ignore it.
 
@@ -1896,6 +1900,12 @@ so there is no interleaving point left between check and take. `changes === 0` m
 refused, i.e. the user is at cap, answered `BOOTSTRAP_SESSION_LIMIT` (429). The earlier
 prune-then-count-then-insert sequence had a TOCTOU window where two concurrent opens could both see
 one free slot.
+
+An open also supersedes the same device's earlier sessions for the vault: the same D1 batch
+deletes their ledger rows before the capped `INSERT`. A process killed during its first sync never
+calls `/close`, so its relaunch used to hold a second slot until the dead session's TTL, up to an
+hour, and two such relaunches left the user at cap. A superseded token still elevates until its
+`exp`, but its renewal is refused, which drops that client to steady-state pacing.
 
 Errors are logged with the **caller's** identifiers only, never the mismatched token's, so the
 warning line cannot be used to enumerate other users' identifiers.

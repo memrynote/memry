@@ -564,6 +564,38 @@ describe('CrdtProvider', () => {
     )
   })
 
+  // D-DOC-FIRST: a writer that feeds the doc waits here before it writes the
+  // file, so the file never holds bytes a restart's doc lacks.
+  it('resolves whenPersisted once the store holds the update, and rejects when it failed', async () => {
+    const doc = await provider.open('note-1', undefined, { skipSeed: true })
+    const store = mocks.persistenceInstances[0]
+    const stored = Promise.withResolvers<void>()
+    const finish = (): void => stored.resolve()
+    store.storeUpdate.mockReturnValueOnce(stored.promise)
+    doc.getMap('meta').set('title', 'stored later')
+    const waited = provider.whenPersisted('note-1')
+    const early = await Promise.race([
+      waited.then(() => 'persisted'),
+      new Promise((resolve) => setTimeout(() => resolve('waiting'), 0))
+    ])
+    expect(early).toBe('waiting')
+    finish()
+    await expect(waited).resolves.toBeUndefined()
+
+    store.storeUpdate.mockRejectedValueOnce(new Error('disk full'))
+    doc.getMap('meta').set('title', 'not stored')
+    await expect(provider.whenPersisted('note-1')).rejects.toThrow('disk full')
+  })
+
+  // No store, nothing to wait for: a feed on an in-memory provider never hangs.
+  it('resolves whenPersisted at once when there is no store', async () => {
+    const inMemory = new CrdtProvider()
+    const doc = await inMemory.open('note-1', undefined, { skipSeed: true })
+    doc.getMap('meta').set('title', 'in memory')
+
+    await expect(inMemory.whenPersisted('note-1')).resolves.toBeUndefined()
+  })
+
   // #2297 review (A-M6, B-7): this device's own snapshot comes back through the
   // feed; the revision it pushed is recorded so that echo skips the GET.
   it('records the revision of a snapshot it pushed in the note watermark', async () => {

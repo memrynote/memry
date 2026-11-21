@@ -16,6 +16,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
+import { baselineAfterWrite } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
 import { deleteSyncedVaultFile, writeSyncedVaultFile } from '../bulk-apply'
 import { scheduleDeletedFolderPrune } from '../deleted-folder-prune'
@@ -41,7 +42,6 @@ import {
   serializeParsedNote,
   mergeTagLists,
   extractAliases,
-  generateContentHash,
   type NoteFrontmatter
 } from '../../vault/frontmatter'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
@@ -430,7 +430,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, updatedContent)
             // The watcher ignores this write, so the index hash moves here or the
             // next write-back reads the app's own bytes as an outside edit (#3282).
-            updateFields.contentHash = generateContentHash(updatedContent)
+            updateFields.contentHash = baselineAfterWrite(indexDb, itemId, raw, updatedContent)
             writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
           } else {
@@ -481,7 +481,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
               return null
             })
             settleRemoteNoteFileSync(itemId, absPath, existing.path, updatedContent)
-            updateFields.contentHash = generateContentHash(updatedContent)
+            updateFields.contentHash = baselineAfterWrite(indexDb, itemId, raw, updatedContent)
           }
           writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)

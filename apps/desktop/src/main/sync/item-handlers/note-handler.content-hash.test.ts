@@ -4,6 +4,8 @@
  * The index hash has to move with them: the CRDT write-back compares it to
  * the file, and a stale hash makes the app's own write look like an outside
  * edit, deferring the write-back and logging it for every pulled note (#3282).
+ * A file that holds an outside edit the doc lacks keeps its baseline, or the
+ * write-back would write the doc over the edit (REVIEW-5308 Medium 3).
  */
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest'
 import fs from 'fs'
@@ -65,7 +67,11 @@ import { generateContentHash } from '../../vault/frontmatter'
 const NOTE_PATH = 'n1.md'
 const REMOTE_CLOCK = { 'device-A': 1, 'device-B': 1 }
 
-function seedNote(fileContent: string, bodyTags: string[]): void {
+function seedNote(
+  fileContent: string,
+  bodyTags: string[],
+  contentHash = generateContentHash(fileContent)
+): void {
   dataDb.db
     .insert(noteMetadata)
     .values({
@@ -82,7 +88,7 @@ function seedNote(fileContent: string, bodyTags: string[]): void {
     id: 'n1',
     path: NOTE_PATH,
     title: 'n1',
-    contentHash: 'hash-n1',
+    contentHash,
     wordCount: 0,
     characterCount: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -154,10 +160,37 @@ describe('noteHandler.applyUpsert — index hash after a frontmatter rewrite', (
   })
 
   it('keeps the hash when a pure rename leaves the bytes alone', () => {
-    seedNote('---\ntitle: n1\n---\n\nbody\n', [])
+    seedNote('---\ntitle: n1\n---\n\nbody\n', [], 'hash-n1')
 
     noteHandler.applyUpsert(ctx, 'n1', { title: 'renamed', clock: REMOTE_CLOCK }, REMOTE_CLOCK)
 
     expect(cachedHash()).toBe('hash-n1')
+  })
+
+  const DOC_HOLDS = generateContentHash('---\ntitle: n1\n---\n\nbody\n')
+  const OUTSIDE_EDIT = '---\ntitle: n1\n---\n\nbody edited outside\n'
+
+  it('keeps the baseline when it rewrites the frontmatter of an outside edit in place', () => {
+    seedNote(OUTSIDE_EDIT, [], DOC_HOLDS)
+
+    noteHandler.applyUpsert(ctx, 'n1', { tags: ['roadmap'], clock: REMOTE_CLOCK }, REMOTE_CLOCK)
+
+    expect(readNoteFile()).toMatch(/roadmap/)
+    expect(cachedHash()).toBe(DOC_HOLDS)
+  })
+
+  it('keeps the baseline when it rewrites the frontmatter of an outside edit and renames', () => {
+    seedNote(OUTSIDE_EDIT, [], DOC_HOLDS)
+
+    noteHandler.applyUpsert(
+      ctx,
+      'n1',
+      { title: 'renamed', tags: ['roadmap'], clock: REMOTE_CLOCK },
+      REMOTE_CLOCK
+    )
+
+    const row = getNoteCacheById(indexDb.db, 'n1')
+    expect(fs.readFileSync(path.join(VAULT_ROOT, row?.path ?? ''), 'utf-8')).toMatch(/roadmap/)
+    expect(row?.contentHash).toBe(DOC_HOLDS)
   })
 })

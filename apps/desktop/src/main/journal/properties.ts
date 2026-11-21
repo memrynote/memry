@@ -13,6 +13,7 @@ import {
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { getJournalEntryByDate } from '../notes/store'
 import { syncJournalCache } from '../vault/journal-cache-sync'
+import { baselineAfterWrite } from '../sync/writeback-baseline'
 import { writeNoteInOrder } from '../vault/note-write'
 
 /**
@@ -52,7 +53,7 @@ async function writeProperties(date: string, properties: Record<string, unknown>
   }
 
   // Write entry with updated properties (preserving content and tags)
-  const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
+  const { entry, fileContent, frontmatter, previousFile } = await writeJournalEntryWithContent(
     date,
     existing.content,
     existing.tags,
@@ -73,6 +74,7 @@ async function writeProperties(date: string, properties: Record<string, unknown>
       id: noteId,
       path: journalPath,
       fileContent,
+      contentHash: baselineAfterWrite(db, noteId, previousFile, fileContent),
       frontmatter,
       parsedContent: entry.content,
       title: entry.date,

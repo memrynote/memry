@@ -77,8 +77,26 @@ function isNoteCopy(
 }
 
 /**
- * Remove each note row that is a case-variant copy of another, and each
- * folder_config row that is a case-variant copy of another.
+ * Whether a case-variant folder_config row is a local copy of the row the disk
+ * spells: it never entered sync (no clock), so the server holds nothing for
+ * it, and its icon is null or the kept row's, so it holds nothing the kept row
+ * lacks. The old watcher wrote such rows with a null icon after a case-only
+ * rename (`syncFolderConfigDiscovered`). A row with a clock can be on the
+ * server, and dropping it leaves this device short of the server's records,
+ * which the manifest check pulls back and the next open drops again (#5327).
+ * A kept twin changes nothing shown: `getFolders` reads the row the disk
+ * spells.
+ */
+function isFolderCopy(
+  folder: { clock: unknown; icon: string | null },
+  kept: { icon: string | null }
+): boolean {
+  return folder.clock === null && (folder.icon === null || folder.icon === kept.icon)
+}
+
+/**
+ * Remove each note row and each folder_config row that is a case-variant copy
+ * of another.
  *
  * Local only, and no file is touched: the copy's file is the kept row's file.
  * No delete is synced either. A peer on a case-insensitive file system can
@@ -111,13 +129,19 @@ export async function healCaseVariantRows(
   }
   await flushProjectionEvents()
 
-  const folderCopies = caseVariantCopies(
+  const folderVariants = caseVariantCopies(
     vaultPath,
-    dataDb.select({ path: folderConfigs.path }).from(folderConfigs).all()
+    dataDb
+      .select({ path: folderConfigs.path, icon: folderConfigs.icon, clock: folderConfigs.clock })
+      .from(folderConfigs)
+      .all()
   )
+  const folderCopies = folderVariants.filter(({ copy, kept }) => isFolderCopy(copy, kept))
   for (const { copy: folder } of folderCopies) {
     dataDb.delete(folderConfigs).where(eq(folderConfigs.path, folder.path)).run()
   }
+  const folderTwins = folderVariants.length - folderCopies.length
+  if (folderTwins > 0) logger.info('Kept case twins of folders', { count: folderTwins })
 
   if (noteCopies.length > 0 || folderCopies.length > 0) {
     logger.info('Dropped case-variant copies of notes and folders', {

@@ -1,3 +1,4 @@
+import type * as NotesModule from '@main/database/queries/notes'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
@@ -38,6 +39,11 @@ vi.mock('../../database/client', () => ({
 vi.mock('../../database', () => ({
   getDatabase: () => currentDb.value,
   getIndexDatabase: () => currentDb.value
+}))
+// The stub index holds no rows, so no note has an outside-edit baseline yet.
+vi.mock('@main/database/queries/notes', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesModule>()),
+  getNoteCacheById: vi.fn(() => undefined)
 }))
 vi.mock('../../vault/init', () => ({
   getMemryDir: (vault: string) => path.join(vault, '.memry')

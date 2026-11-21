@@ -52,7 +52,8 @@ vi.mock('./notes-io', () => ({
 }))
 vi.mock('./note-sync', () => ({ syncNoteToCache: vi.fn(), syncFileToCache: vi.fn() }))
 vi.mock('./frontmatter', () => ({
-  parseNote: vi.fn(() => ({ frontmatter: {}, content: '' }))
+  parseNote: vi.fn(() => ({ frontmatter: {}, content: '' })),
+  generateContentHash: vi.fn(() => 'hash')
 }))
 vi.mock('@memry/editor-schema/note-refs', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

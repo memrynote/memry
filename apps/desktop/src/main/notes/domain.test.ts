@@ -30,7 +30,6 @@ vi.mock('./runtime-effects', () => ({
   queueEmbeddedVaultFiles: vi.fn()
 }))
 
-vi.mock('../sync/crdt-external-feed', () => ({ feedExternalEditToCrdt: vi.fn() }))
 vi.mock('../sync/crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
 
 vi.mock('../vault-locks/registry', () => ({
@@ -49,7 +48,6 @@ import {
 } from './domain'
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
-import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 
 /** What `updateNote` resolves to for a write that left the header list as it was. */
 function outcome(note: Record<string, unknown>): Awaited<ReturnType<typeof noteVault.updateNote>> {
@@ -212,23 +210,6 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteUpdate).not.toHaveBeenCalled()
   })
 
-  // `updateNote` moves the index hash to the new bytes, so nothing else feeds
-  // the body to the note's CRDT doc (#2646). The file's `writing` frontmatter
-  // is not passed, so an open doc keeps its own alternatives.
-  it("feeds a body edit, and only a body edit, to the note's CRDT doc", async () => {
-    const note = {
-      id: 'note-1',
-      title: 'Title',
-      frontmatter: { writing: { alternatives: {}, overflow: [{ text: 'Cut line.' }] } }
-    }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
-
-    await updateNoteCommand({ id: 'note-1', headerTags: { add: ['focus'] } })
-    await updateNoteCommand({ id: 'note-1', content: 'new content' })
-
-    expect(vi.mocked(feedExternalEditToCrdt).mock.calls).toEqual([['note-1', 'new content']])
-  })
-
   // A body that embeds a vault file is the moment that file needs to reach the
   // server; waiting for the next backfill pass left it on this device (#2651).
   it('offers the files a written body embeds for upload, on create and on a body edit', async () => {
@@ -248,17 +229,6 @@ describe('notes domain adapter', () => {
       ['note-1', '![shot](images/shot.png)'],
       ['note-1', 'now ![other](images/other.png)']
     ])
-  })
-
-  it('saves the note and pushes its metadata when the CRDT feed throws', async () => {
-    const note = { id: 'note-1', title: 'Renamed' }
-    vi.mocked(noteVault.updateNote).mockResolvedValue(outcome(note))
-    vi.mocked(feedExternalEditToCrdt).mockRejectedValueOnce(new Error('converter failed'))
-
-    const saved = await updateNoteCommand({ id: 'note-1', title: 'Renamed', content: 'body' })
-
-    expect(saved).toEqual({ id: 'note-1', title: 'Renamed' })
-    expect(vi.mocked(runtimeEffects.syncNoteUpdate).mock.calls).toEqual([['note-1', 'Renamed']])
   })
 
   it('propagates vault error from createNoteCommand without calling syncNoteCreate', async () => {
