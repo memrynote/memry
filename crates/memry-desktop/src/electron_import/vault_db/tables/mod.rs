@@ -11,6 +11,7 @@ use super::TableCtx;
 pub mod js_json;
 mod note_file;
 mod notes;
+pub mod queue;
 pub mod records;
 mod row_dumps;
 mod tags;
@@ -157,9 +158,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "canvas_folders" [16, Convert, "36b"]: "core canvas_folder record table of Step 16"),
     map!(Data Migration "canvas_library_items" [29, Convert, "36f"]: "decrypted with the vault key into canvases/library.excalidrawlib when that file is absent"),
     map!(Data Migration "canvases" [29, Convert, "36f"]: "Step 30 canvas rows; canvases/*.excalidraw files stay canonical"),
-    map!(Data Migration "crdt_body_debts" [17, Convert, "36c"]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
-    map!(Data Migration "crdt_body_withheld" [17, Convert, "36c"]: "each row becomes a core body debt sync.body_owed:<docId>"),
-    map!(Data Migration "crdt_owed_file_bodies" [12, Convert, "36c"]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
+    map!(Data Migration "crdt_body_debts" [17, Convert, "36c4"]: "core body debt meta rows sync.body_owed:<docId> through Step 17"),
+    map!(Data Migration "crdt_body_withheld" [17, Convert, "36c4"]: "each row becomes a core body debt sync.body_owed:<docId>"),
+    map!(Data Migration "crdt_owed_file_bodies" [12, Convert, "36c4"]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
     map!(Data Migration "custom_icons" [13, Convert => row_dumps::custom_icons]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
     map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
@@ -170,7 +171,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "inbox_items" [26, Convert, "36d1"]: "core inbox table (data 0004) with clocks and attachment_id; dirty rows re-enqueued"),
     map!(Data Migration "inbox_jobs" [26, Reseed]: "transient enrichment jobs; Step 27 re-queues jobs for items without a result"),
     map!(Data Migration "inbox_stats" [26, Rebuild]: "derived counters rebuilt by the Step 27 stats projector"),
-    map!(Data Migration "note_body_sync" [17, Convert, "36c"]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core)"),
+    map!(Data Migration "note_body_sync" [17, Convert, "36c4"]: "Step 17 note_body_sync; pushed_state_vector dropped and counted (not in core)"),
     map!(Data Migration "note_metadata" [13, Convert => notes::note_metadata]: "note and journal records built as Electron pushes them (file and index copy) plus the Step 12 note_files row; ids and clocks bit exact"),
     map!(Data Migration "note_positions" [13, Convert => notes::note_positions]: "Step 13 manual order rows (data 0021)"),
     map!(Data Migration "project_links" [21, Convert, "36d2"]: "core project_links table"),
@@ -187,12 +188,10 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "sticky_drafts" [16, Convert, "36b"]: "core sticky_draft record table of Step 16"),
     map!(Data Migration "suggestion_feedback" [26, Convert, "36d1"]: "Step 27 inbox_suggestion_feedback (device-local)"),
     map!(Data Migration "sync_devices" [19, Skip]: "device list comes from the server, device id from memry-config.json; the key check is Step 37"),
-    map!(Data Migration "sync_history" [17, Convert, "36c"]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
-    map!(Data Migration "sync_intents" [17, Convert, "36c"]: "each row becomes one core outbox record row for its type and item id"),
-    map!(Data Migration "sync_pending_deletes" [17, Convert, "36c"]: "core outbox delete rows plus tombstone sync items"),
-    map!(Data Migration "sync_queue" [17, Convert, "36c"]: "core outbox rows; note_body rows become crdt-update rows"),
-    map!(Data Migration "sync_state" [17, Convert, "36c"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
-    map!(Data Migration "sync_tombstone_clocks" [17, Copy, "36c"]: "core sync_tombstone_clocks table (data 0005), identical columns"),
+    map!(Data Migration "sync_history" [17, Convert, "36c3"]: "Step 17 sync_history: type becomes kind, epoch seconds to ms, newest 500 rows"),
+    map!(Data Migration "sync_intents" [17, Convert, "36c2"]: "each row becomes one core outbox record row for its type and item id"),
+    map!(Data Migration "sync_pending_deletes" [17, Convert, "36c2"]: "core outbox delete rows plus tombstone sync items"),
+    map!(Data Migration "sync_state" [17, Convert, "36c3"]: "per-key rules in sync_state.rs (SYNC_STATE_KEYS)"),
     map!(Data Migration "tag_categories" [13, Convert => tags::tag_categories]: "core tag_categories table"),
     map!(Data Migration "tag_definitions" [13, Convert => tags::tag_definitions]: "core tag_definitions table"),
     map!(Data Migration "task_activity" [21, Convert, "36d2"]: "core task_activity table"),
@@ -232,9 +231,31 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Index Code "vec_images" [23, Copy, "36e"]: "same rule as vec_notes, with image_embedding_state"),
     map!(Index Code "vec_voice" [23, Copy, "36e"]: "same rule as vec_notes, with voice_embedding_state"),
     map!(Index Code "voice_embedding_state" [23, Copy, "36e"]: "copied with vec_voice (same width and input_version rule), else dropped with it"),
+    // After every record table: queued pushes are planned against the staged records.
+    map!(Data Migration "sync_tombstone_clocks" [17, Copy => queue::sync_tombstone_clocks]: "core sync_tombstone_clocks (data 0005); the note family row under note and journal"),
+    map!(Data Migration "sync_queue" [17, Convert => queue::sync_queue]: "folded per item into core outbox rows through outbox::enqueue; deletes write their tombstone; note_body rows are 36c4's"),
     // Last: it counts the merge into the records every table above wrote.
     map!(Data Migration "sync_unknown_fields" [16, Convert => unknown_fields::import]: "merged into the verbatim sync_items.payload of the same (type, item_id)"),
 ];
+
+/// What a refused user is told a pending stage carries, in their words. `None` for a name that
+/// is no stage (the coverage test holds every pending entry to a known one).
+pub fn pending_area(stage: &str) -> Option<&'static str> {
+    Some(match stage {
+        "36b" => "settings, vault locks, AI chats or canvas folders",
+        // `sync_pending_deletes` holds every local delete until the manifest check sees the
+        // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
+        // holds local changes still owed to the server.
+        "36c2" => "deletes the sync server has not confirmed yet, or changes waiting to sync",
+        "36c3" => "sync progress",
+        "36c4" => "note edit history",
+        "36d1" => "inbox items, calendars or bookmarks",
+        "36d2" => "tasks or projects",
+        "36e" => "search and similar-note data",
+        "36f" => "attachments, whiteboards or Readwise highlights",
+        _ => return None,
+    })
+}
 
 pub fn mapping(db: SourceDb, table: &str) -> Option<&'static TableMapping> {
     TABLE_MAP.iter().find(|m| m.db == db && m.table == table)
