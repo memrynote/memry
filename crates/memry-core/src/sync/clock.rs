@@ -17,6 +17,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use serde_json::Value as Json;
+
 /// The reserved pseudo device id edits tick while the sync runtime is down
 /// (§6.1, `packages/contracts/src/sync-api.ts:173`).
 pub const OFFLINE_CLOCK_DEVICE_ID: &str = "_offline";
@@ -30,15 +32,31 @@ pub const OFFLINE_CLOCK_DEVICE_ID: &str = "_offline";
 /// operation here.
 pub type VectorClock = BTreeMap<String, u64>;
 
+/// The largest tick a clock carries (§6.1): `Number.MAX_SAFE_INTEGER`, the
+/// largest `VectorClockSchema`'s `z.number().int()` accepts under zod 4
+/// (`packages/contracts/src/sync-api.ts:386`).
+pub const MAX_TICK: u64 = (1 << 53) - 1;
+
+/// One tick of a clock read off the wire, `None` unless it is an integer in
+/// `0..=MAX_TICK`. Every reader of a remote clock goes through it, so a
+/// server-chosen `u64::MAX` never reaches [`increment`] or a signed record.
+pub fn read_tick(value: &Json) -> Option<u64> {
+    value.as_u64().filter(|tick| *tick <= MAX_TICK)
+}
+
 /// `clock[deviceId] ?? 0` (§6.1).
 pub fn get_tick(clock: &VectorClock, device_id: &str) -> u64 {
     clock.get(device_id).copied().unwrap_or(0)
 }
 
-/// Adds exactly 1 to `device_id`'s tick. Non-mutating (§6.1).
+/// Adds exactly 1 to `device_id`'s tick. Non-mutating (§6.1). Saturates
+/// rather than wraps: [`read_tick`] keeps remote ticks far below `u64::MAX`.
 pub fn increment(clock: &VectorClock, device_id: &str) -> VectorClock {
     let mut next = clock.clone();
-    next.insert(device_id.to_owned(), get_tick(clock, device_id) + 1);
+    next.insert(
+        device_id.to_owned(),
+        get_tick(clock, device_id).saturating_add(1),
+    );
     next
 }
 
@@ -152,7 +170,7 @@ pub fn rebind_clock_device(clock: &VectorClock, target_device_id: &str) -> Vecto
     }
     let mut rebound = clock.clone();
     rebound.remove(OFFLINE_CLOCK_DEVICE_ID);
-    let carried = get_tick(clock, target_device_id) + offline;
+    let carried = get_tick(clock, target_device_id).saturating_add(offline);
     rebound.insert(target_device_id.to_owned(), carried);
     rebound
 }
@@ -194,6 +212,21 @@ mod tests {
         let empty = VectorClock::new();
         assert_eq!(get_tick(&empty, "device-a"), 0);
         assert_eq!(increment(&empty, "device-a"), clock_of([("device-a", 1)]));
+    }
+
+    #[test]
+    fn a_tick_above_max_safe_integer_is_not_read_and_increment_never_wraps() {
+        assert_eq!(read_tick(&Json::from(MAX_TICK)), Some(MAX_TICK));
+        assert_eq!(read_tick(&Json::from(MAX_TICK + 1)), None);
+        assert_eq!(read_tick(&Json::from(u64::MAX)), None);
+        assert_eq!(read_tick(&Json::from(-1)), None);
+        let full = clock_of([("device-a", u64::MAX)]);
+        assert_eq!(increment(&full, "device-a"), full);
+        let offline = clock_of([(OFFLINE_CLOCK_DEVICE_ID, 1), ("device-a", u64::MAX)]);
+        assert_eq!(
+            rebind_clock_device(&offline, "device-a"),
+            clock_of([("device-a", u64::MAX)])
+        );
     }
 
     #[test]

@@ -3,6 +3,8 @@
 //! rows unchanged. A value that does not parse costs a retry or a display, never a note: it is
 //! logged and read as absent, as desktop does.
 
+use std::collections::BTreeMap;
+
 use memry_core::api::errors::StorageError;
 use memry_core::api::readwise::ReadwiseStore;
 use serde::{Deserialize, Serialize};
@@ -13,6 +15,9 @@ const FULL_PASS: &str = "fullPass";
 const LAST_RUN: &str = "lastRun";
 const LAST_FULL_READ: &str = "lastFullRead";
 const ERROR_TOAST: &str = "errorToastShown";
+const READER_CURSOR: &str = "readerCursor";
+pub(crate) const HIGHLIGHT_INDEX: &str = "highlightIndex";
+pub(crate) const JOURNAL_PENDING: &str = "journalPending";
 
 const SCOPE: &str = "ReadwiseState";
 
@@ -55,6 +60,32 @@ pub struct LastRun {
     pub attention: Option<Attention>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub counts: Option<RunCounts>,
+}
+
+/// Journal days still owed a write, `date -> book id -> arrivals` (`JournalPending`, #3476).
+pub type JournalPending = BTreeMap<String, BTreeMap<String, u64>>;
+
+/// `JournalPendingSchema`: a value with a count below 1 does not parse. A bad value costs this
+/// device's pending journal lines, never a note.
+pub(crate) fn parse_journal_pending(raw: Option<&str>) -> JournalPending {
+    let Some(raw) = raw else {
+        return JournalPending::new();
+    };
+    match serde_json::from_str::<JournalPending>(raw) {
+        Ok(pending) if pending.values().flat_map(BTreeMap::values).all(|n| *n >= 1) => pending,
+        _ => {
+            tracing::warn!(
+                scope = SCOPE,
+                "dropping an unreadable Readwise journalPending"
+            );
+            JournalPending::new()
+        }
+    }
+}
+
+/// `setJournalPending`'s text: `None` deletes the key once nothing is owed.
+pub(crate) fn journal_pending_text(pending: &JournalPending) -> Option<String> {
+    (!pending.is_empty()).then(|| serde_json::to_string(pending).unwrap_or_default())
 }
 
 /// The run state of the open vault.
@@ -183,5 +214,32 @@ impl RunState {
             true => Ok(()),
             false => self.set(ERROR_TOAST, None),
         }
+    }
+
+    pub(crate) fn store(&self) -> &ReadwiseStore {
+        &self.store
+    }
+
+    /// Reader's own cursor: the newest document `updated_at` the last full Reader pass saw.
+    pub fn reader_cursor(&self) -> Result<Option<String>, StorageError> {
+        self.get(READER_CURSOR)
+    }
+
+    pub fn set_reader_cursor(&self, cursor: &str) -> Result<(), StorageError> {
+        self.set(READER_CURSOR, Some(cursor))
+    }
+
+    /// A full export has filled the highlight index (#3476). Until it has, a run reads the
+    /// whole export and counts no arrival, so the old highlights never reach the journal.
+    pub fn highlight_index_ready(&self) -> Result<bool, StorageError> {
+        Ok(self.get(HIGHLIGHT_INDEX)?.as_deref() == Some("ready"))
+    }
+
+    pub fn journal_pending(&self) -> Result<JournalPending, StorageError> {
+        Ok(parse_journal_pending(self.get(JOURNAL_PENDING)?.as_deref()))
+    }
+
+    pub fn set_journal_pending(&self, pending: &JournalPending) -> Result<(), StorageError> {
+        self.set(JOURNAL_PENDING, journal_pending_text(pending).as_deref())
     }
 }

@@ -5,7 +5,7 @@
 
 use chrono_tz::Tz;
 use memry_core::domain::readwise::{LinkKey, LinkState, ReadwiseItem, parse_readwise_url};
-use serde_json::{Map, Value};
+use serde_json::Map;
 
 use super::highlights::{image_highlight_url, linked_highlight_ids};
 use super::images::resolve_images;
@@ -17,7 +17,10 @@ use super::section::{
     EndMarker, SectionProblem, SectionRead, hash_section_body, read_section, write_end_marker,
 };
 use super::steps;
-use super::types::{CategorySwitches, FolderLayout, FrontmatterValue, ReadwiseBook, SavedImages};
+use super::types::{
+    CategorySwitches, FolderLayout, FrontmatterValue, ReadwiseBook, SavedImages, json_value,
+    split_frontmatter,
+};
 use crate::notes::create::NewNoteFile;
 use crate::notes::update::NoteUpdateInput;
 use crate::notes::view::NoteView;
@@ -73,6 +76,8 @@ pub enum SkipReason {
     UnknownLink,
     /// The book's category is switched off (the run's skip, never the writer's).
     CategoryOff,
+    /// A Reader document whose highlights live in a v2 book's note (D11).
+    HasBook,
 }
 
 /// `UpsertOutcome`.
@@ -348,7 +353,7 @@ impl Writer<'_> {
             .frontmatter
             .iter()
             .find(|(key, _)| *key == "cover")
-            .map(|(_, value)| Map::from_iter([("cover".to_owned(), json(value))]));
+            .map(|(_, value)| Map::from_iter([("cover".to_owned(), json_value(value))]));
         let content = replace_section(&created.content, &with_images.section)?;
         let input = NoteUpdateInput {
             id: created.id.clone(),
@@ -378,7 +383,7 @@ impl Writer<'_> {
             SectionRead::Found { range, .. } => splice(&note.content, range, &next.section),
             SectionRead::Missing { .. } => format!(
                 "{}\n\n{}",
-                strip_stray_markers(&note.content).trim_end(),
+                strip_stray_markers(&note.content).trim_end_matches(is_js_whitespace),
                 next.section
             ),
         };
@@ -441,7 +446,7 @@ impl Writer<'_> {
         }
         let content = match end_line {
             Some(end_line) => {
-                let before = body[..end_line.start].trim_end();
+                let before = body[..end_line.start].trim_end_matches(is_js_whitespace);
                 let last_line = &before[before.rfind('\n').map_or(0, |at| at + 1)..];
                 let gap = if is_list_item(last_line) {
                     "\n"
@@ -462,7 +467,11 @@ impl Writer<'_> {
                 )
             }
             None if add_marker => {
-                let head = format!("{}\n\n{}\n\n", body.trim_end(), append.markdown);
+                let head = format!(
+                    "{}\n\n{}\n\n",
+                    body.trim_end_matches(is_js_whitespace),
+                    append.markdown
+                );
                 let build = |hash: &str| {
                     let marker = EndMarker {
                         last: append.last.clone(),
@@ -473,7 +482,11 @@ impl Writer<'_> {
                 let hash = touched_hash(&build);
                 build(&hash)
             }
-            None => format!("{}\n\n{}", body.trim_end(), append.markdown),
+            None => format!(
+                "{}\n\n{}",
+                body.trim_end_matches(is_js_whitespace),
+                append.markdown
+            ),
         };
         self.commit(note, content, options, Outcome::Appended)
     }
@@ -563,32 +576,4 @@ pub fn strip_stray_markers(body: &str) -> String {
     }
     out.push_str(&body[copied..]);
     out
-}
-
-fn json(value: &FrontmatterValue) -> Value {
-    match value {
-        FrontmatterValue::Text(text) => Value::String(text.clone()),
-        FrontmatterValue::List(items) => {
-            Value::Array(items.iter().cloned().map(Value::String).collect())
-        }
-        FrontmatterValue::Number(number) => Value::Number(number.clone()),
-    }
-}
-
-/// The plan's `tags` apart from its other properties, in order.
-fn split_frontmatter(
-    frontmatter: &[(&'static str, FrontmatterValue)],
-) -> (Vec<String>, Map<String, Value>) {
-    let mut tags = Vec::new();
-    let mut properties = Map::new();
-    for (key, value) in frontmatter {
-        match (*key, value) {
-            ("tags", FrontmatterValue::List(list)) => tags.clone_from(list),
-            ("tags", _) => {}
-            (key, value) => {
-                properties.insert(key.to_owned(), json(value));
-            }
-        }
-    }
-    (tags, properties)
 }

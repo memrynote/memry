@@ -16,6 +16,9 @@
 //! | a note with no file at open gets its file                | the open reconcile lists it           |
 //! | a pulled note's aliases reach its file and survive B's    | the first file's frontmatter          |
 //! | a pulled rename, move, tag or property reaches B          | `writeback::place`, `note_events.rs`  |
+//! | a note create the server lost reaches a second device     | the manifest check asks, then re-uploads |
+//! | a deleted note stays deleted after a run from cursor 0    | a marker answered, nothing re-uploaded |
+//! | a deleted note stays deleted after a first sync           | a marker answered, nothing re-uploaded |
 
 #![cfg(feature = "harness")]
 
@@ -25,6 +28,8 @@ mod device_key;
 mod harness_server;
 #[path = "sync_disk_harness/note_events.rs"]
 mod note_events;
+#[path = "sync_disk_harness/reupload.rs"]
+mod reupload;
 #[path = "sync_disk_harness/unfiled.rs"]
 mod unfiled;
 #[path = "vault_env/mod.rs"]
@@ -130,8 +135,13 @@ struct Peer {
 
 impl Peer {
     async fn new(server: &Server) -> Self {
+        Self::at(server, 0).await
+    }
+
+    /// A core vault with no files, registered as the server's device `at`.
+    async fn at(server: &Server, at: usize) -> Self {
         let store = device_key::with_device_key();
-        let auth = auth(server, 0, &store);
+        let auth = auth(server, at, &store);
         let dir = tempfile::tempdir().unwrap();
         let data = dir.path().join("vault/.memry/core");
         std::fs::create_dir_all(&data).unwrap();
