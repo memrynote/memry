@@ -230,10 +230,13 @@ pub async fn oracle_state(cli: &Cli, vault: &str) -> Result<(), CliError> {
     let mut bodies = db.call(|conn| read_bodies(conn)).await?;
     let mut state_vectors = BTreeMap::new();
     let mut body_states = BTreeMap::new();
-    for doc_id in bodies.keys() {
+    for (doc_id, entry) in bodies.iter_mut() {
         let body = open_body(&db, doc_id)?;
         state_vectors.insert(doc_id.clone(), format_hex(&body.state_vector()?));
         body_states.insert(doc_id.clone(), format_hex(&body.encode_state()?));
+        // #5351: an update whose parents never arrived stays pending and shows
+        // nothing, while the sequence numbers still read as applied.
+        entry["pending"] = json!(body.has_missing_updates()?);
     }
     let owed = db.call(|conn| body_debt::owed(conn)).await?;
     for doc_id in &owed {
@@ -294,7 +297,8 @@ fn read_records(conn: &Connection) -> Result<Records, StorageError> {
 
 /// Every document with body state or a body cursor: the baseline's revision,
 /// the highest server sequence the device holds (its cursor, or the
-/// baseline's), and whether it holds no Yjs state at all.
+/// baseline's), and whether it holds no Yjs state at all. `pending` is filled
+/// in by [`oracle_state`], which replays each body.
 fn read_bodies(conn: &Connection) -> Result<BTreeMap<String, Json>, StorageError> {
     let mut statement = conn
         .prepare(
@@ -350,7 +354,7 @@ fn read_bodies(conn: &Connection) -> Result<BTreeMap<String, Json>, StorageError
 }
 
 fn empty_body() -> Json {
-    json!({ "snapshotRevision": null, "appliedThrough": 0, "empty": true })
+    json!({ "snapshotRevision": null, "appliedThrough": 0, "empty": true, "pending": false })
 }
 
 fn storage(error: rusqlite::Error) -> StorageError {

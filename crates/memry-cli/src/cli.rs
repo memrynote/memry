@@ -48,6 +48,7 @@ Commands:
                                          dev only: replace a journal day's tags
   journal property <date> <name> <json> [--vault <id>]
                                          dev only: set one property on a journal day
+  journal delete <date> [--vault <id>]   dev only: delete a journal day's entry
   bench bootstrap --vault <id> [--pass-interval <s>] [--resume]
                                          dev only: wipe this profile's copy of the vault (kept with
                                          --resume), run the first sync and body passes, print
@@ -132,6 +133,10 @@ pub enum Command {
         date: String,
         name: String,
         value_json: String,
+        vault: Option<String>,
+    },
+    JournalDelete {
+        date: String,
         vault: Option<String>,
     },
     /// Dev only (#5223): a timed fresh-device bootstrap for the benchmark.
@@ -274,7 +279,7 @@ fn parse_command(name: &str, args: &mut Args) -> Result<Command, UsageError> {
             vault: optional(args, "--vault")?,
         }),
         "notes" => parse_notes(args),
-        "journal" => parse_journal(args),
+        "journal" => crate::journal::parse(args),
         "bench" => crate::bench::parse(args),
         other => usage(format!("unknown command `{other}`")),
     }
@@ -338,37 +343,6 @@ fn parse_notes(args: &mut Args) -> Result<Command, UsageError> {
     }
 }
 
-fn parse_journal(args: &mut Args) -> Result<Command, UsageError> {
-    let Some(subcommand) = args.next() else {
-        return usage("journal needs a subcommand: append, tags, or property");
-    };
-    let date = positional(args, "journal", "a YYYY-MM-DD date")?;
-    match subcommand.as_str() {
-        "append" => Ok(Command::JournalAppend {
-            date,
-            text: positional(args, "journal append", "the text")?,
-            vault: optional(args, "--vault")?,
-        }),
-        "tags" => Ok(Command::JournalTags {
-            date,
-            tags: positional(args, "journal tags", "a comma-separated tag list")?
-                .split(',')
-                .map(str::trim)
-                .filter(|tag| !tag.is_empty())
-                .map(str::to_owned)
-                .collect(),
-            vault: optional(args, "--vault")?,
-        }),
-        "property" => Ok(Command::JournalProperty {
-            date,
-            name: positional(args, "journal property", "a property name")?,
-            value_json: positional(args, "journal property", "a JSON value")?,
-            vault: optional(args, "--vault")?,
-        }),
-        other => usage(format!("unknown journal subcommand `{other}`")),
-    }
-}
-
 pub(crate) fn value(args: &mut Args, flag: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(value) if !value.starts_with('-') => Ok(value),
@@ -384,7 +358,7 @@ pub(crate) fn required(args: &mut Args, flag: &str, command: &str) -> Result<Str
     }
 }
 
-fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
+pub(crate) fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
     match args.peek() {
         Some(found) if found == flag => {
             args.next();
@@ -395,7 +369,7 @@ fn optional(args: &mut Args, flag: &str) -> Result<Option<String>, UsageError> {
     }
 }
 
-fn positional(args: &mut Args, command: &str, what: &str) -> Result<String, UsageError> {
+pub(crate) fn positional(args: &mut Args, command: &str, what: &str) -> Result<String, UsageError> {
     match args.next() {
         Some(value) if !value.starts_with('-') => Ok(value),
         _ => usage(format!("{command} needs {what}")),
@@ -585,6 +559,7 @@ mod tests {
             "journal append",
             "journal tags",
             "journal property",
+            "journal delete",
             "bench bootstrap --vault",
             "bench oracle-state --vault",
         ] {

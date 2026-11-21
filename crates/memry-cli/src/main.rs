@@ -79,6 +79,7 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             value_json,
             vault,
         } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
+        Command::JournalDelete { date, vault } => journal::delete(&cli, &date, vault.as_deref()),
         Command::BenchBootstrap {
             vault,
             pass_interval_secs,

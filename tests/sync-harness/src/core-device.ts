@@ -170,6 +170,13 @@ export class CoreDevice {
     return JSON.parse(stdout) as CoreOracleState
   }
 
+  /** Runs one CLI command (`journal append …`, `push …`) and returns its stdout. */
+  async cli(args: string[]): Promise<string> {
+    const { code, stdout, stderr } = await this.exec(args)
+    if (code !== 0) throw new Error(`memry ${args.join(' ')} failed (${code}): ${stderr}`)
+    return stdout
+  }
+
   private exec(
     args: string[],
     onSpawn?: (kill: () => void) => void
