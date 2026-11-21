@@ -581,6 +581,37 @@ anchor of 0, so the rebuild tiles from 0
 (`apps/sync-server/src/services/pack-replaced-objects.ts`,
 `recordChainReanchor`).
 
+**Rollback switch (#5392).** A server MAY state empty coverage and list no
+packs for a vault; a reader then takes it item by item (§8.0), which is always
+correct. The Worker variable `PACK_COVERAGE_DISABLED`, `*` for every vault or
+a comma-separated list of vault ids, does this for each vault it names: the
+listing answers `packs: []`, no `nextCursor`, and on the first page
+`coverage: []`, without reading D1
+(`apps/sync-server/src/services/pack-list.ts:89-93`, `:122-126`), on both
+`GET /sync/packs` and `POST /sync/bootstrap`
+(`apps/sync-server/src/routes/sync.ts:722`,
+`apps/sync-server/src/routes/bootstrap.ts:154`), and a bootstrap claims and
+starts no backfill chain (`apps/sync-server/src/services/pack-coverage.ts:211`,
+`:223`). It writes nothing: pack rows, watermarks, `covered_through` and R2
+objects stay as they are, and compaction keeps running on its own triggers, so
+removing the variable serves the listing compaction holds by then, with no
+rebuild and no re-anchor. Nulling `covered_through` by hand is not a rollback:
+the next bootstrap reads the kind as `unanchored` and the next record build
+re-anchors it and retires its packs (above). Unset, or a list that does not
+name the vault, leaves the listing byte for byte as before. It is a Worker
+secret so it applies without a deploy and survives one; nothing in
+`wrangler.toml` sets it:
+
+```sh
+# staging, one drill vault (or '*' for every vault)
+printf '%s' '<vault-id>' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env staging
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env staging
+
+# production
+printf '%s' '*' | pnpm --filter @memry/sync-server exec wrangler secret put PACK_COVERAGE_DISABLED --env production
+pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISABLED --env production
+```
+
 - A writer selects rows of every kind by `server_cursor` above the kind's
   watermark. A pack's `coverFrom` is the `coverThrough` of the kind's previous
   pack, or 0, so windows of rows it skipped as unneeded or omitted fall inside
