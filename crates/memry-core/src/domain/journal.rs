@@ -233,7 +233,7 @@ fn revive_in(tx: &Connection, id: &str, device_id: &str, now_ms: i64) -> Result<
         what: format!("purge the deleted body of {id}: {error}"),
     })?;
     body_debt::settle(tx, id)?;
-    outbox::drop_document_updates(tx, id)?;
+    outbox::drop_body_updates(tx, ITEM_TYPE, id)?;
     tx.execute("DELETE FROM note_bodies WHERE note_id = ?1", params![id])
         .map_err(failed)?;
     seed_empty_body_in(tx, id, now_ms)?;

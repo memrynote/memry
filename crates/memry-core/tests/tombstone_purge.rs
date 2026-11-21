@@ -276,6 +276,39 @@ async fn an_untyped_delete_marks_every_type_and_purges_the_body() {
     assert_eq!(report.purged_documents, vec![NOTE.to_owned()]);
 }
 
+/// The untyped delete drops the queued update too (#5379), so the unseen text
+/// it carried is kept first, as the typed arm keeps it (#3029, rule 1).
+#[tokio::test]
+async fn an_untyped_delete_keeps_the_unsent_text_in_the_inbox() {
+    let db = scratch_db("untyped-keep");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+
+    deliver_untyped_delete(&db).await.expect("the page");
+
+    assert_eq!(queued_body_updates(&db), 0);
+    let kept: Vec<String> = db
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare("SELECT payload FROM sync_items WHERE item_type = 'inbox'")
+                .map_err(storage_failure)?;
+            let rows = statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(storage_failure)?;
+            let payloads: Vec<String> = rows.collect::<Result<_, _>>().map_err(storage_failure)?;
+            Ok(payloads
+                .iter()
+                .map(|payload| {
+                    let payload: Json = serde_json::from_str(payload).expect("json");
+                    payload["content"].as_str().unwrap_or_default().to_owned()
+                })
+                .collect())
+        })
+        .expect("the inbox");
+    assert_eq!(kept, vec!["still typing".to_owned()]);
+}
+
 /// #5379: an update queued before the delete must not reach the server after
 /// it. Pushed onto a purged document, it is the history a later revive of the
 /// id would pull back. The delete-keep copy has already saved its text.

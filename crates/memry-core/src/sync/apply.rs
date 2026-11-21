@@ -201,7 +201,7 @@ pub(crate) fn apply_page(
         }
     }
     for item_id in untyped {
-        apply_untyped_tombstone(conn, &item_id, now_ms, &mut totals)?;
+        apply_untyped_tombstone(conn, &item_id, now_ms, clock_device, &mut totals)?;
     }
     Ok(totals)
 }
@@ -286,7 +286,7 @@ fn apply_tombstone(
         body_debt::settle(&txn, item_id)?;
         // After `delete_keep::keep`, which reads the queue to decide what text
         // this device never pushed (#5379).
-        outbox::drop_document_updates(&txn, item_id)?;
+        outbox::drop_body_updates(&txn, item_type, item_id)?;
         update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
     } else {
         0
@@ -339,10 +339,29 @@ fn apply_untyped_tombstone(
     conn: &Connection,
     item_id: &str,
     now_ms: i64,
+    clock_device: Option<&str>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let item_types = store::item_types_for(&txn, item_id)?;
+    // The purge below drops the queued body updates, so unseen text is kept
+    // first, as the typed arm keeps it. No clock or body vector on the wire,
+    // so the queue (rule 1) decides.
+    for item_type in item_types
+        .iter()
+        .filter(|t| DOCUMENT_TYPES.contains(&t.as_str()))
+    {
+        delete_keep::keep(
+            &txn,
+            item_type,
+            item_id,
+            now_ms,
+            None,
+            None,
+            clock_device,
+            now_ms,
+        )?;
+    }
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;
     if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
@@ -354,7 +373,10 @@ fn apply_untyped_tombstone(
         projectors::delete(&txn, item_type, item_id, now_ms)?;
     }
     body_debt::settle(&txn, item_id)?;
-    outbox::drop_document_updates(&txn, item_id)?;
+    // Unconditional, like the purge: every row under the id is being deleted.
+    for item_type in DOCUMENT_TYPES {
+        outbox::drop_body_updates(&txn, item_type, item_id)?;
+    }
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;

@@ -939,7 +939,10 @@ rows (`crates/memry-core/src/sync/push.rs:180`, `:328`), so the reviving
 device's outbox would stall on the update every pass and never reach the
 record that makes the id live; desktop drops the refused rows
 (`apps/desktop/src/main/sync/note-body-outbox.ts:314-350`). The client-side
-drop above closes the case the fence would have covered. An unclaimed snapshot of the purged body that arrives
+drop above narrows the case the fence would have covered. It leaves open
+updates queued by builds shipped before it, an edit typed after the tombstone
+into an editor still open on the document, and the unfenced server route until
+#5361. An unclaimed snapshot of the purged body that arrives
 after the re-create, which is every snapshot while the claim gate is closed,
 and a purge that ran before migration `0026`, are not fenced either.
 
@@ -1046,7 +1049,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:289`, `:357`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:289`, `:378`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.
