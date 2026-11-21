@@ -6,7 +6,7 @@ import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { cleanupDeletedDocumentBodies } from '../services/cleanup'
 import { getSnapshot, getUpdates, storeUpdates } from '../services/crdt'
-import { storeSnapshot } from '../services/crdt-snapshot-write'
+import { storeSnapshot, storeSnapshotBatch } from '../services/crdt-snapshot-write'
 import { purgeDeletedDocumentBodies } from '../services/document-body-purge'
 import { compactOneRange } from '../services/pack-compaction'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
@@ -381,5 +381,137 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
 
     expect(await bodyFromZero(DAY_ID)).toEqual([])
     expect(await cleanupDeletedDocumentBodies(harness.db, storage)).toBe(0)
+  })
+})
+
+// #5367: a snapshot encoded from the deleted body can reach the server after
+// the purge. Stored, it is the re-created day's baseline on a fresh device.
+describe('a snapshot of the purged body is refused (#5367)', () => {
+  const cursorNow = (): number =>
+    (
+      harness.raw
+        .prepare('SELECT current_cursor FROM server_cursor_sequence WHERE user_id = ?')
+        .get(USER_ID) as { current_cursor: number }
+    ).current_cursor
+  const postSnapshot = (app: App, data: ArrayBuffer, coversThrough?: number) =>
+    app.request(
+      '/sync/crdt/snapshot',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noteId: DAY_ID,
+          snapshot: Buffer.from(data).toString('base64'),
+          ...(coversThrough === undefined ? {} : { coversThrough })
+        })
+      },
+      env,
+      {
+        waitUntil: () => undefined,
+        passThroughOnException: () => undefined
+      } as unknown as ExecutionContext
+    )
+  // Protocol 07 §7.7.1: the routes honour a claim only with this gate open.
+  const openClaimGate = (): void => {
+    env = { ...env, CRDT_CLAIM_MIN_DESKTOP_VERSION: '1.0.0' }
+    harness.raw
+      .prepare(
+        `INSERT INTO client_policies (platform, min_write_version, writes_enabled, updated_at)
+         VALUES ('desktop', '1.0.0', 1, ?)`
+      )
+      .run(now())
+  }
+  /** Deleted, purged and revived with a new body; returns a cursor from before the delete. */
+  const deleteAndRevive = async (app: App): Promise<number> => {
+    await createDay(app)
+    await writeBody(DAY_ID, bytes(1, 1))
+    const beforeDelete = cursorNow()
+    await deleteDay(app)
+    await createDay(app, { [DEVICE_ID]: 3 })
+    await writeBody(DAY_ID, bytes(2, 1))
+    return beforeDelete
+  }
+
+  // #5367
+  it('refuses a snapshot for a deleted document before its upload, with the refusal clients handle', async () => {
+    const app = buildApp()
+    await createDay(app)
+    await writeBody(DAY_ID, bytes(1, 1))
+    await deleteDay(app)
+    const used = storageUsed()
+    const put = vi.spyOn(storage, 'put')
+
+    const res = await postSnapshot(app, bytes(9, 9, 9))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: { code: 'CRDT_SNAPSHOT_NOT_COVERED' } })
+    const [batch] = await storeSnapshotBatch(harness.db, storage, USER_ID, VAULT_ID, DEVICE_ID, [
+      { noteId: DAY_ID, snapshotData: bytes(9, 9, 9) }
+    ])
+    expect(batch).toMatchObject({ accepted: false, reason: 'CRDT_SNAPSHOT_NOT_COVERED' })
+    expect(put).not.toHaveBeenCalled()
+    expect(count('crdt_snapshots')).toBe(0)
+    expect(storageUsed()).toBe(used)
+
+    await createDay(app, { [DEVICE_ID]: 3 })
+    await writeBody(DAY_ID, bytes(2, 1))
+    expect(await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID)).toBeNull()
+    expect(await bodyFromZero(DAY_ID)).toEqual([[2, 1]])
+
+    // An unclaimed push for the live day is accepted: an older client is not
+    // refused once the record is live again.
+    expect((await postSnapshot(app, bytes(2, 2))).status).toBe(200)
+  })
+
+  // #5367: the delete and its purge commit while the snapshot's upload runs.
+  it('refuses a snapshot whose document is deleted while its upload is in flight', async () => {
+    const app = buildApp()
+    await createDay(app)
+    await writeBody(DAY_ID, bytes(1, 1))
+    const snapshotObjects = async () =>
+      (await storage.list()).objects.filter((o) => o.key.includes(`/crdt/${DAY_ID}/`))
+    const put = storage.put.bind(storage)
+    let raced = false
+    vi.spyOn(storage, 'put').mockImplementation(async (...args: Parameters<R2Bucket['put']>) => {
+      const stored = await put(...args)
+      if (!raced && args[0].includes(`/crdt/${DAY_ID}/`)) {
+        raced = true
+        // oxlint-disable-next-line vitest/no-conditional-expect -- the race runs once, inside the snapshot's own put
+        expect(await deleteDay(app)).toEqual([DAY_ID])
+      }
+      return stored
+    })
+
+    await expect(writeSnapshot(DAY_ID, bytes(9, 9, 9))).rejects.toMatchObject({
+      code: 'CRDT_SNAPSHOT_NOT_COVERED'
+    })
+    expect(raced).toBe(true)
+    expect(count('crdt_snapshots')).toBe(0)
+    expect(await snapshotObjects()).toEqual([])
+  })
+
+  // #5367: the push was in flight across the delete, the purge and the revive.
+  it('with the claim gate open, refuses a claim that never read the tombstone', async () => {
+    openClaimGate()
+    const app = buildApp()
+    const beforeDelete = await deleteAndRevive(app)
+
+    const res = await postSnapshot(app, bytes(9, 9, 9), beforeDelete)
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: { code: 'CRDT_SNAPSHOT_NOT_COVERED' } })
+    expect(await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID)).toBeNull()
+    expect(await bodyFromZero(DAY_ID)).toEqual([[2, 1]])
+
+    // A pusher that read the feed past the tombstone is accepted.
+    expect((await postSnapshot(app, bytes(2, 2), cursorNow())).status).toBe(200)
+  })
+
+  // #5367: the cursor fence is dormant until the claim rollout (§7.7.1). The
+  // route drops the claim, and an unclaimed push for a live document is stored.
+  it('with the claim gate closed, stores the same push unclaimed', async () => {
+    const app = buildApp()
+    const beforeDelete = await deleteAndRevive(app)
+
+    expect((await postSnapshot(app, bytes(9, 9, 9), beforeDelete)).status).toBe(200)
+    expect(await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, DAY_ID)).not.toBeNull()
   })
 })

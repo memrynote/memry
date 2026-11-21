@@ -927,9 +927,11 @@ Snapshots are pushed **pre-batch** so other devices receive correct state before
 
 A create for a note this device knows is deleted gets no pre-batch snapshot. Known deleted means
 the note has no `note_metadata` row, or it has a recorded tombstone clock that the row's clock does
-not strictly follow. The server keeps a deleted note's CRDT state and accepts bodies for it, so a
-snapshot sent ahead of a create that the server then refuses as delete-wins would put the deleted
-body back on every device. The manifest check skips the same notes when it re-enqueues local items
+not strictly follow. Before #5367 the server stored a snapshot for a deleted note, so a snapshot
+sent ahead of a create that the server then refuses as delete-wins put the deleted body back on
+every device. The server now refuses a snapshot while the note is deleted, with
+`409 CRDT_SNAPSHOT_NOT_COVERED` (protocol chapter 07 §7.15), and the device owes the note a pull and
+pushes again later. The skip still saves that wasted upload. The manifest check skips the same notes when it re-enqueues local items
 the server manifest lacks, because that manifest omits tombstoned ids.
 
 ## Local-Only Notes Keep Their Body
