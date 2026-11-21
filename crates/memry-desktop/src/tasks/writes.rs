@@ -120,7 +120,8 @@ impl TasksService {
         })
     }
 
-    /// `tasks:uncomplete`: the default todo status and no `completedAt`.
+    /// `tasks:uncomplete`: no `completedAt`, and a task in a done status moves to the default
+    /// open status.
     pub fn uncomplete(&self, id: &str) -> Result<TaskWritten, StorageError> {
         match self.store.uncomplete(id.to_owned())? {
             Some(_) => self.updated(id),

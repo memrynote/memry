@@ -404,6 +404,8 @@ mod tag_schema;
 mod tags;
 #[path = "task_defaults.rs"]
 mod task_defaults;
+#[path = "task_reopen.rs"]
+mod task_reopen;
 #[path = "task_writes.rs"]
 mod task_writes;
 #[path = "tasks_service.rs"]
