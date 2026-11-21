@@ -301,17 +301,34 @@ describe('open/renew/close over real SQLite', () => {
   })
 
   it('still caps a resuming device at the per-user concurrent limit', async () => {
+    // #given — two other devices of the user hold sessions
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 60 })
+    seedDevice(harness, { deviceId: 'd2', lastCursor: null })
+    seedDevice(harness, { deviceId: 'd3', lastCursor: null })
+    await openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd2', vaultId: 'v1' })
+    await openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd3', vaultId: 'v1' })
+
+    // #when / #then
+    await expect(
+      openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd1', vaultId: 'v1' })
+    ).rejects.toMatchObject({ code: 'BOOTSTRAP_SESSION_LIMIT', statusCode: 429 })
+  })
+
+  it('a relaunch replaces the session its killed process never closed (#5328)', async () => {
     // #given — a resuming device whose sessions were never closed
     seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 60 })
     const identity = { userId: 'u1', deviceId: 'd1', vaultId: 'v1' }
     await openBootstrapSession(harness.db, SECRET, identity)
     await openBootstrapSession(harness.db, SECRET, identity)
 
-    // #when / #then
-    await expect(openBootstrapSession(harness.db, SECRET, identity)).rejects.toMatchObject({
-      code: 'BOOTSTRAP_SESSION_LIMIT',
-      statusCode: 429
-    })
+    // #when
+    const { session } = await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #then — one slot, held by the newest session
+    const rows = harness.raw.prepare('SELECT jti FROM bootstrap_sessions').all() as Array<{
+      jti: string
+    }>
+    expect(rows).toEqual([{ jti: session.jti }])
   })
 
   it('enforces the per-user concurrent session cap', async () => {
@@ -547,40 +564,25 @@ describe('open/renew/close over real SQLite', () => {
     seedDevice(harness, { deviceId: 'd3', lastCursor: null })
     seedDevice(harness, { deviceId: 'd4', lastCursor: null })
 
-    const realPrepare = harness.db.prepare.bind(harness.db)
+    // The ledger INSERT runs inside the open's D1 batch: park that batch.
+    const realBatch = harness.db.batch.bind(harness.db)
     let gatedCallsLeft = 1
-    const released = false
     let parkedAtInsert = false
     let releasePark!: () => void
     const parkGate = new Promise<void>((resolve) => {
       releasePark = resolve
     })
-    ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = (sql: string) => {
-      const inner = realPrepare(sql)
-      if (!sql.includes('INSERT INTO bootstrap_sessions')) return inner
-      const wrapped = {
-        bind: (...args: unknown[]) => {
-          inner.bind(...args)
-          return wrapped
-        },
-        first: inner.first.bind(inner),
-        all: inner.all.bind(inner),
-        raw: inner.raw.bind(inner),
-        run: async () => {
-          const shouldPark = !released && gatedCallsLeft > 0
-          if (gatedCallsLeft > 0) gatedCallsLeft--
-          if (shouldPark) {
-            parkedAtInsert = true
-            await parkGate
-          }
-          return inner.run()
-        }
+    ;(harness.db as unknown as { batch: typeof realBatch }).batch = async (statements) => {
+      if (gatedCallsLeft > 0) {
+        gatedCallsLeft--
+        parkedAtInsert = true
+        await parkGate
       }
-      return wrapped as unknown as D1PreparedStatement
+      return realBatch(statements)
     }
 
     try {
-      // #when — d3 parks at its INSERT…
+      // #when — d3 parks at its ledger batch…
       const third = openBootstrapSession(harness.db, SECRET, {
         userId: 'u1',
         deviceId: 'd3',
@@ -611,7 +613,7 @@ describe('open/renew/close over real SQLite', () => {
         .all(Math.floor(Date.now() / 1000)) as { device_id: string }[]
       expect(holders.map((r) => r.device_id)).toEqual(['d2', 'd4'])
     } finally {
-      ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = realPrepare
+      ;(harness.db as unknown as { batch: typeof realBatch }).batch = realBatch
     }
   })
 

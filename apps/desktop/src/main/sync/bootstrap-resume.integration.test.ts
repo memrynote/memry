@@ -67,6 +67,8 @@ import {
   initIndexDatabase
 } from '../database/client'
 import { runIndexMigrations, runMigrations } from '../database/migrate'
+import { isBootstrapActive, resetBootstrapMetrics } from './bootstrap-metrics'
+import type { CrdtProvider } from './crdt-provider'
 import { SyncEngine, SYNC_LOCK_STALE_MS } from './engine'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { getRemoteSyncAdapter } from './item-handlers'
@@ -92,7 +94,7 @@ beforeAll(async () => {
   await sodium.ready
   const mod = await import('@memry/sync-harness/simulated-server')
   server = new mod.SimulatedServer()
-  await server.start()
+  await server.start({ bindings: { BOOTSTRAP_SESSION_HMAC_KEY: 'bootstrap-resume-key' } })
   process.env.SYNC_SERVER_URL = (await server.getDirectUrl()).origin
 }, 180_000)
 
@@ -208,7 +210,8 @@ function startSync(
   account: Account,
   device: Device,
   ws = createMockWs(),
-  getVaultKey: () => Promise<Uint8Array> = async () => account.vaultKey.slice()
+  getVaultKey: () => Promise<Uint8Array> = async () => account.vaultKey.slice(),
+  crdtProvider?: CrdtProvider
 ): SyncEngine {
   resetTagDefinitionSyncService()
   const db = getDatabase() as unknown as DrizzleDb
@@ -233,6 +236,7 @@ function startSync(
       getDevicePublicKey: async (id) =>
         account.devices.find((d) => d.deviceId === id)?.signing.publicKey ?? null,
       db,
+      ...(crdtProvider ? { crdtProvider } : {}),
       emitToRenderer: () => {},
       adapters: createSyncAdapterRegistry([
         {
@@ -348,6 +352,82 @@ describe('a fresh device whose first sync a quit interrupts, against a real sync
     await expect(later.fullSync()).resolves.toEqual({ status: 'delivered' })
     expect(net.requests.some(({ url }) => url.pathname.endsWith('/sync/bootstrap'))).toBe(false)
     await later.stop()
+  }, 180_000)
+})
+
+/** A CRDT store holding no documents: the body phase runs and finds nothing to pull. */
+const emptyCrdtStore = (): CrdtProvider =>
+  ({
+    storeId: null,
+    inactiveDocCapacity: 32,
+    getOpenNoteIds: () => [],
+    hasPersistence: () => false,
+    isNoteLocalOnly: () => false
+  }) as unknown as CrdtProvider
+
+const bootstrapSessionsOf = async (device: Device): Promise<number> => {
+  const row = await (
+    await server.getD1()
+  )
+    .prepare('SELECT COUNT(*) AS n FROM bootstrap_sessions WHERE device_id = ?')
+    .bind(device.deviceId)
+    .first<{ n: number }>()
+  return row?.n ?? 0
+}
+
+describe('a fresh device killed after its record pull delivered (#5328)', () => {
+  it('resumes elevated, frees the killed session and closes the bootstrap', async () => {
+    const account = await seedAccount()
+    await writeHistory(account)
+    const fresh = account.devices[1]
+    openDevice('fresh', account, fresh)
+
+    // First launch: the record pull reaches the head of the feed, then the
+    // process dies in the closing checks, before the body phase finishes.
+    let dead = false
+    let parked = false
+    net.requests.length = 0
+    net.beforeRequest = async (_method, url) => {
+      if (dead) throw new TypeError('fetch failed')
+      if (url.pathname.endsWith('/sync/manifest')) {
+        parked = true
+        await new Promise<never>(() => {})
+      }
+    }
+    void startSync(account, fresh, createMockWs(), undefined, emptyCrdtStore()).fullSync()
+    await vi.waitUntil(() => parked, { timeout: 30_000, interval: 5 })
+    dead = true
+    expect(stateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeDefined()
+    expect(localTags()).toEqual(TAGS)
+    expect(await bootstrapSessionsOf(fresh)).toBe(1)
+
+    // Relaunch: a new process, with no telemetry window of its own yet.
+    resetBootstrapMetrics()
+    openDevice('fresh', account, fresh)
+    net.requests.length = 0
+    let windowAtOpen = false
+    net.beforeRequest = (method, url) => {
+      if (method === 'POST' && url.pathname.endsWith('/sync/bootstrap')) {
+        windowAtOpen = isBootstrapActive()
+      }
+    }
+    const relaunched = startSync(account, fresh, createMockWs(), undefined, emptyCrdtStore())
+    await expect(relaunched.fullSync()).resolves.toEqual({ status: 'delivered' })
+
+    expect(
+      net.requests.some(
+        ({ method, url }) => method === 'POST' && url.pathname.endsWith('/sync/bootstrap')
+      )
+    ).toBe(true)
+    expect(windowAtOpen).toBe(true)
+    expect(isBootstrapActive()).toBe(false)
+    expect(stateValue('bootstrapPending')).toBeUndefined()
+    // The relaunch's open replaced the killed session, and its close freed the slot.
+    await vi.waitUntil(async () => (await bootstrapSessionsOf(fresh)) === 0, {
+      timeout: 5000,
+      interval: 20
+    })
+    await relaunched.stop()
   }, 180_000)
 })
 

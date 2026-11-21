@@ -1983,6 +1983,26 @@ describe('FullSyncRunner', () => {
       return h
     }
 
+    // #5328: the key now outlives the record pull, so a reconnect, a manual sync
+    // or a retry timer during the body drain must not reopen the bootstrap.
+    it('#then a second full sync during the body phase opens no second session and keeps the key', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+      mocks.openBootstrapSession.mockClear()
+      await h.runner.run()
+      expect(mocks.openBootstrapSession).toHaveBeenCalledTimes(1)
+      expect(h.getStateValue('bootstrapPending')).toBe('1')
+
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
+      expect(mocks.openBootstrapSession).toHaveBeenCalledTimes(1)
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+      expect(h.getStateValue('bootstrapPending')).toBe('1')
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 20)
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+      expect(h.getStateValue('bootstrapPending')).toBeUndefined()
+    })
+
     it('#then a run with no persisted cursor arms a first_full_sync bootstrap', async () => {
       const h = createHarness()
 
