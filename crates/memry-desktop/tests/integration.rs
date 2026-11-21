@@ -492,6 +492,8 @@ mod vault_watch_session;
 mod vault_writeback;
 #[path = "vault_writes.rs"]
 mod vault_writes;
+#[path = "voice_embedding_lane.rs"]
+mod voice_embedding_lane;
 #[path = "voice_engine.rs"]
 mod voice_engine;
 #[path = "voice_service.rs"]
