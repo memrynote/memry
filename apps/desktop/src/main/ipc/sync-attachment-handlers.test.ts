@@ -241,7 +241,11 @@ import {
 } from '../sync/note-attachment-metadata'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { markDownloadSucceeded } from '@memry/sync-client/attachment-download-state'
-import { AttachmentTooLargeError, type TransferProgress } from '../sync/attachments'
+import {
+  AttachmentSyncService,
+  AttachmentTooLargeError,
+  type TransferProgress
+} from '../sync/attachments'
 import { SyncServerError } from '../sync/http-client'
 import { setCachedEntitlementFromStatus, getCachedMaxFileSize } from '../billing/entitlement-cache'
 import type { BillingStatus } from '../billing/paddle-billing'
@@ -971,7 +975,11 @@ describe('sync-attachment-handlers', () => {
         expect.objectContaining({ pace: expect.any(Function) })
       )
     )
-    expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')
+    // The file is announced when it lands, not when the download is queued:
+    // a queued download outlives the watcher's ignore window (#5255).
+    expect(AttachmentSyncService).toHaveBeenCalledWith(
+      expect.objectContaining({ beforeFileLands: markWritebackIgnored })
+    )
     await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 1234))
   })
 

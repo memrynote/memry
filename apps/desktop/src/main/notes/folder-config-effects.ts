@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { utcNow } from '@memry/shared/utc'
+import { hasPulledRecordsSinceStart } from '@memry/sync-client/sync-eligibility'
 import { getDatabase } from '../database'
 import { getFolders } from '../vault/notes'
 import { getCurrentVaultPath } from '../store'
@@ -38,7 +39,25 @@ export function syncFolderConfigDiscovered(folderPath: string): void {
   const db = getDatabase()
   if (!db || !folderPath) return
   if (db.select().from(folderConfigs).where(eq(folderConfigs.path, folderPath)).get()) return
-  syncFolderConfigSet(folderPath, null)
+  recordFoundFolder(db, folderPath)
+}
+
+/**
+ * A folder found on disk rather than made in the app. Before this runtime's
+ * first pull it is mostly one the pull itself is writing, whose row the server
+ * already holds. That row stays clock-less here, so the remote row applies over
+ * it instead of merging and being pushed back, and the seed after the pull
+ * pushes only the rows the server lacks (#5255).
+ */
+function recordFoundFolder(
+  db: NonNullable<ReturnType<typeof getDatabase>>,
+  folderPath: string
+): void {
+  if (hasPulledRecordsSinceStart()) return syncFolderConfigSet(folderPath, null)
+  const now = utcNow()
+  db.insert(folderConfigs)
+    .values({ path: folderPath, icon: null, createdAt: now, modifiedAt: now })
+    .run()
 }
 
 export function syncFolderConfigSet(folderPath: string, icon: string | null | undefined): void {
@@ -174,7 +193,7 @@ export async function backfillFolderConfigs(): Promise<number> {
   let queued = 0
   for (const folder of await getFolders()) {
     if (known.has(folder.path)) continue
-    syncFolderConfigCreate(folder.path)
+    recordFoundFolder(db, folder.path)
     queued += 1
   }
 
