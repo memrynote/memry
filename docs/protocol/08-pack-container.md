@@ -887,9 +887,9 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:326`, logged at `:335`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:348`, logged at `:341-345`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:319`). A run never spans an excluded pack, so
+  among packs already read (`:325-327`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
@@ -1023,10 +1023,21 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   guard fails when a rewrite the plan did not exclude is pending. The
   listing-overlap guard fails when another listed pack of the kind starts
   inside the run's range; for `crdt_snapshot` the range's last second is open,
-  because a `created_at` tie may split across two packs. A purge after the
-  rollup read the listing either still has its rewrite pending or has listed
-  the rewritten pack, so one guard fails the swap, and the rollup's object is
-  deleted unlisted (§8.10, **Unlisted objects**).
+  because a `created_at` tie may split across two packs. A purge that takes
+  a pack out of the listing after the rollup read the pending rewrites, but
+  before it read the listing, has one of three outcomes. Its rewrite is still
+  pending, or it listed the rewritten pack, and one guard fails the swap. Or
+  its rewrite committed and listed nothing, because no entry of the pack
+  stayed current: the rewrite lists a row only when `kept.length > 0` and
+  otherwise only settles the pending row
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:110`, `:145`, `:152`).
+  No guard fails then, and the swap may commit, which is harmless because the
+  run's range holds only current entries. A purge after the listing read that
+  takes out an input of the run makes `replacePacks` record nothing: it
+  records the inputs only while every one is still listed
+  (`apps/sync-server/src/services/pack-rollup.ts:502`). When a guard fails
+  or `replacePacks` records nothing, the rollup's object is deleted unlisted
+  (§8.10, **Unlisted objects**).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
   of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:204-205`).
