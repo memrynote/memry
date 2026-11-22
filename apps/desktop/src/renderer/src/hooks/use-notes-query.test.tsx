@@ -13,7 +13,7 @@ import {
 } from './use-notes-query'
 import type { Note, NoteListItem, NoteListResponse } from '@memry/rpc/notes'
 
-type NoteEvent = { id: string; changes?: { content?: unknown } }
+type NoteEvent = { id: string; changes?: { content?: unknown }; source?: string }
 type EmptyHandler = () => void
 type NoteHandler = (event: NoteEvent) => void
 
@@ -36,11 +36,11 @@ const mocks = vi.hoisted(() => ({
     getAllWithCounts: vi.fn()
   },
   handlers: {
-    created: [] as EmptyHandler[],
+    created: [] as NoteHandler[],
     updated: [] as NoteHandler[],
     deleted: [] as NoteHandler[],
     renamed: [] as NoteHandler[],
-    moved: [] as EmptyHandler[],
+    moved: [] as NoteHandler[],
     external: [] as NoteHandler[],
     tagsChanged: [] as EmptyHandler[],
     folderConfigUpdated: [] as EmptyHandler[],
@@ -52,7 +52,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: mocks.notesService,
-  onNoteCreated: (callback: EmptyHandler) => {
+  onNoteCreated: (callback: NoteHandler) => {
     mocks.handlers.created.push(callback)
     return vi.fn()
   },
@@ -68,7 +68,7 @@ vi.mock('@/services/notes-service', () => ({
     mocks.handlers.renamed.push(callback)
     return vi.fn()
   },
-  onNoteMoved: (callback: EmptyHandler) => {
+  onNoteMoved: (callback: NoteHandler) => {
     mocks.handlers.moved.push(callback)
     return vi.fn()
   },
@@ -211,11 +211,11 @@ describe('use-notes-query', () => {
     } satisfies NoteListResponse)
 
     const events = [
-      () => mocks.handlers.created[0](),
-      () => mocks.handlers.updated[0]({ id: 'n2' }),
+      () => mocks.handlers.created[0]({ id: 'n2', source: 'internal' }),
+      () => mocks.handlers.updated[0]({ id: 'n2', source: 'internal' }),
       () => mocks.handlers.renamed[0]({ id: 'n2' }),
-      () => mocks.handlers.moved[0](),
-      () => mocks.handlers.deleted[0]({ id: 'n2' })
+      () => mocks.handlers.moved[0]({ id: 'n2' }),
+      () => mocks.handlers.deleted[0]({ id: 'n2', source: 'internal' })
     ]
     for (const [i, fire] of events.entries()) {
       // Apart, so each event is the first of its own burst.
@@ -240,7 +240,7 @@ describe('use-notes-query', () => {
 
     // A folder rename sends one event per note it moved.
     await act(async () => {
-      for (let i = 0; i < 2500; i++) mocks.handlers.moved[0]()
+      for (let i = 0; i < 2500; i++) mocks.handlers.moved[0]({ id: `n${i}` })
     })
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(3))
     await act(async () => {
@@ -248,6 +248,139 @@ describe('use-notes-query', () => {
     })
     expect(mocks.notesService.list).toHaveBeenCalledTimes(3)
     expect(result.current.notes[0]?.title).toBe('Moved')
+  })
+
+  it('#5398: a bootstrap write-back stream refetches the lists by cost, not once per note', async () => {
+    vi.useFakeTimers()
+    try {
+      // Main answers with the vault as it is when the call lands, after the
+      // time a full listNotes takes on a large vault.
+      const LIST_MS = 400
+      let latest = 'First'
+      mocks.notesService.list.mockImplementation(() => {
+        const title = latest
+        return new Promise<NoteListResponse>((resolve) =>
+          setTimeout(
+            () => resolve({ notes: [listItem('n1', title)], total: 1, hasMore: false }),
+            LIST_MS
+          )
+        )
+      })
+      const tree = renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
+      renderHook(() => useNotesList({ sortBy: 'modified', sortOrder: 'desc' }), { wrapper })
+      await vi.advanceTimersByTimeAsync(LIST_MS)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(2)
+      const fireUpdated = (event: NoteEvent & { source: string }) => {
+        for (const handler of mocks.handlers.updated) handler(event)
+      }
+
+      // The settle phase writes back one body about every 250 ms.
+      const WRITE_BACKS = 1000
+      const GAP_MS = 250
+      for (let i = 0; i < WRITE_BACKS; i++) {
+        latest = `Body ${i}`
+        fireUpdated({ id: `n${i}`, changes: { content: latest }, source: 'sync' })
+        await vi.advanceTimersByTimeAsync(GAP_MS)
+      }
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      // Each refetch is followed by a rest of ten times its cost, capped at
+      // 2.5 s, and one refetch covers both mounted lists.
+      const rest = Math.min(2500, LIST_MS * 10)
+      const maxRounds = Math.ceil((WRITE_BACKS * GAP_MS) / (LIST_MS + rest)) + 2
+      const bootstrapCalls = mocks.notesService.list.mock.calls.length - 2
+      expect(bootstrapCalls).toBeLessThanOrEqual(maxRounds * 2)
+      // The lists end where an unbatched run ends.
+      expect(tree.result.current.notes[0]?.title).toBe(`Body ${WRITE_BACKS - 1}`)
+
+      // A single edit after the burst refreshes at once.
+      const before = mocks.notesService.list.mock.calls.length
+      latest = 'Edited'
+      fireUpdated({ id: 'n1', changes: { content: latest }, source: 'internal' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(before + 2)
+      await vi.advanceTimersByTimeAsync(LIST_MS + 10)
+      expect(tree.result.current.notes[0]?.title).toBe('Edited')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('#5398: a user edit or a journal write mid-rest shows within the burst window, however slow the list call', async () => {
+    vi.useFakeTimers()
+    try {
+      // A 3 s list call during a bootstrap earns a long rest after a sync
+      // write-back.
+      const LIST_MS = 3000
+      let latest = 'First'
+      mocks.notesService.list.mockImplementation(() => {
+        const title = latest
+        return new Promise<NoteListResponse>((resolve) =>
+          setTimeout(
+            () => resolve({ notes: [listItem('n1', title)], total: 1, hasMore: false }),
+            LIST_MS
+          )
+        )
+      })
+      const { result } = renderHook(() => useNotesList({ fields: 'tree', includeJournals: true }), {
+        wrapper
+      })
+      await vi.advanceTimersByTimeAsync(LIST_MS)
+      const fireUpdated = (event: NoteEvent & { source: string }) => {
+        for (const handler of mocks.handlers.updated) handler(event)
+      }
+
+      latest = 'Synced'
+      fireUpdated({ id: 'n1', changes: { content: latest }, source: 'sync' })
+      await vi.advanceTimersByTimeAsync(LIST_MS + 100)
+      expect(result.current.notes[0]?.title).toBe('Synced')
+
+      // Mid-rest, the user types: the list follows one burst window after the
+      // last refetch settled, plus one list call.
+      latest = 'Typed'
+      fireUpdated({ id: 'n1', changes: { content: latest }, source: 'internal' })
+      await vi.advanceTimersByTimeAsync(150 + LIST_MS + 10)
+      expect(result.current.notes[0]?.title).toBe('Typed')
+
+      // Journal events carry no source and are bounded the same way.
+      await vi.advanceTimersByTimeAsync(100)
+      latest = 'Journal'
+      mocks.handlers.journal[0]()
+      await vi.advanceTimersByTimeAsync(150 + LIST_MS + 10)
+      expect(result.current.notes[0]?.title).toBe('Journal')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('#5398: a list call that never settles does not freeze list refresh', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useNotesList(), { wrapper })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(1)
+      const fireUpdated = (event: NoteEvent & { source: string }) => {
+        for (const handler of mocks.handlers.updated) handler(event)
+      }
+
+      mocks.notesService.list.mockImplementationOnce(() => new Promise(() => {}))
+      fireUpdated({ id: 'n1', changes: { content: 'x' }, source: 'sync' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      mocks.notesService.list.mockResolvedValue({
+        notes: [listItem('n1', 'Recovered')],
+        total: 1,
+        hasMore: false
+      } satisfies NoteListResponse)
+      fireUpdated({ id: 'n1', changes: { content: 'y' }, source: 'internal' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(3)
+      expect(result.current.notes[0]?.title).toBe('Recovered')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('refetches a list that includes journal entries on journal events, and only that one', async () => {
@@ -352,7 +485,7 @@ describe('use-notes-query', () => {
       incoming: []
     })
     await act(async () => {
-      mocks.handlers.created.forEach((handler) => handler())
+      mocks.handlers.created.forEach((handler) => handler({ id: 'n2', source: 'internal' }))
     })
 
     await waitFor(() =>
