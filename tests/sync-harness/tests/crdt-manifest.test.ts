@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { BOOTSTRAP_TOKEN_HEADER, BootstrapOpenResponseSchema } from '@memry/contracts/bootstrap-api'
 import { CrdtManifestResponseSchema, type CrdtManifestDocument } from '@memry/contracts/sync-api'
 import { SimulatedServer } from '../src/simulated-server.js'
 import { SimulatedDevice } from '../src/simulated-device.js'
@@ -26,20 +27,42 @@ const call = async (identity: DeviceIdentity, path: string, body?: unknown): Pro
   return res.json()
 }
 
+// Sends `count` manifest reads at once, so the burst sits well inside the
+// limiter's 60 s window, and tallies the answers by status.
+const manifestBurst = async (
+  identity: DeviceIdentity,
+  count: number,
+  headers: Record<string, string> = {}
+): Promise<Record<number, number>> => {
+  const statuses = await Promise.all(
+    Array.from({ length: count }, async () => {
+      const res = await server.fetch('http://localhost/sync/crdt/manifest?limit=1', {
+        headers: { Authorization: `Bearer ${identity.accessToken}`, ...headers }
+      })
+      await res.body?.cancel()
+      return res.status
+    })
+  )
+  const tally: Record<number, number> = {}
+  for (const status of statuses) tally[status] = (tally[status] ?? 0) + 1
+  return tally
+}
+
 const bytes = (...values: number[]): string => Buffer.from(values).toString('base64')
 
 describe('Sync Harness — CRDT body manifest (#5232)', () => {
   let reader: DeviceIdentity
+  let vaultKey: Uint8Array
   const noteUpdates = crypto.randomUUID()
   const noteSnapshot = crypto.randomUUID()
   const notePurged = crypto.randomUUID()
 
   beforeAll(async () => {
     await initCrypto()
-    await server.start()
+    await server.start({ bindings: { BOOTSTRAP_SESSION_HMAC_KEY: 'harness-bootstrap-key' } })
     await server.truncateTables()
 
-    const vaultKey = generateVaultKey()
+    vaultKey = generateVaultKey()
     const authorId = await createTestDevice(server, { vaultKey })
     reader = await createTestDevice(server, { userId: authorId.userId, vaultKey })
     const author = new SimulatedDevice(authorId, fetchFn)
@@ -112,5 +135,21 @@ describe('Sync Harness — CRDT body manifest (#5232)', () => {
       snapshot: null,
       maxSequenceNum: 0
     })
+  })
+
+  // #5269: a 13,527-document vault reads in 14 pages, so the plain 30/min ceiling
+  // only binds on a vault past 30,000 documents or a client that retries; a
+  // bootstrap session raises it x3 (BOOTSTRAP_ELEVATION_MULTIPLIERS). Each
+  // device has its own bucket (keyed by device id).
+  it('lets a bootstrap session read 90 manifest pages a minute, three times the plain 30', async () => {
+    const plain = await createTestDevice(server, { userId: reader.userId, vaultKey })
+    expect(await manifestBurst(plain, 31)).toEqual({ 200: 30, 429: 1 })
+
+    const elevated = await createTestDevice(server, { userId: reader.userId, vaultKey })
+    const { session } = BootstrapOpenResponseSchema.parse(
+      await call(elevated, '/sync/bootstrap', {})
+    )
+    const token = { [BOOTSTRAP_TOKEN_HEADER]: session.token }
+    expect(await manifestBurst(elevated, 91, token)).toEqual({ 200: 90, 429: 1 })
   })
 })
