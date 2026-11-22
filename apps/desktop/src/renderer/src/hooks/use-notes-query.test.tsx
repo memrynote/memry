@@ -250,6 +250,61 @@ describe('use-notes-query', () => {
     expect(result.current.notes[0]?.title).toBe('Moved')
   })
 
+  it('#5398: a bootstrap write-back stream refetches the lists by cost, not once per note', async () => {
+    vi.useFakeTimers()
+    try {
+      // Main answers with the vault as it is when the call lands, after the
+      // time a full listNotes takes on a large vault.
+      const LIST_MS = 400
+      let latest = 'First'
+      mocks.notesService.list.mockImplementation(() => {
+        const title = latest
+        return new Promise<NoteListResponse>((resolve) =>
+          setTimeout(
+            () => resolve({ notes: [listItem('n1', title)], total: 1, hasMore: false }),
+            LIST_MS
+          )
+        )
+      })
+      const tree = renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
+      renderHook(() => useNotesList({ sortBy: 'modified', sortOrder: 'desc' }), { wrapper })
+      await vi.advanceTimersByTimeAsync(LIST_MS)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(2)
+      const fireUpdated = (event: NoteEvent & { source: string }) => {
+        for (const handler of mocks.handlers.updated) handler(event)
+      }
+
+      // The settle phase writes back one body about every 250 ms.
+      const WRITE_BACKS = 1000
+      const GAP_MS = 250
+      for (let i = 0; i < WRITE_BACKS; i++) {
+        latest = `Body ${i}`
+        fireUpdated({ id: `n${i}`, changes: { content: latest }, source: 'sync' })
+        await vi.advanceTimersByTimeAsync(GAP_MS)
+      }
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      // Each refetch is followed by a rest of ten times its cost, and one
+      // refetch covers both mounted lists.
+      const maxRounds = Math.ceil((WRITE_BACKS * GAP_MS) / (LIST_MS * 11)) + 2
+      const bootstrapCalls = mocks.notesService.list.mock.calls.length - 2
+      expect(bootstrapCalls).toBeLessThanOrEqual(maxRounds * 2)
+      // The lists end where an unbatched run ends.
+      expect(tree.result.current.notes[0]?.title).toBe(`Body ${WRITE_BACKS - 1}`)
+
+      // A single edit after the burst refreshes at once.
+      const before = mocks.notesService.list.mock.calls.length
+      latest = 'Edited'
+      fireUpdated({ id: 'n1', changes: { content: latest }, source: 'internal' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.list).toHaveBeenCalledTimes(before + 2)
+      await vi.advanceTimersByTimeAsync(LIST_MS + 10)
+      expect(tree.result.current.notes[0]?.title).toBe('Edited')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('refetches a list that includes journal entries on journal events, and only that one', async () => {
     renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(1))

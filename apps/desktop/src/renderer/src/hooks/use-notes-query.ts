@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type {
   FolderInfo,
   Note,
@@ -51,6 +51,103 @@ const INDEX_PROGRESS_INVALIDATE_MS = 2000
  * kept main busy for minutes after the move itself was done.
  */
 const NOTE_EVENT_INVALIDATE_MS = 250
+
+/**
+ * How long the lists rest after a refetch, as a multiple of what that refetch
+ * took. A bootstrap writes back ~10k bodies about 250 ms apart, so the fixed
+ * window above alone let nearly every write-back rerun the whole list
+ * (listNotes plus getTagsForNotes: 264 s of SQLite in a 15 min profile,
+ * #5398). Resting by cost keeps list refetches to about a tenth of main's time
+ * however fast the events come, and leaves a small vault's lists as fast as
+ * before.
+ */
+const LIST_REFETCH_REST_FACTOR = 10
+
+interface NoteListRefresher {
+  holders: number
+  request: () => void
+  dispose: () => void
+}
+
+const noteListRefreshers = new WeakMap<QueryClient, NoteListRefresher>()
+
+/**
+ * The one note-event subscription per query client that refetches the note
+ * lists, shared by every mounted `useNotesList`: each hook used to subscribe
+ * and invalidate every list on its own, so N mounted lists refetched N times
+ * per event. A request with the lists idle refetches at once, so a single edit
+ * shows immediately. A request while a refetch runs or rests is folded into
+ * one refetch after the rest, which starts after the last event and so lands
+ * the same list an unbatched run would.
+ */
+function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
+  let refetching = false
+  let resting: ReturnType<typeof setTimeout> | null = null
+  let pending = false
+  let disposed = false
+
+  const refetch = (): void => {
+    pending = false
+    refetching = true
+    const startedAt = Date.now()
+    void queryClient.invalidateQueries({ queryKey: notesKeys.lists() }).finally(() => {
+      refetching = false
+      if (disposed) return
+      const rest = Math.max(
+        NOTE_EVENT_INVALIDATE_MS,
+        (Date.now() - startedAt) * LIST_REFETCH_REST_FACTOR
+      )
+      resting = setTimeout(() => {
+        resting = null
+        if (pending) refetch()
+      }, rest)
+    })
+  }
+  const request = (): void => {
+    if (refetching || resting) {
+      pending = true
+      return
+    }
+    refetch()
+  }
+  const unsubscribers = [
+    onNoteCreated(request),
+    onNoteDeleted(request),
+    onNoteUpdated(request),
+    onNoteRenamed(request),
+    onNoteMoved(request)
+  ]
+  return {
+    holders: 0,
+    request,
+    dispose: () => {
+      disposed = true
+      if (resting) clearTimeout(resting)
+      for (const unsubscribe of unsubscribers) unsubscribe()
+    }
+  }
+}
+
+function holdNoteListRefresher(queryClient: QueryClient): {
+  request: () => void
+  release: () => void
+} {
+  let refresher = noteListRefreshers.get(queryClient)
+  if (!refresher) {
+    refresher = createNoteListRefresher(queryClient)
+    noteListRefreshers.set(queryClient, refresher)
+  }
+  const held = refresher
+  held.holders++
+  return {
+    request: held.request,
+    release: () => {
+      if (--held.holders > 0) return
+      held.dispose()
+      noteListRefreshers.delete(queryClient)
+    }
+  }
+}
 
 // =============================================================================
 // Query Keys
@@ -257,29 +354,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    // The first event refetches at once; the rest of a burst waits for the
-    // window and is covered by one more refetch at its end.
-    let burstTimer: ReturnType<typeof setTimeout> | null = null
-    let burstPending = false
-    const invalidateLists = (): void => {
-      if (burstTimer) {
-        burstPending = true
-        return
-      }
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-      burstTimer = setTimeout(() => {
-        burstTimer = null
-        if (!burstPending) return
-        burstPending = false
-        invalidateLists()
-      }, NOTE_EVENT_INVALIDATE_MS)
-    }
-
-    const unsubCreated = onNoteCreated(invalidateLists)
-    const unsubDeleted = onNoteDeleted(invalidateLists)
-    const unsubUpdated = onNoteUpdated(invalidateLists)
-    const unsubRenamed = onNoteRenamed(invalidateLists)
-    const unsubMoved = onNoteMoved(invalidateLists)
+    const { release } = holdNoteListRefresher(queryClient)
 
     // The background index build (vault open on a not-yet-indexed vault) writes
     // notes straight into the cache without per-note events, so the list would
@@ -294,32 +369,27 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     })
 
     return () => {
-      if (burstTimer) clearTimeout(burstTimer)
-      unsubCreated()
-      unsubUpdated()
-      unsubDeleted()
-      unsubRenamed()
-      unsubMoved()
+      release()
       unsubIndexProgress()
     }
   }, [queryClient])
 
   // Journal entries are listed only on request (the sidebar, when the journal
   // folder is shown), and the Journal page's writes emit journal events, not
-  // note events.
+  // note events. A bootstrap writes journal bodies back one by one too, so they
+  // go through the same refresher.
   const includeJournals = listOptions.includeJournals === true
   useEffect(() => {
     if (!includeJournals) return undefined
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    }
+    const { request, release } = holdNoteListRefresher(queryClient)
     const unsubscribers = [
-      onJournalEntryCreated(invalidate),
-      onJournalEntryUpdated(invalidate),
-      onJournalEntryDeleted(invalidate)
+      onJournalEntryCreated(request),
+      onJournalEntryUpdated(request),
+      onJournalEntryDeleted(request)
     ]
     return () => {
       for (const unsubscribe of unsubscribers) unsubscribe()
+      release()
     }
   }, [includeJournals, queryClient])
 
