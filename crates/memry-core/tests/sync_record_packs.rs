@@ -849,6 +849,7 @@ async fn an_omitted_row_with_a_local_change_outranks_its_attested_marker() {
 }
 
 /// Whether the `item_type` row `item_id` is live with a payload.
+#[cfg(feature = "markdown")]
 fn live_row(db: &Db, item_type: &str, item_id: &str) -> bool {
     let (item_type, item_id) = (item_type.to_owned(), item_id.to_owned());
     db.call_blocking(move |conn| {
