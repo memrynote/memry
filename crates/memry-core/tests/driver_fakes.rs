@@ -84,6 +84,18 @@ impl FakeServer {
         self.seal(item_type, id, json!({}), Some(1_760_000_000_000));
     }
 
+    /// Holds `id` deleted by `signer`, whose key is seeded with `seed` and
+    /// which the directory lists only once [`FakeServer::add_device`] adds it.
+    #[cfg(feature = "markdown")]
+    pub fn delete_by(&self, item_type: &str, id: &str, signer: &str, seed: u8) {
+        let (_, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
+        let signer = Signer {
+            id: signer,
+            signing_key: &secret,
+        };
+        self.seal_by(item_type, id, json!({}), Some(1_760_000_000_000), signer);
+    }
+
     /// Queues one feed page listing `ids` (with the types the server holds).
     pub fn page(&self, ids: &[&str], next_cursor: &str) {
         let records = self.records.lock().unwrap();
@@ -193,8 +205,8 @@ impl FakeServer {
             .collect()
     }
 
-    /// `(type, id, operation)` of every pushed record.
-    pub fn pushed(&self) -> Vec<(String, String, String)> {
+    /// Every pushed record, as sent.
+    pub fn pushed_records(&self) -> Vec<Json> {
         self.calls_to("/sync/push")
             .iter()
             .flat_map(|call| {
@@ -203,6 +215,13 @@ impl FakeServer {
                     .cloned()
                     .unwrap_or_default()
             })
+            .collect()
+    }
+
+    /// `(type, id, operation)` of every pushed record.
+    pub fn pushed(&self) -> Vec<(String, String, String)> {
+        self.pushed_records()
+            .into_iter()
             .map(|item| {
                 let field = |key: &str| item[key].as_str().unwrap_or_default().to_owned();
                 (field("type"), field("id"), field("operation"))
@@ -221,6 +240,21 @@ impl FakeServer {
     }
 
     fn seal(&self, item_type: &str, id: &str, payload: Json, deleted_at: Option<i64>) {
+        let peer = Signer {
+            id: PEER,
+            signing_key: &self.peer_secret,
+        };
+        self.seal_by(item_type, id, payload, deleted_at, peer);
+    }
+
+    fn seal_by(
+        &self,
+        item_type: &str,
+        id: &str,
+        payload: Json,
+        deleted_at: Option<i64>,
+        signer: Signer<'_>,
+    ) {
         let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
         let content = payload.to_string().into_bytes();
         let sealed = envelope::encrypt(
@@ -234,8 +268,8 @@ impl FakeServer {
                 },
                 content: &content,
                 vault_key: &vault_key,
-                signing_secret_key: &self.peer_secret,
-                signer_device_id: PEER,
+                signing_secret_key: signer.signing_key,
+                signer_device_id: signer.id,
                 clock: None,
                 state_vector: None,
                 deleted_at,
@@ -348,6 +382,12 @@ impl FakeServer {
         };
         (200, body)
     }
+}
+
+/// The device a sealed record names, and its signing key.
+struct Signer<'a> {
+    id: &'a str,
+    signing_key: &'a [u8],
 }
 
 /// `https://host/sync/changes?limit=500` -> `/sync/changes`.

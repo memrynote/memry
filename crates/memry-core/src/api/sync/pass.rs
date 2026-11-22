@@ -40,6 +40,7 @@ use crate::sync::engine::seed_at_head;
 use crate::sync::journal_day_merge;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
+use crate::sync::unknown_signer;
 
 /// Pages one pass may pull before it stops and lets the next pass continue.
 const MAX_PULL_PAGES: u32 = 200;
@@ -141,7 +142,7 @@ impl VaultSync {
         let cipher = self.cipher().await?;
         let http = self.session.http();
 
-        let pulled = PullLoop::new(
+        let pull = PullLoop::new(
             Arc::clone(&http),
             self.db.clone(),
             self.declaration.clone(),
@@ -150,9 +151,11 @@ impl VaultSync {
         .with_vault(&self.vault_id)
         .with_clock_device(&self.session.device_id()?)
         .with_at_rest_key(self.at_rest.clone())
-        .with_note_bodies(cipher.clone())
-        .run(MAX_PULL_PAGES)
-        .await?;
+        .with_note_bodies(cipher.clone());
+        // Records an earlier pass refused for a signer its directory lacked,
+        // re-pulled over this pass's directory before the feed (#5413).
+        unknown_signer::retry(&self.db, &pull).await?;
+        let pulled = pull.run(MAX_PULL_PAGES).await?;
         // The unclocked Inbox becomes this device's record only once the feed is read to its
         // head, so an Inbox another device pushed first has replaced it (#3538).
         let device_id = self.session.device_id()?;
