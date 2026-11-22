@@ -131,15 +131,13 @@ pub(crate) struct ApplyTotals {
 /// asking for them.
 pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
-/// Applies one page's decoded items, in the order they were handed over, plus
-/// the ids §5.12.1 leaves with no type on the wire.
+/// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy is clocked under.
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
 ) -> Result<ApplyTotals, StorageError> {
@@ -201,9 +199,6 @@ pub(crate) fn apply_page(
                 }
             }
         }
-    }
-    for item_id in untyped {
-        apply_untyped_tombstone(conn, &item_id, now_ms, clock_device, &mut totals)?;
     }
     Ok(totals)
 }
@@ -284,7 +279,7 @@ fn apply_tombstone(
     // Sent, the queued edit would undelete the item (VERIFY-5426). After
     // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
     // clock is after the delete returned above, still queued.
-    outbox::drop_upserts(&txn, Some(item_type), item_id)?;
+    outbox::drop_upserts(&txn, item_type, item_id)?;
     if item_type == journal::ITEM_TYPE {
         journal_day_merge::mark_deleted(&txn, item_id)?;
         // A live foreign row keeps its row and body for the drain (#2984).
@@ -332,76 +327,6 @@ fn live_clock_is_after(
         .filter(|_| row.deleted_at.is_none())
         .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok());
     Ok(local.is_some_and(|local| compare(&local, tombstone) == ClockOrder::After))
-}
-
-/// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
-///
-/// The untyped delete covers *every* row under that id, whatever its type, so
-/// the projection half reads the types this device actually stored
-/// ([`store::item_types_for`]) and marks the tables each one names. The wire
-/// carried no type and a client MUST NOT invent one from the id's shape, so
-/// the local rows are the only honest source for that list.
-///
-/// The purge runs **unconditionally** here, and that is not the id-shape
-/// inference §5.12.1 forbids. The typed arm above has to be careful because a
-/// tag named like a note id would otherwise take the note's body with it; here
-/// there is no such case to be careful about, because every row under the id —
-/// the note's included — is being deleted. Body rows under a purely local
-/// document this device never got a record for go with it, which is the same
-/// rule read from the other side (§5.12: a delete for an unseen item is still
-/// recorded).
-fn apply_untyped_tombstone(
-    conn: &Connection,
-    item_id: &str,
-    now_ms: i64,
-    clock_device: Option<&str>,
-    totals: &mut ApplyTotals,
-) -> Result<(), StorageError> {
-    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-    // Never the settings row (#5433): store and outbox skip it too.
-    let mut item_types = store::item_types_for(&txn, item_id)?;
-    item_types.retain(|t| t != settings::SETTINGS_ITEM_TYPE);
-    // The purge below drops the queued body updates, so unseen text is kept
-    // first, as the typed arm keeps it. No clock or body vector on the wire,
-    // so the queue (rule 1) decides.
-    for item_type in item_types
-        .iter()
-        .filter(|t| DOCUMENT_TYPES.contains(&t.as_str()))
-    {
-        delete_keep::keep(
-            &txn,
-            item_type,
-            item_id,
-            now_ms,
-            None,
-            None,
-            clock_device,
-            now_ms,
-        )?;
-    }
-    store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
-    outbox::drop_upserts(&txn, None, item_id)?;
-    journal_day_merge::mark_deleted(&txn, item_id)?;
-    if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
-        txn.commit().map_err(sqlite_failed)?;
-        totals.deleted += 1;
-        return Ok(());
-    }
-    for item_type in &item_types {
-        projectors::delete(&txn, item_type, item_id, now_ms)?;
-    }
-    body_debt::settle(&txn, item_id)?;
-    // Unconditional, like the purge: every row under the id is being deleted.
-    for item_type in DOCUMENT_TYPES {
-        outbox::drop_body_updates(&txn, item_type, item_id)?;
-    }
-    let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
-    txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
-    if purged > 0 {
-        totals.purged_documents.push(item_id.to_owned());
-    }
-    Ok(())
 }
 
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {

@@ -17,6 +17,11 @@ export interface SyncEngineDeps {
   /** The session can never refresh again without a new sign-in; see `token-manager.hasSessionEnded`. */
   hasSessionEnded?: () => boolean
   getVaultKey: () => Promise<Uint8Array | null>
+  /**
+   * A vault key read found the key after one found none; see
+   * `CrdtSyncCoordinator.recordVaultKeyRead`.
+   */
+  onVaultKeyReadable?: () => void
   getSigningKeys: () => Promise<{
     secretKey: Uint8Array
     publicKey: Uint8Array

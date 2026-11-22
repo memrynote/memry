@@ -579,7 +579,7 @@ blob is **one sync item** with `itemId = 'synced_settings'`
 **The settings item is never deleted.** A receiver MUST skip a pulled
 `settings` tombstone: the item stays live, its queued edit stays queued, and
 later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
-`crates/memry-core/src/sync/apply.rs:255-263`, #5433). A core that marked it
+`crates/memry-core/src/sync/apply.rs:250-258`, #5433). A core that marked it
 deleted on an earlier build clears that delete on the item's next merged write
 (`crates/memry-core/src/domain/settings.rs:217-225`).
 

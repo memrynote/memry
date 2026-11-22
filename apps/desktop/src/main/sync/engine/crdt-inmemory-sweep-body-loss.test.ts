@@ -506,7 +506,9 @@ describe('CrdtProvider with no store (#2536)', () => {
         crdtProvider: provider,
         getAccessToken: async () => (session.token ? 'token' : null),
         hasSessionEnded: () => session.ended,
-        getVaultKey: async () => (session.vaultKey ? new Uint8Array(32) : null)
+        // `SyncEngine` routes every vault key read to the coordinator.
+        getVaultKey: async () =>
+          coordinator.recordVaultKeyRead(session.vaultKey ? new Uint8Array(32) : null)
       },
       abortController: new AbortController()
     } as unknown as SyncContext

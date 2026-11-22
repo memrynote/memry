@@ -16,7 +16,7 @@
 //! §7.15's first two consequences are `sync::apply`'s as of this change, and
 //! the tripwire that used to pin their absence is gone with them. The rest of
 //! §7.15 — the ids whose resident `Y.Doc` a caller must still release — is in
-//! `tests/tombstone_purge.rs` along with the untyped delete and the rollback.
+//! `tests/tombstone_purge.rs` along with the bare deleted id and the rollback.
 //!
 //! ## The two tiers, and why the answer is deterministic at all
 //!

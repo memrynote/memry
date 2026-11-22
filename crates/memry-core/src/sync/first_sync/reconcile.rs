@@ -172,7 +172,7 @@ impl FirstSync {
                         unanswered.contains_key(&key) && named.insert(key)
                     })
                     .collect();
-                let totals = apply::apply_page(&txn, gone, Vec::new(), now, None)?;
+                let totals = apply::apply_page(&txn, gone, now, None)?;
                 let mut remembered = HashSet::new();
                 for (item_type, item_id, marker) in &verdicts.unattested {
                     let key = (item_type.clone(), item_id.clone());

@@ -323,8 +323,6 @@ describe('CrdtSyncCoordinator', () => {
       signerDeviceId: 'device-a'
     })
     postToServerMock
-      // The first pass's probe.
-      .mockResolvedValueOnce({ notes: { 'note-1': { updates: [], hasMore: false } } })
       .mockResolvedValueOnce({
         notes: {
           'note-1': {
@@ -386,23 +384,24 @@ describe('CrdtSyncCoordinator', () => {
       1,
       '/sync/crdt/updates/batch',
       {
-        notes: [{ noteId: 'note-1', since: 0 }],
-        limit: 1
-      },
-      'token-1'
-    )
-    expect(postToServerMock).toHaveBeenNthCalledWith(
-      2,
-      '/sync/crdt/updates/batch',
-      {
         notes: [{ noteId: 'note-1', since: 2 }],
         limit: 100
       },
       'token-1'
     )
-    // The probe came back without `snapshotMeta`, so the second pass sends no
-    // probe, fetches the baseline exactly as before, and the apply pull resumes
-    // from the highest applied sequence.
+    // The second pass opens with a probe, and the sequence it carries is the
+    // same highest-applied one — this is where the carry-over is now visible.
+    expect(postToServerMock).toHaveBeenNthCalledWith(
+      2,
+      '/sync/crdt/updates/batch',
+      {
+        notes: [{ noteId: 'note-1', since: 6 }],
+        limit: 1
+      },
+      'token-1'
+    )
+    // The probe came back without `snapshotMeta`, so the baseline is fetched
+    // exactly as before and the apply pull resumes from the same sequence.
     expect(postToServerMock).toHaveBeenNthCalledWith(
       3,
       '/sync/crdt/updates/batch',
@@ -832,17 +831,55 @@ describe('CrdtSyncCoordinator', () => {
     const { ctx } = createBatchContext()
     const abort = new DOMException('The operation was aborted', 'AbortError')
     fetchCrdtSnapshotMock.mockRejectedValueOnce(abort)
-    postToServerMock.mockResolvedValue({ notes: {} })
     const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
 
     // #when
     await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
 
     // #then an abort must propagate, not be swallowed as a skipped note; the pass
-    // stops after the probe, before pulling any updates.
-    expect(
-      postToServerMock.mock.calls.map(([, body]) => (body as { limit: number }).limit)
-    ).toEqual([1])
+    // stops before pulling any updates.
+    expect(postToServerMock).not.toHaveBeenCalled()
+  })
+
+  describe('#given a cold chunk (no note has a watermark) (#5247 C1.1)', () => {
+    const probes = (): number =>
+      postToServerMock.mock.calls.filter(
+        ([path, body]) =>
+          path === '/sync/crdt/updates/batch' && (body as { limit: number }).limit === 1
+      ).length
+    const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `note-${i}`)
+
+    beforeEach(() => {
+      postToServerMock.mockResolvedValue({ notes: {}, snapshotMeta: {} })
+    })
+
+    it('#then a small one outside a fullSync spends no probe POST', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(19), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(0)
+    })
+
+    it('#then a small one during a fullSync is still probed', async () => {
+      const { ctx } = createBatchContext()
+      ctx.fullSyncActive = true
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(3), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(1)
+    })
+
+    it('#then one of 20 notes is probed outside a fullSync', async () => {
+      const { ctx } = createBatchContext()
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      await coordinator.applyCrdtBatch(ids(20), 'token-1', new Uint8Array([4]))
+
+      expect(probes()).toBe(1)
+    })
   })
 
   it('splits a pass larger than the provider cache so its docs survive the pull', async () => {
@@ -885,8 +922,7 @@ describe('CrdtSyncCoordinator', () => {
     const batched = postToServerMock.mock.calls.map(([, body]: [string, unknown]) =>
       (body as { notes: Array<{ noteId: string }> }).notes.map((note) => note.noteId)
     )
-    // The probe opens no doc, so it names all five.
-    expect(batched).toEqual([['n1', 'n2', 'n3', 'n4', 'n5'], ['n1', 'n2'], ['n3', 'n4'], ['n5']])
+    expect(batched).toEqual([['n1', 'n2'], ['n3', 'n4'], ['n5']])
   })
 
   it('flags a note whose single-note pass skipped an update it could not verify', async () => {
@@ -1495,7 +1531,6 @@ describe('CrdtSyncCoordinator', () => {
       const { ctx } = createBatchContext()
       const { SyncServerError } = await import('@memry/sync-client/http-errors')
       fetchCrdtSnapshotMock.mockRejectedValue(new SyncServerError('Internal error', 500))
-      clean('note-1')
       const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
       const onDeferred = vi.fn()
       coordinator.onDeferred = onDeferred
@@ -1532,7 +1567,6 @@ describe('CrdtSyncCoordinator', () => {
       fetchCrdtSnapshotMock.mockRejectedValue(
         new DeadLetterError(new SyncServerError('Internal error', 503), 4)
       )
-      clean('note-1')
       const coordinator = new CrdtSyncCoordinator(ctx, vi.fn(), () => true, store())
 
       await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))

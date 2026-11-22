@@ -143,14 +143,7 @@ impl PullLoop {
             .db
             .call(move |conn| {
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-                let totals = apply_items(
-                    &txn,
-                    pending,
-                    Vec::new(),
-                    false,
-                    now,
-                    clock_device.as_deref(),
-                )?;
+                let totals = apply_items(&txn, pending, false, now, clock_device.as_deref())?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok(totals)
             })

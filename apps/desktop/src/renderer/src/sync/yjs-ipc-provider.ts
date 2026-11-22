@@ -160,7 +160,8 @@ export class YjsIpcProvider extends Observable<string> {
   /**
    * What `connect()` waits on before it binds (#5290): main's doc waits for
    * the server body (`merging`), or main pushed a reason it cannot merge for
-   * now (`crdt:doc-wait`: `stuck`, `signed-out`). Reported to `YjsIpcProviderConfig.onRemoteWait` when it changes.
+   * now (`crdt:doc-wait`: `stuck`, `signed-out`, `vault-locked`). Reported to
+   * `YjsIpcProviderConfig.onRemoteWait` when it changes.
    */
   get remoteWait(): RemoteBodyWait | null {
     return this.remoteWaitState
