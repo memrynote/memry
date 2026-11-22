@@ -323,6 +323,39 @@ async fn a_fresh_vault_runs_the_first_sync_with_its_progress_then_passes() {
     );
 }
 
+/// The first sync holds the vault's first-sync flag while it runs, and lets go when it ends,
+/// a failed one too: the note index defers its search reindex only meanwhile (#5409).
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_holds_the_first_sync_flag_only_while_it_runs() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::Api {
+        source: ApiError::Status {
+            status: 503,
+            code: None,
+            message: "unavailable".into(),
+        },
+    });
+    let supervisor = rig.start().await;
+    assert_eq!(*lock(&driver.held_in_first_sync), [true]);
+    assert!(
+        !driver.first_sync_running.is_running(),
+        "a failed first sync lets go"
+    );
+
+    let (_, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert_eq!(*lock(&driver.held_in_first_sync), [true, true]);
+    assert!(
+        !driver.fresh.load(Ordering::SeqCst),
+        "the second first sync finished"
+    );
+    assert!(
+        !driver.first_sync_running.is_running(),
+        "a finished first sync lets go"
+    );
+}
+
 /// A pass whose body step stopped at its request budget is followed by the next pass at once,
 /// not at the 60 s tick, until a pass leaves no body due (#5235).
 #[tokio::test(start_paused = true)]
