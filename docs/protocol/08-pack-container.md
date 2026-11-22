@@ -1057,7 +1057,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   rewrites before the listing and plans around them (`planRollup`,
   `apps/sync-server/src/services/pack-rollup.ts:89`), and its swap batch
   inserts nothing when either of two guards fails (`swapListing`,
-  `apps/sync-server/src/services/pack-rollup.ts:555-572`). The pending-set
+  `apps/sync-server/src/services/pack-rollup.ts:555-574`). The pending-set
   guard fails when a rewrite the plan did not exclude is pending. The
   listing-overlap guard fails when another listed pack of the kind starts
   inside the run's range; for `crdt_snapshot` the range's last second is open,
@@ -1106,7 +1106,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
      pass retries any delete that failed
      (`apps/sync-server/src/services/pack-message-passes.ts:50`, `:54`, `:64`).
      A rollup in that message lists no range twice: the pending-set and
-     listing-overlap guards fail its swap (`pack-rollup.ts:555-572`).
+     listing-overlap guards fail its swap (`pack-rollup.ts:555-574`).
   3. A compaction message whose last pass leaves objects due or rewrites
      pending throws (`apps/sync-server/src/services/pack-message-passes.ts:90-99`).
      It reads the pending rewrites again before that decision (`:73`), because
