@@ -631,7 +631,7 @@ below its cursor. A slice that stops on a key problem refuses the run.
 killed before the cursor. `task:a` is deleted on another device, and its tombstone is shed to a
 purged-tombstone marker. Run 2 starts from cursor 0, and a pull from 0 skips markers (#2302), so
 `task:a` would stay live here forever. To catch this, before the first slice the pull writes every
-row it applies or pulls by id, with the cursor of the write it holds, to `sync_state` key
+live row it applies or pulls by id, with the cursor of the write it holds, to `sync_state` key
 `recordPacksApplied` (`RECORD_PACKS_APPLIED`, line 185). While that key exists, every pull runs
 rule 2 before any feed page (`pullRecords`, line 113), even a run with no pack plan:
 
@@ -640,7 +640,8 @@ rule 2 before any feed page (`pullRecords`, line 113), even a run with no pack p
   `engine/pack-row-modified.ts:33`). A queued write, this device's id in the row's clock, or no
   clock keeps the row out of the pull.
 - Only the answer removes the row: a delete that verifies, or a marker whose delete attestation
-  verifies and whose cursor is past the held cursor (`markerNotPastHeld`, line 90). A marker at or
+  verifies and whose cursor is past the held cursor (`markerNotPastHeld`,
+  `engine/packed-record-apply.ts:90`). A marker at or
   below the held cursor says nothing about that write.
 - An unanswered request (failed HTTP, unreadable response, cooldown) is not silence. The by-id
   pull runs with `requireAnswers`, lifts the refetch cooldown for those refs, and returns false
@@ -649,8 +650,8 @@ rule 2 before any feed page (`pullRecords`, line 113), even a run with no pack p
 - A row the server answered with nothing that removes it stays live and is added to the durable
   set `recordPacksUnresolved` (`RECORD_PACKS_UNRESOLVED`, `engine/pack-unresolved.ts`).
 
-The pull deletes `recordPacksApplied` only after rule 2 ran and `LAST_CURSOR` is past 0 (line
-136). From there the feed serves every later marker.
+The pull deletes `recordPacksApplied` only after rule 2 ran and `LAST_CURSOR` is past 0
+(`engine/packed-record-apply.ts:136`). From there the feed serves every later marker.
 
 **Unresolved rows and the manifest check.** The manifest check re-uploads a local row the server
 manifest omits. For an unresolved row that would be wrong: its absence suggests a delete this
@@ -680,7 +681,7 @@ these parts dominated, and each now has a bound:
 - **Folder list.** The renderer used to re-walk every vault directory once per note the bootstrap
   created. The folder query now shares one coalesced refresher per query client, like the note
   lists (`renderer/src/hooks/use-notes-query.ts:94-238`): sync events fold into one refetch after
-  a rest; a move, rename or folder-config change refetches at once.
+  a rest; a move, rename or folder-config change refetches without the long rest.
 
 ### Failure modes
 
