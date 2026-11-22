@@ -3,6 +3,7 @@ import { createLogger } from '../lib/logger'
 import type { Guard } from './pack-index-write'
 import { rewritePurgedPacks } from './pack-purge-rewrite'
 import { REWRITE_PENDING, deleteReplacedPackObjects, packKindReset } from './pack-replaced-objects'
+import { recordKey, unlistRecordPacks } from './record-pack-purge'
 
 const logger = createLogger('DocumentBodyPurge')
 
@@ -20,7 +21,7 @@ export const DEAD = `EXISTS (SELECT 1 FROM sync_items r WHERE r.user_id = ? AND 
 
 const BODY_ROWS = 'user_id = ? AND vault_id = ? AND note_id = ?'
 
-// Sixteen statements per document, one db.batch per chunk.
+// Sixteen statements per document and seven per chunk, one db.batch per chunk.
 const PURGE_CHUNK = 20
 
 const BODY_KINDS = ['crdt_update', 'crdt_snapshot'] as const
@@ -64,6 +65,13 @@ const HOLDS = `documents IS NOT NULL
  * - every replaced object of the kind, which may hold the body, is made due
  *   at once and deleted by the replaced-object pass before this returns.
  *
+ * Record packs hold older versions of the document's record (#5247): every
+ * listed record pack whose `documents` names it leaves the listing as a
+ * pending rewrite, which keeps only current entries, the tombstone among them
+ * (record-pack-purge.ts). Every replaced record object is made due at once.
+ * No DEAD recheck: the rewrite keeps every current entry, so a re-create
+ * loses nothing.
+ *
  * Packs are a derived cache, so a dropped pack costs bootstrap speed until the
  * rebuild, never data.
  *
@@ -92,7 +100,11 @@ export const purgeDeletedDocumentBodies = async (
   let due = false
   let rewrite = false
   for (let i = 0; i < ids.length; i += PURGE_CHUNK) {
-    const statements = ids.slice(i, i + PURGE_CHUNK).flatMap((noteId) => {
+    const chunk = ids.slice(i, i + PURGE_CHUNK)
+    const recordKeys = chunk.flatMap((noteId) =>
+      [...DOCUMENT_ITEM_TYPES].map((type) => recordKey(type, noteId))
+    )
+    const statements = chunk.flatMap((noteId) => {
       const body = [userId, vaultId, noteId]
       const dead = [userId, vaultId, noteId, userId, vaultId, noteId]
       // The rows a kind's packs may hold, read before the row deletes below.
@@ -182,6 +194,17 @@ export const purgeDeletedDocumentBodies = async (
           .bind(...body, ...dead)
       ]
     })
+    statements.push(
+      db
+        .prepare(
+          `UPDATE pack_replaced_objects SET removed_at = 0
+           WHERE user_id = ? AND vault_id = ? AND instr(pack_key, '/packs/record/') > 0
+             AND replaced_by NOT IN ('${REWRITE_PENDING}', 'unlisted') AND removed_at > 0
+           RETURNING pack_key AS replaced_key`
+        )
+        .bind(userId, vaultId),
+      ...unlistRecordPacks(db, scope, recordKeys, now)
+    )
     const results = await db.batch<{
       blob_key?: string
       replaced_key?: string
