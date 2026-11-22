@@ -589,8 +589,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       // Batched: notes that come due together share /sync/crdt/snapshot/batch
       // requests instead of spending one push-budget slot each.
-      const snapshotScheduler = new CrdtSnapshotScheduler((noteIds) =>
-        crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true })
+      // A batch held offline or paused waits for the reconnect or resume below.
+      const snapshotScheduler = new CrdtSnapshotScheduler(
+        (noteIds) => crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true }),
+        { isHeld: () => crdtProvider.snapshotsHeld() }
       )
       // Captured by this runtime's background work, never read back from the
       // module slot that a replacement session can refill during teardown.
@@ -743,6 +745,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const onNetworkStatusChanged = ({ online }: { online: boolean }): void => {
         if (online) {
           noteBodyOutbox.resume()
+          snapshotScheduler.release()
           void attachmentUploadRedriver.redrive()
           // Reconnect is the moment transiently-failed attachment downloads
           // become worth retrying; the re-driver is re-entrant-safe and gated
@@ -843,7 +846,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           })
         },
         prepareCanvasPush: (canvasId) => holdCanvasAssetsBeforePush(canvasId),
-        onSyncResumed: () => noteBodyOutbox.flushAll(),
+        onSyncResumed: () => {
+          snapshotScheduler.release()
+          noteBodyOutbox.flushAll()
+        },
         checkAccountKey: () => checkLocalKeyAgainstAccount(),
         onDeviceKeyMismatch: () => handleDeviceKeyMismatch(),
         onVaultKeyMismatch: () => {

@@ -16,6 +16,8 @@ import {
   bodyDebt,
   existingDbs,
   findBootstrapDb,
+  noBootstrapDbWarning,
+  NO_DB_WARN_MS,
   feedHeadMs,
   iosMarks,
   tauriStartMs
@@ -626,6 +628,12 @@ describe('rust-core shells', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it('warns once a minute passes with no new vault data.db', () => {
+    const start = 1_000_000
+    assert.equal(noBootstrapDbWarning(start, start + NO_DB_WARN_MS - 1), null)
+    assert.match(noBootstrapDbWarning(start, start + NO_DB_WARN_MS), /no new vault data\.db 60 s/)
   })
 
   it('refuses to guess between two new vaults', () => {

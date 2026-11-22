@@ -195,11 +195,14 @@ describe('presigned direct transfers (#1836)', () => {
       expect(body.expiresAt).toBeLessThanOrEqual(Math.floor(Date.now() / 1000) + 300)
     })
 
-    it('rejects a foreign vault/user hash with 404 — same ownership outcome as the proxied path', async () => {
-      // Only HASH_A belongs to this user's vault; HASH_B exists for nobody.
+    // #5247 C47.2: one missing hash used to 404 the whole batch, and desktop
+    // reads a 404 as "no presign here" and proxies every download for 10 min.
+    it('presigns the owned hashes and leaves out a foreign or missing one', async () => {
+      // Only HASH_A belongs to this user's vault; the other hash exists for nobody.
       state.chunksByHash = {
         [HASH_A]: {
           id: 'chunk-a',
+          hash: HASH_A,
           r2_key: 'user-1/vaults/vault-1/chunks/' + HASH_A,
           size_bytes: 45,
           ref_count: 1
@@ -210,21 +213,37 @@ describe('presigned direct transfers (#1836)', () => {
         { method: 'POST', body: JSON.stringify({ chunkHashes: [HASH_A, hexHash('c')] }) },
         env
       )
-      expect(res.status).toBe(404)
-      expect(await res.json()).toMatchObject({
-        error: { code: ErrorCodes.STORAGE_BLOB_NOT_FOUND }
-      })
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { urls: Record<string, string> }
+      expect(Object.keys(body.urls)).toEqual([HASH_A])
+      expect(presignCalls).toHaveLength(1)
+    })
+
+    it('answers an empty url map when no requested hash is owned', async () => {
+      state.chunksByHash = {}
+      const res = await app.request(
+        '/attachments/presign-batch',
+        { method: 'POST', body: JSON.stringify({ chunkHashes: [hexHash('c')] }) },
+        env
+      )
+      expect(res.status).toBe(200)
+      expect(await res.json()).toMatchObject({ urls: {} })
       expect(presignCalls).toHaveLength(0)
     })
 
     it.each([
       ['non-hex hash', { chunkHashes: ['../etc/passwd'] }],
       ['empty batch', { chunkHashes: [] }],
-      ['missing field', {}]
+      ['missing field', {}],
+      // #5247 C47.1: unparseable JSON answered 500.
+      ['unparseable JSON', '{not json']
     ])('rejects invalid bodies (%s) with 400', async (_name, payload) => {
       const res = await app.request(
         '/attachments/presign-batch',
-        { method: 'POST', body: JSON.stringify(payload) },
+        {
+          method: 'POST',
+          body: typeof payload === 'string' ? payload : JSON.stringify(payload)
+        },
         env
       )
       expect(res.status).toBe(400)

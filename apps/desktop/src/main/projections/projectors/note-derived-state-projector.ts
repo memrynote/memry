@@ -221,6 +221,17 @@ function persistFileNote(note: Extract<NoteProjectionRecord, { kind: 'file' }>):
   const existing = getNoteCacheById(db, note.noteId)
 
   if (existing) {
+    // A row retyped from markdown (#5412) still carries the tags, properties
+    // and links read from the markdown that overwrote the blob; a file has none.
+    if ((existing.fileType ?? 'markdown') === 'markdown') {
+      setNoteTags(db, note.noteId, { header: [], inline: [] })
+      setNoteProperties(db, note.noteId, {}, (name, value) =>
+        getPropertyType(db, name, value, inferPropertyType)
+      )
+      const before = linkKeys(db, note.noteId)
+      setNoteLinks(db, note.noteId, [])
+      announceLinkChanges(note.noteId, before, new Map())
+    }
     updateNoteCache(db, note.noteId, {
       path: note.path,
       title: note.title,

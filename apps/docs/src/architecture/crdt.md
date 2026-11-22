@@ -334,7 +334,8 @@ needs durable proof that the server holds nothing:
 No snapshot push starts while the device is offline, as while sync is paused:
 the request could only fail after recording `sent`, and the note would reopen
 read-only offline. The edits wait in the outbox, and its flush once online
-requests the snapshot again.
+requests the snapshot again. A scheduled snapshot batch that comes due while
+held stays with the scheduler and goes out on the reconnect or the resume.
 
 The bypass has one residual risk: device A creates a note offline, so it holds
 the marker; a shared folder carries the file to device B, and B syncs it before
