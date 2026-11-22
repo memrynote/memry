@@ -9,6 +9,8 @@
 //! the pages it already read when it resumes; a kill after a pull and before
 //! its ids leave the queue pulls them again, which applies nothing twice.
 
+use std::collections::HashSet;
+
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
@@ -52,8 +54,10 @@ pub(super) fn queue(conn: &Connection, deleted: &[String]) -> Result<(), Storage
         return Ok(());
     }
     let mut ids = queued(conn)?;
+    // A set, so a hostile page of many ids costs linear time.
+    let mut seen: HashSet<String> = ids.iter().cloned().collect();
     for id in deleted {
-        if !ids.contains(id) {
+        if seen.insert(id.clone()) {
             ids.push(id.clone());
         }
     }
@@ -85,9 +89,10 @@ impl FirstSync {
             self.db
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                    let pulled: HashSet<String> = chunk.into_iter().collect();
                     let left: Vec<String> = queued(&txn)?
                         .into_iter()
-                        .filter(|id| !chunk.contains(id))
+                        .filter(|id| !pulled.contains(id))
                         .collect();
                     store(&txn, &left)?;
                     if missed {
