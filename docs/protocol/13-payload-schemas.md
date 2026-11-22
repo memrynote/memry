@@ -106,8 +106,8 @@ failed refetch is logged and the run goes on to the feed with every entry kept
 (`crates/memry-core/src/sync/pull/apply_step.rs:67-71`). Three things resolve
 an entry: an apply, an expiry or a clock decision of the record
 (`crates/memry-core/src/sync/apply.rs:202`,
-`crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed, bare
-or untyped (`apply.rs:179`, `:198`, `:219`), and a refetch that did not return it
+`crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed or
+bare (`apply.rs:215`, `:235`), and a refetch that did not return it
 (`crates/memry-core/src/sync/pull/apply_step.rs:120-127`). A pair the server
 lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
 it as gone where desktop keeps it as `blob_missing` and refetches it on the

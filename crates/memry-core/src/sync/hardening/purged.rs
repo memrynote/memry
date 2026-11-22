@@ -18,7 +18,7 @@
 //! and only then applies as the signed tombstone with the same clock
 //! ([`Pending::Tombstone`]), under §5.8's clock rule. Every id an entry names
 //! is reported in [`Entries::named`] whatever happens to it, so the pull never
-//! applies it as an untyped §5.12.1 delete.
+//! fetches it as a bare §5.12.1 id.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, hash_map::Entry};
 
