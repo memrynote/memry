@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type {
   FolderInfo,
   Note,
@@ -15,6 +15,7 @@ import type {
   NoteListItem,
   NoteListResponse
 } from '@memry/rpc/notes'
+import type { NoteEventSource } from '@memry/contracts/notes-api'
 
 // Types are re-exported at the end of this file
 import {
@@ -36,6 +37,7 @@ import {
 import { onVaultIndexProgress } from '@/services/vault-service'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
+import { createLogger } from '@/lib/logger'
 
 /**
  * Minimum spacing between notes-list refetches driven by background index-build
@@ -51,6 +53,156 @@ const INDEX_PROGRESS_INVALIDATE_MS = 2000
  * kept main busy for minutes after the move itself was done.
  */
 const NOTE_EVENT_INVALIDATE_MS = 250
+
+/**
+ * How long the lists rest after a refetch, as a multiple of what that refetch
+ * took. A bootstrap writes back ~10k bodies about 250 ms apart, so the fixed
+ * window above alone let nearly every write-back rerun the whole list
+ * (listNotes plus getTagsForNotes: 264 s of SQLite in a 15 min profile,
+ * #5398). Resting by cost keeps list refetches to about a tenth of main's time
+ * however fast the events come, and leaves a small vault's lists as fast as
+ * before.
+ */
+const LIST_REFETCH_REST_FACTOR = 10
+
+const log = createLogger('NotesQuery')
+
+/**
+ * The longest rest. The cost includes IPC and main-loop queueing, so a 3 s
+ * list call during a bootstrap earned a 30 s rest and a user's own edit
+ * reached the list after 36 s.
+ */
+const LIST_REFETCH_REST_MAX_MS = 2500
+
+/**
+ * A list refetch that has not settled by then is given up on: the next
+ * refetch cancels it (`invalidateQueries` cancels an in-flight fetch), so one
+ * hung call cannot hold the lists stale for good.
+ */
+const LIST_REFETCH_WATCHDOG_MS = 15_000
+
+interface NoteListRefresher {
+  holders: number
+  /** `urgent`: a user's or the app's own change, which rests at most the burst window. */
+  request: (urgent: boolean) => void
+  dispose: () => void
+}
+
+const noteListRefreshers = new WeakMap<QueryClient, NoteListRefresher>()
+
+/**
+ * The one note-event subscription per query client that refetches the note
+ * lists, shared by every mounted `useNotesList`: each hook used to subscribe
+ * and invalidate every list on its own, so N mounted lists refetched N times
+ * per event. A request with the lists idle refetches at once, so a single edit
+ * shows immediately. A request while a refetch runs or rests is folded into
+ * one refetch after the rest, which starts after the last event and so lands
+ * the same list an unbatched run would. Only sync write-backs earn the long
+ * rest: an urgent request (any non-sync event) refetches at most the burst
+ * window after the last refetch settled.
+ */
+function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
+  // The refetch in flight, 0 when none: a refetch the watchdog gave up on
+  // settles later under a stale id and is ignored.
+  let inFlight = 0
+  let refetches = 0
+  let watchdog: ReturnType<typeof setTimeout> | null = null
+  let resting: ReturnType<typeof setTimeout> | null = null
+  let settledAt = 0
+  let pending = false
+  let urgentPending = false
+  let disposed = false
+
+  const rest = (ms: number): void => {
+    resting = setTimeout(() => {
+      resting = null
+      if (pending) refetch()
+    }, ms)
+  }
+  const refetch = (): void => {
+    pending = false
+    urgentPending = false
+    const id = ++refetches
+    inFlight = id
+    const startedAt = Date.now()
+    watchdog = setTimeout(() => {
+      watchdog = null
+      if (inFlight !== id) return
+      log.warn('list refetch did not settle; refetching anew', {
+        afterMs: LIST_REFETCH_WATCHDOG_MS
+      })
+      inFlight = 0
+      if (pending) refetch()
+    }, LIST_REFETCH_WATCHDOG_MS)
+    void queryClient.invalidateQueries({ queryKey: notesKeys.lists() }).finally(() => {
+      if (inFlight !== id || disposed) return
+      inFlight = 0
+      if (watchdog) clearTimeout(watchdog)
+      watchdog = null
+      settledAt = Date.now()
+      const earned = (settledAt - startedAt) * LIST_REFETCH_REST_FACTOR
+      rest(
+        urgentPending
+          ? NOTE_EVENT_INVALIDATE_MS
+          : Math.min(LIST_REFETCH_REST_MAX_MS, Math.max(NOTE_EVENT_INVALIDATE_MS, earned))
+      )
+    })
+  }
+  const request = (urgent: boolean): void => {
+    if (!inFlight && !resting) {
+      refetch()
+      return
+    }
+    pending = true
+    if (!urgent) return
+    urgentPending = true
+    if (resting) {
+      clearTimeout(resting)
+      rest(Math.max(0, settledAt + NOTE_EVENT_INVALIDATE_MS - Date.now()))
+    }
+  }
+  // Only a sync write-back waits long. Renames and moves carry no source.
+  const fromEvent = (event: { source: NoteEventSource }): void => request(event.source !== 'sync')
+  const urgent = (): void => request(true)
+  const unsubscribers = [
+    onNoteCreated(fromEvent),
+    onNoteDeleted(fromEvent),
+    onNoteUpdated(fromEvent),
+    onNoteRenamed(urgent),
+    onNoteMoved(urgent)
+  ]
+  return {
+    holders: 0,
+    request,
+    dispose: () => {
+      disposed = true
+      if (resting) clearTimeout(resting)
+      if (watchdog) clearTimeout(watchdog)
+      for (const unsubscribe of unsubscribers) unsubscribe()
+    }
+  }
+}
+
+function holdNoteListRefresher(queryClient: QueryClient): {
+  request: (urgent: boolean) => void
+  release: () => void
+} {
+  let refresher = noteListRefreshers.get(queryClient)
+  if (!refresher) {
+    refresher = createNoteListRefresher(queryClient)
+    noteListRefreshers.set(queryClient, refresher)
+  }
+  const held = refresher
+  held.holders++
+  return {
+    request: held.request,
+    release: () => {
+      if (--held.holders > 0) return
+      held.dispose()
+      noteListRefreshers.delete(queryClient)
+    }
+  }
+}
 
 // =============================================================================
 // Query Keys
@@ -257,29 +409,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    // The first event refetches at once; the rest of a burst waits for the
-    // window and is covered by one more refetch at its end.
-    let burstTimer: ReturnType<typeof setTimeout> | null = null
-    let burstPending = false
-    const invalidateLists = (): void => {
-      if (burstTimer) {
-        burstPending = true
-        return
-      }
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-      burstTimer = setTimeout(() => {
-        burstTimer = null
-        if (!burstPending) return
-        burstPending = false
-        invalidateLists()
-      }, NOTE_EVENT_INVALIDATE_MS)
-    }
-
-    const unsubCreated = onNoteCreated(invalidateLists)
-    const unsubDeleted = onNoteDeleted(invalidateLists)
-    const unsubUpdated = onNoteUpdated(invalidateLists)
-    const unsubRenamed = onNoteRenamed(invalidateLists)
-    const unsubMoved = onNoteMoved(invalidateLists)
+    const { release } = holdNoteListRefresher(queryClient)
 
     // The background index build (vault open on a not-yet-indexed vault) writes
     // notes straight into the cache without per-note events, so the list would
@@ -294,32 +424,28 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     })
 
     return () => {
-      if (burstTimer) clearTimeout(burstTimer)
-      unsubCreated()
-      unsubUpdated()
-      unsubDeleted()
-      unsubRenamed()
-      unsubMoved()
+      release()
       unsubIndexProgress()
     }
   }, [queryClient])
 
   // Journal entries are listed only on request (the sidebar, when the journal
   // folder is shown), and the Journal page's writes emit journal events, not
-  // note events.
+  // note events. They go through the same refresher; they carry no source, so
+  // they count as urgent and rest at most the burst window.
   const includeJournals = listOptions.includeJournals === true
   useEffect(() => {
     if (!includeJournals) return undefined
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    }
+    const { request, release } = holdNoteListRefresher(queryClient)
+    const refresh = (): void => request(true)
     const unsubscribers = [
-      onJournalEntryCreated(invalidate),
-      onJournalEntryUpdated(invalidate),
-      onJournalEntryDeleted(invalidate)
+      onJournalEntryCreated(refresh),
+      onJournalEntryUpdated(refresh),
+      onJournalEntryDeleted(refresh)
     ]
     return () => {
       for (const unsubscribe of unsubscribers) unsubscribe()
+      release()
     }
   }, [includeJournals, queryClient])
 

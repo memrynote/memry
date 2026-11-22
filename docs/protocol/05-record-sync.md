@@ -860,12 +860,38 @@ instead of two (`apps/sync-server/src/services/sync.ts:1111`).
 
 ### 5.12.1 Untyped `deleted` ids and a subset subscriber — Q05.2
 
-**Normative.** A subset subscriber cannot tell what type a bare tombstone is for,
-and **it does not need to**: the id space is `(type, id)` for bookkeeping
-(§5.15), but a delete is idempotent and a delete for an id the client has never
-seen is a no-op. A conforming client MUST record a bare tombstone for an unknown
-id — so that a later pull of that id does not resurrect it locally — and MUST NOT
-treat it as an error or as a reason to stop the page.
+**Normative.** An id in `deleted` is not a delete. It carries no type and no
+signature, and the server is untrusted, so it only names an id the client
+fetches with POST `/sync/pull` (§5.12). The server lists a tombstone row's id
+there (`apps/sync-server/src/services/sync.ts:1473`) and answers the pull with
+that row's signed delete, or with a purged marker when the client declared
+`purged_tombstones` (`apps/sync-server/src/services/sync.ts:1669`, §5.12.3).
+
+- An id in `deleted` MUST delete only through a typed delete on the same page
+  that verified under §5.14, or an attested purged marker (§5.12.3).
+- An id in `deleted` for which the pull returned no item, or returned an item
+  the client refused (§5.14), MUST delete nothing and record nothing. It is not
+  an error and it does not stop the page; a client SHOULD log it with the page
+  cursor. A refused item never falls through to a delete by id.
+- The same rule holds for any id a client pulls because the server left it out,
+  such as a pack-held row the manifest reconcile finds unlisted (chapter 08
+  §8.10, Closing checks, rule 2): absence and silence are no evidence of a
+  delete.
+
+Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.ts`)
+is the only read of `changes.deleted`, which joins the pull request, and only
+what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:828`)
+and attested markers (`pull-coordinator.ts:818`, applied at `:913`) apply.
+Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:100`
+pulls each unlisted row declaring `purged_tombstones`
+(`crates/memry-core/src/sync/pull/shared_apply.rs:57`), deletes only
+through a verified delete or a marker whose attestation verifies
+(`crates/memry-core/src/sync/first_sync/reconcile/markers.rs:83`), and
+keeps and logs the rest (`reconcile.rs:114`). On main the core's page
+pull (`crates/memry-core/src/sync/pull.rs:295-300`) and first sync refs pass
+(`crates/memry-core/src/sync/first_sync.rs:467-468`) still record a bare
+tombstone (§5.12.2) for an uncovered `deleted` id; #5338 and #5340 move them to
+this rule on `feat/tauri-v2`.
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are
@@ -954,8 +980,10 @@ migration `0013_sync_items_tombstone_marker.sql`). The server never deletes a
   `GET /sync/changes` `deleted`, except on a request with `cursor = 0`: a fresh
   or reset device gains nothing from it and must not delete rows it restored
   locally. Every other client (older desktops, the shared sync-client, the Rust
-  core) never sees a marker on the read side, exactly as when the old cleanup
-  hard-deleted the row. The id is not in `deleted`, so no client applies it as
+  core's feed pull) never sees a marker on the read side, exactly as when the old
+  cleanup hard-deleted the row. The Rust core declares `purged_tombstones` only
+  on the manifest reconcile's pull by id (chapter 08 §8.10), which applies a
+  marker only when its attestation verifies. The id is not in `deleted`, so no client applies it as
   an untyped §5.12.1 tombstone. A marker is excluded from the manifest for
   everyone.
 - The marker is the row with `deleted_at` set and `blob_key = ''`.

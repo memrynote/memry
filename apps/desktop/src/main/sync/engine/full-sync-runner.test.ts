@@ -22,7 +22,11 @@ import { DELIVERED, INCOMPLETE } from './sync-run-outcome'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { crdtBodyDebtStore, listCrdtBodyDebts, oweCrdtBodyDebts } from './crdt-body-debts'
 import { SyncServerError } from '@memry/sync-client/http-errors'
-import { hasCompletedPullSinceStart, resetSyncDecision } from '@memry/sync-client/sync-eligibility'
+import {
+  hasCompletedPullSinceStart,
+  hasPulledRecordsSinceStart,
+  resetSyncDecision
+} from '@memry/sync-client/sync-eligibility'
 import * as httpClient from '../http-client'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
@@ -527,6 +531,22 @@ describe('FullSyncRunner', () => {
 
       resetSyncDecision()
       expect(hasCompletedPullSinceStart()).toBe(false)
+    })
+
+    // #5255 review: folder discovery is ungated once the records land, but the
+    // Readwise gate (#1408 D8) still waits for the run to finish its manifest check.
+    it('#then a push that throws after a delivered pull ungates folder discovery only', async () => {
+      resetSyncDecision()
+      const h = createHarness()
+      h.actions.push.mockRejectedValue(new Error('push exploded'))
+
+      await expect(h.runner.run()).rejects.toThrow('push exploded')
+
+      expect(hasPulledRecordsSinceStart()).toBe(true)
+      expect(hasCompletedPullSinceStart()).toBe(false)
+
+      resetSyncDecision()
+      expect(hasPulledRecordsSinceStart()).toBe(false)
     })
 
     it('#then the check is handed the quarantine predicate and the live online flag', async () => {

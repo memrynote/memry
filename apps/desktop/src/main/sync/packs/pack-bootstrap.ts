@@ -6,7 +6,9 @@ import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
 import {
   CrdtUpdatePackEntryMetaSchema,
   PackListResponseSchema,
+  type CrdtManifestDocument,
   type CrdtUpdatePackEntryMeta,
+  type PackCoverage,
   type PackSummary
 } from '@memry/contracts/sync-api'
 import type { PackIndexEntry } from '@memry/contracts/pack-format'
@@ -16,17 +18,20 @@ import { recordBootstrapBytes } from '../bootstrap-metrics'
 import type { PageApplyHandle } from '../bulk-apply'
 import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { getFromServer } from '../http-client'
+import { readManifestPages } from '../manifest-check'
 import { discardPackFile, downloadPackToFile } from './pack-download'
 import { curablePauseMs, downloadPacks, type PackFetch } from './pack-downloads'
 import { readBodyManifest } from './body-manifest'
 import {
   planDocument,
+  type BodyWatermark,
   type PackedSnapshot,
   type PackedUpdate,
   type PackSnapshotMeta
 } from './body-plan'
 import type { PackBodyApplier } from './pack-body-applier'
 import { openPackFile, type PackFileHandle } from './pack-file-reader'
+import { planRecordPacks, type PackedRecords, type RecordManifestRead } from './record-packs'
 
 const log = createLogger('PackBootstrap')
 
@@ -40,15 +45,10 @@ const log = createLogger('PackBootstrap')
  * transfer, so the sweep that follows finds every packed note already seeded
  * and issues zero `/sync/crdt/snapshot/:noteId` GETs for them.
  *
- * WHAT IS DELIBERATELY NOT APPLIED FROM PACKS: `record` packs.
- * A record pack entry is the exact R2 payload blob — `{dataNonce,
- * encryptedData, encryptedKey, keyNonce}` and nothing else. The Ed25519
- * signature, the signer device id, the vector clock and the operation live in
- * D1 rows and travel only on `POST /sync/pull`; the pack index carries none of
- * them. Applying those bytes would mean applying unverified content into an
- * end-to-end encrypted vault, so record packs are skipped and their items keep
- * arriving through the item-granular pull, byte-for-byte as they do today.
- * Nothing here touches `SYNC_STATE_KEYS.LAST_CURSOR`.
+ * RECORD PACKS ARE NOT APPLIED HERE. Their entries are rebuilt as pull items
+ * and reconciled against `GET /sync/manifest` (`record-packs.ts`), and the
+ * pull applies them through its own decrypt, signature and clock path before
+ * it moves `SYNC_STATE_KEYS.LAST_CURSOR` (#5390). Nothing here touches it.
  *
  * FAILURE DISCIPLINE. Every path out of this module — an old server 404, a
  * deployment with no presign secrets, zero packs, an expired URL, a malformed
@@ -87,6 +87,8 @@ export interface PackBootstrapDeps {
   tempDir: string
   bodies: PackBodyApplier
   readManifest?: typeof readBodyManifest
+  /** `GET /sync/manifest`, read only when record packs are in hand. */
+  readRecordManifest?: (token: string, signal?: AbortSignal) => Promise<RecordManifestRead | null>
   /** Opens the #1831 page transaction the watermark is committed inside. */
   beginPage: () => PageApplyHandle
   getStateValue: (key: string) => string | null | undefined
@@ -119,6 +121,8 @@ export interface PackBootstrapResult {
   updatesApplied: number
   /** Highest contiguously-applied pack cursor, or null when none advanced. */
   appliedThroughCursor: number | null
+  /** Reconciled record packs for the pull, null when they cannot be used. */
+  records: PackedRecords | null
 }
 
 const emptyResult = (): PackBootstrapResult => ({
@@ -128,8 +132,23 @@ const emptyResult = (): PackBootstrapResult => ({
   entriesSkipped: 0,
   entriesFailed: 0,
   updatesApplied: 0,
-  appliedThroughCursor: null
+  appliedThroughCursor: null,
+  records: null
 })
+
+const defaultReadRecordManifest = async (
+  token: string,
+  signal?: AbortSignal
+): Promise<RecordManifestRead | null> => {
+  try {
+    return await readManifestPages(token, { isOnline: () => true, ...(signal ? { signal } : {}) })
+  } catch (error) {
+    log.info('Record manifest read failed — record packs unused', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return null
+  }
+}
 
 const defaultFetchPackPage = async (token: string, cursor: string | null): Promise<unknown> => {
   const query = new URLSearchParams({ limit: String(PACK_LIST_PAGE_LIMIT) })
@@ -151,6 +170,8 @@ interface PackListing {
    * other failure (401, 404, 400) leaves it unset, so the pack is a gap.
    */
   lostMs?: number
+  /** The first page's `record` coverage statement (§8.10), when it made one. */
+  recordCoverage?: PackCoverage
 }
 
 /**
@@ -169,6 +190,7 @@ const listUsablePacks = async (
   const usable: PackSummary[] = []
   let cursor: string | null = null
   let truncated = false
+  let recordCoverage: PackCoverage | undefined
 
   for (let page = 0; page < MAX_PACK_LIST_PAGES; page++) {
     let raw: unknown
@@ -195,9 +217,10 @@ const listUsablePacks = async (
       if (!pack.url) continue
       if (pack.expiresAt === undefined) continue
       if (pack.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS <= nowSeconds) continue
-      // Body packs only: record packs stay on the item pull (module doc).
-      if (pack.itemKind !== 'crdt_snapshot' && pack.itemKind !== 'crdt_update') continue
       usable.push(pack)
+    }
+    if (page === 0) {
+      recordCoverage = parsed.data.coverage?.find((entry) => entry.itemKind === 'record')
     }
 
     cursor = parsed.data.nextCursor ?? null
@@ -205,7 +228,7 @@ const listUsablePacks = async (
     truncated = page === MAX_PACK_LIST_PAGES - 1
   }
 
-  return { packs: usable, truncated }
+  return { packs: usable, truncated, ...(recordCoverage ? { recordCoverage } : {}) }
 }
 
 /**
@@ -284,6 +307,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const open = deps.openPack ?? ((filePath: string) => openPackFile(filePath))
   const discard = deps.discard ?? discardPackFile
   const readManifest = deps.readManifest ?? readBodyManifest
+  const readRecordManifest = deps.readRecordManifest ?? defaultReadRecordManifest
   const pageEntries = Math.max(1, deps.pageEntries ?? PACK_APPLY_PAGE_ENTRIES)
   const parallel = Math.max(1, deps.maxParallelDownloads ?? MAX_PARALLEL_PACK_DOWNLOADS)
 
@@ -305,13 +329,20 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     .filter((pack) => pack.itemKind === 'crdt_snapshot' && pack.maxCursor > alreadyCovered)
     .toSorted((a, b) => b.maxCursor - a.maxCursor)
   const updatePacks = listing.packs.filter((pack) => pack.itemKind === 'crdt_update')
-  const packs = [...snapshotPacks, ...updatePacks]
-  if (snapshotPacks.length === 0 && updatePacks.length === 0) return emptyResult()
+  // Records only before the first cursor: a device that has one already holds
+  // every record below it, and its tail must not move back (#5390).
+  const recordPacks =
+    deps.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
+      ? listing.packs.filter((pack) => pack.itemKind === 'record')
+      : []
+  const packs = [...snapshotPacks, ...updatePacks, ...recordPacks]
+  if (packs.length === 0) return emptyResult()
 
   log.info('Pack bootstrap starting', {
     packCount: packs.length,
     snapshotPacks: snapshotPacks.length,
     updatePacks: updatePacks.length,
+    recordPacks: recordPacks.length,
     resumeAboveCursor: alreadyCovered
   })
 
@@ -477,9 +508,27 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     const manifest = manifestToken
       ? await readManifest(manifestToken, deps.signal ? { signal: deps.signal } : {})
       : 'short'
+    const recordHeld = held.filter(({ pack }) => pack.itemKind === 'record')
+    const records =
+      recordHeld.length > 0
+        ? await planRecordPacks(
+            recordHeld,
+            listing.recordCoverage,
+            async () => (manifestToken ? readRecordManifest(manifestToken, deps.signal) : null),
+            (byteCount) => recordBytes('records', byteCount)
+          )
+        : null
+    const settledBodies = new Set<string>()
     // A short read on a server with the route confirms nothing (§8.11): every
-    // body stays on its item routes and no pack is claimed.
-    if (manifest === 'short') return { ...emptyResult(), usedPacks: true }
+    // body stays on its item routes and no pack is claimed. The record plan
+    // stands on its own manifest read.
+    if (manifest === 'short') {
+      return {
+        ...emptyResult(),
+        usedPacks: true,
+        records: records && { ...records, settledBodies }
+      }
+    }
 
     const readOf = (handle: PackFileHandle, entry: PackIndexEntry) => async () => {
       const bytes = await handle.readEntry(entry)
@@ -499,6 +548,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     const remaining = new Map<string, Set<string>>()
     const seen = new Set<string>()
     for (const { pack, handle } of held) {
+      if (pack.itemKind === 'record') continue
       if (pack.itemKind === 'crdt_snapshot') remaining.set(pack.id, new Set())
       for (const entry of handle.entries) {
         if (entry.kind !== pack.itemKind) {
@@ -571,18 +621,15 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
           (manifest
             ? candidates.find((candidate) => candidate.meta.revision === wanted)
             : candidates.toSorted((a, b) => b.meta.sequenceNum - a.meta.sequenceNum)[0]) ?? null
-        const plan = planDocument(
-          noteId,
-          await deps.bodies.localWatermark(noteId),
-          snapshot,
-          updatesOf.get(noteId) ?? [],
-          manifest
-        )
+        const local = await deps.bodies.localWatermark(noteId)
+        let watermark = local
+        const plan = planDocument(noteId, local, snapshot, updatesOf.get(noteId) ?? [], manifest)
         if (!plan) {
           counters.skipped++
         } else {
           const reached = await deps.bodies.applyDocument(noteId, plan)
           if (reached) {
+            watermark = reached
             counters.applied++
             counters.updates += plan.updates.filter(
               (update) => update.sequenceNum <= reached.appliedSequence
@@ -592,6 +639,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
             counters.failed++
           }
         }
+        if (isSettled(watermark, manifest?.get(noteId))) settledBodies.add(noteId)
       } catch (error) {
         // A per-entry checksum failure, an undecryptable blob, an
         // unresolvable signer: discard THAT document only.
@@ -639,7 +687,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       entriesSkipped: counters.skipped,
       entriesFailed: counters.failed,
       updatesApplied: counters.updates,
-      appliedThroughCursor
+      appliedThroughCursor,
+      records: records && { ...records, settledBodies }
     }
   } finally {
     for (const { handle, filePath } of held) {
@@ -651,6 +700,19 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     }
   }
 }
+
+/**
+ * The document holds its body manifest's head: its last stored update under
+ * the manifest's snapshot revision, so a body pull would bring nothing.
+ */
+const isSettled = (
+  held: BodyWatermark | null,
+  document: CrdtManifestDocument | undefined
+): boolean =>
+  held !== null &&
+  document !== undefined &&
+  held.appliedSequence === document.maxSequenceNum &&
+  held.snapshotRevision === document.snapshot?.revision
 
 /** Only `{sequenceNum, revision}` both present makes a snapshot trustworthy. */
 const readSnapshotMeta = (entry: PackIndexEntry): PackSnapshotMeta | null => {

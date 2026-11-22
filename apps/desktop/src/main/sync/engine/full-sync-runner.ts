@@ -23,11 +23,12 @@ import {
 import type { SyncStateManager } from './sync-state-manager'
 import type { PushCoordinator } from './push-coordinator'
 import type { ItemRef } from './corrupt-item-tracker'
+import type { PackedRecords } from '../packs/record-packs'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt-body-debts'
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
-import { markPullCompleted } from '@memry/sync-client/sync-eligibility'
+import { markPullCompleted, markRecordsPulled } from '@memry/sync-client/sync-eligibility'
 import { isKnownNote } from '../note-body-apply'
 import { listPackSeeded, packSeededKey } from './pack-seeded-docs'
 
@@ -75,9 +76,10 @@ export interface FullSyncActions {
    * Every error path out of a pull is swallowed (`SyncEngine.pull` catches
    * everything, `PullCoordinator.pull` returns early on a busy lock, missing
    * credentials or a refused page), so non-rejection is not evidence of
-   * anything (#1835). Only the outcome is. `missing` is pulled by id (#3391).
+   * anything (#1835). Only the outcome is. `missing` is pulled by id (#3391);
+   * `packed` is a fresh device's record packs (#5390).
    */
-  pull: (missing?: readonly ItemRef[]) => Promise<SyncRunOutcome>
+  pull: (missing?: readonly ItemRef[], packed?: PackedRecords) => Promise<SyncRunOutcome>
   push: () => Promise<SyncRunOutcome>
   /** False when the engine dropped `fn` because a full sync is running. */
   scheduleSync: (fn: () => Promise<unknown>) => boolean
@@ -431,6 +433,7 @@ export class FullSyncRunner {
     } catch {
       /* telemetry only — sync proceeds */
     }
+    let packedRecords: PackedRecords | null = null
     if (packAbort) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
@@ -440,7 +443,7 @@ export class FullSyncRunner {
       // byte-for-byte as it does on a deployment with no packs at all. It is
       // awaited rather than fired off because it writes into the same Y.Docs
       // and the same DBs the pull is about to touch.
-      await this.applyBootstrapPacks(packAbort)
+      packedRecords = await this.applyBootstrapPacks(packAbort)
     }
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
@@ -454,7 +457,7 @@ export class FullSyncRunner {
       // nothing outside a unit test whose `pull` was a bare mock.
       const repairFrom = await this.beginCursorSkipRepair()
       const changedBeforePull = this.ctx.applier.changedCount
-      const pull = await this.actions.pull()
+      const pull = await this.actions.pull([], packedRecords ?? undefined)
       // No session, a cancelled engine or a pause refuses the push and the
       // manifest check as surely as the pull. A busy lock is only this moment.
       if (pull.status === 'skipped' && pull.reason !== 'busy') {
@@ -463,6 +466,9 @@ export class FullSyncRunner {
       }
       pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
+        // Before the seed: a folder found after this point has no remote row
+        // left to arrive, so it is pushed at once (folder-config-effects).
+        markRecordsPulled()
         this.bootstrapPullSucceeded = true
         // Without a CRDT store there is no body phase to wait for.
         if (this.ctx.deps.crdtProvider == null) {
@@ -724,11 +730,12 @@ export class FullSyncRunner {
    * secrets, a vault with no packs yet, a corrupt pack or a dead transfer all
    * end here quietly and the pull that follows behaves exactly as it does on a
    * deployment where packs do not exist. The sync cursor is untouched either
-   * way — nothing in this path writes `LAST_CURSOR`.
+   * way — nothing in this path writes `LAST_CURSOR`. Returns the reconciled
+   * record packs the pull applies before it sets one (#5390).
    */
-  private async applyBootstrapPacks(abort: AbortController): Promise<void> {
+  private async applyBootstrapPacks(abort: AbortController): Promise<PackedRecords | null> {
     try {
-      if (abort.signal.aborted || this.disposed || this.stateManager.isPaused()) return
+      if (abort.signal.aborted || this.disposed || this.stateManager.isPaused()) return null
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
@@ -743,7 +750,7 @@ export class FullSyncRunner {
           hasProvider: provider != null,
           storeId: provider?.storeId ?? null
         })
-        return
+        return null
       }
 
       const [
@@ -857,10 +864,12 @@ export class FullSyncRunner {
           appliedThroughCursor: result.appliedThroughCursor
         })
       }
+      return result.records
     } catch (error) {
       log.info('fullSync: pack bootstrap unavailable — item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
+      return null
     } finally {
       if (this.packPhaseAbort === abort) this.packPhaseAbort = null
     }

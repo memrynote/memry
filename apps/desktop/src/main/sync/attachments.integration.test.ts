@@ -13,6 +13,7 @@
  * `net` import is never dereferenced.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { randomUUID, randomBytes } from 'node:crypto'
 import path from 'node:path'
@@ -762,6 +763,29 @@ describe('a fresh device downloading many attachments through the download queue
     queue.dispose()
     return counts
   }
+
+  // A binary note's file that landed unannounced read as an outside edit: the
+  // note's clock ticked and its bytes went back up to the server (#5255).
+  it('announces each file right before it lands at its path', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const deps = createDeps(user)
+    const originals = await uploadFiles(deps)
+    const landed = new Map<string, boolean>()
+
+    await downloadAll(
+      { ...deps, beforeFileLands: (filePath) => landed.set(filePath, existsSync(filePath)) },
+      originals
+    )
+
+    expect(landed).toEqual(
+      new Map([...originals.keys()].map((id) => [path.join(tmpDir, `out-${id}.bin`), false]))
+    )
+  }, 120_000)
 
   it('fetches every manifest in one batch call instead of one GET each', async () => {
     const user = await seedUser({

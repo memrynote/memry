@@ -291,6 +291,10 @@ impl RecordCipher for AccountCipher {
             })?;
         envelope::decrypt(envelope, &self.vault_key, signer)
     }
+
+    fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.directory.signing_key(device_id).map(<[u8]>::to_vec)
+    }
 }
 
 impl crate::sync::body_pull::CrdtCipher for AccountCipher {
