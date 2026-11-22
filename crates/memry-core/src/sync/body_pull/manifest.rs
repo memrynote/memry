@@ -3,7 +3,7 @@
 //! `GET /sync/crdt/manifest`, and `POST /sync/crdt/updates/batch` when the
 //! server has no manifest route or the read stops short.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde_json::{Value as Json, json};
 
@@ -58,6 +58,15 @@ impl BodyPull {
             }
         }
         Ok(None)
+    }
+
+    /// The documents the server holds a body for (an update, a snapshot or a
+    /// floor above 0), read off the body manifest. `None` when the read stops
+    /// short. The bootstrap bench counts a missing body against these only.
+    pub async fn server_body_ids(&self) -> Result<Option<HashSet<String>>, BodyPullError> {
+        let mut requests = 0;
+        let checks = self.read_body_manifest(&mut requests).await?;
+        Ok(checks.map(|checks| checks.into_keys().collect()))
     }
 
     /// The batch route's `floor` and `snapshotMeta` for each `(docId, since)`,

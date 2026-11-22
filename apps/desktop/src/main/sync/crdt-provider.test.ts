@@ -1495,8 +1495,15 @@ describe('CrdtProvider', () => {
         docNames: async () => ['note-1'],
         updates: async () => [Y.encodeStateAsUpdate(stored)]
       })
+      const stores = Promise.withResolvers<void>()
+      persistence.storeUpdate.mockImplementation(() => stores.promise)
 
-      await repairSeedDuplicates(provider)
+      const run = repairSeedDuplicates(provider)
+      await vi.waitFor(() => expect(persistence.storeUpdate).toHaveBeenCalled())
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(persistence.setMeta).not.toHaveBeenCalled()
+      stores.resolve()
+      await run
 
       expect(queue.enqueue).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
       const pushed = new Y.Doc()
@@ -1508,9 +1515,6 @@ describe('CrdtProvider', () => {
         'note-1',
         'seedDuplicateRepairedAt',
         expect.any(Number)
-      )
-      expect(persistence.setMeta.mock.invocationCallOrder[0]).toBeGreaterThan(
-        persistence.storeUpdate.mock.invocationCallOrder.at(-1)!
       )
       expect(mocks.scheduleWriteback).not.toHaveBeenCalled()
       expect(provider.getDoc('note-1')).toBeUndefined()

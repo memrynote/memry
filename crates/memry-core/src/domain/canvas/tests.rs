@@ -383,7 +383,6 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
         let concurrent = apply_page(
             conn,
             vec![delete("c1", clock_of([("B", 1)]))],
-            vec![],
             NOW,
             Some(LOCAL_DEVICE),
         )?;
@@ -400,7 +399,6 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
         let older = apply_page(
             conn,
             vec![delete("c2", clock_of([("A", 2)]))],
-            vec![],
             NOW,
             Some(LOCAL_DEVICE),
         )?;

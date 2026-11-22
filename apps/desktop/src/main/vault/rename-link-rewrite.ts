@@ -29,7 +29,7 @@
  */
 
 import { splitWikiTarget } from '@memry/shared/wiki-target'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 import {
@@ -140,7 +140,7 @@ async function rewriteSource(
 
   const cached = getNoteCacheById(db, sourceId)
   if (!cached) return
-  if (cached.fileType && isBinaryFileType(cached.fileType)) return
+  if (isBinaryNoteRow(cached)) return
   // A locked note keeps its links as written, even to a renamed note.
   if (sourceId !== noteId && isNoteLocked(sourceId, cached.path)) return
 

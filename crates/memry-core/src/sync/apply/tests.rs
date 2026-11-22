@@ -49,16 +49,16 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         journal::open_day(conn, "2026-04-16", "device-a", 1)?;
         let first = clock_of([("device-a", 1), ("device-b", 1)]);
         assert_eq!(
-            apply_page(conn, vec![delete(Some(first.clone()))], vec![], 2, None)?.deleted,
+            apply_page(conn, vec![delete(Some(first.clone()))], 2, None)?.deleted,
             1
         );
         journal::open_day(conn, "2026-04-16", "device-a", 3)?;
 
-        let late = apply_page(conn, vec![delete(Some(first))], vec![], 4, None)?;
+        let late = apply_page(conn, vec![delete(Some(first))], 4, None)?;
         assert_eq!((late.deleted, late.skipped), (0, 1));
         assert!(live(conn));
 
-        let clockless = apply_page(conn, vec![delete(None)], vec![], 5, None)?;
+        let clockless = apply_page(conn, vec![delete(None)], 5, None)?;
         assert_eq!(clockless.deleted, 1);
         assert!(!live(conn));
         Ok(())
@@ -88,7 +88,7 @@ fn a_merge_outcome_maps_onto_the_pull_vocabulary_without_a_silent_skip() {
 
 // #5433: desktop skips a pulled settings delete (settings-handler.ts
 // applyDelete); the core follows. The row stays live and the queued edit
-// stays queued, typed or untyped, clocked or not.
+// stays queued, clocked or not.
 #[test]
 fn a_pulled_settings_delete_is_skipped_and_keeps_the_queued_edit() {
     use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
@@ -123,18 +123,13 @@ fn a_pulled_settings_delete_is_skipped_and_keeps_the_queued_edit() {
         settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
         let clocked = clock_of([("device-b", 9)]);
         for tombstone in [delete(Some(clocked)), delete(None)] {
-            let totals = apply_page(conn, vec![tombstone], vec![], 6, None)?;
+            let totals = apply_page(conn, vec![tombstone], 6, None)?;
             assert_eq!((totals.deleted, totals.skipped), (0, 1));
             assert!(live(conn));
             assert_eq!(queued(conn), 1);
         }
 
-        apply_page(conn, vec![], vec![SETTINGS_ITEM_ID.to_owned()], 7, None)?;
-        assert!(live(conn));
-        assert_eq!(queued(conn), 1);
-
-        // A later pulled settings record still merges: the untyped id left no
-        // bare tombstone that outranks it.
+        // A later pulled settings record still merges.
         let record = InboundRecord {
             item_type: SETTINGS_ITEM_TYPE.to_owned(),
             item_id: SETTINGS_ITEM_ID.to_owned(),
@@ -145,7 +140,7 @@ fn a_pulled_settings_delete_is_skipped_and_keeps_the_queued_edit() {
             updated_at: 8,
             deleted_at: None,
         };
-        let totals = apply_page(conn, vec![Pending::Record(record)], vec![], 8, None)?;
+        let totals = apply_page(conn, vec![Pending::Record(record)], 8, None)?;
         assert_eq!((totals.applied, totals.deleted), (1, 0));
         assert!(live(conn));
         Ok(())
@@ -193,7 +188,7 @@ fn a_settings_row_an_earlier_build_deleted_revives_on_the_next_edit() {
             updated_at: 5,
             deleted_at: None,
         };
-        assert_eq!(apply_page(conn, vec![Pending::Record(record)], vec![], 5, None)?.applied, 1);
+        assert_eq!(apply_page(conn, vec![Pending::Record(record)], 5, None)?.applied, 1);
         let row = sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?.expect("row");
         assert_eq!(row.deleted_at, None);
         Ok(())
@@ -235,10 +230,7 @@ fn a_verified_settings_delete_clears_only_an_unknown_signer_flag() {
             sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, flag, 2)?;
             unknown_signer::refused(conn, SETTINGS_ITEM_ID)?;
             unknown_signer::resolve_verified(conn, &[delete()])?;
-            assert_eq!(
-                apply_page(conn, vec![delete()], vec![], 6, None)?.skipped,
-                1
-            );
+            assert_eq!(apply_page(conn, vec![delete()], 6, None)?.skipped, 1);
             assert_eq!(reason(conn).as_deref(), kept);
             assert!(!unknown_signer::holds(conn, SETTINGS_ITEM_ID)?);
         }
@@ -280,21 +272,35 @@ fn a_settings_edit_over_a_metadata_only_deleted_row_seeds_and_syncs() {
     .expect("settings metadata-only");
 }
 
-// REVIEW-5434 #3: an untyped delete of an id that holds only the settings row
-// deletes nothing, so the report counts it skipped.
+// §5.12.2: a `_tombstone` row an older build filed still outranks the typed
+// item that arrives after it, though no current path files one.
 #[test]
-fn an_untyped_delete_of_the_settings_id_counts_as_skipped() {
-    use crate::domain::settings as settings_domain;
-    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+fn an_older_builds_bare_tombstone_outranks_a_later_typed_record() {
     use crate::storage::{open_data, test_support::temp_dir};
 
-    let dir = temp_dir("apply-settings-untyped-count");
+    let dir = temp_dir("apply-legacy-bare-tombstone");
     let db = open_data(&dir.path().join("data.db")).expect("open data.db");
     db.call_blocking(|conn| {
-        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
-        let totals = apply_page(conn, vec![], vec![SETTINGS_ITEM_ID.to_owned()], 2, None)?;
-        assert_eq!((totals.deleted, totals.skipped), (0, 1));
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at, deleted_at)
+             VALUES ('_tombstone', 'work', 'metadata-only', 1, 1)",
+            [],
+        )
+        .map_err(sqlite_failed)?;
+        let record = InboundRecord {
+            item_type: "tag_definition".to_owned(),
+            item_id: "work".to_owned(),
+            payload_json: r#"{"name":"work","color":"blue"}"#.to_owned(),
+            server_cursor: Some(2),
+            signer_device_id: None,
+            updated_at: 2,
+            deleted_at: None,
+        };
+        let totals = apply_page(conn, vec![Pending::Record(record)], 3, None)?;
+        assert_eq!((totals.applied, totals.deleted), (0, 1));
+        let row = sync_items::load(conn, "tag_definition", "work")?.expect("the row");
+        assert!(row.deleted_at.is_some(), "the typed row stays deleted");
         Ok(())
     })
-    .expect("settings untyped count");
+    .expect("legacy bare tombstone");
 }

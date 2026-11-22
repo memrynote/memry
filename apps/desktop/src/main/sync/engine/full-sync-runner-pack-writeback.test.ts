@@ -709,8 +709,11 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
     let inFlight = 0
     let peak = 0
     let releaseSlow = (): void => {}
+    // A serial settle never reaches the other docs, so the timer frees the
+    // slow doc and peak stays 1: the test fails on its assertion, not a timeout.
     const slowGate = new Promise<void>((resolve) => {
       releaseSlow = resolve
+      setTimeout(resolve, 1000).unref()
     })
     const device = makeDevice()
     const materialize = device.provider.materialize

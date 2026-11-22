@@ -162,6 +162,22 @@ describe('snapshot tie remainder (#5310)', () => {
     expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
   })
 
+  // REVIEW-5315 L2: one heal per message used up the budget and ended the
+  // chain, so a remainder of three packs took three cron ticks.
+  it('heals a remainder larger than one pack within one tick', async () => {
+    for (let i = 0; i < 28; i++) seedSnapshot(`kept-${String(i).padStart(2, '0')}`, 1000)
+    seedSnapshot('late', 2000)
+    expect((await compactOneRange(harness.db, storage, SCOPE, 'crdt_snapshot')).built).toBe(true)
+    const remainder = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id) => `left-${id}`)
+    for (const id of remainder) seedSnapshot(id, 1000, 8 * MB)
+
+    await runBackfillTick(harness.db, storage)
+
+    expect(unpacked()).toEqual([])
+    expect((await packedIds()).filter((id) => id.startsWith('left-'))).toEqual(remainder)
+    expect((await runBackfillTick(harness.db, storage)).enqueued).toBe(0)
+  })
+
   it('scopes the purge to the remainder pack that holds a deleted note', async () => {
     for (let i = 0; i < 3; i++) seedSnapshot(`kept-${i}`, 1000)
     seedSnapshot('late', 2000)
