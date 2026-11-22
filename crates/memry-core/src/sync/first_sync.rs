@@ -22,6 +22,7 @@
 //! | Pass     | Calls                              | Unelevated ceiling | Time   |
 //! | -------- | ---------------------------------- | ------------------ | ------ |
 //! | refs     | 20 at `limit=500`                  | 60/min             | ~20 s  |
+//! | deleted  | `ceil(d / 100)` for `d` deleted ids | 120/min            | d/200 s |
 //! | metadata | 100 at 100 ids each                | 120/min            | ~50 s  |
 //! | bodies   | [`RECENT_BODY_LIMIT`] documents    | 600/min            | ~50 s  |
 //!
@@ -31,7 +32,8 @@
 //! separate checkpoint to fall out of step with:
 //!
 //! - the refs pass advances the one record cursor **after** the page's ref
-//!   rows are recorded, in the same transaction (chapter 05 §5.11);
+//!   rows are recorded and its `deleted` ids queued, in the same
+//!   transaction (chapter 05 §5.11); a pulled id leaves the queue;
 //! - the metadata pass's work list is literally
 //!   `payload_state = 'metadata-only'` — the partial index data-model §A.2
 //!   calls "the query the windowed first sync drives" — so an applied row
@@ -64,6 +66,7 @@ use super::note_body_feed;
 use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
 
 mod body_pass;
+mod deleted_ids;
 mod open_session;
 mod reconcile;
 mod record_packs;
@@ -415,29 +418,14 @@ impl FirstSync {
             let recorded = page.refs.len();
             let tombstones = page.deleted.len();
 
-            // §5.12.1 (#5340): an id in `deleted` is not a delete. It only names
-            // an id to pull, and only the verified typed delete or attested
-            // marker the pull returns deletes, before the cursor moves past it.
-            // A bare id deletes and records nothing, as in Electron
-            // (`changes-page.ts:38`). A chunk that was not a pull envelope
-            // reopens the feed re-read, so its deletes are not skipped for good.
-            let missed = if page.deleted.is_empty() {
-                false
-            } else {
-                let pulled = self.pull.fetch_ids(&page.deleted).await?;
-                if pulled.uncovered > 0 {
-                    eprintln!(
-                        "memry-core: first sync: {} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored",
-                        pulled.uncovered
-                    );
-                }
-                pulled.dropped_pages > 0
-            };
-
             // Durable **before** the cursor advances, in one transaction, so
             // a kill here resumes at this page rather than past it.
+            // §5.12.1 (#5340): an id in `deleted` is not a delete. It only
+            // names an id to pull, so it is queued with the cursor move and
+            // pulled in chunks across pages (`deleted_ids`).
             let stored = next.clone();
             let refs = page.refs;
+            let deleted = page.deleted;
             self.db
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
@@ -463,9 +451,7 @@ impl FirstSync {
                         )
                         .map_err(sqlite_failed)?;
                     }
-                    if missed {
-                        feed_restart::reopen_cursor_skip_repair(&txn)?;
-                    }
+                    deleted_ids::queue(&txn, &deleted)?;
                     // The refs pass serves no bodies (#2299).
                     note_body_feed::rearm_legacy_pull(&txn)?;
                     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, stored.as_deref(), now_ms())?;
@@ -473,6 +459,7 @@ impl FirstSync {
                     Ok(())
                 })
                 .await?;
+            self.pull_deleted(!page.has_more).await?;
 
             report.refs_pages += 1;
             report.refs_recorded += recorded;

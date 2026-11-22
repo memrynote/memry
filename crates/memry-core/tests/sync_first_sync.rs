@@ -909,8 +909,6 @@ async fn the_refs_pass_reports_items_listed_not_server_cursors() {
                 true,
             ),
         ),
-        // Each page's deleted ids are pulled (§5.12.1); none is served.
-        response(200, r#"{"items": []}"#),
         response(
             200,
             &changes_page(
@@ -920,6 +918,8 @@ async fn the_refs_pass_reports_items_listed_not_server_cursors() {
                 false,
             ),
         ),
+        // The pages' deleted ids are pulled together (§5.12.1, C62.1); none
+        // is served.
         response(200, r#"{"items": []}"#),
         // The metadata pass never answers: only the refs pass is under test.
         Err(memry_core::api::errors::TransportError::Cancelled),
@@ -944,6 +944,103 @@ async fn the_refs_pass_reports_items_listed_not_server_cursors() {
             .all(|p| p.completed < 50_000 && p.total < 50_000),
         "{:?}",
         progress.seen()
+    );
+}
+
+/// The `itemIds` of every `/sync/pull` a transport saw, in order.
+fn pulled_ids(transport: &FakeTransport) -> Vec<Vec<String>> {
+    transport
+        .calls_to("/sync/pull")
+        .iter()
+        .map(|call| {
+            let body: Json =
+                serde_json::from_slice(call.body.as_deref().expect("a pull body")).expect("json");
+            serde_json::from_value(body["itemIds"].clone()).expect("itemIds")
+        })
+        .collect()
+}
+
+/// §5.12.1, §10.6.1 (C62.1): the refs pass queues each page's `deleted` ids
+/// and pulls them together, not once per page. The queue is durable, so a
+/// run killed between pages still pulls the ids of the pages it read.
+#[tokio::test]
+async fn deleted_ids_are_pulled_together_across_pages_and_survive_a_kill() {
+    let db = scratch_db("deleted-batch");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+
+    let killed = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &["aaa111bbb222"], 10, true)),
+        response(200, &changes_page(&[], &["bbb222ccc333"], 11, true)),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let run = first_sync(
+        &db,
+        killed.clone(),
+        public_key.clone(),
+        RecordedProgress::new(),
+    )
+    .run(epoch(MODIFIED_AT) + 1_000)
+    .await;
+    assert!(run.is_err(), "the run is killed in the refs pass");
+    assert!(
+        pulled_ids(&killed).is_empty(),
+        "under a full chunk, nothing is pulled yet"
+    );
+
+    let resumed = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &["ccc333ddd444"], 12, false)),
+        response(200, r#"{"items": []}"#),
+        // Whatever follows the refs pass is not under test.
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let _ = first_sync(&db, resumed.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await;
+    assert_eq!(
+        pulled_ids(&resumed),
+        vec![vec![
+            "aaa111bbb222".to_owned(),
+            "bbb222ccc333".to_owned(),
+            "ccc333ddd444".to_owned()
+        ]],
+        "one pull carries the ids of every page, the killed run's too"
+    );
+}
+
+/// C62.1: the queue never holds a full chunk past its page. A page with 150
+/// deleted ids pulls 100 at once and the other 50 with the last page.
+#[tokio::test]
+async fn a_full_chunk_of_deleted_ids_is_pulled_before_the_feed_ends() {
+    let db = scratch_db("deleted-chunks");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+    let ids: Vec<String> = (0..150).map(|n| format!("{n:012}")).collect();
+    let listed: Vec<&str> = ids.iter().map(String::as_str).collect();
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &listed, 10, true)),
+        response(200, r#"{"items": []}"#),
+        response(200, &changes_page(&[], &[], 11, false)),
+        response(200, r#"{"items": []}"#),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let _ = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    let pulls = pulled_ids(&transport);
+    assert_eq!(
+        pulls.iter().map(Vec::len).collect::<Vec<_>>(),
+        vec![100, 50]
+    );
+    assert_eq!(
+        pulls.concat(),
+        ids,
+        "every id is pulled once, in feed order"
+    );
+    assert!(
+        transport.calls()[1].url.contains("/sync/pull"),
+        "the full chunk is pulled before the next page is read"
     );
 }
 
