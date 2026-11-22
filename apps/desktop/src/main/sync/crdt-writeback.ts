@@ -15,7 +15,7 @@ import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { writingFrontmatterOf } from '@memry/shared'
 import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { getExtension, getFileType, isBinaryFileType } from '@memry/shared/file-types'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
@@ -585,10 +585,16 @@ async function performWriteback(
   // A binary note's file is its downloaded blob, and its row names the blob's
   // type. The server holds a CRDT body for binary notes too, so a fresh device
   // settles one into a doc; writing it would put markdown over the image, PDF
-  // or recording and turn the row into a markdown note (#5412).
-  if (cached.fileType && isBinaryFileType(cached.fileType)) {
+  // or recording and turn the row into a markdown note (#5412). A shipped
+  // build already saved some of these rows as markdown; the path still names
+  // the blob's type until the index walk repairs the row, so it decides too.
+  const pathType = getFileType(getExtension(cached.path))
+  if (
+    (cached.fileType && isBinaryFileType(cached.fileType)) ||
+    (pathType && isBinaryFileType(pathType))
+  ) {
     updateDebugState(noteId, { pending: false })
-    log.debug('Write-back skipped: binary note', { noteId, fileType: cached.fileType })
+    log.debug('Write-back skipped: binary note', { noteId, fileType: cached.fileType, pathType })
     return
   }
   // A file linked outside the vault is neither read nor written over (#2804).

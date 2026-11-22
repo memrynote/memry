@@ -805,12 +805,18 @@ Body of a note with broken frontmatter
       // What the write-back left on a fresh device: both rows markdown, no MIME type.
       dataDb.db
         .update(noteMetadata)
-        .set({ fileType: 'markdown', mimeType: null, emoji: '🌅', clock: { dev: 2 } })
+        .set({
+          fileType: 'markdown',
+          mimeType: null,
+          fileSize: 4321,
+          emoji: '🌅',
+          clock: { dev: 2 }
+        })
         .where(eq(noteMetadata.id, before!.id))
         .run()
       testDb.db
         .update(noteCache)
-        .set({ fileType: 'markdown', mimeType: null })
+        .set({ fileType: 'markdown', mimeType: null, fileSize: 4321 })
         .where(eq(noteCache.id, before!.id))
         .run()
 
@@ -827,13 +833,15 @@ Body of a note with broken frontmatter
           path: imagePath,
           fileType: 'image',
           mimeType: 'image/png',
+          // The blob's size, not the size of the file the write-back left.
+          fileSize: 4321,
           emoji: '🌅',
           clock: { dev: 2 }
         })
       )
       const cacheRow = testDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
       expect(cacheRow).toEqual(
-        expect.objectContaining({ fileType: 'image', mimeType: 'image/png' })
+        expect.objectContaining({ fileType: 'image', mimeType: 'image/png', fileSize: 4321 })
       )
     })
 

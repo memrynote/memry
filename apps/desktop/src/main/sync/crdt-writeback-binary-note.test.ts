@@ -4,7 +4,9 @@ import path from 'node:path'
 import * as Y from 'yjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { eq } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
+import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type * as NoteQueries from '@main/database/queries/notes'
 
@@ -139,5 +141,26 @@ describe('write-back of a binary note whose index row is not projected yet (#541
     const row = getNoteMetadataById(testDb.db as never, 'bin-2')
     expect(row?.fileType).toBe('image')
     expect(row?.mimeType).toBe('image/png')
+  })
+
+  // A shipped build's write-back already saved the row as markdown; until the
+  // index walk repairs it, a remote CRDT update for the note must not read the
+  // image as text or write over it.
+  it('never writes over a binary file whose row a shipped build saved as markdown', async () => {
+    const c = CASES[0]
+    applyBinaryRecord('bin-3', c)
+    testDb.db
+      .update(noteMetadata)
+      .set({ fileType: 'markdown', mimeType: null })
+      .where(eq(noteMetadata.id, 'bin-3'))
+      .run()
+    const abs = path.join(mocks.vaultRoot, c.rel)
+    fs.mkdirSync(path.dirname(abs), { recursive: true })
+    fs.writeFileSync(abs, PNG_BYTES)
+
+    await writebackNow('bin-3', packedDoc())
+
+    expect(fs.readFileSync(abs).equals(PNG_BYTES)).toBe(true)
+    expect(getNoteMetadataById(testDb.db as never, 'bin-3')?.path).toBe(c.rel)
   })
 })
