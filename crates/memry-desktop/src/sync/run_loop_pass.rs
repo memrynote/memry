@@ -16,6 +16,7 @@ use super::{Loop, blocking, now_ms};
 use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
 use crate::sync::events::{EventObserver, SyncEvent};
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use crate::sync::telemetry::{ConflictTelemetry, sync_error_event};
@@ -59,6 +60,7 @@ pub(super) async fn run(
     progress: Arc<dyn InitialSyncSink>,
 ) -> PassDone {
     let started = Instant::now();
+    let running = backend.first_sync_running();
     let driver = match driver {
         PassDriver::Held(driver) => Ok(driver),
         PassDriver::Open {
@@ -73,7 +75,7 @@ pub(super) async fn run(
     let (report, error) = match &driver {
         Ok(driver) => tokio::select! {
             biased;
-            ran = pass_on(driver.as_ref(), trigger, progress) => ran,
+            ran = pass_on(driver.as_ref(), trigger, progress, running) => ran,
             () = follow_pause(driver.as_ref(), pause) => (None, None),
         },
         Err(_) => (None, None),
@@ -103,20 +105,29 @@ pub(super) async fn run(
 /// A first sync that fails is followed by a pass, so the seeds run and the outbox drains while the
 /// device stays fresh: Electron's full sync seeds and pushes on every run (`full-sync-runner.ts:
 /// 400-455`), and one body the server keeps refusing must not hold every local write back.
+///
+/// `running` is held for the first sync alone, a failed or cut one included: the note index
+/// defers its search reindex meanwhile (#5409).
 async fn pass_on(
     driver: &dyn SyncPasses,
     trigger: Trigger,
     progress: Arc<dyn InitialSyncSink>,
+    running: Option<FirstSyncRunning>,
 ) -> (Option<PassReport>, Option<SyncError>) {
     let (report, error) = match driver.needs_first_sync().await {
         Err(error) => (None, Some(error)),
-        Ok(true) => match driver.first_sync(progress).await {
-            Ok(report) => (report, None),
-            Err(error) if drains_after(&error) => {
-                (driver.run_pass(trigger.pass_trigger()).await, Some(error))
+        Ok(true) => {
+            let hold = running.as_ref().map(FirstSyncRunning::hold);
+            let ran = driver.first_sync(progress).await;
+            drop(hold);
+            match ran {
+                Ok(report) => (report, None),
+                Err(error) if drains_after(&error) => {
+                    (driver.run_pass(trigger.pass_trigger()).await, Some(error))
+                }
+                Err(error) => (None, Some(error)),
             }
-            Err(error) => (None, Some(error)),
-        },
+        }
         Ok(false) => (
             match trigger {
                 Trigger::Hint { cursor } => driver.wake(cursor).await,

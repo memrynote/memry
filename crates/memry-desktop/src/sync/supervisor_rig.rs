@@ -20,6 +20,7 @@ use tokio::time::{Instant, sleep};
 
 use super::super::backend::{SyncBackend, SyncPasses};
 use super::super::events::SyncEvent;
+use super::super::first_sync_running::FirstSyncRunning;
 use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
 use super::super::signals::AuthSignals;
@@ -79,6 +80,9 @@ pub(crate) struct FakeDriver {
     pub(crate) first_sync_keeps_failing: AtomicBool,
     /// The next this many passes end with bodies their budget left due.
     pub(crate) bodies_left: AtomicUsize,
+    /// What the backend hands the loop for its first syncs, and whether each saw it held.
+    pub(crate) first_sync_running: FirstSyncRunning,
+    pub(crate) held_in_first_sync: Mutex<Vec<bool>>,
 }
 
 impl FakeDriver {
@@ -192,6 +196,7 @@ impl SyncPasses for FakeDriver {
             return Ok(None);
         }
         self.first_syncs.fetch_add(1, Ordering::SeqCst);
+        lock(&self.held_in_first_sync).push(self.first_sync_running.is_running());
         progress.progress(InitialSyncProgress {
             phase: InitialSyncPhase::Notes,
             processed_items: 1,
@@ -340,6 +345,9 @@ impl SyncBackend for FakeBackend {
     }
     fn close(&self) {
         self.closes.fetch_add(1, Ordering::SeqCst);
+    }
+    fn first_sync_running(&self) -> Option<FirstSyncRunning> {
+        Some(self.driver.first_sync_running.clone())
     }
 }
 
