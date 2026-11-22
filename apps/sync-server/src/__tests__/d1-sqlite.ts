@@ -145,17 +145,19 @@ export const createMemoryR2 = (): R2Bucket => {
         uploaded.delete(k)
       }
     },
-    // Key order, `limit` per page, and the cursor is the offset into that order.
+    // Key order, `limit` per page. As in R2, the cursor resumes after the
+    // last key returned, so deleting listed keys between pages skips nothing.
     list: async (options: R2ListOptions = {}) => {
+      const after = options.cursor ?? ''
       const keys = [...objects.keys()]
-        .filter((key) => key.startsWith(options.prefix ?? ''))
+        .filter((key) => key.startsWith(options.prefix ?? '') && key > after)
         .toSorted()
-      const start = Number(options.cursor ?? 0)
-      const end = start + (options.limit ?? 1000)
+      const page = keys.slice(0, options.limit ?? 1000)
+      const truncated = page.length < keys.length
       return {
-        objects: keys.slice(start, end).map((key) => ({ key, uploaded: uploaded.get(key) })),
-        truncated: end < keys.length,
-        ...(end < keys.length ? { cursor: String(end) } : {})
+        objects: page.map((key) => ({ key, uploaded: uploaded.get(key) })),
+        truncated,
+        ...(truncated ? { cursor: page.at(-1) } : {})
       } as unknown as R2Objects
     }
   } as unknown as R2Bucket
