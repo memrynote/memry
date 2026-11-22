@@ -57,6 +57,9 @@ async-trait = { workspace = true }
 # Storage. `bundled` pins the engine across simulator, device and CLI and
 # compiles FTS5 in; there is no separate `fts5` feature flag (research R4).
 rusqlite = { workspace = true }
+# The writer connection's lock: fair hand-over, so one busy writer starves no other caller
+# (`storage::connection::Writer`, #5410).
+parking_lot = { workspace = true }
 sqlite-vec = { workspace = true, optional = true }
 # `spawn_blocking`: every statement runs on the blocking pool, so the connection
 # mutex is never held across an await (research R4).

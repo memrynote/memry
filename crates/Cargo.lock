@@ -4326,6 +4326,7 @@ dependencies = [
  "libsodium-sys-stable",
  "markup5ever 0.40.0",
  "memry-test-kit",
+ "parking_lot",
  "proptest",
  "regex",
  "rusqlite",

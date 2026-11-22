@@ -23,6 +23,10 @@ pub const DEBOUNCE: Duration = Duration::from_millis(500);
 pub const COOLDOWN_FACTOR: u32 = 9;
 /// However big the note, its file never lags its body by more than this cooldown.
 pub const MAX_COOLDOWN: Duration = Duration::from_secs(5);
+/// How long after a failed write ([`Failure::Write`]) its note's pass runs again on its own. Each
+/// failure in a row doubles it, up to [`MAX_RETRY_AFTER`].
+pub const RETRY_AFTER: Duration = Duration::from_secs(5);
+pub const MAX_RETRY_AFTER: Duration = Duration::from_secs(5 * 60);
 
 /// The user is told that a note's file could not be updated from its body.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +107,10 @@ struct Queue {
     cost: HashMap<String, Cost>,
     /// Notes whose last pass failed and whose user was told.
     failing: HashSet<String>,
+    /// When each note whose last write failed is tried again, and how many failed in a row. Not
+    /// a scheduled pass: a flush or a stop neither runs nor waits for it, and a scheduled pass of
+    /// the note runs instead of it.
+    retries: HashMap<String, (Instant, u32)>,
     running: bool,
     /// Flushes waiting: every pass is due now while one is.
     flushes: usize,
@@ -198,6 +206,8 @@ impl WriteBack {
             .wait_timeout_while(queue, timeout, |queue| !queue.idle())
             .unwrap_or_else(|e| e.into_inner());
         queue.flushes -= 1;
+        // The thread left the retries aside while the flush ran: it looks at them again.
+        self.shared.changed.notify_all();
         let done = queue.idle();
         if !done {
             tracing::error!(
@@ -249,11 +259,7 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
     let mut queue = shared.lock();
     loop {
         let now = Instant::now();
-        let next = queue
-            .due
-            .iter()
-            .min_by_key(|(_, at)| **at)
-            .map(|(id, at)| (id.clone(), *at));
+        let next = next_pass(&queue);
         match next {
             None if queue.stopping => break,
             None => {
@@ -299,6 +305,15 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                         Outcome::FrontmatterUnreadable(_) => Some(Failure::Frontmatter),
                         _ => None,
                     };
+                    // A failed write may succeed later (a full disk, a file held open); a
+                    // frontmatter that does not parse waits for the user's fix.
+                    if failure == Some(Failure::Write) {
+                        let failed = queue.retries.get(&note_id).map_or(0, |retry| retry.1) + 1;
+                        let at = finished + retry_after(failed);
+                        queue.retries.insert(note_id.clone(), (at, failed));
+                    } else {
+                        queue.retries.remove(&note_id);
+                    }
                     match failure {
                         Some(reason) if queue.failing.insert(note_id.clone()) => Some(reason),
                         Some(_) => None,
@@ -324,6 +339,34 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
             }
         }
     }
+}
+
+/// The pass to run next and when it is due: the earliest scheduled one, or the earliest retry of
+/// a note not scheduled when that is earlier. No retry while a flush or a stop runs.
+fn next_pass(queue: &Queue) -> Option<(String, Instant)> {
+    let scheduled = queue.due.iter().min_by_key(|(_, at)| **at);
+    let retry = (!queue.urgent())
+        .then(|| {
+            queue
+                .retries
+                .iter()
+                .filter(|(id, _)| !queue.due.contains_key(*id))
+                .map(|(id, (at, _))| (id, at))
+                .min_by_key(|(_, at)| **at)
+        })
+        .flatten();
+    let next = match (scheduled, retry) {
+        (Some(scheduled), Some(retry)) if retry.1 < scheduled.1 => retry,
+        (scheduled, retry) => scheduled.or(retry)?,
+    };
+    Some((next.0.clone(), *next.1))
+}
+
+/// The delay before the retry after `failed` failed writes in a row.
+fn retry_after(failed: u32) -> Duration {
+    RETRY_AFTER
+        .saturating_mul(1 << (failed - 1).min(16))
+        .min(MAX_RETRY_AFTER)
 }
 
 /// Marks the thread ended when it returns or unwinds, so no stop waits for a thread that is gone.

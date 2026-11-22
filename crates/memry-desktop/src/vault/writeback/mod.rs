@@ -116,9 +116,12 @@
 //!   deletes the file for good and reports success, as desktop's unlink always did (measured
 //!   on Windows 11 with `trash` 5.2.9: the file was neither in the Recycle Bin nor on the share).
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
-//!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
-//!   not retried on its own: the note's next schedule is its retry, and its body stays in the
-//!   document until then.
+//!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed write
+//!   runs again on its own [`RETRY_AFTER`] later, the delay doubling with each failure in a row
+//!   up to [`MAX_RETRY_AFTER`], until a pass does not fail; a flush or a stop does not wait for
+//!   that retry, and a close leaves it to the next open's reconcile. A file whose frontmatter
+//!   does not parse is not retried: it waits for the user's fix. The body stays in the document
+//!   all along.
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says
 //! the document holds it once the consumer fed it. A body write sets the day's `date` in its
@@ -146,4 +149,7 @@ pub use deleted::Leftover;
 pub(crate) use pass::output_over;
 pub use pass::{Keep, Outcome, Pass};
 pub(crate) use reconcile::reconcile;
-pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+pub use schedule::{
+    COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, MAX_RETRY_AFTER, RETRY_AFTER, WriteBack,
+    WriteBackFailed,
+};

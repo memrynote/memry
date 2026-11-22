@@ -31,6 +31,7 @@ libsodium-sys-stable = "1.24.0"
 zeroize = "1.8"
 bip39 = { version = "2.2.2", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40.2", features = ["bundled", "backup", "functions", "trace", "limits"] }
+parking_lot = "0.12.5"
 # The vec0 virtual table of index.db (`memry-core` feature `vec`). Compiled from C
 # against its own vendored `sqlite3.h` with `SQLITE_CORE`; only its SQLite symbols
 # resolve to the bundled engine above. Registered with `sqlite3_auto_extension`.

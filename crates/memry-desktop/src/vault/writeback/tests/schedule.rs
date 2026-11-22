@@ -6,7 +6,9 @@ use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use super::super::schedule::{Cost, Runner, due_at};
-use super::super::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+use super::super::{
+    COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, RETRY_AFTER, WriteBack, WriteBackFailed,
+};
 use super::*;
 
 /// Well under the debounce: no pass may start within it.
@@ -95,8 +97,15 @@ fn cool(fake: &Fake, writeback: &WriteBack, id: &str) {
     fake.with(|s| s.took = Duration::ZERO);
 }
 
+/// Well past [`RETRY_AFTER`]: a guard that ends a test whose retry never comes.
+const RETRY_WAIT: Duration = Duration::from_secs(60);
+
 fn eventually(what: &str, done: impl Fn() -> bool) {
-    let deadline = Instant::now() + WAIT;
+    eventually_within(WAIT, what, done);
+}
+
+fn eventually_within(wait: Duration, what: &str, done: impl Fn() -> bool) {
+    let deadline = Instant::now() + wait;
     while !done() {
         assert!(Instant::now() < deadline, "never: {what}");
         std::thread::sleep(Duration::from_millis(5));
@@ -355,6 +364,58 @@ fn a_failed_write_is_told_once_per_run_of_failures() {
     assert_eq!(events, vec![event.clone(), event]);
 }
 
+/// A failed write is tried again on its own, after [`RETRY_AFTER`], with no other schedule;
+/// a pass that kept the file is not. Red while a failed pass waited for the note's next schedule.
+#[test]
+fn a_failed_write_is_tried_again_without_a_schedule() {
+    let fake = Fake::default();
+    fake.with(|s| s.outcomes = [Outcome::Failed("disk full".into())].into());
+    let (writeback, mut told) = start(&fake);
+    writeback.schedule("n1");
+    eventually("the first pass", || fake.finished() == 1);
+    let failed_at = fake.runs()[0].2.unwrap();
+    // Retries are generous with the wall clock: only that one comes, never how soon.
+    eventually_within(RETRY_WAIT, "the retry", || fake.finished() == 2);
+    let retried_at = fake.runs()[1].1;
+    assert!(
+        retried_at - failed_at >= RETRY_AFTER,
+        "retried before its delay"
+    );
+    assert_eq!(
+        told.try_recv().unwrap().note_id,
+        "n1",
+        "the failure is told"
+    );
+    // The retry came to `Unchanged`: nothing more is due.
+    std::thread::sleep(SOON);
+    assert_eq!(fake.count(), 2);
+}
+
+/// A failed note's retry is not a scheduled pass: a flush does not run it again or wait for it,
+/// and a stop ends with it pending (the next open's reconcile lists the note again).
+#[test]
+fn a_failed_write_retry_does_not_hold_a_flush_or_a_stop() {
+    let fake = Fake::default();
+    let failed = || Outcome::Failed("disk full".into());
+    fake.with(|s| {
+        s.outcomes = [failed(), failed()].into();
+    });
+    let (writeback, _told) = start(&fake);
+    writeback.schedule("n1");
+    assert!(
+        writeback.flush(WAIT),
+        "the flush ends with the note failing"
+    );
+    assert_eq!(fake.count(), 1, "the flush ran the pass once");
+    writeback.schedule("n2");
+    writeback.stop();
+    assert_eq!(
+        fake.count(),
+        2,
+        "the stop ran the scheduled pass once and ended"
+    );
+}
+
 #[test]
 fn a_pass_that_panics_is_a_failed_one_and_the_next_still_runs() {
     let fake = Fake::default();
@@ -432,4 +493,37 @@ fn a_note_whose_file_cannot_be_read_is_told_with_its_title() {
             reason: Failure::Write,
         }
     );
+}
+
+/// With the real pass: a write that failed (a file it could not read) is written on its own once
+/// the file can be read again, and a file edited outside the app meanwhile is kept, not
+/// overwritten by the retry. Red while a failed write waited for the note's next schedule.
+#[cfg(unix)]
+#[test]
+fn a_failed_write_is_retried_and_the_retry_keeps_an_outside_edit() {
+    use std::os::unix::fs::PermissionsExt;
+    let mut f = fixture();
+    let fixed = f.adopt("fixed.md", "first words\n");
+    let edited = f.adopt("edited.md", "first words\n");
+    let (writeback, mut told) = real(&mut f);
+    let mode = |rel: &str, mode| {
+        let path = f.root.join(rel);
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
+    };
+    for (id, rel) in [(&fixed, "fixed.md"), (&edited, "edited.md")] {
+        f.edit_in_app(id, "typed in the app");
+        mode(rel, 0o000);
+        writeback.schedule(id);
+    }
+    assert!(writeback.flush(WAIT));
+    assert_eq!(told.try_recv().unwrap().reason, Failure::Write);
+    assert_eq!(told.try_recv().unwrap().reason, Failure::Write);
+    mode("fixed.md", 0o644);
+    mode("edited.md", 0o644);
+    f.write("edited.md", "typed outside the app\n");
+    eventually_within(RETRY_WAIT, "the retry", || {
+        f.read("fixed.md") == "typed in the app\n"
+    });
+    writeback.stop();
+    assert_eq!(f.read("edited.md"), "typed outside the app\n");
 }
