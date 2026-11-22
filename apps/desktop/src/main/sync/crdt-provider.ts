@@ -52,7 +52,7 @@ import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
 import { repairEmptyBlockIds } from './repair-block-ids'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import {
   CRITIC_MARKUP_MARKS_ARRAY,
@@ -1094,6 +1094,11 @@ export class CrdtProvider {
       if (!owesFileBody(noteId)) return true
       const cached = getNoteCacheById(getIndexDatabase(), noteId)
       if (!cached) return true
+      // A binary note owes no body: its file is the blob (#5412).
+      if (isBinaryNoteRow(cached)) {
+        clearOwedFileBody(noteId)
+        return true
+      }
       const file = await openNoteFile(noteId, cached.path)
       if (file === REFUSED) return true
       const raw = file === null ? null : await readAndClose(file)
@@ -1779,7 +1784,7 @@ export class CrdtProvider {
   ): Promise<PreparedSnapshot | null> {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
-    if (cached?.fileType && isBinaryFileType(cached.fileType)) {
+    if (cached && isBinaryNoteRow(cached)) {
       log.debug('Skipping CRDT snapshot push for binary note', {
         noteId,
         fileType: cached.fileType
@@ -2093,7 +2098,7 @@ export class CrdtProvider {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return
-    if (cached.fileType && isBinaryFileType(cached.fileType)) return
+    if (isBinaryNoteRow(cached)) return
     const file = await openNoteFile(noteId, cached.path)
     if (file === REFUSED) return
 
@@ -2782,7 +2787,7 @@ export class CrdtProvider {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (!cached) return { ok: false, error: `Note not found: ${noteId}` }
-    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+    if (isBinaryNoteRow(cached)) {
       return { ok: false, error: `Binary notes do not use CRDT: ${noteId}` }
     }
     return { ok: true }

@@ -870,7 +870,9 @@ document to its vault `.md` file and re-indexes it for search.
   `.png.md`) skips the pass too, so a row an older build saved as markdown this way is
   never written back before the next vault-open index walk retypes it from its file
   extension. The retype keeps the row's `file_size`: the file on disk may be the markdown
-  that overwrote the blob (#5412).
+  that overwrote the blob (#5412). One check, `isBinaryNoteRow` (`packages/shared/src/file-types.ts`),
+  decides this for the write-back, the doc-open outside-edit ingest, the seed from the file, the
+  owed-file take, the snapshot push and the editor handshake.
 - **Constructible is not the same as serializable** — the scan above answers "can this
   build construct this node name", which is exactly the question the converter's delete
   depends on. It is not "will this node survive serialization". A node whose spec is
