@@ -37,7 +37,7 @@ use memry_core::protocol::types::Declaration;
 use memry_core::seams::diagnostics::{
     BootstrapOutcome, CoreDiagnostic, DiagnosticPhase, DiagnosticsSink, RequestStats,
 };
-use memry_core::storage::repositories::instants;
+use memry_core::storage::repositories::{instants, sync_items};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::bootstrap::BootstrapClient;
@@ -687,6 +687,8 @@ async fn a_tombstoned_document_is_never_body_pulled() {
     let transport = FakeTransport::new(vec![
         // The refs page carries the note **and** its tombstone.
         response(200, &changes_page(&[(NOTE, "note")], &[NOTE], 10, false)),
+        // §5.12.1: the deleted id is pulled, and its signed delete applies.
+        response(200, &json!({"items": [signed_delete(NOTE)]}).to_string()),
         // Nothing is outstanding for the metadata pass: the row is deleted.
         // The bodies pass finds no live note. So the script ends here, and
         // running past it would panic.
@@ -698,7 +700,247 @@ async fn a_tombstoned_document_is_never_body_pulled() {
 
     assert_eq!(report.tombstones, 1);
     assert_eq!(report.bodies.documents, 0, "§7.15: not one body request");
-    assert_eq!(transport.call_count(), 1);
+    assert_eq!(transport.call_count(), 2);
+}
+
+/// A signed delete of a note, as the server answers a deleted id.
+fn signed_delete(id: &str) -> Json {
+    json!({
+        "id": id,
+        "type": "note",
+        "operation": "delete",
+        "deletedAt": epoch(MODIFIED_AT) + 500,
+        "signature": "AAAA",
+        "signerDeviceId": "device-a",
+        "blob": {"encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA", "dataNonce": "AAAA"},
+    })
+}
+
+/// `(sync_items.deleted_at, notes.deleted_at)` for one note.
+fn deleted_marks(db: &Db, id: &str) -> (Option<i64>, Option<i64>) {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        conn.query_row(
+            "SELECT s.deleted_at, n.deleted_at FROM sync_items s
+               JOIN notes n ON n.id = s.item_id
+              WHERE s.item_type = 'note' AND s.item_id = ?1",
+            [&id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the note's rows")
+}
+
+/// §5.12.1 (#5340): an id in `deleted` is not a delete. The refs pass pulls it,
+/// and only a verified typed delete deletes. A bare id the pull answers with
+/// nothing leaves the live note, its row and its body, as Electron does
+/// (`changes-page.ts:38`).
+#[tokio::test]
+async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
+    const OTHER: &str = "def456abc789";
+    let db = scratch_db("bare-delete");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[23u8; 32]).expect("keypair");
+    let update = body_update("Keep me");
+
+    // Two live notes with bodies.
+    let seeded = FakeTransport::new(vec![
+        response(
+            200,
+            &changes_page(&[(NOTE, "note"), (OTHER, "note")], &[], 10, false),
+        ),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note"), record_envelope(OTHER, "note")]})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {
+                NOTE: {"updates": [{
+                    "sequenceNum": 1,
+                    "data": packed_base64(NOTE, &update, &secret_key),
+                    "createdAt": 1_700_000_000_000i64,
+                    "signerDeviceId": "device-a"
+                }], "hasMore": false, "floor": 0},
+                OTHER: {"updates": [{
+                    "sequenceNum": 1,
+                    "data": packed_base64(OTHER, &body_update("Delete me"), &secret_key),
+                    "createdAt": 1_700_000_000_000i64,
+                    "signerDeviceId": "device-a"
+                }], "hasMore": false, "floor": 0}
+            }, "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    first_sync(&db, seeded, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the seeding first sync");
+    assert_eq!(text_of(&db, NOTE), "Keep me");
+
+    // A hostile or stale page lists both ids. The pull serves a signed delete
+    // for OTHER only; NOTE is a bare id. One answer serves both the pull and
+    // the body probe, so a build that skips the pull fails on the rows, not
+    // on the script.
+    let answer = json!({
+        "items": [signed_delete(OTHER)],
+        "notes": {
+            NOTE: {"updates": [], "hasMore": false, "floor": 1},
+            OTHER: {"updates": [], "hasMore": false, "floor": 1}
+        },
+        "snapshotMeta": {}
+    })
+    .to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[NOTE, OTHER], 20, false)),
+        response(200, &answer),
+        response(200, &answer),
+    ]);
+    let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(report.tombstones, 2);
+    assert_eq!(
+        deleted_marks(&db, NOTE),
+        (None, None),
+        "a bare id deletes neither the sync row nor the note"
+    );
+    assert_eq!(text_of(&db, NOTE), "Keep me", "the body survives");
+    let (record, note) = deleted_marks(&db, OTHER);
+    assert!(
+        record.is_some() && note.is_some(),
+        "the signed delete still deletes: {record:?} {note:?}"
+    );
+    let pulled = transport.calls_to("/sync/pull");
+    assert_eq!(pulled.len(), 1, "the deleted ids were pulled once");
+}
+
+/// §5.12.1: the refs pass deletes a `deleted` id only through the typed
+/// delete its pull returns, and that delete never crosses types: a tag named
+/// like the deleted note keeps its row (§5.15's collision).
+#[tokio::test]
+async fn a_refs_pass_delete_never_crosses_types() {
+    let db = scratch_db("typed-only");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        sync_items::upsert_metadata_only(conn, "tag_definition", NOTE, 1, None)
+    })
+    .expect("the tag row");
+
+    // One answer serves every pull: the note's signed delete.
+    let answer = json!({"items": [signed_delete(NOTE)]}).to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[NOTE], 10, false)),
+        response(200, &answer),
+        response(200, &answer),
+    ]);
+    first_sync(&db, transport, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    let (note, tag) = db
+        .call_blocking(|conn| {
+            Ok((
+                sync_items::load(conn, "note", NOTE)?.and_then(|row| row.deleted_at),
+                sync_items::load(conn, "tag_definition", NOTE)?.and_then(|row| row.deleted_at),
+            ))
+        })
+        .expect("the rows");
+    assert!(note.is_some(), "the signed note delete applies");
+    assert_eq!(tag, None, "the tag under the same id is not deleted");
+}
+
+/// The scripted cipher, except that it refuses every envelope one signer
+/// claims, as a signature that does not verify under §5.14.
+struct RefusingSigner(Arc<ScriptedCipher>, &'static str);
+
+impl RecordCipher for RefusingSigner {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        if envelope.signer_device_id == self.1 {
+            return Err(EnvelopeError::SignatureInvalid);
+        }
+        self.0.open(envelope)
+    }
+}
+
+/// §5.12.1, §5.14 (#5340 review probe A): the pull of a `deleted` id answered
+/// with a delete whose signature does not verify is refused, and a refused
+/// item never falls through to a delete by id: the note stays live.
+#[tokio::test]
+async fn a_forged_delete_for_a_deleted_id_leaves_the_note_live() {
+    let db = scratch_db("forged-delete");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[31u8; 32]).expect("keypair");
+    let seeded = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {NOTE: {"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &body_update("Still here"), &secret_key),
+                "createdAt": 1_700_000_000_000i64,
+                "signerDeviceId": "device-a"
+            }], "hasMore": false, "floor": 0}}, "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    first_sync(&db, seeded, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the seeding first sync");
+
+    let mut forged = signed_delete(NOTE);
+    forged["signerDeviceId"] = json!("device-evil");
+    // One answer serves the pull and the body probe, as above.
+    let answer = json!({
+        "items": [forged],
+        "notes": {NOTE: {"updates": [], "hasMore": false, "floor": 1}},
+        "snapshotMeta": {}
+    })
+    .to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[NOTE], 20, false)),
+        response(200, &answer),
+        response(200, &answer),
+    ]);
+    let cipher = Arc::new(RefusingSigner(
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+        "device-evil",
+    ));
+    first_sync_with(
+        &db,
+        transport.clone(),
+        public_key,
+        RecordedProgress::new(),
+        cipher,
+    )
+    .run(epoch(MODIFIED_AT) + 2_000)
+    .await
+    .expect("the first sync");
+
+    assert_eq!(
+        transport.calls_to("/sync/pull").len(),
+        1,
+        "the id was pulled"
+    );
+    assert_eq!(
+        deleted_marks(&db, NOTE),
+        (None, None),
+        "a refused delete deletes neither the sync row nor the note"
+    );
+    assert_eq!(text_of(&db, NOTE), "Still here");
 }
 
 /// #2299 review A-5: a coversThrough push moves the server's watermark, so a
@@ -796,6 +1038,7 @@ async fn the_refs_pass_re_arms_the_legacy_body_pull() {
 
     let transport = FakeTransport::new(vec![
         response(200, &changes_page(&[(NOTE, "note")], &[NOTE], 10, true)),
+        response(200, r#"{"items": []}"#),
         error_response(403, "SYNC_VAULT_FORBIDDEN", "not your vault"),
     ]);
     first_sync(&db, transport, public_key, RecordedProgress::new())
@@ -816,12 +1059,23 @@ fn first_sync(
     signer_public_key: Vec<u8>,
     progress: Arc<RecordedProgress>,
 ) -> FirstSync {
+    let cipher = ScriptedCipher::new(&[(NOTE, &note_payload()), ("def456abc789", &note_payload())]);
+    first_sync_with(db, transport, signer_public_key, progress, cipher)
+}
+
+fn first_sync_with(
+    db: &Db,
+    transport: Arc<FakeTransport>,
+    signer_public_key: Vec<u8>,
+    progress: Arc<RecordedProgress>,
+    cipher: Arc<dyn RecordCipher>,
+) -> FirstSync {
     let http = http(transport);
     let pull = Arc::new(PullLoop::new(
         Arc::clone(&http),
         db.clone(),
         Declaration::subscribed(),
-        ScriptedCipher::new(&[(NOTE, &note_payload()), ("def456abc789", &note_payload())]),
+        cipher,
     ));
     let bodies = Arc::new(BodyPull::new(
         http,

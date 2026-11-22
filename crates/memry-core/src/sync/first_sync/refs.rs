@@ -3,8 +3,6 @@
 
 use serde_json::Value as Json;
 
-use super::now_ms;
-
 /// One `/sync/changes` ref row, reduced to what the refs pass records
 /// (chapter 05 §5.11.1).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,17 +63,6 @@ pub(super) fn read_refs_page(body: &Json) -> RefsPage {
             _ => None,
         },
     }
-}
-
-/// The deletion instant for a tombstoned id: the ref row's `modifiedAt` when
-/// the page carried one, and the local clock otherwise. A refs-only pass has
-/// no envelope to read `deletedAt` from, and inventing a far-future instant
-/// would outrank a real edit.
-pub(super) fn reference_now(refs: &[RefRow], item_id: &str) -> i64 {
-    refs.iter()
-        .find(|reference| reference.item_id == item_id)
-        .map(|reference| reference.modified_at)
-        .unwrap_or_else(now_ms)
 }
 
 #[cfg(test)]
