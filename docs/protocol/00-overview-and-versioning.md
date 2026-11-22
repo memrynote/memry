@@ -277,7 +277,8 @@ unrecognised code as "an error with this HTTP status", never as a parse failure.
   the pack phase: no new pack GET starts until the running ones end, then the
   lost packs download again after 30, 60, 120 and 240 s, the fourth pause the
   last (chapter 08 §8.12, `PACK_RETRY_PAUSES`,
-  `crates/memry-core/src/sync/pack_bootstrap/download.rs:46-52`, `:257-268`, #5374). Desktop does not pause.
+  `crates/memry-core/src/sync/pack_bootstrap/download.rs:46-52`, `:257-268`, #5374). Desktop pauses the same
+  way (`apps/desktop/src/main/sync/packs/pack-downloads.ts:13`, #5389).
   A shell reports a deadline timeout with `elapsed_ms` at or past the request's
   `timeout_ms`
   (`crates/memry-core/src/protocol/http.rs:112-119`, `:369-375`).

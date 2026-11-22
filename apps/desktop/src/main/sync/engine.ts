@@ -356,6 +356,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController = null
 
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
     if (this.ctx.inFlightSync) {
       await this.ctx.inFlightSync.catch(() => {})
     }
@@ -472,6 +473,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.cancelRequested = true
     log.info('Sync cancel requested — aborting in-flight sync and refusing further cycles')
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
   }
 
   /**
@@ -689,7 +691,10 @@ export class SyncEngine extends SyncEventEmitter {
   pause(source: SyncPauseSource): PauseSyncResult {
     const wasPaused = this.stateManager.isPaused()
     this.stateManager.setPaused(true, source)
-    if (!wasPaused) this.ctx.abortController?.abort()
+    if (!wasPaused) {
+      this.ctx.abortController?.abort()
+      this.fullSyncRunner.abortPackPhase()
+    }
     return { success: true, wasPaused }
   }
 
@@ -751,6 +756,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController?.abort()
     this.networkReconnectAbortController = null
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
     this.ctx.deps.ws.disconnect()
 
     if (this.pullInterval) {
