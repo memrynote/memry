@@ -50,6 +50,15 @@ export function serverSecondsToMs(createdAt: number | undefined): number | undef
  */
 const CRDT_BATCH_MAX_NOTES = 100
 
+/**
+ * The smallest cold chunk (no note with a watermark) worth a probe outside a
+ * fullSync. The probe POST is charged to the 30/min `crdt_batch_pull` bucket,
+ * and on a cold chunk it can save only the snapshot GETs of snapshotless notes,
+ * so a record-page pull of a few notes would spend a scarce POST to save a few
+ * cheap GETs (#5247 C1.1).
+ */
+const COLD_PROBE_MIN_NOTES = 20
+
 const noCost = (): CrdtPullCost => ({ snapshotGets: 0, batchPosts: 0 })
 
 const isEmptyStateVector = (vector: Uint8Array): boolean => vector.length <= 2
@@ -687,6 +696,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       if (this.holdsPendingStructs(noteId)) {
+        log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
         sawUnmerged = true
         skippedUpdate = true
         this.owePendingPull(noteId, failures, true)
@@ -835,7 +845,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * a single doc is opened or a single snapshot downloaded.
    *
    * `null` means "decide nothing from a probe" and every note in the chunk then
-   * takes the unconditional path this method fronts — an old server.
+   * takes the unconditional path this method fronts — an old server, or a small
+   * cold chunk outside a fullSync.
    *
    * Deliberately NOT available to `applyCrdtIncrementals`: see the comment on
    * `snapshotBaselineSkip`.
@@ -850,6 +861,14 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // Sent on a cold chunk too (#5234): `snapshotMeta` names the notes the
     // server holds no snapshot for, and each of those is a snapshot GET saved.
     // A fresh bootstrap measured 62 of 100 GETs answering `{ snapshot: null }`.
+    // A small cold chunk outside a fullSync is not worth the POST.
+    if (
+      !this.ctx.fullSyncActive &&
+      noteIds.length < COLD_PROBE_MIN_NOTES &&
+      !noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))
+    ) {
+      return null
+    }
 
     const result = await withRetry(
       () => {
@@ -1368,6 +1387,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
       for (const noteId of sinceMap.keys()) {
         if (!this.holdsPendingStructs(noteId)) continue
+        log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
         sawUnmerged.add(noteId)
         skippedUpdate.add(noteId)
         this.owePendingPull(noteId, failures, true)
