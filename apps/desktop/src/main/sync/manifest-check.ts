@@ -37,6 +37,7 @@ import { listDeclinedRefs, retainDeclinedRefs } from '@memry/sync-client/decline
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { ItemRef } from './engine/corrupt-item-tracker'
+import { readUnresolved, writeUnresolved } from './engine/pack-unresolved'
 import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
@@ -182,12 +183,22 @@ export async function checkManifestIntegrity(
     const declinedKeys = new Set(
       listDeclinedRefs(deps.db).map((ref) => itemRefKey(ref.type, ref.id))
     )
+    // #5390: rows a record-pack rerun kept with no delete evidence (§8.10
+    // rule 2). Their absence suggests a delete, and a create would reverse it.
+    const unresolved = readUnresolved(deps.db)
 
     let reEnqueuedCount = 0
     for (const local of deps.reuploadLocalOnly === false ? [] : localRefs) {
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
+        if (unresolved.has(itemRefKey(local.type, local.id))) {
+          log.info('Local item missing from server manifest was kept by the pack phase, skipping', {
+            id: local.id,
+            type: local.type
+          })
+          continue
+        }
         // The manifest omits tombstoned ids, so a deleted note is "missing"
         // here too, and a create for it would republish its body.
         if (
@@ -270,6 +281,11 @@ export async function checkManifestIntegrity(
       clearPendingDelete(deps.db, pending.type, pending.itemId)
     }
     retainDeclinedRefs(deps.db, (ref) => serverItemMap.has(itemRefKey(ref.type, ref.id)))
+    // Retired once the server lists the row again or this device no longer holds it.
+    const stillUnresolved = new Set(
+      [...unresolved].filter((key) => !serverItemMap.has(key) && localKeys.has(key))
+    )
+    if (stillUnresolved.size !== unresolved.size) writeUnresolved(deps.db, stillUnresolved)
 
     if (reEnqueuedCount > 0) {
       log.info('Manifest check complete', { reEnqueued: reEnqueuedCount })

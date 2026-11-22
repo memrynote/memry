@@ -39,7 +39,7 @@ import { reportConflict } from './conflict-report'
 import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
 import type { PullRunState } from './pull-run-state'
 import type { PackedRecords } from '../packs/record-packs'
-import { applyPackedRecords, packDeps, readPackApplied, skipsMarker } from './packed-record-apply'
+import { pullRecords, readPackApplied, skipsMarker } from './packed-record-apply'
 import { tripPullBreaker } from './pull-breaker'
 import { handlePullError } from './pull-error'
 import { PullLatencyTrace } from './sync-latency-telemetry'
@@ -192,22 +192,19 @@ export class PullCoordinator {
           await this.applyDeferredRetries(runState)
           return fetchedAll
         }
-        const fromPacks =
-          packed && this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
-            ? await applyPackedRecords(runState, packed, {
-                applySlice: async (inline, cursorOf) => {
-                  // Socket frames at or below the tail start belong to this pull (#2300).
-                  this.ownedThroughCursor = Math.max(this.ownedThroughCursor, packed.tailStart)
-                  const slice = { fetchIds: [], inline }
-                  const { stop } = await this.applySlice(runState, slice, null, cursorOf)
-                  return HOLDS_CURSOR.has(stop)
-                },
-                pullById,
-                ...packDeps(this.stateManager, this.ctx.deps.db)
-              })
-            : 'tail'
-        if (fromPacks === 'refused') runState.refused = true
-        else await this.pullChanges(runState)
+        await pullRecords(runState, packed, {
+          applySlice: async (inline, cursorOf) => {
+            // Socket frames at or below the tail start belong to this pull (#2300).
+            this.ownedThroughCursor = Math.max(this.ownedThroughCursor, packed?.tailStart ?? 0)
+            const slice = { fetchIds: [], inline }
+            const { stop } = await this.applySlice(runState, slice, null, cursorOf)
+            return HOLDS_CURSOR.has(stop)
+          },
+          pullById,
+          pullChanges: () => this.pullChanges(runState),
+          state: this.stateManager,
+          db: this.ctx.deps.db
+        })
         // A fetch cut short left items missing, so the run did not deliver.
         if (!(await pullById(missing))) runState.refused = true
         await this.repairOrphanedItems(runState)
