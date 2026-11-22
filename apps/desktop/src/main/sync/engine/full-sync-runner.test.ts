@@ -818,7 +818,11 @@ describe('FullSyncRunner', () => {
 
     it('#then a pause during the run skips the manifest check and the follow-up push', async () => {
       const h = createHarness({ pendingCounts: [0, 0, 0, 5] })
-      h.isPaused.mockReturnValueOnce(false).mockReturnValue(true)
+      // During the pull: a pause before it ends the run before any pull (#5389).
+      h.actions.pull.mockImplementationOnce(async () => {
+        h.isPaused.mockReturnValue(true)
+        return DELIVERED
+      })
 
       await h.runner.run()
 

@@ -321,14 +321,7 @@ impl PullLoop {
             .db
             .call(move |conn| {
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-                let totals = apply_items(
-                    &txn,
-                    pending,
-                    Vec::new(),
-                    owe_bodies,
-                    now,
-                    clock_device.as_deref(),
-                )?;
+                let totals = apply_items(&txn, pending, owe_bodies, now, clock_device.as_deref())?;
                 still_open(&txn)?;
                 let advanced =
                     note_body_feed::land_and_advance(&txn, bodies, stored.as_deref(), now)?;
@@ -513,7 +506,6 @@ impl PullLoop {
 fn apply_items(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     owe_bodies: bool,
     now: i64,
     clock_device: Option<&str>,
@@ -524,7 +516,7 @@ fn apply_items(
     } else {
         Vec::new()
     };
-    let totals = apply::apply_page(conn, pending, untyped, now, clock_device)?;
+    let totals = apply::apply_page(conn, pending, now, clock_device)?;
     for doc_id in &owed_here {
         if !totals.applied_documents.contains(doc_id) {
             body_debt::settle(conn, doc_id)?;

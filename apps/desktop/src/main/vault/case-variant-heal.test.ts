@@ -20,6 +20,11 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodies'
+import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
+import { eq } from 'drizzle-orm'
+import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
 vi.mock('../database', () => ({
@@ -172,6 +177,55 @@ describe('healCaseVariantRows', () => {
       expect(notes().canonical.map((row) => row.id)).toEqual(['local-twin', 'original', 'twin'])
     }
   )
+
+  // The index hash says only what the file held when indexed. A row with a
+  // change the server has not taken may hold text or fields the kept note
+  // lacks, so it stays until that change is sent (#5247 C37.1).
+  const queueRow = (type: string) => () =>
+    data.db
+      .insert(syncQueue)
+      .values({
+        id: `queued-${type}`,
+        type,
+        itemId: 'copy',
+        operation: 'update',
+        payload: '{}',
+        createdAt: new Date('2026-01-12T00:00:00.000Z')
+      })
+      .run()
+  it.runIf(fileSystemIgnoresCase()).each([
+    { waiting: 'a queued body change', seed: queueRow(NOTE_BODY_QUEUE_TYPE) },
+    { waiting: 'a queued record change', seed: queueRow('note') },
+    {
+      waiting: 'a file body its doc has not taken',
+      seed: () => data.db.insert(crdtOwedFileBodies).values({ noteId: 'copy', createdAt: 1 }).run()
+    },
+    {
+      waiting: 'a refused body push',
+      seed: () =>
+        data.db
+          .insert(noteBodySync)
+          .values({ noteId: 'copy', lastRejectedAt: 2, updatedAt: 2 })
+          .run()
+    },
+    {
+      waiting: 'a saved record change not yet queued',
+      seed: () =>
+        data.db
+          .update(noteMetadata)
+          .set({ clock: { peer: 1 }, syncedAt: '2026-01-11T00:00:00.000Z' })
+          .where(eq(noteMetadata.id, 'copy'))
+          .run()
+    }
+  ])('keeps a same-hash copy with $waiting', async ({ seed }) => {
+    writeFile('SuperNotes/a.md', 'body')
+    seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+    seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+    seed()
+
+    expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
+    expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
+  })
 
   // A folder row with a clock can be a server record, and a dropped one comes
   // back by the next manifest check only to be dropped again (#5327). An

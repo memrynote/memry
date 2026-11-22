@@ -484,15 +484,10 @@ pub(crate) fn drop_body_updates(tx: &Connection, kind: &str, id: &str) -> Result
 /// Drops the queued record edits of an item a pulled delete just removed
 /// (chapter 05 §5.8). The delete wins: pushed, the edit is an `update` the
 /// server stores over its tombstone, which undeletes the item. A note or
-/// journal's unsent text is already kept as an inbox copy (#3029). `kind`
-/// `None` is an untyped delete, which covers every type under the id.
-pub(crate) fn drop_upserts(
-    tx: &Connection,
-    kind: Option<&str>,
-    id: &str,
-) -> Result<(), StorageError> {
+/// journal's unsent text is already kept as an inbox copy (#3029).
+pub(crate) fn drop_upserts(tx: &Connection, kind: &str, id: &str) -> Result<(), StorageError> {
     // A settings edit is never retired by a delete (#5433, `sync::apply`).
-    let sql = "DELETE FROM outbox WHERE (?1 IS NULL OR item_type = ?1) AND item_id = ?2
+    let sql = "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2
                AND op = ?3 AND item_type <> ?4";
     tx.execute(sql, params![kind, id, OP_UPSERT, SETTINGS_ITEM_TYPE])
         .map_err(failed)?;

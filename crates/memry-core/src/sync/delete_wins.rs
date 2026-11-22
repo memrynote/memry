@@ -123,15 +123,7 @@ pub(crate) fn apply_kept_marker(
         row.is_some_and(|row| row.deleted_at.is_none() && marker.stands_over(row.server_cursor));
     let deleted = stands && {
         let tombstone = marker.tombstone(item_type, item_id);
-        apply::apply_page(
-            &txn,
-            vec![tombstone],
-            Vec::new(),
-            now_ms,
-            Some(clock_device),
-        )?
-        .deleted
-            > 0
+        apply::apply_page(&txn, vec![tombstone], now_ms, Some(clock_device))?.deleted > 0
     };
     forget(&txn, item_type, item_id)?;
     if deleted {
@@ -172,13 +164,7 @@ pub(crate) fn apply_delete_wins(
         forget(&txn, item_type, item_id)?;
         match tombstone {
             Some(tombstone) => {
-                apply::apply_page(
-                    &txn,
-                    vec![tombstone],
-                    Vec::new(),
-                    now_ms,
-                    Some(clock_device),
-                )?;
+                apply::apply_page(&txn, vec![tombstone], now_ms, Some(clock_device))?;
             }
             None => eprintln!(
                 "memry-core: push: {item_type}:{item_id} answered {} with no signed delete or attested marker, kept",
