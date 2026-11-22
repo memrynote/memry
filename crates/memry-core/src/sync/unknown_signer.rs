@@ -8,23 +8,25 @@
 //! clockless type (settings, a delete stored with no clock) the server accepts
 //! a later edit of it and the item comes back on every device.
 //!
-//! - [`refused`] records the refusal as one `meta` row per item id, which a
-//!   local edit never touches (an edit clears `corrupt_reason`, so the reason
-//!   cannot be the record of it).
+//! - [`refused`] records the refusal as one `meta` row per `(type, id)`,
+//!   which a local edit never touches (an edit clears `corrupt_reason`, so the
+//!   reason cannot be the record of it).
 //! - [`retry`] re-pulls those ids at the start of every pass, over that pass's
 //!   fresh directory, at most [`MAX_RETRIES`] times per refusal.
 //! - [`holds`] keeps a queued edit of such a row out of the push meanwhile.
-//! - The row goes when the id resolves: any verified record for it
-//!   ([`resolve_verified`]), or the last retry.
+//! - The wait ends when the row resolves: a verified record for it
+//!   ([`resolve_verified`]) drops the `meta` row and the row's flag; the last
+//!   retry keeps the `meta` row as given up, with the flag.
 //!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
 //! [`crate::protocol::account::UNKNOWN_SIGNER`].
 //!
 //! The rows are baseline `meta` rows, so no numbered migration is needed:
-//! `sync.unknown_signer_retries:{id}` holding the passes that re-pulled it.
-//! An older build never reads them. Refusals an older build recorded only in
-//! `corrupt_reason` are adopted once ([`SEEDED_KEY`]).
+//! `sync.unknown_signer_wait:{type}:{id}` holding the passes that re-pulled
+//! it. An older build never reads them. Every pass adopts a flag with no
+//! `meta` row, which is a refusal an older build recorded only in
+//! `corrupt_reason`, also one it recorded after a downgrade.
 
 use rusqlite::{Connection, params};
 
@@ -37,32 +39,44 @@ use super::first_sync_store::{read_meta, write_meta};
 use super::pull::{PullError, PullLoop};
 
 /// Passes that re-pull one refusal. A signer still missing after this many
-/// fresh directories is not a device of the account; the row stays as it is.
+/// fresh directories is not a device of the account; the row stays as it is,
+/// and its `meta` row stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-const KEY_PREFIX: &str = "sync.unknown_signer_retries:";
+const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
 /// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
-const KEY_END: &str = "sync.unknown_signer_retries;";
-/// Set once the refusals older builds left in `corrupt_reason` are adopted.
-const SEEDED_KEY: &str = "sync.unknown_signer_seeded";
+const KEY_END: &str = "sync.unknown_signer_wait;";
+/// Id-only keys of unreleased builds (#5426). Dropped: [`adopt`] re-adopts
+/// each row they covered from its flag.
+const OLD_KEYS: (&str, &str) = (
+    "sync.unknown_signer_retries:",
+    "sync.unknown_signer_retries;",
+);
+const OLD_SEEDED_KEY: &str = "sync.unknown_signer_seeded";
 
-fn key(item_id: &str) -> String {
-    format!("{KEY_PREFIX}{item_id}")
+/// Item types hold no `:`, so the first one ends the type.
+fn key(item_type: &str, item_id: &str) -> String {
+    format!("{KEY_PREFIX}{item_type}:{item_id}")
 }
 
-/// Records a fresh refusal of `item_id`'s record: a full retry budget.
-pub(crate) fn refused(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    write_meta(conn, &key(item_id), "0")
+/// Records a fresh refusal of the item's record: a full retry budget.
+pub(crate) fn refused(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    write_meta(conn, &key(item_type, item_id), "0")
 }
 
-/// Ends the wait on every id in `pending`: each arrived verified, applied or
-/// skipped, so its signer is known and nothing is left to re-pull.
+/// Ends the wait on every item in `pending`: each arrived verified, applied
+/// or skipped, so its signer is known and nothing is left to re-pull.
 pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result<(), StorageError> {
-    if pending.is_empty() || waiting(conn)?.is_empty() {
+    if pending.is_empty() || recorded(conn)?.is_empty() {
         return Ok(());
     }
     for item in pending {
-        drop_refusal(conn, item.item_id())?;
+        drop_refusal(conn, item.item_type(), item.item_id())?;
+        sync_items::clear_unknown_signer(conn, item.item_type(), item.item_id())?;
     }
     Ok(())
 }
@@ -70,24 +84,34 @@ pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result
 /// Whether a queued edit of this row waits: its last pulled record was
 /// refused for an unknown signer and is still being re-pulled. Sending the
 /// edit could reverse a delete this device has not verified yet.
-pub(crate) fn holds(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
-    Ok(read_meta(conn, &key(item_id))?.is_some())
+pub(crate) fn holds(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<bool, StorageError> {
+    Ok(read_meta(conn, &key(item_type, item_id))?
+        .is_some_and(|attempts| attempts_of(&attempts) < MAX_RETRIES))
 }
 
 /// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
 /// the directory it fetched for this pass. A transport failure is logged and
 /// counts no attempt; any other failure counts one.
 pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
-    let due = db
+    let due: Vec<_> = db
         .call(|conn| {
-            seed_legacy(conn)?;
-            waiting(conn)
+            adopt(conn)?;
+            recorded(conn)
         })
-        .await?;
+        .await?
+        .into_iter()
+        .filter(|(_, _, attempts)| *attempts < MAX_RETRIES)
+        .collect();
     if due.is_empty() {
         return Ok(());
     }
-    let ids: Vec<String> = due.iter().map(|(id, _)| id.clone()).collect();
+    let mut ids: Vec<String> = due.iter().map(|(_, id, _)| id.clone()).collect();
+    ids.sort();
+    ids.dedup();
     if let Err(error) = pull.fetch_ids(&ids).await {
         eprintln!(
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
@@ -103,63 +127,76 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
         }
     }
     db.call(move |conn| {
-        for (id, attempts) in due {
+        for (item_type, id, attempts) in due {
+            let key = key(&item_type, &id);
             // Resolved by the re-pull, or a refusal of it is still recorded:
             // this pass's attempt counts against the budget it had before.
-            if read_meta(conn, &key(&id))?.is_none() {
+            if read_meta(conn, &key)?.is_none() {
                 continue;
             }
             let attempts = attempts + 1;
-            if attempts < MAX_RETRIES {
-                write_meta(conn, &key(&id), &attempts.to_string())?;
-                continue;
+            if attempts >= MAX_RETRIES {
+                eprintln!(
+                    "memry-core: {item_type} {id}'s signer is still unknown after {attempts} \
+                     directories; no longer re-pulled"
+                );
             }
-            eprintln!(
-                "memry-core: {id}'s signer is still unknown after {attempts} directories; \
-                 no longer re-pulled"
-            );
-            drop_refusal(conn, &id)?;
+            write_meta(conn, &key, &attempts.to_string())?;
         }
         Ok(())
     })
     .await
 }
 
-/// The waiting ids with the passes that re-pulled each.
-fn waiting(conn: &Connection) -> Result<Vec<(String, u32)>, StorageError> {
+fn attempts_of(value: &str) -> u32 {
+    value.parse().unwrap_or(0)
+}
+
+/// Every recorded refusal, waiting or given up, as `(type, id, attempts)`.
+fn recorded(conn: &Connection) -> Result<Vec<(String, String, u32)>, StorageError> {
     let mut statement = conn
         .prepare("SELECT key, value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key")
         .map_err(failed)?;
-    statement
+    let rows = statement
         .query_map(params![KEY_PREFIX, KEY_END], |row| {
-            let key: String = row.get(0)?;
-            let value: String = row.get(1)?;
-            Ok((
-                key[KEY_PREFIX.len()..].to_owned(),
-                value.parse().unwrap_or(0),
-            ))
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)
+        .map_err(failed)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(key, value)| {
+            let (item_type, id) = key[KEY_PREFIX.len()..].split_once(':')?;
+            Some((item_type.to_owned(), id.to_owned(), attempts_of(&value)))
+        })
+        .collect())
 }
 
-fn drop_refusal(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
-    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_id)])
+fn drop_refusal(conn: &Connection, item_type: &str, item_id: &str) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_type, item_id)])
         .map_err(failed)?;
     Ok(())
 }
 
-/// Adopts, once, the refusals an older build recorded only in
-/// `corrupt_reason`.
-fn seed_legacy(conn: &Connection) -> Result<(), StorageError> {
-    if read_meta(conn, SEEDED_KEY)?.is_some() {
-        return Ok(());
+/// Adopts every flagged row with no `meta` row: a refusal an older build
+/// recorded only in `corrupt_reason`, before or after this build first ran.
+/// A row this build resolved has no flag, and one it gave up on keeps its
+/// `meta` row, so neither comes back.
+fn adopt(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE (key >= ?1 AND key < ?2) OR key = ?3",
+        params![OLD_KEYS.0, OLD_KEYS.1, OLD_SEEDED_KEY],
+    )
+    .map_err(failed)?;
+    for (item_type, id) in sync_items::unknown_signer_rows(conn)? {
+        conn.execute(
+            "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, '0')",
+            [key(&item_type, &id)],
+        )
+        .map_err(failed)?;
     }
-    for id in sync_items::unknown_signer_ids(conn)? {
-        refused(conn, &id)?;
-    }
-    write_meta(conn, SEEDED_KEY, "1")
+    Ok(())
 }
 
 fn failed(error: rusqlite::Error) -> StorageError {

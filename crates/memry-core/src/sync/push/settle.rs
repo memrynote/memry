@@ -48,8 +48,8 @@ impl PushCoordinator {
         if item.row.op != outbox::OP_UPSERT {
             return Ok(false);
         }
-        let item_id = item.row.item_id.clone();
-        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_id);
+        let (item_type, item_id) = (item.row.item_type.clone(), item.row.item_id.clone());
+        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_type, &item_id);
         if !self.db.call(holds).await? {
             return Ok(false);
         }
