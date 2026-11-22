@@ -1,8 +1,18 @@
+import { PACK_REPLACED_GRACE_SECONDS } from '@memry/contracts/sync-api'
+
 import { createLogger } from '../lib/logger'
 import { deleteBlobs } from './blob'
 import { purgeDeletedDocumentBodies } from './document-body-purge'
 import { enqueuePackCompaction, type PackCompactionMessageBody } from './pack-queue'
+import { EXPIRED_TOMBSTONE_SQL } from './expired-tombstone'
 import { PACK_PURGE_RETRY_DELAY_SECONDS } from './pack-replaced-objects'
+import {
+  NOT_PACKED_AT_CURSOR,
+  RECORD_OBJECTS_SETTLED,
+  packedRecordKeys,
+  recordKey,
+  unlistRecordPacks
+} from './record-pack-purge'
 import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { chunkHeldSql } from './chunk-holds'
 import { adjustStorageUsed } from './quota'
@@ -183,29 +193,24 @@ interface ExpiredTombstoneRow {
   id: string
   blob_key: string
   user_id: string
+  vault_id: string
+  item_type: string
+  item_id: string
   size_bytes: number
   server_cursor: number
 }
-
-/**
- * A `sync_items si` row the shed takes: a tombstone past the owner's
- * retention. Needs `LEFT JOIN sync_entitlements e ON e.user_id = si.user_id`
- * and binds `now` (epoch seconds). Pack compaction reads it too, so it never
- * leaves a hole for a row the shed will empty in place (#5227).
- */
-export const EXPIRED_TOMBSTONE_SQL = `si.deleted_at IS NOT NULL
-         AND (CASE WHEN si.deleted_at >= 100000000000 THEN si.deleted_at / 1000 ELSE si.deleted_at END)
-             < ? - (COALESCE(e.version_history_days, 0) * 86400)`
 
 // An unshed tombstone still holds its payload. `blob_key = ''` is the marker,
 // the same predicate as the partial index idx_sync_items_unshed_tombstones.
 // The row must still be past retention when the write runs: a retention that
 // grew since the select keeps the tombstone, so the shed never empties a row
-// compaction found unexpired and packed past (#5247). Binds the id, the
-// selected server_cursor, the id again and `now`.
+// compaction found unexpired and packed past (#5247). No listed record pack
+// may hold its entry: a build that listed one since the shed read the listing
+// keeps the row for the next tick. Binds the id, the selected server_cursor,
+// the id again and `now`.
 const UNSHED_GUARD = `id = ? AND server_cursor = ? AND blob_key <> '' AND id IN (
   SELECT si.id FROM sync_items si LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
-  WHERE si.id = ? AND ${EXPIRED_TOMBSTONE_SQL})`
+  WHERE si.id = ? AND ${EXPIRED_TOMBSTONE_SQL} AND ${NOT_PACKED_AT_CURSOR})`
 
 /**
  * Sheds the payload of tombstones past the user's `version_history_days` and
@@ -227,6 +232,14 @@ const UNSHED_GUARD = `id = ? AND server_cursor = ? AND blob_key <> '' AND id IN 
  * it, leaves a tombstone without bytes; pull serves it as a purged tombstone
  * and the run after it expires marks it. Returns the number of rows shed.
  *
+ * Record packs first (protocol 08 §8.13, #5247): a row some listed record pack
+ * holds, an older version or the tombstone itself, is not shed this tick. Its
+ * packs leave the listing as pending rewrites, which drop its entries, and a
+ * compaction message runs them (withRecordPacksCleared). A vault with a record
+ * object that may still hold entries (RECORD_OBJECTS_SETTLED) sheds nothing,
+ * so a later tick sheds the row once no object that held it remains, and no
+ * replaced object a reader may still download inside its grace.
+ *
  * Known gap: a push that read the unshed tombstone (size S) in its Stage 3 and
  * commits after this shed refunds S again through its size delta, so the
  * user's `storage_used` can undercount by S. Bounded, in the user's favour,
@@ -234,7 +247,8 @@ const UNSHED_GUARD = `id = ? AND server_cursor = ? AND blob_key <> '' AND id IN 
  */
 export const cleanupExpiredTombstones = async (
   db: D1Database,
-  storage: R2Bucket
+  storage: R2Bucket,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> } = {}
 ): Promise<number> => {
   const now = Math.floor(Date.now() / 1000)
 
@@ -242,15 +256,17 @@ export const cleanupExpiredTombstones = async (
   // core (#3053, docs/protocol ch.04). Values at or above 10^11 are ms.
   const expired = await db
     .prepare(
-      `SELECT si.id, si.blob_key, si.user_id, si.size_bytes, si.server_cursor
+      `SELECT si.id, si.blob_key, si.user_id, si.vault_id, si.item_type, si.item_id, si.size_bytes,
+              si.server_cursor
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
        WHERE si.blob_key <> ''
          AND ${EXPIRED_TOMBSTONE_SQL}
+         AND ${RECORD_OBJECTS_SETTLED}
        ORDER BY si.user_id
        LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )
-    .bind(now)
+    .bind(now, now - PACK_REPLACED_GRACE_SECONDS)
     .all<ExpiredTombstoneRow>()
 
   const rowsByUser = new Map<string, ExpiredTombstoneRow[]>()
@@ -261,7 +277,9 @@ export const cleanupExpiredTombstones = async (
   }
 
   const deleted: ExpiredTombstoneRow[] = []
-  for (const [userId, rows] of rowsByUser) {
+  for (const [userId, selected] of rowsByUser) {
+    const rows = await withRecordPacksCleared(db, queue, selected, now)
+    if (rows.length === 0) continue
     try {
       await deleteBlobs(
         storage,
@@ -301,6 +319,46 @@ export const cleanupExpiredTombstones = async (
   }
 
   return shed
+}
+
+/**
+ * The rows of `rows` (one user's) that no listed record pack holds. Per vault,
+ * the record packs holding the others leave the listing as pending rewrites
+ * and a compaction message runs them. A vault that lists a record pack of
+ * unknown contents resets its record kind and sheds nothing this tick.
+ */
+const withRecordPacksCleared = async (
+  db: D1Database,
+  queue: { PACK_QUEUE?: Queue<PackCompactionMessageBody> },
+  rows: ExpiredTombstoneRow[],
+  now: number
+): Promise<ExpiredTombstoneRow[]> => {
+  const byVault = new Map<string, ExpiredTombstoneRow[]>()
+  for (const row of rows) byVault.set(row.vault_id, [...(byVault.get(row.vault_id) ?? []), row])
+  const free: ExpiredTombstoneRow[] = []
+  for (const [vaultId, vaultRows] of byVault) {
+    const scope = { userId: vaultRows[0].user_id, vaultId }
+    const keyOf = (row: ExpiredTombstoneRow) => recordKey(row.item_type, row.item_id)
+    const { held, unknown } = await packedRecordKeys(db, scope, vaultRows.map(keyOf))
+    if (!unknown) free.push(...vaultRows.filter((row) => !held.has(keyOf(row))))
+    if (held.size === 0 && !unknown) continue
+    await db.batch(unlistRecordPacks(db, scope, [...held], now))
+    logger.info('Tombstone shed: record packs holding expired tombstones left the listing', {
+      vaultId,
+      rows: held.size,
+      reset: unknown
+    })
+    try {
+      await enqueuePackCompaction(queue, scope)
+    } catch (error) {
+      // The backfill tick's message runs the same rewrite pass.
+      logger.error('Tombstone shed: record pack rewrite not enqueued', {
+        vaultId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+  return free
 }
 
 // Deleted documents read per tick, and vaults purged per tick (VERIFY-5267

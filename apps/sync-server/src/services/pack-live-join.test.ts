@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
-import { recordsLive } from './pack-record-selection'
+import { recordsLive } from './pack-record-live'
 import { snapshotsLive } from './pack-snapshot-selection'
 import { updatesLive } from './pack-update-selection'
 

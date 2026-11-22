@@ -19,7 +19,7 @@ import {
   type Guard,
   type VaultScope
 } from './pack-index-write'
-import { recordsLive } from './pack-record-selection'
+import { recordsLive } from './pack-record-live'
 import {
   REWRITE_PENDING,
   deleteUnlisted,
@@ -581,7 +581,7 @@ const swapListing = async (
           itemCount: swap.kept.length,
           byteSize: swap.payloadBytes,
           coverage: swap.coverage,
-          documents: packDocuments(kind, swap.kept)
+          documents: packDocuments(swap.kept)
         },
         recorded
       ),

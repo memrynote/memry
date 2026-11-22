@@ -1,3 +1,4 @@
+import { PACK_REPLACED_GRACE_SECONDS } from '@memry/contracts/sync-api'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -418,7 +419,10 @@ describe('cleanup services', () => {
       await cleanupExpiredTombstones(db, storage)
 
       // #then
-      expect(selectBind).toHaveBeenCalledWith(1_700_000_000)
+      expect(selectBind).toHaveBeenCalledWith(
+        1_700_000_000,
+        1_700_000_000 - PACK_REPLACED_GRACE_SECONDS
+      )
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('sync_entitlements'))
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))
     })

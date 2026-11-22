@@ -12,6 +12,8 @@ import { compactOneRange, compactVault } from './pack-compaction'
 import { listPacks } from './pack-list'
 import { extractEntry, parsePack, type PackedEntry } from './pack-format'
 import { PACK_SETTLE_SECONDS } from './pack-sizing'
+import { rewritePurgedPacks } from './pack-purge-rewrite'
+import { deleteReplacedPackObjects } from './pack-replaced-objects'
 import {
   RECORD_SYNC_ITEM_TYPES,
   RecordPackEntryMetaSchema,
@@ -402,12 +404,12 @@ describe('record packs carry the pull item (#5227)', () => {
     expect(recordWatermark()).toBe(rowOf('task-y').server_cursor)
   })
 
-  // REVIEW-5253 probe a, the documented outcome for #5254: a tombstone shed
-  // before it was packed is never an entry, so the packs keep only the live
-  // version. A reader that trusted packs and tailed from their maxCursor would
-  // resurrect the item; GET /sync/manifest is what says it is gone. Step 09
-  // (#5232) makes its reader pass this by reconciling against the manifest.
-  it('a record-pack reader must reconcile against GET /sync/manifest: packs keep a shed tombstone live', async () => {
+  // REVIEW-5253 probe a (#5254): a tombstone shed before it was packed is
+  // never an entry. Its live version used to stay packed, so only GET
+  // /sync/manifest said the item is gone. The shed now first rewrites the
+  // record packs that hold the item (#5247, protocol 08 §8.13), so no pack
+  // keeps the shed tombstone's item live.
+  it('the shed rewrites the record packs holding the item first, so no pack keeps a shed tombstone live', async () => {
     const app = buildApp()
     await push(app, [
       { id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } },
@@ -417,12 +419,15 @@ describe('record packs carry the pull item (#5227)', () => {
     await compactVault(harness.db, storage, SCOPE)
     await expiredTombstone(app, 'task-x')
     await push(app, [{ id: 'task-z', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(0)
+    await rewritePurgedPacks(harness.db, storage, SCOPE)
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
     expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(1)
     settleRecords()
     await compactVault(harness.db, storage, SCOPE)
 
     const packedX = (await packedRecordItems()).filter(({ item }) => item.id === 'task-x')
-    expect(packedX.map(({ item }) => item.operation)).toEqual(['create'])
+    expect(packedX).toEqual([])
     expect(recordWatermark()).toBe(rowOf('task-z').server_cursor)
     expect(rowOf('task-x').server_cursor).toBeLessThan(rowOf('task-z').server_cursor)
     expect(await manifestIds(app)).toEqual(['task-y', 'task-z'])

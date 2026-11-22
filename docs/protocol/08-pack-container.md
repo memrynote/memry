@@ -972,15 +972,18 @@ removes a document's body, it touches only the `crdt_snapshot` and
 ciphertext MUST leave every pack object within `PACK_PURGE_DEADLINE_SECONDS`
 = 900 of the purge's commit (`packages/contracts/src/sync-api.ts:793-794`).
 **The 900 s bound** below states what holds the deadline and when it can
-fail. `record` packs are not scoped yet (**Not implemented yet**, below).
+fail. The purge also rewrites the `record` packs that hold older versions of
+the document's record, and the chapter 05 §5.12.3 shed rewrites the `record`
+packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
 
-- **Finding them.** The statement that inserts a body pack row records the
-  distinct document ids of its entries as a JSON array in
-  `pack_index.documents` (`packDocuments`,
-  `apps/sync-server/src/services/pack-index-write.ts:57`). Builds, rollups and
-  purge rewrites all record it. `record` packs carry NULL. The purge finds a
-  document's packs with `json_each` over that column
-  (`apps/sync-server/src/services/document-body-purge.ts:35-36`).
+- **Finding them.** The statement that inserts a pack row records the
+  distinct entry ids of its entries as a JSON array in `pack_index.documents`
+  (`packDocuments`, `apps/sync-server/src/services/pack-index-write.ts:58`):
+  document ids for a body pack, `type:id` for a `record` pack. Builds, rollups
+  and purge rewrites all record it. A `record` pack listed before #5247
+  carries NULL. The purge finds a document's packs with `json_each` over that
+  column (`apps/sync-server/src/services/document-body-purge.ts:35-36`,
+  `apps/sync-server/src/services/record-pack-purge.ts:21`).
 - **Packs written before migration 0024.** Their `documents` is NULL, so the
   server cannot tell which documents they hold. While the vault lists such a
   pack of a body kind and the document has rows of that kind (for
@@ -1093,26 +1096,42 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   `apps/sync-server/src/services/cleanup.ts`) runs the purge again, and the
   bound runs from that commit. Until then the document's packs stay listed,
   and the rules below keep their entries inert.
-- **Not implemented yet** (step 06 MUSTs, tracked in #5247):
-  - **Record entries.** The purge does not touch `record` packs. Entries of
-    older versions of the deleted document's record stay in record pack
-    objects until a rollup drops them (§8.12). The rule: each record pack
-    holding the document is rewritten as above, dropping its record entries
-    below the record's current cursor and keeping the entry at that cursor,
-    the tombstone. A fresh reader learns the delete and its clock from it,
-    and without that clock a re-create is refused with `SYNC_DELETE_WINS`
-    (chapter 05 §5.8).
-  - **Purged-tombstone markers.** Before the chapter 05 §5.12.3 shed turns a
-    tombstone into a marker, the same steps take every record pack holding
-    that `(type, id)` out of the listing, and the shed waits at least
-    `PACK_REPLACED_GRACE_SECONDS` after that removal. A URL signed while such
-    a pack was listed expires within 300 s (§8.12), so no reader downloads it
-    after the shed. A reader that downloaded it before the shed meets the
-    tombstone through a pack or the feed (§8.10), or the manifest reconcile
-    (§8.10) drops the live entry through the marker's attestation. The rewrite drops every entry
-    of that `(type, id)`, because a marker has no payload to pack. Today the
-    shed empties the row in place, and the manifest reconcile alone keeps
-    a packed entry of it inert.
+- **Record packs** (#5247, migration 0027). The purge batch also takes every
+  listed `record` pack whose `documents` names `note:<id>` or `journal:<id>`
+  out of the listing as a pending rewrite, and records the pack's
+  `cover_from` and `cover_through` on its `pack_replaced_objects` row
+  (`unlistRecordPacks`,
+  `apps/sync-server/src/services/record-pack-purge.ts:29`). The rewrite keeps
+  every entry whose row is still current at its cursor, so the tombstone stays
+  and every older version of the record drops. It lists the new pack under the
+  same coverage, so the chain keeps tiling (§8.10). The same batch makes
+  every replaced `record` object of the vault due at once. No statement
+  rechecks that the document is dead: the rewrite keeps every current entry,
+  so a re-create loses nothing. While the vault lists a `record` pack whose
+  `documents` is NULL, the batch resets the `record` kind instead
+  (`packKindReset`); the rebuild records `documents`. The 900 s bound holds
+  as for the body kinds.
+- **Purged-tombstone markers** (#5247). Before the chapter 05 §5.12.3 shed
+  turns a tombstone into a marker, it reads which of the expired tombstones a
+  listed `record` pack holds, at any cursor (`packedRecordKeys`). Each such
+  pack leaves the listing as a pending rewrite, and the shed enqueues a
+  compaction message, whose rewrite pass runs it
+  (`apps/sync-server/src/services/cleanup.ts`, `withRecordPacksCleared`). The
+  rewrite also drops the entry of every tombstone past retention, the
+  tombstone itself included, because a marker has no payload to pack. A held
+  row is not shed in that tick, and a vault that lists a `record` pack whose
+  `documents` is NULL resets the kind and sheds nothing in that tick. A row is
+  shed only while its vault has no `record` object that may still hold it: no
+  pending rewrite, no object due and not yet deleted, and none a rollup or
+  re-anchor replaced less than `PACK_REPLACED_GRACE_SECONDS` ago
+  (`RECORD_OBJECTS_SETTLED`). A URL signed while such a pack was listed
+  expires within 300 s (§8.12), so no reader downloads a pack holding the
+  item after the shed. The shed's row update is guarded on no listed `record`
+  pack spanning the row's cursor holding it (`NOT_PACKED_AT_CURSOR`), so a
+  build that listed the tombstone after the shed read the listing keeps the
+  row for the next tick. A reader that downloaded a pack before the shed meets
+  the tombstone through a pack or the feed (§8.10), or the manifest reconcile
+  (§8.10) drops the live entry through the marker's attestation.
 
 **Why a lingering entry is harmless.** A reader can still hold bytes of a pack
 it listed or downloaded before the purge. Each kind has the rule that makes
