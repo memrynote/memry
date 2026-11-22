@@ -111,7 +111,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * and merging its server body would let the write-back re-create it.
    */
   private hasNoteRow: (noteId: string) => boolean
-  /** The last body pull that had a token found no vault key; see `isVaultKeyMissing`. */
+  /** The last vault key read found no key; see `isVaultKeyMissing`. */
   private vaultKeyMissing = false
 
   constructor(
@@ -1437,12 +1437,25 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   }
 
   /**
-   * The last body pull that had a token found no vault key, as with a locked
-   * keychain. Signing in does not fix that, so its editors get their own
-   * read-only notice (#5342).
+   * The last vault key read found no key, as with a locked keychain. Signing
+   * in does not fix that, so its editors get their own read-only notice
+   * (#5342).
    */
   isVaultKeyMissing(): boolean {
     return this.vaultKeyMissing
+  }
+
+  /**
+   * Told every vault key read, and returns the key; `SyncEngine` routes each
+   * read here. A key found again after a miss calls `onVaultKeyReadable`, so
+   * waiting editors leave the vault-locked notice without waiting for the next
+   * body pull.
+   */
+  recordVaultKeyRead(vaultKey: Uint8Array | null): Uint8Array | null {
+    const unlocked = this.vaultKeyMissing && vaultKey !== null
+    this.vaultKeyMissing = vaultKey === null
+    if (unlocked) this.ctx.deps.onVaultKeyReadable?.()
+    return vaultKey
   }
 
   /** `hasServerBodyEvidence`, or a server update this session applied to the note (#5371). */
@@ -1454,7 +1467,6 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     const token = await this.ctx.deps.getAccessToken()
     if (!token) return null
     const vaultKey = await this.ctx.deps.getVaultKey()
-    this.vaultKeyMissing = !vaultKey
     return vaultKey ? { token, vaultKey } : null
   }
 
