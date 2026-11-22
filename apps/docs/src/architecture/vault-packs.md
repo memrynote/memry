@@ -386,7 +386,8 @@ never received, so the item routes fill the rest. When a server before #5232 ans
 manifest page 404, desktop applies packed snapshots under the old rule and no packed update. A read
 that stops short on a server with the route applies no packed body at all (§8.11). A snapshot pack
 counts as applied for the resume watermark only once every usable document it holds has run.
-Record packs stay on `POST /sync/pull`.
+Record packs apply through the pull before the first cursor: see
+[Record packs and the first cursor](#record-packs-and-the-first-cursor).
 
 ## Coverage Semantics a Client Must Respect
 
@@ -479,10 +480,12 @@ fired off, because it writes into the same Y.Docs and the same databases the pul
 touch.
 
 1. **Discover.** Walk `GET /sync/packs` newest-first at `PACK_LIST_PAGE_LIMIT` = 50 per page, for
-   at most `MAX_PACK_LIST_PAGES` = 20 pages. Keep only packs that are `crdt_snapshot`, carry a
-   `url`, carry an `expiresAt`, and whose expiry is more than `PRESIGN_EXPIRY_SAFETY_SECONDS` = 30
-   seconds away. Packs at or below a previous run's `PACKS_APPLIED_THROUGH_CURSOR` are dropped
-   before anything transfers.
+   at most `MAX_PACK_LIST_PAGES` = 20 pages. Keep only packs that carry a `url`, carry an
+   `expiresAt`, and whose expiry is more than `PRESIGN_EXPIRY_SAFETY_SECONDS` = 30 seconds away.
+   Snapshot packs at or below a previous run's `PACKS_APPLIED_THROUGH_CURSOR` are dropped before
+   anything transfers. Record packs are kept only while `LAST_CURSOR` is absent
+   (`packs/pack-bootstrap.ts:334`): a device with a cursor already holds every record below it.
+   The first page's `record` coverage statement is kept for the record plan.
 2. **Transfer.** Up to `MAX_PARALLEL_PACK_DOWNLOADS` = 3 packs concurrently, newest cursor range
    first, paced through the same `DownloadPacer` the attachment queue uses at
    `PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE` = 60. Elevation **multiplies** that ceiling —
@@ -530,7 +533,8 @@ touch.
    rows along with the per-vault CRDT store they describe, so a sign-out during the first sync is
    finished after the next sign-in. The settle does nothing while the CRDT store is not open (the
    provider runs in memory), stops at the next doc once the run is aborted, and keeps a row whose
-   whole-body debt could not be persisted. A pull that does not
+   whole-body debt could not be persisted. Up to `PACK_SEED_SETTLE_CONCURRENCY` = 8 docs settle at
+   once (`engine/full-sync-runner.ts:52`); each clears only its own row. A pull that does not
    deliver settles nothing, so no packed doc is purged before its record could land. A doc that
    comes back empty is never written over the record's file; its watermark is dropped instead, so
    the record's walk fetches the whole body.
@@ -552,6 +556,11 @@ row, and peer rows arrive through the item-granular CRDT pull that runs _after_ 
 Every packed snapshot was signed by some other device, so the applier refreshes the device-key
 cache lazily — once per bootstrap, and only once an entry is actually up for apply, so a vault with
 no usable packs pays nothing.
+
+The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:77-94`).
+An account keeps a key for every device it ever linked, and most snapshots come from the few
+devices that compacted last. Trying every key per snapshot cost 126 s of a 270 s pack phase on
+17k notes. The order does not change which key verifies.
 
 ### `PACKS_APPLIED_THROUGH_CURSOR`
 
@@ -580,10 +589,98 @@ A missing row reads as 0, which is what every install written before this key ex
 
 ### `LAST_CURSOR` is never written by the pack path
 
-Nothing in the pack bootstrap touches the item-granular sync cursor. That is what makes the whole
-feature removable at runtime: the pull that follows behaves byte-for-byte as it does on a
-deployment where packs do not exist, whether the pack path seeded 5,000 notes or returned
-immediately. The pack watermark gates pack work and nothing else.
+Nothing in the pack bootstrap touches the item-granular sync cursor. The bootstrap only hands the
+pull a record plan, and the pull sets the cursor after it applied that plan (next section). With
+no plan, the pull behaves byte-for-byte as it does on a deployment where packs do not exist,
+whether the pack path seeded 5,000 notes or returned immediately. The pack watermark gates pack
+work and nothing else.
+
+### Record packs and the first cursor
+
+Without record packs, a fresh device pulls every record from cursor 0, page by page. Record packs
+let it apply most records from a few downloads and start the feed near its head. A pack is a
+cache, though: it can miss rows, hold an old write of a row, or hold a row deleted since. So the
+records are reconciled against `GET /sync/manifest` and applied through the pull's own decrypt,
+signature and clock path, never by the pack bootstrap (protocol 08 §8.10, Closing checks).
+
+**Plan** (`packs/record-packs.ts:185-228`). After the pack bytes are on disk, the bootstrap:
+
+1. Computes how far the held record packs reach: the unbroken run of ranged packs from cursor 0,
+   raised to `coveredThrough` when the run reaches `packedThrough` (`recordCoverageEnd`, line 57).
+   With no reach, record packs are unused.
+2. Reads the record manifest to its last page (`readManifestPages`, `manifest-check.ts:106`). A
+   failed or short read cannot tell a deleted record from an unread one, so record packs are
+   unused and the pull runs from 0.
+3. Rebuilds every record entry as a pull item. An unreadable entry lowers the tail start to
+   `sortKey - 1`, so the feed serves it.
+4. Reconciles, using only the newest packed entry per item (`reconcileRecords`, line 135). A live
+   entry applies only at the manifest's `serverCursor`. A live entry the manifest omits is not
+   applied. A tombstone applies unless the manifest lists the item again. Every manifest item not
+   held at its cursor, or listed with no cursor, is pulled by id, unless its cursor is above the
+   tail start, where the feed serves it.
+
+**Apply** (`engine/packed-record-apply.ts:157-241`). The pull applies the plan in slices of 100
+through its page path, pulls the by-id list, and only then writes `LAST_CURSOR` = tail start (line
+234). The order is the data-loss line: a cursor written before the by-id pull, then a crash, would
+skip those items for good, because the feed never answers below its cursor. Until the cursor is
+written, a crash redoes the whole phase, and rows that already landed come back with an equal clock
+and skip. An entry that did not apply, or a by-id item that did not land, lowers the tail start
+below its cursor. A slice that stops on a key problem refuses the run.
+
+**Rule 2: rows the manifest later drops.** Example: run 1 applies `task:a` from a pack and is
+killed before the cursor. `task:a` is deleted on another device, and its tombstone is shed to a
+purged-tombstone marker. Run 2 starts from cursor 0, and a pull from 0 skips markers (#2302), so
+`task:a` would stay live here forever. To catch this, before the first slice the pull writes every
+row it applies or pulls by id, with the cursor of the write it holds, to `sync_state` key
+`recordPacksApplied` (`RECORD_PACKS_APPLIED`, line 185). While that key exists, every pull runs
+rule 2 before any feed page (`pullRecords`, line 113), even a run with no pack plan:
+
+- A recorded row the manifest does not list, whose local row exists and was not modified on this
+  device, is pulled by id with `purged_tombstones` declared (`pullsUnlistedRow`,
+  `engine/pack-row-modified.ts:33`). A queued write, this device's id in the row's clock, or no
+  clock keeps the row out of the pull.
+- Only the answer removes the row: a delete that verifies, or a marker whose delete attestation
+  verifies and whose cursor is past the held cursor (`markerNotPastHeld`, line 90). A marker at or
+  below the held cursor says nothing about that write.
+- An unanswered request (failed HTTP, unreadable response, cooldown) is not silence. The by-id
+  pull runs with `requireAnswers`, lifts the refetch cooldown for those refs, and returns false
+  (`engine/item-recovery.ts:203-240`). The run is refused, `recordPacksApplied` stays, and the next
+  pull asks again.
+- A row the server answered with nothing that removes it stays live and is added to the durable
+  set `recordPacksUnresolved` (`RECORD_PACKS_UNRESOLVED`, `engine/pack-unresolved.ts`).
+
+The pull deletes `recordPacksApplied` only after rule 2 ran and `LAST_CURSOR` is past 0 (line
+136). From there the feed serves every later marker.
+
+**Unresolved rows and the manifest check.** The manifest check re-uploads a local row the server
+manifest omits. For an unresolved row that would be wrong: its absence suggests a delete this
+device could not verify, and the server accepts a create over a marker for a recreatable type, so
+the delete would be reversed on every device. The check skips an unresolved row unless this device
+edited it (`editedHere`, `engine/pack-row-modified.ts:59`; `manifest-check.ts:190-206`). An edit
+here makes it this device's own write, which must not be lost. A key leaves the set once the
+server lists the row again or this device no longer holds it (`manifest-check.ts:289-293`).
+
+**Bodies.** A note whose packed body already reached the body manifest's head (last sequence and
+snapshot revision) is marked settled (`isSettled`, `packs/pack-bootstrap.ts:708`), and the pull
+skips its body pull while it applies the record packs.
+
+### Local apply cost
+
+The pack phase moves the network cost of a first sync into local writes. On a 17k-note vault
+these parts dominated, and each now has a bound:
+
+- **Search index.** `fts_notes` declares `id` `UNINDEXED`, so `DELETE FROM fts_notes WHERE id = ?`
+  scanned every row, and indexing a fresh vault note by note was quadratic: 177 s for 17k notes.
+  `createFtsTable` adds `fts_notes_content_id` on the fts5 shadow table's `c0` (the `id` column),
+  and deletes and lookups go through it (`database/fts.ts:39-43`): 15 s. fts5 writes the shadow
+  table for every writer, older builds included, so the index cannot go stale.
+- **Signer order.** The last verifying key is tried first (see [Signer identity](#signer-identity)).
+- **Settle.** Eight pack-seeded docs settle at once instead of one. One at a time, the main
+  process sat idle on store, converter and file awaits for most of a 408 s settle.
+- **Folder list.** The renderer used to re-walk every vault directory once per note the bootstrap
+  created. The folder query now shares one coalesced refresher per query client, like the note
+  lists (`renderer/src/hooks/use-notes-query.ts:94-238`): sync events fold into one refetch after
+  a rest; a move, rename or folder-config change refetches at once.
 
 ### Failure modes
 
