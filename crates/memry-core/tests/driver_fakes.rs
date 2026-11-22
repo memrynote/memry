@@ -54,6 +54,8 @@ pub struct FakeServer {
     added_devices: Mutex<Vec<(String, u8)>>,
     /// `GET /auth/devices` answers 503 while set.
     devices_down: AtomicBool,
+    /// `GET /auth/devices` answers a body that lists no devices while set.
+    devices_garbled: AtomicBool,
     /// Routes whose requests are recorded and never answered.
     hung: Mutex<Vec<&'static str>>,
 }
@@ -70,6 +72,7 @@ impl FakeServer {
             markers: Mutex::default(),
             added_devices: Mutex::default(),
             devices_down: AtomicBool::new(false),
+            devices_garbled: AtomicBool::new(false),
             hung: Mutex::default(),
         })
     }
@@ -82,6 +85,18 @@ impl FakeServer {
     /// Holds `id` deleted, as a peer's delete left it.
     pub fn delete(&self, item_type: &str, id: &str) {
         self.seal(item_type, id, json!({}), Some(1_760_000_000_000));
+    }
+
+    /// Holds `id` deleted by `signer`, whose key is seeded with `seed` and
+    /// which the directory lists only once [`FakeServer::add_device`] adds it.
+    #[cfg(feature = "markdown")]
+    pub fn delete_by(&self, item_type: &str, id: &str, signer: &str, seed: u8) {
+        let (_, secret) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
+        let signer = Signer {
+            id: signer,
+            signing_key: &secret,
+        };
+        self.seal_by(item_type, id, json!({}), Some(1_760_000_000_000), signer);
     }
 
     /// Queues one feed page listing `ids` (with the types the server holds).
@@ -134,6 +149,13 @@ impl FakeServer {
     #[cfg(feature = "markdown")]
     pub fn devices_down(&self, down: bool) {
         self.devices_down.store(down, Ordering::SeqCst);
+    }
+
+    /// Answers `GET /auth/devices` with a malformed body until called with
+    /// `false`: a failure that is neither transport nor retried.
+    #[cfg(feature = "markdown")]
+    pub fn devices_garbled(&self, garbled: bool) {
+        self.devices_garbled.store(garbled, Ordering::SeqCst);
     }
 
     /// The `X-Memry-Sync-Types` of every request to `route`, in order.
@@ -193,8 +215,8 @@ impl FakeServer {
             .collect()
     }
 
-    /// `(type, id, operation)` of every pushed record.
-    pub fn pushed(&self) -> Vec<(String, String, String)> {
+    /// Every pushed record, as sent.
+    pub fn pushed_records(&self) -> Vec<Json> {
         self.calls_to("/sync/push")
             .iter()
             .flat_map(|call| {
@@ -203,6 +225,13 @@ impl FakeServer {
                     .cloned()
                     .unwrap_or_default()
             })
+            .collect()
+    }
+
+    /// `(type, id, operation)` of every pushed record.
+    pub fn pushed(&self) -> Vec<(String, String, String)> {
+        self.pushed_records()
+            .into_iter()
             .map(|item| {
                 let field = |key: &str| item[key].as_str().unwrap_or_default().to_owned();
                 (field("type"), field("id"), field("operation"))
@@ -221,6 +250,21 @@ impl FakeServer {
     }
 
     fn seal(&self, item_type: &str, id: &str, payload: Json, deleted_at: Option<i64>) {
+        let peer = Signer {
+            id: PEER,
+            signing_key: &self.peer_secret,
+        };
+        self.seal_by(item_type, id, payload, deleted_at, peer);
+    }
+
+    fn seal_by(
+        &self,
+        item_type: &str,
+        id: &str,
+        payload: Json,
+        deleted_at: Option<i64>,
+        signer: Signer<'_>,
+    ) {
         let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
         let content = payload.to_string().into_bytes();
         let sealed = envelope::encrypt(
@@ -234,8 +278,8 @@ impl FakeServer {
                 },
                 content: &content,
                 vault_key: &vault_key,
-                signing_secret_key: &self.peer_secret,
-                signer_device_id: PEER,
+                signing_secret_key: signer.signing_key,
+                signer_device_id: signer.id,
                 clock: None,
                 state_vector: None,
                 deleted_at,
@@ -260,6 +304,9 @@ impl FakeServer {
             "/auth/devices" => {
                 if self.devices_down.load(Ordering::SeqCst) {
                     return (503, "{}".to_owned());
+                }
+                if self.devices_garbled.load(Ordering::SeqCst) {
+                    return (200, "{}".to_owned());
                 }
                 let public = |seed: u8| {
                     let (public, _) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
@@ -348,6 +395,12 @@ impl FakeServer {
         };
         (200, body)
     }
+}
+
+/// The device a sealed record names, and its signing key.
+struct Signer<'a> {
+    id: &'a str,
+    signing_key: &'a [u8],
 }
 
 /// `https://host/sync/changes?limit=500` -> `/sync/changes`.

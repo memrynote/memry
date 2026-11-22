@@ -48,18 +48,15 @@ use crate::protocol::http::{
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::nested_tx;
-use crate::storage::repositories::projectors;
-use crate::storage::repositories::projectors::agent::is_sealed_pending;
+use crate::storage::repositories::projectors::{self, agent::is_sealed_pending};
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
+mod gate;
 mod pre_push_hook;
 
-use super::crypto_batch::off_runtime;
-use super::engine::PushWave;
-use super::hardening::manifest;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
-use super::store;
+use super::{crypto_batch::off_runtime, engine::PushWave, hardening::manifest, store};
 use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
 pub use pre_push_hook::{HoldDecision, MAX_HOLD_DEFERRALS, PrePushHook};
@@ -372,6 +369,9 @@ impl PushCoordinator {
                 "no live sync_items row at send time".to_owned(),
             ));
         };
+        if let Some(built) = self.gate(&item.row, &row).await? {
+            return Ok(built);
+        }
         let operation = match operation_of(&item.row) {
             Some(operation) => operation,
             None => {
