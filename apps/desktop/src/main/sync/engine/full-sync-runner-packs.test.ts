@@ -120,6 +120,7 @@ interface Harness {
   provider: ProviderMock | undefined
   deviceKeys: string[]
   stateManager: SyncStateManager
+  actions: FullSyncActions
 }
 
 const createHarness = (
@@ -209,7 +210,7 @@ const createHarness = (
     actions
   )
 
-  return { runner, order, setStateValue, provider, deviceKeys, stateManager }
+  return { runner, order, setStateValue, provider, deviceKeys, stateManager, actions }
 }
 
 describe('FullSyncRunner pack bootstrap seam', () => {
@@ -316,7 +317,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
   )
 
   it.each(['stop or cancel', 'pause', 'vault switch'] as const)(
-    '#given a %s while the bootstrap session opens #then the pack phase never starts',
+    '#given a %s while the bootstrap session opens #then neither the pack phase nor the pull starts',
     async (ending) => {
       const harness = createHarness()
       let sessionOpened!: () => void
@@ -334,9 +335,14 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       else if (ending === 'pause') vi.mocked(harness.stateManager.isPaused).mockReturnValue(true)
       else harness.runner.dispose()
       finishOpen()
-      await running
+      const outcome = await running
 
       expect(mocks.runPackBootstrap).not.toHaveBeenCalled()
+      expect(harness.actions.pull).not.toHaveBeenCalled()
+      expect(outcome).toEqual({
+        status: 'skipped',
+        reason: ending === 'pause' ? 'paused' : 'cancelled'
+      })
     }
   )
 

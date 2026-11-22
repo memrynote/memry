@@ -452,6 +452,15 @@ export class FullSyncRunner {
     let pullDelivered = false
     let pushesDelivered = true
     try {
+      // A stop, pause, wipe or vault switch while the session opened or the
+      // packs ran ends the run here, as it ended the pack phase (#5389).
+      if (
+        packAbort &&
+        (packAbort.signal.aborted || this.disposed || this.stateManager.isPaused())
+      ) {
+        this.lastRunCaughtUp = false
+        return skipped(this.stateManager.isPaused() ? 'paused' : 'cancelled')
+      }
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
       // swallows every error and the coordinator returns early on a busy lock,

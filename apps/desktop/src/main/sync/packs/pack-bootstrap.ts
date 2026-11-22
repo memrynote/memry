@@ -511,11 +511,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     const recordHeld = held.filter(({ pack }) => pack.itemKind === 'record')
     const records =
       recordHeld.length > 0
-        ? await planRecordPacks(
-            recordHeld,
-            listing.recordCoverage,
-            async () => (manifestToken ? readRecordManifest(manifestToken, deps.signal) : null),
-            (byteCount) => recordBytes('records', byteCount)
+        ? await planRecordPacks(recordHeld, listing.recordCoverage, async () =>
+            manifestToken ? readRecordManifest(manifestToken, deps.signal) : null
           )
         : null
     const settledBodies = new Set<string>()
