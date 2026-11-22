@@ -1,7 +1,10 @@
 import sodium from 'libsodium-wrappers-sumo'
 
+import type { CrdtPayloadForDecrypt } from '@memry/sync-client/worker-protocol'
+
 import { createLogger } from '../../lib/logger'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
+import type { SyncWorkerBridge } from '../worker-bridge'
 import type { BodyWatermark, DocumentPlan } from './body-plan'
 
 const log = createLogger('PackBodyApply')
@@ -40,7 +43,15 @@ export interface PackBodyApplierDeps {
   store: BodySeedStore | null
   getVaultKey: () => Promise<Uint8Array | null>
   getSignerPublicKeys: () => Promise<SignerKeys>
+  /** The crypto worker; without one (or when it rejects) decrypt runs on this thread. */
+  workerBridge?: Pick<SyncWorkerBridge, 'isRunning' | 'decryptCrdtBatch'>
   decrypt?: typeof decryptCrdtUpdate
+}
+
+/** One sealed blob to open as `signerDeviceId`. */
+interface Sealed {
+  bytes: Uint8Array
+  signerDeviceId: string
 }
 
 export interface PackBodyApplier {
@@ -53,6 +64,24 @@ export interface PackBodyApplier {
    * watermark never claims a sequence the doc does not hold.
    */
   applyDocument(noteId: string, plan: DocumentPlan): Promise<BodyWatermark | null>
+}
+
+/** Each update's bytes, up to the first that cannot be read. */
+const readUpdates = async (noteId: string, plan: DocumentPlan): Promise<Uint8Array[]> => {
+  const out: Uint8Array[] = []
+  for (const update of plan.updates) {
+    try {
+      out.push(await update.read())
+    } catch (error) {
+      log.debug('Packed update unreadable — the rest of the document stays on the routes', {
+        noteId,
+        sequenceNum: update.sequenceNum,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      break
+    }
+  }
+  return out
 }
 
 /**
@@ -69,35 +98,87 @@ export interface PackBodyApplier {
 export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplier => {
   const decrypt = deps.decrypt ?? decryptCrdtUpdate
   let signerKeys: SignerKeys | null = null
+  let signerKeysB64: Record<string, string> = {}
   // Most snapshots come from the few devices that last compacted, and an
   // account keeps a key per device it ever linked: trying every key per
-  // snapshot cost 126 s of a 270 s pack phase on 17k notes (#5390). The key
-  // that verified last is tried first; which key verifies does not depend on
-  // the order.
-  let lastSigner: Uint8Array | null = null
+  // snapshot cost 126 s of a 270 s pack phase on 17k notes (#5390). The device
+  // whose key verified last is tried first; which key verifies does not depend
+  // on the order. Kept as a device id, so the key always comes from the
+  // current candidate list.
+  let lastSignerId: string | null = null
 
   const keys = async (): Promise<SignerKeys> => {
-    if (!signerKeys) signerKeys = await deps.getSignerPublicKeys()
+    if (!signerKeys) {
+      signerKeys = await deps.getSignerPublicKeys()
+      signerKeysB64 = Object.fromEntries(
+        [...signerKeys].map(([id, key]) => [id, Buffer.from(key).toString('base64')])
+      )
+    }
     return signerKeys
   }
 
-  const openSnapshot = (
-    bytes: Uint8Array,
+  /**
+   * Opens every blob, aligned with `sealed`; `undefined` where it does not
+   * verify or decrypt. Thousands of packed updates go through here, so the
+   * crypto runs on the worker like the route path's, and on this thread only
+   * when the worker is not running or rejects (transport, not a verdict).
+   */
+  const openAll = async (
+    sealed: Sealed[],
     vaultKey: Uint8Array,
     noteId: string,
     candidates: SignerKeys
-  ): Uint8Array | null => {
-    const ordered = lastSigner ? [lastSigner, ...candidates.values()] : candidates.values()
-    for (const publicKey of ordered) {
+  ): Promise<Array<Uint8Array | undefined>> => {
+    if (sealed.length === 0) return []
+    const bridge = deps.workerBridge
+    if (bridge?.isRunning) {
+      const items: CrdtPayloadForDecrypt[] = sealed.map((s, index) => ({
+        index,
+        noteId,
+        data: s.bytes,
+        signerDeviceId: s.signerDeviceId
+      }))
       try {
-        const plain = decrypt(bytes, vaultKey, noteId, publicKey)
-        lastSigner = publicKey
-        return plain
-      } catch {
-        // Not this key (or not decryptable under it); try the next.
+        const { results } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
+        const byIndex = new Map(results.map((r) => [r.index, r.update]))
+        return sealed.map((_s, index) => byIndex.get(index))
+      } catch (error) {
+        log.warn('Pack body worker decrypt unavailable — falling back to main thread', {
+          error: error instanceof Error ? error.message : String(error)
+        })
       }
     }
-    return null
+    return sealed.map((s) => {
+      const publicKey = candidates.get(s.signerDeviceId)
+      if (!publicKey) return undefined
+      try {
+        return decrypt(s.bytes, vaultKey, noteId, publicKey)
+      } catch {
+        return undefined
+      }
+    })
+  }
+
+  /** The snapshot opened under the first device key that verifies it, or null. */
+  const openSnapshot = async (
+    bytes: Uint8Array,
+    vaultKey: Uint8Array,
+    noteId: string,
+    candidates: SignerKeys,
+    first: Uint8Array | undefined
+  ): Promise<Uint8Array | null> => {
+    if (first) return first
+    const rest = [...candidates.keys()].filter((id) => id !== lastSignerId)
+    const opened = await openAll(
+      rest.map((signerDeviceId) => ({ bytes, signerDeviceId })),
+      vaultKey,
+      noteId,
+      candidates
+    )
+    const hit = opened.findIndex((plain) => plain !== undefined)
+    if (hit < 0) return null
+    lastSignerId = rest[hit]
+    return opened[hit] ?? null
   }
 
   return {
@@ -111,9 +192,38 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       const candidates = await keys()
       if (candidates.size === 0) return null
 
+      // One worker round trip for the document: the snapshot under the last
+      // signer's key, then every readable update under its named signer's key
+      // only (chapter 07 §7.14).
+      const snapshotBytes = plan.snapshot ? await plan.snapshot.read() : null
+      const guessSigner =
+        snapshotBytes && lastSignerId && candidates.has(lastSignerId) ? lastSignerId : null
+      const updateBytes = await readUpdates(noteId, plan)
+      const opened = await openAll(
+        [
+          ...(snapshotBytes && guessSigner
+            ? [{ bytes: snapshotBytes, signerDeviceId: guessSigner }]
+            : []),
+          ...updateBytes.map((bytes, i) => ({
+            bytes,
+            signerDeviceId: plan.updates[i].signerDeviceId
+          }))
+        ],
+        vaultKey,
+        noteId,
+        candidates
+      )
+      const updatePlains = guessSigner ? opened.slice(1) : opened
+
       let snapshotPlain: Uint8Array | null = null
-      if (plan.snapshot) {
-        snapshotPlain = openSnapshot(await plan.snapshot.read(), vaultKey, noteId, candidates)
+      if (snapshotBytes) {
+        snapshotPlain = await openSnapshot(
+          snapshotBytes,
+          vaultKey,
+          noteId,
+          candidates,
+          guessSigner ? opened[0] : undefined
+        )
         if (!snapshotPlain) {
           log.debug('Packed snapshot verified under no registered device key — item GET instead', {
             noteId
@@ -141,18 +251,16 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
             snapshotRevision: plan.snapshot.meta.revision
           }
         }
-        for (const update of plan.updates) {
-          const publicKey = candidates.get(update.signerDeviceId)
-          let plain: Uint8Array
-          try {
-            if (!publicKey) throw new Error('unknown signer')
-            plain = decrypt(await update.read(), vaultKey, noteId, publicKey)
-          } catch (error) {
-            log.debug('Packed update unusable — the rest of the document stays on the routes', {
-              noteId,
-              sequenceNum: update.sequenceNum,
-              error: error instanceof Error ? error.message : String(error)
-            })
+        for (const [i, update] of plan.updates.entries()) {
+          const plain = updatePlains[i]
+          if (!plain) {
+            if (i < updateBytes.length) {
+              log.debug('Packed update unusable — the rest of the document stays on the routes', {
+                noteId,
+                sequenceNum: update.sequenceNum,
+                signerDeviceId: update.signerDeviceId
+              })
+            }
             break
           }
           if (

@@ -26,6 +26,7 @@ const fixture = vi.hoisted(() => ({
     >(),
     setSyncPaused: vi.fn(),
     setNetworkOnline: vi.fn(),
+    snapshotsHeld: vi.fn(() => false),
     setSnapshotCoverage: vi.fn(),
     setOweRemoteMerge: vi.fn(),
     setRemoteMerge: vi.fn(),

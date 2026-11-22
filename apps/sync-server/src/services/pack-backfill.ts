@@ -278,6 +278,7 @@ export const runBackfillMessage = async (
   let rollups = 0
   let packsBuilt = 0
   let drained = false
+  let healing = false
   // Pending purge rewrites do not fail a backfill message: the purge's own
   // delayed message owns the deadline (pack-replaced-objects.ts), and a
   // redelivery here would drop the chain (VERIFY-5283 V2).
@@ -298,19 +299,24 @@ export const runBackfillMessage = async (
         // Snapshots: with nothing left above the watermark, pack what a build
         // left below it (D-TIE-REMAINDER). A lost race retries; anything else
         // means no remainder is left that a build can pack. Without the budget
-        // for it the chain still ends, and the cron's next message heals.
-        if (
-          step.kind !== 'crdt_snapshot' ||
-          result.reason !== 'not_ready' ||
-          budget < SUBREQUESTS_PER_PACK
-        ) {
+        // for it, a message that healed hands the rest to the next hop, so a
+        // remainder of several packs drains in one chain instead of one pack
+        // per cron tick (REVIEW-5315 L2); any other message ends the chain and
+        // the cron's next message heals.
+        if (step.kind !== 'crdt_snapshot' || result.reason !== 'not_ready') {
           drained = true
+          return
+        }
+        if (budget < SUBREQUESTS_PER_PACK) {
+          drained = !healing
           return
         }
         const healed = await healSnapshotRemainder(db, storage, scope)
         budget -= SUBREQUESTS_PER_PACK
-        if (healed.built) packsBuilt++
-        else if (healed.reason !== 'unlisted') {
+        if (healed.built) {
+          packsBuilt++
+          healing = true
+        } else if (healed.reason !== 'unlisted') {
           drained = true
           return
         }
