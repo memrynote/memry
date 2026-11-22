@@ -334,6 +334,24 @@ pub fn unknown_signer_ids(conn: &Connection) -> Result<Vec<String>, StorageError
         .map_err(failed)
 }
 
+/// Clears a row's corrupt flag when it records only an unknown signer
+/// ([`crate::protocol::account::UNKNOWN_SIGNER`]): a verified record for the
+/// id arrived. Any other reason stays.
+pub fn clear_unknown_signer(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE sync_items SET corrupt_reason = NULL, corrupt_at = NULL
+         WHERE item_type = ?1 AND item_id = ?2
+           AND substr(corrupt_reason, -length(?3)) = ?3",
+        params![item_type, item_id, crate::protocol::account::UNKNOWN_SIGNER],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// Reads one row.
 pub fn load(
     conn: &Connection,

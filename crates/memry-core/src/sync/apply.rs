@@ -258,6 +258,8 @@ fn apply_tombstone(
         eprintln!(
             "memry-core: pull: {item_type}:{item_id} delete skipped: settings are never deleted"
         );
+        // Verified, so an unknown-signer hold on the row is over.
+        sync_items::clear_unknown_signer(conn, item_type, item_id)?;
         totals.skipped += 1;
         return Ok(());
     }
@@ -360,6 +362,11 @@ fn apply_untyped_tombstone(
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     // Never the settings row (#5433): store and outbox skip it too.
     let mut item_types = store::item_types_for(&txn, item_id)?;
+    if item_types == [settings::SETTINGS_ITEM_TYPE] {
+        // The id holds only the settings row: nothing to delete.
+        totals.skipped += 1;
+        return Ok(());
+    }
     item_types.retain(|t| t != settings::SETTINGS_ITEM_TYPE);
     // The purge below drops the queued body updates, so unseen text is kept
     // first, as the typed arm keeps it. No clock or body vector on the wire,

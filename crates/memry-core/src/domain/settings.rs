@@ -190,11 +190,18 @@ pub fn apply(
 /// still `metadata-only`, whose body has not been pulled yet — is left exactly
 /// as it is. Clobbering a body this device has not downloaded would lose every
 /// preference the account already holds.
+///
+/// The one exception is a deleted row with no payload: an earlier build applied
+/// a settings delete before this device pulled the item (#5433). No body is
+/// owed for a deleted row, so it is seeded like a missing one, and [`revive`]
+/// then brings it back live with the edit.
 fn ensure_item(tx: &Connection, now_ms: i64) -> Result<(), StorageError> {
     tx.execute(
         "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(item_type, item_id) DO NOTHING",
+         ON CONFLICT(item_type, item_id) DO UPDATE SET
+             payload = excluded.payload, payload_state = excluded.payload_state
+         WHERE sync_items.payload IS NULL AND sync_items.deleted_at IS NOT NULL",
         params![
             SETTINGS_ITEM_TYPE,
             SETTINGS_ITEM_ID,
