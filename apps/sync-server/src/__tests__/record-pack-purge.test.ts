@@ -408,10 +408,10 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
     await compactAll()
     pastRetention()
     const realBatch = harness.db.batch.bind(harness.db)
-    harness.db.batch = (async () => {
+    harness.db.batch = async () => {
       harness.db.batch = realBatch
       throw new Error('D1 down')
-    }) as D1Database['batch']
+    }
 
     expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
     expect(shedRow('task-gone').blob_key).not.toBe('')
