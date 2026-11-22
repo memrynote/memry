@@ -36,6 +36,7 @@ use crate::sync::journal_day_merge;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
 use crate::sync::revive_heal;
+use crate::sync::unknown_signer;
 
 /// Pages one pass may pull before it stops and lets the next pass continue.
 const MAX_PULL_PAGES: u32 = 200;
@@ -121,6 +122,9 @@ impl VaultSync {
             .with_clock_device(&self.session.device_id()?)
             .with_note_bodies(cipher.clone()),
         );
+        // Records an earlier pass refused for a signer its directory lacked,
+        // re-pulled over this pass's directory before the feed (#5413).
+        unknown_signer::retry(&self.db, &pull).await?;
         let pulled = pull.run(MAX_PULL_PAGES).await?;
 
         // Bodies next, best effort: every document owed a per-note pull,
