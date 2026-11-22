@@ -19,7 +19,7 @@ import {
   type Guard,
   type VaultScope
 } from './pack-index-write'
-import { recordsLive } from './pack-record-selection'
+import { recordsLive } from './pack-record-live'
 import {
   REWRITE_PENDING,
   deleteUnlisted,
@@ -553,7 +553,9 @@ const swapListing = async (
         AND min_cursor >= ? AND min_cursor ${end} ? AND id NOT IN (SELECT value FROM json_each(?)))
       AND NOT EXISTS (SELECT 1 FROM pack_replaced_objects WHERE user_id = ? AND vault_id = ?
         AND replaced_by = '${REWRITE_PENDING}' AND pack_key NOT IN (SELECT value FROM json_each(?)))
-      AND ${current.sql}`,
+      AND ${current.sql}
+      AND EXISTS (SELECT 1 FROM pack_index WHERE id = ? AND cover_from IS ?)
+      AND EXISTS (SELECT 1 FROM pack_index WHERE id = ? AND cover_through IS ?)`,
     bind: [
       scope.userId,
       scope.vaultId,
@@ -564,7 +566,13 @@ const swapListing = async (
       scope.userId,
       scope.vaultId,
       JSON.stringify(swap.pendingKeys),
-      ...current.bind
+      ...current.bind,
+      // A purge rewrite that emptied a neighbour hands it its coverage
+      // (pack-purge-rewrite.ts absorbCoverage): the run's ends must be as read.
+      swap.run[0].id,
+      swap.run[0].cover_from,
+      swap.run[swap.run.length - 1].id,
+      swap.run[swap.run.length - 1].cover_through
     ]
   })
   if (swap.kept.length > 0) {
@@ -581,7 +589,7 @@ const swapListing = async (
           itemCount: swap.kept.length,
           byteSize: swap.payloadBytes,
           coverage: swap.coverage,
-          documents: packDocuments(kind, swap.kept)
+          documents: packDocuments(swap.kept)
         },
         recorded
       ),

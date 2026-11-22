@@ -26,7 +26,7 @@ import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { writebackNow } from '../sync/crdt-writeback'
+import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { createJournalEntry, resolveJournalEntryId } from './create-entry'
@@ -35,7 +35,17 @@ import { getJournalEntryByDate, getNoteCacheByPath } from './store'
 
 const logger = createLogger('Journal:Update')
 
-export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
+/**
+ * A tags or properties update writes only frontmatter, so it takes the entry's
+ * write-back turn: a pass never writes back the frontmatter it read before it
+ * (#5472). A body update feeds the doc first instead (`landBodyEdit`).
+ */
+export function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
+  if (input.content !== undefined) return writeJournalUpdate(input)
+  return takeWritebackTurn(resolveJournalEntryId(input.date), () => writeJournalUpdate(input))
+}
+
+async function writeJournalUpdate(input: UpdateEntryInput): Promise<JournalEntry> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 

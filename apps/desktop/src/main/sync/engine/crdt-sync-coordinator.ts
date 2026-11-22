@@ -387,6 +387,19 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
   }
 
+  /**
+   * A walk with no server snapshot behind it, whose own page names one: a
+   * snapshot pushed since the baseline GET or the probe pruned the updates at
+   * or below it, so the walk is missing them (#5243, #5474). Owed, never
+   * settled or seeded, and the next pass downloads the snapshot. A server
+   * before #2299 sends no meta, so nothing is owed.
+   */
+  private owesPrunedWalk(noteId: string, meta: CrdtSnapshotMeta | null | undefined): boolean {
+    if (!meta) return false
+    this.owePendingPull(noteId)
+    return true
+  }
+
   private fetchSnapshotBaseline(
     noteId: string,
     token: string,
@@ -609,6 +622,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
                 signerDeviceId: string
               }>
               hasMore: boolean
+              /** Null: no snapshot. Absent: a server before #2299. */
+              snapshotMeta?: CrdtSnapshotMeta | null
             }>(
               `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
               token
@@ -622,6 +637,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           updateCount: result.updates.length,
           hasMore: result.hasMore
         })
+        if (!baseline.held && this.owesPrunedWalk(noteId, result.snapshotMeta)) return false
         if (result.updates.length > 0) serverHeld = true
 
         // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
@@ -1292,15 +1308,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           }
         ).then((r) => r.value)
 
-        // A snapshot pushed since the probe pruned the updates at or below it,
-        // so a walk that skipped the baseline as snapshotless is missing them.
-        // Never settled or seeded: owed, and the next pass downloads it.
         for (const noteId of noSnapshotWalks) {
           if (!sinceMap.has(noteId)) continue
-          if (!result.snapshotMeta?.[noteId]) continue
+          if (!this.owesPrunedWalk(noteId, result.snapshotMeta?.[noteId])) continue
           sinceMap.delete(noteId)
           sawUnmerged.add(noteId)
-          this.owePendingPull(noteId)
         }
 
         const signerIds = new Set<string>()
