@@ -46,13 +46,16 @@ pub(crate) const MAX_RETRIES: u32 = 5;
 const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
 /// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
 const KEY_END: &str = "sync.unknown_signer_wait;";
-/// Id-only keys of unreleased builds (#5426). Dropped: [`adopt`] re-adopts
-/// each row they covered from its flag.
+/// Id-only keys of unreleased builds (#5426), moved once by
+/// [`migrate_id_only_keys`]. A local edit clears the row's flag, so such a key
+/// can be the only record of a hold.
 const OLD_KEYS: (&str, &str) = (
     "sync.unknown_signer_retries:",
     "sync.unknown_signer_retries;",
 );
 const OLD_SEEDED_KEY: &str = "sync.unknown_signer_seeded";
+/// Set once the id-only keys are moved (sorts outside [`KEY_PREFIX`]).
+const MIGRATED_KEY: &str = "sync.unknown_signer_wait_keyed";
 
 /// Item types hold no `:`, so the first one ends the type.
 fn key(item_type: &str, item_id: &str) -> String {
@@ -99,6 +102,7 @@ pub(crate) fn holds(
 pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
     let due: Vec<_> = db
         .call(|conn| {
+            migrate_id_only_keys(conn)?;
             adopt(conn)?;
             recorded(conn)
         })
@@ -179,16 +183,34 @@ fn drop_refusal(conn: &Connection, item_type: &str, item_id: &str) -> Result<(),
     Ok(())
 }
 
-/// Adopts every flagged row with no `meta` row: a refusal an older build
-/// recorded only in `corrupt_reason`, before or after this build first ran.
-/// A row this build resolved has no flag, and one it gave up on keeps its
-/// `meta` row, so neither comes back.
-fn adopt(conn: &Connection) -> Result<(), StorageError> {
+/// Moves each id-only key to every row with that id, at the same count:
+/// holding a sibling of another type a few passes is harmless, dropping a
+/// hold can push an edit over an unverified delete (REVIEW-5448). Runs once.
+fn migrate_id_only_keys(conn: &Connection) -> Result<(), StorageError> {
+    if read_meta(conn, MIGRATED_KEY)?.is_some() {
+        return Ok(());
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO meta (key, value)
+         SELECT ?1 || s.item_type || ':' || s.item_id, m.value
+         FROM meta m JOIN sync_items s ON s.item_id = substr(m.key, length(?2) + 1)
+         WHERE m.key >= ?2 AND m.key < ?3",
+        params![KEY_PREFIX, OLD_KEYS.0, OLD_KEYS.1],
+    )
+    .map_err(failed)?;
     conn.execute(
         "DELETE FROM meta WHERE (key >= ?1 AND key < ?2) OR key = ?3",
         params![OLD_KEYS.0, OLD_KEYS.1, OLD_SEEDED_KEY],
     )
     .map_err(failed)?;
+    write_meta(conn, MIGRATED_KEY, "1")
+}
+
+/// Adopts every flagged row with no `meta` row: a refusal an older build
+/// recorded only in `corrupt_reason`, before or after this build first ran.
+/// A row this build resolved has no flag, and one it gave up on keeps its
+/// `meta` row, so neither comes back.
+fn adopt(conn: &Connection) -> Result<(), StorageError> {
     for (item_type, id) in sync_items::unknown_signer_rows(conn)? {
         conn.execute(
             "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, '0')",

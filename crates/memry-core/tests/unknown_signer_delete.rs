@@ -12,6 +12,7 @@
 //! | a signer that never appears stops being re-pulled             | #5413            |
 //! | a local edit after the refusal neither ends the wait nor wins | §5.8, #5413      |
 //! | a new refusal of a given-up id gets a fresh budget            | #5413            |
+//! | an edit held under #5426's id-only key stays held             | #5413, C89.1     |
 //! | a failed re-pull counts unless the transport failed           | #5413            |
 //! | a verified record skipped as older ends the wait              | §5.8, #5413      |
 //! | a refusal an older build recorded is re-pulled once adopted   | #5413            |
@@ -417,6 +418,69 @@ async fn a_local_edit_after_the_refusal_neither_ends_the_wait_nor_wins() {
     assert_eq!(urls(&transport)[first + 1], "/sync/pull");
     assert!(deleted(&side, "filter", id));
     never_pushed_over_the_delete(&transport, id);
+}
+
+/// A #5426 install recorded the wait as `sync.unknown_signer_retries:{id}`
+/// only; the edit already cleared the row's flag, so that key is the hold
+/// (REVIEW-5448).
+#[tokio::test]
+async fn an_edit_held_under_an_id_only_key_stays_held() {
+    let id = "editor";
+    let [page, pulled] = deleted_page(&[id], vec![delete_by_new_device("filter", id)]);
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("id-only-key", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at)
+             VALUES ('filter', 'editor', '{}', 'full', 1, 1)",
+            [],
+        )
+        .map_err(failed)
+        .map(|_| ())
+    })
+    .expect("a filter row");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+    side.call_blocking(|conn| {
+        let name = [("name", RepoChange::Set(json!("dark")))];
+        outbox::commit(conn, &Change::upsert("filter", id), 2, |tx| {
+            sync_items::apply_local_edit_in(tx, "filter", id, &name, 2).map(|_| ())
+        })
+        .map(|_| ())
+    })
+    .expect("a local filter edit");
+    side.call_blocking(|conn| {
+        conn.execute_batch(
+            "DELETE FROM meta WHERE key LIKE 'sync.unknown_signer%';
+             INSERT INTO meta (key, value) VALUES ('sync.unknown_signer_retries:editor', '1'),
+                                                  ('sync.unknown_signer_seeded', '1');",
+        )
+        .map_err(failed)
+    })
+    .expect("the wait as #5426 recorded it");
+    push_due(&side);
+
+    let first = transport.call_count();
+    transport.push(devices(false));
+    transport.push(re_pulled("filter", id));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("the first pass of this build");
+
+    assert_eq!(urls(&transport)[first + 1], "/sync/pull");
+    never_pushed_over_the_delete(&transport, id);
+    let pending: i64 = side
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_id = 'editor'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("the queue");
+    assert_eq!(pending, 1, "the edit stays queued");
+    assert!(!deleted(&side, "filter", id), "still unverified");
 }
 
 #[tokio::test]
