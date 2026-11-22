@@ -3,7 +3,8 @@ import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
-import type { ApplyResult, DrizzleDb, EmitToWindows, SyncItemHandler } from './item-handlers'
+import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
+import { fetchLocalRow } from './engine/push-undelete-guard'
 import { hasPendingDelete } from './pending-deletes'
 import { PendingSyncIntentError } from './pending-sync-intent-error'
 import { settleItemSyncIntents } from './sync-intents'
@@ -48,33 +49,6 @@ function tombstoneBodyStateVector(input: ApplyItemInput): string | undefined {
   } catch {
     // Empty or non-JSON content: a delete without a vector.
     return undefined
-  }
-}
-
-type PushPayloadBuilder = Pick<SyncItemHandler, 'buildPushPayload'> | null | undefined
-
-/**
- * Whether the push would rebuild this item from a local row: the same lookups
- * as push-coordinator's resolvePushPayload, which sends the frozen queue
- * payload when both return null. No device id, so building stamps no clock. A
- * type with no builder always pushes frozen and counts as live.
- */
-function hasLivePayload(
-  input: ApplyItemInput,
-  db: DrizzleDb,
-  ...builders: PushPayloadBuilder[]
-): boolean {
-  const live = builders.filter((b) => b?.buildPushPayload)
-  if (live.length === 0) return true
-  try {
-    return live.some((b) => b!.buildPushPayload!(db, input.itemId, '', 'update', input.vaultKey))
-  } catch (err) {
-    log.warn('Live payload check failed; keeping queued edits', {
-      type: input.type,
-      itemId: input.itemId,
-      error: err
-    })
-    return true
   }
 }
 
@@ -159,11 +133,15 @@ export class ItemApplier {
       // push its frozen payload as an `update`, which the server stores over
       // the tombstone and every device pulls back (#5428). The handler has
       // already kept unsent note/journal text (#3029). A skipped delete means
-      // the local clock is after it: that re-create stays queued. A skipped
-      // delete with no live payload is a delete an older build already applied
+      // the local clock is after it: that re-create stays queued. A delete
+      // skipped because the row is missing is one an older build applied
       // without dropping the edit: the push would send the frozen payload, so
-      // it is dropped too (mirrors core's settle::undeletes).
-      if (result === 'applied' || !hasLivePayload(input, db, adapter, handler)) {
+      // it is dropped too. The push guard (engine/push-undelete-guard.ts)
+      // owns the same edit when the delete is not re-delivered.
+      if (
+        result === 'applied' ||
+        fetchLocalRow(db, this.adapters, input.type, input.itemId) === undefined
+      ) {
         db.delete(syncQueue)
           .where(
             and(
