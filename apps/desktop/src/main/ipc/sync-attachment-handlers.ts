@@ -644,7 +644,7 @@ export function registerAttachmentHandlers(): void {
   })
 
   attachmentEvents.onDownloadNeeded(
-    ({ noteId, attachmentId, diskPath, intoDir, sizeHint, recencyHint }) => {
+    ({ noteId, attachmentId, diskPath, intoDir, sizeHint, recencyHint, landed }) => {
       void (async () => {
         // Only the OUTCOME may settle the guard. The requester marks the attempt
         // in flight before emitting, so every exit from here has to either record
@@ -711,6 +711,7 @@ export function registerAttachmentHandlers(): void {
             if (isDatabaseInitialized()) {
               recordDownloadedFileSize(noteId, stats.size)
             }
+            landed?.()
           }
           // The note was indexed before its file existed; text search reads a
           // PDF or image only once it is on disk.

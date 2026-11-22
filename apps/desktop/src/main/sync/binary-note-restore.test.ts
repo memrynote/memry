@@ -6,7 +6,8 @@ import { upsertNoteMetadata } from '@memry/storage-data'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   markDownloadFailed,
-  markDownloadSucceeded
+  markDownloadSucceeded,
+  resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { restoreOverwrittenBinaryNotesWith } from './binary-note-restore'
@@ -33,11 +34,13 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
   const downloader = ({
     noteId,
     attachmentId,
-    diskPath
+    diskPath,
+    landed
   }: {
     noteId: string
     attachmentId: string
     diskPath: string
+    landed?: () => void
   }): void => {
     // Mirrors the outcome bookkeeping of the real download-needed handler:
     // the blob lands by atomic rename, or the failure is persisted.
@@ -50,6 +53,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     fs.writeFileSync(tmp, serverBlobs.get(attachmentId)!)
     fs.renameSync(tmp, diskPath)
     markDownloadSucceeded(db, noteId, attachmentId)
+    landed?.()
   }
 
   function seedBinaryNote(relPath: string, onDisk: Buffer | string, blob = PNG) {
@@ -67,7 +71,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
       createdAt: '2026-09-01T00:00:00.000Z',
       modifiedAt: '2026-09-01T00:00:00.000Z'
     })
-    return { id, file: path.join(vaultPath, relPath) }
+    return { id, attachmentId, file: path.join(vaultPath, relPath) }
   }
 
   const restore = () => restoreOverwrittenBinaryNotesWith({ db: asClientDb(testDb.db), vaultPath })
@@ -82,6 +86,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
 
   afterEach(() => {
     attachmentEvents.offDownloadNeeded(downloader)
+    resetAttachmentDownloadSession()
     vi.useRealTimers()
     testDb.close()
     fs.rmSync(vaultPath, { recursive: true, force: true })
@@ -135,5 +140,24 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     vi.setSystemTime(new Date('2026-09-02T11:00:00.000Z'))
     expect(await restore()).toEqual({ requested: 1 })
     expect(fs.readFileSync(file)).toEqual(PNG)
+  })
+
+  it('stops asking for a blob the server holds as text', async () => {
+    const serverText = Buffer.from(WRITEBACK_MARKDOWN)
+    const { attachmentId, file } = seedBinaryNote('Uploaded.png', WRITEBACK_MARKDOWN, serverText)
+
+    expect(await restore()).toEqual({ requested: 1 })
+    await vi.waitFor(() =>
+      expect(
+        testDb.sqlite
+          .prepare("SELECT value FROM sync_state WHERE key = 'binaryNoteTextBlobs'")
+          .get()
+      ).toEqual({ value: JSON.stringify([attachmentId]) })
+    )
+
+    // The next runtime start (a new session) does not download it again.
+    resetAttachmentDownloadSession()
+    expect(await restore()).toEqual({ requested: 0 })
+    expect(fs.readFileSync(file, 'utf8')).toBe(WRITEBACK_MARKDOWN)
   })
 })

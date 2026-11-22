@@ -103,7 +103,9 @@ describe('SYNC_STATE_KEYS', () => {
         NOTE_BODY_FEED_CURSOR: 'noteBodyFeedCursor',
         // #2299: absent reads as a mismatch with the CRDT store's epoch, so an
         // install from before it runs the vault sweep once.
-        CRDT_STORE_EPOCH: 'crdtStoreEpoch'
+        CRDT_STORE_EPOCH: 'crdtStoreEpoch',
+        // Additive (#5415): absent means no server blob was found to be text.
+        BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs'
       })
     })
 

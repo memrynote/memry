@@ -1140,7 +1140,11 @@ across devices:
   sends. The blob lands by atomic rename. A failed download keeps its
   `attachment_download_failures` row and is re-driven on its backoff. A file
   the user replaced with real media fails the rule and is never touched
-  (#5415).
+  (#5415). When a restore lands and the file still holds text, the server blob
+  is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
+  a warning logs the count, and the restore never requests that attachment
+  again. In on-demand download mode, or with no access token, the request is
+  released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a

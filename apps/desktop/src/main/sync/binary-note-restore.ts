@@ -1,6 +1,8 @@
 import path from 'path'
 import { open, type FileHandle } from 'fs/promises'
+import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { syncState } from '@memry/db-schema/schema/sync-state'
 import { getExtension } from '@memry/shared/file-types'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -13,6 +15,7 @@ import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { resolveVaultFileSync } from '../lib/paths'
 import { getCurrentVaultPath } from '../store'
+import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { hasMediaSignature, mediaFileHoldsText } from './media-signature'
 
 const log = createLogger('BinaryNoteRestore')
@@ -33,6 +36,51 @@ async function fileHoldsText(absolutePath: string): Promise<boolean> {
   }
 }
 
+function readTextBlobs(db: DrizzleDb): Set<string> {
+  const value = db
+    .select({ value: syncState.value })
+    .from(syncState)
+    .where(eq(syncState.key, SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS))
+    .get()?.value
+  if (!value) return new Set()
+  const ids: unknown = JSON.parse(value)
+  return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [])
+}
+
+/**
+ * The restore landed and the file still holds text: the server blob is text
+ * too (an upload from a build without the upload guard, #5419). Downloading it
+ * again changes nothing, so the attachment is never requested again. A new
+ * upload mints a new attachment id, which this list does not hold.
+ */
+function rememberTextBlob(db: DrizzleDb, attachmentId: string): void {
+  const ids = readTextBlobs(db)
+  if (ids.has(attachmentId)) return
+  ids.add(attachmentId)
+  const value = JSON.stringify([...ids])
+  const updatedAt = new Date()
+  db.insert(syncState)
+    .values({ key: SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS, value, updatedAt })
+    .onConflictDoUpdate({ target: syncState.key, set: { value, updatedAt } })
+    .run()
+  log.warn('Server blob is text; binary note file not restored again', {
+    attachmentId,
+    textBlobs: ids.size
+  })
+}
+
+async function checkRestoredFile(
+  db: DrizzleDb,
+  absolutePath: string,
+  attachmentId: string
+): Promise<void> {
+  try {
+    if (await fileHoldsText(absolutePath)) rememberTextBlob(db, attachmentId)
+  } catch (error) {
+    log.warn('Restored binary note file not checked', { attachmentId, error })
+  }
+}
+
 export interface BinaryNoteRestoreDeps {
   db: DrizzleDb
   vaultPath: string
@@ -45,15 +93,17 @@ export interface BinaryNoteRestoreDeps {
  * the blob lands by atomic rename, and a failure is logged, reported and
  * persisted in `attachment_download_failures` for the re-driver to retry on its
  * backoff. Runs at each sync runtime start; a file that is still text then is
- * requested again.
+ * requested again, unless a restore already landed text (`rememberTextBlob`).
  */
 export async function restoreOverwrittenBinaryNotesWith(
   deps: BinaryNoteRestoreDeps
 ): Promise<{ requested: number }> {
+  let textBlobs: Set<string>
   let notes: Array<
     Pick<typeof noteMetadata.$inferSelect, 'id' | 'path' | 'attachmentId' | 'localOnly'>
   >
   try {
+    textBlobs = readTextBlobs(deps.db)
     notes = deps.db
       .select({
         id: noteMetadata.id,
@@ -64,7 +114,7 @@ export async function restoreOverwrittenBinaryNotesWith(
       .from(noteMetadata)
       .all()
   } catch (error) {
-    log.warn('Note metadata unreadable; binary note files not checked', { error })
+    log.warn('Binary note restore state unreadable; files not checked', { error })
     return { requested: 0 }
   }
 
@@ -72,7 +122,12 @@ export async function restoreOverwrittenBinaryNotesWith(
   for (const note of notes) {
     // The file type column can still say markdown here (#5412), so the
     // extension decides what the file should be.
-    if (!note.attachmentId || note.localOnly || !hasMediaSignature(getExtension(note.path)))
+    if (
+      !note.attachmentId ||
+      note.localOnly ||
+      textBlobs.has(note.attachmentId) ||
+      !hasMediaSignature(getExtension(note.path))
+    )
       continue
     if (resolveVaultFileSync(deps.vaultPath, note.path).kind === 'outside') continue
     const absolutePath = path.join(deps.vaultPath, note.path)
@@ -83,16 +138,18 @@ export async function restoreOverwrittenBinaryNotesWith(
       noteId: note.id,
       attachmentId: note.attachmentId
     })
-    markDownloadRequested(note.id, note.attachmentId)
+    const attachmentId = note.attachmentId
+    markDownloadRequested(note.id, attachmentId)
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: note.id,
-      attachmentId: note.attachmentId,
-      diskPath: absolutePath
+      attachmentId,
+      diskPath: absolutePath,
+      landed: () => void checkRestoredFile(deps.db, absolutePath, attachmentId)
     })
     if (!delivered) {
       // No downloader (runtime restarting): the rest would drop the same way,
       // and the next runtime start checks again.
-      releaseDownloadAttempt(note.id, note.attachmentId)
+      releaseDownloadAttempt(note.id, attachmentId)
       break
     }
     requested++

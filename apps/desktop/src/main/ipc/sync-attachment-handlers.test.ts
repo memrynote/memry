@@ -1169,6 +1169,28 @@ describe('sync-attachment-handlers', () => {
     expect(mockApplyDownloadedAttachmentName).not.toHaveBeenCalled()
   })
 
+  it('tells the requester once a binary note blob has landed (#5415)', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    registerAttachmentHandlers()
+    const landed = vi.fn()
+
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+      landed: () => void
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-1',
+      diskPath: '/vault/Sunset.png',
+      landed
+    })
+
+    await vi.waitFor(() => expect(landed).toHaveBeenCalledTimes(1))
+  })
+
   it('broadcasts failures from async attachment event callbacks', async () => {
     vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
     attachmentMocks.queue.enqueue.mockRejectedValueOnce(new Error('upload boom'))

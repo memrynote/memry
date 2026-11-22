@@ -27,6 +27,8 @@ interface AttachmentDownloadNeededEvent {
   sizeHint?: number
   /** Epoch ms of the owning note's modifiedAt at the time of the emit. */
   recencyHint?: number
+  /** Called once the blob has landed at `diskPath` (binary-note flow only). */
+  landed?: () => void
 }
 
 type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void
