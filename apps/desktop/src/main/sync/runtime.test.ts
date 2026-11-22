@@ -204,6 +204,11 @@ const runtimeMocks = vi.hoisted(() => {
     setOnTokenRefreshed: vi.fn((cb: (() => void) | null) => {
       runtimeMocks.tokenRefreshedCallback = cb
     }),
+    // The same single slot for the session-ended callback (#5342).
+    sessionEndedCallback: null as (() => void) | null,
+    setOnSessionEnded: vi.fn((cb: (() => void) | null) => {
+      runtimeMocks.sessionEndedCallback = cb
+    }),
     trackMainEvent: vi.fn(),
     logDebug: vi.fn(),
     logInfo: vi.fn(),
@@ -236,6 +241,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
+      reportEditorWaits: vi.fn(),
       destroy: vi.fn()
     },
     browserSend: vi.fn(),
@@ -524,7 +530,7 @@ vi.mock('./token-manager', () => ({
   refreshAccessToken: runtimeMocks.refreshAccessToken,
   retrieveToken: runtimeMocks.retrieveToken,
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed,
-  setOnSessionEnded: vi.fn()
+  setOnSessionEnded: runtimeMocks.setOnSessionEnded
 }))
 
 vi.mock('./vault-account-binding', () => ({
@@ -1679,6 +1685,22 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalled()
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('shows waiting editors read-only when the session ends, and stops reaching them after stop (#5342)', async () => {
+    runtimeMocks.sessionEndedCallback = null
+    /** What token-manager does when the session ends: invoke the one slot. */
+    const fireSessionEnded = (): void => runtimeMocks.sessionEndedCallback?.()
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).toHaveBeenCalledTimes(1)
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+    runtimeMocks.crdtProvider.reportEditorWaits.mockClear()
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).not.toHaveBeenCalled()
   })
 
   describe('token-refresh callback lifecycle', () => {
