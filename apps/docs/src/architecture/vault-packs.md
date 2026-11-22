@@ -335,8 +335,20 @@ or the cleanup; a purge whose batch never commits has not started the deadline, 
 retries it. The message logs `replaced pack objects still due after the compaction message;
 redelivered` (or `backfill message`) at error level. The fallback is the deletion pass at the start of
 every 6-hourly backfill tick, which covers every vault, and any later compaction or backfill message
-for the vault. Record packs are not scoped yet: older versions of the deleted note's record stay in record
-packs until a rollup drops them (#5247).
+for the vault.
+
+**Record packs** (#5247). A record pack row also records its entries' `type:id` in
+`pack_index.documents`. The body purge takes every record pack that names the deleted note or journal
+out of the listing and rewrites it the same way. The rewrite keeps only the entries that are still current,
+so the tombstone stays and the older versions of the record go, under the same range and coverage
+(migration 0027 keeps the coverage on the `pack_replaced_objects` row). Every replaced record object of the
+vault is made due at once, so the same 900-second deadline holds. The tombstone shed
+(`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
+packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that
+rewrite also drops the entries of tombstones past retention. It sheds the row in a later tick, once its vault
+has no pending record rewrite, no due record object left and no record object replaced within the grace.
+A vault that still lists a record pack built before this change (`documents` NULL) resets the record kind
+instead, and compaction rebuilds it from rows.
 
 The 6-hourly cleanup purges at most five vaults per tick, about 41 subrequests.
 
