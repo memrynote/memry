@@ -307,7 +307,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
       const running = harness.runner.run()
       await pausing
-      if (ending === 'stop') harness.runner.abortPackPhase()
+      if (ending === 'stop') harness.runner.abortPackPhase('stop')
       else harness.runner.dispose()
       await running
 
@@ -331,7 +331,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
       const running = harness.runner.run()
       await opening
-      if (ending === 'stop or cancel') harness.runner.abortPackPhase()
+      if (ending === 'stop or cancel') harness.runner.abortPackPhase('stop')
       else if (ending === 'pause') vi.mocked(harness.stateManager.isPaused).mockReturnValue(true)
       else harness.runner.dispose()
       finishOpen()
@@ -345,6 +345,27 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       })
     }
   )
+
+  it('#given a pause that ended while the bootstrap session opened #then the run still pulls', async () => {
+    // pause() aborts the pack phase; resume()'s sync is dropped while this run
+    // holds fullSyncActive, so this run is the one that must pull.
+    const harness = createHarness()
+    let sessionOpened!: () => void
+    const opening = new Promise<void>((resolve) => (sessionOpened = resolve))
+    let finishOpen!: () => void
+    mocks.openBootstrapSession.mockImplementationOnce(() => {
+      sessionOpened()
+      return new Promise<string>((resolve) => (finishOpen = () => resolve('open')))
+    })
+
+    const running = harness.runner.run()
+    await opening
+    harness.runner.abortPackPhase('pause')
+    finishOpen()
+    await running
+
+    expect(harness.actions.pull).toHaveBeenCalledTimes(1)
+  })
 
   describe('the seed store handed to the pack runner', () => {
     let vaultKey: Uint8Array
