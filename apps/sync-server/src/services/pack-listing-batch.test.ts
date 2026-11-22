@@ -80,6 +80,31 @@ const failNextBatch = (commits: 'before' | 'never' | 'after'): (() => Promise<vo
   }
 }
 
+/** Runs `step` once, right after the first deletion pass selected its due records. */
+const afterFirstDueSelect = (step: () => Promise<void>): void => {
+  const prepare = harness.db.prepare.bind(harness.db)
+  let ran = false
+  vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+    const statement = prepare(sql)
+    if (!sql.includes('AS listed')) return statement
+    const bind = statement.bind.bind(statement)
+    statement.bind = (...values) => {
+      const bound = bind(...values)
+      const all = bound.all.bind(bound)
+      bound.all = (async () => {
+        const result = await all()
+        if (!ran) {
+          ran = true
+          await step()
+        }
+        return result
+      }) as typeof bound.all
+      return bound
+    }
+    return statement
+  })
+}
+
 const buildRecordPacks = async (count: number): Promise<void> => {
   for (let i = 1; i <= count; i++) {
     await writeRecord(i)
@@ -145,30 +170,31 @@ describe('a listing batch that throws (REVIEW-5277 P3)', () => {
     await writeRecord(1)
     const commit = failNextBatch('after')
     await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
-    // The commit lands right after the pass selected the due records.
-    const prepare = harness.db.prepare.bind(harness.db)
-    vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
-      const statement = prepare(sql)
-      if (!sql.includes('AS listed')) return statement
-      const bind = statement.bind.bind(statement)
-      statement.bind = (...values) => {
-        const bound = bind(...values)
-        const all = bound.all.bind(bound)
-        bound.all = (async () => {
-          const result = await all()
-          await commit()
-          return result
-        }) as typeof bound.all
-        return bound
-      }
-      return statement
-    })
+    afterFirstDueSelect(commit)
 
     await deleteReplacedPackObjects(harness.db, storage, SCOPE)
 
     expect(listedKeys()).toHaveLength(1)
     expect(await packKeys()).toEqual(listedKeys())
     expect(unlisted()).toEqual([])
+  })
+
+  // VERIFY-5449: a second pass that runs after the late commit drops the
+  // record as stale; the first pass must still see the relisted pack.
+  it('build: a concurrent pass that drops the record after the late commit keeps the object', async () => {
+    await writeRecord(1)
+    const commit = failNextBatch('after')
+    await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
+    afterFirstDueSelect(async () => {
+      await commit()
+      await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+      expect(unlisted()).toEqual([])
+    })
+
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+
+    expect(listedKeys()).toHaveLength(1)
+    expect(await packKeys()).toEqual(listedKeys())
   })
 
   it('build: a committed batch keeps its listed object', async () => {

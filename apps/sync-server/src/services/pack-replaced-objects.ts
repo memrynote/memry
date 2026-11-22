@@ -140,7 +140,7 @@ export const deleteReplacedPackObjects = async (
   await resetUnrewritten(db, unrewritten.results ?? [])
   const rows = await db
     .prepare(
-      `SELECT r.pack_key, EXISTS (SELECT 1 FROM pack_index p
+      `SELECT r.pack_key, r.user_id, r.vault_id, EXISTS (SELECT 1 FROM pack_index p
            WHERE p.user_id = r.user_id AND p.vault_id = r.vault_id AND p.pack_key = r.pack_key) AS listed
        FROM pack_replaced_objects r
        WHERE r.removed_at <= ? ${where}
@@ -148,13 +148,16 @@ export const deleteReplacedPackObjects = async (
        LIMIT ?`
     )
     .bind(due, ...vault, REPLACED_DELETE_BATCH)
-    .all<{ pack_key: string; listed: number }>()
+    .all<{ pack_key: string; user_id: string; vault_id: string; listed: number }>()
   const found = rows.results ?? []
   if (found.length === 0) return { deleted: 0, pending: false }
-  const unlisted = found.filter((row) => !row.listed).map((row) => row.pack_key)
+  const unlisted = found.filter((row) => !row.listed)
   // Read again right before the delete (#5247 C19.2): a listing batch that
   // lost its response may commit after the select above, and its object must
-  // stay. A key listed now is kept and handled as a stale record below.
+  // stay. A key listed now is kept and handled as a stale record below. The
+  // read joins pack_index from the selected keys, not from their records: a
+  // concurrent pass may already have dropped the record of a relisted key
+  // (VERIFY-5449).
   const relisted =
     unlisted.length === 0
       ? new Set<string>()
@@ -162,16 +165,17 @@ export const deleteReplacedPackObjects = async (
           (
             await db
               .prepare(
-                `SELECT r.pack_key FROM pack_replaced_objects r
-                 WHERE r.pack_key IN (SELECT value FROM json_each(?))
-                   AND EXISTS (SELECT 1 FROM pack_index p WHERE p.user_id = r.user_id
-                     AND p.vault_id = r.vault_id AND p.pack_key = r.pack_key)`
+                `SELECT j.value->>'$[2]' AS pack_key FROM json_each(?) j
+                 WHERE EXISTS (SELECT 1 FROM pack_index p WHERE p.user_id = j.value->>'$[0]'
+                   AND p.vault_id = j.value->>'$[1]' AND p.pack_key = j.value->>'$[2]')`
               )
-              .bind(JSON.stringify(unlisted))
+              .bind(
+                JSON.stringify(unlisted.map((row) => [row.user_id, row.vault_id, row.pack_key]))
+              )
               .all<{ pack_key: string }>()
           ).results?.map((row) => row.pack_key)
         )
-  const doomed = unlisted.filter((key) => !relisted.has(key))
+  const doomed = unlisted.map((row) => row.pack_key).filter((key) => !relisted.has(key))
   try {
     if (doomed.length > 0) await storage.delete(doomed)
   } catch (error) {
