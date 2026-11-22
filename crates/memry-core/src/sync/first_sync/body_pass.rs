@@ -134,16 +134,18 @@ impl FirstSync {
         report: &mut FirstSyncReport,
     ) -> Result<(), FirstSyncError> {
         let limit = self.limits.recent_body_limit;
+        // The window's reads, as the probe's, go to the pool: the write-back
+        // a pack phase starts keeps the writer busy (#5350).
         let window = self
             .db
-            .call(move |conn| recent_document_ids(conn, window_start, limit))
+            .read(move |conn| recent_document_ids(conn, window_start, limit))
             .await?;
         // §7.15: a tombstoned document is excluded by the query above. The
         // server still answers with the surviving log, and applying it would
         // resurrect a body the record feed says is deleted.
         let window = if body_packs_used {
             self.db
-                .call(move |conn| {
+                .read(move |conn| {
                     let mut owed = Vec::new();
                     for doc_id in window {
                         if body_debt::is_owed(conn, &doc_id)? {
