@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { tagCategories } from '@memry/db-schema/schema/tag-categories'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
@@ -14,7 +16,7 @@ import {
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { SyncEngine } from './engine'
 import { ItemApplier } from './apply-item'
-import { getRemoteSyncAdapter } from './item-handlers'
+import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { EncryptItemInput } from './encrypt'
 
@@ -191,14 +193,23 @@ describe('a queued edit of an item a pulled delete removed (#5428)', () => {
       expect(s.pushed()).toEqual(['work:update'])
     })
 
-    it('retires the edit of a soft-deleted row too', async () => {
+    it('retires the edit of a tag category it soft-deleted (no tombstone clock is recorded)', async () => {
       const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
-      removedByOlderBuild(s)
-      vi.spyOn(s.remote, 'fetchLocal').mockReturnValue({
-        name: 'work',
-        deletedAt: '2026-11-01T00:00:00.000Z',
-        clock: { 'device-1': 2 }
+      s.db
+        .insert(tagCategories)
+        .values({ id: 'cat-1', name: 'Work', clock: { 'device-1': 2 } })
+        .run()
+      const handler = getHandler('tag_category')!
+      s.deps.queue.enqueue({
+        type: 'tag_category',
+        itemId: 'cat-1',
+        operation: 'update',
+        payload: handler.buildPushPayload!(s.db, 'cat-1', '', 'update')!
       })
+      s.db.delete(syncQueue).where(eq(syncQueue.itemId, 'work')).run()
+      expect(
+        handler.applyDelete({ db: s.db, emit: vi.fn() }, 'cat-1', { 'device-1': 1, 'device-2': 1 })
+      ).toBe('applied')
 
       await s.engine.push()
 
@@ -217,6 +228,31 @@ describe('a queued edit of an item a pulled delete removed (#5428)', () => {
 
       expect(s.pushed()).toEqual(['work:update'])
     })
+  })
+
+  it('keeps a queued settings edit when a settings delete is pulled', async () => {
+    const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
+    s.deps.queue.enqueue({
+      type: 'settings',
+      itemId: 'settings',
+      operation: 'update',
+      payload: JSON.stringify({ clock: { 'device-1': 1 } })
+    })
+    const applier = new ItemApplier(s.db, vi.fn(), undefined)
+
+    expect(
+      applier.apply({
+        itemId: 'settings',
+        type: 'settings',
+        operation: 'delete',
+        content: new Uint8Array(),
+        clock: { 'device-2': 1 }
+      })
+    ).toBe('skipped')
+
+    expect(s.deps.queue.peek(10).map((row) => `${row.type}:${row.operation}`)).toContain(
+      'settings:update'
+    )
   })
 
   it('still sends a re-create whose clock happens after the delete', async () => {
