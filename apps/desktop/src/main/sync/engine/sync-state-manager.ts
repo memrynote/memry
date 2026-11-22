@@ -174,10 +174,12 @@ export class SyncStateManager {
       this.knownNotPaused = value !== 'true'
     }
     if (key !== SYNC_STATE_KEYS.LAST_CURSOR) return this.writeState(this.ctx.deps.db, key, value)
-    // Both or neither (#2421): see NOTE_BODY_FEED_CURSOR.
+    // Both or neither (#2421): see NOTE_BODY_FEED_CURSOR. The record-pack
+    // phase ends with the first cursor (#5390): see RECORD_PACKS_APPLIED.
     this.ctx.deps.db.transaction((tx) => {
       this.writeState(tx, key, value)
       this.writeState(tx, SYNC_STATE_KEYS.NOTE_BODY_FEED_CURSOR, value)
+      tx.delete(syncState).where(eq(syncState.key, SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).run()
     })
   }
 

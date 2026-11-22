@@ -34,6 +34,8 @@ export interface PackedRecords {
   apply: PackedRecord[]
   pullById: PullByIdRef[]
   tailStart: number
+  /** `type:id` of every item the complete manifest lists (§8.10, Closing checks rule 2). */
+  listed: ReadonlySet<string>
   /** Notes whose body the packs brought to the body manifest's head (§8.10, Bodies). */
   settledBodies: ReadonlySet<string>
 }
@@ -134,7 +136,7 @@ export const reconcileRecords = (
   records: readonly PackedRecord[],
   manifest: RecordSyncManifest['items'],
   tailStart: number
-): { apply: PackedRecord[]; pullById: PullByIdRef[] } => {
+): Pick<PackedRecords, 'apply' | 'pullById' | 'listed'> => {
   const newest = new Map<string, PackedRecord>()
   for (const record of records) {
     const key = itemRefKey(record.item.type, record.item.id)
@@ -167,7 +169,11 @@ export const reconcileRecords = (
     if (serverCursor !== undefined && serverCursor > tailStart) continue
     pullById.push(serverCursor === undefined ? { id, type } : { id, type, serverCursor })
   }
-  return { apply: apply.toSorted((a, b) => a.sortKey - b.sortKey), pullById }
+  return {
+    apply: apply.toSorted((a, b) => a.sortKey - b.sortKey),
+    pullById,
+    listed: new Set(listed.keys())
+  }
 }
 
 /**
@@ -209,7 +215,7 @@ export const planRecordPacks = async (
   // §8.4.2, Record tail: at most sortKey - 1 of every unusable entry.
   let tailStart = reach
   for (const sortKey of unusable) tailStart = Math.min(tailStart, Math.max(0, sortKey - 1))
-  const { apply, pullById } = reconcileRecords(records, manifest, tailStart)
+  const { apply, pullById, listed } = reconcileRecords(records, manifest, tailStart)
   log.info('Record packs reconciled', {
     entries: records.length,
     unusable: unusable.length,
@@ -218,5 +224,5 @@ export const planRecordPacks = async (
     reach,
     tailStart
   })
-  return { apply, pullById, tailStart }
+  return { apply, pullById, tailStart, listed }
 }

@@ -1,12 +1,38 @@
 import type { RecordPullItemResponse } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../../lib/logger'
+import type { ItemApplier } from '../apply-item'
+import type { DrizzleDb } from '../item-handlers'
 import type { PackedRecords } from '../packs/record-packs'
 import type { ItemRef } from './corrupt-item-tracker'
+import { removeUnlistedPackRow } from './unlisted-pack-row'
 import type { PullRunState } from './pull-run-state'
-import { PULL_REQUEST_MAX_IDS } from './sync-context'
+import { itemRefKey, PULL_REQUEST_MAX_IDS, SYNC_STATE_KEYS } from './sync-context'
+import type { SyncStateManager } from './sync-state-manager'
 
 const log = createLogger('PackedRecordApply')
+
+/**
+ * The `type:id` keys a fresh device's record-pack phase applied, or was about
+ * to apply, while `LAST_CURSOR` is unset (#5390, protocol 08 §8.10, Closing
+ * checks rule 2). Written before the first slice; the state manager deletes it
+ * in the transaction that first writes `LAST_CURSOR`. Absent on a device with
+ * a cursor, so a stale row an older build left behind is never read.
+ */
+export function readPackApplied(state: SyncStateManager): Set<string> | undefined {
+  if (state.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) != null) return undefined
+  const raw = state.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)
+  if (raw === undefined) return new Set()
+  try {
+    const keys: unknown = JSON.parse(raw)
+    if (Array.isArray(keys)) return new Set(keys.filter((key) => typeof key === 'string'))
+  } catch {
+    // Falls through to the log below.
+  }
+  // Unreadable: treat no row as pack-only, which keeps every local row.
+  log.warn('Record-pack applied set unreadable — no row is removed by the manifest')
+  return new Set()
+}
 
 /** The pull's own apply path, as the record packs use it. */
 export interface PackedRecordApplyDeps {
@@ -18,7 +44,31 @@ export interface PackedRecordApplyDeps {
   /** Pulls and applies `refs` by id; false when the fetch stopped short. */
   pullById: (refs: readonly ItemRef[]) => Promise<boolean>
   setCursor: (cursor: string) => void
+  /** Durably records the pack phase's `type:id` keys, before any of them applies. */
+  recordApplied: (keys: ReadonlySet<string>) => void
+  /** §8.10 rule 2 for one key the manifest omits; true when no live local row is left. */
+  removeUnlisted: (key: string) => boolean
 }
+
+/** The durable half of the deps: the cursor and the pack phase's record (#5390). */
+export const packDeps = (
+  state: SyncStateManager,
+  db: DrizzleDb,
+  applier: ItemApplier
+): Pick<PackedRecordApplyDeps, 'setCursor' | 'recordApplied' | 'removeUnlisted'> => ({
+  setCursor: (cursor) => state.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, cursor),
+  recordApplied: (keys) =>
+    state.setStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED, JSON.stringify([...keys])),
+  removeUnlisted: (key) => removeUnlistedPackRow(db, applier, key)
+})
+
+/**
+ * Whether the pull skips a purged-tombstone marker for `ref` because the run
+ * started from cursor 0 (#2302): a fresh device has nothing to delete, except
+ * a row an interrupted record-pack phase applied (#5390, §8.10 rule 2).
+ */
+export const skipsMarker = (runState: PullRunState, ref: ItemRef): boolean =>
+  runState.fromZero === true && !runState.packApplied?.has(itemRefKey(ref.type, ref.id))
 
 /**
  * A fresh device's record packs (protocol 08 §8.10, Closing checks): apply
@@ -43,6 +93,22 @@ export async function applyPackedRecords(
   for (const { item, sortKey } of packed.apply) {
     cursorOf.set(item.id, Math.min(sortKey, cursorOf.get(item.id) ?? sortKey))
   }
+  // §8.10 rule 2 (#5390): an earlier run of this phase may have applied rows
+  // the manifest no longer lists, deleted since and maybe shed to a marker the
+  // tail never serves. Then the set is recorded, before the first slice, so a
+  // crash anywhere after it leaves every row this phase applies on record.
+  const recorded = new Set<string>()
+  for (const key of runState.packApplied ?? []) {
+    if (packed.listed.has(key) || !deps.removeUnlisted(key)) recorded.add(key)
+  }
+  for (const { item } of packed.apply) {
+    if (item.operation !== 'delete' && item.deletedAt === undefined) {
+      recorded.add(itemRefKey(item.type, item.id))
+    }
+  }
+  for (const ref of packed.pullById) recorded.add(itemRefKey(ref.type, ref.id))
+  deps.recordApplied(recorded)
+  runState.packApplied = recorded
   // The tail after the packs sends no body headers: body kinds state no coverage.
   runState.fromZero = true
   // Bodies the packs brought to the manifest head need no pull (#5390).

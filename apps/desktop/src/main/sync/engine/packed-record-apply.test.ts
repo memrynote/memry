@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { projects } from '@memry/db-schema/schema/projects'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { tasks } from '@memry/db-schema/schema/tasks'
 import { SyncEngine } from '../engine'
 import { SYNC_STATE_KEYS } from './sync-context'
 import { ItemApplier } from '../apply-item'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import { SyncServerError } from '@memry/sync-client/http-errors'
 import type { PackedRecords } from '../packs/record-packs'
-import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { createMockDeps, setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-packed-records-test' }
@@ -39,6 +43,7 @@ const packedRecords = (over: Partial<PackedRecords> = {}): PackedRecords => ({
   apply: [{ item: pullItem('task-packed'), sortKey: 5 }],
   pullById: [{ id: 'task-stale', type: 'task', serverCursor: 8 }],
   tailStart: 10,
+  listed: new Set(['task:task-packed', 'task:task-stale']),
   settledBodies: new Set(),
   ...over
 })
@@ -192,5 +197,126 @@ describe('PullCoordinator with record packs (#5390)', () => {
     )
 
     expect(new Set(owed.mock.calls.map(([id]) => id))).toEqual(new Set(['note-behind']))
+  })
+
+  describe('an interrupted pack phase and a manifest that dropped a row (§8.10 rule 2)', () => {
+    /** The pull's real delete; an upsert lands a synced task row as a handler would. */
+    const applyToDb = (db: TestDatabaseResult) => {
+      db.db.insert(projects).values({ id: 'p', name: 'p', color: '#000', position: 0 }).run()
+      const realApply = ItemApplier.prototype.apply
+      return vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
+        this: ItemApplier,
+        input,
+        page
+      ) {
+        if (input.operation === 'delete') return realApply.call(this, input, page)
+        db.db
+          .insert(tasks)
+          .values({
+            id: input.itemId,
+            projectId: 'p',
+            title: input.itemId,
+            priority: 0,
+            position: 0,
+            clock: input.clock
+          })
+          .onConflictDoNothing()
+          .run()
+        return 'applied'
+      })
+    }
+    const taskIds = (db: TestDatabaseResult): string[] =>
+      db.db
+        .select({ id: tasks.id })
+        .from(tasks)
+        .all()
+        .map(({ id }) => id)
+        .toSorted()
+    const run1 = packedRecords({
+      apply: ['task-gone', 'task-edited', 'task-kept'].map((id, i) => ({
+        item: pullItem(id),
+        sortKey: i + 3
+      })),
+      listed: new Set(['task:task-gone', 'task:task-edited', 'task:task-kept', 'task:task-stale'])
+    })
+    // task-gone and task-edited were deleted elsewhere and their tombstones shed.
+    const run2 = packedRecords({
+      apply: [{ item: pullItem('task-kept'), sortKey: 5 }],
+      listed: new Set(['task:task-kept', 'task:task-stale'])
+    })
+
+    it('removes a pack-applied row the manifest omits on the rerun, keeps an edited or listed one, echoes nothing', async () => {
+      const db = getDb()
+      const cancelled = new SyncEngine(createMockDeps(db))
+      await serve(cancelled, 'cancelled')
+      applyToDb(db)
+
+      await expect(cancelled.pull([], run1)).resolves.toEqual({ status: 'incomplete' })
+      expect(cancelled.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? null).toBeNull()
+      expect(taskIds(db)).toEqual(['task-edited', 'task-gone', 'task-kept'])
+
+      vi.restoreAllMocks()
+      const deps = createMockDeps(db)
+      deps.queue.enqueue({
+        type: 'task',
+        itemId: 'task-edited',
+        operation: 'update',
+        payload: '{}',
+        priority: 0
+      })
+      const engine = new SyncEngine(deps)
+      await serve(engine)
+      const realApply = ItemApplier.prototype.apply
+      vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
+        this: ItemApplier,
+        input,
+        page
+      ) {
+        return input.operation === 'delete' ? realApply.call(this, input, page) : 'skipped'
+      })
+
+      await expect(engine.pull([], run2)).resolves.toEqual({ status: 'delivered' })
+
+      expect(taskIds(db)).toEqual(['task-edited', 'task-kept'])
+      expect(
+        db.db.select({ itemId: syncQueue.itemId, op: syncQueue.operation }).from(syncQueue).all()
+      ).toEqual([{ itemId: 'task-edited', op: 'update' }])
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+      expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    })
+
+    it('redoes cleanly after a crash between the durable record and the first slice', async () => {
+      const db = getDb()
+      const engine = new SyncEngine(createMockDeps(db))
+      engine.setStateValue(
+        SYNC_STATE_KEYS.RECORD_PACKS_APPLIED,
+        JSON.stringify(['task:task-gone', 'task:task-edited', 'task:task-kept', 'task:task-stale'])
+      )
+      await serve(engine)
+      applyToDb(db)
+
+      await expect(engine.pull([], run2)).resolves.toEqual({ status: 'delivered' })
+
+      expect(taskIds(db)).toEqual(['task-kept', 'task-stale'])
+      expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+      expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    })
+
+    it('records every pack-phase row before the run stops', async () => {
+      const db = getDb()
+      const engine = new SyncEngine(createMockDeps(db))
+      await serve(engine, 'cancelled')
+      applyToDb(db)
+
+      await engine.pull([], run1)
+
+      expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual([
+        'task:task-gone',
+        'task:task-edited',
+        'task:task-kept',
+        'task:task-stale'
+      ])
+      expect(db.db.select().from(tasks).where(eq(tasks.id, 'task-gone')).get()).toBeDefined()
+    })
   })
 })
