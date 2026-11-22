@@ -52,6 +52,10 @@ pub enum Outcome {
     /// The pass could not finish (a read or a write failed); the file is as it was, unless
     /// the reason says the row was not recorded after the write.
     Failed(String),
+    /// The pass cannot finish, and runs of it fail the same way until the note, its file or the
+    /// app changes: a body that does not read, a file that does not serialize, no path for a first
+    /// file, a pass that panicked. Told as a failed write, and not retried on its own.
+    Broken(String),
     /// The file's frontmatter does not parse: its block is bytes the document does not hold,
     /// so the file is never written over, and no later pass writes it until the file is fixed
     /// (#3750). The user is told, as for a failure.
@@ -419,7 +423,7 @@ pub(crate) fn output_over(
         Ok(BodyRead::NotRepresentable(what)) => {
             return Err(Outcome::Kept(Keep::NotRepresentable(what)));
         }
-        Ok(BodyRead::Failed(reason)) => return Err(Outcome::Failed(reason.to_owned())),
+        Ok(BodyRead::Failed(reason)) => return Err(Outcome::Broken(reason.to_owned())),
         Err(error) => {
             return Err(Outcome::Failed(format!(
                 "the body could not be read: {error}"
@@ -442,7 +446,7 @@ pub(crate) fn output_over(
         (note_id, file_date.as_deref()),
         pulled,
     )
-    .map_err(Outcome::Failed)
+    .map_err(Outcome::Broken)
 }
 
 /// The file the body makes of `parsed`: its frontmatter block kept byte for byte unless the

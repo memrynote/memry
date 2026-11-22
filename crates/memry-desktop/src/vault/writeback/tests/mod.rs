@@ -360,6 +360,7 @@ mod attachments;
 mod body_waits;
 mod deleted;
 mod embeds;
+mod failures;
 mod guards;
 mod journal;
 mod locks;

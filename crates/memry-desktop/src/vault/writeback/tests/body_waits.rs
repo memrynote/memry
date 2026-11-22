@@ -60,7 +60,7 @@ fn a_note_kept_for_its_body_gets_its_file_once_the_bodies_settle() {
     // Meanwhile the user edited one file and made one at the draft's name: both are theirs.
     f.write("Edited.md", "edited outside\n");
     f.write("Draft.md", "the user's own words\n");
-    writeback.schedule_body_waits();
+    writeback.schedule_body_waits(|waits| f.vault.note_files().server_bodies_owed(waits).unwrap());
     assert!(writeback.flush(WAIT));
     writeback.stop();
 

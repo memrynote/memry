@@ -56,8 +56,8 @@
 //!   runs gives it one more pass after it, once that pass's cooldown ended.
 //! - **A note kept for its unpulled body runs again once the bodies settle.** A pass that kept
 //!   the file because the note's server body was not pulled (`Keep::BodyNotPulled`) puts the
-//!   note aside; when the sync's body step settled its debts, every note put aside is
-//!   scheduled again ([`WriteBack::schedule_body_waits`], from `sync::disk`), and so is one
+//!   note aside; when the sync's body step settled its debts, every note put aside whose body
+//!   is no longer owed is scheduled again ([`WriteBack::schedule_body_waits`], from `sync::disk`), and so is one
 //!   whose pass kept it for its body while that settle ran. The pass's own rules still decide:
 //!   a file changed outside the app or a file at the note's name is kept.
 //! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
@@ -123,10 +123,13 @@
 //!   on Windows 11 with `trash` 5.2.9: the file was neither in the Recycle Bin nor on the share).
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed write
-//!   runs again on its own [`RETRY_AFTER`] later, the delay doubling with each failure in a row
-//!   up to [`MAX_RETRY_AFTER`], until a pass does not fail; a flush or a stop does not wait for
-//!   that retry, and a close leaves it to the next open's reconcile. A file whose frontmatter
-//!   does not parse is not retried: it waits for the user's fix. The body stays in the document
+//!   runs again on its own [`RETRY_AFTER`] later, the delay doubling with each failure in a row,
+//!   until a pass does not fail or the delay would reach [`MAX_RETRY_AFTER`]: then the retries
+//!   end, with one log line, and the note waits for its next schedule or the next open's
+//!   reconcile. A flush or a stop does not wait for a retry, and a close leaves it to the next
+//!   open's reconcile. A pass that cannot finish ([`Outcome::Broken`]: a body that does not
+//!   read, a file that does not serialize, a panic) is not retried, nor is a file whose
+//!   frontmatter does not parse: it waits for the user's fix. The body stays in the document
 //!   all along.
 //!
 //! A journal day's file is written as a note's is, by the same rules (Step 13m): its row says

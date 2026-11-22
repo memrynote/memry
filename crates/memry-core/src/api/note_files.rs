@@ -7,7 +7,7 @@
 //! [`crate::domain::note_files`]. Every method blocks; the shell runs them in
 //! `spawn_blocking`.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use serde_json::{Map, Value};
 
@@ -121,6 +121,20 @@ impl NoteFiles {
         let note_id = note_id.to_owned();
         self.db
             .read_blocking(move |conn| crate::sync::body_debt::is_owed(conn, &note_id))
+    }
+
+    /// Which of `note_ids` still owe their server body ([`Self::server_body_owed`]), in one read.
+    pub fn server_bodies_owed(&self, note_ids: &[String]) -> Result<HashSet<String>, StorageError> {
+        let note_ids = note_ids.to_vec();
+        self.db.read_blocking(move |conn| {
+            let mut owed = HashSet::new();
+            for note_id in note_ids {
+                if crate::sync::body_debt::is_owed(conn, &note_id)? {
+                    owed.insert(note_id);
+                }
+            }
+            Ok(owed)
+        })
     }
 
     /// Every live note that owes its file body, in id order.
