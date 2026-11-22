@@ -793,6 +793,17 @@ describe('blob routes', () => {
     }
   })
 
+  // #5247 C47.1: unparseable JSON answered 500 instead of a validation 400.
+  it('rejects a manifest batch whose body is not JSON with 400', async () => {
+    const res = await app.request(
+      '/attachments/manifests/batch',
+      { method: 'POST', body: '{not json' },
+      env
+    )
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: { code: ErrorCodes.VALIDATION_ERROR } })
+  })
+
   it('returns session errors for missing or expired upload sessions', async () => {
     state.session = null
     let res = await app.request('/attachments/upload/missing', { method: 'GET' }, env)
