@@ -522,13 +522,17 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (indexed) {
-        projectNoteNames(indexDb, {
-          noteId: itemId,
-          title: newTitle,
-          aliases: writtenAliases,
-          path: updateFields.path ?? existing.path,
-          previousPath: needsPathUpdate ? existing.path : undefined
-        })
+        projectNoteNames(
+          indexDb,
+          {
+            noteId: itemId,
+            title: newTitle,
+            aliases: writtenAliases,
+            path: updateFields.path ?? existing.path,
+            previousPath: needsPathUpdate ? existing.path : undefined
+          },
+          'sync'
+        )
       }
 
       if (indexed && propertiesPresent) {
@@ -701,7 +705,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         modifiedAt,
         emoji: data.emoji ?? null
       },
-      { isNew: true }
+      { isNew: true, source: 'sync' }
     )
     // Ahead of the flush: the links projector then finds the rows in place and
     // commits no project intent for this remote note.

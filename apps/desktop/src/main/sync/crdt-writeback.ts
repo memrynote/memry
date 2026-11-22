@@ -955,7 +955,7 @@ async function writebackExisting(
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },
-    { isNew: false }
+    { isNew: false, source: 'sync' }
   )
   void flushProjectionEvents()
 
@@ -1050,7 +1050,7 @@ async function writebackJournal(
       localOnly: cached.localOnly ?? false,
       emoji: cached.emoji ?? null
     },
-    { isNew: false }
+    { isNew: false, source: 'sync' }
   )
   void flushProjectionEvents()
 

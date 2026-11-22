@@ -1,6 +1,10 @@
 import type { FileHandle } from 'fs/promises'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import type { NoteLinksChangedEvent, NoteUpdatedEvent } from '@memry/contracts/notes-api'
+import type {
+  NoteEventSource,
+  NoteLinksChangedEvent,
+  NoteUpdatedEvent
+} from '@memry/contracts/notes-api'
 import { createLogger } from '../../lib/logger'
 import { openVaultFile } from '../../lib/paths'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
@@ -94,11 +98,16 @@ function announceLinkChanges(
   }
 }
 
-export function reresolveAndAnnounce(db: IndexDb, keys: readonly string[]): void {
+/** `source` is the cause of the name change, so the renderer can tell a sync apply from an edit. */
+export function reresolveAndAnnounce(
+  db: IndexDb,
+  keys: readonly string[],
+  source: NoteEventSource = 'internal'
+): void {
   const { sourceIds, targetIds } = reresolveLinks(db, keys)
   if (sourceIds.length === 0 && targetIds.length === 0) return
   for (const id of new Set([...sourceIds, ...targetIds])) {
-    const event: NoteUpdatedEvent = { id, changes: {}, source: 'internal' }
+    const event: NoteUpdatedEvent = { id, changes: {}, source }
     broadcastToAllWindows(NotesChannels.events.UPDATED, event)
   }
   const changed: NoteLinksChangedEvent = { sourceIds, targetIds }
@@ -113,13 +122,17 @@ export interface NoteNamesChange {
   previousPath: string | null | undefined
 }
 
-export function projectNoteNames(db: IndexDb, change: NoteNamesChange): void {
+export function projectNoteNames(
+  db: IndexDb,
+  change: NoteNamesChange,
+  source: NoteEventSource = 'internal'
+): void {
   const keys: string[] = reindexNoteNames(db, change)
   if (change.previousPath !== undefined && change.previousPath !== change.path) {
     keys.push(...pathLinkKeys(change.path))
     if (change.previousPath !== null) keys.push(...pathLinkKeys(change.previousPath))
   }
-  reresolveAndAnnounce(db, keys)
+  reresolveAndAnnounce(db, keys, source)
 }
 
 /** Task ids of the body's task lines, in document order. */
@@ -132,7 +145,10 @@ const scanTaskChecks = (markdown: string): Record<string, boolean> =>
 /** Older than any file mtime, so every freshness check re-reads the body. */
 const BODY_UNREAD = new Date(0).toISOString()
 
-function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdown' }>): void {
+function persistMarkdownNote(
+  note: Extract<NoteProjectionRecord, { kind: 'markdown' }>,
+  source: NoteEventSource | undefined
+): void {
   const db = getIndexDatabase()
   const existing = getNoteCacheById(db, note.noteId)
   // Tier 0 of ingest publishes identity only. Its null measurements mean
@@ -193,13 +209,17 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
 
   // A new note takes the links that already name it, so create-from-link
   // produces its backlink retroactively (#2209).
-  projectNoteNames(db, {
-    noteId: note.noteId,
-    title: note.title,
-    aliases: note.aliases === null ? { kind: 'unread' } : { kind: 'read', aliases: note.aliases },
-    path: note.path,
-    previousPath: existing ? existing.path : null
-  })
+  projectNoteNames(
+    db,
+    {
+      noteId: note.noteId,
+      title: note.title,
+      aliases: note.aliases === null ? { kind: 'unread' } : { kind: 'read', aliases: note.aliases },
+      path: note.path,
+      previousPath: existing ? existing.path : null
+    },
+    source
+  )
 
   if (bodyUnread) return
 
@@ -316,7 +336,7 @@ export function createNoteDerivedStateProjector(
       const note = event.note
 
       if (note.kind === 'markdown') {
-        persistMarkdownNote(note)
+        persistMarkdownNote(note, event.source)
         return
       }
 

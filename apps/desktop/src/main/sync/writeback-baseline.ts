@@ -37,10 +37,15 @@
  *   existing day file, the ingest backfill) keeps the baseline it finds unless
  *   its bytes only change the frontmatter of the baseline
  *   (`baselineAfterWrite`, `baselineAfterRead`).
- * - Exceptions, with no baseline to keep or move: a remote note create writes
- *   a new file the cache sync measures; the root-properties migration rewrites
+ * - Exceptions, with no baseline to keep or move: a remote or local note create
+ *   (`createNote`) writes a new file the cache sync measures; an import copies
+ *   new files the watcher indexes (`copyImportedFile`); the root-properties migration rewrites
  *   only frontmatter and re-reads the files it wrote (`indexVault`
  *   forcePaths); a vault lock writes back the locked text its doc holds.
+ * - The agent's journal tools (`agent/mcp/tools/journal-handles.ts`) write a
+ *   day file with `writeJournalEntry`, which neither feeds the doc nor moves
+ *   the baseline: the bytes read as an outside edit, and the watcher or the
+ *   next write-back ingests them.
  *
  * Any hash a writer moves clears a pending write (`updateNoteCache`,
  * `insertNoteCache`), so a stale pending hash never outlives the baseline it
