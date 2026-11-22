@@ -630,9 +630,11 @@ before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3
 
 **Exception: the body manifest read.** Each page of `GET /sync/crdt/manifest`
 retries a `429`, waiting the `retry-after` it carries up to one 60 s window,
-because the read is one bounded walk that answers nothing unless every page
-is read (chapter 08 §8.4.3), and no poll comes back for it
-(`crates/memry-core/src/protocol/http.rs:132-141`,
+or 2, 4 and 8 s when the answer carries none, because the read is one
+bounded walk that answers nothing unless every page is read (chapter 08
+§8.4.3), and no poll comes back for it
+(`crates/memry-core/src/protocol/http/retry.rs:88-93`, `:102-104`,
+`crates/memry-core/src/protocol/http.rs:284`, `:293`, `:471-474`,
 `crates/memry-core/src/sync/body_pull/manifest.rs:42`, #5349).
 
 **CRDT rate limits are per device, not per account**, because body sync is
@@ -1016,14 +1018,14 @@ Consequences a conforming client MUST implement:
   purge on this device (epoch 0, §7.16), nothing queued for it, and no earlier
   verdict. The author reads the server's body into a scratch document and
   pushes only when that body is pending and its own full state completes it
-  (`crates/memry-core/src/sync/revive_heal.rs:61`, `:95`, `:151`). The pass
+  (`crates/memry-core/src/sync/revive_heal.rs:65`, `:100`, `:187`). The pass
   runs the heal after the body step and before the push
-  (`crates/memry-core/src/api/sync/pass.rs:140`). Desktop, whose builds
+  (`crates/memry-core/src/api/sync/pass.rs:145`). Desktop, whose builds
   before #5358 kept the deleted doc the same way, judges the same candidates
   (it keeps no epoch, so a day revived since then is read once and found
   healthy) and queues a full-state row on its note-body outbox
-  (`apps/desktop/src/main/sync/revive-heal.ts:52`, `:96`), every ten minutes
-  once a full sync has delivered (`apps/desktop/src/main/sync/runtime.ts:912`).
+  (`apps/desktop/src/main/sync/revive-heal.ts:55`, `:121`), every ten minutes
+  once a full sync has delivered (`apps/desktop/src/main/sync/runtime.ts:923`).
   Each verdict is kept per document, so a document is read and pushed at most
   once.
 
