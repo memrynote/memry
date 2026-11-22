@@ -1257,14 +1257,19 @@ format is unchanged; clients repair it among themselves:
 
 - **Push.** A row at a binary-extension path always pushes the binary record,
   with its type taken from the path. A markdown note is always a `.md` file.
+  The same rule (`isBinaryNoteRow`) picks the binary branch on receive, so a
+  rename of such a row keeps the file's bytes and its extension.
 - **Receive and heal.** A device that holds the note as a binary file with its
   attachment keeps its row and file when a markdown record without an
-  attachment arrives. It then re-pushes its binary record once per note through
-  the normal update path, with the clock ticked past the merged record, and logs
-  `healedNotes`. A later markdown record (a real rename to `.md`) is not
-  overridden again by that device.
+  attachment arrives. It then re-pushes its binary record once per markdown
+  record (one `sync_state` row per note id and record clock) through the normal
+  update path, with the clock ticked past the merged record, and logs a
+  warning. A later markdown record, such as a re-push by a device that took
+  the markdown record, is answered once too. Receiving never pushes, so two
+  devices cannot answer each other in a loop; a real rename to `.md` on
+  another device is answered as well, which desktop never applies on receive.
 - **Devices that took the markdown record.** They keep the `.md` note when the
-  re-pushed binary record arrives and log `keptNotes`; nothing is written.
+  re-pushed binary record arrives and log a warning; nothing is written.
 
 Older clients receiving the re-pushed record apply it as any binary record:
 a device holding the note as binary updates its sidecar fields, a device holding

@@ -167,18 +167,36 @@ describe('a markdown record for a note this device holds as a good binary file',
       })
     ])
     expect(warned('Re-pushed a binary note whose server record was markdown')).toEqual([
-      [
-        'Re-pushed a binary note whose server record was markdown',
-        { itemId: NOTE_ID, healedNotes: 1 }
-      ]
+      ['Re-pushed a binary note whose server record was markdown', { itemId: NOTE_ID }]
     ])
   })
 
-  it('re-pushes once: a later markdown record (a real rename to .md) is not overridden again', () => {
+  it('answers one markdown record once, however often it is pulled', () => {
     pull(markdownRecord({ [DEVICE]: 1, [PEER]: 4 }))
-    pull(markdownRecord({ [DEVICE]: 2, [PEER]: 6 }))
+    pull(markdownRecord({ [DEVICE]: 1, [PEER]: 4 }))
 
     expect(queued()).toHaveLength(1)
+  })
+
+  it('answers a later markdown record again: a device that took the markdown record pushed it again', () => {
+    pull(markdownRecord({ [DEVICE]: 1, [PEER]: 4 }))
+    dataDb.db.delete(syncQueue).run()
+    pull({
+      ...markdownRecord({ [DEVICE]: 2, [PEER]: 4 }),
+      content: undefined,
+      fileType: 'image',
+      mimeType: 'image/png',
+      attachmentId: 'blob-png'
+    })
+    pull(markdownRecord({ [DEVICE]: 2, [PEER]: 6 }))
+
+    expect(queued()).toEqual([
+      expect.objectContaining({
+        fileType: 'image',
+        attachmentId: 'blob-png',
+        clock: { [DEVICE]: 3, [PEER]: 6 }
+      })
+    ])
     expect(readRow()).toMatchObject({ fileType: 'image', attachmentId: 'blob-png' })
     expect(fs.readFileSync(path.join(vaultRoot, 'scan.png'))).toEqual(PNG)
   })
@@ -240,15 +258,39 @@ describe('a device that first sees the note through the markdown record', () => 
       [
         [
           'Kept a markdown note that its server record now says is a binary file',
-          { itemId: NOTE_ID, keptNotes: 1 }
+          { itemId: NOTE_ID }
         ]
       ]
     )
   })
 })
 
-describe('the record a markdown-typed row at a binary path pushes', () => {
-  it('is binary, with the attachment, so new devices get the file (#5412 rows)', () => {
+describe('a markdown-typed row at a binary path (#5412 rows)', () => {
+  it('stays binary when a binary record renames it: the file keeps its bytes and its .png', () => {
+    seedRow({ fileType: 'markdown', mimeType: null })
+    fs.writeFileSync(path.join(vaultRoot, 'scan.png'), PNG)
+
+    pull({
+      ...markdownRecord({ [DEVICE]: 1, [PEER]: 4 }),
+      title: 'renamed',
+      content: undefined,
+      fileType: 'image',
+      mimeType: 'image/png',
+      attachmentId: 'blob-png'
+    })
+
+    expect(readRow()).toMatchObject({
+      path: 'renamed.png',
+      fileType: 'image',
+      mimeType: 'image/png',
+      attachmentId: 'blob-png'
+    })
+    expect(fs.readFileSync(path.join(vaultRoot, 'renamed.png'))).toEqual(PNG)
+    expect(fs.existsSync(path.join(vaultRoot, 'renamed.md'))).toBe(false)
+    expect(fs.existsSync(path.join(vaultRoot, 'scan.png'))).toBe(false)
+  })
+
+  it('pushes a binary record, with the attachment, so new devices get the file', () => {
     seedRow({ fileType: 'markdown', mimeType: null })
     fs.writeFileSync(path.join(vaultRoot, 'scan.png'), 'text the write-back put in the file\n')
 

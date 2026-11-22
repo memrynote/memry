@@ -80,6 +80,7 @@ import {
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
 import {
+  binaryRecordFields,
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
   noteBinaryRecordForMarkdownRow
@@ -255,7 +256,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const modifiedAt = laterModifiedAt(existing.modifiedAt, data.modifiedAt ?? now)
       const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
-      if (existing.fileType && isBinaryFileType(existing.fileType)) {
+      const binary = binaryRecordFields(existing)
+      if (binary) {
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
         const localFolder = extractFolderFromPath(existing.path)
@@ -274,10 +276,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
         if (needsPathUpdate) {
           const notesDir = getVaultRoot()
-          const ext = existing.mimeType
-            ? (getExtensionFromMimeType(existing.mimeType) ??
-              getDefaultExtension(existing.fileType))
-            : getDefaultExtension(existing.fileType)
+          const ext = binary.mimeType
+            ? (getExtensionFromMimeType(binary.mimeType) ?? getDefaultExtension(binary.fileType))
+            : getDefaultExtension(binary.fileType)
           // Folder-only move (title unchanged): preserve the existing on-disk
           // basename byte-for-byte instead of re-deriving it through the
           // sanitizer, which would retroactively rename legacy files.
@@ -330,8 +331,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           path: updateFields.path ?? existing.path,
           title: newTitle,
           emoji: resolvedEmoji,
-          fileType: existing.fileType,
-          mimeType: existing.mimeType,
+          ...binary,
           fileSize: existing.fileSize,
           attachmentId: data.attachmentId ?? existing.attachmentId,
           clock: resolution.mergedClock,
@@ -339,7 +339,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           modifiedAt
         })
         if (isMarkdownRecordOverBinaryNote(existing, data)) {
-          healBinaryNoteRecord(itemId, getNoteSyncService())
+          healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
         }
         // Binary/file branch: only sidecar metadata moved, never file bytes.
         emitNoteUpdated(ctx.emit, {
