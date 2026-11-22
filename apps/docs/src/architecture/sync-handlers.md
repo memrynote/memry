@@ -188,6 +188,14 @@ local clock is concurrent with the tombstone, or the last confirmed body push la
 with the body on the page db, queues its create, and the delete then runs as before. The Rust core
 mirrors the rule in `crates/memry-core/src/sync/delete_keep.rs`.
 
+When a pulled delete applies, `ItemApplier` (`apps/desktop/src/main/sync/apply-item.ts`) drops the
+item's queued non-delete rows in the same transaction (#5428). Pushed, such a row is the frozen
+pre-delete payload sent as an `update`; the server stores it over the tombstone, and for a type
+without a required clock or a tombstone stored without one nothing refuses it, so the item comes
+back on every device. A skipped delete (local clock after the tombstone) leaves the row queued, so a
+re-create is still sent. The Rust core does the same in `outbox::drop_upserts`. A pulled `settings`
+delete is skipped: no client issues one, and applying it would wipe every preference.
+
 That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses
 any non-delete push against a tombstoned id unless the incoming clock happens strictly after the
 stored one, answering `SYNC_DELETE_WINS`; `push-coordinator` drains that rejection without retrying,
