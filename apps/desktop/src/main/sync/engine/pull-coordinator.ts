@@ -39,7 +39,7 @@ import { reportConflict } from './conflict-report'
 import { listedCursorOf, RunAppliedCursors } from './run-applied-cursors'
 import type { PullRunState } from './pull-run-state'
 import type { PackedRecords } from '../packs/record-packs'
-import { applyPackedRecords } from './packed-record-apply'
+import { applyPackedRecords, packDeps, readPackApplied, skipsMarker } from './packed-record-apply'
 import { tripPullBreaker } from './pull-breaker'
 import { handlePullError } from './pull-error'
 import { PullLatencyTrace } from './sync-latency-telemetry'
@@ -168,6 +168,7 @@ export class PullCoordinator {
       vaultKey = credentials.vaultKey
 
       const runState = this.createPullRunState(credentials, pullStartedAt, abortController.signal)
+      runState.packApplied = readPackApplied(this.stateManager)
       this.pendingApplyRetries = []
       this.orphanedItems = []
       try {
@@ -202,8 +203,7 @@ export class PullCoordinator {
                   return HOLDS_CURSOR.has(stop)
                 },
                 pullById,
-                setCursor: (cursor) =>
-                  this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, cursor)
+                ...packDeps(this.stateManager, this.ctx.deps.db)
               })
             : 'tail'
         if (fromPacks === 'refused') runState.refused = true
@@ -824,7 +824,7 @@ export class PullCoordinator {
     const purged = await purgedTombstoneApplyItems(
       parsed,
       (t) =>
-        runState.fromZero === true ||
+        skipsMarker(runState, t) ||
         applied.covers(t, listedCursor(t.id)) ||
         this.quarantine.isQuarantined(t.id, t.type),
       { db: this.ctx.deps.db, resolveKey: (id) => this.resolveDeviceKey(id) }

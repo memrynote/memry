@@ -90,6 +90,8 @@ describe('SYNC_STATE_KEYS', () => {
         PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor',
         // Additive: absent means no pack-seeded doc owes a settle.
         PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
+        // Additive (#5390): absent means no record-pack phase row is on record.
+        RECORD_PACKS_APPLIED: 'recordPacksApplied',
         CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
         SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
         // #2297: absent, `pending` or `done`; an install without it has not

@@ -404,6 +404,32 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
   })
 
+  // #5390: a record-pack run cut short left rows with no cursor; their deletes
+  // may since be shed to markers, and a from-0 rerun must apply those.
+  it('applies a purged tombstone from cursor 0 to a row the record-pack phase applied', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-packed', { 'device-a': 1 })
+    seedRow(db, 'task', 'task-local', { 'device-a': 1 })
+    const engine = new SyncEngine(mockDeps(db))
+    engine.setStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED, JSON.stringify(['task:task-packed']))
+    await servePage({
+      deleted: ['task-packed', 'task-local'],
+      pull: {
+        items: [],
+        purgedTombstones: [
+          purgedTombstone('task-packed', 'task', TOMBSTONE_CLOCK),
+          purgedTombstone('task-local', 'task', TOMBSTONE_CLOCK)
+        ]
+      }
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'task', 'task-packed')).toBeUndefined()
+    expect(localRow(db, 'task', 'task-local')).toBeDefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+  })
+
   // #2302 review (A-F2): an unsigned delete never takes the handler's clockless branch.
   it('refuses a purged tombstone over a clockless local row', async () => {
     const db = getDb()
