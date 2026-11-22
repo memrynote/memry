@@ -322,7 +322,7 @@ desktop retries it (its oversized-update fallback about once a second). So the
 server honours `coversThrough` only when the env var
 `CRDT_CLAIM_MIN_DESKTOP_VERSION` is set **and** `client_policies['desktop']
 .min_write_version` is at or above it (`compareVersions`;
-`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:73`,
+`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:75`,
 read once per request). Otherwise a claim is dropped and the push runs under
 the pre-#2299 rules exactly (`covers_through` stays NULL), so no claimed row
 exists and no legacy client meets the refusal for a claimed row. A snapshot for
@@ -355,11 +355,11 @@ below keeps that blob from being replaced by one that does not hold them.
    (migration `0014_crdt_snapshot_covers_through.sql`, nullable, no backfill;
    NULL means "no claim"). A write through the `baseRevision` arm stores the
    union of both coverages, `MAX(C, COALESCE(old.covers_through, 0))`
-   (`STORED_COVERS_THROUGH_SQL`, `:106`): the pusher merged that snapshot, so
+   (`STORED_COVERS_THROUGH_SQL`, `:108`): the pusher merged that snapshot, so
    the new blob holds what it pruned. `old.server_cursor` is not used: rows
    between the old claim and the old snapshot's cursor are not provably merged.
 3. **The guard is a condition of the upsert, never a prior read**
-   (`REPLACE_ALLOWED_SQL`, `:91`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
+   (`REPLACE_ALLOWED_SQL`, `:93`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
    through `changes()`). A stored row may be replaced:
    - by an **unclaimed** push only when the row carries no claim either — an
      unclaimed push onto a claimed row is refused, because it never merged the
