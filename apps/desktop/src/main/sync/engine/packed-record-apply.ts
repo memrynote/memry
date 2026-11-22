@@ -49,8 +49,8 @@ export interface PackedRecordApplyDeps {
     inline: RecordPullItemResponse[],
     cursorOf: (id: string) => number
   ) => Promise<boolean>
-  /** Pulls and applies `refs` by id; false when the fetch stopped short. */
-  pullById: (refs: readonly ItemRef[]) => Promise<boolean>
+  /** Pulls and applies `refs` by id; false when the fetch stopped short, or with `requireAnswers` left any ref unanswered. */
+  pullById: (refs: readonly ItemRef[], opts?: { requireAnswers?: boolean }) => Promise<boolean>
   setCursor: (cursor: string) => void
   /** Durably records the pack phase's rows and held cursors, before any of them applies. */
   recordApplied: (held: ReadonlyMap<string, number>) => void
@@ -188,7 +188,10 @@ export async function applyPackedRecords(
   // Not part of the tail start: these rows are not in the manifest.
   if (unlisted.length > 0) {
     log.info('Pull: unlisted pack-phase rows pulled by id', { count: unlisted.length })
-    if (!(await deps.pullById(unlisted)) || runState.signal.aborted) return 'refused'
+    // A failed request is no answer, and only an answer may keep a row.
+    if (!(await deps.pullById(unlisted, { requireAnswers: true })) || runState.signal.aborted) {
+      return 'refused'
+    }
     const kept = unlisted
       .filter((ref) => !runState.applied.covers(ref, 0))
       .map((ref) => itemRefKey(ref.type, ref.id))

@@ -185,8 +185,8 @@ export class PullCoordinator {
         })
         await retrySchemaInvalidItems(recovery, credentials.accessJwt, vaultKey)
         // Applied as deferred retries: FK order and orphan repair (#837) included.
-        const pullById = async (refs: readonly ItemRef[]): Promise<boolean> => {
-          const fetchedAll = await fetchMissingItems(recovery, refs, runState, (items) =>
+        const pullById = async (refs: readonly ItemRef[], opts?: { requireAnswers?: boolean }) => {
+          const fetchedAll = await fetchMissingItems(recovery, refs, runState, opts, (items) =>
             this.applyDeferredRetries(runState, items)
           )
           await this.applyDeferredRetries(runState)

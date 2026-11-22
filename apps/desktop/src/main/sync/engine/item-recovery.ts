@@ -199,15 +199,21 @@ export async function refetchCorruptItems(
  * bounds memory when most of a vault is missing, and each reads the access
  * token again, so a long run outlives the token it started with. An envelope
  * this build refuses or a lost blob goes to the ledger, which the next check
- * counts as known. False when a cancel or a lost token cut the fetch short.
+ * counts as known. False when a cancel or a lost token cut the fetch short,
+ * and with `requireAnswers` also when a request failed (#5390): §8.10 rule 2
+ * reads an unanswered row as kept, so a server error must never stand in for
+ * the server's silence. Those refs skip the cooldown, so each pull asks again.
  */
 export async function fetchMissingItems(
   deps: Pick<ItemRecoveryDeps, 'ctx' | 'tracker' | 'ledger'>,
   refs: readonly ItemRef[],
   run: Pick<PullRunState, 'vaultKey' | 'signal' | 'packApplied'>,
+  opts: { requireAnswers?: boolean } | undefined,
   apply: (items: DecryptedPullItem[]) => Promise<void>
 ): Promise<boolean> {
+  const requireAnswers = opts?.requireAnswers === true
   const ordered = sortByApplyOrder([...refs])
+  let unanswered = 0
   for (let i = 0; i < ordered.length && !run.signal.aborted; i += PULL_REQUEST_MAX_IDS) {
     const token = await deps.ctx.deps.getAccessToken()
     if (!token) {
@@ -216,15 +222,22 @@ export async function fetchMissingItems(
       })
       return false
     }
-    const { recovered, invalid, blobMissing } = await deps.tracker.refetch(
-      ordered.slice(i, i + PULL_REQUEST_MAX_IDS),
-      token,
-      run.vaultKey,
-      (marker) => markerNotPastHeld(run, marker)
+    const chunk = ordered.slice(i, i + PULL_REQUEST_MAX_IDS)
+    if (requireAnswers) deps.tracker.forget(chunk)
+    const result = await deps.tracker.refetch(chunk, token, run.vaultKey, (marker) =>
+      markerNotPastHeld(run, marker)
     )
-    deps.ledger.record(invalid, 'envelope')
-    deps.ledger.record(blobMissing, 'blob_missing')
-    await apply(recovered)
+    deps.ledger.record(result.invalid, 'envelope')
+    deps.ledger.record(result.blobMissing, 'blob_missing')
+    await apply(result.recovered)
+    unanswered += result.unanswered.length
+  }
+  if (requireAnswers && unanswered > 0) {
+    log.warn('Pull refused: the server did not answer a by-id pull; the next pull asks again', {
+      unanswered,
+      requested: ordered.length
+    })
+    return false
   }
   return !run.signal.aborted
 }

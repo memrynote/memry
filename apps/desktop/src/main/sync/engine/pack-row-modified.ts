@@ -50,3 +50,15 @@ export function pullsUnlistedRow(db: DrizzleDb, key: string): boolean {
   }
   return true
 }
+
+/**
+ * Whether this device's own id is in the local row's clock (#5390): it edited
+ * the row, so the manifest check re-uploads it even while rule 2 holds it
+ * unresolved. No row, no clock or no device id reads as not edited here.
+ */
+export function editedHere(db: DrizzleDb, type: SyncItemType, itemId: string): boolean {
+  const local = getHandler(type)?.fetchLocal?.(db, itemId)
+  const clock = local ? clockOf(local) : null
+  const deviceId = getCurrentDeviceId(db)
+  return clock !== null && deviceId !== null && deviceId in clock
+}
