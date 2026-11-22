@@ -514,7 +514,10 @@ touch.
    slice, verify it against the index's per-entry digest, decrypt, verify the Ed25519 signature,
    and seed the Y.Doc — with `skipSeed`, so the doc is not first seeded from local markdown, which
    would give it a client id and a history the packed baseline never saw. On success the note's
-   snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET.
+   snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET. The
+   decrypt and signature checks run on the sync crypto worker, one batch per document (the
+   snapshot under the device key that verified the last one, then every update under its named
+   signer's key), and on the main thread only when the worker is not running or rejects.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
 6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are
