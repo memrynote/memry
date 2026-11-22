@@ -56,7 +56,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
             apply_page(
                 conn,
                 vec![delete(Some(first.clone()))],
-                vec![],
                 2,
                 None,
                 &crate::crypto::agent_envelope::AtRestKey::default()
@@ -69,7 +68,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         let late = apply_page(
             conn,
             vec![delete(Some(first))],
-            vec![],
             4,
             None,
             &crate::crypto::agent_envelope::AtRestKey::default(),
@@ -80,7 +78,6 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         let clockless = apply_page(
             conn,
             vec![delete(None)],
-            vec![],
             5,
             None,
             &crate::crypto::agent_envelope::AtRestKey::default(),

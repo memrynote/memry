@@ -54,7 +54,6 @@ pub(crate) fn pull(conn: &Connection, items: Vec<Pending>) -> Result<ApplyTotals
     apply_page(
         conn,
         items,
-        vec![],
         NOW + 10,
         Some(DEVICE),
         &crate::crypto::agent_envelope::AtRestKey::default(),

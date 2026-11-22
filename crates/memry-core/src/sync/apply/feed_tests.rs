@@ -53,15 +53,7 @@ fn source(title: &str, clock: Value) -> Value {
 }
 
 fn page(conn: &Connection, items: Vec<Pending>) -> ApplyTotals {
-    apply_page(
-        conn,
-        items,
-        vec![],
-        10,
-        Some("device-a"),
-        &AtRestKey::default(),
-    )
-    .expect("the page applies")
+    apply_page(conn, items, 10, Some("device-a"), &AtRestKey::default()).expect("the page applies")
 }
 
 fn outcomes(totals: &ApplyTotals) -> Vec<(String, AppliedOutcome)> {

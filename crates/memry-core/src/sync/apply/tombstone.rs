@@ -1,5 +1,5 @@
-//! The delete half of [`super::apply_page_into`]: a typed tombstone, the clock
-//! weighing #2409 adds to it, and §5.12.1's untyped delete.
+//! The delete half of [`super::apply_page_into`]: a typed tombstone and the
+//! clock weighing #2409 adds to it.
 
 use std::path::Path;
 
@@ -141,61 +141,6 @@ fn live_clock_is_after(
         .filter(|_| row.deleted_at.is_none())
         .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok());
     Ok(local.is_some_and(|local| compare(&local, tombstone) == ClockOrder::After))
-}
-
-/// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
-///
-/// The untyped delete covers *every* row under that id, whatever its type, so
-/// the projection half reads the types this device actually stored
-/// ([`store::item_types_for`]) and marks the tables each one names. The wire
-/// carried no type and a client MUST NOT invent one from the id's shape, so
-/// the local rows are the only honest source for that list.
-///
-/// The purge runs **unconditionally** here, and that is not the id-shape
-/// inference §5.12.1 forbids. The typed arm above has to be careful because a
-/// tag named like a note id would otherwise take the note's body with it; here
-/// there is no such case to be careful about, because every row under the id —
-/// the note's included — is being deleted. Body rows under a purely local
-/// document this device never got a record for go with it, which is the same
-/// rule read from the other side (§5.12: a delete for an unseen item is still
-/// recorded).
-pub(super) fn apply_untyped_tombstone(
-    conn: &Connection,
-    item_id: &str,
-    now_ms: i64,
-    totals: &mut ApplyTotals,
-) -> Result<(), StorageError> {
-    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-    let item_types = store::item_types_for(&txn, item_id)?;
-    let was_live = item_types
-        .iter()
-        .map(|item_type| feed::is_live(&txn, item_type, item_id))
-        .collect::<Result<Vec<_>, _>>()?;
-    store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
-    journal_day_merge::mark_deleted(&txn, item_id)?;
-    let any_live = was_live.contains(&true);
-    if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
-        txn.commit().map_err(sqlite_failed)?;
-        count(totals, any_live);
-        for (item_type, live) in item_types.iter().zip(&was_live) {
-            feed::deleted(&mut totals.feed, item_type, item_id, *live);
-        }
-        return Ok(());
-    }
-    for item_type in &item_types {
-        projectors::delete(&txn, item_type, item_id, now_ms)?;
-    }
-    body_debt::settle(&txn, item_id)?;
-    let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
-    txn.commit().map_err(sqlite_failed)?;
-    count(totals, any_live);
-    for (item_type, live) in item_types.iter().zip(&was_live) {
-        feed::deleted(&mut totals.feed, item_type, item_id, *live);
-    }
-    if purged > 0 {
-        totals.purged_documents.push(item_id.to_owned());
-    }
-    Ok(())
 }
 
 /// The CRDT tier's failure, back in the storage vocabulary this path speaks.

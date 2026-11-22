@@ -35,7 +35,6 @@ impl PullLoop {
     pub(super) async fn apply_all(
         &self,
         pending: Vec<Pending>,
-        untyped: Vec<String>,
         owe_bodies: bool,
         advance: Option<Advance>,
         feed: &mut AppliedFeed,
@@ -57,7 +56,6 @@ impl PullLoop {
                 apply::apply_page_into(
                     &txn,
                     pending,
-                    untyped,
                     now,
                     clock_device.as_deref(),
                     vault_root.as_deref(),
@@ -209,7 +207,7 @@ impl PullLoop {
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
         let applied = self
-            .apply_all(pending, Vec::new(), self.bodies.is_some(), None, &mut feed)
+            .apply_all(pending, self.bodies.is_some(), None, &mut feed)
             .await;
         // A corrupt row that applied is recovered (`item-recovery.ts:78`); a
         // skip changed nothing.
