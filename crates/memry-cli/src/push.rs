@@ -29,11 +29,12 @@ use std::sync::Arc;
 
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::StorageError;
-use memry_core::protocol::account::AccountSealer;
+use memry_core::protocol::account::{self, AccountCipher, AccountSealer};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::sync::outbox;
 use memry_core::sync::policy::{self, ClientPolicy, PolicyTier};
+use memry_core::sync::pull::PullLoop;
 use memry_core::sync::push::{PushCoordinator, PushError, PushReport};
 use memry_core::sync::state::WriteGate;
 
@@ -77,13 +78,22 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
         )));
     }
 
+    // A `SYNC_DELETE_WINS` is checked by pulling the id: the signer
+    // directory verifies its signed delete or attested marker (§5.8, #5406).
+    let directory = account::device_directory(&http).await?;
+    let cipher = Arc::new(AccountCipher::new(vault_key.clone(), directory));
+    let pull = PullLoop::new(http.clone(), db.clone(), Declaration::subscribed(), cipher)
+        .with_vault(&vault)
+        .with_clock_device(&cli.device_id()?);
     let coordinator = PushCoordinator::new(
         http,
         db.clone(),
         Declaration::subscribed(),
         Arc::new(AccountSealer::new(vault_key, signer)),
+        &cli.device_id()?,
     )
-    .with_vault(&vault);
+    .with_vault(&vault)
+    .with_pull(Arc::new(pull));
 
     let drained = coordinator.drain_wave().await;
     let failure = match drained {
@@ -166,7 +176,7 @@ pub fn format_push(outcome: &Outcome) -> String {
     let mut out = String::new();
     let _ = write!(
         out,
-        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\n",
+        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\ndeleted-locally {}\n",
         gate_label(&outcome.gate),
         outcome.policy.writes_enabled,
         outcome.policy.min_write_version.as_deref().unwrap_or("-"),
@@ -181,6 +191,7 @@ pub fn format_push(outcome: &Outcome) -> String {
         outcome.queued,
         outcome.attempts,
         outcome.refused.as_deref().unwrap_or("-"),
+        outcome.report.deleted_locally,
     );
     out
 }
@@ -310,6 +321,7 @@ mod tests {
             crdt_updates: 3,
             batch_ceiling: 50,
             halvings: 1,
+            deleted_locally: 2,
         };
         drained.queued = 1;
         drained.attempts = 1;
@@ -325,6 +337,7 @@ mod tests {
             // sends fifty.
             "batch-ceiling 50",
             "halvings 1",
+            "deleted-locally 2",
         ] {
             assert!(
                 rendered.contains(expected),
