@@ -355,11 +355,11 @@ below keeps that blob from being replaced by one that does not hold them.
    (migration `0014_crdt_snapshot_covers_through.sql`, nullable, no backfill;
    NULL means "no claim"). A write through the `baseRevision` arm stores the
    union of both coverages, `MAX(C, COALESCE(old.covers_through, 0))`
-   (`STORED_COVERS_THROUGH_SQL`, `:106`): the pusher merged that snapshot, so
+   (`STORED_COVERS_THROUGH_SQL`, `:108`): the pusher merged that snapshot, so
    the new blob holds what it pruned. `old.server_cursor` is not used: rows
    between the old claim and the old snapshot's cursor are not provably merged.
 3. **The guard is a condition of the upsert, never a prior read**
-   (`REPLACE_ALLOWED_SQL`, `:91`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
+   (`REPLACE_ALLOWED_SQL`, `:93`, on `ON CONFLICT DO UPDATE ... WHERE`, checked
    through `changes()`). A stored row may be replaced:
    - by an **unclaimed** push only when the row carries no claim either — an
      unclaimed push onto a claimed row is refused, because it never merged the

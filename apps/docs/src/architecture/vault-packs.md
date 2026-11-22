@@ -243,8 +243,8 @@ corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_B
 watermark still moves past them.
 
 Each queue message builds one pack per kind, about 542 subrequests together, and a large vault
-builds across invocations from its watermarks. The Rust core reader is a later step of
-[#5221](https://github.com/memrynote/memry/issues/5221).
+builds across invocations from its watermarks. The Rust core reads packs on first sync (#5320,
+`crates/memry-core/src/sync/pack_bootstrap/`).
 
 An update entry is one `crdt_updates` row: the document id as identity, empty `keyBytes`,
 `server_cursor` as sort key and watermark, and `{sequenceNum, signerDeviceId, createdAt}` as meta.
