@@ -598,9 +598,28 @@ removing the variable serves the listing compaction holds by then, with no
 rebuild and no re-anchor. Nulling `covered_through` by hand is not a rollback:
 the next bootstrap reads the kind as `unanchored` and the next record build
 re-anchors it and retires its packs (above). Unset, or a list that does not
-name the vault, leaves the listing byte for byte as before. It is a Worker
-secret so it applies without a deploy and survives one; nothing in
-`wrangler.toml` sets it:
+name the vault, leaves the listing byte for byte as before.
+
+- **It does not stop compaction.** Packs keep being built for a listed vault.
+  Stopping the packer is a separate change: remove the `PACK_QUEUE` and
+  `PACK_BACKFILL_QUEUE` producer bindings from `wrangler.toml` and deploy, and
+  the push nudge and the cron backfill enqueue nothing
+  (`apps/sync-server/src/services/pack-queue.ts:49`,
+  `apps/sync-server/src/services/pack-backfill.ts:219-221`).
+- **It takes effect on the next listing.** A run that already holds a page
+  keeps its presigned URLs, which expire 300 s after the listing
+  (`apps/sync-server/src/services/pack-list.ts:173`,
+  `apps/sync-server/src/services/r2-presign.ts:27`), so it may fetch packs
+  for up to 300 s more.
+- **Vault ids match exactly.** Each entry is trimmed and compared
+  case-sensitively to the vault id (`pack-list.ts:90-93`), with no scoping to
+  a user. `default` is the vault id of every account a legacy client synced
+  (`apps/sync-server/src/middleware/paid-sync.ts:18`), so naming it disables
+  packs for all of them.
+- **No code deploy.** It is a Worker secret, so it survives a deploy, and
+  nothing in `wrangler.toml` sets it. `wrangler secret put` and
+  `wrangler secret delete` each deploy a new version of the current Worker
+  code, which is how the change takes effect:
 
 ```sh
 # staging, one drill vault (or '*' for every vault)
