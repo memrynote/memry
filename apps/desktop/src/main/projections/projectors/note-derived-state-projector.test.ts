@@ -107,6 +107,53 @@ describe('note derived state projector', () => {
     expect(links).toEqual([])
   })
 
+  it('project drops the tags, properties and links a markdown row held when it becomes a file (#5412)', async () => {
+    seedCachedNote('scan', 'notes/scan.png')
+    seedCachedNote('target-note', 'notes/target.md')
+    indexDb.db.run(sql`
+      INSERT INTO note_tags (note_id, tag) VALUES (${'scan'}, ${'bogus'})
+    `)
+    indexDb.db.run(sql`
+      INSERT INTO note_properties (note_id, name, value, type)
+      VALUES (${'scan'}, ${'status'}, ${'"draft"'}, ${'text'})
+    `)
+    indexDb.db.run(sql`
+      INSERT INTO note_links (source_id, target_id, target_title)
+      VALUES (${'scan'}, ${'target-note'}, ${'Target'})
+    `)
+
+    await createNoteDerivedStateProjector(() => vaultDir).project({
+      type: 'note.upserted',
+      note: {
+        kind: 'file',
+        noteId: 'scan',
+        path: 'notes/scan.png',
+        title: 'scan',
+        fileType: 'image',
+        mimeType: 'image/png',
+        fileSize: 14,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-02T00:00:00.000Z'
+      }
+    })
+
+    const derived = (table: string): unknown[] =>
+      indexDb.db.all(
+        sql.raw(
+          `SELECT * FROM ${table} WHERE ${table === 'note_links' ? 'source_id' : 'note_id'} = 'scan'`
+        )
+      )
+    expect({
+      tags: derived('note_tags'),
+      properties: derived('note_properties'),
+      links: derived('note_links')
+    }).toEqual({ tags: [], properties: [], links: [] })
+    expect(broadcastToAllWindows).toHaveBeenCalledWith(
+      'notes:updated',
+      expect.objectContaining({ id: 'target-note' })
+    )
+  })
+
   function seedExtractedText(noteId: string, source: string, method: string, text: string): void {
     indexDb.db.run(sql`
       INSERT INTO extracted_text (note_id, source, part, method, text)

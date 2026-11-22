@@ -200,4 +200,81 @@ describe('binary file metadata safety (#2073)', () => {
     expect(raw).toContain('tags:')
     expect(raw).toContain('- work')
   })
+
+  describe('rows a write-back retyped to markdown at a binary path (#5412, #5422)', () => {
+    /** The file `![](pic.png)` names sits beside it, so a move to a subfolder re-points it. */
+    const PNG_WITH_TEXT = Buffer.concat([PNG_BYTES, Buffer.from('![](pic.png) [[Old]]')])
+
+    async function seedRetyped(id: string, fileName: string): Promise<string> {
+      const absolutePath = path.join(tempVault.notesDir, fileName)
+      fs.writeFileSync(absolutePath, PNG_WITH_TEXT)
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, {
+        id,
+        path: `notes/${fileName}`,
+        title: path.basename(fileName, path.extname(fileName)),
+        fileType: 'markdown',
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+      return absolutePath
+    }
+
+    async function cachedFileType(id: string): Promise<string | null | undefined> {
+      const { flushProjectionEvents } = await import('../projections')
+      await flushProjectionEvents()
+      const { getNoteCacheById } = await import('@main/database/queries/notes')
+      return getNoteCacheById(testDb.db, id)?.fileType
+    }
+
+    function expectBytesKept(relativePath: string): void {
+      const bytes = fs.readFileSync(path.join(tempVault.path, relativePath))
+      expect(Buffer.compare(bytes, PNG_WITH_TEXT)).toBe(0)
+    }
+
+    it('rename keeps the bytes and files the row as an image', async () => {
+      await seedRetyped('retyped-rename', 'scan.png')
+
+      const renamed = await notes.renameNote('retyped-rename', 'Receipt')
+
+      expect(renamed.path).toBe('notes/Receipt.png')
+      expectBytesKept(renamed.path)
+      expect(await cachedFileType('retyped-rename')).toBe('image')
+    })
+
+    it('move keeps the bytes and files the row as an image', async () => {
+      await seedRetyped('retyped-move', 'scan.png')
+      fs.mkdirSync(path.join(tempVault.notesDir, 'sub'))
+
+      const moved = await notes.moveNote('retyped-move', 'notes/sub')
+
+      expect(moved.path).toBe('notes/sub/scan.png')
+      expectBytesKept(moved.path)
+      expect(await cachedFileType('retyped-move')).toBe('image')
+    })
+
+    it('folder move files the row as an image', async () => {
+      fs.mkdirSync(path.join(tempVault.notesDir, 'scans'))
+      await seedRetyped('retyped-folder', 'scans/scan.png')
+
+      await notes.renameFolder('notes/scans', 'notes/archive')
+
+      expectBytesKept('notes/archive/scan.png')
+      expect(await cachedFileType('retyped-folder')).toBe('image')
+    })
+
+    it('renaming a note it links to leaves its bytes alone', async () => {
+      await seedRetyped('retyped-source', 'scan.png')
+      const target = await notes.createNote({ title: 'Old', content: 'Body.' })
+      const { sql } = await import('@tests/utils/test-db')
+      testDb.db.run(sql`
+        INSERT INTO note_links (source_id, target_id, target_title)
+        VALUES (${'retyped-source'}, ${target.id}, ${'Old'})
+      `)
+
+      await notes.renameNote(target.id, 'New')
+
+      expectBytesKept('notes/scan.png')
+    })
+  })
 })
