@@ -32,7 +32,7 @@ use memry_core::api::errors::ApiError;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::settings;
 use memry_core::domain::tasks;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
@@ -89,6 +89,11 @@ impl ScriptedCipher {
 impl RecordCipher for ScriptedCipher {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
         self.opened.lock().unwrap().push(envelope.id.clone());
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         self.plaintexts
             .lock()
             .unwrap()
@@ -338,7 +343,7 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
         response(
             200,
             // The server answers with the typed tombstone and says nothing
-            // about the second id, which §5.12.1 makes an untyped delete.
+            // about the second id, which carries no signed delete (§5.12.1).
             &json!({"items": [tombstone("note-1", "note", 1_700_000_000_000i64)]}).to_string(),
         ),
     ]);
@@ -346,20 +351,21 @@ async fn a_tombstone_is_applied_without_its_body_ever_being_applied() {
     let pull = loop_for(transport, db.clone(), cipher.clone());
 
     let report = pull.pull_page().await.expect("the page");
-    assert_eq!(report.deleted, 2);
+    // The bare id applies nothing (#5340).
+    assert_eq!(report.deleted, 1);
     assert_eq!(report.corrupt, 0);
     assert!(!report.refused);
-    // §5.8 (#3037): a note tombstone is opened only for `bodyStateVector`,
-    // and one that does not open still applies.
+    // §5.14: a tombstone opens like any record; §5.8 (#3037) reads only its
+    // `bodyStateVector`, and one without it still applies.
     assert_eq!(cipher.opened(), vec!["note-1".to_owned()]);
 
     db.call_blocking(|conn| {
         let row = sync_items::load(conn, "note", "note-1")?.expect("the tombstoned row");
         assert_eq!(row.deleted_at, Some(1_700_000_000_000));
         assert!(row.payload.is_none());
-        // §5.12.1: an id with no ref row and no typed item is recorded, so a
-        // later pull of it cannot resurrect it locally.
-        assert!(store::has_bare_tombstone(conn, "never-seen")?);
+        // §5.12.1 (#5340): an id with no typed item is unsigned, so nothing
+        // is recorded for it, as in Electron.
+        assert!(!store::has_bare_tombstone(conn, "never-seen")?);
         Ok(())
     })
     .expect("read back");
@@ -1468,7 +1474,7 @@ async fn a_delete_for_a_locally_newer_note_is_still_applied() {
             &json!({"items": [tombstone("abc123def456", "note", MERGE_NOW + 2_000)]}).to_string(),
         ),
     ]);
-    // The body is never decoded (§5.12), so the cipher has nothing scripted.
+    // The body is never applied (§5.12), so the cipher has nothing scripted.
     let cipher = ScriptedCipher::new(&[]);
     let report = loop_for(transport, db.clone(), cipher)
         .pull_page()

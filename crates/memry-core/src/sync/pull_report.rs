@@ -62,4 +62,7 @@ pub struct PullReport {
     /// Documents whose update log gained a body from the feed on this pass
     /// (chapter 07 §7.17), so a **resident** document is behind its log.
     pub advanced_documents: Vec<String>,
+    /// Ids a [`super::pull::PullLoop::fetch_ids`] asked for that came back
+    /// with no item and no attested marker (§5.12.1).
+    pub uncovered: usize,
 }

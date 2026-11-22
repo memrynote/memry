@@ -887,9 +887,10 @@ instead of two (`apps/sync-server/src/services/sync.ts:1111`).
 - Tombstone bodies are **never applied** (`packages/sync-client/src/pull/engine.ts:230-240`).
   A `note` or `journal` tombstone is read only for its optional
   `bodyStateVector` (§5.8, #3037).
-- An id in `deleted` with no ref row has **no type on the wire**; the client
-  marks any existing row deleted and otherwise records a bare tombstone
-  (`packages/sync-client/src/pull/engine.ts:415-418`).
+- An id in `deleted` has **no type and no signature on the wire**, so it is
+  not a delete: §5.12.1 says what it may do. `packages/sync-client` predates
+  that rule and still marks any existing row deleted and otherwise records a
+  bare tombstone (`packages/sync-client/src/pull/engine.ts:415-418`).
 
 ### 5.12.1 Untyped `deleted` ids and a subset subscriber — Q05.2
 
@@ -920,11 +921,16 @@ pulls each unlisted row declaring `purged_tombstones`
 (`crates/memry-core/src/sync/pull/shared_apply.rs:57`), deletes only
 through a verified delete or a marker whose attestation verifies
 (`crates/memry-core/src/sync/first_sync/reconcile/markers.rs:83`), and
-keeps and logs the rest (`reconcile.rs:114`). On main the core's page
-pull (`crates/memry-core/src/sync/pull.rs:295-300`) and first sync refs pass
-(`crates/memry-core/src/sync/first_sync.rs:467-468`) still record a bare
-tombstone (§5.12.2) for an uncovered `deleted` id; #5338 and #5340 move them to
-this rule on `feat/tauri-v2`.
+keeps and logs the rest (`reconcile.rs:114`). Rust core page pull: every
+pulled delete opens and verifies before it applies
+(`crates/memry-core/src/sync/pull_decode.rs:73`);
+`crates/memry-core/src/sync/pull.rs:293-306` counts and logs the uncovered ids
+and `:325` applies none. The core's first sync refs pass pulls each page's
+`deleted` ids before its cursor moves, applies only what that pull verified,
+and logs the uncovered ids with the page cursor
+(`crates/memry-core/src/sync/first_sync.rs:450-467`), so a bare id records
+nothing (#5338, #5340, #5405). A stale row an attested marker names is the
+reconcile's, above.
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are
@@ -982,7 +988,14 @@ The non-envelope case is the exception because the fault is on the server.
 
 ### 5.12.2 How a bare tombstone is stored
 
-**Normative.** §5.12.1 establishes that a `deleted[]` entry is an **id with no
+**Superseded by §5.12.1 for new data.** A conforming client files no new bare
+tombstone: an id in `deleted` with no verified delete records nothing. The Rust
+core still honours a bare tombstone an older build filed: it is a `sync_items`
+row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
+before an apply (`crates/memry-core/src/sync/apply.rs:174`). The rest of this
+section describes those rows.
+
+§5.12.1 establishes that a `deleted[]` entry is an **id with no
 type**, while every other piece of client bookkeeping is keyed `(type, id)`.
 The two were never reconciled, which left "where does this row go" unanswered.
 
@@ -1132,8 +1145,8 @@ that missed a delete keeps its copy locally, and the marker stops a push of it
 from reaching the server. The Rust core produces attestations on every
 attestable delete it pushes and carries the verifier
 (`crates/memry-core/src/protocol/delete_attestation.rs`), but consumes no
-purged tombstone: that would need a new delete path on iOS, and the §5.12.1
-untyped-delete behaviour stays as documented there.
+purged tombstone: that would need a new delete path on iOS, and a bare id in
+`deleted` deletes nothing (§5.12.1).
 
 **Residual risks.**
 

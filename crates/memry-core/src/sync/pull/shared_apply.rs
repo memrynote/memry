@@ -8,7 +8,9 @@ use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::protocol::types::ArrivingItemType;
 use crate::storage::nested_tx;
 
-use super::{MAX_PULL_IDS, PullError, PullLoop, PullReport, apply_items, sqlite_failed};
+use super::{
+    MAX_PULL_IDS, PullError, PullLoop, PullReport, apply_items, sqlite_failed, typed_covers,
+};
 use crate::sync::apply::{self, Pending};
 use crate::sync::pull_decode::{Decoding, now_ms};
 
@@ -74,7 +76,7 @@ impl PullLoop {
                 entries.append(marked);
             }
         }
-        let (mut report, failed) = self.apply_decoded(decoding).await?;
+        let (mut report, failed) = self.apply_decoded(decoding, ids).await?;
         report.dropped_pages = dropped_pages;
         for (item, reason) in failed {
             report.corrupt += 1;
@@ -105,16 +107,18 @@ impl PullLoop {
         items: Vec<Json>,
     ) -> Result<(PullReport, Vec<Json>), PullError> {
         let decoding = vec![self.decoder().spawn(items)];
-        let (report, failed) = self.apply_decoded(decoding).await?;
+        let (report, failed) = self.apply_decoded(decoding, &[]).await?;
         Ok((report, failed.into_iter().map(|(item, _)| item).collect()))
     }
 
     /// The one apply a pulled item and a packed one share: per-item decode,
     /// §5.13's order, then every item in one transaction. Answers the items
-    /// that did not decode, each with its reason.
+    /// that did not decode, each with its reason, and counts the `requested`
+    /// ids no decoded item covers in [`PullReport::uncovered`] (§5.12.1).
     async fn apply_decoded(
         &self,
         decoding: Vec<Decoding>,
+        requested: &[String],
     ) -> Result<(PullReport, Vec<(Json, String)>), PullError> {
         let mut report = PullReport::default();
         let mut pending: Vec<Pending> = Vec::new();
@@ -128,6 +132,10 @@ impl PullLoop {
             }
         }
 
+        report.uncovered = requested
+            .iter()
+            .filter(|id| !typed_covers(&pending, id))
+            .count();
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let now = now_ms();
         let clock_device = self.clock_device.clone();
