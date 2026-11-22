@@ -614,6 +614,36 @@ fn notes(db: &Db) -> HashMap<String, (bool, Option<i64>)> {
     .unwrap()
 }
 
+/// What the reconcile remembered for the push wave (#5406): id and clock,
+/// from the `meta` rows keyed `sync.unattested_marker\0{type}\0{id}`.
+fn remembered(db: &Db) -> Vec<(String, Option<String>)> {
+    let rows: Vec<(String, String)> = db
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare(
+                    "SELECT key, value FROM meta WHERE key LIKE 'sync.unattested_marker%' ORDER BY key",
+                )
+                .unwrap();
+            let rows = statement
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            Ok(rows)
+        })
+        .unwrap();
+    rows.into_iter()
+        .map(|(key, value)| {
+            let id = key.rsplit('\0').next().unwrap().to_owned();
+            let value: Json = serde_json::from_str(&value).unwrap();
+            let clock = Some(&value["clock"])
+                .filter(|c| !c.is_null())
+                .map(Json::to_string);
+            (id, clock)
+        })
+        .collect()
+}
+
 fn live_ids(db: &Db) -> Vec<String> {
     let mut ids: Vec<String> = notes(db)
         .into_iter()
@@ -1020,6 +1050,8 @@ async fn an_omitted_row_the_pull_leaves_unanswered_is_kept() {
     let (db, report) = omitted_n3("omitted-unanswered", |_| {}).await;
     assert!(notes(&db)["n3"].0, "no signed evidence: n3 stays live");
     assert_eq!(report.reconcile_removed, 0);
+    assert_eq!(report.reconcile_kept, 1);
+    assert!(remembered(&db).is_empty(), "no marker, nothing to remember");
 }
 
 /// §5.14: a pull answer that is not an envelope deletes nothing.
@@ -1066,6 +1098,32 @@ async fn an_omitted_row_with_a_forged_or_stale_marker_is_kept() {
     .await;
     assert!(notes(&db)["n3"].0);
     assert_eq!(report.reconcile_removed, 0);
+    assert_eq!(report.reconcile_kept, 1);
+    // #5406: the unattested marker past the row is remembered with its clock;
+    // the one at cursor 3 is older than the row and stands for nothing.
+    assert_eq!(
+        remembered(&db),
+        vec![("n3".to_owned(), Some(r#"{"device-a":2}"#.to_owned()))]
+    );
+}
+
+/// #5406: a clockless marker (a delete pushed before clocks were required)
+/// can never be attested and the server accepts any update over it. The row
+/// is kept and counted, and the marker is remembered so an edit of the row
+/// applies the delete here instead of reversing it on every device.
+#[tokio::test]
+async fn an_omitted_row_with_a_clockless_marker_is_kept_and_remembered() {
+    let (db, report) = omitted_n3("omitted-clockless", |server| {
+        let mut entry = marker("n3", 7, false);
+        let fields = entry.as_object_mut().expect("an object");
+        fields.insert("clock".into(), Json::Null);
+        fields.remove("deleteAttestation");
+        server.markers.push(entry);
+    })
+    .await;
+    assert!(notes(&db)["n3"].0);
+    assert_eq!(report.reconcile_kept, 1);
+    assert_eq!(remembered(&db), vec![("n3".to_owned(), None)]);
 }
 
 #[tokio::test]
