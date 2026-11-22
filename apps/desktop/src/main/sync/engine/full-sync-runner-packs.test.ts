@@ -7,6 +7,7 @@ import sodium, {
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encryptCrdtUpdate } from '../crdt-encrypt'
+import type { DocumentPlan } from '../packs/body-plan'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
@@ -74,6 +75,7 @@ const okResult = {
   entriesApplied: 3,
   entriesSkipped: 0,
   entriesFailed: 0,
+  updatesApplied: 0,
   appliedThroughCursor: 200
 }
 
@@ -83,11 +85,30 @@ type ProviderMock = {
   putSnapshotWatermark: ReturnType<typeof vi.fn>
   open: ReturnType<typeof vi.fn>
   applyRemoteUpdate: ReturnType<typeof vi.fn>
+  getDoc: ReturnType<typeof vi.fn>
   getStateVector: ReturnType<typeof vi.fn>
   closeIfInactive: ReturnType<typeof vi.fn>
   getOpenNoteIds: ReturnType<typeof vi.fn>
   inactiveDocCapacity: number
 }
+
+const snapshotPlan = (bytes: Uint8Array): DocumentPlan => ({
+  snapshot: {
+    entry: {
+      kind: 'crdt_snapshot',
+      id: 'note-1',
+      sourceKey: '',
+      sortKey: 0,
+      offset: 0,
+      length: 0,
+      sha256: new Uint8Array(32)
+    },
+    meta: { sequenceNum: 4, revision: 'r4' },
+    read: async () => bytes
+  },
+  updates: [],
+  watermark: { appliedSequence: 4, snapshotRevision: 'r4' }
+})
 
 interface Harness {
   runner: FullSyncRunner
@@ -113,7 +134,8 @@ const createHarness = (
         getSnapshotWatermark: vi.fn(async () => null),
         putSnapshotWatermark: vi.fn(async () => {}),
         open: vi.fn(async () => ({})),
-        applyRemoteUpdate: vi.fn(),
+        applyRemoteUpdate: vi.fn(() => true),
+        getDoc: vi.fn(() => undefined),
         // Non-empty: the applier refuses to record a watermark for a doc that
         // is still empty after the seed.
         getStateVector: vi.fn(() => new Uint8Array([1, 220, 148, 3, 1])),
@@ -125,7 +147,11 @@ const createHarness = (
   const ctx = {
     deps: {
       db: {
-        select: () => ({ from: () => ({ all: () => deviceKeys.map((key) => ({ key })) }) })
+        select: () => ({
+          from: () => ({
+            all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key }))
+          })
+        })
       },
       queue: { getPendingCount: vi.fn(() => 0), purgeOldErrors: vi.fn() },
       network: { online: true },
@@ -281,9 +307,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         'note-1',
         peer.privateKey
       )
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
 
       // `applyRemoteUpdate` routes through the provider's live doc map and
       // DROPS anything for a doc it is not holding, so the open is what makes
@@ -322,9 +349,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         peer.privateKey
       )
 
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
       expect(mocks.fetchAndCacheDeviceKeys).toHaveBeenCalled()
     })
 
@@ -341,9 +369,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         peer.privateKey
       )
 
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
     })
   })
 
@@ -355,6 +384,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       entriesApplied: 0,
       entriesSkipped: 0,
       entriesFailed: 0,
+      updatesApplied: 0,
       appliedThroughCursor: null
     })
     await withPacks.runner.run()

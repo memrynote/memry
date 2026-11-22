@@ -11,10 +11,12 @@ import * as Y from 'yjs'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { eq } from 'drizzle-orm'
+import type { PackIndexEntry } from '@memry/contracts/pack-format'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { encryptCrdtUpdate } from '../crdt-encrypt'
+import { planDocument } from '../packs/body-plan'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
 import { generateUniquePathSync } from '../../vault/file-ops'
 import { generateContentHash, parseNote, serializeNote } from '../../vault/frontmatter'
@@ -217,6 +219,16 @@ function serverUpdate(noteId: string, body: string): Uint8Array {
   return update
 }
 
+const packEntry = (noteId: string): PackIndexEntry => ({
+  kind: 'crdt_snapshot',
+  id: noteId,
+  sourceKey: '',
+  sortKey: 0,
+  offset: 0,
+  length: 0,
+  sha256: new Uint8Array(32)
+})
+
 function packedUpdate(noteId: string, body: string): Uint8Array {
   return encryptCrdtUpdate(serverUpdate(noteId, body), vaultKey, noteId, peer.privateKey)
 }
@@ -340,6 +352,7 @@ function makeDevice(
       const doc = docs.get(noteId)
       return doc ? Y.encodeStateVector(doc) : null
     },
+    getDoc: (noteId: string) => docs.get(noteId),
     closeIfInactive: async () => true,
     getOpenNoteIds: () => [],
     purge: async (noteId: string) => {
@@ -382,9 +395,9 @@ async function runSync(
   mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
     for (const [index, { id, body }] of options.packed.entries()) {
       const meta = { sequenceNum: index + 1, revision: `r${index + 1}` }
-      if (await deps.snapshots.shouldApply(id, meta)) {
-        await deps.snapshots.apply(id, packedUpdate(id, body), meta)
-      }
+      const snapshot = { entry: packEntry(id), meta, read: async () => packedUpdate(id, body) }
+      const plan = planDocument(id, await deps.bodies.localWatermark(id), snapshot, [], null)
+      if (plan) await deps.bodies.applyDocument(id, plan)
     }
     return {
       usedPacks: true,
@@ -392,6 +405,7 @@ async function runSync(
       entriesApplied: options.packed.length,
       entriesSkipped: 0,
       entriesFailed: 0,
+      updatesApplied: 0,
       appliedThroughCursor: 100
     }
   })
