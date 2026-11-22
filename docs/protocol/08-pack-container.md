@@ -700,8 +700,13 @@ pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISAB
   effort, and rethrows without deleting it (`listingBatch`): a batch can
   commit and lose its response, and that commit can land after any read the
   writer makes. The deletion pass deletes the object later, and only while no
-  row lists its key. The object was never listed, so no reader holds a URL to
-  it and it waits for no grace period.
+  row lists its key: it reads `pack_index` again right before the R2 delete
+  and keeps every key listed by then
+  (`apps/sync-server/src/services/pack-replaced-objects.ts:155-178`). A commit
+  that lands between that read and the delete still loses its object, and a
+  reader meets a 404 (§8.12). Unless such a late commit lists it, the object
+  was never listed, so no reader holds a URL to it and it waits for no grace
+  period.
 - **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
   `crdt_update` while the vault holds a needed row of that kind with a NULL
   `server_cursor`: such a row is in no range and never in the feed (chapter 07
@@ -917,9 +922,9 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:348`, logged at `:341-345`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:350`, logged at `:343-347`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:325-327`). A run never spans an excluded pack, so
+  among packs already read (`:327-329`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
@@ -1052,7 +1057,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   rewrites before the listing and plans around them (`planRollup`,
   `apps/sync-server/src/services/pack-rollup.ts:89`), and its swap batch
   inserts nothing when either of two guards fails (`swapListing`,
-  `apps/sync-server/src/services/pack-rollup.ts:550-567`). The pending-set
+  `apps/sync-server/src/services/pack-rollup.ts:555-574`). The pending-set
   guard fails when a rewrite the plan did not exclude is pending. The
   listing-overlap guard fails when another listed pack of the kind starts
   inside the run's range; for `crdt_snapshot` the range's last second is open,
@@ -1068,7 +1073,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   run's range holds only current entries. A purge after the listing read that
   takes out an input of the run makes `replacePacks` record nothing: it
   records the inputs only while every one is still listed
-  (`apps/sync-server/src/services/pack-rollup.ts:502`). When a guard fails
+  (`apps/sync-server/src/services/pack-rollup.ts:504`). When a guard fails
   or `replacePacks` records nothing, the rollup's object is deleted unlisted
   (§8.10, **Unlisted objects**).
 - **When rewrites run.** After its batch commits, the purge runs up to
@@ -1087,7 +1092,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   old resets that kind of the vault (`packKindReset`) before it selects the
   due objects, so it deletes that object and every object the reset made due
   in the same pass (`resetUnrewritten`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:185`). A deletion
+  `apps/sync-server/src/services/pack-replaced-objects.ts:211`). A deletion
   never waits for a rewrite past the grace, and the range of a rewrite that
   never ran is rebuilt from source rows instead of staying unpacked.
 - **The 900 s bound.** For a purge that commits at `T`:
@@ -1101,7 +1106,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
      pass retries any delete that failed
      (`apps/sync-server/src/services/pack-message-passes.ts:50`, `:54`, `:64`).
      A rollup in that message lists no range twice: the pending-set and
-     listing-overlap guards fail its swap (`pack-rollup.ts:550-567`).
+     listing-overlap guards fail its swap (`pack-rollup.ts:555-574`).
   3. A compaction message whose last pass leaves objects due or rewrites
      pending throws (`apps/sync-server/src/services/pack-message-passes.ts:90-99`).
      It reads the pending rewrites again before that decision (`:73`), because
@@ -1272,7 +1277,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:341-345`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:343-347`), and the backfill tick
 enqueues the kind every tick while it is above the bound, so an operator sees
 it at least once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.
