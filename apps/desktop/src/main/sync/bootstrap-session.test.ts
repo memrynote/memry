@@ -90,7 +90,34 @@ describe('bootstrap session manager', () => {
   })
 
   it('reports a device the server no longer deems fresh (409)', async () => {
-    postMock.mockRejectedValueOnce(new SyncServerError('conflict', 409, 'BOOTSTRAP_NOT_ELIGIBLE'))
+    postMock.mockRejectedValueOnce(
+      new SyncServerError('not eligible', 409, 'BOOTSTRAP_NOT_ELIGIBLE: not eligible', {
+        code: 'BOOTSTRAP_NOT_ELIGIBLE'
+      })
+    )
+
+    expect(await openBootstrapSession(getAccessToken)).toBe('ineligible')
+    expect(getBootstrapElevationFactor()).toBe(1)
+  })
+
+  it('keeps the resume window on a 409 that is not BOOTSTRAP_NOT_ELIGIBLE', async () => {
+    postMock.mockRejectedValueOnce(
+      new SyncServerError('conflict', 409, 'CONFLICT: conflict', { code: 'CONFLICT' })
+    )
+
+    expect(await openBootstrapSession(getAccessToken)).toBeNull()
+  })
+
+  it.each([
+    ['a server without the route', new SyncServerError('Not Found', 404)],
+    [
+      'a deployment without bootstrap sessions',
+      new SyncServerError('not configured', 501, 'BOOTSTRAP_UNAVAILABLE: not configured', {
+        code: 'BOOTSTRAP_UNAVAILABLE'
+      })
+    ]
+  ])('ends the resume window on %s', async (_, error) => {
+    postMock.mockRejectedValueOnce(error)
 
     expect(await openBootstrapSession(getAccessToken)).toBe('ineligible')
     expect(getBootstrapElevationFactor()).toBe(1)
