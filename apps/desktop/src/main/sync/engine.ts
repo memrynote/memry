@@ -52,6 +52,7 @@ import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import type { ItemRef } from './engine/corrupt-item-tracker'
+import type { PackedRecords } from './packs/record-packs'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 import { createSocketApplier, type SocketApplier } from './engine/socket-apply'
 import { reportConflict } from './engine/conflict-report'
@@ -225,7 +226,7 @@ export class SyncEngine extends SyncEventEmitter {
       this.pushCoordinator,
       this.crdtSync,
       {
-        pull: (missing) => this.pull(missing),
+        pull: (missing, packed) => this.pull(missing, packed),
         push: () => this.push(),
         scheduleSync: (fn) => this.scheduleSync(fn)
       },
@@ -355,6 +356,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController = null
 
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
     if (this.ctx.inFlightSync) {
       await this.ctx.inFlightSync.catch(() => {})
     }
@@ -433,10 +435,10 @@ export class SyncEngine extends SyncEventEmitter {
    * only thing that separates a delivered pull from a silent one (#1835).
    * `missing` is what a manifest check found missing, pulled by id (#3391).
    */
-  async pull(missing: readonly ItemRef[] = []): Promise<SyncRunOutcome> {
+  async pull(missing: readonly ItemRef[] = [], packed?: PackedRecords): Promise<SyncRunOutcome> {
     const start = Date.now()
     try {
-      const outcome = await this.pullCoordinator.pull(missing)
+      const outcome = await this.pullCoordinator.pull(missing, packed)
       trackSyncRun('pull', outcome, {
         durationMs: Date.now() - start,
         queueCount: this.ctx.deps.queue.getPendingCount()
@@ -471,6 +473,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.cancelRequested = true
     log.info('Sync cancel requested — aborting in-flight sync and refusing further cycles')
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
   }
 
   /**
@@ -688,7 +691,10 @@ export class SyncEngine extends SyncEventEmitter {
   pause(source: SyncPauseSource): PauseSyncResult {
     const wasPaused = this.stateManager.isPaused()
     this.stateManager.setPaused(true, source)
-    if (!wasPaused) this.ctx.abortController?.abort()
+    if (!wasPaused) {
+      this.ctx.abortController?.abort()
+      this.fullSyncRunner.abortPackPhase()
+    }
     return { success: true, wasPaused }
   }
 
@@ -750,6 +756,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.networkReconnectAbortController?.abort()
     this.networkReconnectAbortController = null
     this.ctx.abortController?.abort()
+    this.fullSyncRunner.abortPackPhase()
     this.ctx.deps.ws.disconnect()
 
     if (this.pullInterval) {

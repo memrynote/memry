@@ -81,27 +81,35 @@ const LIST_REFETCH_REST_MAX_MS = 2500
  */
 const LIST_REFETCH_WATCHDOG_MS = 15_000
 
-interface NoteListRefresher {
+interface QueryRefresher {
   holders: number
   /** `urgent`: a user's or the app's own change, which rests at most the burst window. */
   request: (urgent: boolean) => void
   dispose: () => void
 }
 
-const noteListRefreshers = new WeakMap<QueryClient, NoteListRefresher>()
+/** Subscribes `request` to the events that change one query's answer. */
+type RefreshTriggers = (request: (urgent: boolean) => void) => Array<() => void>
+
+const queryRefreshers = new WeakMap<QueryClient, Map<string, QueryRefresher>>()
 
 /**
- * The one note-event subscription per query client that refetches the note
- * lists, shared by every mounted `useNotesList`: each hook used to subscribe
- * and invalidate every list on its own, so N mounted lists refetched N times
- * per event. A request with the lists idle refetches at once, so a single edit
+ * The one event subscription per query client and query key that refetches
+ * that query, shared by every mounted hook: each hook used to subscribe and
+ * invalidate on its own, so N mounted lists refetched N times per event, and
+ * the folders refetched (a walk of every vault directory) once per note a
+ * bootstrap created (#5390). A request with the lists idle refetches at once, so a single edit
  * shows immediately. A request while a refetch runs or rests is folded into
  * one refetch after the rest, which starts after the last event and so lands
  * the same list an unbatched run would. Only sync write-backs earn the long
  * rest: an urgent request (any non-sync event) refetches at most the burst
  * window after the last refetch settled.
  */
-function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
+function createQueryRefresher(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+  triggers: RefreshTriggers
+): QueryRefresher {
   // The refetch in flight, 0 when none: a refetch the watchdog gave up on
   // settles later under a stale id and is ignored.
   let inFlight = 0
@@ -128,13 +136,14 @@ function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
     watchdog = setTimeout(() => {
       watchdog = null
       if (inFlight !== id) return
-      log.warn('list refetch did not settle; refetching anew', {
+      log.warn('refetch did not settle; refetching anew', {
+        queryKey,
         afterMs: LIST_REFETCH_WATCHDOG_MS
       })
       inFlight = 0
       if (pending) refetch()
     }, LIST_REFETCH_WATCHDOG_MS)
-    void queryClient.invalidateQueries({ queryKey: notesKeys.lists() }).finally(() => {
+    void queryClient.invalidateQueries({ queryKey }).finally(() => {
       if (inFlight !== id || disposed) return
       inFlight = 0
       if (watchdog) clearTimeout(watchdog)
@@ -161,16 +170,7 @@ function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
       rest(Math.max(0, settledAt + NOTE_EVENT_INVALIDATE_MS - Date.now()))
     }
   }
-  // Only a sync write-back waits long. Renames and moves carry no source.
-  const fromEvent = (event: { source: NoteEventSource }): void => request(event.source !== 'sync')
-  const urgent = (): void => request(true)
-  const unsubscribers = [
-    onNoteCreated(fromEvent),
-    onNoteDeleted(fromEvent),
-    onNoteUpdated(fromEvent),
-    onNoteRenamed(urgent),
-    onNoteMoved(urgent)
-  ]
+  const unsubscribers = triggers(request)
   return {
     holders: 0,
     request,
@@ -183,15 +183,26 @@ function createNoteListRefresher(queryClient: QueryClient): NoteListRefresher {
   }
 }
 
-function holdNoteListRefresher(queryClient: QueryClient): {
+function holdQueryRefresher(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+  triggers: RefreshTriggers
+): {
   request: (urgent: boolean) => void
   release: () => void
 } {
-  let refresher = noteListRefreshers.get(queryClient)
-  if (!refresher) {
-    refresher = createNoteListRefresher(queryClient)
-    noteListRefreshers.set(queryClient, refresher)
+  const key = JSON.stringify(queryKey)
+  let byKey = queryRefreshers.get(queryClient)
+  if (!byKey) {
+    byKey = new Map()
+    queryRefreshers.set(queryClient, byKey)
   }
+  let refresher = byKey.get(key)
+  if (!refresher) {
+    refresher = createQueryRefresher(queryClient, queryKey, triggers)
+    byKey.set(key, refresher)
+  }
+  const refreshers = byKey
   const held = refresher
   held.holders++
   return {
@@ -199,9 +210,38 @@ function holdNoteListRefresher(queryClient: QueryClient): {
     release: () => {
       if (--held.holders > 0) return
       held.dispose()
-      noteListRefreshers.delete(queryClient)
+      refreshers.delete(key)
     }
   }
+}
+
+// Only a sync write-back waits long. Renames and moves carry no source.
+const bySource =
+  (request: (urgent: boolean) => void) =>
+  (event: { source: NoteEventSource }): void =>
+    request(event.source !== 'sync')
+
+const noteListTriggers: RefreshTriggers = (request) => [
+  onNoteCreated(bySource(request)),
+  onNoteDeleted(bySource(request)),
+  onNoteUpdated(bySource(request)),
+  onNoteRenamed(() => request(true)),
+  onNoteMoved(() => request(true))
+]
+
+const folderTriggers: RefreshTriggers = (request) => [
+  onNoteCreated(bySource(request)),
+  onNoteDeleted(bySource(request)),
+  onNoteMoved(() => request(true)),
+  onNoteRenamed(() => request(true)),
+  onFolderConfigUpdated(() => request(true))
+]
+
+function holdNoteListRefresher(queryClient: QueryClient): {
+  request: (urgent: boolean) => void
+  release: () => void
+} {
+  return holdQueryRefresher(queryClient, notesKeys.lists(), noteListTriggers)
 }
 
 // =============================================================================
@@ -530,25 +570,10 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     gcTime: NOTE_GC_TIME
   })
 
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    }
-
-    const unsubCreated = onNoteCreated(invalidate)
-    const unsubDeleted = onNoteDeleted(invalidate)
-    const unsubMoved = onNoteMoved(invalidate)
-    const unsubRenamed = onNoteRenamed(invalidate)
-    const unsubFolderConfig = onFolderConfigUpdated(invalidate)
-
-    return () => {
-      unsubCreated()
-      unsubDeleted()
-      unsubMoved()
-      unsubRenamed()
-      unsubFolderConfig()
-    }
-  }, [queryClient])
+  useEffect(
+    () => holdQueryRefresher(queryClient, notesKeys.folders(), folderTriggers).release,
+    [queryClient]
+  )
 
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),

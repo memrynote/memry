@@ -12,6 +12,7 @@ import { createPackBodyApplier } from './pack-body-applier'
 import { contiguousAppliedCursor, runPackBootstrap, type PackBootstrapDeps } from './pack-bootstrap'
 import { buildTestPack } from './test-pack-builder'
 import type * as HttpClientModule from '../http-client'
+import { NetworkError, RateLimitError, SyncServerError } from '../http-client'
 
 // The whole point of pack-seeded bodies: not one item-granular CRDT request is
 // issued for a note a pack covered. Mocking the module is how that is proved
@@ -234,7 +235,8 @@ describe('runPackBootstrap', () => {
         entriesSkipped: 0,
         entriesFailed: 0,
         updatesApplied: 0,
-        appliedThroughCursor: null
+        appliedThroughCursor: null,
+        records: null
       })
       expect(harness.downloaded).toEqual([])
       expect(harness.stateWrites).toEqual([])
@@ -299,19 +301,18 @@ describe('runPackBootstrap', () => {
       expect(harness.downloaded).toEqual([])
     })
 
-    it('#given record packs only #then they are refused (no signature metadata)', async () => {
+    it('#given a device that already has a cursor #then record packs are never fetched', async () => {
       const harness = makeHarness({
         fetchPackPage: async () =>
           listResponse([packSummary({ id: 'p-records', itemKind: 'record' })])
       })
+      harness.state.set(SYNC_STATE_KEYS.LAST_CURSOR, '500')
 
       const result = await runPackBootstrap(harness.deps)
 
       expect(result.usedPacks).toBe(false)
       expect(harness.downloaded).toEqual([])
-      // The record cursor is what the item-granular pull runs on; nothing here
-      // may move it.
-      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')
     })
   })
 
@@ -830,6 +831,58 @@ describe('runPackBootstrap', () => {
       expect(httpSpies.getFromServer).not.toHaveBeenCalled()
     })
 
+    it('#given record packs #then the record manifest is read after the packs and bodies at the head are settled', async () => {
+      const recordReads: string[] = []
+      const { harness } = harnessWith([manifestDoc('note-1', 'r4'), manifestDoc('note-2', null)])
+      const meta = { operation: 'update', signature: 'sig', signerDeviceId: 'device-a' }
+      const blob = { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      harness.deps.fetchPackPage = async () => ({
+        ...listResponse([
+          packSummary({ id: 'p-snap', maxCursor: 200 }),
+          packSummary({ id: 'p-upd', itemKind: 'crdt_update', maxCursor: 900 }),
+          packSummary({ id: 'p-rec', itemKind: 'record', coverFrom: 0, coverThrough: 300 })
+        ]),
+        coverage: [{ itemKind: 'record', packedThrough: 300, coveredThrough: 310 }]
+      })
+      harness.deps.readRecordManifest = async () => {
+        recordReads.push(harness.downloaded.toSorted().join(','))
+        return {
+          items: [
+            { id: 'note-1', type: 'note', version: 1, modifiedAt: 1, size: 1, serverCursor: 20 }
+          ],
+          complete: true
+        }
+      }
+      harness.packFiles.set(
+        'p-rec',
+        buildTestPack([
+          {
+            kind: 'record',
+            id: 'note:note-1',
+            sortKey: 20,
+            meta,
+            bytes: new TextEncoder().encode(JSON.stringify(blob))
+          }
+        ]).bytes
+      )
+      // note-1 reaches maxSequenceNum 9 under r4; note-2 stops at 1.
+      harness.packFiles.set(
+        'p-upd',
+        buildTestPack([1, 2, 3, 4, 5, 6, 7, 8, 9].map((seq) => updateEntry('note-1', seq))).bytes
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(recordReads).toEqual(['p-rec,p-snap,p-upd'])
+      expect(result.records?.tailStart).toBe(310)
+      expect(
+        result.records?.apply.map(({ item, sortKey }) => [item.type, item.id, sortKey])
+      ).toEqual([['note', 'note-1', 20]])
+      expect(result.records?.pullById).toEqual([])
+      expect([...(result.records?.settledBodies ?? [])]).toEqual(['note-1'])
+      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    })
+
     it('#given an old server with no body manifest #then no packed update applies', async () => {
       const { harness } = harnessWith(null)
 
@@ -942,6 +995,265 @@ describe('runPackBootstrap', () => {
       expect(result.entriesApplied).toBe(2)
       expect([...harness.docs.keys()].toSorted()).toEqual(['note-new', 'note-old'])
       expect(pages.length).toBe(2)
+    })
+  })
+
+  describe('network drop (#5389, protocol 08 §8.12)', () => {
+    const twoPacks = (harness: Harness): void => {
+      harness.deps.fetchPackPage = async () =>
+        listResponse([
+          packSummary({ id: 'p-new', maxCursor: 200, itemCount: 1 }),
+          packSummary({ id: 'p-old', maxCursor: 100, itemCount: 1 })
+        ])
+      for (const [id, noteId] of [
+        ['p-new', 'note-new'],
+        ['p-old', 'note-old']
+      ]) {
+        harness.packFiles.set(
+          id,
+          buildTestPack([
+            { id: noteId, bytes: snapshotBytes(noteId), meta: { sequenceNum: 1, revision: 'r' } }
+          ]).bytes
+        )
+      }
+    }
+
+    /** Fails each GET while `fault` answers an error, then serves the fixture. */
+    const faulty = (harness: Harness, fault: (id: string, attempt: number) => Error | null) => {
+      const serve = harness.deps.download!
+      const attempts: string[] = []
+      const sleeps: number[] = []
+      harness.deps.sleep = async (ms) => {
+        sleeps.push(ms)
+      }
+      harness.deps.download = async (options) => {
+        const id = options.url.split('/').pop()!.split('?')[0]
+        attempts.push(id)
+        const error = fault(id, attempts.filter((seen) => seen === id).length)
+        if (error) throw error
+        return serve({ ...options, url: options.url.split('?')[0] })
+      }
+      return { attempts, sleeps }
+    }
+
+    it('#given a drop that outlasts the transport ladder #then the phase pauses and the lost pack downloads again', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { attempts, sleeps } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new NetworkError('pack fetch failed: offline') : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000])
+      // No new GET starts once the phase is paused.
+      expect(attempts).toEqual(['p-new', 'p-new', 'p-old'])
+      expect(result.entriesApplied).toBe(2)
+    })
+
+    it('#given a drop longer than every pause #then the pack is a gap after the fourth', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, () => new SyncServerError('pack fetch returned 503', 503))
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000, 120_000, 240_000])
+      expect(result.usedPacks).toBe(false)
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
+    it('#given a 404 #then the pack is a gap at once, with no pause', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 404', 404) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([])
+      expect([...harness.docs.keys()]).toEqual(['note-old'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a 429 #then the pause lasts at least its Retry-After', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new RateLimitError(90) : null
+      )
+
+      await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([90_000])
+    })
+
+    it('#given a 403 on a url that expired during the drop #then the pack is re-listed and downloads', async () => {
+      let clock = 1_700_000_100_000
+      const pages: string[] = []
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.fetchPackPage = async () => {
+        const nowSeconds = Math.floor(clock / 1000)
+        pages.push('list')
+        return listResponse([
+          packSummary({
+            id: 'p-new',
+            itemCount: 1,
+            url: `https://r2.example/p-new?exp=${nowSeconds + 300}`,
+            expiresAt: nowSeconds + 300
+          })
+        ])
+      }
+      const { sleeps } = faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        // The transport's retries outlive the signature; R2 answers 403.
+        clock += 400_000
+        return new SyncServerError('pack fetch returned 403', 403)
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000])
+      expect(pages).toEqual(['list', 'list'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a re-list that fails during the drop #then the pack stays lost for the next pause', async () => {
+      let clock = 1_700_000_100_000
+      let lists = 0
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.fetchPackPage = async () => {
+        lists++
+        if (lists === 2) throw new NetworkError('offline')
+        const nowSeconds = Math.floor(clock / 1000)
+        return listResponse([
+          packSummary({ id: 'p-new', itemCount: 1, expiresAt: nowSeconds + 60 })
+        ])
+      }
+      const { sleeps } = faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        clock += 60_000
+        return new NetworkError('pack fetch failed: offline')
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000])
+      expect(lists).toBe(3)
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a 403 on a live url #then the pack is a gap with no pause', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 403', 403) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a pack that fails past the last pause #then it is a gap and the packs behind it still download', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { attempts, sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 503', 503) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000, 120_000, 240_000])
+      expect(attempts.filter((id) => id === 'p-old')).toEqual(['p-old'])
+      expect([...harness.docs.keys()]).toEqual(['note-old'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it.each([401, 404, 400])(
+      '#given a re-list that answers %i #then the pack is a gap at once, with no further pause',
+      async (status) => {
+        let clock = 1_700_000_100_000
+        let lists = 0
+        const harness = makeHarness({ now: () => clock })
+        twoPacks(harness)
+        harness.deps.fetchPackPage = async () => {
+          lists++
+          if (lists > 1) throw new SyncServerError(`list returned ${status}`, status)
+          const nowSeconds = Math.floor(clock / 1000)
+          return listResponse([
+            packSummary({ id: 'p-new', itemCount: 1, expiresAt: nowSeconds + 60 })
+          ])
+        }
+        const { sleeps } = faulty(harness, (_id, attempt) => {
+          if (attempt > 1) return null
+          clock += 60_000
+          return new NetworkError('pack fetch failed: offline')
+        })
+
+        const result = await runPackBootstrap(harness.deps)
+
+        expect(sleeps).toEqual([30_000])
+        expect(lists).toBe(2)
+        expect(result.usedPacks).toBe(false)
+      }
+    )
+
+    it('#given pauses that outlive the access token #then each re-list and the manifest read use a fresh one', async () => {
+      let clock = 1_700_000_100_000
+      let minted = 0
+      const listTokens: string[] = []
+      const manifestTokens: string[] = []
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.getAccessToken = async () => `jwt-${++minted}`
+      harness.deps.readManifest = async (token) => {
+        manifestTokens.push(token)
+        return null
+      }
+      harness.deps.fetchPackPage = async (token) => {
+        listTokens.push(token)
+        const nowSeconds = Math.floor(clock / 1000)
+        return listResponse([
+          packSummary({
+            id: 'p-new',
+            itemCount: 1,
+            url: `https://r2.example/p-new?exp=${nowSeconds + 300}`,
+            expiresAt: nowSeconds + 300
+          })
+        ])
+      }
+      faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        clock += 400_000
+        return new SyncServerError('pack fetch returned 403', 403)
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(listTokens).toEqual(['jwt-1', 'jwt-2'])
+      expect(manifestTokens).toEqual(['jwt-3'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given an abort during a pause #then nothing downloads or applies after it', async () => {
+      const controller = new AbortController()
+      const harness = makeHarness({ signal: controller.signal })
+      twoPacks(harness)
+      const { attempts } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new NetworkError('pack fetch failed: offline') : null
+      )
+      harness.deps.sleep = async () => controller.abort()
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(attempts).toEqual(['p-new'])
+      expect(harness.docs.size).toBe(0)
+      expect(result.usedPacks).toBe(false)
     })
   })
 

@@ -699,6 +699,58 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
     })
   })
 
+  // 17k docs settled one await at a time left the main process idle for most
+  // of a 408 s settle (#5390): each doc waits on its store, converter and file.
+  it('settles several docs at once, and a slow one holds up none of the others', async () => {
+    const notes = Array.from({ length: 12 }, (_, i) => ({
+      id: `livenote${String(i).padStart(4, '0')}`,
+      body: `Body ${i}`
+    }))
+    let inFlight = 0
+    let peak = 0
+    let releaseSlow = (): void => {}
+    const slowGate = new Promise<void>((resolve) => {
+      releaseSlow = resolve
+    })
+    const device = makeDevice()
+    const materialize = device.provider.materialize
+    device.provider.materialize = async (noteId) => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      try {
+        if (noteId === notes[0].id) await slowGate
+        return await materialize(noteId)
+      } finally {
+        inFlight--
+        // Every other doc settled while the first one waited.
+        if (noteId === notes[11].id) releaseSlow()
+      }
+    }
+    const pullRecords = async (): Promise<boolean> => {
+      for (const note of notes) {
+        applyRecord(
+          { op: 'upsert', type: 'note', id: note.id, title: note.id, content: '' },
+          device.docs
+        )
+      }
+      return true
+    }
+
+    await runSync(device, { fresh: true, packed: notes, pull: pullRecords })
+
+    expect(peak).toBeGreaterThan(1)
+    expect(readVault(mocks.vaultRoot)).toEqual(
+      Object.fromEntries(notes.map((note) => [`${note.id}.md`, note.body]))
+    )
+    expect(
+      device.db.db
+        .select({ key: syncState.key })
+        .from(syncState)
+        .all()
+        .filter((row) => row.key.startsWith('packSeed'))
+    ).toEqual([])
+  })
+
   describe('a settle that cannot finish keeps its markers', () => {
     const live = { id: 'livenote0001', body: 'Live note body' }
     const second = { id: 'livenote0002', body: 'Second body' }
