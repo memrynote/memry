@@ -586,7 +586,7 @@ left the row with no payload, a local edit seeds an empty payload, and its push
 waits until a by-id re-pull merges the server's copy, so the edit cannot
 replace the account's settings with one key
 (`crates/memry-core/src/domain/settings.rs:148-156`,
-`crates/memry-core/src/sync/unknown_signer.rs:54-57`).
+`crates/memry-core/src/sync/unknown_signer.rs:59-61`, `:81-83`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
