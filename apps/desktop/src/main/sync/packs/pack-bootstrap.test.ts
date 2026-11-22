@@ -1106,6 +1106,103 @@ describe('runPackBootstrap', () => {
       expect(sleeps).toEqual([])
       expect(result.entriesApplied).toBe(1)
     })
+
+    it('#given a pack that fails past the last pause #then it is a gap and the packs behind it still download', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { attempts, sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 503', 503) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000, 120_000, 240_000])
+      expect(attempts.filter((id) => id === 'p-old')).toEqual(['p-old'])
+      expect([...harness.docs.keys()]).toEqual(['note-old'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it.each([401, 404, 400])(
+      '#given a re-list that answers %i #then the pack is a gap at once, with no further pause',
+      async (status) => {
+        let clock = 1_700_000_100_000
+        let lists = 0
+        const harness = makeHarness({ now: () => clock })
+        twoPacks(harness)
+        harness.deps.fetchPackPage = async () => {
+          lists++
+          if (lists > 1) throw new SyncServerError(`list returned ${status}`, status)
+          const nowSeconds = Math.floor(clock / 1000)
+          return listResponse([
+            packSummary({ id: 'p-new', itemCount: 1, expiresAt: nowSeconds + 60 })
+          ])
+        }
+        const { sleeps } = faulty(harness, (_id, attempt) => {
+          if (attempt > 1) return null
+          clock += 60_000
+          return new NetworkError('pack fetch failed: offline')
+        })
+
+        const result = await runPackBootstrap(harness.deps)
+
+        expect(sleeps).toEqual([30_000])
+        expect(lists).toBe(2)
+        expect(result.usedPacks).toBe(false)
+      }
+    )
+
+    it('#given pauses that outlive the access token #then each re-list and the manifest read use a fresh one', async () => {
+      let clock = 1_700_000_100_000
+      let minted = 0
+      const listTokens: string[] = []
+      const manifestTokens: string[] = []
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.getAccessToken = async () => `jwt-${++minted}`
+      harness.deps.readManifest = async (token) => {
+        manifestTokens.push(token)
+        return null
+      }
+      harness.deps.fetchPackPage = async (token) => {
+        listTokens.push(token)
+        const nowSeconds = Math.floor(clock / 1000)
+        return listResponse([
+          packSummary({
+            id: 'p-new',
+            itemCount: 1,
+            url: `https://r2.example/p-new?exp=${nowSeconds + 300}`,
+            expiresAt: nowSeconds + 300
+          })
+        ])
+      }
+      faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        clock += 400_000
+        return new SyncServerError('pack fetch returned 403', 403)
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(listTokens).toEqual(['jwt-1', 'jwt-2'])
+      expect(manifestTokens).toEqual(['jwt-3'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given an abort during a pause #then nothing downloads or applies after it', async () => {
+      const controller = new AbortController()
+      const harness = makeHarness({ signal: controller.signal })
+      twoPacks(harness)
+      const { attempts } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new NetworkError('pack fetch failed: offline') : null
+      )
+      harness.deps.sleep = async () => controller.abort()
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(attempts).toEqual(['p-new'])
+      expect(harness.docs.size).toBe(0)
+      expect(result.usedPacks).toBe(false)
+    })
   })
 
   describe('pack listing', () => {

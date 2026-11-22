@@ -6,9 +6,12 @@ import sodium, {
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { PackSummary } from '@memry/contracts/sync-api'
+
 import { encryptCrdtUpdate } from '../crdt-encrypt'
 import type { DocumentPlan } from '../packs/body-plan'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
+import { downloadPacks } from '../packs/pack-downloads'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -274,6 +277,42 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       harness.setStateValue.mock.calls.filter(([key]) => key === SYNC_STATE_KEYS.LAST_CURSOR)
     ).toEqual([])
   })
+
+  it.each(['stop', 'vault switch'] as const)(
+    '#given a %s during a pack pause #then the phase returns at once and nothing downloads after it',
+    async (ending) => {
+      const harness = createHarness()
+      const fetched: string[] = []
+      let applied = false
+      let paused!: () => void
+      const pausing = new Promise<void>((resolve) => (paused = resolve))
+      // The real phase-wide pause (production timer), cut short only by the signal.
+      mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
+        const packs = ['p-1', 'p-2'].map((id) => ({ id }) as PackSummary)
+        await downloadPacks(packs, {
+          parallel: 1,
+          fetchOne: async (pack) => {
+            fetched.push(pack.id)
+            paused()
+            return { lostMs: 0 }
+          },
+          onPause: () => {},
+          ...(deps.signal ? { signal: deps.signal } : {})
+        })
+        if (!deps.signal?.aborted) applied = true
+        return okResult
+      })
+
+      const running = harness.runner.run()
+      await pausing
+      if (ending === 'stop') harness.runner.abortPackPhase()
+      else harness.runner.dispose()
+      await running
+
+      expect(fetched).toEqual(['p-1'])
+      expect(applied).toBe(false)
+    }
+  )
 
   describe('the seed store handed to the pack runner', () => {
     let vaultKey: Uint8Array

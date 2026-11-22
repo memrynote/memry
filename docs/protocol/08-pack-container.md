@@ -948,9 +948,14 @@ coverage ranges chain, and writes one pack that replaces them:
   wall clock and the phase's monotonic clock. A pack still failing after the
   fourth pause is a gap
   (`crates/memry-core/src/sync/pack_bootstrap/download.rs:120-170`, `:172-279`,
-  #5374). A pack the re-list no longer names stays a gap. Desktop pauses the
-  same way (`apps/desktop/src/main/sync/packs/pack-downloads.ts:13`,
-  `:27-35`, `:67-113`; `pack-bootstrap.ts:377-394`, #5389).
+  #5374). A pack the re-list no longer names stays a gap, and so does one whose
+  re-list fails any other way, such as a 401, 404 or 400. Desktop pauses the
+  same way: one phase-wide pause, a pack lost after the fourth a gap while the
+  rest of the queue still downloads, and only a curable re-list failure
+  keeping its pack lost; it reads a fresh access token for each re-list and
+  for the body manifest read after the pauses
+  (`apps/desktop/src/main/sync/packs/pack-downloads.ts:13`, `:27-35`,
+  `:68-120`; `pack-bootstrap.ts:176-184`, `:382-412`, `:474-479`, #5389).
 
 ## 8.13 Scoped purge
 

@@ -59,7 +59,8 @@ export interface PackDownloadsOptions<T> {
 /**
  * Every pack GET of one phase, in order, at most `parallel` at once. The
  * first curable loss pauses the phase: no new GET starts, the running ones
- * finish, and after the pause every lost or unstarted pack goes again. One
+ * finish, and after the pause every lost or unstarted pack goes again. After
+ * the last pause a loss is a gap and the rest of the queue keeps going. One
  * phase-wide pause, not one per pack: in an outage every pack fails together,
  * and a ladder per queued pack would spend them all inside the same drop.
  * Returns each pack's held value, or null for a gap.
@@ -72,16 +73,23 @@ export const downloadPacks = async <T>(
   const held: Array<T | null> = packs.map(() => null)
   let queue = packs.map((_, index) => index)
   for (let pause = 0; ; pause++) {
+    const finalRound = pause === PACK_RETRY_PAUSES_MS.length
     const lost: number[] = []
     let lostMs = -1
+    let finalGaps = 0
     let next = 0
     const worker = async (): Promise<void> => {
       while (lostMs < 0 && !options.signal?.aborted && next < queue.length) {
         const index = queue[next++]
         const result = await options.fetchOne(packs[index])
         if (result === 'gap') continue
-        if ('held' in result) held[index] = result.held
-        else {
+        if ('held' in result) {
+          held[index] = result.held
+        } else if (finalRound) {
+          // After the last pause a loss is a gap, and the packs behind it
+          // still start (§8.12): one dead pack must not strand the queue.
+          finalGaps++
+        } else {
           lost.push(index)
           lostMs = Math.max(lostMs, result.lostMs)
         }
@@ -90,14 +98,13 @@ export const downloadPacks = async <T>(
     await Promise.all(
       Array.from({ length: Math.min(Math.max(1, options.parallel), queue.length) }, worker)
     )
+    if (finalGaps > 0) {
+      log.info('Packs still lost after the last pause — their ranges stay item-granular', {
+        lost: finalGaps
+      })
+    }
     if (lost.length === 0 || options.signal?.aborted) return held
     const again = [...lost, ...queue.slice(next)].toSorted((a, b) => a - b)
-    if (pause === PACK_RETRY_PAUSES_MS.length) {
-      log.info('Packs still lost after the last pause — their ranges stay item-granular', {
-        lost: again.length
-      })
-      return held
-    }
     const waitMs = Math.max(PACK_RETRY_PAUSES_MS[pause], lostMs)
     log.info('Pack phase paused after a network failure', {
       pause: pause + 1,

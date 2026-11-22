@@ -145,8 +145,12 @@ interface PackListing {
    * Contiguity is meaningless across that hole — see `commitPage`.
    */
   truncated: boolean
-  /** The list request itself failed: a re-list that may succeed after a pause. */
-  unavailable?: boolean
+  /**
+   * The list request failed the way the network may cure (§8.12), with the
+   * least pause it asks for: a re-list that may succeed after a pause. Any
+   * other failure (401, 404, 400) leaves it unset, so the pack is a gap.
+   */
+  lostMs?: number
 }
 
 /**
@@ -175,7 +179,8 @@ const listUsablePacks = async (
       log.debug('Pack list unavailable — using the item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
-      return { packs: [], truncated: false, unavailable: true }
+      const lostMs = curablePauseMs(error, false)
+      return { packs: [], truncated: false, ...(lostMs === null ? {} : { lostMs }) }
     }
 
     const parsed = PackListResponseSchema.safeParse(raw)
@@ -374,18 +379,25 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
    * re-list is shared by all workers and reused for a minute, so a whole queue
    * of aged-out packs costs one extra request, not one per pack.
    */
-  const freshUrl = async (pack: PackSummary): Promise<PackSummary | 'lost' | null> => {
+  const relistNow = async (nowSeconds: number): Promise<PackListing> => {
+    // A token read now, not at phase start: a re-list can come after 450 s
+    // of pauses, past an access token's life.
+    const token = await deps.getAccessToken().catch(() => null)
+    return token ? listUsablePacks(deps, token, nowSeconds) : { packs: [], truncated: false }
+  }
+
+  const freshUrl = async (pack: PackSummary): Promise<PackSummary | { lostMs: number } | null> => {
     const nowSeconds = clockSeconds()
     if (urlLive(pack, nowSeconds)) return pack
 
     if (!relist || nowSeconds - relist.at >= PACK_RELIST_MIN_INTERVAL_SECONDS) {
-      relist = { at: nowSeconds, pending: listUsablePacks(deps, accessToken, nowSeconds) }
+      relist = { at: nowSeconds, pending: relistNow(nowSeconds) }
     }
     const listed = await relist.pending
     const refreshed = listed.packs.find((entry) => entry.id === pack.id)
     if (refreshed && urlLive(refreshed, nowSeconds)) return refreshed
     // A re-list the network may cure keeps the pack lost for the next pause.
-    if (listed.unavailable) return 'lost'
+    if (listed.lostMs !== undefined) return { lostMs: listed.lostMs }
 
     log.info('Pack URL expired and could not be re-signed — items fall back to item GETs', {
       packId: pack.id
@@ -396,8 +408,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const fetchOne = async (pack: PackSummary): Promise<PackFetch<OpenedPack>> => {
     const filePath = path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
     const signed = await freshUrl(pack)
-    if (signed === 'lost') return { lostMs: 0 }
     if (!signed) return 'gap'
+    if ('lostMs' in signed) return signed
     try {
       await download({
         url: signed.url!,
@@ -460,7 +472,11 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     }
 
     // Read after the pack bytes are held, in this run (protocol 08 §8.4.3).
-    const manifest = await readManifest(accessToken, deps.signal ? { signal: deps.signal } : {})
+    // With a token read now: the pauses before it can outlive the first one.
+    const manifestToken = await deps.getAccessToken().catch(() => null)
+    const manifest = manifestToken
+      ? await readManifest(manifestToken, deps.signal ? { signal: deps.signal } : {})
+      : 'short'
     // A short read on a server with the route confirms nothing (§8.11): every
     // body stays on its item routes and no pack is claimed.
     if (manifest === 'short') return { ...emptyResult(), usedPacks: true }
