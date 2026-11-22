@@ -79,5 +79,6 @@ mod socket_frame;
 pub mod socket_run;
 pub mod state;
 pub mod store;
+pub(crate) mod unknown_signer;
 pub mod versioned;
 pub(crate) mod versioned_apply;

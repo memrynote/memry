@@ -9,6 +9,7 @@ use serde_json::Value as Json;
 use crate::sync::crypto_batch::off_runtime;
 
 use super::{PullError, PullLoop, PullReport, now_ms};
+use crate::protocol::account::UNKNOWN_SIGNER;
 use crate::storage::repositories::sync_items;
 use crate::sync::apply::{self, Pending};
 use crate::sync::changes_page::ChangesPage;
@@ -17,6 +18,7 @@ use crate::sync::hardening::purged;
 use crate::sync::hardening::quarantine;
 use crate::sync::note_body_feed::{self, FeedClient, FetchedBodies};
 use crate::sync::pull_decode::{self, Undecodable, server_cursor};
+use crate::sync::unknown_signer;
 
 impl PullLoop {
     /// Decodes pulled items per item (§5.14): each one is pending or one
@@ -216,6 +218,9 @@ impl PullLoop {
             .call(move |conn| {
                 sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
                 sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)?;
+                if reason.ends_with(UNKNOWN_SIGNER) {
+                    unknown_signer::refused(conn, &item_id)?;
+                }
                 quarantined
                     .map(|signer| {
                         quarantine::record_failure(

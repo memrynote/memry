@@ -11,6 +11,8 @@ use body_pack_server::{
     BodyPack, NOW_MS, Routes, Server, ServerDoc, first_sync_observed, snapshot_items, update_items,
     words,
 };
+use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::sync::body_debt;
 use memry_core::sync::driver::observer::{ApplyObserver, Observers};
 use memry_desktop::sync::disk::DiskObserver;
 use memry_desktop::vault::consumer::VaultTier;
@@ -93,4 +95,53 @@ async fn a_first_sync_from_body_packs_writes_every_settled_notes_file() {
             e.read(path)
         );
     }
+}
+
+/// Red before #5410: a note whose write-back kept its file while its server body was owed was
+/// never scheduled again when the body settled without a tell of its own, so a fresh device's
+/// vault never got its file. The body step's settle (`bodies_settled`) now re-drives it.
+#[test]
+fn a_note_kept_for_its_owed_body_gets_its_file_at_the_body_steps_settle() {
+    let mut keys = None;
+    let mut e = env(|store| {
+        keys = Some(store.clone());
+        Some(creates(store))
+    });
+    e.open();
+    e.facts_until(indexed);
+    let core = e.core();
+    let writer = core.notes_writer(keys.unwrap()).unwrap();
+    let id = writer.create("Pulled".into(), None).unwrap();
+    let typed = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "the pulled words".into(),
+        new_block_id: "pulled-p".into(),
+    };
+    assert!(writer.edit_block(id.clone(), typed).unwrap());
+    let db = core.db_handle();
+    let owed = id.clone();
+    db.call_blocking(move |conn| body_debt::owe(conn, &owed))
+        .unwrap();
+    e.tier.schedule(&id);
+    assert!(e.tier.flush(WAIT), "the write-back flushed");
+    assert!(
+        !e.rows().iter().any(|(row, _)| row == &id),
+        "no file while owed"
+    );
+
+    let settled = id.clone();
+    db.call_blocking(move |conn| body_debt::settle(conn, &settled))
+        .unwrap();
+    DiskObserver::new(e.tier.clone(), e.vault.clone(), core.clone()).bodies_settled();
+    assert!(e.tier.flush(WAIT), "the write-back flushed");
+    let rows = e.rows();
+    let (_, path) = rows
+        .iter()
+        .find(|(row, _)| row == &id)
+        .unwrap_or_else(|| panic!("{id} has no file: {rows:?}"));
+    assert!(
+        e.read(path).contains("the pulled words"),
+        "{:?}",
+        e.read(path)
+    );
 }
