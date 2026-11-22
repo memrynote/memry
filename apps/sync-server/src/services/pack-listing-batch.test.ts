@@ -139,6 +139,38 @@ describe('a listing batch that throws (REVIEW-5277 P3)', () => {
     expect(unlisted()).toEqual([])
   })
 
+  // #5247 C19.2: the deletion pass read the row as absent, the late commit
+  // listed the pack, and the pass then deleted the listed object.
+  it('build: a commit that lands during the deletion pass keeps its listed object', async () => {
+    await writeRecord(1)
+    const commit = failNextBatch('after')
+    await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
+    // The commit lands right after the pass selected the due records.
+    const prepare = harness.db.prepare.bind(harness.db)
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+      const statement = prepare(sql)
+      if (!sql.includes('AS listed')) return statement
+      const bind = statement.bind.bind(statement)
+      statement.bind = (...values) => {
+        const bound = bind(...values)
+        const all = bound.all.bind(bound)
+        bound.all = (async () => {
+          const result = await all()
+          await commit()
+          return result
+        }) as typeof bound.all
+        return bound
+      }
+      return statement
+    })
+
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+
+    expect(listedKeys()).toHaveLength(1)
+    expect(await packKeys()).toEqual(listedKeys())
+    expect(unlisted()).toEqual([])
+  })
+
   it('build: a committed batch keeps its listed object', async () => {
     await writeRecord(1)
     failNextBatch('before')

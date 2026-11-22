@@ -671,7 +671,11 @@ pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISAB
   effort, and rethrows without deleting it (`listingBatch`): a batch can
   commit and lose its response, and that commit can land after any read the
   writer makes. The deletion pass deletes the object later, and only while no
-  row lists its key. The object was never listed, so no reader holds a URL to
+  row lists its key: it reads `pack_index` again right before the R2 delete
+  and keeps every key listed by then
+  (`apps/sync-server/src/services/pack-replaced-objects.ts:155-172`). A commit
+  that lands between that read and the delete still loses its object, and a
+  reader meets a 404 (§8.12). The object was never listed, so no reader holds a URL to
   it and it waits for no grace period.
 - **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
   `crdt_update` while the vault holds a needed row of that kind with a NULL
@@ -1044,7 +1048,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   old resets that kind of the vault (`packKindReset`) before it selects the
   due objects, so it deletes that object and every object the reset made due
   in the same pass (`resetUnrewritten`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:185`). A deletion
+  `apps/sync-server/src/services/pack-replaced-objects.ts:205`). A deletion
   never waits for a rewrite past the grace, and the range of a rewrite that
   never ran is rebuilt from source rows instead of staying unpacked.
 - **The 900 s bound.** For a purge that commits at `T`:

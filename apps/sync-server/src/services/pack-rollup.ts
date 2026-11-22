@@ -288,7 +288,7 @@ export const rollupKind = async (
   // The pending rewrites are read before the listing (VERIFY-5283 V1): a
   // rewrite that commits between the two reads then shows as a listed pack,
   // never as a gap the run could span. A purge that takes a pack out after
-  // the pending read fails the swap (pendingUnchanged).
+  // the pending read fails the swap (swapListing's pending and overlap guards).
   const pending = await db
     .prepare(
       `SELECT pack_key FROM pack_replaced_objects

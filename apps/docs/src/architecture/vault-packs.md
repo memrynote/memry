@@ -194,7 +194,8 @@ At-least-once queue delivery means every step has to tolerate re-running:
    throws, the writer records the object the same way, best effort, and does not delete it: a batch
    can commit and lose its response, and that commit can land after any read the writer makes. The
    deletion pass deletes it later, only while no row lists its key (`listingBatch` in
-   `services/pack-replaced-objects.ts`).
+   `services/pack-replaced-objects.ts`). The pass reads `pack_index` again right before the R2
+   delete, so a late commit that lands after its first read keeps its object.
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it

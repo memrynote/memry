@@ -151,7 +151,25 @@ export const deleteReplacedPackObjects = async (
     .all<{ pack_key: string; listed: number }>()
   const found = rows.results ?? []
   if (found.length === 0) return { deleted: 0, pending: false }
-  const doomed = found.filter((row) => !row.listed).map((row) => row.pack_key)
+  const unlisted = found.filter((row) => !row.listed).map((row) => row.pack_key)
+  // Read again right before the delete (#5247 C19.2): a listing batch that
+  // lost its response may commit after the select above, and its object must
+  // stay. A key listed now is kept and handled as a stale record below.
+  const relisted =
+    unlisted.length === 0
+      ? new Set<string>()
+      : new Set(
+          (
+            await db
+              .prepare(
+                `SELECT DISTINCT pack_key FROM pack_index
+                 WHERE pack_key IN (SELECT value FROM json_each(?))`
+              )
+              .bind(JSON.stringify(unlisted))
+              .all<{ pack_key: string }>()
+          ).results?.map((row) => row.pack_key)
+        )
+  const doomed = unlisted.filter((key) => !relisted.has(key))
   try {
     if (doomed.length > 0) await storage.delete(doomed)
   } catch (error) {
@@ -163,7 +181,9 @@ export const deleteReplacedPackObjects = async (
   }
   // A record found listed is dropped only while its pack is still listed: a
   // reset or purge since the select made it the record of a due object.
-  const stale = found.filter((row) => row.listed).map((row) => row.pack_key)
+  const stale = found
+    .filter((row) => row.listed || relisted.has(row.pack_key))
+    .map((row) => row.pack_key)
   await db
     .prepare(
       `DELETE FROM pack_replaced_objects WHERE pack_key IN (SELECT value FROM json_each(?))
