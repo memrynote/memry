@@ -63,6 +63,36 @@ impl RecordCipher for Cipher {
                 .into_bytes(),
         )
     }
+
+    fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        (device_id == "device-a").then(|| signer().0)
+    }
+}
+
+/// `device-a`'s Ed25519 key pair.
+fn signer() -> (Vec<u8>, Vec<u8>) {
+    let (public, secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("a key pair");
+    (public, secret.to_vec())
+}
+
+/// The purged marker of `key` at `cursor` (chapter 05 §5.12.3), attested by
+/// `device-a` over its own claim unless `forged`.
+fn marker(key: &str, cursor: i64, forged: bool) -> Json {
+    let (item_type, id) = typed(key);
+    let clock: memry_core::sync::clock::VectorClock = [("device-a".to_owned(), 2)].into();
+    let deleted_at = 1_700_000_000_000i64;
+    let claim = memry_core::protocol::delete_attestation::DeleteClaim {
+        item_type,
+        item_id: id,
+        clock: &clock,
+        deleted_at: if forged { deleted_at + 1 } else { deleted_at },
+    };
+    let attestation =
+        memry_core::protocol::delete_attestation::sign(&claim, &signer().1).expect("signed");
+    json!({"id": id, "type": item_type, "deletedAt": deleted_at, "clock": clock,
+           "serverCursor": cursor, "signerDeviceId": "device-a",
+           "deleteAttestation": attestation})
 }
 
 struct NoBodies;
@@ -174,6 +204,13 @@ struct Server {
     live: Vec<(String, i64)>,
     /// Deleted ids the feed reports.
     deleted: Vec<String>,
+    /// Ids `POST /sync/pull` answers with a signed delete.
+    signed_deletes: Vec<String>,
+    /// Purged markers `POST /sync/pull` serves for the ids it is asked, only
+    /// to a request that declares `purged_tombstones`.
+    markers: Vec<Json>,
+    /// `POST /sync/pull` answers a body that is not a pull envelope.
+    pull_not_envelope: bool,
     /// The manifest carries `serverCursor` (step 04 on).
     manifest_cursors: bool,
     /// Pack ids answered 404, and pack ids whose bytes are corrupt.
@@ -399,20 +436,47 @@ impl Server {
             ));
         }
         if url.contains("/sync/pull") {
+            if self.pull_not_envelope {
+                return Some(response(200, r#"{"error": "not an envelope"}"#));
+            }
             let asked = body_json(request);
-            let items: Vec<Json> = asked["itemIds"]
+            let asked: Vec<&str> = asked["itemIds"]
                 .as_array()
                 .unwrap()
                 .iter()
                 .filter_map(Json::as_str)
+                .collect();
+            let mut items: Vec<Json> = asked
+                .iter()
                 .flat_map(|id| {
                     self.live
                         .iter()
-                        .filter(move |(live, _)| typed(live).1 == id)
+                        .filter(move |(live, _)| typed(live).1 == *id)
                         .map(|(live, _)| pull_item(live))
                 })
                 .collect();
-            return Some(response(200, &json!({"items": items}).to_string()));
+            for key in &self.signed_deletes {
+                if asked.contains(&typed(key).1) {
+                    let mut item = pull_item(key);
+                    item["operation"] = json!("delete");
+                    item["deletedAt"] = json!(1_700_000_000_000i64);
+                    item["clock"] = json!({"device-a": 2});
+                    items.push(item);
+                }
+            }
+            let declared = request
+                .headers
+                .get("x-memry-sync-types")
+                .is_some_and(|types| types.split(',').any(|t| t == "purged_tombstones"));
+            let markers: Vec<&Json> = self
+                .markers
+                .iter()
+                .filter(|m| declared && asked.contains(&m["id"].as_str().unwrap()))
+                .collect();
+            return Some(response(
+                200,
+                &json!({"items": items, "purgedTombstones": markers}).to_string(),
+            ));
         }
         panic!("unrouted request to {url}")
     }
@@ -876,8 +940,9 @@ async fn a_row_edited_locally_during_the_reconcile_is_not_tombstoned() {
     let db = scratch_db("edited-in-flight");
     let mut server = covered_vault(4, 10);
     // n3 was deleted and its tombstone shed: the manifest omits it and the
-    // pull by id answers nothing.
+    // pull by id answers an attested marker, which the edit outranks.
     server.live.retain(|(id, _)| id != "n3");
+    server.markers.push(marker("n3", 7, false));
     let routes = Routes::new(server);
     let edit = db.clone();
     *routes.on_pull.lock().unwrap() = Some(Box::new(move || {
@@ -905,6 +970,7 @@ async fn a_shed_row_sharing_an_id_with_another_types_pulled_item_is_removed() {
     // note:x1 was deleted and shed; task:x1, never packed, is live.
     server.packs[0].entries.push(Entry::live("x1", 3));
     server.live.push(("task:x1".into(), 9));
+    server.markers.push(marker("x1", 10, false));
     let routes = Routes::new(server);
     let report = run(&db, &routes, &[]).await;
     assert!(!notes(&db)["x1"].0, "note:x1 is not listed");
@@ -916,9 +982,10 @@ async fn the_manifest_pulls_what_the_packs_did_not_hold_at_its_cursor_and_drops_
     let db = scratch_db("reconcile");
     let mut server = covered_vault(4, 10);
     // n2 was rewritten after its pack (cursor 9), n5 was never packed, and
-    // n3's tombstone was shed, so the manifest omits it and pull answers
-    // nothing for it. n4's tombstone is packed.
+    // n3's tombstone was shed, so the manifest omits it and pull answers its
+    // attested marker. n4's tombstone is packed.
     server.live = vec![("n1".into(), 1), ("n2".into(), 9), ("n5".into(), 8)];
+    server.markers.push(marker("n3", 10, false));
     server.packs[0].entries[3].meta = Some(tombstone_meta());
     let routes = Routes::new(server);
     let report = run(&db, &routes, &[]).await;
@@ -932,6 +999,73 @@ async fn the_manifest_pulls_what_the_packs_did_not_hold_at_its_cursor_and_drops_
     assert_eq!(rows["n2"].1, None, "pulled by id: no known cursor");
     assert!(!rows["n3"].0 && !rows["n4"].0);
     assert_eq!(report.reconcile_removed, 1);
+}
+
+/// `covered_vault(4, 10)` whose manifest omits n3, set up by `stage`.
+async fn omitted_n3(label: &str, stage: impl FnOnce(&mut Server)) -> (Db, FirstSyncReport) {
+    let db = scratch_db(label);
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    stage(&mut server);
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+    assert_eq!(routes.count("/sync/pull"), 1, "{:?}", routes.calls());
+    (db, report)
+}
+
+/// §5.12.1 (#5402): an omission is no evidence of a delete. A held row the
+/// manifest leaves out and the pull answers nothing for stays live.
+#[tokio::test]
+async fn an_omitted_row_the_pull_leaves_unanswered_is_kept() {
+    let (db, report) = omitted_n3("omitted-unanswered", |_| {}).await;
+    assert!(notes(&db)["n3"].0, "no signed evidence: n3 stays live");
+    assert_eq!(report.reconcile_removed, 0);
+}
+
+/// §5.14: a pull answer that is not an envelope deletes nothing.
+#[tokio::test]
+async fn an_omitted_row_whose_pull_is_not_an_envelope_is_kept() {
+    let (db, report) = omitted_n3("omitted-not-envelope", |server| {
+        server.pull_not_envelope = true;
+    })
+    .await;
+    assert!(notes(&db)["n3"].0);
+    assert_eq!(report.reconcile_removed, 0);
+}
+
+/// A tombstone the server still holds arrives signed and deletes.
+#[tokio::test]
+async fn an_omitted_row_the_pull_answers_with_a_signed_delete_is_removed() {
+    let (db, _) = omitted_n3("omitted-signed", |server| {
+        server.signed_deletes.push("n3".into());
+    })
+    .await;
+    assert!(!notes(&db)["n3"].0, "the signed delete removes n3");
+}
+
+/// §5.12.3: a shed tombstone converges through its attested marker, which
+/// the pull is served only because it declares `purged_tombstones`.
+#[tokio::test]
+async fn an_omitted_row_the_pull_answers_with_an_attested_marker_is_removed() {
+    let (db, report) = omitted_n3("omitted-marker", |server| {
+        server.markers.push(marker("n3", 7, false));
+    })
+    .await;
+    assert!(!notes(&db)["n3"].0, "the attested marker removes n3");
+    assert_eq!(report.reconcile_removed, 1);
+}
+
+/// A marker whose attestation does not verify deletes nothing, nor does one
+/// that claims a cursor no later than the row it would delete.
+#[tokio::test]
+async fn an_omitted_row_with_a_forged_or_stale_marker_is_kept() {
+    let (db, report) = omitted_n3("omitted-forged", |server| {
+        server.markers.push(marker("n3", 7, true));
+        server.markers.push(marker("n3", 3, false));
+    })
+    .await;
+    assert!(notes(&db)["n3"].0);
+    assert_eq!(report.reconcile_removed, 0);
 }
 
 #[tokio::test]
