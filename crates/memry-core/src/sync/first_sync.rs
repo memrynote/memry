@@ -421,11 +421,11 @@ impl FirstSync {
             // Durable **before** the cursor advances, in one transaction, so
             // a kill here resumes at this page rather than past it.
             // §5.12.1 (#5340): an id in `deleted` is not a delete. It only
-            // names an id to pull, so it is queued with the cursor move and
-            // pulled in chunks across pages (`deleted_ids`).
+            // names an id to pull. Full chunks are pulled first, and the rest
+            // is queued with the cursor move (`deleted_ids`).
+            let (deleted, missed) = self.pull_deleted(page.deleted, !page.has_more).await?;
             let stored = next.clone();
             let refs = page.refs;
-            let deleted = page.deleted;
             self.db
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
@@ -451,7 +451,10 @@ impl FirstSync {
                         )
                         .map_err(sqlite_failed)?;
                     }
-                    deleted_ids::queue(&txn, &deleted)?;
+                    deleted_ids::keep(&txn, &deleted)?;
+                    if missed {
+                        feed_restart::reopen_cursor_skip_repair(&txn)?;
+                    }
                     // The refs pass serves no bodies (#2299).
                     note_body_feed::rearm_legacy_pull(&txn)?;
                     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, stored.as_deref(), now_ms())?;
@@ -459,7 +462,6 @@ impl FirstSync {
                     Ok(())
                 })
                 .await?;
-            self.pull_deleted(!page.has_more).await?;
 
             report.refs_pages += 1;
             report.refs_recorded += recorded;

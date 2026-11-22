@@ -875,11 +875,12 @@ is the only read of `changes.deleted`, which joins the pull request, and only
 what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:823`)
 and attested markers (`pull-coordinator.ts:908`) apply. Rust core page pull:
 `crates/memry-core/src/sync/pull.rs:426-439` counts and logs the uncovered
-ids and `:454` applies none. The core's first sync refs pass queues each
-page's `deleted` ids durably in the transaction that moves its cursor
-(`crates/memry-core/src/sync/first_sync.rs:454`), pulls them 100 at a time
-across pages, applies only what that pull verified, and logs the uncovered
-ids (`crates/memry-core/src/sync/first_sync/deleted_ids.rs:70`), so a bare id
+ids and `:454` applies none. The core's first sync refs pass pulls `deleted`
+ids 100 at a time across pages, queues the remainder durably in the
+transaction that moves the page's cursor
+(`crates/memry-core/src/sync/first_sync.rs:454`), applies only what that pull
+verified, and logs the uncovered ids
+(`crates/memry-core/src/sync/first_sync/deleted_ids.rs:77`), so a bare id
 records nothing (#5340). The core's manifest reconcile pulls each unlisted row by id
 (`crates/memry-core/src/sync/first_sync/reconcile.rs:109`), so only what
 that pull verifies deletes: a signed delete, or a marker for a row it asked
