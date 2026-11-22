@@ -80,6 +80,14 @@ pub const MAX_PULL_IDS: usize = 100;
 /// item, never a dropped page.
 pub trait RecordCipher: Send + Sync {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError>;
+
+    /// The Ed25519 public key of `device_id`, which a purged tombstone's
+    /// delete attestation verifies under (chapter 04 §4.8.4, chapter 05
+    /// §5.12.3). `None` when the signer is unknown, so the marker deletes
+    /// nothing.
+    fn signing_key(&self, _device_id: &str) -> Option<Vec<u8>> {
+        None
+    }
 }
 
 pub use super::pull_report::{PullError, PullReport};
