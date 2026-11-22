@@ -119,6 +119,7 @@ interface Harness {
   setStateValue: ReturnType<typeof vi.fn>
   provider: ProviderMock | undefined
   deviceKeys: string[]
+  stateManager: SyncStateManager
 }
 
 const createHarness = (
@@ -208,7 +209,7 @@ const createHarness = (
     actions
   )
 
-  return { runner, order, setStateValue, provider, deviceKeys }
+  return { runner, order, setStateValue, provider, deviceKeys, stateManager }
 }
 
 describe('FullSyncRunner pack bootstrap seam', () => {
@@ -311,6 +312,31 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
       expect(fetched).toEqual(['p-1'])
       expect(applied).toBe(false)
+    }
+  )
+
+  it.each(['stop or cancel', 'pause', 'vault switch'] as const)(
+    '#given a %s while the bootstrap session opens #then the pack phase never starts',
+    async (ending) => {
+      const harness = createHarness()
+      let sessionOpened!: () => void
+      const opening = new Promise<void>((resolve) => (sessionOpened = resolve))
+      let finishOpen!: () => void
+      // openBootstrapSession is a network call: the ending lands while it is awaited.
+      mocks.openBootstrapSession.mockImplementationOnce(() => {
+        sessionOpened()
+        return new Promise<string>((resolve) => (finishOpen = () => resolve('open')))
+      })
+
+      const running = harness.runner.run()
+      await opening
+      if (ending === 'stop or cancel') harness.runner.abortPackPhase()
+      else if (ending === 'pause') vi.mocked(harness.stateManager.isPaused).mockReturnValue(true)
+      else harness.runner.dispose()
+      finishOpen()
+      await running
+
+      expect(mocks.runPackBootstrap).not.toHaveBeenCalled()
     }
   )
 

@@ -408,6 +408,9 @@ export class FullSyncRunner {
     // the session opened took the lock, read the whole feed outside this run,
     // and left the repair unrecorded (#5234).
     this.ctx.fullSyncActive = true
+    // Also before the first await: a stop, cancel, pause, wipe or vault switch
+    // while the session opens must reach the pack phase that follows (#5389).
+    const packAbort = isFreshDevice ? (this.packPhaseAbort = new AbortController()) : null
     try {
       if (isFreshDevice) {
         beginBootstrap('first_full_sync')
@@ -428,7 +431,7 @@ export class FullSyncRunner {
     } catch {
       /* telemetry only — sync proceeds */
     }
-    if (isFreshDevice) {
+    if (packAbort) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
       // follows finds them already merged and issues no snapshot GETs for
@@ -437,7 +440,7 @@ export class FullSyncRunner {
       // byte-for-byte as it does on a deployment with no packs at all. It is
       // awaited rather than fired off because it writes into the same Y.Docs
       // and the same DBs the pull is about to touch.
-      await this.applyBootstrapPacks()
+      await this.applyBootstrapPacks(packAbort)
     }
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
@@ -723,9 +726,9 @@ export class FullSyncRunner {
    * deployment where packs do not exist. The sync cursor is untouched either
    * way — nothing in this path writes `LAST_CURSOR`.
    */
-  private async applyBootstrapPacks(): Promise<void> {
-    const abort = (this.packPhaseAbort = new AbortController())
+  private async applyBootstrapPacks(abort: AbortController): Promise<void> {
     try {
+      if (abort.signal.aborted || this.disposed || this.stateManager.isPaused()) return
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
