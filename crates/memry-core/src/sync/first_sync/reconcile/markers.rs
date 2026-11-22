@@ -7,6 +7,10 @@
 //! device's attestation over `{id, type, deletedAt, clock}` verifies under a
 //! key the device directory holds ([`delete_attestation::verify`]). It then
 //! applies as the signed tombstone with that clock, under §5.8's clock rule.
+//!
+//! A marker that passes every check but the clock or the attestation is
+//! unattested: it keeps the row, and is remembered for the push wave
+//! ([`crate::sync::delete_wins`], #5406).
 
 use std::collections::HashMap;
 
@@ -16,15 +20,30 @@ use crate::protocol::delete_attestation::{self, DeleteClaim};
 use crate::protocol::types::is_record_item_type;
 use crate::sync::apply::Pending;
 use crate::sync::clock::VectorClock;
+use crate::sync::delete_wins::KeptMarker;
 use crate::sync::first_sync_store::HeldRow;
 use crate::sync::pull::PullLoop;
 
 /// The one record type with no required clock (chapter 00 §0.7).
 const CLOCK_EXEMPT_ITEM_TYPE: &str = "settings";
 
-/// The tombstones the attested markers among `entries` apply, for the
-/// `stale` rows they name. Every other entry is counted and logged.
-pub(super) fn attested(entries: &[Json], stale: &[HeldRow], pull: &PullLoop) -> Vec<Pending> {
+/// What the markers for the `stale` rows decide.
+#[derive(Default)]
+pub(super) struct Verdicts {
+    /// Tombstones the attested markers apply.
+    pub attested: Vec<Pending>,
+    /// Markers past their row with no verified attestation, by `(type, id)`.
+    pub unattested: Vec<(String, String, KeptMarker)>,
+}
+
+enum Verdict {
+    Attested(Pending),
+    Unattested(String, String, KeptMarker),
+}
+
+/// Sorts the markers among `entries` for the `stale` rows they name. Every
+/// entry not attested is counted and logged.
+pub(super) fn sort(entries: &[Json], stale: &[HeldRow], pull: &PullLoop, out: &mut Verdicts) {
     let cursors: HashMap<(&str, &str), i64> = stale
         .iter()
         .filter_map(|row| {
@@ -35,10 +54,13 @@ pub(super) fn attested(entries: &[Json], stale: &[HeldRow], pull: &PullLoop) -> 
         })
         .collect();
     let mut refused = 0usize;
-    let mut apply = Vec::new();
     for entry in entries {
         match admit(entry, &cursors, pull) {
-            Some(pending) => apply.push(pending),
+            Some(Verdict::Attested(pending)) => out.attested.push(pending),
+            Some(Verdict::Unattested(item_type, item_id, marker)) => {
+                refused += 1;
+                out.unattested.push((item_type, item_id, marker));
+            }
             None => refused += 1,
         }
     }
@@ -47,10 +69,9 @@ pub(super) fn attested(entries: &[Json], stale: &[HeldRow], pull: &PullLoop) -> 
             "memry-core: first sync reconcile: refused {refused} purged tombstone(s) with no verified attestation for a stale row"
         );
     }
-    apply
 }
 
-fn admit(entry: &Json, cursors: &HashMap<(&str, &str), i64>, pull: &PullLoop) -> Option<Pending> {
+fn admit(entry: &Json, cursors: &HashMap<(&str, &str), i64>, pull: &PullLoop) -> Option<Verdict> {
     let text = |key: &str| {
         entry
             .get(key)
@@ -69,29 +90,52 @@ fn admit(entry: &Json, cursors: &HashMap<(&str, &str), i64>, pull: &PullLoop) ->
     if server_cursor <= held_at {
         return None;
     }
-    let clock: VectorClock = entry
-        .get("clock")?
-        .as_object()?
-        .iter()
-        .map(|(device, tick)| Some((device.clone(), tick.as_u64()?)))
-        .collect::<Option<_>>()?;
-    if clock.is_empty() {
-        return None;
-    }
-    let key = pull.signing_key(text("signerDeviceId")?)?;
-    let claim = DeleteClaim {
-        item_type,
-        item_id,
-        clock: &clock,
-        deleted_at,
+    // A clockless marker (absent, null or empty) can never be attested.
+    let clock: Option<VectorClock> = match entry.get("clock").filter(|c| !c.is_null()) {
+        None => None,
+        Some(clock) => Some(
+            clock
+                .as_object()?
+                .iter()
+                .map(|(device, tick)| Some((device.clone(), tick.as_u64()?)))
+                .collect::<Option<_>>()?,
+        ),
     };
-    delete_attestation::verify(&claim, text("deleteAttestation")?, &key).ok()?;
-    Some(Pending::Tombstone {
+    let unattested = |clock: Option<VectorClock>| {
+        Verdict::Unattested(
+            item_type.to_owned(),
+            item_id.to_owned(),
+            KeptMarker {
+                deleted_at,
+                server_cursor,
+                clock,
+            },
+        )
+    };
+    let Some(clock) = clock.filter(|clock| !clock.is_empty()) else {
+        return Some(unattested(None));
+    };
+    let verified = text("signerDeviceId")
+        .and_then(|signer| pull.signing_key(signer))
+        .zip(text("deleteAttestation"))
+        .is_some_and(|(key, attestation)| {
+            let claim = DeleteClaim {
+                item_type,
+                item_id,
+                clock: &clock,
+                deleted_at,
+            };
+            delete_attestation::verify(&claim, attestation, &key).is_ok()
+        });
+    if !verified {
+        return Some(unattested(Some(clock)));
+    }
+    Some(Verdict::Attested(Pending::Tombstone {
         item_type: item_type.to_owned(),
         item_id: item_id.to_owned(),
         deleted_at,
         server_cursor: Some(server_cursor),
         clock: Some(clock),
         body_state_vector: None,
-    })
+    }))
 }

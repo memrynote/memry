@@ -324,6 +324,35 @@ resolution for that conflict on both sides.
 A purged tombstone (§5.12.3) is applied under this same rule, through the same
 delete path.
 
+**A delete-wins answer applies the delete (Rust core, #5406).** Desktop acks
+`SYNC_DELETE_WINS` and leaves the delete to its next pull
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:429`). The core
+applies it at once through the pulled-tombstone path, with no clock and no
+cursor, before it acks the row (`crates/memry-core/src/sync/delete_wins.rs`,
+`apply_delete_wins`): a row the first-sync reconcile kept against an
+unattested marker (§5.12.3) never gets its delete from a pull, so an ack alone
+left the edit gone and the item live. The end state is the one desktop reaches
+after its pull, including the #3029 inbox copy below: the queued edit still
+counts as a local change waiting for the server.
+
+**An edit over a kept unattested marker is not sent (Rust core, #5406).** The
+server refuses no update over a marker stored without a clock (the permissive
+case above), so a device that kept such a row and pushed an edit would reverse
+the delete on every device. The reconcile remembers each unattested marker
+past the row it kept (core migration `0018`, `sync_unattested_markers`); the
+push wave applies that delete locally instead of sending an upsert of the row
+(`apply_kept_marker`). A clocked marker the row's clock happens strictly after
+keeps the row, and the edit is sent. The marker is forgotten when the item is
+deleted, locally or by a pull, or when the server wrote the row after it.
+
+The server keeps the permissive rule for clockless rows. Refusing an `update`
+over a clockless marker would break shipped clients: the core sends every
+upsert as `update` (`crates/memry-core/src/sync/push.rs`, `operation_of`),
+so a shipped iOS build that re-creates a name-keyed id (a journal day, a
+folder path) over a pre-clock marker would get `SYNC_DELETE_WINS`, ack it, and
+lose the re-create silently. Nothing in the request tells such a re-create from
+an edit of a stale copy.
+
 **Client behavior, not a wire rule (#3029).** Before a client applies a `note`
 or `journal` delete under this rule, it keeps local text the deleting device
 cannot have seen as a new inbox capture (`type: 'note'`, a fresh id, title
@@ -1129,7 +1158,9 @@ untyped-delete behaviour stays as documented there.
   only. The item stays, as for any refused entry.
 - Every marker shed before #2408, and every delete from an old client, is
   refused for ever. That is the pre-#2302 outcome for a device that missed the
-  delete.
+  delete. The core's first-sync reconcile counts the rows it keeps this way
+  (`FirstSyncReport::reconcile_kept`), and an edit of one applies the delete
+  instead of being sent (§5.8, #5406).
 - Orphan repair trusts server absence: a parent the server serves as a refused
   purged tombstone counts as gone, exactly as a parent it omits, so the child is
   tombstoned. The attestation does not protect children of a parent the server

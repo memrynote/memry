@@ -48,6 +48,7 @@ mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
 pub mod delete_keep;
+mod delete_wins;
 pub mod diagnostics;
 pub mod engine;
 mod feed_restart;

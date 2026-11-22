@@ -34,6 +34,7 @@ use serde_json::Value as Json;
 use crate::storage::nested_tx;
 
 use super::super::apply::{self, Pending};
+use super::super::delete_wins;
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
 use super::super::pull::{MAX_PULL_IDS, PullLoop};
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
@@ -93,18 +94,19 @@ impl FirstSync {
             report.metadata_corrupt += page.corrupt;
             self.records_progress(true).await?;
         }
-        let mut attested = Vec::new();
+        let mut verdicts = markers::Verdicts::default();
         let mut dropped_pages = 0;
         for chunk in plan.stale.chunks(MAX_PULL_IDS) {
             let ids: Vec<String> = chunk.iter().map(|row| row.item_id.clone()).collect();
             let (page, entries) = self.pull.fetch_ids_with_markers(&ids).await?;
             report.reconcile_requests += 1;
             dropped_pages += page.dropped_pages;
-            attested.extend(markers::attested(&entries, chunk, &self.pull));
+            markers::sort(&entries, chunk, &self.pull, &mut verdicts);
             self.records_progress(true).await?;
         }
-        let (removed, kept) = self.remove_attested(plan.stale, attested).await?;
+        let (removed, kept) = self.remove_attested(plan.stale, verdicts).await?;
         report.reconcile_removed += removed;
+        report.reconcile_kept += kept;
         if kept > 0 {
             let cursor = self
                 .db
@@ -124,11 +126,12 @@ impl FirstSync {
     /// signed delete it returned. A stale row an attested marker names is
     /// deleted here with the marker's clock. Every other stale row the pull
     /// left live at its cursor got no answer, a refused one, or no envelope,
-    /// and is kept. Answers `(removed, kept)`.
+    /// and is kept; a kept row an unattested marker names remembers it for
+    /// the push wave (#5406). Answers `(removed, kept)`.
     async fn remove_attested(
         &self,
         stale: Vec<HeldRow>,
-        attested: Vec<Pending>,
+        verdicts: markers::Verdicts,
     ) -> Result<(usize, usize), FirstSyncError> {
         if stale.is_empty() {
             return Ok((0, 0));
@@ -157,7 +160,8 @@ impl FirstSync {
                     .collect();
                 // One marker per row: a repeated entry applies once.
                 let mut named = HashSet::new();
-                let gone: Vec<Pending> = attested
+                let gone: Vec<Pending> = verdicts
+                    .attested
                     .into_iter()
                     .filter(|marker| {
                         let key = (marker.item_type().to_owned(), marker.item_id().to_owned());
@@ -165,6 +169,12 @@ impl FirstSync {
                     })
                     .collect();
                 let totals = apply::apply_page(&txn, gone, Vec::new(), now, None)?;
+                for (item_type, item_id, marker) in &verdicts.unattested {
+                    let key = (item_type.clone(), item_id.clone());
+                    if unanswered.contains_key(&key) && !named.contains(&key) {
+                        delete_wins::remember(&txn, item_type, item_id, marker, now)?;
+                    }
+                }
                 txn.commit().map_err(sqlite_failed)?;
                 Ok((totals.deleted, unanswered.len() - totals.deleted))
             })

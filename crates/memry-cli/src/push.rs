@@ -83,7 +83,8 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
         Declaration::subscribed(),
         Arc::new(AccountSealer::new(vault_key, signer)),
     )
-    .with_vault(&vault);
+    .with_vault(&vault)
+    .with_clock_device(&cli.device_id()?);
 
     let drained = coordinator.drain_wave().await;
     let failure = match drained {
@@ -166,7 +167,7 @@ pub fn format_push(outcome: &Outcome) -> String {
     let mut out = String::new();
     let _ = write!(
         out,
-        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\n",
+        "gate {}\nwrites-enabled {}\nmin-write-version {}\npending {}\niterations {}\naccepted {}\nrejected {}\nretired {}\ncrdt-updates {}\nbatch-ceiling {}\nhalvings {}\nqueued {}\nattempts {}\nrefused {}\ndeleted-locally {}\n",
         gate_label(&outcome.gate),
         outcome.policy.writes_enabled,
         outcome.policy.min_write_version.as_deref().unwrap_or("-"),
@@ -181,6 +182,7 @@ pub fn format_push(outcome: &Outcome) -> String {
         outcome.queued,
         outcome.attempts,
         outcome.refused.as_deref().unwrap_or("-"),
+        outcome.report.deleted_locally,
     );
     out
 }
@@ -310,6 +312,7 @@ mod tests {
             crdt_updates: 3,
             batch_ceiling: 50,
             halvings: 1,
+            deleted_locally: 2,
         };
         drained.queued = 1;
         drained.attempts = 1;
@@ -325,6 +328,7 @@ mod tests {
             // sends fifty.
             "batch-ceiling 50",
             "halvings 1",
+            "deleted-locally 2",
         ] {
             assert!(
                 rendered.contains(expected),

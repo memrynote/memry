@@ -152,7 +152,8 @@ impl VaultSync {
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let push = PushCoordinator::new(http, self.db.clone(), Declaration::subscribed(), sealer)
-            .with_vault(&self.vault_id);
+            .with_vault(&self.vault_id)
+            .with_clock_device(&self.session.device_id()?);
         let report = push.drain_wave().await?;
         let pending = self
             .db

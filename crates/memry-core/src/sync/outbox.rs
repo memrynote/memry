@@ -234,6 +234,9 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<i64, Sto
         item_type, item_id, ..
     } = change
     {
+        if change.op() == RecordOp::Delete.as_str() {
+            super::delete_wins::forget(tx, item_type, item_id)?;
+        }
         tx.execute(
             "DELETE FROM outbox
               WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3",

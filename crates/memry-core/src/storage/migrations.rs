@@ -125,6 +125,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "search_recents",
         sql: include_str!("migrations/data/0017_search_recents.sql"),
     },
+    Migration {
+        version: 18,
+        name: "unattested_markers",
+        sql: include_str!("migrations/data/0018_unattested_markers.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -274,7 +279,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 17);
+        assert_eq!(version, 18);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -390,7 +395,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 17);
+        assert_eq!(version, 18);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
