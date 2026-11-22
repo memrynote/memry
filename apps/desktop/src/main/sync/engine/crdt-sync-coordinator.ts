@@ -111,6 +111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * exactly the requests this code issued before this feature existed.
    */
   private snapshotMetaUnsupported = false
+  /** Notes already warned about pending structs this session, so a stuck note warns once. */
+  private warnedPendingStructs = new Set<string>()
   private resolveDeviceKey: ResolveDeviceKey
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
@@ -696,7 +698,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       if (this.holdsPendingStructs(noteId)) {
-        log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
+        this.warnPendingStructs(noteId)
         sawUnmerged = true
         skippedUpdate = true
         this.owePendingPull(noteId, failures, true)
@@ -851,6 +853,12 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * Deliberately NOT available to `applyCrdtIncrementals`: see the comment on
    * `snapshotBaselineSkip`.
    */
+  private warnPendingStructs(noteId: string): void {
+    if (this.warnedPendingStructs.has(noteId)) return
+    this.warnedPendingStructs.add(noteId)
+    log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
+  }
+
   private async probeBatchChunk(
     noteIds: string[],
     token: string,
@@ -1170,6 +1178,10 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       const resumeFrom = new Map<string, number>()
+      // Notes walked with no server snapshot behind them: skipped as snapshotless,
+      // or a baseline GET that answered none. A snapshot landing before the walk
+      // prunes what the walk reads, so the guard below checks each of them.
+      const noSnapshotWalks = new Set<string>()
       for (const noteId of opened) {
         // With no server snapshot, a GET answers `{ snapshot: null }` and the
         // walk starts at 0, so start it at 0 without the GET.
@@ -1184,6 +1196,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         if (this.lastAppliedSequence.has(noteId)) this.forgetWatermark(noteId)
         if (crdtProvider.hasPersistence()) oweUnsyncedFileBody(noteId)
         if (fromZero !== undefined) resumeFrom.set(noteId, fromZero)
+      }
+      for (const noteId of resumeFrom.keys()) {
+        if (snapshotless.has(noteId)) noSnapshotWalks.add(noteId)
       }
 
       // The snapshot GETs run ahead of the apply, which still takes one note
@@ -1218,6 +1233,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           )
           sinceMap.set(noteId, baseline.since)
           if (baseline.held) serverHeld.add(noteId)
+          else noSnapshotWalks.add(noteId)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)
             this.owePendingPull(noteId, failures, true)
@@ -1279,8 +1295,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         // A snapshot pushed since the probe pruned the updates at or below it,
         // so a walk that skipped the baseline as snapshotless is missing them.
         // Never settled or seeded: owed, and the next pass downloads it.
-        for (const noteId of snapshotless) {
-          if (!resumeFrom.has(noteId) || !sinceMap.has(noteId)) continue
+        for (const noteId of noSnapshotWalks) {
+          if (!sinceMap.has(noteId)) continue
           if (!result.snapshotMeta?.[noteId]) continue
           sinceMap.delete(noteId)
           sawUnmerged.add(noteId)
@@ -1387,7 +1403,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
       for (const noteId of sinceMap.keys()) {
         if (!this.holdsPendingStructs(noteId)) continue
-        log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
+        this.warnPendingStructs(noteId)
         sawUnmerged.add(noteId)
         skippedUpdate.add(noteId)
         this.owePendingPull(noteId, failures, true)
