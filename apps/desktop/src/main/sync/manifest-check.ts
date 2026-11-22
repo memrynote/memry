@@ -96,6 +96,38 @@ function skippedResult(checkedAt: number, reason: ManifestCheckSkipReason): Mani
   }
 }
 
+/**
+ * Every page of `GET /sync/manifest`. `complete` is false when the pages
+ * stopped short: a cursor that failed to advance ends the walk rather than
+ * looping, and the items gathered so far are not the whole inventory.
+ */
+export async function readManifestPages(
+  token: string,
+  opts: { isOnline: () => boolean; signal?: AbortSignal }
+): Promise<{ items: RecordSyncManifest['items']; complete: boolean }> {
+  const items: RecordSyncManifest['items'] = []
+  let cursor = 0
+  for (;;) {
+    const result = await withRetry(
+      () =>
+        getFromServer<RecordSyncManifest>(
+          `/sync/manifest?limit=${MANIFEST_PAGE_LIMIT}&cursor=${cursor}`,
+          token
+        ),
+      { isOnline: opts.isOnline, ...(opts.signal ? { signal: opts.signal } : {}) }
+    )
+    items.push(...result.value.items)
+
+    const next = result.value.nextCursor
+    if (next === undefined) return { items, complete: true }
+    if (next <= cursor) {
+      log.warn('Manifest pagination cursor did not advance — stopping early', { cursor, next })
+      return { items, complete: false }
+    }
+    cursor = next
+  }
+}
+
 export async function checkManifestIntegrity(
   deps: ManifestCheckDeps
 ): Promise<ManifestCheckResult> {
@@ -113,31 +145,7 @@ export async function checkManifestIntegrity(
     // later cursor rather than vanishing (the server pages over the
     // monotonically-growing server_cursor), so the only cross-page artifact is
     // a duplicate ref — and the (type, id) map dedups those by construction.
-    const serverItems: RecordSyncManifest['items'] = []
-    let cursor = 0
-    for (;;) {
-      const result = await withRetry(
-        () =>
-          getFromServer<RecordSyncManifest>(
-            `/sync/manifest?limit=${MANIFEST_PAGE_LIMIT}&cursor=${cursor}`,
-            token
-          ),
-        {
-          isOnline: deps.isOnline
-        }
-      )
-      serverItems.push(...result.value.items)
-
-      const next = result.value.nextCursor
-      if (next === undefined) break
-      if (next <= cursor) {
-        // A cursor that fails to advance would loop forever; treat the pages
-        // gathered so far as the manifest rather than spinning.
-        log.warn('Manifest pagination cursor did not advance — stopping early', { cursor, next })
-        break
-      }
-      cursor = next
-    }
+    const { items: serverItems } = await readManifestPages(token, { isOnline: deps.isOnline })
 
     // Ids repeat across item types (project 'inbox' vs tag 'inbox'), so both
     // diff directions must compare (type, id) pairs — an id-only diff hides a

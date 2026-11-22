@@ -52,6 +52,7 @@ import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import type { ItemRef } from './engine/corrupt-item-tracker'
+import type { PackedRecords } from './packs/record-packs'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
 import { createSocketApplier, type SocketApplier } from './engine/socket-apply'
 import { reportConflict } from './engine/conflict-report'
@@ -225,7 +226,7 @@ export class SyncEngine extends SyncEventEmitter {
       this.pushCoordinator,
       this.crdtSync,
       {
-        pull: (missing) => this.pull(missing),
+        pull: (missing, packed) => this.pull(missing, packed),
         push: () => this.push(),
         scheduleSync: (fn) => this.scheduleSync(fn)
       },
@@ -433,10 +434,10 @@ export class SyncEngine extends SyncEventEmitter {
    * only thing that separates a delivered pull from a silent one (#1835).
    * `missing` is what a manifest check found missing, pulled by id (#3391).
    */
-  async pull(missing: readonly ItemRef[] = []): Promise<SyncRunOutcome> {
+  async pull(missing: readonly ItemRef[] = [], packed?: PackedRecords): Promise<SyncRunOutcome> {
     const start = Date.now()
     try {
-      const outcome = await this.pullCoordinator.pull(missing)
+      const outcome = await this.pullCoordinator.pull(missing, packed)
       trackSyncRun('pull', outcome, {
         durationMs: Date.now() - start,
         queueCount: this.ctx.deps.queue.getPendingCount()

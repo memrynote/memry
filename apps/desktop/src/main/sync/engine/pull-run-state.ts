@@ -19,4 +19,6 @@ export interface PullRunState {
   refused?: boolean
   /** The run started from cursor 0: it applies no purged tombstone (#2302). */
   fromZero?: boolean
+  /** Notes whose body record packs' bootstrap already settled: owed no body pull (#5390). */
+  bodySettled?: ReadonlySet<string>
 }
