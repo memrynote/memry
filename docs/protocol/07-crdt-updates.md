@@ -322,7 +322,7 @@ desktop retries it (its oversized-update fallback about once a second). So the
 server honours `coversThrough` only when the env var
 `CRDT_CLAIM_MIN_DESKTOP_VERSION` is set **and** `client_policies['desktop']
 .min_write_version` is at or above it (`compareVersions`;
-`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:73`,
+`snapshotClaimsEnabled`, `apps/sync-server/src/services/client-policies.ts:75`,
 read once per request). Otherwise a claim is dropped and the push runs under
 the pre-#2299 rules exactly (`covers_through` stays NULL), so no claimed row
 exists and no legacy client meets the refusal for a claimed row. A snapshot for
