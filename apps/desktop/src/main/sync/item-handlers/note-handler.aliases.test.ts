@@ -12,6 +12,8 @@ let dataDb: TestDatabaseResult
 let indexDb: TestDatabaseResult
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
+const broadcastToAllWindows = vi.hoisted(() => vi.fn())
+vi.mock('../../lib/window-broadcast', () => ({ broadcastToAllWindows }))
 vi.mock('../../database', () => ({ getDatabase: () => dataDb.db }))
 vi.mock('../../database/client', () => ({
   getDatabase: () => dataDb.db,
@@ -44,7 +46,15 @@ vi.mock('@memry/domain-notes', () => ({ saveCanonicalPropertyDefinition: vi.fn()
 
 import { noteHandler } from './note-handler'
 import { buildNotePushPayload } from './note-handler-sync-helpers'
-import { insertNoteCache, reindexNoteNames, resolveLinkTargets } from '@main/database/queries/notes'
+import {
+  getOutgoingLinks,
+  insertNoteCache,
+  reindexNoteNames,
+  resolveLinkTargets,
+  setMarkdownNoteLinks
+} from '@main/database/queries/notes'
+import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { extractWikiLinks } from '@memry/shared/wiki-target'
 
 const NOTE_PATH = 'n1.md'
 const REMOTE_CLOCK = { 'device-A': 1, 'device-B': 1 }
@@ -141,6 +151,28 @@ describe('note aliases over sync', () => {
 
     expect(fs.readFileSync(path.join(VAULT_ROOT, 'Kaan.md'), 'utf-8')).toContain('aliases:\n  - K.')
     expect([holderOf('kaan'), holderOf('k.'), holderOf('n1')]).toEqual(['n1', 'n1', null])
+  })
+
+  // REVIEW-5465 finding 5: the note-list refresher rests on sync events only.
+  it('announces a note whose link a remote rename resolved as a sync change', () => {
+    seedNote('---\nstatus: draft\n---\nBody\n', [])
+    insertNoteCache(indexDb.db, {
+      id: 'src',
+      path: 'src.md',
+      title: 'src',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z'
+    })
+    setMarkdownNoteLinks(indexDb.db, 'src', extractWikiLinks('See [[Kaan]].'))
+
+    noteHandler.applyUpsert(ctx, 'n1', { title: 'Kaan', clock: REMOTE_CLOCK }, REMOTE_CLOCK)
+
+    expect(getOutgoingLinks(indexDb.db, 'src')[0]?.targetId).toBe('n1')
+    expect(broadcastToAllWindows).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
+      id: 'src',
+      changes: {},
+      source: 'sync'
+    })
   })
 
   it('pushes the list it reads, [] included, and the pull restores it', () => {

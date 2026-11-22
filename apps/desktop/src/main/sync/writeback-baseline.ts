@@ -17,9 +17,12 @@
  *   they built the doc from, over any older hash.
  * - Memry's other body writers (the note command, journal saves, appended
  *   blocks, task-line removal, version restore, a move's ref rewrite, a
- *   rename's link rewrites) feed the doc first, wait for the store to hold the
- *   update, and then write the file through `writeWithBaseline`
- *   (`landBodyEdit`, D-DOC-FIRST). A locked note is refused before the feed.
+ *   rename's link rewrites, the agent's journal update) feed the doc first,
+ *   wait for the store to hold the update, and then write the file through
+ *   `writeWithBaseline` (`landBodyEdit`, D-DOC-FIRST). A locked note is refused before the feed.
+ *   A write-back pass that converted the doc before such a feed writes the
+ *   older body after the writer's file, so it arms another pass when the doc
+ *   moved meanwhile.
  *   A crash after the feed, or a failed file write, leaves the doc ahead of
  *   the file with the baseline kept, and the write-back writes it; a crash after
  *   the write leaves the pending hash naming Memry's own bytes. A store that
@@ -39,13 +42,11 @@
  *   (`baselineAfterWrite`, `baselineAfterRead`).
  * - Exceptions, with no baseline to keep or move: a remote or local note create
  *   (`createNote`) writes a new file the cache sync measures; an import copies
- *   new files the watcher indexes (`copyImportedFile`); the root-properties migration rewrites
- *   only frontmatter and re-reads the files it wrote (`indexVault`
- *   forcePaths); a vault lock writes back the locked text its doc holds.
- * - The agent's journal tools (`agent/mcp/tools/journal-handles.ts`) write a
- *   day file with `writeJournalEntry`, which neither feeds the doc nor moves
- *   the baseline: the bytes read as an outside edit, and the watcher or the
- *   next write-back ingests them.
+ *   new files the watcher indexes (`copyImportedFile`); the agent's journal
+ *   create writes a day file only where none exists (`journal-handles.ts`);
+ *   the root-properties migration rewrites only frontmatter and re-reads the
+ *   files it wrote (`indexVault` forcePaths); a vault lock writes back the
+ *   locked text its doc holds.
  *
  * Any hash a writer moves clears a pending write (`updateNoteCache`,
  * `insertNoteCache`), so a stale pending hash never outlives the baseline it

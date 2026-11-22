@@ -1,4 +1,4 @@
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
@@ -602,6 +602,7 @@ async function performWriteback(
   // would push it to every other device. Keeping the file costs the user a
   // stale body until a build that knows the type runs; writing costs them the
   // content.
+  const converted = Y.encodeStateVector(doc)
   const conversion = await convert(doc, cached.path, async () => {
     const raw = await readVaultFile(getVaultRoot(), cached.path)
     return raw === null ? null : splitFrontmatterBlock(raw).body
@@ -711,6 +712,12 @@ async function performWriteback(
     } catch (err) {
       log.warn('Failed to sync note_date reminders on write-back', { noteId, err })
     }
+  }
+  // A body writer that fed the doc while this pass converted wrote its file
+  // first, and this pass then wrote the older body over it (REVIEW-5465). Doc
+  // updates from the editor or the network arm their own pass; a feed does not.
+  if (!pendingTimers.has(noteId) && !Buffer.from(converted).equals(Y.encodeStateVector(doc))) {
+    scheduleWriteback(noteId, doc, 'local')
   }
 }
 

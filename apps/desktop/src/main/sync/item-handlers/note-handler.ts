@@ -521,20 +521,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         setNoteTags(indexDb, itemId, indexTags)
       }
 
-      if (indexed) {
-        projectNoteNames(
-          indexDb,
-          {
-            noteId: itemId,
-            title: newTitle,
-            aliases: writtenAliases,
-            path: updateFields.path ?? existing.path,
-            previousPath: needsPathUpdate ? existing.path : undefined
-          },
-          'sync'
-        )
-      }
-
       if (indexed && propertiesPresent) {
         setNoteProperties(indexDb, itemId, remoteProperties, (name, value) =>
           learnCanonicalPropertyType(ctx.db, name, value)
@@ -559,6 +545,22 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         : undefined
 
       updateNoteCache(indexDb, itemId, updateFields)
+      // After the row update: the resolver matches titles and paths on the
+      // index row, so before it a link naming the new title stayed unresolved.
+      if (indexed) {
+        projectNoteNames(
+          indexDb,
+          {
+            noteId: itemId,
+            title: newTitle,
+            aliases: writtenAliases,
+            path: updateFields.path ?? existing.path,
+            previousPath: needsPathUpdate ? existing.path : undefined
+          },
+          'sync'
+        )
+      }
+
       updateNoteMetadata(ctx.db, itemId, {
         path: updateFields.path ?? existing.path,
         title: newTitle,
