@@ -316,9 +316,8 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   all requested after the reader holds the pack bytes, in the same run. A
   document absent from a body manifest read has no body row and floor 0 at
   its page's read, so its packed updates are unusable and it goes to the
-  routes of chapter 07 §7.2. A page answered `429` is asked again after its
-  `retry-after`, up to one 60 s window, keeping the pages already read
-  (chapter 07 §7.10, #5349). A read that stops short (any page failing, a
+  routes of chapter 07 §7.2. A page answered `429` is asked again, keeping
+  the pages already read, as chapter 07 §7.10 states per client (#5349). A read that stops short (any page failing, a
   malformed page) answers nothing: the reader reads `floor` from
   `POST /sync/crdt/updates/batch` for every document it holds packed bodies
   of. **A server without the route** (every server before #5232) answers it
@@ -598,9 +597,39 @@ removing the variable serves the listing compaction holds by then, with no
 rebuild and no re-anchor. Nulling `covered_through` by hand is not a rollback:
 the next bootstrap reads the kind as `unanchored` and the next record build
 re-anchors it and retires its packs (above). Unset, or a list that does not
-name the vault, leaves the listing byte for byte as before. It is a Worker
-secret so it applies without a deploy and survives one; nothing in
-`wrangler.toml` sets it:
+name the vault, leaves the listing byte for byte as before.
+
+- **It does not stop compaction.** Packs keep being built for a listed vault.
+  Stopping the packer is a separate change: remove the `PACK_QUEUE` and
+  `PACK_BACKFILL_QUEUE` producer bindings, in each `[env.*]` section of
+  `wrangler.toml` (`apps/sync-server/wrangler.toml:124`, `:135`, `:184`,
+  `:195`), and deploy, and the push nudge and the cron backfill enqueue
+  nothing (`apps/sync-server/src/services/pack-queue.ts:49`,
+  `apps/sync-server/src/services/pack-backfill.ts:219-221`). The consumers
+  stay bound, so messages already queued still run. Removing `PACK_QUEUE`
+  also drops the delayed purge retry of §8.13, which rides it
+  (`apps/sync-server/src/routes/sync.ts:589`,
+  `apps/sync-server/src/services/cleanup.ts:371`): a purge that needs more
+  than four rewrites, or whose R2 delete fails, leaves its purged bodies in
+  R2 until the deletion pass of the next 6-hourly backfill tick
+  (`apps/sync-server/src/services/pack-backfill.ts:187`), not within the
+  900 s bound. When stopping the cron backfill and bootstrap chains is
+  enough, remove only `PACK_BACKFILL_QUEUE`, which keeps the push nudge and
+  the purge retry.
+- **It takes effect on the next listing.** A run that already holds a page
+  keeps its presigned URLs, which expire 300 s after the listing
+  (`apps/sync-server/src/services/pack-list.ts:173`,
+  `apps/sync-server/src/services/r2-presign.ts:27`), so it may fetch packs
+  for up to about 300 s more.
+- **Vault ids match exactly.** Each entry is trimmed and compared
+  case-sensitively to the vault id (`pack-list.ts:90-93`), with no scoping to
+  a user. `default` is the vault id of every account a legacy client synced
+  (`apps/sync-server/src/middleware/paid-sync.ts:18`), so naming it disables
+  packs for all of them.
+- **No code deploy.** It is a Worker secret, so it survives a deploy, and
+  nothing in `wrangler.toml` sets it. `wrangler secret put` and
+  `wrangler secret delete` each deploy a new version of the current Worker
+  code, which is how the change takes effect:
 
 ```sh
 # staging, one drill vault (or '*' for every vault)
@@ -888,9 +917,9 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:326`, logged at `:335`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:348`, logged at `:341-345`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
-  among packs already read (`:319`). A run never spans an excluded pack, so
+  among packs already read (`:325-327`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. Record ranges tile, so record inputs always
@@ -1024,10 +1053,21 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   guard fails when a rewrite the plan did not exclude is pending. The
   listing-overlap guard fails when another listed pack of the kind starts
   inside the run's range; for `crdt_snapshot` the range's last second is open,
-  because a `created_at` tie may split across two packs. A purge after the
-  rollup read the listing either still has its rewrite pending or has listed
-  the rewritten pack, so one guard fails the swap, and the rollup's object is
-  deleted unlisted (§8.10, **Unlisted objects**).
+  because a `created_at` tie may split across two packs. A purge that takes
+  a pack out of the listing after the rollup read the pending rewrites, but
+  before it read the listing, has one of three outcomes. Its rewrite is still
+  pending, or it listed the rewritten pack, and one guard fails the swap. Or
+  its rewrite committed and listed nothing, because no entry of the pack
+  stayed current: the rewrite lists a row only when `kept.length > 0` and
+  otherwise only settles the pending row
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:110`, `:145`, `:152`).
+  No guard fails then, and the swap may commit, which is harmless because the
+  run's range holds only current entries. A purge after the listing read that
+  takes out an input of the run makes `replacePacks` record nothing: it
+  records the inputs only while every one is still listed
+  (`apps/sync-server/src/services/pack-rollup.ts:502`). When a guard fails
+  or `replacePacks` records nothing, the rollup's object is deleted unlisted
+  (§8.10, **Unlisted objects**).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
   of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:204-205`).
@@ -1144,15 +1184,15 @@ also capped at 256 items by its subrequest budget
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
-kinds** (`packages/contracts/src/sync-api.ts:796-800`), below the 1,000 a
+kinds** (`packages/contracts/src/sync-api.ts:809-813`), below the 1,000 a
 released reader walks (§8.11). A writer rolls up before a new row would pass
 it; when a rollup cannot make room, the writer stops, and the rest of the vault
 stays on the tail. The server checks the cap before a build and again in the
 D1 batch that inserts the `pack_index` row: the insert commits only while the
 vault listed fewer than 999 packs before it, and the watermark moves only
-when that row exists (or past a snapshot tie it cannot roll in, §8.10). The build deletes its object only when its own row,
+when that row exists. The build deletes its object only when its own row,
 looked up by its id, is absent after the batch, so a listed row always has
-its object (`roomGuard`, `apps/sync-server/src/services/pack-list.ts:41-61`).
+its object (`roomGuard`, `apps/sync-server/src/services/pack-list.ts:37-57`).
 The cron backfill enqueues no build for a vault at the cap (`findBacklogVaults`,
 `apps/sync-server/src/services/pack-backfill.ts`) but enqueues each of its kinds
 above the bound, and a backfill message rolls up before it builds, so a capped
