@@ -948,8 +948,9 @@ coverage ranges chain, and writes one pack that replaces them:
   wall clock and the phase's monotonic clock. A pack still failing after the
   fourth pause is a gap
   (`crates/memry-core/src/sync/pack_bootstrap/download.rs:120-170`, `:172-279`,
-  #5374). A pack the re-list no longer names stays a gap. Desktop does not
-  pause yet.
+  #5374). A pack the re-list no longer names stays a gap. Desktop pauses the
+  same way (`apps/desktop/src/main/sync/packs/pack-downloads.ts:13`,
+  `:27-35`, `:67-113`; `pack-bootstrap.ts:377-394`, #5389).
 
 ## 8.13 Scoped purge
 

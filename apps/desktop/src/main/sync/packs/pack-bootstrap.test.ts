@@ -12,6 +12,7 @@ import { createPackBodyApplier } from './pack-body-applier'
 import { contiguousAppliedCursor, runPackBootstrap, type PackBootstrapDeps } from './pack-bootstrap'
 import { buildTestPack } from './test-pack-builder'
 import type * as HttpClientModule from '../http-client'
+import { NetworkError, RateLimitError, SyncServerError } from '../http-client'
 
 // The whole point of pack-seeded bodies: not one item-granular CRDT request is
 // issued for a note a pack covered. Mocking the module is how that is proved
@@ -942,6 +943,168 @@ describe('runPackBootstrap', () => {
       expect(result.entriesApplied).toBe(2)
       expect([...harness.docs.keys()].toSorted()).toEqual(['note-new', 'note-old'])
       expect(pages.length).toBe(2)
+    })
+  })
+
+  describe('network drop (#5389, protocol 08 §8.12)', () => {
+    const twoPacks = (harness: Harness): void => {
+      harness.deps.fetchPackPage = async () =>
+        listResponse([
+          packSummary({ id: 'p-new', maxCursor: 200, itemCount: 1 }),
+          packSummary({ id: 'p-old', maxCursor: 100, itemCount: 1 })
+        ])
+      for (const [id, noteId] of [
+        ['p-new', 'note-new'],
+        ['p-old', 'note-old']
+      ]) {
+        harness.packFiles.set(
+          id,
+          buildTestPack([
+            { id: noteId, bytes: snapshotBytes(noteId), meta: { sequenceNum: 1, revision: 'r' } }
+          ]).bytes
+        )
+      }
+    }
+
+    /** Fails each GET while `fault` answers an error, then serves the fixture. */
+    const faulty = (harness: Harness, fault: (id: string, attempt: number) => Error | null) => {
+      const serve = harness.deps.download!
+      const attempts: string[] = []
+      const sleeps: number[] = []
+      harness.deps.sleep = async (ms) => {
+        sleeps.push(ms)
+      }
+      harness.deps.download = async (options) => {
+        const id = options.url.split('/').pop()!.split('?')[0]
+        attempts.push(id)
+        const error = fault(id, attempts.filter((seen) => seen === id).length)
+        if (error) throw error
+        return serve({ ...options, url: options.url.split('?')[0] })
+      }
+      return { attempts, sleeps }
+    }
+
+    it('#given a drop that outlasts the transport ladder #then the phase pauses and the lost pack downloads again', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { attempts, sleeps } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new NetworkError('pack fetch failed: offline') : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000])
+      // No new GET starts once the phase is paused.
+      expect(attempts).toEqual(['p-new', 'p-new', 'p-old'])
+      expect(result.entriesApplied).toBe(2)
+    })
+
+    it('#given a drop longer than every pause #then the pack is a gap after the fourth', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, () => new SyncServerError('pack fetch returned 503', 503))
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000, 120_000, 240_000])
+      expect(result.usedPacks).toBe(false)
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
+    it('#given a 404 #then the pack is a gap at once, with no pause', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 404', 404) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([])
+      expect([...harness.docs.keys()]).toEqual(['note-old'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a 429 #then the pause lasts at least its Retry-After', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id, attempt) =>
+        id === 'p-new' && attempt === 1 ? new RateLimitError(90) : null
+      )
+
+      await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([90_000])
+    })
+
+    it('#given a 403 on a url that expired during the drop #then the pack is re-listed and downloads', async () => {
+      let clock = 1_700_000_100_000
+      const pages: string[] = []
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.fetchPackPage = async () => {
+        const nowSeconds = Math.floor(clock / 1000)
+        pages.push('list')
+        return listResponse([
+          packSummary({
+            id: 'p-new',
+            itemCount: 1,
+            url: `https://r2.example/p-new?exp=${nowSeconds + 300}`,
+            expiresAt: nowSeconds + 300
+          })
+        ])
+      }
+      const { sleeps } = faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        // The transport's retries outlive the signature; R2 answers 403.
+        clock += 400_000
+        return new SyncServerError('pack fetch returned 403', 403)
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000])
+      expect(pages).toEqual(['list', 'list'])
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a re-list that fails during the drop #then the pack stays lost for the next pause', async () => {
+      let clock = 1_700_000_100_000
+      let lists = 0
+      const harness = makeHarness({ now: () => clock })
+      twoPacks(harness)
+      harness.deps.fetchPackPage = async () => {
+        lists++
+        if (lists === 2) throw new NetworkError('offline')
+        const nowSeconds = Math.floor(clock / 1000)
+        return listResponse([
+          packSummary({ id: 'p-new', itemCount: 1, expiresAt: nowSeconds + 60 })
+        ])
+      }
+      const { sleeps } = faulty(harness, (_id, attempt) => {
+        if (attempt > 1) return null
+        clock += 60_000
+        return new NetworkError('pack fetch failed: offline')
+      })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([30_000, 60_000])
+      expect(lists).toBe(3)
+      expect(result.entriesApplied).toBe(1)
+    })
+
+    it('#given a 403 on a live url #then the pack is a gap with no pause', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const { sleeps } = faulty(harness, (id) =>
+        id === 'p-new' ? new SyncServerError('pack fetch returned 403', 403) : null
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(sleeps).toEqual([])
+      expect(result.entriesApplied).toBe(1)
     })
   })
 
