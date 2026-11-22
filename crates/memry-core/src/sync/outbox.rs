@@ -34,6 +34,7 @@ use std::collections::HashMap;
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::settings::SETTINGS_ITEM_TYPE;
 use crate::storage::nested_tx;
 
 /// The three `op` spellings data-model §A.2 defines.
@@ -490,9 +491,10 @@ pub(crate) fn drop_upserts(
     kind: Option<&str>,
     id: &str,
 ) -> Result<(), StorageError> {
-    let sql =
-        "DELETE FROM outbox WHERE (?1 IS NULL OR item_type = ?1) AND item_id = ?2 AND op = ?3";
-    tx.execute(sql, params![kind, id, OP_UPSERT])
+    // A settings edit is never retired by a delete (#5433, `sync::apply`).
+    let sql = "DELETE FROM outbox WHERE (?1 IS NULL OR item_type = ?1) AND item_id = ?2
+               AND op = ?3 AND item_type <> ?4";
+    tx.execute(sql, params![kind, id, OP_UPSERT, SETTINGS_ITEM_TYPE])
         .map_err(failed)?;
     Ok(())
 }

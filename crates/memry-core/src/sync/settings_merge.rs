@@ -82,7 +82,7 @@ use serde_json::{Map, Value};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::settings::{
-    apply_at, field_clocks_of, read_clock, segments, settings_of, value_at,
+    self, apply_at, field_clocks_of, read_clock, segments, settings_of, value_at,
 };
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
@@ -141,6 +141,7 @@ pub(crate) fn apply_remote_merged(
     ];
 
     let transaction = nested_tx::begin(conn).map_err(failed)?;
+    settings::revive(&transaction)?;
     sync_items::apply_local_edit_in(
         &transaction,
         &record.item_type,

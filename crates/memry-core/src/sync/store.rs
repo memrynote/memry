@@ -10,6 +10,7 @@
 use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::settings::SETTINGS_ITEM_TYPE;
 
 use super::clock::{VectorClock, merge};
 
@@ -180,8 +181,10 @@ pub fn apply_untyped_tombstone(
 ) -> Result<(), StorageError> {
     let touched = conn
         .execute(
-            "UPDATE sync_items SET deleted_at = ?2, updated_at = ?3 WHERE item_id = ?1",
-            params![item_id, deleted_at, now_ms],
+            "UPDATE sync_items SET deleted_at = ?2, updated_at = ?3
+             WHERE item_id = ?1 AND item_type <> ?4",
+            // Settings are never deleted (#5433, `sync::apply`).
+            params![item_id, deleted_at, now_ms, SETTINGS_ITEM_TYPE],
         )
         .map_err(failed)?;
     if touched == 0 {

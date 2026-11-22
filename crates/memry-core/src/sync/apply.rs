@@ -171,7 +171,9 @@ pub(crate) fn apply_page(
                 // §5.12.1: a bare tombstone outranks the item that arrives
                 // after it, or the "does not resurrect it locally" guarantee
                 // holds only until the next page.
-                if store::has_bare_tombstone(conn, &record.item_id)? {
+                if record.item_type != settings::SETTINGS_ITEM_TYPE
+                    && store::has_bare_tombstone(conn, &record.item_id)?
+                {
                     apply_tombstone(
                         conn,
                         &record.item_type,
@@ -250,6 +252,15 @@ fn apply_tombstone(
     clock_device: Option<&str>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
+    // Settings are never deleted (#5433), as desktop's settings handler skips
+    // a pulled delete: the row stays live and its queued edit stays queued.
+    if item_type == settings::SETTINGS_ITEM_TYPE {
+        eprintln!(
+            "memry-core: pull: {item_type}:{item_id} delete skipped: settings are never deleted"
+        );
+        totals.skipped += 1;
+        return Ok(());
+    }
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
         store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
@@ -347,7 +358,9 @@ fn apply_untyped_tombstone(
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
-    let item_types = store::item_types_for(&txn, item_id)?;
+    // Never the settings row (#5433): store and outbox skip it too.
+    let mut item_types = store::item_types_for(&txn, item_id)?;
+    item_types.retain(|t| t != settings::SETTINGS_ITEM_TYPE);
     // The purge below drops the queued body updates, so unseen text is kept
     // first, as the typed arm keeps it. No clock or body vector on the wire,
     // so the queue (rule 1) decides.
