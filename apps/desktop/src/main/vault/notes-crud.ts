@@ -82,7 +82,7 @@ import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { markExpectedWarning } from '../telemetry/expected-conditions'
-import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
+import { getFileType, getExtension, isBinaryNoteRow } from '@memry/shared/file-types'
 import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
@@ -687,9 +687,9 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
   // drops, and only markdown can restore itself from frontmatter), so the
   // honest answer is to refuse rather than to accept and lose the bytes.
   const cachedRow = getNoteCacheById(db, input.id)
-  if (cachedRow?.fileType && isBinaryFileType(cachedRow.fileType)) {
+  if (cachedRow && isBinaryNoteRow(cachedRow)) {
     throw new NoteError(
-      `Cannot edit note metadata on a ${cachedRow.fileType} file: ${cachedRow.path}`,
+      `Cannot edit note metadata on a binary file: ${cachedRow.path}`,
       NoteErrorCode.NOT_MARKDOWN,
       input.id
     )

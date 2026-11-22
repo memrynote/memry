@@ -1246,6 +1246,38 @@ this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
 loses it.
 
+### Binary note records pushed as markdown
+
+A binary note (image, PDF, audio, video file) syncs as a record with a binary
+`fileType`, its `mimeType` and the `attachmentId` of its blob. Shipped desktop
+builds up to v2026-11-20 could retype such a row to markdown (#5412) and then
+push it as a markdown record with no `attachmentId`. A device that first sees
+the note through that record has no link to the blob (#5419). The record
+format is unchanged; clients repair it among themselves:
+
+- **Push.** A row at a binary-extension path always pushes the binary record,
+  with its type taken from the path. A markdown note is always a `.md` file.
+  The same rule (`isBinaryNoteRow`) picks the binary branch on receive, so a
+  rename of such a row keeps the file's bytes and its extension and the row is
+  retyped from the path. Metadata edits (tags, properties, title) on such a row
+  are refused instead of rewriting the file as markdown, and a remote delete
+  never reads its bytes as text to keep.
+- **Receive and heal.** A device that holds the note as a binary file with its
+  attachment keeps its row and file when a markdown record without an
+  attachment arrives. It then re-pushes its binary record once per markdown
+  record (one `sync_state` row per note id and record clock) through the normal
+  update path, with the clock ticked past the merged record, and logs a
+  warning. A later markdown record, such as a re-push by a device that took
+  the markdown record, is answered once too. Receiving never pushes, so two
+  devices cannot answer each other in a loop; a real rename to `.md` on
+  another device is answered as well, which desktop never applies on receive.
+- **Devices that took the markdown record.** They keep the `.md` note when the
+  re-pushed binary record arrives and log a warning; nothing is written.
+
+Older clients receiving the re-pushed record apply it as any binary record:
+a device holding the note as binary updates its sidecar fields, a device holding
+it as markdown keeps its markdown row.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.
