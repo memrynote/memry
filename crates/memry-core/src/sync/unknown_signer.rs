@@ -8,111 +8,158 @@
 //! clockless type (settings, a delete stored with no clock) the server accepts
 //! a later edit of it and the item comes back on every device.
 //!
-//! - [`retry`] re-pulls those records by id at the start of every pass, over
-//!   that pass's fresh directory, at most [`MAX_RETRIES`] times per item.
+//! - [`refused`] records the refusal as one `meta` row per item id, which a
+//!   local edit never touches (an edit clears `corrupt_reason`, so the reason
+//!   cannot be the record of it).
+//! - [`retry`] re-pulls those ids at the start of every pass, over that pass's
+//!   fresh directory, at most [`MAX_RETRIES`] times per refusal.
 //! - [`holds`] keeps a queued edit of such a row out of the push meanwhile.
+//! - The row goes when the id resolves: any verified record for it
+//!   ([`resolve_verified`]), or the last retry.
 //!
 //! A record whose signature fails for any other reason is never retried: its
-//! reason does not end with [`UNKNOWN_SIGNER`].
+//! reason does not end with
+//! [`crate::protocol::account::UNKNOWN_SIGNER`].
 //!
-//! The retry count is one baseline `meta` row per item, so no numbered
-//! migration is needed: `sync.unknown_signer_retries\0{id}` holding the count.
-//! An older build never reads it.
+//! The rows are baseline `meta` rows, so no numbered migration is needed:
+//! `sync.unknown_signer_retries:{id}` holding the passes that re-pulled it.
+//! An older build never reads them. Refusals an older build recorded only in
+//! `corrupt_reason` are adopted once ([`SEEDED_KEY`]).
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{Connection, params};
 
-use crate::api::errors::StorageError;
-use crate::protocol::account::UNKNOWN_SIGNER;
+use crate::api::errors::{ApiError, StorageError};
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
+use super::apply::Pending;
 use super::first_sync_store::{read_meta, write_meta};
-use super::pull::PullLoop;
+use super::pull::{PullError, PullLoop};
 
-/// Passes that re-pull one item. A signer still missing after this many fresh
-/// directories is not a device of the account; the row stays as it is.
+/// Passes that re-pull one refusal. A signer still missing after this many
+/// fresh directories is not a device of the account; the row stays as it is.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-const RETRY_KEY_PREFIX: &str = "sync.unknown_signer_retries\0";
+const KEY_PREFIX: &str = "sync.unknown_signer_retries:";
+/// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
+const KEY_END: &str = "sync.unknown_signer_retries;";
+/// Set once the refusals older builds left in `corrupt_reason` are adopted.
+const SEEDED_KEY: &str = "sync.unknown_signer_seeded";
 
 fn key(item_id: &str) -> String {
-    format!("{RETRY_KEY_PREFIX}{item_id}")
+    format!("{KEY_PREFIX}{item_id}")
 }
 
-fn retries(conn: &Connection, item_id: &str) -> Result<u32, StorageError> {
-    Ok(read_meta(conn, &key(item_id))?
-        .and_then(|count| count.parse().ok())
-        .unwrap_or(0))
+/// Records a fresh refusal of `item_id`'s record: a full retry budget.
+pub(crate) fn refused(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
+    write_meta(conn, &key(item_id), "0")
 }
 
-/// Re-pulls, by id, every record still refused for an unknown signer and
-/// under its retry budget. The caller built `pull` over the directory it
-/// fetched for this pass. A failed re-pull is logged and counts no attempt.
+/// Ends the wait on every id in `pending`: each arrived verified, applied or
+/// skipped, so its signer is known and nothing is left to re-pull.
+pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result<(), StorageError> {
+    if pending.is_empty() || waiting(conn)?.is_empty() {
+        return Ok(());
+    }
+    for item in pending {
+        drop_refusal(conn, item.item_id())?;
+    }
+    Ok(())
+}
+
+/// Whether a queued edit of this row waits: its last pulled record was
+/// refused for an unknown signer and is still being re-pulled. Sending the
+/// edit could reverse a delete this device has not verified yet.
+pub(crate) fn holds(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
+    Ok(read_meta(conn, &key(item_id))?.is_some())
+}
+
+/// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
+/// the directory it fetched for this pass. A transport failure is logged and
+/// counts no attempt; any other failure counts one.
 pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
     let due = db
         .call(|conn| {
-            let mut due = Vec::new();
-            for id in sync_items::unknown_signer_ids(conn)? {
-                if retries(conn, &id)? < MAX_RETRIES {
-                    due.push(id);
-                }
-            }
-            Ok(due)
+            seed_legacy(conn)?;
+            waiting(conn)
         })
         .await?;
     if due.is_empty() {
         return Ok(());
     }
-    if let Err(error) = pull.fetch_ids(&due).await {
+    let ids: Vec<String> = due.iter().map(|(id, _)| id.clone()).collect();
+    if let Err(error) = pull.fetch_ids(&ids).await {
         eprintln!(
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
-            due.len()
+            ids.len()
         );
-        return Ok(());
+        if matches!(
+            error,
+            PullError::Api {
+                source: ApiError::Transport { .. }
+            }
+        ) {
+            return Ok(());
+        }
     }
     db.call(move |conn| {
-        let still = sync_items::unknown_signer_ids(conn)?;
-        for id in due {
-            if !still.contains(&id) {
-                conn.execute("DELETE FROM meta WHERE key = ?1", [key(&id)])
-                    .map_err(failed)?;
+        for (id, attempts) in due {
+            // Resolved by the re-pull, or a refusal of it is still recorded:
+            // this pass's attempt counts against the budget it had before.
+            if read_meta(conn, &key(&id))?.is_none() {
                 continue;
             }
-            let attempts = retries(conn, &id)? + 1;
-            write_meta(conn, &key(&id), &attempts.to_string())?;
-            if attempts == MAX_RETRIES {
-                eprintln!(
-                    "memry-core: {id}'s signer is still unknown after {attempts} directories; \
-                     no longer re-pulled"
-                );
+            let attempts = attempts + 1;
+            if attempts < MAX_RETRIES {
+                write_meta(conn, &key(&id), &attempts.to_string())?;
+                continue;
             }
+            eprintln!(
+                "memry-core: {id}'s signer is still unknown after {attempts} directories; \
+                 no longer re-pulled"
+            );
+            drop_refusal(conn, &id)?;
         }
         Ok(())
     })
     .await
 }
 
-/// Whether a queued edit of this row waits: the row's last pulled record was
-/// refused for an unknown signer and is still being re-pulled. Sending the
-/// edit could reverse a delete this device has not verified yet.
-pub(crate) fn holds(
-    conn: &Connection,
-    item_type: &str,
-    item_id: &str,
-) -> Result<bool, StorageError> {
-    let reason: Option<String> = conn
-        .query_row(
-            "SELECT corrupt_reason FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-            [item_type, item_id],
-            |row| row.get(0),
-        )
-        .optional()
+/// The waiting ids with the passes that re-pulled each.
+fn waiting(conn: &Connection) -> Result<Vec<(String, u32)>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT key, value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key")
+        .map_err(failed)?;
+    statement
+        .query_map(params![KEY_PREFIX, KEY_END], |row| {
+            let key: String = row.get(0)?;
+            let value: String = row.get(1)?;
+            Ok((
+                key[KEY_PREFIX.len()..].to_owned(),
+                value.parse().unwrap_or(0),
+            ))
+        })
         .map_err(failed)?
-        .flatten();
-    if !reason.is_some_and(|reason| reason.ends_with(UNKNOWN_SIGNER)) {
-        return Ok(false);
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)
+}
+
+fn drop_refusal(conn: &Connection, item_id: &str) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_id)])
+        .map_err(failed)?;
+    Ok(())
+}
+
+/// Adopts, once, the refusals an older build recorded only in
+/// `corrupt_reason`.
+fn seed_legacy(conn: &Connection) -> Result<(), StorageError> {
+    if read_meta(conn, SEEDED_KEY)?.is_some() {
+        return Ok(());
     }
-    Ok(retries(conn, item_id)? < MAX_RETRIES)
+    for id in sync_items::unknown_signer_ids(conn)? {
+        refused(conn, &id)?;
+    }
+    write_meta(conn, SEEDED_KEY, "1")
 }
 
 fn failed(error: rusqlite::Error) -> StorageError {

@@ -10,9 +10,15 @@
 //! | a local edit is held while the delete waits, never pushed    | §5.8, #5413       |
 //! | a delete whose signature fails otherwise is never re-pulled  | §5.14, #5340      |
 //! | a signer that never appears stops being re-pulled            | #5413             |
+//! | a local edit after the refusal neither ends the wait nor wins | §5.8, #5413       |
+//! | a new refusal of a given-up id gets a fresh budget           | #5413             |
+//! | a failed re-pull counts unless the transport failed          | #5413             |
+//! | a verified record skipped as older ends the wait             | §5.8, #5413       |
+//! | a refusal an older build recorded is re-pulled once adopted  | #5413             |
 
 mod http_fakes;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -108,6 +114,14 @@ fn devices(with_new: bool) -> Scripted {
 
 /// `id`'s clockless delete, signed by the new device.
 fn delete_by_new_device(item_type: &str, id: &str) -> Json {
+    clocked_delete_by_new_device(item_type, id, None)
+}
+
+fn clocked_delete_by_new_device(
+    item_type: &str,
+    id: &str,
+    clock: Option<BTreeMap<String, u64>>,
+) -> Json {
     let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
     let (_public, secret) = sodium::sign_seed_keypair(&NEW_DEVICE_SEED).expect("a keypair");
     let sealed = envelope::encrypt(
@@ -119,7 +133,7 @@ fn delete_by_new_device(item_type: &str, id: &str) -> Json {
             vault_key: &vault_key[..],
             signing_secret_key: &secret[..],
             signer_device_id: NEW_DEVICE,
-            clock: None,
+            clock,
             state_vector: None,
             deleted_at: Some(1_760_000_000_000),
         },
@@ -240,16 +254,15 @@ async fn a_settings_edit_is_held_while_its_unverified_delete_waits() {
     assert_eq!(summary.pending, 1, "the edit stays queued: {summary:?}");
     assert!(!deleted(&side, "settings", "editor"));
 
+    push_due(&side);
     transport.push(devices(true));
-    transport.push(response(
-        200,
-        &json!({"items": [delete_by_new_device("settings", "editor")]}).to_string(),
-    ));
+    transport.push(re_pulled("settings", "editor"));
     transport.push(empty_changes());
+    transport.push(accepted("editor"));
     sync.sync_now().await.expect("the second pass");
 
     assert!(deleted(&side, "settings", "editor"));
-    assert!(transport.calls_to("/sync/push").is_empty());
+    pushed_only_the_delete(&transport, "editor");
 }
 
 #[tokio::test]
@@ -307,4 +320,229 @@ async fn a_signer_that_never_appears_stops_being_re_pulled() {
         !deleted(&side, "note", "deadnotexxxx"),
         "never verified: kept"
     );
+}
+
+/// Ends any push backoff, so the next pass's wave sends the queue for certain.
+fn push_due(side: &Db) {
+    side.call_blocking(|conn| {
+        conn.execute("UPDATE outbox SET next_attempt_at = NULL", [])
+            .map_err(failed)
+            .map(|_| ())
+    })
+    .expect("the queue due");
+}
+
+fn accepted(id: &str) -> Scripted {
+    response(
+        200,
+        &json!({"accepted": [id], "rejected": [], "serverTime": 1, "maxCursor": 4}).to_string(),
+    )
+}
+
+/// Every pushed record of `id` carries the delete: nothing went over it.
+fn pushed_only_the_delete(transport: &FakeTransport, id: &str) {
+    let pushes = transport.calls_to("/sync/push");
+    assert!(!pushes.is_empty(), "the queued edit is settled by a push");
+    for push in pushes {
+        let body: Json = serde_json::from_slice(&push.body.expect("a body")).expect("json");
+        for item in body["items"].as_array().expect("items") {
+            if item["id"] == id {
+                assert!(
+                    item["deletedAt"].is_i64(),
+                    "an edit over the delete: {item}"
+                );
+            }
+        }
+    }
+}
+
+fn re_pulled(item_type: &str, id: &str) -> Scripted {
+    response(
+        200,
+        &json!({"items": [delete_by_new_device(item_type, id)]}).to_string(),
+    )
+}
+
+#[tokio::test]
+async fn a_local_edit_after_the_refusal_neither_ends_the_wait_nor_wins() {
+    let id = "synced_settings";
+    let [page, pulled] = deleted_page(&[id], vec![delete_by_new_device("settings", id)]);
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("edit-after", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at)
+             VALUES ('settings', 'synced_settings', '{}', 'full', 1, 1)",
+            [],
+        )
+        .map_err(failed)
+        .map(|_| ())
+    })
+    .expect("a settings row");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    // The edit clears the row's corrupt flag; the refusal must outlive it.
+    side.call_blocking(|conn| {
+        memry_core::domain::settings::set(conn, "theme", json!("dark"), "server-device-1", 2)
+            .map(|_| ())
+    })
+    .expect("a local settings edit");
+
+    let first = transport.call_count();
+    transport.push(devices(true));
+    transport.push(re_pulled("settings", id));
+    transport.push(empty_changes());
+    transport.push(accepted(id));
+    sync.sync_now().await.expect("the second pass");
+
+    assert_eq!(urls(&transport)[first + 1], "/sync/pull");
+    assert!(deleted(&side, "settings", id));
+    pushed_only_the_delete(&transport, id);
+}
+
+#[tokio::test]
+async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
+    let [page, pulled] = deleted_page(
+        &["deadnotexxxx"],
+        vec![delete_by_new_device("note", "deadnotexxxx")],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("fresh-budget", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+    for _ in 0..5 {
+        transport.push(devices(false));
+        transport.push(re_pulled("note", "deadnotexxxx"));
+        transport.push(empty_changes());
+        sync.sync_now().await.expect("a re-pulling pass");
+    }
+
+    // Given up; then the feed serves the delete again and it is refused again.
+    let [page, pulled] = deleted_page(
+        &["deadnotexxxx"],
+        vec![delete_by_new_device("note", "deadnotexxxx")],
+    );
+    transport.push(devices(false));
+    transport.push(page);
+    transport.push(pulled);
+    sync.sync_now().await.expect("the second refusal");
+
+    let before = transport.call_count();
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "deadnotexxxx"));
+    transport.push(empty_changes());
+    sync.sync_now()
+        .await
+        .expect("a pass with the new device listed");
+
+    assert_eq!(urls(&transport)[before + 1], "/sync/pull");
+    assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+#[tokio::test]
+async fn a_failed_re_pull_counts_unless_the_transport_failed() {
+    let [page, pulled] = deleted_page(
+        &["deadnotexxxx"],
+        vec![delete_by_new_device("note", "deadnotexxxx")],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("failed-re-pull", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    // A transport failure counts nothing: six of them, and the budget is whole.
+    for _ in 0..6 {
+        transport.push(devices(false));
+        transport.push(Err(TransportError::Cancelled));
+        transport.push(empty_changes());
+        sync.sync_now().await.expect("an offline re-pull");
+    }
+    // An answer that will not parse counts: five, then no more re-pulls.
+    for pass in 0..6 {
+        let before = transport.call_count();
+        transport.push(devices(false));
+        if pass < 5 {
+            transport.push(response(200, "not json"));
+        }
+        transport.push(empty_changes());
+        sync.sync_now().await.expect("a pass");
+        let urls = &urls(&transport)[before..];
+        assert_eq!(urls[1] == "/sync/pull", pass < 5, "pass {pass}: {urls:?}");
+    }
+    assert!(!deleted(&side, "note", "deadnotexxxx"));
+}
+
+#[tokio::test]
+async fn a_verified_record_skipped_as_older_ends_the_wait() {
+    let older = || Some(BTreeMap::from([("server-device-1".to_owned(), 1u64)]));
+    let [page, pulled] = deleted_page(
+        &["keptaskxxxxx"],
+        vec![clocked_delete_by_new_device(
+            "task",
+            "keptaskxxxxx",
+            older(),
+        )],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("skipped-older", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at, clock)
+             VALUES ('task', 'keptaskxxxxx', NULL, 'metadata-only', 1, 1, ?1)",
+            params![r#"{"server-device-1":5}"#],
+        )
+        .map_err(failed)
+        .map(|_| ())
+    })
+    .expect("a row edited after the delete");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    transport.push(devices(true));
+    transport.push(response(
+        200,
+        &json!({"items": [clocked_delete_by_new_device("task", "keptaskxxxxx", older())]})
+            .to_string(),
+    ));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("the verifying pass");
+    assert!(
+        !deleted(&side, "task", "keptaskxxxxx"),
+        "the later edit keeps it"
+    );
+
+    let before = transport.call_count();
+    transport.push(devices(true));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("a settled pass");
+    let urls = &urls(&transport)[before..];
+    assert!(urls.iter().all(|url| url != "/sync/pull"), "{urls:?}");
+}
+
+#[tokio::test]
+async fn a_refusal_an_older_build_recorded_is_re_pulled() {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault("older-build", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    side.call_blocking(|conn| {
+        let reason = format!(
+            "could not open the record: signer device `{NEW_DEVICE}`{}",
+            memry_core::protocol::account::UNKNOWN_SIGNER
+        );
+        sync_items::mark_corrupt(conn, "note", "deadnotexxxx", &reason, 1)
+    })
+    .expect("a refusal recorded only in corrupt_reason");
+    let sync = vault.sync(session);
+
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "deadnotexxxx"));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("the first pass of this build");
+
+    assert!(deleted(&side, "note", "deadnotexxxx"));
 }

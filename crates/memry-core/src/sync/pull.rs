@@ -46,6 +46,7 @@ use serde_json::{Value as Json, json};
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::protocol::account::UNKNOWN_SIGNER;
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
 use crate::protocol::types::Declaration;
@@ -61,6 +62,7 @@ use super::feed_restart;
 use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
 use super::pull_decode::{Decoder, Decoding, now_ms, server_cursor};
 use super::store::{self, RECORD_CURSOR_SCOPE};
+use super::unknown_signer;
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
 /// round trips against the same rate-limit budget, and chapter 10 §10.6's
@@ -487,7 +489,11 @@ impl PullLoop {
         self.db
             .call(move |conn| {
                 sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
-                sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)
+                sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)?;
+                if reason.ends_with(UNKNOWN_SIGNER) {
+                    unknown_signer::refused(conn, &item_id)?;
+                }
+                Ok(())
             })
             .await?;
         Ok(())
@@ -512,6 +518,7 @@ fn apply_items(
     now: i64,
     clock_device: Option<&str>,
 ) -> Result<ApplyTotals, StorageError> {
+    unknown_signer::resolve_verified(conn, &pending)?;
     let owed_here = if owe_bodies {
         body_debt::owe_page(conn, &pending)?
     } else {
