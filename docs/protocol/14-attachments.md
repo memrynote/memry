@@ -131,10 +131,10 @@ An unresolvable signer device is a hard failure, not a fallback
 | POST   | `/sync/attachments/holds`                                 | `:734` |
 | POST   | `/sync/attachments/holds/release`                         | `:748` |
 | POST   | `/sync/attachments/presign-batch`                         | `:784` |
-| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:845` |
-| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:866` |
-| GET    | `/sync/attachments/:attachment_id/manifest`               | `:897` |
-| POST   | `/sync/attachments/manifests/batch`                       | `:919` |
+| HEAD   | `/sync/attachments/chunks/:chunk_hash`                    | `:843` |
+| GET    | `/sync/attachments/chunks/:chunk_hash`                    | `:864` |
+| GET    | `/sync/attachments/:attachment_id/manifest`               | `:895` |
+| POST   | `/sync/attachments/manifests/batch`                       | `:917` |
 | PUT    | `/sync/attachments/:attachment_id/manifest`               | `:941` |
 
 ### 14.5.1 The minimal read-only route set — Q14.1
@@ -143,13 +143,13 @@ An unresolvable signer device is a hard failure, not a fallback
 
 | Route                                                    | Why                                                                                 |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `GET /sync/attachments/:attachment_id/manifest` (`:897`) | the only way to learn a file's chunk list and get its wrapped key                   |
+| `GET /sync/attachments/:attachment_id/manifest` (`:895`) | the only way to learn a file's chunk list and get its wrapped key                   |
 | `POST /sync/attachments/presign-batch` (`:784`)          | one call issues up to 1024 presigned GETs (`packages/contracts/src/blob-api.ts:98`) |
-| `GET /sync/attachments/chunks/:chunk_hash` (`:866`)      | the proxied fallback when presign is unavailable (§14.6)                            |
+| `GET /sync/attachments/chunks/:chunk_hash` (`:864`)      | the proxied fallback when presign is unavailable (§14.6)                            |
 
 It needs **none** of the upload session routes, **not** `dereference` (§14.8),
 and **not** `/sync/blob/:blob_key`, which addresses record payload blobs rather
-than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:845`) is
+than attachment chunks. `HEAD /attachments/chunks/:chunk_hash` (`:843`) is
 optional and is an existence probe, not a requirement.
 
 **Disposition of Q14.1: answered (three routes).**
@@ -157,7 +157,7 @@ optional and is an existence probe, not a requirement.
 ### 14.5.2 Batched manifest reads (#5329)
 
 **Normative.** `POST /sync/attachments/manifests/batch`
-(`apps/sync-server/src/routes/blob.ts:919`) takes `{ attachmentIds }`, 1 to 100
+(`apps/sync-server/src/routes/blob.ts:917`) takes `{ attachmentIds }`, 1 to 100
 ids, each without `/` (`packages/contracts/src/blob-api.ts:113-125`). It answers
 `{ manifests: Record<attachmentId, manifest> }`. Each value is the manifest
 exactly as `GET /sync/attachments/:attachment_id/manifest` returns it, and an id
@@ -215,7 +215,12 @@ Caps:
 
 `PresignBatchResponseSchema` is `{ urls: Record<hash, url>, expiresAt }` with
 `expiresAt` in **epoch seconds**
-(`packages/contracts/src/blob-api.ts:105-110`). `dereference` is rate limited to 20
+(`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
+caller's vault is absent from `urls`, and the client fetches that chunk through
+the proxied GET, which reports its 404
+(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+a missing hash, because desktop reads a 404 here as "presign unavailable"
+(`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
 requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
 
 ## 14.7 What connects a note to a manifest — Q14.2
@@ -224,7 +229,7 @@ requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
 **attachment ids** (`packages/contracts/src/sync-payloads.ts:241`; chapter 13
 §13.7.1). An attachment id is exactly the `:attachment_id` path parameter of
 `GET /sync/attachments/:attachment_id/manifest`
-(`apps/sync-server/src/routes/blob.ts:897`) and the `id` field inside the
+(`apps/sync-server/src/routes/blob.ts:895`) and the `id` field inside the
 manifest itself (`packages/sync-client/src/push/attachment-manifest.ts:27`).
 
 The resolution chain is therefore:
@@ -469,7 +474,7 @@ references, in the next upload re-drive
   which refuses a dead chunk because it requires `ref_count > 0` or another
   hold (`apps/sync-server/src/services/chunk-holds.ts:54`).
   `HEAD /attachments/chunks/:chunk_hash` and `presign-batch` answer from the
-  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:850`, `:817`),
+  `blob_chunks` row alone (`apps/sync-server/src/routes/blob.ts:848`, `:816`),
   and a dereferenced chunk keeps that row until the sweep, so neither can tell
   a freed chunk from a live one. The probe releases its holds at once
   (`apps/desktop/src/main/canvas/assets/chunk-holds.ts:215`). Its holder id is

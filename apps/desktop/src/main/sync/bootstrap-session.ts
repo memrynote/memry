@@ -78,11 +78,12 @@ function armRenewal(delayMs: number): void {
 }
 
 /**
- * Open a bootstrap session. Returns `'ineligible'` when the server deems the
- * device already synced (409), which ends an interrupted bootstrap's resume
- * (#5234). Returns null when anything else says no: the server predates the
- * feature (404), has it unconfigured (501), caps concurrent sessions (429), or
- * simply failed.
+ * Open a bootstrap session. Returns `'ineligible'` when the answer is final for
+ * this device: the server deems it already synced (409
+ * BOOTSTRAP_NOT_ELIGIBLE), predates the feature (404) or has it unconfigured
+ * (501). That ends an interrupted bootstrap's resume (#5234), so a relaunch
+ * does not re-post forever. Returns null for a transient no: concurrent
+ * sessions capped (429), another error, or no network.
  */
 export async function openBootstrapSession(
   getAccessToken: GetAccessToken
@@ -146,8 +147,14 @@ export async function openBootstrapSession(
       error: error instanceof Error ? error.message : String(error)
     })
     closeLocalOnly()
-    return error instanceof SyncServerError && error.statusCode === 409 ? 'ineligible' : null
+    return isFinalRefusal(error) ? 'ineligible' : null
   }
+}
+
+function isFinalRefusal(error: unknown): boolean {
+  if (!(error instanceof SyncServerError)) return false
+  if (error.statusCode === 404 || error.statusCode === 501) return true
+  return error.statusCode === 409 && error.details?.code === 'BOOTSTRAP_NOT_ELIGIBLE'
 }
 
 async function renew(): Promise<void> {

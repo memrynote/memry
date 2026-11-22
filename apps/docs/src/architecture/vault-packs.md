@@ -419,7 +419,9 @@ a _smaller_ `note_id` sorts below the watermark, and a build before #5310 passed
 group it could not roll in. Each such row is in no pack, which costs every fresh device one
 `GET /sync/crdt/snapshot/:id`. The cron finds vaults holding a snapshot row at or below the
 watermark that no pack's `documents` holds, and that vault's snapshot backfill chain packs those
-rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
+rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). A message that
+healed and runs out of budget sends the next hop, so a remainder of several packs drains in one
+chain rather than one pack per tick. The pack starts
 at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
 commit holds only while no listed pack holds any of its documents, so two runs never pack a row
 twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows

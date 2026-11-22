@@ -139,7 +139,7 @@ describe('CorruptItemTracker', () => {
 
   describe('markFailed', () => {
     describe('#given new item #when markFailed called', () => {
-      it('#then creates entry with attempts=1', () => {
+      it('#then puts the item on the cooldown', () => {
         const tracker = createTracker()
 
         tracker.markFailed({ id: 'item-1', type: 'task' })
@@ -149,7 +149,7 @@ describe('CorruptItemTracker', () => {
     })
 
     describe('#given existing failed item #when markFailed called again', () => {
-      it('#then increments attempts and item remains not retryable', () => {
+      it('#then item remains not retryable', () => {
         const tracker = createTracker()
         tracker.markFailed({ id: 'item-1', type: 'task' })
         tracker.markFailed({ id: 'item-1', type: 'task' })
