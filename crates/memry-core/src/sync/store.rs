@@ -95,7 +95,7 @@ pub fn mark_deleted(
         params![item_type, item_id, server_cursor, now_ms, deleted_at],
     )
     .map_err(failed)?;
-    Ok(())
+    super::delete_wins::forget(conn, item_type, item_id)
 }
 
 /// Remembers a delete clock for `(type, id)`, merged into what is already
