@@ -230,6 +230,7 @@ const runtimeMocks = vi.hoisted(() => {
       setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
       setNetworkOnline: vi.fn(),
+      snapshotsHeld: vi.fn(() => false),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushSnapshotsForNotes: vi.fn(),
@@ -1031,6 +1032,47 @@ describe('sync runtime', () => {
       expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+  })
+
+  // #5247 C58.2: a scheduled batch held offline or paused returned false and
+  // waited for the next edit or close, if one ever came.
+  it('sends a snapshot batch held offline or paused on the reconnect and the resume', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.NoteBodyOutbox.instances[0]
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const push = runtimeMocks.crdtProvider.pushSnapshotsForNotes
+
+    vi.useFakeTimers()
+    try {
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-1', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).not.toHaveBeenCalled()
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      network.listeners.get('status-changed')?.({ online: true })
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+      expect(push).toHaveBeenLastCalledWith(['note-1'], { skipSeed: true })
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-2', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      ;(engine.deps.onSyncResumed as () => void)()
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(2)
+      expect(push).toHaveBeenLastCalledWith(['note-2'], { skipSeed: true })
+    } finally {
+      vi.useRealTimers()
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
     }
 
     await runtime.stopSyncRuntime({ skipFinalSync: true })
