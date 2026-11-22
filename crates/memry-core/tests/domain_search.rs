@@ -6,7 +6,7 @@
 //! | the title weight outranks the content weight      | the bm25 vector is a contract |
 //! | the body column is `extract_text` output          | §A.3, chapter 12 §12.1        |
 //! | a second pass touches only what moved             | §A.5 watermarks, FR-053       |
-//! | a stopped pass commits nothing                    | desktop close, #3530 13e      |
+//! | a stopped pass keeps its batches                 | desktop close, #3530 13e #5417|
 //! | a body update alone re-indexes the note           | the log is a watermark source |
 //! | a tombstone leaves the index and the results      | §A.1                          |
 //! | a dropped index rebuilds to the same answers      | §A.1, index.db is rebuildable |

@@ -248,6 +248,8 @@ mod domain_search_inbox;
 mod domain_search_names;
 #[path = "domain_search_query.rs"]
 mod domain_search_query;
+#[path = "domain_search_reindex.rs"]
+mod domain_search_reindex;
 #[path = "domain_search_rows.rs"]
 mod domain_search_rows;
 #[path = "domain_search_snippet.rs"]

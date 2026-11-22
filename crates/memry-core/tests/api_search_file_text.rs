@@ -273,7 +273,8 @@ fn traced(search: &Search, f: impl FnOnce()) -> Vec<String> {
 }
 
 /// `fts_notes.id` is UNINDEXED, so `WHERE id = ?` scans the whole table: a rebuild that
-/// ran one per note would be quadratic in the vault.
+/// ran one per note would be quadratic in the vault. Since #5417 an incremental pass also
+/// replaces each row by its rowid, read once per pass.
 #[test]
 fn a_full_rebuild_runs_no_per_note_delete() {
     let (db, vault) = vault("rebuild-no-delete");
@@ -299,9 +300,25 @@ fn a_full_rebuild_runs_no_per_note_delete() {
     });
     let done = done.expect("the pass");
     assert!(!done.full);
+    assert!(done.notes_indexed > 0);
+    assert_eq!(per_note(&incremental), 0, "{incremental:#?}");
+    let (rows, ids): (i64, i64) = search
+        .index_handle()
+        .read_blocking(|index| {
+            index
+                .query_row(
+                    "SELECT count(*), count(DISTINCT id) FROM fts_notes",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("count");
     assert_eq!(
-        per_note(&incremental),
-        done.notes_indexed as usize,
+        (rows, ids),
+        (3, 3),
         "an incremental pass still replaces each row"
     );
 }

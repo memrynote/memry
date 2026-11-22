@@ -291,16 +291,17 @@ impl Indexer {
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
-        if links.is_some() {
-            match self.search.reindex_until(stop)? {
-                Some(mut changed) => {
-                    changed.extend(links.take().unwrap_or_default());
-                    if !changed.is_empty() {
-                        announce(changed);
-                    }
-                    pass.reindexed = true;
+        if let Some(owed) = links {
+            // The links of every batch it committed join the owed ones, so a pass that stops
+            // or fails still announces them with the next one.
+            if self.search.reindex_until(stop, owed)? {
+                let changed = links.take().unwrap_or_default();
+                if !changed.is_empty() {
+                    announce(changed);
                 }
-                None => pass.stopped = true,
+                pass.reindexed = true;
+            } else {
+                pass.stopped = true;
             }
         }
         // Every note it read is typed with them, and an unread one holds no rows.

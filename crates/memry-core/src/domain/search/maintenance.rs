@@ -21,8 +21,8 @@
 //! and an insert of the same bytes, so the safe direction costs nothing.
 //!
 //! A missing watermark, or an `index_meta` `data.user_version` that does not
-//! match `data.db`, forces a full rebuild: every FTS table is emptied and
-//! every live row is re-indexed. `fts_inbox` is [`super::inbox`]'s, called
+//! match `data.db`, forces a full rebuild: every live row is re-indexed, and
+//! the rows of anything else are dropped ([`super::reindex_pass`]). `fts_inbox` is [`super::inbox`]'s, called
 //! from here with its own watermark.
 
 use std::collections::BTreeSet;
@@ -63,8 +63,8 @@ pub(super) const STAMPS_VERSION: i64 = 2;
 /// What one [`super::reindex`] pass did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Reindexed {
-    /// Both tables were emptied first: the watermark was missing or `data.db`
-    /// moved to a schema version this index was not built against.
+    /// Every row was re-indexed: the watermark was missing or `data.db` moved to
+    /// a schema version this index was not built against.
     pub full: bool,
     pub notes_indexed: usize,
     pub notes_removed: usize,
@@ -146,14 +146,13 @@ pub(super) fn index_note(
     index: &Connection,
     id: &str,
     now_ms: i64,
-    full: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
     let before = links::rows(index, id)?;
     #[cfg(feature = "markdown")]
     let refs_before = super::block_refs::usage_rows(index, id)?;
     body_tags::replaced_as_one(data, || {
-        index_note_rows(data, names, index, id, now_ms, full, done)
+        index_note_rows(data, names, index, id, now_ms, done)
     })?;
     done.links.note(id, &before, &links::rows(index, id)?);
     #[cfg(feature = "markdown")]
@@ -165,23 +164,17 @@ pub(super) fn index_note(
     Ok(())
 }
 
-/// Delete first, then insert if it still earns a row. A `full` pass emptied
-/// `fts_notes` already, and skips the delete: `id` is UNINDEXED, so each one
-/// scans the table and a rebuild of them would be quadratic.
+/// Inserts the note's row if it still earns one. The caller deleted its old
+/// rows by rowid: `id` is UNINDEXED, so a delete by it scans the table
+/// ([`super::reindex_pass`]).
 fn index_note_rows(
     data: &Connection,
     names: &WikiNames,
     index: &Connection,
     id: &str,
     now_ms: i64,
-    full: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
-    if !full {
-        index
-            .execute("DELETE FROM fts_notes WHERE id = ?1", params![id])
-            .map_err(failed)?;
-    }
     // The note's outgoing links go with it. Deleting first means a note that
     // stopped linking somewhere really stops: an insert-only pass would leave
     // a backlink the source no longer makes.
@@ -366,18 +359,14 @@ fn index_links(
     super::links::write(names, index, id, &blocks)
 }
 
-/// Re-indexes one task. A task has no body document, so `description` is the
-/// whole of its second column.
+/// Re-indexes one task; the caller deleted its old rows. A task has no body
+/// document, so `description` is the whole of its second column.
 pub(super) fn index_task(
     data: &Connection,
     index: &Connection,
     id: &str,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
-    index
-        .execute("DELETE FROM fts_tasks WHERE id = ?1", params![id])
-        .map_err(failed)?;
-
     let row = data
         .query_row(
             "SELECT payload, deleted_at, corrupt_reason FROM sync_items
