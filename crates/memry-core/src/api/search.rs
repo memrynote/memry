@@ -56,6 +56,9 @@ mod grouped;
 mod image_embeddings;
 #[cfg(feature = "markdown")]
 mod objects;
+mod reindex;
+#[cfg(test)]
+mod reindex_tests;
 mod results;
 #[cfg(feature = "vec")]
 mod similarity;
@@ -137,22 +140,6 @@ impl Search {
 }
 
 impl Search {
-    /// [`Search::reindex`] that `stop` can end between two rows; a stopped pass commits
-    /// nothing (`None`). Otherwise the links it committed changes to, which desktop announces.
-    /// For desktop's note index, which must let go of both databases when the vault closes.
-    /// Not on the FFI surface.
-    pub fn reindex_until(
-        &self,
-        stop: &dyn Fn() -> bool,
-    ) -> Result<Option<LinkChanges>, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(|done| done.links))
-            })
-        })
-    }
-
     /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
     #[doc(hidden)]
     pub fn index_handle(&self) -> Db {
@@ -545,10 +532,10 @@ impl Search {
     /// belongs on an explicit moment — a screen appearing, a sync finishing —
     /// and never on a keystroke.
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| Ok(summary(search::reindex(data, index, now_ms())?)))
-        })
+        Ok(summary(
+            self.reindex_in_batches(&|| false, &mut LinkChanges::default())?
+                .unwrap_or_default(),
+        ))
     }
 }
 

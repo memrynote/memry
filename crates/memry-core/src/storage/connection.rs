@@ -26,6 +26,7 @@
 //! ([`crate::crdt::body_writes`]).
 
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 
 use rusqlite::Connection;
@@ -49,6 +50,8 @@ pub struct Db {
     /// `data.db-wal` outlives the handle holding every recent write.
     readers: Option<Arc<ReaderPool>>,
     writer: Arc<Mutex<Connection>>,
+    /// Calls blocked on `writer` right now ([`Db::writers_waiting`]).
+    waiting: Arc<AtomicUsize>,
     observer: Arc<OnceLock<Weak<dyn BodyObserver>>>,
 }
 
@@ -74,6 +77,7 @@ impl Db {
         Ok(Self {
             writer: Arc::new(Mutex::new(conn)),
             readers: Some(Arc::new(readers)),
+            waiting: Arc::default(),
             observer: Arc::default(),
         })
     }
@@ -91,6 +95,7 @@ impl Db {
         Ok(Self {
             writer: Arc::new(Mutex::new(conn)),
             readers: None,
+            waiting: Arc::default(),
             observer: Arc::default(),
         })
     }
@@ -119,7 +124,7 @@ impl Db {
     {
         let observer = self.observer.get().and_then(Weak::upgrade);
         let (result, writes) = body_writes::recording(observer.is_some(), || {
-            let mut guard = lock(&self.writer)?;
+            let mut guard = self.lock_writer()?;
             let result = f(&mut guard);
             if let Some(observer) = &observer {
                 let noted = body_writes::recorded();
@@ -142,7 +147,21 @@ impl Db {
     where
         F: FnOnce(&mut Connection) -> Result<T, StorageError>,
     {
-        body_writes::recording(false, || f(&mut *lock(&self.writer)?)).0
+        body_writes::recording(false, || f(&mut *self.lock_writer()?)).0
+    }
+
+    /// How many writes are blocked on the writer now. A long job that writes in batches waits
+    /// for this to reach zero between two of them, so a write that queued behind one batch
+    /// runs before the next: the mutex alone hands the lock back to the thread that let it go.
+    pub fn writers_waiting(&self) -> usize {
+        self.waiting.load(Ordering::SeqCst)
+    }
+
+    fn lock_writer(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
+        self.waiting.fetch_add(1, Ordering::SeqCst);
+        let guard = lock(&self.writer);
+        self.waiting.fetch_sub(1, Ordering::SeqCst);
+        guard
     }
 
     /// Registers the one observer of this database's body writes, for every

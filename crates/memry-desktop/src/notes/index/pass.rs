@@ -303,21 +303,21 @@ impl Indexer {
         // which the first sync's bodies pass waits on (#5409). One that started before it
         // stops, committing nothing, and stays owed.
         let held = || self.first_sync.is_running();
-        if links.is_some() {
+        if let Some(owed) = links {
+            // The links of every batch it committed join the owed ones, so a pass that stops
+            // or fails still announces them with the next one.
             if held() {
                 pass.held = true;
-            } else {
-                match self.search.reindex_until(&|| stop() || held())? {
-                    Some(mut changed) => {
-                        changed.extend(links.take().unwrap_or_default());
-                        if !changed.is_empty() {
-                            announce(changed);
-                        }
-                        pass.reindexed = true;
-                    }
-                    None if stop() => pass.stopped = true,
-                    None => pass.held = true,
+            } else if self.search.reindex_until(&|| stop() || held(), owed)? {
+                let changed = links.take().unwrap_or_default();
+                if !changed.is_empty() {
+                    announce(changed);
                 }
+                pass.reindexed = true;
+            } else if stop() {
+                pass.stopped = true;
+            } else {
+                pass.held = true;
             }
         }
         // Every note it read is typed with them, and an unread one holds no rows.

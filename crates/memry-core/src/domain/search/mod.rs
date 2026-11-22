@@ -83,6 +83,7 @@ mod names;
 pub mod portal_reads;
 mod query;
 pub mod recents;
+mod reindex_pass;
 mod snippet;
 
 pub use links::LinkChanges;
@@ -95,8 +96,10 @@ pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
 #[cfg(feature = "markdown")]
 pub use maintenance::refresh_note_text;
 pub use maintenance::{
-    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
-    reindex_until,
+    DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY,
+};
+pub use reindex_pass::{
+    BATCH_NOTES, BATCH_TIME, RESUME_KEY, ReindexPass, Step as ReindexStep, reindex, reindex_until,
 };
 pub use snippet::SnippetSegment;
 
