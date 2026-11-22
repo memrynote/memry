@@ -869,6 +869,41 @@ describe('a body update with tags beside a journal write-back (#5479)', () => {
     })
   })
 
+  // The body update's frontmatter turn writes the tags it added, not its whole
+  // list, so a tags save queued ahead of it is kept (REVIEW-5482).
+  it('agent content+tags racing an IPC tags save keeps both tags', async () => {
+    const date = '2026-06-29'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    await seedNote(id, notePath, 'Morning.')
+    const doc = await restart(id)
+    Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+    let release = (): void => {}
+    const reached = new Promise<void>((resolve) => {
+      h.holdWrite = {
+        reached: resolve,
+        release: new Promise<void>((r) => {
+          release = r
+        })
+      }
+    })
+    const writeback = writebackNow(id, doc)
+    await reached
+    const body = agent().update({
+      date,
+      content_markdown: 'Morning. Typed. Agent.',
+      tags: ['focus']
+    })
+    const tags = viaIpc({ date, tags: ['other'] })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    release()
+    await Promise.all([writeback, body, tags])
+    await settle(id)
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('other')
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('focus')
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed. Agent.')
+  })
+
   // The update's frontmatter turn waits behind the held pass and holds no
   // store wait itself, so a quit flush started meanwhile settles.
   it('a quit flush started while the turn waits behind a pass settles', async () => {

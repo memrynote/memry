@@ -6,8 +6,10 @@
  * write-back turn. A pass that read the file before the rewrite writes back
  * the frontmatter it read, and the rewrite left the doc as it was, so nothing
  * re-arms the pass (#5479). While a pass is pending or running, the same patch
- * is applied again in the note's turn, after that pass's write. The patch is
- * idempotent, so a file that already holds it is not written.
+ * is applied again right after the running turn, ahead of local edits queued
+ * behind it, so a later local edit lands on top of the remote record instead
+ * of under it. The patch is idempotent, so a file that already holds it is not
+ * written.
  *
  * @module sync/item-handlers/note-frontmatter-turn
  */
@@ -21,7 +23,11 @@ import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { settleRemoteNoteFileSync, writeThroughLock } from '../../vault-locks/files'
-import { hasPendingWriteback, markWritebackIgnored, takeWritebackTurn } from '../crdt-writeback'
+import {
+  hasPendingWriteback,
+  markWritebackIgnored,
+  repairAfterRunningTurn
+} from '../crdt-writeback'
 import { baselineAfterWrite } from '../writeback-baseline'
 import { applyRemoteFrontmatter, type RemoteFrontmatterPatch } from './note-handler-frontmatter'
 
@@ -32,12 +38,14 @@ export function reapplyRemoteFrontmatterAfterPass(
   patch: RemoteFrontmatterPatch
 ): void {
   if (!hasPendingWriteback(noteId)) return
-  takeWritebackTurn(noteId, () => reapply(noteId, patch)).catch((err: unknown) => {
-    log.error('Could not re-apply a remote frontmatter update after a write-back', {
-      noteId,
-      err
+  repairAfterRunningTurn(noteId, () =>
+    reapply(noteId, patch).catch((err: unknown) => {
+      log.error('Could not re-apply a remote frontmatter update after a write-back', {
+        noteId,
+        err
+      })
     })
-  })
+  )
 }
 
 async function reapply(noteId: string, patch: RemoteFrontmatterPatch): Promise<void> {

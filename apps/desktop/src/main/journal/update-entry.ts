@@ -10,6 +10,7 @@
 
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { JournalEntry, UpdateEntryInput } from '@memry/contracts/journal-api'
+import type { HeaderTagEdit } from '@memry/contracts/notes-api'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
@@ -25,6 +26,7 @@ import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
+import { applyHeaderTagEdit } from '../vault/frontmatter'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
@@ -45,35 +47,48 @@ const logger = createLogger('Journal:Update')
  */
 export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
   const id = resolveJournalEntryId(input.date)
-  if (input.content === undefined) return takeWritebackTurn(id, () => writeJournalUpdate(input))
-  const entry = await writeJournalUpdate(input)
-  const setsTags = input.tags !== undefined || input.inlineTags !== undefined
-  if (!setsTags && input.properties === undefined) return entry
+  if (input.content === undefined) {
+    return takeWritebackTurn(id, async () => (await writeJournalUpdate(input)).entry)
+  }
+  const { entry, tagsBefore } = await writeJournalUpdate(input)
+  const added = entry.tags.filter((tag) => !tagsBefore.includes(tag))
+  const removed = tagsBefore.filter((tag) => !entry.tags.includes(tag))
+  const tagEdit: HeaderTagEdit | undefined =
+    added.length + removed.length > 0 ? { add: added, remove: removed } : undefined
+  if (!tagEdit && input.properties === undefined) return entry
   await takeWritebackTurn(id, () =>
-    rewriteJournalFrontmatter(input.date, setsTags ? entry.tags : undefined, input.properties)
+    rewriteJournalFrontmatter(input.date, tagEdit, input.properties)
   )
   return entry
 }
 
-/** Writes `tags` and `properties` over the entry's file body, when its file lacks them. */
+/**
+ * Writes the tag edit and `properties` over the entry's file body, when its
+ * file lacks them. The edit, not the whole list, so a tags save queued ahead
+ * of this turn keeps its tags.
+ */
 async function rewriteJournalFrontmatter(
   date: string,
-  tags: string[] | undefined,
+  tagEdit: HeaderTagEdit | undefined,
   properties: Record<string, unknown> | undefined
 ): Promise<void> {
   const current = await readJournalEntry(date)
   if (!current) return
+  const tags = tagEdit ? applyHeaderTagEdit(current.tags, tagEdit) : current.tags
   const { fileContent, previousFile } = await composeJournalEntryWrite(
     date,
     current.content,
-    tags ?? current.tags,
+    tags,
     current,
     properties ?? current.properties
   )
   if (fileContent !== previousFile) await writeJournalUpdate({ date, tags, properties })
 }
 
-async function writeJournalUpdate(input: UpdateEntryInput): Promise<JournalEntry> {
+/** Resolves the written entry and the tags the file held before. */
+async function writeJournalUpdate(
+  input: UpdateEntryInput
+): Promise<{ entry: JournalEntry; tagsBefore: string[] }> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -88,12 +103,13 @@ async function writeJournalUpdate(input: UpdateEntryInput): Promise<JournalEntry
     ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
     : givenTags
   if (!existing) {
-    return createJournalEntry({
+    const entry = await createJournalEntry({
       date: input.date,
       content: input.content ?? '',
       tags: newTags,
       properties: input.properties
     })
+    return { entry, tagsBefore: [] }
   }
 
   const newContent = input.content ?? existing.content
@@ -182,7 +198,7 @@ async function writeJournalUpdate(input: UpdateEntryInput): Promise<JournalEntry
     })
   }
 
-  return syncedEntry
+  return { entry: syncedEntry, tagsBefore: existing.tags }
 }
 
 /**

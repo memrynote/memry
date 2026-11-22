@@ -171,4 +171,42 @@ describe('a note tags or properties edit between a write-back read and write (#5
     expect.soft(onDisk).toContain('- focus')
     expect.soft(onDisk).toContain('Morning. Typed.')
   })
+
+  // The remote patch lands right after the pass that put the old frontmatter
+  // back, ahead of a local edit queued behind that pass, so the file holds the
+  // remote record and the local edit on top of it, in either order (REVIEW-5482).
+  const remoteTags = (note: { id: string; path: string }): void => {
+    const ctx: ApplyContext = { db: dataDb.db as unknown as DrizzleDb, emit: vi.fn() }
+    const clock = { 'device-remote': 1 }
+    expect(
+      noteHandler.applyUpsert(
+        ctx,
+        note.id,
+        { tags: ['focus'], folderPath: extractFolderFromPath(note.path), clock },
+        clock
+      )
+    ).toBe('applied')
+  }
+  const gap = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10))
+
+  it('a local tag edit queued before a remote tags update keeps both', async () => {
+    const onDisk = await raceWithPass(async (note) => {
+      const local = updateNote({ id: note.id, headerTags: { add: ['mine'] } })
+      await gap()
+      remoteTags(note)
+      await local
+    })
+    expect.soft(onDisk).toContain('- mine')
+    expect.soft(onDisk).toContain('- focus')
+  })
+
+  it('a local tag edit queued after a remote tags update keeps both', async () => {
+    const onDisk = await raceWithPass(async (note) => {
+      remoteTags(note)
+      await gap()
+      await updateNote({ id: note.id, headerTags: { add: ['mine'] } })
+    })
+    expect.soft(onDisk).toContain('- mine')
+    expect.soft(onDisk).toContain('- focus')
+  })
 })

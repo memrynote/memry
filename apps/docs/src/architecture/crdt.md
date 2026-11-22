@@ -868,10 +868,13 @@ document to its vault `.md` file and re-indexes it for search.
   feed can wait on the store and a pass queued behind it could hang the quit flush. The re-arm
   restores its body but not the tags or properties written beside it, so a body update that
   sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
-  properties) then writes them again over the file's body in the queue; a file that already
-  holds them is not written (#5479). A remote tags, properties, cover or aliases update
-  rewrites the frontmatter inside the sync apply, which cannot wait, so while a pass of the
-  note is pending or running it applies the same patch again in the queue, after that pass.
+  properties) then writes them again over the file's body in the queue: the tags it added and
+  removed, not its whole list, so a tags save queued ahead of it keeps its tags. A file that
+  already holds them is not written (#5479). A remote tags, properties, cover or aliases update
+  rewrites the frontmatter inside the sync apply, which cannot wait. While a pass of the note is
+  pending or running, it applies the same patch again as soon as the running turn ends, ahead of
+  the turns queued behind it (`repairAfterRunningTurn`), so a local edit queued meanwhile lands
+  on top of the remote record instead of under it.
   The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and
