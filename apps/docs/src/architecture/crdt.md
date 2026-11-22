@@ -814,6 +814,11 @@ document to its vault `.md` file and re-indexes it for search.
   write-back flush again — followed by `closeAllDatabases()` — on the timeout and
   cleanup-error paths before it force-exits. See
   [Shutdown Budget](/architecture/observability#shutdown-budget).
+- **The file owns its `tags:` list** — a pass keeps the `tags:` of an existing note or
+  journal file and writes the doc's `tags` array only into a file it creates
+  (`crdt-writeback-frontmatter.ts`). Tag edits write only the file, and tags reach other
+  devices in the note or journal record, so the doc's array can be stale: a journal day
+  created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
