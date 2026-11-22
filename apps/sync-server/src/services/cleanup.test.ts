@@ -420,8 +420,8 @@ describe('cleanup services', () => {
 
       // #then
       expect(selectBind).toHaveBeenCalledWith(
-        1_700_000_000,
-        1_700_000_000 - PACK_REPLACED_GRACE_SECONDS
+        1_700_000_000 - PACK_REPLACED_GRACE_SECONDS,
+        1_700_000_000
       )
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('sync_entitlements'))
       expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('version_history_days'))

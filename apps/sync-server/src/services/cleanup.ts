@@ -254,26 +254,35 @@ export const cleanupExpiredTombstones = async (
 
   // deleted_at is stored as pushed: seconds from desktop, ms from the Rust
   // core (#3053, docs/protocol ch.04). Values at or above 10^11 are ms.
+  // Rows of a vault whose record objects still settle sort last and wait.
   const expired = await db
     .prepare(
       `SELECT si.id, si.blob_key, si.user_id, si.vault_id, si.item_type, si.item_id, si.size_bytes,
-              si.server_cursor
+              si.server_cursor, (${RECORD_OBJECTS_SETTLED}) AS settled
        FROM sync_items si
        LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
        WHERE si.blob_key <> ''
          AND ${EXPIRED_TOMBSTONE_SQL}
-         AND ${RECORD_OBJECTS_SETTLED}
-       ORDER BY si.user_id
+       ORDER BY settled DESC, si.user_id
        LIMIT ${TOMBSTONE_SHED_LIMIT}`
     )
-    .bind(now, now - PACK_REPLACED_GRACE_SECONDS)
-    .all<ExpiredTombstoneRow>()
+    .bind(now - PACK_REPLACED_GRACE_SECONDS, now)
+    .all<ExpiredTombstoneRow & { settled: number }>()
 
+  const waiting = new Set<string>()
   const rowsByUser = new Map<string, ExpiredTombstoneRow[]>()
   for (const row of expired.results ?? []) {
+    if (!row.settled) {
+      waiting.add(row.vault_id)
+      continue
+    }
     const group = rowsByUser.get(row.user_id)
     if (group) group.push(row)
     else if (rowsByUser.size < TOMBSTONE_SHED_USERS_PER_TICK) rowsByUser.set(row.user_id, [row])
+  }
+
+  for (const vaultId of waiting) {
+    logger.info('Tombstone shed: vault waits for its record pack objects to settle', { vaultId })
   }
 
   const deleted: ExpiredTombstoneRow[] = []
@@ -339,10 +348,23 @@ const withRecordPacksCleared = async (
   for (const [vaultId, vaultRows] of byVault) {
     const scope = { userId: vaultRows[0].user_id, vaultId }
     const keyOf = (row: ExpiredTombstoneRow) => recordKey(row.item_type, row.item_id)
-    const { held, unknown } = await packedRecordKeys(db, scope, vaultRows.map(keyOf))
+    let packed: { held: Set<string>; unknown: boolean }
+    try {
+      packed = await packedRecordKeys(db, scope, vaultRows.map(keyOf))
+      if (packed.held.size > 0 || packed.unknown) {
+        await db.batch(unlistRecordPacks(db, scope, [...packed.held], now))
+      }
+    } catch (error) {
+      // The vault's rows wait for the next tick; other vaults go on.
+      logger.error('Tombstone shed: record packs not cleared, the vault waits', {
+        vaultId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      continue
+    }
+    const { held, unknown } = packed
     if (!unknown) free.push(...vaultRows.filter((row) => !held.has(keyOf(row))))
     if (held.size === 0 && !unknown) continue
-    await db.batch(unlistRecordPacks(db, scope, [...held], now))
     logger.info('Tombstone shed: record packs holding expired tombstones left the listing', {
       vaultId,
       rows: held.size,

@@ -5,10 +5,11 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { cleanupExpiredTombstones } from '../services/cleanup'
-import { compactVault } from '../services/pack-compaction'
+import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
 import { deleteReplacedPackObjects } from '../services/pack-replaced-objects'
 import { rewritePurgedPacks } from '../services/pack-purge-rewrite'
+import { rollupKind } from '../services/pack-rollup'
 import { PACK_SETTLE_SECONDS } from '../services/pack-sizing'
 import type { AppContext, Bindings } from '../types'
 import {
@@ -262,7 +263,8 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
     expect(await heldBy(secondVersion)).toEqual([])
     // The other item stays packed, under the same coverage.
     expect(await heldBy(`task:task-keep@${blobKey('task-keep')}`)).toHaveLength(1)
-    expect(coverage()).toEqual(coveredBefore.slice(0, 1))
+    // The emptied pack's coverage moved to its neighbour: no hole (REVIEW-5452).
+    expect(coverage()).toEqual([[coveredBefore[0][0], coveredBefore[coveredBefore.length - 1][1]]])
   })
 
   it('the shed waits until no pack object holds the tombstone or an older version of its item', async () => {
@@ -290,7 +292,8 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
     await messagePasses()
     expect(await heldBy('task:task-gone@')).toEqual([])
     expect(await heldBy(`task:task-keep@${blobKey('task-keep')}`)).toHaveLength(1)
-    expect(coverage()).toEqual(coveredBefore.slice(0, 1))
+    // The emptied pack's coverage moved to its neighbour: no hole (REVIEW-5452).
+    expect(coverage()).toEqual([[coveredBefore[0][0], coveredBefore[coveredBefore.length - 1][1]]])
 
     // The next tick sheds it.
     vi.setSystemTime(Date.now() + (PACK_REPLACED_GRACE_SECONDS + 1) * 1000)
@@ -344,5 +347,76 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
 
     expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
     expect(listedRecordPacks()).toHaveLength(1)
+  })
+
+  it('a record pack whose rewrite keeps nothing hands its coverage on, so the chain stays contiguous from 0 (REVIEW-5452)', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(app, { id: 'task-b', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'delete' })
+    await messagePasses()
+    await compactAll()
+
+    const chain = coverage()
+    expect(chain[0][0]).toBe(0)
+    for (let i = 1; i < chain.length; i++) expect(chain[i][0]).toBe(chain[i - 1][1])
+    expect(
+      harness.raw
+        .prepare(`SELECT COUNT(*) AS n FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
+        .get()
+    ).toEqual({ n: 0 })
+  })
+
+  it('a rollup whose input coverage changed after its plan does not swap', async () => {
+    const app = buildApp()
+    // One more pack than the bound of a tiny vault (packCountBound), so the rollup runs.
+    for (const id of ['task-1', 'task-2', 'task-3', 'task-4', 'task-5', 'task-6', 'task-7']) {
+      await push(app, { id, type: 'task', tick: 1, operation: 'create' })
+      // One build, no rollup.
+      vi.setSystemTime(Date.now() + (PACK_SETTLE_SECONDS + 1) * 1000)
+      await compactOneRange(harness.db, storage, SCOPE, 'record')
+    }
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(7)
+    // A purge rewrite hands the first pack's coverage on between plan and swap.
+    const realPut = storage.put.bind(storage)
+    let planned = false
+    storage.put = (async (...args: Parameters<R2Bucket['put']>) => {
+      storage.put = realPut
+      planned = true
+      harness.raw
+        .prepare(
+          `UPDATE pack_index SET cover_from = -1 WHERE item_kind = 'record' AND cover_from = 0`
+        )
+        .run()
+      return realPut(...args)
+    }) as R2Bucket['put']
+
+    // The swap fails, so the rollup reports nothing merged.
+    expect(await rollupKind(harness.db, storage, SCOPE, 'record')).toBeNull()
+    expect(planned).toBe(true)
+    expect(listedRecordPacks().map((pack) => pack.pack_key)).toEqual(
+      before.map((pack) => pack.pack_key)
+    )
+  })
+
+  it('a vault whose record packs cannot be read waits for the next tick without failing the shed', async () => {
+    const app = buildApp()
+    await push(app, { id: 'task-gone', type: 'task', tick: 1, operation: 'delete' })
+    await compactAll()
+    pastRetention()
+    const realBatch = harness.db.batch.bind(harness.db)
+    harness.db.batch = (async () => {
+      harness.db.batch = realBatch
+      throw new Error('D1 down')
+    }) as D1Database['batch']
+
+    expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
+    expect(shedRow('task-gone').blob_key).not.toBe('')
+    expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
+    await messagePasses()
+    expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(1)
   })
 })

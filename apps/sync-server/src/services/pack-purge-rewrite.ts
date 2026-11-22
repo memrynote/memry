@@ -162,7 +162,21 @@ const rewriteOne = async (
         recordUnlisted(db, scope, packId, newKey)
       )
     }
-    const settles = kept.length > 0 ? listed : { sql: '1', bind: [] }
+    // A covered record pack that keeps nothing lists no pack, so its coverage
+    // moves to a listed neighbour, or the chain would keep a hole that no
+    // rollup closes (§8.10, REVIEW-5452).
+    const absorbs = kept.length === 0 && coverage !== null
+    if (absorbs) statements.push(...absorbCoverage(db, scope, coverage, waiting))
+    const settles: Guard =
+      kept.length > 0
+        ? listed
+        : absorbs
+          ? {
+              sql: `EXISTS (SELECT 1 FROM pack_index WHERE user_id = ? AND vault_id = ?
+                AND item_kind = 'record' AND (cover_from = ? OR cover_through = ?))`,
+              bind: [scope.userId, scope.vaultId, coverage.from, coverage.through]
+            }
+          : { sql: '1', bind: [] }
     statements.push(
       db
         .prepare(
@@ -194,8 +208,39 @@ const rewriteOne = async (
       })
       return true
     }
+    if (absorbs) return 'no listed record pack adjacent to take its coverage'
   }
   return 'lost the commit to a concurrent prune, purge or listing'
+}
+
+/**
+ * Statements that hand an emptied record pack's coverage `(from, through]` to
+ * the listed pack that starts where it ended, else to the one that ends where
+ * it started, while its rewrite is still pending. No row matching leaves the
+ * rewrite pending, and the caller resets the kind.
+ */
+const absorbCoverage = (
+  db: D1Database,
+  scope: VaultScope,
+  coverage: { from: number; through: number },
+  waiting: Guard
+): D1PreparedStatement[] => {
+  const record = `user_id = ? AND vault_id = ? AND item_kind = 'record'`
+  const vault = [scope.userId, scope.vaultId]
+  return [
+    db
+      .prepare(
+        `UPDATE pack_index SET cover_from = ? WHERE ${record} AND cover_from = ? AND ${waiting.sql}`
+      )
+      .bind(coverage.from, ...vault, coverage.through, ...waiting.bind),
+    db
+      .prepare(
+        `UPDATE pack_index SET cover_through = ? WHERE ${record} AND cover_through = ?
+           AND NOT EXISTS (SELECT 1 FROM pack_index WHERE ${record} AND cover_from = ?)
+           AND ${waiting.sql}`
+      )
+      .bind(coverage.through, ...vault, coverage.from, ...vault, coverage.from, ...waiting.bind)
+  ]
 }
 
 /**

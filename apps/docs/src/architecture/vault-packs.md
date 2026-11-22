@@ -340,8 +340,10 @@ for the vault.
 **Record packs** (#5247). A record pack row also records its entries' `type:id` in
 `pack_index.documents`. The body purge takes every record pack that names the deleted note or journal
 out of the listing and rewrites it the same way. The rewrite keeps only the entries that are still current,
-so the tombstone stays and the older versions of the record go, under the same range and coverage
-(migration 0027 keeps the coverage on the `pack_replaced_objects` row). Every replaced record object of the
+so the tombstone stays and the older versions of the record go. A pack that keeps an entry is listed again
+under its old range and coverage (migration 0027 keeps the coverage on the `pack_replaced_objects` row). A
+pack that keeps nothing is not listed again: its coverage moves to the neighbouring listed record pack in the
+same batch, or the record kind is reset when there is none, so the coverage chain never keeps a hole. Every replaced record object of the
 vault is made due at once, so the same 900-second deadline holds. The tombstone shed
 (`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
 packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that

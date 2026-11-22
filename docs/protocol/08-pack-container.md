@@ -1143,8 +1143,18 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   (`unlistRecordPacks`,
   `apps/sync-server/src/services/record-pack-purge.ts:29`). The rewrite keeps
   every entry whose row is still current at its cursor, so the tombstone stays
-  and every older version of the record drops. It lists the new pack under the
-  same coverage, so the chain keeps tiling (§8.10). The same batch makes
+  and every older version of the record drops. A rewrite that keeps an entry
+  lists the new pack under the old pack's range and coverage. A rewrite that
+  keeps none lists no pack and hands its coverage `(from, through]` to a
+  listed neighbour in the same batch, guarded on the rewrite still pending:
+  the `record` pack whose `cover_from` is `through` takes `cover_from = from`,
+  else the one whose `cover_through` is `from` takes `cover_through =
+  through` (`absorbCoverage`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:222`). With neither, the
+  rewrite resets the kind. Either way the chain keeps tiling (§8.10). A
+  rollup's swap is guarded on its run's first `cover_from` and last
+  `cover_through` still being the values it planned with, so a neighbour that
+  took coverage meanwhile fails the swap. The same batch makes
   every replaced `record` object of the vault due at once. No statement
   rechecks that the document is dead: the rewrite keeps every current entry,
   so a re-create loses nothing. While the vault lists a `record` pack whose
