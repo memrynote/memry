@@ -7,7 +7,7 @@ import type * as StatusModule from '../vault/status'
  * attachment). Through the real note handler, push builder and sync queue
  * against real migrated data and index DBs and real files. The mocks are the
  * module-level database handles, the vault root, the write-back marker and
- * the logger (the count log is part of the contract).
+ * the logger (the re-push and kept-note logs are part of the contract).
  */
 let activeDb: unknown = null
 let activeIndexDb: unknown = null
@@ -236,7 +236,7 @@ describe('a device that first sees the note through the markdown record', () => 
     expect(fs.readFileSync(path.join(vaultRoot, 'scan.png'))).toEqual(PNG)
   })
 
-  it('keeps the markdown note when the re-pushed binary record arrives and counts it', () => {
+  it('keeps the markdown note when the re-pushed binary record arrives and logs it', () => {
     pull(markdownRecord(BASE_CLOCK))
     const before = fs.readFileSync(path.join(vaultRoot, 'scan.md'), 'utf-8')
 

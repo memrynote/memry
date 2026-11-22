@@ -55,6 +55,8 @@ Commands:
                                          timing marks
   bench oracle-state --vault <id>        dev only: print the local records and bodies as JSON,
                                          for the zero-loss oracle
+  bench body-coverage --vault <id>       dev only: print the local body coverage and the bodies
+                                         the server holds that this device does not, as JSON
 
 Options:
   --server <name|url>          staging (the default), prod, local, or a base URL
@@ -148,6 +150,10 @@ pub enum Command {
     },
     /// Dev only (#5232): the local state the zero-loss oracle reads.
     BenchOracleState {
+        vault: String,
+    },
+    /// Dev only (#5232): the bodies the server holds that this device does not.
+    BenchBodyCoverage {
         vault: String,
     },
 }
@@ -562,6 +568,7 @@ mod tests {
             "journal delete",
             "bench bootstrap --vault",
             "bench oracle-state --vault",
+            "bench body-coverage --vault",
         ] {
             assert!(HELP.contains(command), "help omits `{command}`");
         }

@@ -1128,7 +1128,9 @@ across devices:
   dropped before the online and token gate, so that happens offline too.
 - **Files that can never upload** — an empty file, and a media file that
   holds text instead of media, fail the same way on every retry, so the upload
-  refuses them before any request and its caller drops the queued row.
+  refuses them before any request and its caller drops the queued row. An
+  empty file drops silently. A media file that holds text is reported: a
+  vault-activity failure and an upload-failed toast that says why.
   "Text instead of media" means the extension has a known signature (SVG and
   unknown types are never judged), the leading bytes do not match it, and the
   file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the
@@ -1142,8 +1144,8 @@ across devices:
   the user replaced with real media fails the rule and is never touched
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
-  a warning logs the count, and the restore never requests that attachment
-  again. In on-demand download mode, or with no access token, the request is
+  a warning logs the count and sends it to telemetry, and the restore never
+  requests that attachment again. A corrupt list is logged and read as empty. In on-demand download mode, or with no access token, the request is
   released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
@@ -2156,6 +2158,10 @@ A null config is not an error anywhere. `presign-batch` answers a typed
 stays valid on the proxied path; `GET /sync/packs` omits `url` and `expiresAt`. Clients read all
 three as "use the proxied path". Old servers answer 404 to the presign route, which clients treat
 identically.
+
+`presign-batch` leaves out a hash the caller's vault does not own and presigns the rest. The client
+fetches that one chunk through the proxied GET, which reports its 404. The route never answers 404
+for a missing hash, because a client would read that as "no presign here" and proxy every download.
 
 **`R2_S3_BUCKET` must name the same bucket the `STORAGE` binding points at.** Nothing in the code
 cross-checks this — the Worker cannot read a binding's bucket name — so a mismatch fails at

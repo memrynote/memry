@@ -833,6 +833,7 @@ export class FullSyncRunner {
           }
         },
         getVaultKey: this.ctx.deps.getVaultKey,
+        workerBridge: this.ctx.deps.workerBridge,
         getSignerPublicKeys: async () => {
           // `sync_devices` holds ONLY this device's own row on a fresh
           // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
