@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   readJournalEntry: vi.fn(),
   readJournalFile: vi.fn(),
   writeJournalEntry: vi.fn(),
+  updateJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
   deleteNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
@@ -92,6 +93,10 @@ vi.mock('../../../vault/journal', () => ({
   readJournalEntry: mocks.readJournalEntry,
   readJournalFile: mocks.readJournalFile,
   writeJournalEntry: mocks.writeJournalEntry
+}))
+
+vi.mock('../../../journal/update-entry', () => ({
+  updateJournalEntry: mocks.updateJournalEntry
 }))
 
 vi.mock('../../../notes/domain', () => ({
@@ -974,7 +979,7 @@ describe('createVaultServiceHandles', () => {
         frontmatter: { date: '2026-10-04', mood: 'calm' },
         body: 'Stored caf\u00e9\n'
       })
-    mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+    mocks.updateJournalEntry.mockResolvedValue({ id: 'journal-1' })
     const storedEntry = {
       id: 'journal-1',
       date: '2026-10-04',
@@ -1321,6 +1326,12 @@ describe('createVaultServiceHandles', () => {
         journal = `${content.trimEnd()}\n`
         return { id: `j${date}` }
       })
+      mocks.updateJournalEntry.mockImplementation(
+        async ({ date, content }: { date: string; content?: string }) => {
+          if (content !== undefined) journal = `${content.trimEnd()}\n`
+          return { id: `j${date}` }
+        }
+      )
 
       await expect(
         handles.journal.createIfMissing({ date: '2026-05-10', content_markdown: 'Hello' })
@@ -2198,13 +2209,13 @@ describe('createVaultServiceHandles', () => {
       })
       await handles.journal.update({ date: '2026-10-01', content_markdown: '- [ ] Owner\n- [ ] B' })
 
-      expect(mocks.writeJournalEntry.mock.calls.map((call) => call[1])).toEqual([
-        '- [ ] A {check}',
+      expect(mocks.writeJournalEntry.mock.calls.map((call) => call[1])).toEqual(['- [ ] A {check}'])
+      expect(mocks.updateJournalEntry.mock.calls.map(([input]) => input.content)).toEqual([
         '- [ ] Owner\n- [ ] B {check}'
       ])
     })
 
-    it('rewrites the stored journal body as it was on a tags-only update', async () => {
+    it('leaves the body to the doc on a tags-only update', async () => {
       const handles = createVaultServiceHandles(deps)
       mocks.readJournalEntry.mockResolvedValueOnce({
         id: 'journal-1',
@@ -2212,13 +2223,13 @@ describe('createVaultServiceHandles', () => {
         tags: [],
         properties: {}
       })
-      mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-1' })
+      mocks.updateJournalEntry.mockResolvedValue({ id: 'journal-1' })
 
       await expect(
         handles.journal.update({ date: '2026-10-01', tags: ['review'] })
-      ).resolves.toEqual({ id: 'journal-1' })
-      expect(mocks.writeJournalEntry.mock.calls).toEqual([
-        ['2026-10-01', '- [ ] Owner', ['review'], {}]
+      ).resolves.toEqual({ id: 'j2026-10-01' })
+      expect(mocks.updateJournalEntry.mock.calls).toEqual([
+        [{ date: '2026-10-01', content: undefined, tags: ['review'], properties: undefined }]
       ])
     })
 

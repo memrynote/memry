@@ -189,7 +189,7 @@ describe('journalHandler', () => {
         path: 'journals/2026-05-10.md',
         parsedContent: 'remote content'
       }),
-      { isNew: true }
+      { isNew: true, source: 'sync' }
     )
     expect(mockFlushProjectionEvents).toHaveBeenCalled()
     expect(ctx.emit).toHaveBeenCalledWith(JournalChannels.events.ENTRY_CREATED, {

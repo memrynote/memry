@@ -916,11 +916,11 @@ Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.t
 is the only read of `changes.deleted`, which joins the pull request, and only
 what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:828`)
 and attested markers (`pull-coordinator.ts:818`, applied at `:913`) apply.
-Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:100`
+Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:103`
 pulls each unlisted row declaring `purged_tombstones`
 (`crates/memry-core/src/sync/pull/shared_apply.rs:57`), deletes only
 through a verified delete or a marker whose attestation verifies
-(`crates/memry-core/src/sync/first_sync/reconcile/markers.rs:83`), and
+(`crates/memry-core/src/sync/purged_markers.rs:148`, `delete_attestation::verify`), and
 keeps and logs the rest (`reconcile.rs:114`). Rust core page pull: every
 pulled delete opens and verifies before it applies
 (`crates/memry-core/src/sync/pull_decode.rs:73`);
@@ -996,7 +996,7 @@ The non-envelope case is the exception because the fault is on the server.
 tombstone: an id in `deleted` with no verified delete records nothing. The Rust
 core still honours a bare tombstone an older build filed: it is a `sync_items`
 row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
-before an apply (`crates/memry-core/src/sync/apply.rs:174`). The rest of this
+before an apply (`crates/memry-core/src/sync/apply.rs:172`). The rest of this
 section describes those rows.
 
 §5.12.1 establishes that a `deleted[]` entry is an **id with no

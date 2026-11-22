@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
@@ -12,7 +12,7 @@ import {
   removeSeedCopy,
   repairSeedDuplicates,
   scanSeedDuplicates,
-  scheduleSeedDuplicateRepair,
+  type scheduleSeedDuplicateRepair,
   type SeedRepairHost
 } from './crdt-seed-duplicates'
 
@@ -338,9 +338,49 @@ describe('repairSeedDuplicates', () => {
     expect(liveRoots(live)).toBe(2)
     expect(host.marked.size).toBe(0)
   })
+
+  // A vault switch while a note opens: the open doc is the new vault's same-id note.
+  it('changes nothing once the store is replaced during an open', async () => {
+    const docs = new Map([
+      ['note-a', await seedOverServerBody(BODY)],
+      ['note-b', await seedOverServerBody(BODY)]
+    ])
+    const host = memoryHost(docs)
+    const open = host.open
+    const opened: string[] = []
+    host.open = async (noteId, windowId, options) => {
+      opened.push(noteId)
+      host.storeId = 'store-b'
+      return open(noteId, windowId, options)
+    }
+
+    await repairSeedDuplicates(host)
+
+    expect(opened).toEqual(['note-a'])
+    expect(liveRoots(docs.get('note-a')!)).toBe(2)
+    expect(liveRoots(docs.get('note-b')!)).toBe(2)
+    expect(host.marked.size).toBe(0)
+  })
+
+  it('sets no marker in a store that replaced the repaired one before the delete was stored', async () => {
+    const host = memoryHost(new Map([['note-dup', await seedOverServerBody(BODY)]]))
+    host.whenPersisted = async () => {
+      host.storeId = 'store-b'
+    }
+
+    await repairSeedDuplicates(host)
+
+    expect(host.marked.size).toBe(0)
+  })
 })
 
 describe('scheduleSeedDuplicateRepair', () => {
+  // A fresh module per test: the once-per-process flag is module state.
+  let schedule: typeof scheduleSeedDuplicateRepair
+  beforeEach(async () => {
+    vi.resetModules()
+    schedule = (await import('./crdt-seed-duplicates')).scheduleSeedDuplicateRepair
+  })
   afterEach(() => vi.useRealTimers())
 
   it('reads nothing when the store changed before the timer fires', async () => {
@@ -349,12 +389,16 @@ describe('scheduleSeedDuplicateRepair', () => {
     const host = memoryHost(new Map([['note-dup', doc]]))
     const open = vi.spyOn(host, 'open')
 
-    scheduleSeedDuplicateRepair(host, () => true)
+    schedule(host, () => true)
     host.storeId = 'store-b'
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
 
     expect(open).not.toHaveBeenCalled()
     expect(liveRoots(doc)).toBe(2)
+
+    schedule(host, () => true)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+    await vi.waitFor(() => expect(liveRoots(doc)).toBe(1))
   })
 
   it('reads nothing when a note body became owed before the timer fires', async () => {
@@ -364,23 +408,27 @@ describe('scheduleSeedDuplicateRepair', () => {
     const open = vi.spyOn(host, 'open')
     let owed = false
 
-    scheduleSeedDuplicateRepair(host, () => !owed)
+    schedule(host, () => !owed)
     owed = true
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
 
     expect(open).not.toHaveBeenCalled()
     expect(liveRoots(doc)).toBe(2)
+
+    owed = false
+    schedule(host, () => !owed)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+    await vi.waitFor(() => expect(liveRoots(doc)).toBe(1))
   })
 
-  // Runs after the two deferrals above: each must leave the repair unscheduled.
   it('repairs ten minutes after the call, once per process', async () => {
     vi.useFakeTimers()
     const doc = await seedOverServerBody(BODY)
     const host = memoryHost(new Map([['note-dup', doc]]))
     const storeRead = vi.spyOn(host, 'readOnlyStore')
 
-    scheduleSeedDuplicateRepair(host, () => true)
-    scheduleSeedDuplicateRepair(host, () => true)
+    schedule(host, () => true)
+    schedule(host, () => true)
     await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 1)
     expect(storeRead).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(1)

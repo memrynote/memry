@@ -165,7 +165,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         createdAt: entry.createdAt,
         modifiedAt
       },
-      { isNew: !existing }
+      { isNew: !existing, source: 'sync' }
     )
     writeSyncedVaultFile(absolutePath, fileContent)
     void flushProjectionEvents()
