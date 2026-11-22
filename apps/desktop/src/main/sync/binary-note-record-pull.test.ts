@@ -290,6 +290,17 @@ describe('a markdown-typed row at a binary path (#5412 rows)', () => {
     expect(fs.existsSync(path.join(vaultRoot, 'scan.png'))).toBe(false)
   })
 
+  it('stays binary when a markdown record changes its title: renamed with .png, bytes kept', () => {
+    seedRow({ fileType: 'markdown', mimeType: null })
+    fs.writeFileSync(path.join(vaultRoot, 'scan.png'), PNG)
+
+    pull({ ...markdownRecord({ [DEVICE]: 1, [PEER]: 4 }), title: 'Title' })
+
+    expect(readRow()).toMatchObject({ path: 'Title.png', fileType: 'image', mimeType: 'image/png' })
+    expect(fs.readFileSync(path.join(vaultRoot, 'Title.png'))).toEqual(PNG)
+    expect(fs.existsSync(path.join(vaultRoot, 'Title.md'))).toBe(false)
+  })
+
   it('pushes a binary record, with the attachment, so new devices get the file', () => {
     seedRow({ fileType: 'markdown', mimeType: null })
     fs.writeFileSync(path.join(vaultRoot, 'scan.png'), 'text the write-back put in the file\n')

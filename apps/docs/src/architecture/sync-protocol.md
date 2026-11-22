@@ -1258,7 +1258,10 @@ format is unchanged; clients repair it among themselves:
 - **Push.** A row at a binary-extension path always pushes the binary record,
   with its type taken from the path. A markdown note is always a `.md` file.
   The same rule (`isBinaryNoteRow`) picks the binary branch on receive, so a
-  rename of such a row keeps the file's bytes and its extension.
+  rename of such a row keeps the file's bytes and its extension and the row is
+  retyped from the path. Metadata edits (tags, properties, title) on such a row
+  are refused instead of rewriting the file as markdown, and a remote delete
+  never reads its bytes as text to keep.
 - **Receive and heal.** A device that holds the note as a binary file with its
   attachment keeps its row and file when a markdown record without an
   attachment arrives. It then re-pushes its binary record once per markdown

@@ -4,6 +4,7 @@ import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@memry/contracts/sy
 import { utcNow } from '@memry/shared/utc'
 import {
   isBinaryFileType,
+  isBinaryNoteRow,
   getExtensionFromMimeType,
   getDefaultExtension,
   getMimeType,
@@ -767,7 +768,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       tombstoneClock: clock,
       deletedAt,
       bodyStateVector,
-      readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
+      readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs
