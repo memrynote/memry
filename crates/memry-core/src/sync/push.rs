@@ -220,6 +220,9 @@ impl PushCoordinator {
         let mut sealed: Vec<Json> = Vec::with_capacity(items.len());
         let mut sent: Vec<Collapsed> = Vec::with_capacity(items.len());
         for item in items {
+            if self.held_for_unknown_signer(&item).await? {
+                continue;
+            }
             match self.applies_kept_marker(&item).await {
                 Ok(true) => {
                     report.deleted_locally += 1;
@@ -329,6 +332,9 @@ impl PushCoordinator {
             None => return Ok(Err(format!("unknown outbox op `{}`", item.row.op))),
         };
         let pending = PendingRecord { operation, row };
+        if let Some(reason) = settle::undeletes(&pending) {
+            return Ok(Err(reason));
+        }
         Ok(self.sealer.seal_record(&pending).map_err(|e| e.to_string()))
     }
 

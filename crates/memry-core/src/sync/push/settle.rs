@@ -3,10 +3,31 @@
 //! fails. A failure defers that item and never the wave.
 
 use crate::api::errors::StorageError;
-use crate::sync::delete_wins;
+use crate::protocol::envelope::SyncOperation;
 use crate::sync::outbox::{self, Collapsed};
+use crate::sync::{delete_wins, unknown_signer};
 
-use super::{PushCoordinator, PushError, PushReport, now_ms, retry_at};
+use super::{PendingRecord, PushCoordinator, PushError, PushReport, now_ms, retry_at};
+
+/// Why a queued upsert of a row this device holds deleted retires unsent.
+///
+/// Sent, it is an `update`, which the server stores with no `deletedAt`
+/// while its signature covers one: the item comes back live on the server
+/// for a clockless type, and every peer refuses the record (VERIFY-5426).
+/// The pulled delete drops such an upsert ([`outbox::drop_upserts`]); this
+/// catches one queued another way, such as an older build's queue.
+pub(super) fn undeletes(item: &PendingRecord) -> Option<String> {
+    let row = &item.row;
+    if item.operation != SyncOperation::Update || row.deleted_at.is_none() {
+        return None;
+    }
+    let reason = "an upsert of a deleted row: the delete wins (§5.8)".to_owned();
+    eprintln!(
+        "memry-core: push: {}:{} retired: {reason}",
+        row.item_type, row.item_id
+    );
+    Some(reason)
+}
 
 impl PushCoordinator {
     /// An upsert of a row the reconcile kept against an unattested marker
@@ -15,6 +36,29 @@ impl PushCoordinator {
         let (item, device, now) = (item.clone(), self.clock_device.clone(), now_ms());
         let apply = move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, &device, now);
         self.db.call(apply).await
+    }
+
+    /// An upsert of a row whose last pulled record waits on an unknown signer
+    /// ([`unknown_signer::holds`]) is deferred, not sent: that record may be a
+    /// delete the server would let this edit reverse (#5413).
+    pub(super) async fn held_for_unknown_signer(
+        &self,
+        item: &Collapsed,
+    ) -> Result<bool, PushError> {
+        if item.row.op != outbox::OP_UPSERT {
+            return Ok(false);
+        }
+        let item_id = item.row.item_id.clone();
+        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_id);
+        if !self.db.call(holds).await? {
+            return Ok(false);
+        }
+        let (ids, at) = (item.ids(), retry_at(now_ms(), item.row.attempt_count));
+        let reason = "held: its last pulled record waits on an unknown signer";
+        self.db
+            .call(move |conn| outbox::defer(conn, &ids, reason, Some(at)))
+            .await?;
+        Ok(true)
     }
 
     /// The items the server answered `SYNC_DELETE_WINS`, one at a time.

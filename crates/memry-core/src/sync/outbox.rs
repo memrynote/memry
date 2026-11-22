@@ -480,6 +480,23 @@ pub(crate) fn drop_body_updates(tx: &Connection, kind: &str, id: &str) -> Result
     Ok(())
 }
 
+/// Drops the queued record edits of an item a pulled delete just removed
+/// (chapter 05 §5.8). The delete wins: pushed, the edit is an `update` the
+/// server stores over its tombstone, which undeletes the item. A note or
+/// journal's unsent text is already kept as an inbox copy (#3029). `kind`
+/// `None` is an untyped delete, which covers every type under the id.
+pub(crate) fn drop_upserts(
+    tx: &Connection,
+    kind: Option<&str>,
+    id: &str,
+) -> Result<(), StorageError> {
+    let sql =
+        "DELETE FROM outbox WHERE (?1 IS NULL OR item_type = ?1) AND item_id = ?2 AND op = ?3";
+    tx.execute(sql, params![kind, id, OP_UPSERT])
+        .map_err(failed)?;
+    Ok(())
+}
+
 /// Records a rejection against rows that stay queued: one attempt, the
 /// truncated reason, and the earliest time to try again.
 ///
@@ -536,64 +553,4 @@ fn truncate(reason: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn row(id: i64, item_type: &str, item_id: &str, op: &str) -> OutboxRow {
-        OutboxRow {
-            id,
-            item_type: item_type.to_owned(),
-            item_id: item_id.to_owned(),
-            op: op.to_owned(),
-            payload: None,
-            enqueued_at: 0,
-            attempt_count: 0,
-            last_error: None,
-            next_attempt_at: None,
-        }
-    }
-
-    #[test]
-    fn collapse_keeps_the_newest_row_per_key_and_drops_no_id() {
-        let collapsed = collapse_records(vec![
-            row(1, "task", "t1", OP_UPSERT),
-            row(2, "task", "t2", OP_UPSERT),
-            row(3, "task", "t1", OP_DELETE),
-        ]);
-        assert_eq!(collapsed.len(), 2);
-        assert_eq!(collapsed[0].row.id, 3);
-        assert_eq!(collapsed[0].row.op, OP_DELETE);
-        assert_eq!(collapsed[0].superseded, vec![1]);
-        assert_eq!(collapsed[0].ids(), vec![3, 1]);
-        assert_eq!(collapsed[1].row.id, 2);
-        assert!(collapsed[1].superseded.is_empty());
-    }
-
-    #[test]
-    fn collapse_never_touches_a_crdt_row() {
-        let collapsed = collapse_records(vec![
-            row(1, "note", "n1", OP_CRDT_UPDATE),
-            row(2, "note", "n1", OP_CRDT_UPDATE),
-        ]);
-        assert!(
-            collapsed.is_empty(),
-            "collapsing CRDT rows drops updates a peer has not seen"
-        );
-    }
-
-    #[test]
-    fn the_same_id_under_two_types_is_two_push_items() {
-        // §5.15: the bookkeeping key is `(type, id)` and never `id` alone.
-        let collapsed = collapse_records(vec![
-            row(1, "project", "inbox", OP_UPSERT),
-            row(2, "tag_definition", "inbox", OP_UPSERT),
-        ]);
-        assert_eq!(collapsed.len(), 2);
-    }
-
-    #[test]
-    fn last_error_is_truncated() {
-        let long = "x".repeat(MAX_LAST_ERROR_CHARS * 2);
-        assert_eq!(truncate(&long).chars().count(), MAX_LAST_ERROR_CHARS);
-    }
-}
+mod tests;
