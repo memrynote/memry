@@ -1,0 +1,152 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+import { createSyncAdapterRegistry } from '@memry/sync-core'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import type { VectorClock } from '@memry/contracts/sync-api'
+import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
+import { asSyncDb } from '@tests/utils/test-db'
+import {
+  initTagDefinitionSyncService,
+  resetTagDefinitionSyncService
+} from '@memry/sync-client/tag-definition-sync'
+import { SyncEngine } from './engine'
+import { ItemApplier } from './apply-item'
+import { getRemoteSyncAdapter } from './item-handlers'
+import { enqueueLocalSyncUpdate } from './local-mutations'
+import type { EncryptItemInput } from './encrypt'
+
+/**
+ * #5428: a queued edit of an item a pulled delete removed. Pushed, the frozen
+ * payload is an `update` the server stores over its tombstone (`deleted_at =
+ * NULL`), and for a clockless tombstone nothing refuses it: the item comes back
+ * on every device. Chapter 05 §5.8: the delete wins unless the local clock
+ * happens after it, and only then is the local edit (a re-create) still sent.
+ * Real tag service, real queue, real apply and engine push; only crypto and
+ * HTTP are stubbed.
+ */
+describe('a queued edit of an item a pulled delete removed (#5428)', () => {
+  const { getDb } = setupTestDb()
+
+  afterEach(() => {
+    resetTagDefinitionSyncService()
+    vi.restoreAllMocks()
+  })
+
+  async function sessionWithQueuedTagEdit(localClock: VectorClock) {
+    const db = asSyncDb(getDb().db)
+    db.insert(syncDevices)
+      .values({
+        id: 'device-1',
+        name: 'This device',
+        platform: 'darwin',
+        appVersion: '2026.11.21',
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: 'pk'
+      })
+      .run()
+    const getSigningKeys = vi.fn().mockResolvedValue({
+      secretKey: new Uint8Array(64),
+      publicKey: new Uint8Array(32),
+      deviceId: 'device-1'
+    })
+    const base = createMockDeps(getDb(), { getSigningKeys })
+    const tagSync = initTagDefinitionSyncService({
+      queue: base.queue,
+      db,
+      getDeviceId: () => getCurrentDeviceId(db)
+    })
+    const adapters = createSyncAdapterRegistry([
+      {
+        type: 'tag_definition',
+        kind: 'record' as const,
+        local: tagSync as never,
+        remote: getRemoteSyncAdapter('tag_definition')
+      }
+    ])
+    const deps = { ...base, adapters }
+    db.insert(tagDefinitions)
+      .values({ name: 'work', color: 'red', clock: localClock } as never)
+      .run()
+    enqueueLocalSyncUpdate('tag_definition', 'work')
+
+    const sent: EncryptItemInput[] = []
+    vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation((input) => {
+      sent.push(input)
+      return {
+        pushItem: {
+          id: input.id,
+          type: input.type,
+          operation: input.operation,
+          encryptedKey: 'ek',
+          keyNonce: 'kn',
+          encryptedData: 'ed',
+          dataNonce: 'dn',
+          signature: 'sig',
+          signerDeviceId: input.signerDeviceId,
+          clock: input.clock
+        },
+        sizeBytes: 100
+      }
+    })
+    const post = vi.fn().mockImplementation((_path: string, body: { items: { id: string }[] }) =>
+      Promise.resolve({
+        accepted: body.items.map((item) => item.id),
+        rejected: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+    )
+    vi.spyOn(await import('./http-client'), 'postToServer').mockImplementation(post)
+
+    const applier = new ItemApplier(db, vi.fn(), adapters)
+    const pullDelete = (clock: VectorClock | undefined) =>
+      applier.apply({
+        itemId: 'work',
+        type: 'tag_definition',
+        operation: 'delete',
+        content: new Uint8Array(),
+        clock,
+        deletedAt: Math.floor(Date.now() / 1000)
+      })
+    const pushed = () =>
+      post.mock.calls
+        .flatMap(([, body]) => (body as { items: { id: string; operation: string }[] }).items)
+        .map((item) => `${item.id}:${item.operation}`)
+
+    expect(deps.queue.peek(10).map((row) => `${row.itemId}:${row.operation}`)).toEqual([
+      'work:update'
+    ])
+    return { db, deps, engine: new SyncEngine(deps), pullDelete, pushed, sent }
+  }
+
+  it('never pushes the edit over a clockless tombstone', async () => {
+    const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
+
+    expect(s.pullDelete(undefined)).toBe('applied')
+    await s.engine.push()
+
+    expect(s.pushed()).toEqual([])
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
+  it('never pushes the edit over a tombstone concurrent with it (the delete wins)', async () => {
+    const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
+
+    expect(s.pullDelete({ 'device-1': 1, 'device-2': 1 })).toBe('applied')
+    await s.engine.push()
+
+    expect(s.pushed()).toEqual([])
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
+  it('still sends a re-create whose clock happens after the delete', async () => {
+    const s = await sessionWithQueuedTagEdit({ 'device-1': 3, 'device-2': 1 })
+
+    expect(s.pullDelete({ 'device-1': 1, 'device-2': 1 })).toBe('skipped')
+    await s.engine.push()
+
+    expect(s.pushed()).toEqual(['work:update'])
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+})

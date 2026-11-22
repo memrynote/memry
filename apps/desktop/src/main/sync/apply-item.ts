@@ -1,4 +1,6 @@
+import { and, eq, ne } from 'drizzle-orm'
 import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { getHandler, getRemoteSyncAdapter } from './item-handlers'
 import type { ApplyResult, DrizzleDb, EmitToWindows } from './item-handlers'
@@ -126,6 +128,22 @@ export class ItemApplier {
       // the delete and the cursor. An absent row is how a fresh install learns
       // the clock; a skipped delete means the local row is already past it.
       recordTombstoneClock(db, input.type, input.itemId, input.clock)
+      // The delete won (chapter 05 §5.8). A queued edit of the item would
+      // push its frozen payload as an `update`, which the server stores over
+      // the tombstone and every device pulls back (#5428). The handler has
+      // already kept unsent note/journal text (#3029). A skipped delete means
+      // the local clock is after it: that re-create stays queued.
+      if (result === 'applied') {
+        db.delete(syncQueue)
+          .where(
+            and(
+              eq(syncQueue.type, input.type),
+              eq(syncQueue.itemId, input.itemId),
+              ne(syncQueue.operation, 'delete')
+            )
+          )
+          .run()
+      }
       return result
     }
 
