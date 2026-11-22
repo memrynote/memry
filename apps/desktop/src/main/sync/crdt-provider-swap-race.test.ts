@@ -39,7 +39,8 @@ const mocks = vi.hoisted(() => ({
   vaultRoot: '',
   owed: new Set<string>(),
   cleared: [] as string[],
-  taken: [] as string[]
+  taken: [] as string[],
+  binary: new Set<string>()
 }))
 
 vi.mock('electron', () => ({
@@ -88,19 +89,22 @@ vi.mock('../store', () => ({
   recordCrdtPreflightFailure: vi.fn()
 }))
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (_db: unknown, id: string) => ({
-    id,
-    path: `notes/${id}.md`,
-    title: id,
-    fileType: 'markdown'
-  }),
+  getNoteCacheById: (_db: unknown, id: string) =>
+    mocks.binary.has(id)
+      ? { id, path: `notes/${id}.pdf`, title: id, fileType: 'pdf' }
+      : { id, path: `notes/${id}.md`, title: id, fileType: 'markdown' },
   updateNoteCache: vi.fn()
 }))
 vi.mock('../database', () => ({
   getDatabase: () => ({}),
   getIndexDatabase: () => ({ kind: 'index-db' })
 }))
-vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
+vi.mock('@memry/storage-data', () => ({
+  updateNoteMetadata: vi.fn(),
+  // No case twin holds any file here.
+  getNoteMetadataByPath: () => undefined,
+  listNoteMetadataByFoldedPath: () => []
+}))
 vi.mock('./local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
@@ -244,4 +248,45 @@ describe('a note file swapped for an outside link after the vault check (#3095)'
       expect(mocks.owed.has('owed')).toBe(true)
     }
   )
+})
+
+describe('a binary note that owes its file body (#5412)', () => {
+  let provider: CrdtProvider
+
+  // oxlint-disable-next-line typescript/no-base-to-string -- Y.XmlFragment toString returns the document text
+  const docText = (doc: Y.Doc): string => doc.getXmlFragment('prosemirror').toString()
+
+  beforeEach(async () => {
+    mocks.vaultRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-owed-bin-')))
+    mocks.owed.clear()
+    mocks.binary.clear()
+    mocks.cleared = []
+    mocks.taken = []
+    provider = new CrdtProvider()
+    await provider.init(
+      { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() } as never,
+      vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+    )
+  })
+
+  afterEach(() => {
+    resetCrdtProvider()
+    fs.rmSync(mocks.vaultRoot, { recursive: true, force: true })
+  })
+
+  it('never merges the blob into the doc and clears the marker', async () => {
+    fs.mkdirSync(path.join(mocks.vaultRoot, 'notes'), { recursive: true })
+    fs.writeFileSync(path.join(mocks.vaultRoot, 'notes', 'scan.pdf'), '%PDF-1.7 blob bytes')
+    mocks.binary.add('scan')
+    mocks.owed.add('scan')
+    await provider.open('scan', undefined, { skipSeed: true })
+    const doc = provider.getDoc('scan')!
+    doc.getXmlFragment('prosemirror').insert(0, [new Y.XmlText('server body')])
+
+    await expect(provider.takeFileAfterMerge('scan', doc)).resolves.toBe(true)
+
+    expect(mocks.taken).toEqual([])
+    expect(docText(doc)).not.toContain('%PDF')
+    expect(mocks.owed.has('scan')).toBe(false)
+  })
 })

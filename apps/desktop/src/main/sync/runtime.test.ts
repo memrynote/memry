@@ -204,6 +204,11 @@ const runtimeMocks = vi.hoisted(() => {
     setOnTokenRefreshed: vi.fn((cb: (() => void) | null) => {
       runtimeMocks.tokenRefreshedCallback = cb
     }),
+    // The same single slot for the session-ended callback (#5342).
+    sessionEndedCallback: null as (() => void) | null,
+    setOnSessionEnded: vi.fn((cb: (() => void) | null) => {
+      runtimeMocks.sessionEndedCallback = cb
+    }),
     trackMainEvent: vi.fn(),
     logDebug: vi.fn(),
     logInfo: vi.fn(),
@@ -230,12 +235,14 @@ const runtimeMocks = vi.hoisted(() => {
       setRemoteBodyQuery: vi.fn(),
       setSyncPaused: vi.fn(),
       setNetworkOnline: vi.fn(),
+      snapshotsHeld: vi.fn(() => false),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),
       pushSnapshotsForNotes: vi.fn(),
       setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
+      reportEditorWaits: vi.fn(),
       destroy: vi.fn()
     },
     browserSend: vi.fn(),
@@ -524,7 +531,7 @@ vi.mock('./token-manager', () => ({
   refreshAccessToken: runtimeMocks.refreshAccessToken,
   retrieveToken: runtimeMocks.retrieveToken,
   setOnTokenRefreshed: runtimeMocks.setOnTokenRefreshed,
-  setOnSessionEnded: vi.fn()
+  setOnSessionEnded: runtimeMocks.setOnSessionEnded
 }))
 
 vi.mock('./vault-account-binding', () => ({
@@ -1031,6 +1038,47 @@ describe('sync runtime', () => {
       expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
     } finally {
       vi.useRealTimers()
+    }
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+  })
+
+  // #5247 C58.2: a scheduled batch held offline or paused returned false and
+  // waited for the next edit or close, if one ever came.
+  it('sends a snapshot batch held offline or paused on the reconnect and the resume', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.NoteBodyOutbox.instances[0]
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    const engine = runtimeMocks.SyncEngine.instances.at(-1)!
+    const push = runtimeMocks.crdtProvider.pushSnapshotsForNotes
+
+    vi.useFakeTimers()
+    try {
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-1', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).not.toHaveBeenCalled()
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      network.listeners.get('status-changed')?.({ online: true })
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+      expect(push).toHaveBeenLastCalledWith(['note-1'], { skipSeed: true })
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(true)
+      await queue.onBatch?.('note-2', [new Uint8Array([1])])
+      await vi.advanceTimersByTimeAsync(30_000 + SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(1)
+
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
+      ;(engine.deps.onSyncResumed as () => void)()
+      await vi.advanceTimersByTimeAsync(SNAPSHOT_BATCH_WINDOW_MS)
+      expect(push).toHaveBeenCalledTimes(2)
+      expect(push).toHaveBeenLastCalledWith(['note-2'], { skipSeed: true })
+    } finally {
+      vi.useRealTimers()
+      runtimeMocks.crdtProvider.snapshotsHeld.mockReturnValue(false)
     }
 
     await runtime.stopSyncRuntime({ skipFinalSync: true })
@@ -1679,6 +1727,22 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalled()
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('shows waiting editors read-only when the session ends, and stops reaching them after stop (#5342)', async () => {
+    runtimeMocks.sessionEndedCallback = null
+    /** What token-manager does when the session ends: invoke the one slot. */
+    const fireSessionEnded = (): void => runtimeMocks.sessionEndedCallback?.()
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).toHaveBeenCalledTimes(1)
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+    runtimeMocks.crdtProvider.reportEditorWaits.mockClear()
+    fireSessionEnded()
+    expect(runtimeMocks.crdtProvider.reportEditorWaits).not.toHaveBeenCalled()
   })
 
   describe('token-refresh callback lifecycle', () => {

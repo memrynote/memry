@@ -324,6 +324,135 @@ describe('pack body applier', () => {
     })
   })
 
+  describe('on the crypto worker', () => {
+    const plain = (text: string) => new TextEncoder().encode(text)
+
+    /** `worker.ts` handleDecryptCrdtBatch: per-item verdicts in-band. */
+    const fakeWorker = () => ({
+      isRunning: true,
+      decryptCrdtBatch: vi.fn(
+        async (
+          items: Array<{
+            index: number
+            noteId: string
+            data?: Uint8Array
+            signerDeviceId: string
+          }>,
+          key: Uint8Array,
+          signers: Record<string, string>
+        ) => {
+          const results: Array<{ index: number; update: Uint8Array }> = []
+          const failures: Array<{
+            index: number
+            noteId: string
+            error: string
+            isSignatureError: boolean
+          }> = []
+          for (const item of items) {
+            try {
+              const publicKey = new Uint8Array(Buffer.from(signers[item.signerDeviceId], 'base64'))
+              results.push({
+                index: item.index,
+                update: decryptCrdtUpdate(item.data!, key, item.noteId, publicKey)
+              })
+            } catch (error) {
+              failures.push({
+                index: item.index,
+                noteId: item.noteId,
+                error: String(error),
+                isSignatureError: true
+              })
+            }
+          }
+          return { results, failures }
+        }
+      )
+    })
+
+    const plan = (noteId: string, signer: SignKeyPair, updateSigner = 'a'): DocumentPlan => ({
+      ...snapshotPlan(noteId, sealed(noteId, 'base', signer), 4, 'r4'),
+      updates: [
+        update(noteId, 5, 'a', sealed(noteId, 'u5', deviceA)),
+        update(noteId, 6, updateSigner, sealed(noteId, 'u6', deviceA)),
+        update(noteId, 7, 'a', sealed(noteId, 'u7', deviceA))
+      ],
+      watermark: { appliedSequence: 7, snapshotRevision: 'r4' }
+    })
+
+    // 11k packed updates on a 17k-note vault: verify + decrypt on the main
+    // thread froze the window for the whole pack phase (#5247 C68.2).
+    it('opens snapshots and updates off this thread, one round trip once the signer is known', async () => {
+      const worker = fakeWorker()
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        workerBridge: worker,
+        decrypt
+      })
+
+      await expect(sut.applyDocument('note-1', plan('note-1', deviceB))).resolves.toEqual({
+        appliedSequence: 7,
+        snapshotRevision: 'r4'
+      })
+      worker.decryptCrdtBatch.mockClear()
+      await expect(sut.applyDocument('note-2', plan('note-2', deviceB))).resolves.toEqual({
+        appliedSequence: 7,
+        snapshotRevision: 'r4'
+      })
+
+      expect(decrypt).not.toHaveBeenCalled()
+      expect(worker.decryptCrdtBatch).toHaveBeenCalledOnce()
+      expect(applied.filter((row) => row.noteId === 'note-2').map((row) => row.update)).toEqual([
+        plain('base'),
+        plain('u5'),
+        plain('u6'),
+        plain('u7')
+      ])
+    })
+
+    it('stops at the first update the worker refuses, vouching only for what applied', async () => {
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        workerBridge: fakeWorker()
+      })
+
+      const reached = await sut.applyDocument('note-1', plan('note-1', deviceA, 'b'))
+
+      expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
+      expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+    })
+
+    it('falls back to this thread when the worker rejects', async () => {
+      const worker = fakeWorker()
+      worker.decryptCrdtBatch.mockRejectedValue(new Error('worker gone'))
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => new Map([['a', deviceA.publicKey]]),
+        workerBridge: worker
+      })
+
+      await expect(sut.applyDocument('note-1', plan('note-1', deviceA))).resolves.toEqual({
+        appliedSequence: 7,
+        snapshotRevision: 'r4'
+      })
+      expect(applied).toHaveLength(4)
+    })
+  })
+
   describe('seeding an unopened doc', () => {
     const plan = () => snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 4, 'r4')
 
