@@ -306,6 +306,52 @@ describe('use-notes-query', () => {
     }
   })
 
+  it('#5390: a bootstrap stream of created notes refetches the folders by cost, not once per note', async () => {
+    vi.useFakeTimers()
+    try {
+      // getFolders walks every vault directory, so it costs like a list call.
+      const FOLDERS_MS = 400
+      let latest = 'Work'
+      mocks.notesService.getFolders.mockImplementation(() => {
+        const name = latest
+        return new Promise((resolve) =>
+          setTimeout(() => resolve([{ path: name, icon: null }]), FOLDERS_MS)
+        )
+      })
+      const folders = renderHook(() => useNoteFoldersQuery(), { wrapper })
+      renderHook(() => useNoteFoldersQuery(), { wrapper })
+      await vi.advanceTimersByTimeAsync(FOLDERS_MS)
+      const initialCalls = mocks.notesService.getFolders.mock.calls.length
+
+      const CREATES = 1000
+      const GAP_MS = 25
+      for (let i = 0; i < CREATES; i++) {
+        latest = `Folder ${i}`
+        for (const handler of mocks.handlers.created) handler({ id: `n${i}`, source: 'sync' })
+        await vi.advanceTimersByTimeAsync(GAP_MS)
+      }
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      const rest = Math.min(2500, FOLDERS_MS * 10)
+      const maxRounds = Math.ceil((CREATES * GAP_MS) / (FOLDERS_MS + rest)) + 2
+      expect(mocks.notesService.getFolders.mock.calls.length - initialCalls).toBeLessThanOrEqual(
+        maxRounds
+      )
+      expect(folders.result.current.folders[0]?.path).toBe(`Folder ${CREATES - 1}`)
+
+      // A folder the user configures shows at once.
+      const before = mocks.notesService.getFolders.mock.calls.length
+      latest = 'Configured'
+      for (const handler of mocks.handlers.folderConfigUpdated) handler()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.notesService.getFolders).toHaveBeenCalledTimes(before + 1)
+      await vi.advanceTimersByTimeAsync(FOLDERS_MS + 10)
+      expect(folders.result.current.folders[0]?.path).toBe('Configured')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('#5398: a user edit or a journal write mid-rest shows within the burst window, however slow the list call', async () => {
     vi.useFakeTimers()
     try {
