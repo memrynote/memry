@@ -4,6 +4,7 @@ import { NoteSyncPayloadSchema, type NoteSyncPayload } from '@memry/contracts/sy
 import { utcNow } from '@memry/shared/utc'
 import {
   isBinaryFileType,
+  isBinaryNoteRow,
   getExtensionFromMimeType,
   getDefaultExtension,
   getMimeType,
@@ -14,7 +15,7 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { extractFolderFromPath } from '../note-sync'
+import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { baselineAfterWrite } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
@@ -79,6 +80,12 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
+import {
+  binaryRecordFields,
+  healBinaryNoteRecord,
+  isMarkdownRecordOverBinaryNote,
+  noteBinaryRecordForMarkdownRow
+} from './binary-note-record'
 import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import {
   forgetBaselineOfRemotelyDeletedNote,
@@ -250,7 +257,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const modifiedAt = laterModifiedAt(existing.modifiedAt, data.modifiedAt ?? now)
       const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
-      if (existing.fileType && isBinaryFileType(existing.fileType)) {
+      const binary = binaryRecordFields(existing)
+      if (binary) {
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
         const localFolder = extractFolderFromPath(existing.path)
@@ -269,10 +277,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
         if (needsPathUpdate) {
           const notesDir = getVaultRoot()
-          const ext = existing.mimeType
-            ? (getExtensionFromMimeType(existing.mimeType) ??
-              getDefaultExtension(existing.fileType))
-            : getDefaultExtension(existing.fileType)
+          const ext = binary.mimeType
+            ? (getExtensionFromMimeType(binary.mimeType) ?? getDefaultExtension(binary.fileType))
+            : getDefaultExtension(binary.fileType)
           // Folder-only move (title unchanged): preserve the existing on-disk
           // basename byte-for-byte instead of re-deriving it through the
           // sanitizer, which would retroactively rename legacy files.
@@ -325,14 +332,16 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           path: updateFields.path ?? existing.path,
           title: newTitle,
           emoji: resolvedEmoji,
-          fileType: existing.fileType,
-          mimeType: existing.mimeType,
+          ...binary,
           fileSize: existing.fileSize,
           attachmentId: data.attachmentId ?? existing.attachmentId,
           clock: resolution.mergedClock,
           syncedAt,
           modifiedAt
         })
+        if (isMarkdownRecordOverBinaryNote(existing, data)) {
+          healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
+        }
         // Binary/file branch: only sidecar metadata moved, never file bytes.
         emitNoteUpdated(ctx.emit, {
           id: itemId,
@@ -342,6 +351,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      if (data.attachmentId && data.fileType && isBinaryFileType(data.fileType)) {
+        noteBinaryRecordForMarkdownRow(itemId)
+      }
       const localFolder = extractFolderFromPath(existing.path)
       const remoteFolder = data.folderPath ?? null
       const folderChanged = localFolder !== remoteFolder
@@ -756,7 +768,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       tombstoneClock: clock,
       deletedAt,
       bodyStateVector,
-      readBody: () => (existing.fileType === 'markdown' ? readNoteFileBody(absolutePath) : null)
+      readBody: () => (isBinaryNoteRow(existing) ? null : readNoteFileBody(absolutePath))
     })
 
     // Deliberately floated. `applyDelete` is synchronous by interface and runs

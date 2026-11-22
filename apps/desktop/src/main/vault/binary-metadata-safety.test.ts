@@ -147,6 +147,26 @@ describe('binary file metadata safety (#2073)', () => {
     expect(Buffer.compare(fs.readFileSync(absolutePath), PNG_BYTES)).toBe(0)
   })
 
+  it('rejects a tag edit on a markdown-typed row at a .png path (#5412 rows)', async () => {
+    const absolutePath = path.join(tempVault.notesDir, 'scan.png')
+    fs.writeFileSync(absolutePath, PNG_BYTES)
+    const { insertNoteCache } = await import('@main/database/queries/notes')
+    insertNoteCache(testDb.db, {
+      id: 'png-retyped-1',
+      path: 'notes/scan.png',
+      title: 'scan',
+      fileType: 'markdown',
+      createdAt: '2026-01-15T12:00:00.000Z',
+      modifiedAt: '2026-01-15T12:00:00.000Z'
+    })
+
+    await expect(
+      notes.updateNote({ id: 'png-retyped-1', headerTags: { add: ['scan'] } })
+    ).rejects.toMatchObject({ code: 'NOTE_NOT_MARKDOWN' })
+
+    expect(Buffer.compare(fs.readFileSync(absolutePath), PNG_BYTES)).toBe(0)
+  })
+
   it('rejects a property edit reachable from the same folder table row', async () => {
     const { absolutePath, sha } = await seedBinary('pdf-prop-1', 'report.pdf', 'pdf', PDF_BYTES)
 

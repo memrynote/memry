@@ -4,7 +4,6 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
 import { extractFolderFromPath } from '../note-sync'
 import { seedSkipsDeletedNote } from '../pending-deletes'
-import { isBinaryFileType } from '@memry/shared/file-types'
 import { getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
 import { parseNote } from '../../vault/frontmatter'
@@ -17,6 +16,7 @@ import { getNoteProperties, type PropertyValue } from '@main/database/queries/no
 import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { noteCoverForPush, settleNoteCoverRemoval } from './note-cover-sync'
+import { binaryRecordFields } from './binary-note-record'
 
 const log = createLogger('NoteHandlerSyncHelpers')
 
@@ -37,13 +37,13 @@ export function buildNotePushPayload(itemId: string, operation: string): string 
   const cached = getNoteMetadataById(dataDb, itemId)
   if (!cached || cached.localOnly) return null
 
-  if (cached.fileType && isBinaryFileType(cached.fileType)) {
+  const binary = binaryRecordFields(cached)
+  if (binary) {
     const folderPath = extractFolderFromPath(cached.path)
     return JSON.stringify({
       title: cached.title,
       emoji: cached.emoji,
-      fileType: cached.fileType,
-      mimeType: cached.mimeType,
+      ...binary,
       attachmentId: cached.attachmentId,
       folderPath,
       clock: cached.clock ?? {},

@@ -1,7 +1,7 @@
 import path from 'path'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { binaryRecordFields } from './item-handlers/binary-note-record'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
 import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-helpers'
@@ -70,12 +70,12 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
   ): NoteSyncPayload {
     const folderPath = extractFolderFromPath(cached.path)
 
-    if (cached.fileType && isBinaryFileType(cached.fileType)) {
+    const binary = binaryRecordFields(cached)
+    if (binary) {
       return {
         title: cached.title,
         emoji: cached.emoji,
-        fileType: cached.fileType,
-        mimeType: cached.mimeType,
+        ...binary,
         attachmentId: cached.attachmentId,
         folderPath,
         clock,
