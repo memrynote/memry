@@ -14,7 +14,7 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { NotesChannels, ReminderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import { extractFolderFromPath } from '../note-sync'
+import { extractFolderFromPath, getNoteSyncService } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { baselineAfterWrite } from '../writeback-baseline'
 import { getCrdtProvider } from '../crdt-provider'
@@ -79,6 +79,11 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
+import {
+  healBinaryNoteRecord,
+  isMarkdownRecordOverBinaryNote,
+  noteBinaryRecordForMarkdownRow
+} from './binary-note-record'
 import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import {
   forgetBaselineOfRemotelyDeletedNote,
@@ -333,6 +338,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           syncedAt,
           modifiedAt
         })
+        if (isMarkdownRecordOverBinaryNote(existing, data)) {
+          healBinaryNoteRecord(itemId, getNoteSyncService())
+        }
         // Binary/file branch: only sidecar metadata moved, never file bytes.
         emitNoteUpdated(ctx.emit, {
           id: itemId,
@@ -342,6 +350,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
 
+      if (data.attachmentId && data.fileType && isBinaryFileType(data.fileType)) {
+        noteBinaryRecordForMarkdownRow(itemId)
+      }
       const localFolder = extractFolderFromPath(existing.path)
       const remoteFolder = data.folderPath ?? null
       const folderChanged = localFolder !== remoteFolder
