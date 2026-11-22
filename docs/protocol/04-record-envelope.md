@@ -302,7 +302,7 @@ is an **allowlist** for its payload.
 | `PROVIDER_AUTH_CONFIRM`  | `sessionId, encryptedProviderAuth`                                                                          | `:18`    |
 | `VAULT_TRANSFER_CONFIRM` | `sessionId, encryptedVaultTransfer`                                                                         | `:19`    |
 | `ATTACHMENT_MANIFEST`    | `encryptedManifest, manifestNonce, encryptedFileKey, keyNonce`                                              | `:20-25` |
-| `DELETE_ATTESTATION`     | `purpose, id, type, deletedAt, clock`                                                                       | `:26`    |
+| `DELETE_ATTESTATION`     | `purpose, vaultId, id, type, deletedAt, clock`                                                              | `:26`    |
 
 For `SYNC_ITEM` with every key present, the **encoded** order — verified
 empirically against this workspace's `cborg` — is
@@ -424,7 +424,8 @@ stores its own time, which a device cannot sign in advance.
 
 | Key         | Value                                                               |
 | ----------- | ------------------------------------------------------------------- |
-| `purpose`   | the text `memry-delete-attestation-v1`                              |
+| `purpose`   | the text `memry-delete-attestation-v2`                              |
+| `vaultId`   | the vault the push is routed to: its `X-Memry-Vault-Id` value       |
 | `id`        | the item id                                                         |
 | `type`      | the item type                                                       |
 | `deletedAt` | the pushed `deletedAt`, exactly as pushed (seconds or ms)           |
@@ -440,8 +441,22 @@ ms, including the server's tombstone expiry
 `crates/memry-core/src/protocol/delete_attestation.rs`. Vectors:
 `packages/contracts/test-vectors/delete-attestation.json`.
 
-**Not bound:** `vaultId`, which the record signature does not bind either
-(chapter 01 §1.7), and `signerDeviceId`, which selects the verifying key, so a
+**Normative — versions (#5247).** v2 binds the vault, so the server cannot
+replay a delete attested in one vault of the account into another, where a
+name-keyed id (a journal day, a tag, a property definition) names a different
+item. A writer that sends `X-Memry-Vault-Id` MUST sign v2 with that value. A
+writer that sends none signs v1: the same map with `purpose`
+`memry-delete-attestation-v1` and no `vaultId`, which every build before
+#5247 signs. A verifier MUST accept v2 whose `vaultId` is the vault it serves
+or syncs, and MUST accept v1 (compatibility: old devices and the attestations
+the server already holds). The two purposes are disjoint, so a v2 signature
+never verifies as v1, nor in another vault. The signature is 64 bytes in both
+versions and carries no version byte: the verifier tries v2 for its vault,
+then v1. Residual risk: v1 names no vault, so a v1 attestation stays
+replayable across vaults until v1 is retired. The record signature binds no
+vault either (chapter 01 §1.7).
+
+**Not bound:** `signerDeviceId`, which selects the verifying key, so a
 swapped id fails verification.
 
 **Domain separation.** The attestation always carries `purpose` and never the
@@ -452,7 +467,8 @@ both. A CRDT update signature covers `noteId ‖ bytes`, whose first byte is an 
 character, never a map header.
 
 **Server.** It verifies the attestation per item, after the record signature,
-under the signer's `auth_public_key`. One that does not verify, or does not
+under the signer's `auth_public_key`: v2 for the vault the request resolves to
+(chapter 05 §5.2), else v1. One that does not verify, or does not
 decode, is that item's `403 SYNC_INVALID_SIGNATURE` in `rejected[]`; the
 request is still a 200 and the neighbours commit (chapter 05 §5.4). An
 attestation on a write with no claim is ignored and not stored. An accepted

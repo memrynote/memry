@@ -155,7 +155,8 @@ impl VaultSync {
         .map_err(|e| StorageError::Failed {
             what: e.to_string(),
         })?;
-        let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
+        let sealer =
+            Arc::new(AccountSealer::new(vault_key.to_vec(), signer).with_vault(&self.vault_id));
         let push = PushCoordinator::new(
             http,
             self.db.clone(),

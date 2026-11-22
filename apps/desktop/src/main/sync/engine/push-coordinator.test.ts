@@ -86,6 +86,7 @@ function fakeEncryptPushBatch(): void {
       vaultKey: Uint8Array,
       _signingKey: Uint8Array,
       deviceId: string,
+      _vaultId: string | null,
       deps: {
         resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string
       }
@@ -225,6 +226,7 @@ describe('PushCoordinator', () => {
           vaultKey: Uint8Array,
           _signingKey: Uint8Array,
           deviceId: string,
+          _vaultId: string | null,
           deps: {
             queue: SyncQueueManager
             resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string

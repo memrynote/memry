@@ -31,6 +31,10 @@ vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-purged-tombstones-test' }
 }))
 
+/** The vault this device syncs, as its sync requests name it (#5247). */
+const VAULT = 'vault-a'
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => VAULT }))
+
 // The note handler reads its row through the app's data DB handle.
 const currentDb: { db: TestDatabaseResult | null } = { db: null }
 vi.mock('../../database/client', async (importOriginal) => ({
@@ -108,15 +112,20 @@ const signerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(7))
 const attackerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(9))
 const toB64 = (bytes: Uint8Array): string => sodiumToBase64(bytes, sodiumBase64Variants.ORIGINAL)
 
-/** #2408: device-a's delete attestation over exactly this claim. */
+/** #2408: device-a's delete attestation over exactly this claim, signed in `vaultId`. */
 const attestationFor = (
   claim: { id: string; type: string; clock: VectorClock; deletedAt: number },
-  secretKey: Uint8Array = signerKeys.privateKey
+  secretKey: Uint8Array = signerKeys.privateKey,
+  vaultId: string | null = VAULT
 ): string => {
   const parsed = deleteClaimOf({ ...claim, operation: 'delete' })
   if (!parsed) throw new Error(`not attestable: ${claim.type}/${claim.id}`)
   return toB64(
-    signPayload(deleteAttestationPayload(parsed), CBOR_FIELD_ORDER.DELETE_ATTESTATION, secretKey)
+    signPayload(
+      deleteAttestationPayload(parsed, vaultId),
+      CBOR_FIELD_ORDER.DELETE_ATTESTATION,
+      secretKey
+    )
   )
 }
 
@@ -789,6 +798,17 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
           claim(type, { clock: { 'device-a': 1 }, deletedAt: DELETED_AT - 100 })
         )
       })
+    },
+    {
+      // #5247: the server replays a real delete of the same id from another
+      // vault of the account (a journal day, a tag name).
+      name: '13 a valid attestation signed in another vault',
+      reason: 'attestation_invalid',
+      entry: (type) => ({
+        ...legacyTombstone(ID, type, TOMBSTONE_CLOCK),
+        signerDeviceId: SIGNER,
+        deleteAttestation: attestationFor(claim(type), signerKeys.privateKey, 'vault-b')
+      })
     }
   ]
 
@@ -850,6 +870,35 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     await servePage({
       deleted: ['task-1'],
       pull: { items: [], purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)] }
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'task', 'task-1')).toBeUndefined()
+  })
+
+  // #5247 compatibility: a build before #5247 signed v1, with no vault id; it still applies.
+  it('applies a v1 attestation from an old build', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-1', { 'device-a': 1 })
+    const engine = syncedEngine(db)
+    const entry = legacyTombstone('task-1', 'task', TOMBSTONE_CLOCK)
+    await servePage({
+      deleted: ['task-1'],
+      pull: {
+        items: [],
+        purgedTombstones: [
+          {
+            ...entry,
+            signerDeviceId: SIGNER,
+            deleteAttestation: attestationFor(
+              { id: 'task-1', type: 'task', clock: TOMBSTONE_CLOCK, deletedAt: DELETED_AT },
+              signerKeys.privateKey,
+              null
+            )
+          }
+        ]
+      }
     })
 
     await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })

@@ -122,6 +122,7 @@ describe('record-envelope vectors', () => {
       )
 
       const { pushItem, sizeBytes } = await encryptRecordForPush(crypto, {
+        vaultId: null,
         id: entry.input.id,
         type: entry.input.type as never,
         operation: entry.input.operation as never,
@@ -182,6 +183,7 @@ describe('record-envelope vectors', () => {
       const signer = sodium.crypto_sign_seed_keypair(fromHex(vectors.cases[0].input.signingSeedHex))
       const call = (): Promise<unknown> =>
         encryptRecordForPush(crypto, {
+          vaultId: null,
           id: 'sizecheck0001',
           type: 'note',
           operation: 'create',
