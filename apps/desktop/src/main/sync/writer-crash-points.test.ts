@@ -41,6 +41,8 @@ const h = vi.hoisted(() => ({
   crashBeforeWrite: false,
   /** The process stops at the next feed, before or after the doc takes it. */
   hangAtFeed: null as 'before' | 'after' | null,
+  /** The next file write waits here, after its writer read the file and built its bytes. */
+  holdWrite: null as null | { reached: () => void; release: Promise<void> },
   indexDb: null as unknown,
   store: new Map<string, Uint8Array[]>(),
   contentHash: (_raw: string): string => ''
@@ -119,6 +121,12 @@ vi.mock('../vault/file-ops', () => ({
   safeRead: async (absolute: string) => h.files.get(absolute) ?? null,
   atomicWrite: async (absolute: string, content: string) => {
     h.writeAttempts++
+    const hold = h.holdWrite
+    if (hold) {
+      h.holdWrite = null
+      hold.reached()
+      await hold.release
+    }
     // The vault lock's file guard (vault-locks/files).
     const registry = await import('../vault-locks/registry')
     const relative = absolute.replace('/vault/', '')
@@ -169,12 +177,18 @@ vi.mock('../vault/journal', async () => {
       const raw = h.files.get(at(date))
       return raw === undefined ? null : entryOf(date, raw)
     },
+    readJournalFile: async (date: string) => (h.files.has(at(date)) ? { frontmatter: {} } : null),
     composeJournalEntryWrite: compose,
     // The save before D-DOC-FIRST, so this file runs against dfe3d4ae7b too.
     writeJournalEntryWithContent: async (date: string, content: string) => {
       const { write, ...result } = await compose(date, content)
       await write()
       return result
+    },
+    writeJournalEntry: async (date: string, content: string) => {
+      const { write, entry } = await compose(date, content)
+      await write()
+      return entry
     },
     serializeJournalEntry: () => ''
   }
@@ -230,6 +244,9 @@ vi.mock('../notes/note-date-reminders', () => ({
   clearNoteDateReminders: vi.fn()
 }))
 vi.mock('@memry/app-core/reminders', () => ({ createRemindersService: vi.fn() }))
+vi.mock('../settings/editor-settings', () => ({
+  getEditorSettings: () => ({ convertAgentChecklistsToTasks: false })
+}))
 vi.mock('./local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
   enqueueLocalSyncDelete: vi.fn(),
@@ -246,6 +263,7 @@ import { landBodyEdit } from './writeback-baseline'
 import { atomicWrite } from '../vault/file-ops'
 import { landSourceRewrite } from '../vault/rename-link-rewrite'
 import { updateJournalEntry } from '../journal/update-entry'
+import { createJournalHandles } from '../agent/mcp/tools/journal-handles'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { deleteNoteCache, getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache, NoteCache } from '@memry/db-schema/schema/notes-cache'
@@ -458,6 +476,42 @@ describe("Memry's own body writers stopped at each crash point, then restarted (
     const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
     expect(h.files.get(file)).toContain('Outside.')
     expect(md).toContain('Outside.')
+  })
+
+  // REVIEW-5465 finding 1: the agent's journal update lands while a write-back
+  // that already read the file waits on its write. Written beside the doc, the
+  // write-back put the older body back and the watcher ignored its own write.
+  it('an agent journal update between a write-back read and write lands in the doc and the file', async () => {
+    const date = '2026-02-02'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    const file = `/vault/${notePath}`
+    await seedNote(id, notePath, 'Morning.')
+    const doc = await restart(id)
+    Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+    let release = (): void => {}
+    const reached = new Promise<void>((resolve) => {
+      h.holdWrite = {
+        reached: resolve,
+        release: new Promise<void>((r) => {
+          release = r
+        })
+      }
+    })
+    const writeback = writebackNow(id, doc)
+    await reached
+    const update = createJournalHandles(h.indexDb as never).update({
+      date,
+      content_markdown: 'Agent body.'
+    })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    release()
+    await Promise.all([writeback, update])
+    await settle(id)
+    await settle(id)
+    const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+    expect.soft(md).toContain('Agent body.')
+    expect.soft(h.files.get(file)).toContain('Agent body.')
   })
 })
 

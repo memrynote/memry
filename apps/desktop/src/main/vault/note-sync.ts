@@ -6,6 +6,7 @@
  */
 
 import { posix } from 'path'
+import type { NoteEventSource } from '@memry/contracts/notes-api'
 import type { NoteFrontmatter } from './frontmatter'
 import {
   extractAliases,
@@ -291,6 +292,8 @@ export type NoteSyncResult = NoteMetadata
 export interface NoteSyncOptions {
   /** Whether this is a new note (insert) or existing (update). */
   isNew: boolean
+  /** What caused the write, for the notes its link changes touch. Default `'internal'`. */
+  source?: NoteEventSource
 }
 
 // ============================================================================
@@ -349,7 +352,7 @@ export function extractNoteMetadata(input: NoteSyncInput): NoteMetadata {
 export function syncNoteToCache(
   _db: IndexDb,
   input: NoteSyncInput,
-  _options: NoteSyncOptions
+  options: NoteSyncOptions
 ): NoteSyncResult {
   const { id, path, parsedContent, title, createdAt, modifiedAt, localOnly } = input
   const metadata = extractNoteMetadata(input)
@@ -409,7 +412,8 @@ export function syncNoteToCache(
 
   publishProjectionEvent({
     type: 'note.upserted',
-    note
+    note,
+    source: options.source
   })
 
   return metadata
