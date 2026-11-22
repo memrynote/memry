@@ -1,9 +1,7 @@
 //! What one pass costs on a 12 KB note (#3529 acceptance, the Step 05 budget of 20 ms on an
-//! M1), and what a fresh device's first files cost, alone and beside a busy database writer
-//! (#5410). Measurements, not tests: they print and assert no time.
+//! M1). A measurement, not a test: it prints and asserts no time.
 //!
 //! `cargo test -p memry-desktop --release writeback_perf -- --ignored --nocapture`
-//! `cargo test -p memry-desktop --release writeback_first_files -- --ignored --nocapture`
 
 use std::time::{Duration, Instant};
 
@@ -65,62 +63,4 @@ fn writeback_perf() {
         f.read("n.md").len(),
         summary("passes after an edit", &mut took)
     );
-}
-
-/// First files of `n` pulled notes (no row, no file, body here), one pass each, with another
-/// thread taking the database writer 5 ms at a time when `busy` (a sync apply or an indexer).
-fn first_files(n: usize, busy: bool) {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    let mut f = fixture();
-    f.rows.lane_of(f.pass.session).unwrap().set_walked(true);
-    let ids: Vec<String> = (0..n)
-        .map(|i| {
-            let folder = format!("F{}", i % 50);
-            f.writer.create(format!("Note {i}"), Some(folder)).unwrap()
-        })
-        .collect();
-    let stop = Arc::new(AtomicBool::new(false));
-    let busy_thread = busy.then(|| {
-        let (db, stop) = (f.vault.db_handle(), stop.clone());
-        std::thread::spawn(move || {
-            while !stop.load(Ordering::Relaxed) {
-                db.call_blocking(|_| {
-                    std::thread::sleep(Duration::from_millis(5));
-                    Ok(())
-                })
-                .unwrap();
-            }
-        })
-    });
-    let started = Instant::now();
-    let mut took = Vec::new();
-    for id in &ids {
-        let pass = Instant::now();
-        let outcome = f.run(id);
-        took.push(pass.elapsed());
-        assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
-    }
-    let total = started.elapsed();
-    stop.store(true, Ordering::Relaxed);
-    if let Some(thread) = busy_thread {
-        thread.join().unwrap();
-    }
-    f.facts();
-    eprintln!(
-        "writeback_first_files busy={busy}: {n} files in {total:?} ({:.0}/s); {}",
-        n as f64 / total.as_secs_f64(),
-        summary("passes", &mut took)
-    );
-}
-
-#[test]
-#[ignore = "a measurement: cargo test -p memry-desktop --release writeback_first_files -- --ignored --nocapture"]
-fn writeback_first_files() {
-    first_files(2000, false);
-}
-
-#[test]
-#[ignore = "a measurement: cargo test -p memry-desktop --release writeback_first_files -- --ignored --nocapture"]
-fn writeback_first_files_beside_a_busy_writer() {
-    first_files(300, true);
 }

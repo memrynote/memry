@@ -101,11 +101,16 @@ fn cool(fake: &Fake, writeback: &WriteBack, id: &str) {
 const RETRY_WAIT: Duration = Duration::from_secs(60);
 
 fn eventually(what: &str, done: impl Fn() -> bool) {
-    eventually_within(WAIT, what, done);
+    let deadline = Instant::now() + WAIT;
+    while !done() {
+        assert!(Instant::now() < deadline, "never: {what}");
+        std::thread::sleep(Duration::from_millis(5));
+    }
 }
 
-fn eventually_within(wait: Duration, what: &str, done: impl Fn() -> bool) {
-    let deadline = Instant::now() + wait;
+/// [`eventually`] for a retry, which comes [`RETRY_AFTER`] later.
+fn eventually_retried(what: &str, done: impl Fn() -> bool) {
+    let deadline = Instant::now() + RETRY_WAIT;
     while !done() {
         assert!(Instant::now() < deadline, "never: {what}");
         std::thread::sleep(Duration::from_millis(5));
@@ -375,7 +380,7 @@ fn a_failed_write_is_tried_again_without_a_schedule() {
     eventually("the first pass", || fake.finished() == 1);
     let failed_at = fake.runs()[0].2.unwrap();
     // Retries are generous with the wall clock: only that one comes, never how soon.
-    eventually_within(RETRY_WAIT, "the retry", || fake.finished() == 2);
+    eventually_retried("the retry", || fake.finished() == 2);
     let retried_at = fake.runs()[1].1;
     assert!(
         retried_at - failed_at >= RETRY_AFTER,
@@ -416,6 +421,46 @@ fn a_failed_write_retry_does_not_hold_a_flush_or_a_stop() {
     );
 }
 
+/// A note whose pass kept its file for an unpulled body runs again once the bodies settle, and
+/// no other note does. Red while nothing scheduled it after its one pass (#5410).
+#[test]
+fn a_note_kept_for_its_body_runs_again_once_the_bodies_settle() {
+    let fake = Fake::default();
+    fake.with(|s| s.outcomes = [Outcome::Kept(Keep::BodyNotPulled)].into());
+    let (writeback, _told) = start(&fake);
+    for id in ["n1", "n2"] {
+        writeback.schedule(id);
+        assert!(writeback.flush(WAIT));
+    }
+    writeback.schedule_body_waits();
+    assert!(writeback.flush(WAIT));
+    let ran: Vec<String> = fake.runs().into_iter().map(|run| run.0).collect();
+    assert_eq!(ran, ["n1", "n2", "n1"]);
+    // n1's second pass did not keep it for its body: a later settle runs nothing.
+    writeback.schedule_body_waits();
+    assert!(writeback.flush(WAIT));
+    assert_eq!(fake.count(), 3);
+}
+
+/// A settle while the note's pass runs, which then keeps the file for its body, still gives it a
+/// pass: the settle's re-drive did not see the note yet.
+#[test]
+fn a_settle_during_the_pass_that_waits_for_the_body_gives_one_more_pass() {
+    let fake = Fake::default();
+    fake.with(|s| {
+        s.outcomes = [Outcome::Kept(Keep::BodyNotPulled)].into();
+        s.shut = true;
+    });
+    let (writeback, _told) = start(&fake);
+    writeback.schedule("n1");
+    eventually("the pass started", || fake.count() == 1);
+    writeback.schedule_body_waits();
+    fake.with(|s| s.shut = false);
+    eventually("the pass finished", || fake.finished() == 1);
+    assert!(writeback.flush(WAIT));
+    assert_eq!(fake.count(), 2);
+}
+
 #[test]
 fn a_pass_that_panics_is_a_failed_one_and_the_next_still_runs() {
     let fake = Fake::default();
@@ -429,7 +474,7 @@ fn a_pass_that_panics_is_a_failed_one_and_the_next_still_runs() {
     assert_eq!(fake.count(), 2);
 }
 
-fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
+pub(super) fn real(f: &mut Fixture) -> (WriteBack, broadcast::Receiver<WriteBackFailed>) {
     let pass = std::mem::replace(
         &mut f.pass,
         Pass::new(
@@ -521,9 +566,7 @@ fn a_failed_write_is_retried_and_the_retry_keeps_an_outside_edit() {
     mode("fixed.md", 0o644);
     mode("edited.md", 0o644);
     f.write("edited.md", "typed outside the app\n");
-    eventually_within(RETRY_WAIT, "the retry", || {
-        f.read("fixed.md") == "typed in the app\n"
-    });
+    eventually_retried("the retry", || f.read("fixed.md") == "typed in the app\n");
     writeback.stop();
     assert_eq!(f.read("edited.md"), "typed outside the app\n");
 }

@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::broadcast;
 
-use super::pass::{Outcome, Pass};
+use super::pass::{Keep, Outcome, Pass};
 
 const SCOPE: &str = "vault_writeback";
 
@@ -111,6 +111,11 @@ struct Queue {
     /// a scheduled pass: a flush or a stop neither runs nor waits for it, and a scheduled pass of
     /// the note runs instead of it.
     retries: HashMap<String, (Instant, u32)>,
+    /// Notes whose last pass kept the file for a server body not pulled yet: the sync's body
+    /// step schedules them again once its debts settled ([`WriteBack::schedule_body_waits`]).
+    body_waits: HashSet<String>,
+    /// How many body steps settled: a pass kept for its body while one did is due again.
+    settles: u64,
     running: bool,
     /// Flushes waiting: every pass is due now while one is.
     flushes: usize,
@@ -192,6 +197,21 @@ impl WriteBack {
         queue.debug.scheduled(note_id);
         drop(queue);
         self.shared.changed.notify_all();
+    }
+
+    /// Schedules again every note whose last pass kept its file because its server body was not
+    /// pulled (`Keep::BodyNotPulled`). The sync calls it once a body step settled its debts: a
+    /// body can settle with no tell of its own, and the pass that kept the file is not run again
+    /// otherwise. A pass running meanwhile that keeps its file for the body is due again too.
+    pub fn schedule_body_waits(&self) {
+        let waits: Vec<String> = {
+            let mut queue = self.shared.lock();
+            queue.settles += 1;
+            queue.body_waits.drain().collect()
+        };
+        for note_id in waits {
+            self.schedule(&note_id);
+        }
     }
 
     /// Runs every scheduled pass now and waits, at most `timeout`, until they and the one
@@ -279,6 +299,7 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                 // Taken off before the pass, so a schedule during it gives one more.
                 queue.due.remove(&note_id);
                 queue.running = true;
+                let settles = queue.settles;
                 #[cfg(feature = "e2e")]
                 queue.debug.started(&note_id);
                 drop(queue);
@@ -299,6 +320,16 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                     // A schedule taken during the pass knew only the cost before it.
                     if let Some(at) = queue.due.get_mut(&note_id) {
                         *at = (*at).max(cooled(cost));
+                    }
+                    if matches!(outcome, Outcome::Kept(Keep::BodyNotPulled)) {
+                        queue.body_waits.insert(note_id.clone());
+                        // A body step settled during the pass: its re-drive missed this note.
+                        if queue.settles != settles && !queue.due.contains_key(&note_id) {
+                            let at = due_at(finished, Some(cost));
+                            queue.due.insert(note_id.clone(), at);
+                        }
+                    } else {
+                        queue.body_waits.remove(&note_id);
                     }
                     let failure = match outcome {
                         Outcome::Failed(_) => Some(Failure::Write),

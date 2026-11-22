@@ -4,7 +4,7 @@
 //! SQLite's own threading modes are not the tool here. `rusqlite`'s `Connection`
 //! is `Send` but not `Sync`, and the core's async tasks are scheduled across a
 //! multi-threaded runtime, so each connection needs an owner. The writer's owner
-//! is a blocking mutex ([`Writer`]), deliberately and not a `tokio::sync::Mutex`: a
+//! is a `std::sync::Mutex`, deliberately and not a `tokio::sync::Mutex`: a
 //! blocking mutex cannot be held across an `.await`, because the only place it is
 //! ever locked is inside the closure handed to `spawn_blocking`, and that closure
 //! has no `.await` points. The compiler enforces what a comment would only ask
@@ -25,10 +25,8 @@
 //! observer hears of them once the closure returned and the writer is free
 //! ([`crate::crdt::body_writes`]).
 
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 
 use rusqlite::Connection;
 
@@ -50,7 +48,7 @@ pub struct Db {
     /// read-only connection cannot, so the writer has to be the last one out or
     /// `data.db-wal` outlives the handle holding every recent write.
     readers: Option<Arc<ReaderPool>>,
-    writer: Arc<Writer>,
+    writer: Arc<Mutex<Connection>>,
     observer: Arc<OnceLock<Weak<dyn BodyObserver>>>,
 }
 
@@ -74,7 +72,7 @@ impl Db {
         // The writer has created the file and persisted WAL by now.
         let readers = ReaderPool::open(path, profile)?;
         Ok(Self {
-            writer: Arc::new(Writer::new(conn)),
+            writer: Arc::new(Mutex::new(conn)),
             readers: Some(Arc::new(readers)),
             observer: Arc::default(),
         })
@@ -91,7 +89,7 @@ impl Db {
         })?;
         pragmas::configure_writer(&conn, Profile::Data)?;
         Ok(Self {
-            writer: Arc::new(Writer::new(conn)),
+            writer: Arc::new(Mutex::new(conn)),
             readers: None,
             observer: Arc::default(),
         })
@@ -213,121 +211,15 @@ fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
         })
 }
 
-/// The writer connection and its lock. The lock hands over fairly: `parking_lot`'s mutex gives
-/// it to the longest waiter at least every half millisecond. `std::sync::Mutex` on macOS lets the
-/// thread that just released it take it again before a woken waiter runs, so one busy writer
-/// (a sync apply loop, an indexer) starved every other: a vault write-back pass, which takes the
-/// writer about ten times, waited seconds per note behind it (#5410).
-///
-/// A panic while the writer is held poisons it, as `std`'s does: the connection may be inside
-/// a transaction the panic left open, so every later take fails instead of writing into it.
-struct Writer {
-    conn: parking_lot::Mutex<Connection>,
-    poisoned: AtomicBool,
-}
-
-impl Writer {
-    fn new(conn: Connection) -> Self {
-        Self {
-            conn: parking_lot::Mutex::new(conn),
-            poisoned: AtomicBool::new(false),
-        }
-    }
-}
-
-struct WriterGuard<'a> {
-    conn: parking_lot::MutexGuard<'a, Connection>,
-    poisoned: &'a AtomicBool,
-}
-
-impl Deref for WriterGuard<'_> {
-    type Target = Connection;
-
-    fn deref(&self) -> &Connection {
-        &self.conn
-    }
-}
-
-impl DerefMut for WriterGuard<'_> {
-    fn deref_mut(&mut self) -> &mut Connection {
-        &mut self.conn
-    }
-}
-
-impl Drop for WriterGuard<'_> {
-    fn drop(&mut self) {
-        if std::thread::panicking() {
-            self.poisoned.store(true, Ordering::Release);
-        }
-    }
-}
-
-fn lock(writer: &Writer) -> Result<WriterGuard<'_>, StorageError> {
-    let conn = writer.conn.lock();
-    if writer.poisoned.load(Ordering::Acquire) {
-        return Err(StorageError::Failed {
-            what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
-        });
-    }
-    Ok(WriterGuard {
-        conn,
-        poisoned: &writer.poisoned,
+fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
+    conn.lock().map_err(|_| StorageError::Failed {
+        what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A caller waiting for the writer gets it while another thread takes it again and again:
-    /// the hand-over is fair. Red with `std::sync::Mutex` on macOS, which hands the lock back
-    /// to the thread that just released it, so a write-back pass (ten takes) waited seconds
-    /// behind a busy writer (#5410). Counted in takes, not timed.
-    #[test]
-    fn a_waiting_caller_is_not_starved_by_a_busy_writer() {
-        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-        let db = Db::open_in_memory().expect("open");
-        let stop = Arc::new(AtomicBool::new(false));
-        let busy_takes = Arc::new(AtomicUsize::new(0));
-        let busy = {
-            let (db, stop, busy_takes) = (db.clone(), stop.clone(), busy_takes.clone());
-            std::thread::spawn(move || {
-                while !stop.load(Ordering::Relaxed) {
-                    let held = lock(&db.writer).expect("busy take");
-                    busy_takes.fetch_add(1, Ordering::Relaxed);
-                    std::thread::sleep(std::time::Duration::from_millis(2));
-                    drop(held);
-                }
-            })
-        };
-        while busy_takes.load(Ordering::Relaxed) == 0 {
-            std::thread::yield_now();
-        }
-        let before = busy_takes.load(Ordering::Relaxed);
-        const TAKES: usize = 20;
-        for _ in 0..TAKES {
-            db.call_blocking(|_| Ok(())).expect("waiting take");
-        }
-        let between = busy_takes.load(Ordering::Relaxed) - before;
-        stop.store(true, Ordering::Relaxed);
-        busy.join().expect("busy thread");
-        assert!(
-            between < TAKES * 10,
-            "the busy thread took the writer {between} times while {TAKES} waiting takes ran"
-        );
-    }
-
-    /// A panic while the writer is held fails every later take, as before the fair lock.
-    #[test]
-    fn a_panic_holding_the_writer_poisons_it() {
-        let db = Db::open_in_memory().expect("open");
-        let panicked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            db.call_blocking(|_| -> Result<(), StorageError> { panic!("a broken statement") })
-        }));
-        assert!(panicked.is_err());
-        let after = db.call_blocking(|_| Ok(()));
-        assert!(after.is_err_and(|err| err.to_string().contains("poisoned")));
-    }
 
     #[test]
     fn fts5_is_compiled_in() {

@@ -357,6 +357,7 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
 }
 
 mod attachments;
+mod body_waits;
 mod deleted;
 mod embeds;
 mod guards;

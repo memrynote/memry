@@ -10,7 +10,9 @@
 //! - **Owed files.** When the pass's body step settled its debts (`bodies_settled`), every owed
 //!   file is taken ([`VaultTier::take_owed_file`]), which schedules its write-back. Not on
 //!   `bodies_applied`: the core tells that one before the pulled document's debt settles, so the
-//!   take would still find the body owed.
+//!   take would still find the body owed. The same settle schedules again every note whose
+//!   write-back kept its file for a body not pulled yet ([`VaultTier::schedule_body_waits`]): a
+//!   body can settle with no `bodies_applied` of its own.
 //! - **Locks.** A pulled `vault_lock` record brings the disk in line with the locks
 //!   ([`Locks::reconcile`], Electron's `onRemoteVaultLockApplied`). The reconcile takes no rows'
 //!   lane and no editor lock, so it cannot wait on a writer that waits on this pass.
@@ -78,6 +80,7 @@ impl ApplyObserver for DiskObserver {
     }
 
     fn bodies_settled(&self) {
+        self.tier.schedule_body_waits(&self.vault);
         let owed = match self.vault.note_files().owed_file_bodies() {
             Ok(owed) => owed,
             Err(error) => {

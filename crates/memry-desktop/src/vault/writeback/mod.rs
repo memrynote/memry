@@ -54,6 +54,12 @@
 //!   not before the cooldown of its last pass ends: [`COOLDOWN_FACTOR`] times what that pass
 //!   took, at most [`MAX_COOLDOWN`]. One pass runs at a time; a schedule while the note's pass
 //!   runs gives it one more pass after it, once that pass's cooldown ended.
+//! - **A note kept for its unpulled body runs again once the bodies settle.** A pass that kept
+//!   the file because the note's server body was not pulled (`Keep::BodyNotPulled`) puts the
+//!   note aside; when the sync's body step settled its debts, every note put aside is
+//!   scheduled again ([`WriteBack::schedule_body_waits`], from `sync::disk`), and so is one
+//!   whose pass kept it for its body while that settle ran. The pass's own rules still decide:
+//!   a file changed outside the app or a file at the note's name is kept.
 //! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
 //!   scheduled pass due now and waits for them and the one running. The `flush-writebacks`
 //!   shutdown step calls it on every way the app quits (the app menu, Cmd-Q, the Dock, a

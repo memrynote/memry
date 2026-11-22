@@ -50,6 +50,16 @@ impl VaultTier {
         }
     }
 
+    /// Schedules again, when `vault` is the open one, every note whose write-back kept its file
+    /// for a server body not pulled yet ([`WriteBack::schedule_body_waits`]).
+    pub fn schedule_body_waits(&self, vault: &Arc<Vault>) {
+        if let Some(open) = self.current()
+            && Arc::ptr_eq(&open.view.vault, vault)
+        {
+            open.writeback.schedule_body_waits();
+        }
+    }
+
     /// What the open vault's write-back did for the note (e2e build), `None` before any schedule.
     #[cfg(feature = "e2e")]
     pub fn writeback_debug(&self, id: &str) -> Option<crate::vault::writeback::WriteBackDebug> {
