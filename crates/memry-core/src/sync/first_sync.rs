@@ -65,6 +65,7 @@ use crate::storage::{Db, nested_tx};
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::diagnostics::RunDiagnostics;
+use super::feed_restart;
 use super::first_sync_store::{pending_metadata_ids, read_meta, record_ref, write_meta};
 use super::note_body_feed;
 use super::pack_bootstrap::{BodyPackReport, PackBootstrap, RecordPackReport};
@@ -76,7 +77,7 @@ mod refs;
 
 pub(crate) use progress::read_body_counts;
 
-use refs::{read_refs_page, reference_now};
+use refs::read_refs_page;
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -316,9 +317,12 @@ impl FirstSync {
             .diagnostics
             .phase(DiagnosticPhase::RecordPacks, self.record_packs_pass(report))
             .await?;
-        self.diagnostics
-            .phase(DiagnosticPhase::Refs, self.refs_pass(report))
-            .await?;
+        // A reconcile still to run pulls every held row the manifest disagrees
+        // with, so the refs pass leaves `deleted` to it (#5405).
+        let reconciled = self.db.call(|c| read_meta(c, META_FIRST_SYNC_RECONCILED));
+        let defer = record_packs_used && reconciled.await?.is_none();
+        let refs = self.refs_pass(defer, report);
+        self.diagnostics.phase(DiagnosticPhase::Refs, refs).await?;
         // The feed has been read to its end: the vault's total is known.
         self.records_progress(true).await?;
         if record_packs_used {
@@ -424,7 +428,11 @@ impl FirstSync {
     /// pass two's job, and separating them is the whole point of the
     /// windowing: on a large vault the refs pass is twenty calls and gives
     /// the client the complete inventory it needs to order everything else.
-    async fn refs_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
+    async fn refs_pass(
+        &self,
+        defer_deletes: bool,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
         loop {
             let cursor = self
                 .db
@@ -442,15 +450,35 @@ impl FirstSync {
                 .map_err(|source| FirstSyncError::Pull { source })?;
 
             let page = read_refs_page(&body);
-            let next = page.next_cursor.clone().or(cursor);
+            let next = page.next_cursor.clone().or_else(|| cursor.clone());
             let recorded = page.refs.len();
             let tombstones = page.deleted.len();
+
+            // §5.12.1 (#5340): an id in `deleted` is not a delete. It only names
+            // an id to pull, and only the verified typed delete or attested
+            // marker the pull returns deletes, before the cursor moves past it.
+            // A bare id deletes and records nothing, as in Electron
+            // (`changes-page.ts:38`). A chunk that was not a pull envelope
+            // reopens the feed re-read, so its deletes are not skipped for good.
+            // Before a pending reconcile no pull is needed: it pulls a pack-held
+            // row the manifest does not list, pass two a metadata-only row.
+            let missed = if page.deleted.is_empty() || defer_deletes {
+                false
+            } else {
+                let pulled = self.pull.fetch_ids(&page.deleted).await?;
+                if pulled.uncovered > 0 {
+                    eprintln!(
+                        "memry-core: first sync: {} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored",
+                        pulled.uncovered
+                    );
+                }
+                pulled.dropped_pages > 0
+            };
 
             // Durable **before** the cursor advances, in one transaction, so
             // a kill here resumes at this page rather than past it.
             let stored = next.clone();
             let refs = page.refs;
-            let deleted = page.deleted;
             self.db
                 .call(move |conn| {
                     let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
@@ -462,18 +490,8 @@ impl FirstSync {
                             reference.modified_at,
                         )?;
                     }
-                    // §5.12.1: an id in `deleted` may have no type on the
-                    // wire, and the refs-only pass has no envelope to read one
-                    // from. Marking every row for that id, and filing a bare
-                    // tombstone when there is none, is idempotent and is what
-                    // stops pass two resurrecting it.
-                    for item_id in &deleted {
-                        store::apply_untyped_tombstone(
-                            &txn,
-                            item_id,
-                            reference_now(&refs, item_id),
-                            reference_now(&refs, item_id),
-                        )?;
+                    if missed {
+                        feed_restart::reopen_cursor_skip_repair(&txn)?;
                     }
                     // The refs pass serves no bodies (#2299).
                     note_body_feed::rearm_legacy_pull(&txn)?;

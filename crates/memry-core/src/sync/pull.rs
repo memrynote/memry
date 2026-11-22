@@ -28,9 +28,10 @@
 //! - **A `/sync/pull` body that is not a pull envelope refuses the run and
 //!   holds the cursor** (§5.14, #2285). That is a server fault, not a poisoned
 //!   item: the page must still be there to re-pull once the server is fixed.
-//! - **A tombstone's body is never decoded** (§5.12). A present `deletedAt`
-//!   overrides the declared `operation`, and an id in `deleted` with no ref row
-//!   has no type on the wire at all (§5.12.1).
+//! - **A tombstone's body is never applied** (§5.12), but its envelope opens
+//!   and its signature verifies like any record's before it deletes anything
+//!   (§5.14). A present `deletedAt` overrides the declared `operation`, and an
+//!   id in `deleted` with no ref row has no type on the wire at all (§5.12.1).
 //!
 //! The loop never parses a payload into a typed struct: it hands the decrypted
 //! bytes to [`super::apply::apply_page`], which chooses the item's merge
@@ -289,15 +290,20 @@ impl PullLoop {
         // keep the order the server sent them in. `sort_by_key` is stable.
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
 
-        // §5.12.1: an id in `deleted` with no ref row, and for which the pull
-        // returned no typed item either, has no type on the wire. It is not an
-        // error and it does not stop the page.
-        let untyped: Vec<String> = page
+        // §5.12.1 (#5340): an id in `deleted` deletes only through a verified
+        // typed delete or an attested marker. A bare id is unsigned, so it
+        // deletes nothing, as in Electron (`changes-page.ts:38` only fetches
+        // it); an item the pull returned and refused never falls through here.
+        let bare = page
             .deleted
             .iter()
-            .filter(|id| !page.ref_ids.contains(id) && !typed_covers(&pending, id))
-            .cloned()
-            .collect();
+            .filter(|id| !typed_covers(&pending, id))
+            .count();
+        if bare > 0 {
+            eprintln!(
+                "memry-core: {bare} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored"
+            );
+        }
 
         let bodies = self.fetch_note_bodies(&page, &pending).await?;
         // Only a loop that lands bodies owes them: its caller is the one that
@@ -316,7 +322,7 @@ impl PullLoop {
                 let totals = apply_items(
                     &txn,
                     pending,
-                    untyped,
+                    Vec::new(),
                     owe_bodies,
                     now,
                     clock_device.as_deref(),
@@ -375,9 +381,10 @@ impl PullLoop {
     /// [`note_body_feed::fetch`] for this page, when bodies are declared.
     ///
     /// The bodies dropped unfetched are those of a note or journal this page
-    /// deletes: a typed tombstone of a document type, or an id in `deleted`
-    /// with no typed item, which deletes every row under it (§5.12.1). A tag
-    /// that shares a note's id deletes no body.
+    /// deletes: a typed tombstone of a document type. An id in `deleted` with
+    /// no typed item deletes nothing (§5.12.1), so its note stays alive and
+    /// its bodies apply, as Electron fetches them (`note-body-feed.ts:168-176`).
+    /// A tag that shares a note's id deletes no body.
     async fn fetch_note_bodies(
         &self,
         page: &ChangesPage,
@@ -394,11 +401,10 @@ impl PullLoop {
                     .iter()
                     .filter(|item| item.item_id() == *id)
                     .collect();
-                typed.is_empty()
-                    || typed.iter().any(|item| {
-                        matches!(item, Pending::Tombstone { .. })
-                            && apply::DOCUMENT_TYPES.contains(&item.item_type())
-                    })
+                typed.iter().any(|item| {
+                    matches!(item, Pending::Tombstone { .. })
+                        && apply::DOCUMENT_TYPES.contains(&item.item_type())
+                })
             })
             .cloned()
             .collect();

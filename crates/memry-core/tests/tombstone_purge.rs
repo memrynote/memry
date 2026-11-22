@@ -1,10 +1,10 @@
 //! §7.15's first two consequences, on the paths `tests/tombstone.rs` does not
-//! reach: the untyped delete, the id collision the purge must survive, the
+//! reach: the bare deleted id, the id collision the purge must survive, the
 //! projection that chooses the bodies window, and the purge that cannot run.
 //!
 //! | Test                                          | Rule                        |
 //! | --------------------------------------------- | --------------------------- |
-//! | an untyped delete marks every type and purges | §5.12.1, §7.15              |
+//! | a bare deleted id deletes nothing             | §5.12.1, #5340              |
 //! | a colliding id does not take the note's body  | §5.12.1, §7.15              |
 //! | the deleted note leaves the bodies window     | §7.15, §A.2                 |
 //! | a purge that cannot run takes the delete with it | §7.15                    |
@@ -26,7 +26,7 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
 use memry_core::crdt::{Document, DocumentRegistry};
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -61,13 +61,19 @@ fn storage_failure(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-/// §5.12, §13.7.2: a delete is never decoded, so a cipher that opens nothing
-/// is enough to drive the whole path — and turns a delete that *did* reach a
-/// parser into a failure rather than a silent pass.
-struct NeverOpens;
+/// §5.12, §13.7.2: a delete's body is never applied, so a cipher that opens
+/// a delete to an empty payload and nothing else is enough to drive the whole
+/// path — and turns a delete that *did* reach a parser into a failure rather
+/// than a silent pass.
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -106,7 +112,7 @@ async fn pull_one_page(db: &Db, changes: Json, items: Json) -> Result<PullReport
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(NeverOpens),
+        Arc::new(OpensDeletes),
     )
     // A delete over unsent text keeps it as an inbox capture (#3029), which
     // is clocked under this device.
@@ -130,9 +136,9 @@ async fn deliver_typed_delete(db: &Db, item_type: &str) -> Result<PullReport, Pu
     .await
 }
 
-/// §5.12.1's delete: an id in `deleted` with **no ref row and no typed item**,
-/// so nothing on the wire says what type it is.
-async fn deliver_untyped_delete(db: &Db) -> Result<PullReport, PullError> {
+/// An id in `deleted` with **no ref row and no typed item**: nothing on the
+/// wire says what type it is, and nothing signs it.
+async fn deliver_bare_deleted_id(db: &Db) -> Result<PullReport, PullError> {
     pull_one_page(
         db,
         json!({
@@ -236,77 +242,55 @@ fn projected_deleted_at(db: &Db, table: &str, key: &str) -> Option<i64> {
 
 // --------------------------------------------------------------------- tests
 
-/// §5.12.1's untyped delete reaches every tier: every row under the id
-/// whatever its type, every projection those types name, and the body log.
-///
-/// The wire says nothing about the type here, and a client MUST NOT guess one
-/// from the id's shape. What it may do is read what this device stored, which
-/// is what makes "mark every row" implementable at all — and what makes the
-/// purge safe: if *every* row under the id is being deleted, the body rows
-/// under it are covered too, whichever type owns them.
+/// A bare id in `deleted` is unsigned, so it deletes nothing on any tier
+/// (§5.12.1, #5340): not the note, not a row of another type under the same
+/// id (§5.15's collision, a tag named like the note), and not the body log.
+/// Electron only fetches such an id (`changes-page.ts:38`).
 #[tokio::test]
-async fn an_untyped_delete_marks_every_type_and_purges_the_body() {
+async fn a_bare_deleted_id_deletes_no_row_and_keeps_the_body() {
     let db = scratch_db("untyped");
     seed_note(&db);
     let registry = registry();
     edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
-
-    // §5.15's collision, made real: a second row under the same id, a type
-    // whose ids are free-form names (§13.6).
     db.call_blocking(|conn| {
         sync_items::upsert_metadata_only(conn, "tag_definition", NOTE, NOW, None)
     })
     .expect("the second row");
 
     assert_eq!(body_rows(&db), 1);
-    let report = deliver_untyped_delete(&db).await.expect("the page");
+    let report = deliver_bare_deleted_id(&db).await.expect("the page");
 
-    assert_eq!(report.deleted, 1);
-    assert!(record_deleted_at(&db, "note").is_some(), "the note's row");
-    assert!(
-        record_deleted_at(&db, "tag_definition").is_some(),
-        "§5.12.1: every row for that id, whatever its type"
-    );
-    assert!(
-        projected_deleted_at(&db, "notes", "id").is_some(),
-        "and the projection each type names"
-    );
-    assert_eq!(body_rows(&db), 0, "§7.15: the body log goes with it");
-    assert_eq!(queued_body_updates(&db), 0, "#5379: and its queued updates");
-    assert_eq!(report.purged_documents, vec![NOTE.to_owned()]);
+    assert_eq!(report.deleted, 0);
+    assert_eq!(record_deleted_at(&db, "note"), None, "the note's row");
+    assert_eq!(record_deleted_at(&db, "tag_definition"), None);
+    assert_eq!(projected_deleted_at(&db, "notes", "id"), None);
+    assert_eq!(body_rows(&db), 1, "the body log stays");
+    assert!(report.purged_documents.is_empty());
 }
 
-/// The untyped delete drops the queued update too (#5379), so the unseen text
-/// it carried is kept first, as the typed arm keeps it (#3029, rule 1).
+/// A bare deleted id drops nothing (#5340), so the unsent text stays queued
+/// for the server and is not captured to the inbox (#5379's keep never runs).
 #[tokio::test]
-async fn an_untyped_delete_keeps_the_unsent_text_in_the_inbox() {
+async fn a_bare_deleted_id_keeps_the_unsent_text_queued() {
     let db = scratch_db("untyped-keep");
     seed_note(&db);
     let registry = registry();
     edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
 
-    deliver_untyped_delete(&db).await.expect("the page");
+    deliver_bare_deleted_id(&db).await.expect("the page");
 
-    assert_eq!(queued_body_updates(&db), 0);
-    let kept: Vec<String> = db
+    assert_eq!(queued_body_updates(&db), 1, "the edit still goes out");
+    let captured: i64 = db
         .call_blocking(|conn| {
-            let mut statement = conn
-                .prepare("SELECT payload FROM sync_items WHERE item_type = 'inbox'")
-                .map_err(storage_failure)?;
-            let rows = statement
-                .query_map([], |row| row.get::<_, String>(0))
-                .map_err(storage_failure)?;
-            let payloads: Vec<String> = rows.collect::<Result<_, _>>().map_err(storage_failure)?;
-            Ok(payloads
-                .iter()
-                .map(|payload| {
-                    let payload: Json = serde_json::from_str(payload).expect("json");
-                    payload["content"].as_str().unwrap_or_default().to_owned()
-                })
-                .collect())
+            conn.query_row(
+                "SELECT COUNT(*) FROM sync_items WHERE item_type = 'inbox'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(storage_failure)
         })
         .expect("the inbox");
-    assert_eq!(kept, vec!["still typing".to_owned()]);
+    assert_eq!(captured, 0);
 }
 
 /// #5379: an update queued before the delete must not reach the server after
