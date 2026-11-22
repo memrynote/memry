@@ -1,4 +1,4 @@
-import { EmptyAttachmentError } from '../sync/attachment-errors'
+import { EmptyAttachmentError, TextInMediaFileError } from '../sync/attachment-errors'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
@@ -846,6 +846,62 @@ describe('sync-attachment-handlers', () => {
     expect(
       attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
     ).toEqual([])
+  })
+
+  // #5415: a media file holding text is refused for good; the user is told why.
+  it('drops the job of a media file holding text and reports why', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    attachmentMocks.queue.enqueue.mockRejectedValueOnce(new TextInMediaFileError('Holds text'))
+    registerAttachmentHandlers()
+    const onSaved = mockOnSaved.mock.calls[0][0] as (event: {
+      noteId: string
+      diskPath: string
+    }) => void
+
+    onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/sunset.png' })
+
+    await vi.waitFor(() =>
+      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/attachments/sunset.png')
+    )
+    expect(markUploadFailed).not.toHaveBeenCalled()
+    expect(
+      attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+    ).toEqual([
+      {
+        channel: SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED,
+        payload: {
+          noteId: 'note-1',
+          diskPath: '/vault/attachments/sunset.png',
+          error: 'Holds text',
+          reason: 'Holds text'
+        }
+      }
+    ])
+  })
+
+  it('reports a media file holding text that the outbox re-drive refuses (#5415)', async () => {
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    attachmentMocks.queue.enqueue.mockRejectedValueOnce(new TextInMediaFileError('Holds text'))
+    registerAttachmentHandlers()
+
+    const uploader = outboxUploaders.findLast(Boolean)!
+    await expect(uploader('note-1', '/vault/attachments/sunset.png')).rejects.toBeInstanceOf(
+      TextInMediaFileError
+    )
+    expect(
+      attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
+    ).toEqual([
+      {
+        channel: SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED,
+        payload: {
+          noteId: 'note-1',
+          diskPath: '/vault/attachments/sunset.png',
+          error: 'Holds text',
+          reason: 'Holds text'
+        }
+      }
+    ])
   })
 
   // A vault on a drive that is away for a moment hides the file without it
