@@ -25,7 +25,7 @@
 //! 3. Packed tombstones already applied as pulled ones would.
 //!
 //! The unpaged manifest is one request and one consistent read. The pulls are
-//! `ceil(k / 100)` requests for the `k` items the packs did not deliver.
+//! `ceil(k / 100)` requests for the `k` items of rules 1 and 2 together.
 
 use std::collections::{HashMap, HashSet};
 
@@ -86,21 +86,26 @@ impl FirstSync {
         self.db
             .call(move |conn| forget_cursors(conn, &forget))
             .await?;
-        for chunk in plan.pull.chunks(MAX_PULL_IDS) {
-            let page = self.pull.fetch_ids(chunk).await?;
+        // One pull for both rules, declaring `purged_tombstones` for rule 2's
+        // stale rows: a listed item is live, so no marker names it, and a
+        // stale row shares the request rule 1 already makes (#5405).
+        let mut seen: HashSet<&str> = plan.pull.iter().map(String::as_str).collect();
+        let stale_ids: Vec<&String> = plan
+            .stale
+            .iter()
+            .map(|row| &row.item_id)
+            .filter(|id| seen.insert(id.as_str()))
+            .collect();
+        let ids: Vec<String> = plan.pull.iter().chain(stale_ids).cloned().collect();
+        let mut verdicts = markers::Verdicts::default();
+        let mut dropped_pages = 0;
+        for chunk in ids.chunks(MAX_PULL_IDS) {
+            let (page, entries) = self.pull.fetch_ids_with_markers(chunk).await?;
             report.reconcile_requests += 1;
             report.reconcile_pulled += page.applied + page.deleted + page.skipped;
             report.metadata_corrupt += page.corrupt;
-            self.records_progress(true).await?;
-        }
-        let mut verdicts = markers::Verdicts::default();
-        let mut dropped_pages = 0;
-        for chunk in plan.stale.chunks(MAX_PULL_IDS) {
-            let ids: Vec<String> = chunk.iter().map(|row| row.item_id.clone()).collect();
-            let (page, entries) = self.pull.fetch_ids_with_markers(&ids).await?;
-            report.reconcile_requests += 1;
             dropped_pages += page.dropped_pages;
-            markers::sort(&entries, chunk, &self.pull, &mut verdicts);
+            markers::sort(&entries, &plan.stale, &self.pull, &mut verdicts);
             self.records_progress(true).await?;
         }
         let (removed, kept, remembered) = self.remove_attested(plan.stale, verdicts).await?;
