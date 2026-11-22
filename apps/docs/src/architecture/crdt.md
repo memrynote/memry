@@ -846,6 +846,8 @@ document to its vault `.md` file and re-indexes it for search.
   (`crdt-writeback-frontmatter.ts`). Tag edits write only the file, and tags reach other
   devices in the note or journal record, so the doc's array can be stale: a journal day
   created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
+  A foreign journal entry folded into its day brings its tags through the day merge instead
+  (protocol §1.9.1).
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
