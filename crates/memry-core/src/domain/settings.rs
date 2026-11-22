@@ -46,7 +46,7 @@ use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::clock::{self, VectorClock};
-use crate::sync::outbox;
+use crate::sync::{outbox, unknown_signer};
 
 /// The item type half of the `(type, id)` key (§13.6).
 pub const SETTINGS_ITEM_TYPE: &str = "settings";
@@ -145,7 +145,15 @@ pub fn apply(
 ) -> Result<String, StorageError> {
     let segments = segments(path)?;
     let tx = nested_tx::begin(conn).map_err(failed)?;
+    let seeds_deleted = sync_items::load(&tx, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?
+        .is_some_and(|row| row.payload.is_none() && row.deleted_at.is_some());
     ensure_item(&tx, now_ms)?;
+    if seeds_deleted {
+        // Builds before #5434 left this row while the server copy stayed live
+        // below the cursor. The push waits until a re-pull merges that copy, or
+        // the seed's one key would replace the account's settings.
+        unknown_signer::refused(&tx, SETTINGS_ITEM_ID)?;
+    }
 
     let payload = stored(&tx)?.ok_or_else(|| StorageError::Failed {
         what: format!("{SETTINGS_ITEM_TYPE}/{SETTINGS_ITEM_ID} has no payload to merge into"),
@@ -194,7 +202,8 @@ pub fn apply(
 /// The one exception is a deleted row with no payload: an earlier build applied
 /// a settings delete before this device pulled the item (#5433). No body is
 /// owed for a deleted row, so it is seeded like a missing one, and [`revive`]
-/// then brings it back live with the edit.
+/// then brings it back live with the edit. [`apply`] holds its push until the
+/// server copy is re-pulled and merged.
 fn ensure_item(tx: &Connection, now_ms: i64) -> Result<(), StorageError> {
     tx.execute(
         "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)

@@ -201,15 +201,16 @@ fn a_settings_row_an_earlier_build_deleted_revives_on_the_next_edit() {
     .expect("settings revive");
 }
 
-// REVIEW-5434 #1: the verified re-pull of a settings delete is skipped, and the
-// skip ends the unknown-signer hold on the row, so its stale flag goes with it.
-// Any other corrupt reason stays: the delete says nothing about the payload.
+// REVIEW-5434 #1: the verified re-pull of a settings delete is skipped, and
+// ending the wait clears the row's stale unknown-signer flag. Any other
+// corrupt reason stays: the delete says nothing about the payload.
 #[test]
-fn a_skipped_settings_delete_clears_only_an_unknown_signer_flag() {
+fn a_verified_settings_delete_clears_only_an_unknown_signer_flag() {
     use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
     use crate::protocol::account::UNKNOWN_SIGNER;
     use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
     use crate::storage::{open_data, test_support::temp_dir};
+    use crate::sync::unknown_signer;
 
     let dir = temp_dir("apply-settings-delete-signer");
     let db = open_data(&dir.path().join("data.db")).expect("open data.db");
@@ -230,16 +231,17 @@ fn a_skipped_settings_delete_clears_only_an_unknown_signer_flag() {
                 .corrupt_reason
         };
         let refused = format!("device-new{UNKNOWN_SIGNER}");
-        sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, &refused, 2)?;
-        assert_eq!(
-            apply_page(conn, vec![delete()], vec![], 6, None)?.skipped,
-            1
-        );
-        assert_eq!(reason(conn), None);
-
-        sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, "bad schema", 7)?;
-        apply_page(conn, vec![delete()], vec![], 8, None)?;
-        assert_eq!(reason(conn).as_deref(), Some("bad schema"));
+        for (flag, kept) in [(refused.as_str(), None), ("bad schema", Some("bad schema"))] {
+            sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, flag, 2)?;
+            unknown_signer::refused(conn, SETTINGS_ITEM_ID)?;
+            unknown_signer::resolve_verified(conn, &[delete()])?;
+            assert_eq!(
+                apply_page(conn, vec![delete()], vec![], 6, None)?.skipped,
+                1
+            );
+            assert_eq!(reason(conn).as_deref(), kept);
+            assert!(!unknown_signer::holds(conn, SETTINGS_ITEM_ID)?);
+        }
         Ok(())
     })
     .expect("settings delete signer");

@@ -18,6 +18,7 @@
 //! | an edit queued over a verified delete never undeletes        | §5.8, #5413      |
 //! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
 //! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
+//! | a settings edit over a deleted payload-less row pushes merged | #5433            |
 
 mod http_fakes;
 
@@ -651,5 +652,90 @@ async fn a_re_create_whose_clock_is_after_the_delete_is_still_sent() {
     assert_eq!(item["id"], TASK);
     assert_eq!(item["operation"], "update", "{item}");
     assert!(item.get("deletedAt").is_none_or(Json::is_null), "{item}");
+    assert_eq!(summary.pending, 0, "{summary:?}");
+}
+
+/// `synced_settings`, live on the server, sealed by the listed new device.
+fn live_settings_by_new_device(payload: &Json, cursor: i64) -> Json {
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let (_public, secret) = sodium::sign_seed_keypair(&NEW_DEVICE_SEED).expect("a keypair");
+    let content = payload.to_string();
+    let sealed = envelope::encrypt(
+        &RecordRequest {
+            id: "synced_settings",
+            item_type: "settings",
+            operation: SyncOperation::Update,
+            content: content.as_bytes(),
+            vault_key: &vault_key[..],
+            signing_secret_key: &secret[..],
+            signer_device_id: NEW_DEVICE,
+            clock: None,
+            state_vector: None,
+            deleted_at: None,
+        },
+        &RecordMaterial::random(),
+    )
+    .expect("sealed");
+    let mut json = envelope::to_json(&sealed.envelope);
+    json["serverCursor"] = json!(cursor);
+    json
+}
+
+/// REVIEW-5447 #1 (#5433): a build before #5434 marked the settings row deleted
+/// with no payload while the server copy stayed live below the cursor. A local
+/// edit seeds the row, but its push waits for a re-pull that merges the
+/// server's settings: the pushed payload carries every server key plus the
+/// edit, never a one-key object that would replace the account's settings.
+#[tokio::test]
+async fn a_settings_edit_over_a_deleted_payloadless_row_pushes_the_merged_settings() {
+    let server = json!({
+        "settings": {"general": {"theme": "dark"}, "editor": {"font": "serif"}},
+        "fieldClocks": {"general.theme": {NEW_DEVICE: 3}, "editor.font": {NEW_DEVICE: 2}},
+    });
+    let transport = FakeTransport::new(vec![
+        devices(true),
+        response(
+            200,
+            &json!({"items": [live_settings_by_new_device(&server, 5)]}).to_string(),
+        ),
+        empty_changes(),
+        accepted("synced_settings"),
+    ]);
+    let (vault, side, session) = vault("settings-refetch", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at, deleted_at)
+             VALUES ('settings', 'synced_settings', NULL, 'metadata-only', 10, 2, 2)",
+            [],
+        )
+        .map_err(failed)?;
+        memry_core::domain::settings::set(conn, "editor.zoom", json!(120), "device-a", 3)
+            .map(|_| ())
+    })
+    .expect("an edit over the deleted payload-less row");
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    let pushes = transport.calls_to("/sync/push");
+    assert_eq!(pushes.len(), 1, "{summary:?}");
+    let body: Json =
+        serde_json::from_slice(pushes[0].body.as_deref().expect("a body")).expect("json");
+    let item = &body["items"][0];
+    assert_eq!(item["id"], "synced_settings");
+    let (public, _secret) = sodium::sign_seed_keypair(&THIS_DEVICE_SEED).expect("a keypair");
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let sent = envelope::decrypt(
+        &envelope::from_json(item).expect("an envelope"),
+        &vault_key[..],
+        &public,
+    )
+    .expect("decrypt the push");
+    let sent: Json = serde_json::from_slice(&sent).expect("json");
+    assert_eq!(
+        sent["settings"],
+        json!({"general": {"theme": "dark"}, "editor": {"font": "serif", "zoom": 120}}),
+        "{sent}"
+    );
     assert_eq!(summary.pending, 0, "{summary:?}");
 }

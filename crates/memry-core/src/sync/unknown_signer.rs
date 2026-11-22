@@ -17,6 +17,11 @@
 //! - The row goes when the id resolves: any verified record for it
 //!   ([`resolve_verified`]), or the last retry.
 //!
+//! The settings item reuses the hold (#5433): an edit over a deleted
+//! payload-less settings row ([`crate::domain::settings::apply`]) records a
+//! refusal of `synced_settings`, so the server copy is re-pulled and merged
+//! before the edit pushes.
+//!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
 //! [`crate::protocol::account::UNKNOWN_SIGNER`].
@@ -56,13 +61,16 @@ pub(crate) fn refused(conn: &Connection, item_id: &str) -> Result<(), StorageErr
 }
 
 /// Ends the wait on every id in `pending`: each arrived verified, applied or
-/// skipped, so its signer is known and nothing is left to re-pull.
+/// skipped, so its signer is known and nothing is left to re-pull. A skipped
+/// record (a settings delete, an older record) leaves the row's unknown-signer
+/// flag behind, so it is cleared here too.
 pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result<(), StorageError> {
     if pending.is_empty() || waiting(conn)?.is_empty() {
         return Ok(());
     }
     for item in pending {
         drop_refusal(conn, item.item_id())?;
+        sync_items::clear_unknown_signer(conn, item.item_type(), item.item_id())?;
     }
     Ok(())
 }

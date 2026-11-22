@@ -258,8 +258,6 @@ fn apply_tombstone(
         eprintln!(
             "memry-core: pull: {item_type}:{item_id} delete skipped: settings are never deleted"
         );
-        // Verified, so an unknown-signer hold on the row is over.
-        sync_items::clear_unknown_signer(conn, item_type, item_id)?;
         totals.skipped += 1;
         return Ok(());
     }
