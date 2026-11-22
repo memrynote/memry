@@ -24,6 +24,7 @@ import {
   bodyDebt,
   existingDbs,
   findBootstrapDb,
+  noBootstrapDbWarning,
   feedHeadMs,
   iosMarks,
   tauriStartMs
@@ -155,6 +156,12 @@ async function runCore(proxy) {
   })
   const code = await new Promise((resolve) => child.on('exit', resolve))
   if (code !== 0) fail(`memry bench bootstrap exited ${code}`)
+  // The body manifest read is not bootstrap traffic: keep it out of the window.
+  const measured = proxy.requests.length
+  const coverage = await cli(binary, proxy.url, ['bench', 'body-coverage', '--vault', vaultId])
+  proxy.requests.length = measured
+  if (coverage.status === 0) shell.coverage = JSON.parse(coverage.stdout)
+  else console.error(`bench:bootstrap: memry bench body-coverage failed: ${coverage.stderr.trim()}`)
   return { marks, sleeps, phases, shell, staleLockReleases: 0 }
 }
 
@@ -276,6 +283,7 @@ async function waitForBodies({ startMs, dbRoots, knownDbs, done }) {
   let start = null
   let runDeadline = null
   let db = null
+  let warnedNoDb = false
   let debt = null
   try {
     for (;;) {
@@ -292,6 +300,13 @@ async function waitForBodies({ startMs, dbRoots, knownDbs, done }) {
         console.log('Bootstrap started; measuring.')
       }
       db ??= findBootstrapDb(dbRoots, knownDbs)
+      if (!db && !warnedNoDb) {
+        const warning = noBootstrapDbWarning(start, Date.now())
+        if (warning) {
+          console.warn(warning)
+          warnedNoDb = true
+        }
+      }
       if (db) {
         try {
           debt = bodyDebt(db)
