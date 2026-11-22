@@ -63,7 +63,8 @@
     "downloadProgressFailed": "ダウンロードの進捗を取得できませんでした",
     "exceedsMaxSize": "ファイルが大きすぎます：{size} は上限の {limit} を超えています",
     "exceedsPlanLimit": "ファイルがプランの上限を超えています：{size}（上限 {limit}）",
-    "emptyFile": "空のファイルはアップロードできません"
+    "emptyFile": "空のファイルはアップロードできません",
+    "textInMediaFile": "このファイルには、名前が示すメディアではなくテキストが含まれています"
   },
   "crdt": {
     "persistenceDegradedTitle": "このデバイスでは編集履歴が保持されていません",

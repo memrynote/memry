@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import type * as PathsModule from '../lib/paths'
 import { createTestIndexDb } from '@tests/utils/test-db'
@@ -136,7 +136,7 @@ import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
 import { syncNoteToCache } from '../vault/note-sync'
-import { insertNoteCache } from '@main/database/queries/notes'
+import { getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache } from '@memry/db-schema/schema/notes-cache'
 
 beforeAll(() => {
@@ -466,5 +466,79 @@ describe('the write-back never reads bytes Memry wrote or read as an outside edi
     expect(await yDocToMarkdown(reopened, CRDT_FRAGMENT_NAME, { notePath })).not.toContain(
       'Draft paragraph.'
     )
+  })
+})
+
+describe('a binary file under a row a shipped build saved as markdown (#5412)', () => {
+  const PNG = '\x89PNG\r\n\x1a\n\0\0\0\rIHDR'
+  const queue = { enqueue: vi.fn(), enqueueFullState: vi.fn(), dropNote: vi.fn() }
+
+  beforeAll(() => {
+    h.contentHash = generateContentHash
+  })
+
+  afterEach(() => {
+    resetCrdtProvider()
+    resetWritebackState()
+    vi.clearAllMocks()
+  })
+
+  /** The server body in the store, the row's hash of it, and `file` on disk. */
+  async function rowAt(id: string, notePath: string, file: (body: string) => string) {
+    const author = new Y.Doc()
+    await markdownToYFragment('# Sunset\n\nA body.', author.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const body = (await yDocToMarkdown(author, CRDT_FRAGMENT_NAME, { notePath }))!
+    h.store.set(id, [Y.encodeStateAsUpdate(author)])
+    seedRow(rowFor(id, notePath, body))
+    h.files.set(`/vault/${notePath}`, file(body))
+    const provider = getCrdtProvider()
+    await provider.init(queue as never, vi.fn())
+    return { provider, body, row: getNoteCacheById(h.indexDb as never, id) }
+  }
+
+  it('takes nothing from the blob when the doc opens or a remote body lands', async () => {
+    const id = 'png-as-markdown'
+    const notePath = 'Images/Sunset.png'
+    const { provider, body, row } = await rowAt(id, notePath, () => PNG)
+
+    const doc = await provider.open(id, 1)
+    provider.applyRemoteUpdate(id, editOf(doc, 'A body.', ' Remote.'))
+    await provider.materialize(id)
+    await settleWriteback(id)
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toBe(
+      body.replace('A body.', 'A body. Remote.')
+    )
+    expect(h.store.get(id)).toHaveLength(2)
+    expect(queue.enqueue).not.toHaveBeenCalled()
+    expect(queue.enqueueFullState).not.toHaveBeenCalled()
+    expect(h.files.get(`/vault/${notePath}`)).toBe(PNG)
+    expect(getNoteCacheById(h.indexDb as never, id)).toEqual(row)
+    expect(provider.validateNoteForCrdt(id).ok).toBe(false)
+  })
+
+  it('seeds no doc from the blob', async () => {
+    const id = 'png-as-markdown-unseeded'
+    const notePath = 'Images/Dawn.png'
+    const { provider } = await rowAt(id, notePath, () => PNG)
+    h.store.delete(id)
+    // The seed opens the file itself rather than through `readVaultFile`.
+    fs.mkdirSync(path.join(VAULT_ROOT, 'Images'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, notePath), Buffer.from(PNG, 'latin1'))
+
+    const doc = await provider.open(id, 1)
+
+    expect(doc.getXmlFragment(CRDT_FRAGMENT_NAME).length).toBe(0)
+    expect(queue.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('still takes an outside edit of a markdown note named like an image', async () => {
+    const id = 'png-dot-md'
+    const notePath = 'Images/Sunset.png.md'
+    const { provider } = await rowAt(id, notePath, (body) => `${body}\n\nEdited outside.`)
+
+    const doc = await provider.open(id, 1)
+
+    expect(await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath })).toContain('Edited outside.')
   })
 })

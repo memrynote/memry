@@ -65,6 +65,7 @@ import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-do
 import { resetAttachmentQueue } from './attachment-outbox'
 import { stopAttachmentDownloadRedriver } from './attachment-download-redriver'
 import { attachmentUploadRedriver } from './attachment-upload-redriver'
+import { restoreOverwrittenBinaryNotes } from './binary-note-restore'
 import { deletedAssetReleaseRunner } from './deleted-asset-release-runner'
 import { createServerBodyReader, reviveHealRunner } from './revive-heal'
 import { holdCanvasAssetsBeforePush } from '../canvas/assets/asset-service-context'
@@ -967,6 +968,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await redriveAttachmentDownloads()
         reconcileHomeCoversNow()
         reconcileInboxAttachmentsNow()
+        // Binary note files the pre-#5414 write-back overwrote with markdown
+        // get their blob back (#5415).
+        await restoreOverwrittenBinaryNotes()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the

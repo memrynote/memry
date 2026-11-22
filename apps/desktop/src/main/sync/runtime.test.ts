@@ -351,6 +351,9 @@ vi.mock('../home/cover-service', () => ({
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 vi.mock('./engine', () => ({ SyncEngine: runtimeMocks.SyncEngine }))
+// Started fire-and-forget after startup; left real, it reads the database
+// mock after the test that started it has ended.
+vi.mock('./binary-note-restore', () => ({ restoreOverwrittenBinaryNotes: async () => {} }))
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./note-body-outbox', () => ({
   NoteBodyCredentialsMissingError: class NoteBodyCredentialsMissingError extends Error {},

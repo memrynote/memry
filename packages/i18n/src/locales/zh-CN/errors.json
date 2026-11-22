@@ -63,7 +63,8 @@
     "downloadProgressFailed": "获取下载进度失败",
     "exceedsMaxSize": "文件太大：{size} 超过 {limit} 的上限",
     "exceedsPlanLimit": "文件超出你的套餐允许的大小：{size} 超过 {limit}",
-    "emptyFile": "无法上传空文件"
+    "emptyFile": "无法上传空文件",
+    "textInMediaFile": "此文件包含文本，而不是其名称所示的媒体"
   },
   "crdt": {
     "persistenceDegradedTitle": "此设备未保留编辑历史",

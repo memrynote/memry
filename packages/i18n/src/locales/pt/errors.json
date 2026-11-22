@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Não foi possível obter o progresso do download",
     "exceedsMaxSize": "Arquivo muito grande: {size} excede o limite de {limit}",
     "exceedsPlanLimit": "O arquivo é maior do que seu plano permite: {size} excede {limit}",
-    "emptyFile": "Não é possível enviar um arquivo vazio"
+    "emptyFile": "Não é possível enviar um arquivo vazio",
+    "textInMediaFile": "Este arquivo contém texto em vez da mídia indicada pelo nome"
   },
   "crdt": {
     "persistenceDegradedTitle": "O histórico de edições não está sendo mantido neste dispositivo",

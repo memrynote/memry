@@ -220,7 +220,13 @@ export const SYNC_STATE_KEYS = {
    * with the store's copy means the two were restored or replaced apart; see
    * `reconcileCrdtStoreEpoch`. Missing reads as a mismatch.
    */
-  CRDT_STORE_EPOCH: 'crdtStoreEpoch'
+  CRDT_STORE_EPOCH: 'crdtStoreEpoch',
+  /**
+   * JSON list of attachment ids whose server blob is itself text (#5415): a
+   * binary note restore downloaded it and the file still held text, so the
+   * restore never asks for it again. Missing reads as an empty list.
+   */
+  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

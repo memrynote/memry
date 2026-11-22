@@ -15,6 +15,7 @@ import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { writingFrontmatterOf } from '@memry/shared'
 import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { utcNow } from '@memry/shared/utc'
 import { atomicWrite, ensureDirectory, deleteFile } from '../vault/file-ops'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
@@ -581,6 +582,17 @@ async function performWriteback(
     log.debug('Write-back skipped: no note row', { noteId })
     return
   }
+  // A binary note's file is its downloaded blob, and its row names the blob's
+  // type. The server holds a CRDT body for binary notes too, so a fresh device
+  // settles one into a doc; writing it would put markdown over the image, PDF
+  // or recording and turn the row into a markdown note (#5412). A shipped
+  // build already saved some of these rows as markdown; `isBinaryNoteRow`
+  // reads the path's type too until the index walk repairs the row.
+  if (isBinaryNoteRow(cached)) {
+    updateDebugState(noteId, { pending: false })
+    log.debug('Write-back skipped: binary note', { noteId, fileType: cached.fileType })
+    return
+  }
   // A file linked outside the vault is neither read nor written over (#2804).
   refuseOutsideVaultSync(getVaultRoot(), cached.path)
 
@@ -818,8 +830,10 @@ async function ingestOutsideEditFirst(
 async function ingestOfflineEdit(noteId: string): Promise<void> {
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId)
-  const raw = cached?.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
-  if (!cached || raw === null || !isOutsideEdit(indexDb, noteId, cached, raw)) return
+  // A binary note's file is its blob, never an outside edit of the body (#5412).
+  if (!cached || isBinaryNoteRow(cached)) return
+  const raw = cached.contentHash ? await readVaultFile(getVaultRoot(), cached.path) : null
+  if (raw === null || !isOutsideEdit(indexDb, noteId, cached, raw)) return
   await ingestOutsideEditFirst(
     indexDb,
     noteId,

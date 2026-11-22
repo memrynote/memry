@@ -363,7 +363,7 @@ beforeEach(() => {
     createdAt: '2026-01-01T00:00:00.000Z',
     localOnly: false,
     emoji: null,
-    fileType: 'md',
+    fileType: 'markdown',
     date: null
   }
   vi.stubEnv('NODE_ENV', 'test')

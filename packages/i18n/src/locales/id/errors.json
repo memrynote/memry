@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Gagal mengambil progres unduhan",
     "exceedsMaxSize": "File terlalu besar: {size} melebihi batas {limit}",
     "exceedsPlanLimit": "File lebih besar dari yang diizinkan paket Anda: {size} melebihi {limit}",
-    "emptyFile": "Tidak dapat mengunggah file kosong"
+    "emptyFile": "Tidak dapat mengunggah file kosong",
+    "textInMediaFile": "File ini berisi teks, bukan media yang disebutkan namanya"
   },
   "crdt": {
     "persistenceDegradedTitle": "Riwayat edit tidak disimpan di perangkat ini",
