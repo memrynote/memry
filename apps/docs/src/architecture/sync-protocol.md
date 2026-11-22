@@ -2215,9 +2215,16 @@ deleting the secret serves the packs again with no rebuild. Unset, nothing chang
 rollback of the packs rollout (protocol chapter 08 §8.10), set only by an operator. Four points:
 
 - It does not stop compaction. To stop the packer, remove the `PACK_QUEUE` and
-  `PACK_BACKFILL_QUEUE` bindings from `wrangler.toml` and deploy.
+  `PACK_BACKFILL_QUEUE` producer bindings, in each `[env.*]` section of `wrangler.toml`
+  (`apps/sync-server/wrangler.toml:124`, `:135`, `:184`, `:195`), and deploy. Messages already
+  queued still run. Removing `PACK_QUEUE` also drops the delayed purge retry
+  (`apps/sync-server/src/routes/sync.ts:589`, `apps/sync-server/src/services/cleanup.ts:371`),
+  so a purge that needs more than four rewrites, or whose R2 delete fails, leaves purged bodies in
+  R2 until the next 6-hourly backfill tick deletes them
+  (`apps/sync-server/src/services/pack-backfill.ts:187`), not within 900 s. When stopping the
+  backfill is enough, remove only `PACK_BACKFILL_QUEUE`.
 - It takes effect on the next listing. A run that already holds presigned pack URLs may keep
-  fetching for up to 300 s more, until they expire.
+  fetching for up to about 300 s more, until they expire.
 - Vault ids match exactly and case-sensitively. `default` is the vault of every account a legacy
   client synced, so naming it disables packs for all of them.
 - `wrangler secret put` and `wrangler secret delete` deploy a new version of the current Worker
