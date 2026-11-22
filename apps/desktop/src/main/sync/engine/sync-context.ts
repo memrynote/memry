@@ -176,6 +176,10 @@ export const SYNC_STATE_KEYS = {
    * after the last one.
    */
   PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
+  /** JSON `{type:id: held cursor}` of the record-pack phase's rows; see `readPackApplied` (#5390). */
+  RECORD_PACKS_APPLIED: 'recordPacksApplied',
+  /** JSON `type:id` list of rows §8.10 rule 2 kept; see `readUnresolved` (#5390). */
+  RECORD_PACKS_UNRESOLVED: 'recordPacksUnresolved',
   /**
    * The one-time re-pull from cursor 0 that heals installs an older build left
    * with a skipped cursor range (#2382). The manifest diff heals missing items

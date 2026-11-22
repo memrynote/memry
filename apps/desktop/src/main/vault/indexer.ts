@@ -192,6 +192,10 @@ async function indexFile(
     // Check if already in cache by path
     const existingByPath = getNoteCacheByPath(db, relativePath)
     if (existingByPath && !forcePaths.has(relativePath)) {
+      if (fileType !== 'markdown' && existingByPath.fileType === 'markdown') {
+        await retypeBinaryRow(db, existingByPath, relativePath, fileType)
+        return 'indexed'
+      }
       return 'skipped'
     }
 
@@ -268,6 +272,38 @@ async function rekeyCaseVariantRow(
   }
   await flushProjectionEvents()
   processRename(claimed.id, claimed.path, relativePath, { sync: false })
+}
+
+/**
+ * A binary file whose row says markdown: a write-back of the CRDT body the
+ * server holds for every note, binary ones included, re-saved the row as
+ * markdown on a fresh device (#5412). Only the type and MIME type move; the
+ * row keeps its id, emoji, size and sync bookkeeping. The file on disk may be
+ * the markdown that overwrote the blob, so its size is not the blob's (0 when
+ * the row has none: unknown). A markdown note's file is always `.md`, so a
+ * binary extension decides.
+ */
+async function retypeBinaryRow(
+  db: ReturnType<typeof getIndexDatabase>,
+  row: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
+  relativePath: string,
+  fileType: Exclude<NonNullable<ReturnType<typeof getFileType>>, 'markdown'>
+): Promise<void> {
+  moveFileInCache(db, {
+    id: row.id,
+    path: relativePath,
+    title: row.title,
+    fileType,
+    mimeType: getMimeType(getExtension(relativePath)),
+    fileSize: row.fileSize ?? 0,
+    createdAt: new Date(row.createdAt),
+    modifiedAt: new Date(row.modifiedAt)
+  })
+  await flushProjectionEvents()
+  logger.warn('Restored the file type of a binary note saved as markdown', {
+    id: row.id,
+    fileType
+  })
 }
 
 /**

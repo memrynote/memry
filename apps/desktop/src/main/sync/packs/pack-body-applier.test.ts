@@ -6,7 +6,7 @@ import sodium, {
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { encryptCrdtUpdate } from '../crdt-encrypt'
+import { decryptCrdtUpdate, encryptCrdtUpdate } from '../crdt-encrypt'
 import type { PackIndexEntry } from '@memry/contracts/pack-format'
 
 import type { DocumentPlan, PackedUpdate } from './body-plan'
@@ -182,6 +182,42 @@ describe('pack body applier', () => {
       await expect(noStore.applyDocument('note-1', plan)).resolves.toBeNull()
       expect(applied).toEqual([])
       expect(watermarks.size).toBe(0)
+    })
+
+    // An account accumulates a key per device it ever linked; trying all of
+    // them per snapshot cost 126 s of a 270 s pack phase on 17k notes (#5390).
+    it('tries the key that verified the last snapshot first, and still finds a new signer', async () => {
+      const others = Array.from({ length: 40 }, () => sodium.crypto_sign_keypair('uint8array'))
+      const keys: Record<string, Uint8Array> = Object.fromEntries(
+        others.map((pair, i) => [`old-${i}`, pair.publicKey])
+      )
+      keys.b = deviceB.publicKey
+      keys.a = deviceA.publicKey
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => new Map(Object.entries(keys)),
+        decrypt
+      })
+
+      const notes = Array.from({ length: 20 }, (_, i) => `note-${i}`)
+      for (const noteId of notes) {
+        await sut.applyDocument(
+          noteId,
+          snapshotPlan(noteId, sealed(noteId, noteId, deviceA), 1, 'r')
+        )
+      }
+      const reached = await sut.applyDocument(
+        'note-b',
+        snapshotPlan('note-b', sealed('note-b', 'from b', deviceB), 1, 'r')
+      )
+
+      expect(applied).toHaveLength(21)
+      expect(reached).toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
+      // The first snapshot walks every key, the next 19 hit at once, and the
+      // one from b walks at most every key again.
+      expect(decrypt.mock.calls.length).toBeLessThanOrEqual(42 + 19 + 42)
     })
 
     it('resolves the registered keys once per bootstrap, not once per document', async () => {
