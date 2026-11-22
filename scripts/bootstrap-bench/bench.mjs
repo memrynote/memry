@@ -24,6 +24,7 @@ import {
   bodyDebt,
   existingDbs,
   findBootstrapDb,
+  noBootstrapDbWarning,
   feedHeadMs,
   iosMarks,
   tauriStartMs
@@ -276,6 +277,7 @@ async function waitForBodies({ startMs, dbRoots, knownDbs, done }) {
   let start = null
   let runDeadline = null
   let db = null
+  let warnedNoDb = false
   let debt = null
   try {
     for (;;) {
@@ -292,6 +294,13 @@ async function waitForBodies({ startMs, dbRoots, knownDbs, done }) {
         console.log('Bootstrap started; measuring.')
       }
       db ??= findBootstrapDb(dbRoots, knownDbs)
+      if (!db && !warnedNoDb) {
+        const warning = noBootstrapDbWarning(start, Date.now())
+        if (warning) {
+          console.warn(warning)
+          warnedNoDb = true
+        }
+      }
       if (db) {
         try {
           debt = bodyDebt(db)

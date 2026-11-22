@@ -19,7 +19,7 @@
 //! zero-loss oracle reads (`tests/sync-harness/src/zero-loss-oracle`), so the
 //! sync harness can run the oracle on a core bootstrap (#5232).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -186,10 +186,16 @@ pub async fn bootstrap(
         }
     }
 
-    let (live, with_body) = body_coverage(&db).await?;
+    let (live, without_body) = db.call(|conn| body_coverage(conn)).await?;
+    let server_bodies = body_pull.server_body_ids().await?;
     mark(
         "end",
-        json!({ "liveDocuments": live, "withBody": with_body }),
+        json!({
+            "liveDocuments": live,
+            "withBody": live - without_body.len() as u64,
+            // Null when the body manifest read stopped short.
+            "missingBodies": server_bodies.map(|ids| missing_bodies(&without_body, &ids)),
+        }),
     );
     Ok(())
 }
@@ -202,23 +208,45 @@ async fn body_pull(cli: &Cli, db: Db, vault: &str) -> Result<BodyPull, CliError>
     Ok(BodyPull::new(http, db, Declaration::subscribed(), cipher).with_vault(vault))
 }
 
-/// Live notes and journals, and how many of them hold any body state locally.
-async fn body_coverage(db: &Db) -> Result<(u64, u64), StorageError> {
-    db.call(|conn| {
-        conn.query_row(
-            "SELECT COUNT(*), COUNT(b.doc_id) FROM sync_items i \
-             LEFT JOIN (SELECT doc_id FROM yjs_snapshots UNION SELECT doc_id FROM yjs_updates) b \
-               ON b.doc_id = i.item_id \
-             WHERE i.item_type IN ('note', 'journal') AND i.deleted_at IS NULL \
-               AND i.corrupt_reason IS NULL",
+/// Live notes and journals, and the ids of those that hold no body state
+/// locally.
+fn body_coverage(conn: &Connection) -> Result<(u64, Vec<String>), StorageError> {
+    let failed = |error: rusqlite::Error| StorageError::Failed {
+        what: format!("counting local bodies: {error}"),
+    };
+    let live: i64 = conn
+        .query_row(
+            &format!("SELECT COUNT(*) FROM sync_items i WHERE {LIVE_DOCUMENT}"),
             [],
-            |row| Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64)),
+            |row| row.get(0),
         )
-        .map_err(|error| StorageError::Failed {
-            what: format!("counting local bodies: {error}"),
-        })
-    })
-    .await
+        .map_err(failed)?;
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT i.item_id FROM sync_items i WHERE {LIVE_DOCUMENT} \
+               AND NOT EXISTS (SELECT 1 FROM yjs_snapshots WHERE doc_id = i.item_id) \
+               AND NOT EXISTS (SELECT 1 FROM yjs_updates WHERE doc_id = i.item_id) \
+             ORDER BY i.item_id"
+        ))
+        .map_err(failed)?;
+    let without_body = statement
+        .query_map([], |row| row.get(0))
+        .and_then(Iterator::collect)
+        .map_err(failed)?;
+    Ok((live as u64, without_body))
+}
+
+const LIVE_DOCUMENT: &str = "i.item_type IN ('note', 'journal') AND i.deleted_at IS NULL \
+     AND i.corrupt_reason IS NULL";
+
+/// The documents with no local body that the server holds a body for. One the
+/// server has no body for (an attachment note, a note never edited) is not
+/// missing anything (#5232).
+fn missing_bodies(without_body: &[String], server_bodies: &HashSet<String>) -> usize {
+    without_body
+        .iter()
+        .filter(|doc_id| server_bodies.contains(*doc_id))
+        .count()
 }
 
 /// The oracle's `LocalVaultState`, plus what its semantic check digests: each
@@ -369,7 +397,35 @@ fn sync_failed(error: SyncError) -> CliError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
+    use rusqlite::Connection;
+
+    use super::{body_coverage, missing_bodies};
     use crate::cli::{Command, Parsed, parse};
+
+    #[test]
+    fn a_missing_body_is_one_the_server_holds() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE sync_items (item_id TEXT, item_type TEXT, deleted_at TEXT, corrupt_reason TEXT);
+             CREATE TABLE yjs_snapshots (doc_id TEXT);
+             CREATE TABLE yjs_updates (doc_id TEXT);
+             INSERT INTO sync_items VALUES
+               ('snap', 'note', NULL, NULL), ('upd', 'journal', NULL, NULL),
+               ('owed', 'note', NULL, NULL), ('attachment', 'note', NULL, NULL),
+               ('gone', 'note', '1', NULL), ('bad', 'note', NULL, 'x'), ('task', 'task', NULL, NULL);
+             INSERT INTO yjs_snapshots VALUES ('snap');
+             INSERT INTO yjs_updates VALUES ('upd'), ('upd');",
+        )
+        .unwrap();
+        let (live, without_body) = body_coverage(&conn).unwrap();
+        assert_eq!(live, 4);
+        assert_eq!(without_body, ["attachment", "owed"]);
+        // The server holds a body for `owed` only: `attachment` never had one.
+        let server: HashSet<String> = ["snap", "upd", "owed"].map(String::from).into();
+        assert_eq!(missing_bodies(&without_body, &server), 1);
+    }
 
     fn bench(line: &str) -> Result<Command, String> {
         let args = line.split_whitespace().map(String::from).collect();
