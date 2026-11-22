@@ -2157,6 +2157,10 @@ stays valid on the proxied path; `GET /sync/packs` omits `url` and `expiresAt`. 
 three as "use the proxied path". Old servers answer 404 to the presign route, which clients treat
 identically.
 
+`presign-batch` leaves out a hash the caller's vault does not own and presigns the rest. The client
+fetches that one chunk through the proxied GET, which reports its 404. The route never answers 404
+for a missing hash, because a client would read that as "no presign here" and proxy every download.
+
 **`R2_S3_BUCKET` must name the same bucket the `STORAGE` binding points at.** Nothing in the code
 cross-checks this — the Worker cannot read a binding's bucket name — so a mismatch fails at
 `/complete` instead: the presigned PUTs land in the _other_ bucket, the Worker's `head` against
