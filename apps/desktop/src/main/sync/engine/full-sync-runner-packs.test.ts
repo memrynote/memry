@@ -6,8 +6,12 @@ import sodium, {
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { PackSummary } from '@memry/contracts/sync-api'
+
 import { encryptCrdtUpdate } from '../crdt-encrypt'
+import type { DocumentPlan } from '../packs/body-plan'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
+import { downloadPacks } from '../packs/pack-downloads'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -74,6 +78,7 @@ const okResult = {
   entriesApplied: 3,
   entriesSkipped: 0,
   entriesFailed: 0,
+  updatesApplied: 0,
   appliedThroughCursor: 200
 }
 
@@ -83,11 +88,30 @@ type ProviderMock = {
   putSnapshotWatermark: ReturnType<typeof vi.fn>
   open: ReturnType<typeof vi.fn>
   applyRemoteUpdate: ReturnType<typeof vi.fn>
+  getDoc: ReturnType<typeof vi.fn>
   getStateVector: ReturnType<typeof vi.fn>
   closeIfInactive: ReturnType<typeof vi.fn>
   getOpenNoteIds: ReturnType<typeof vi.fn>
   inactiveDocCapacity: number
 }
+
+const snapshotPlan = (bytes: Uint8Array): DocumentPlan => ({
+  snapshot: {
+    entry: {
+      kind: 'crdt_snapshot',
+      id: 'note-1',
+      sourceKey: '',
+      sortKey: 0,
+      offset: 0,
+      length: 0,
+      sha256: new Uint8Array(32)
+    },
+    meta: { sequenceNum: 4, revision: 'r4' },
+    read: async () => bytes
+  },
+  updates: [],
+  watermark: { appliedSequence: 4, snapshotRevision: 'r4' }
+})
 
 interface Harness {
   runner: FullSyncRunner
@@ -95,6 +119,7 @@ interface Harness {
   setStateValue: ReturnType<typeof vi.fn>
   provider: ProviderMock | undefined
   deviceKeys: string[]
+  stateManager: SyncStateManager
 }
 
 const createHarness = (
@@ -113,7 +138,8 @@ const createHarness = (
         getSnapshotWatermark: vi.fn(async () => null),
         putSnapshotWatermark: vi.fn(async () => {}),
         open: vi.fn(async () => ({})),
-        applyRemoteUpdate: vi.fn(),
+        applyRemoteUpdate: vi.fn(() => true),
+        getDoc: vi.fn(() => undefined),
         // Non-empty: the applier refuses to record a watermark for a doc that
         // is still empty after the seed.
         getStateVector: vi.fn(() => new Uint8Array([1, 220, 148, 3, 1])),
@@ -125,7 +151,11 @@ const createHarness = (
   const ctx = {
     deps: {
       db: {
-        select: () => ({ from: () => ({ all: () => deviceKeys.map((key) => ({ key })) }) })
+        select: () => ({
+          from: () => ({
+            all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key }))
+          })
+        })
       },
       queue: { getPendingCount: vi.fn(() => 0), purgeOldErrors: vi.fn() },
       network: { online: true },
@@ -179,7 +209,7 @@ const createHarness = (
     actions
   )
 
-  return { runner, order, setStateValue, provider, deviceKeys }
+  return { runner, order, setStateValue, provider, deviceKeys, stateManager }
 }
 
 describe('FullSyncRunner pack bootstrap seam', () => {
@@ -249,6 +279,67 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     ).toEqual([])
   })
 
+  it.each(['stop', 'vault switch'] as const)(
+    '#given a %s during a pack pause #then the phase returns at once and nothing downloads after it',
+    async (ending) => {
+      const harness = createHarness()
+      const fetched: string[] = []
+      let applied = false
+      let paused!: () => void
+      const pausing = new Promise<void>((resolve) => (paused = resolve))
+      // The real phase-wide pause (production timer), cut short only by the signal.
+      mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
+        const packs = ['p-1', 'p-2'].map((id) => ({ id }) as PackSummary)
+        await downloadPacks(packs, {
+          parallel: 1,
+          fetchOne: async (pack) => {
+            fetched.push(pack.id)
+            paused()
+            return { lostMs: 0 }
+          },
+          onPause: () => {},
+          ...(deps.signal ? { signal: deps.signal } : {})
+        })
+        if (!deps.signal?.aborted) applied = true
+        return okResult
+      })
+
+      const running = harness.runner.run()
+      await pausing
+      if (ending === 'stop') harness.runner.abortPackPhase()
+      else harness.runner.dispose()
+      await running
+
+      expect(fetched).toEqual(['p-1'])
+      expect(applied).toBe(false)
+    }
+  )
+
+  it.each(['stop or cancel', 'pause', 'vault switch'] as const)(
+    '#given a %s while the bootstrap session opens #then the pack phase never starts',
+    async (ending) => {
+      const harness = createHarness()
+      let sessionOpened!: () => void
+      const opening = new Promise<void>((resolve) => (sessionOpened = resolve))
+      let finishOpen!: () => void
+      // openBootstrapSession is a network call: the ending lands while it is awaited.
+      mocks.openBootstrapSession.mockImplementationOnce(() => {
+        sessionOpened()
+        return new Promise<string>((resolve) => (finishOpen = () => resolve('open')))
+      })
+
+      const running = harness.runner.run()
+      await opening
+      if (ending === 'stop or cancel') harness.runner.abortPackPhase()
+      else if (ending === 'pause') vi.mocked(harness.stateManager.isPaused).mockReturnValue(true)
+      else harness.runner.dispose()
+      finishOpen()
+      await running
+
+      expect(mocks.runPackBootstrap).not.toHaveBeenCalled()
+    }
+  )
+
   describe('the seed store handed to the pack runner', () => {
     let vaultKey: Uint8Array
     let peer: { publicKey: Uint8Array; privateKey: Uint8Array }
@@ -281,9 +372,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         'note-1',
         peer.privateKey
       )
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
 
       // `applyRemoteUpdate` routes through the provider's live doc map and
       // DROPS anything for a doc it is not holding, so the open is what makes
@@ -322,9 +414,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         peer.privateKey
       )
 
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
       expect(mocks.fetchAndCacheDeviceKeys).toHaveBeenCalled()
     })
 
@@ -341,9 +434,10 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         peer.privateKey
       )
 
-      await expect(
-        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
-      ).resolves.toBe(true)
+      await expect(deps.bodies.applyDocument('note-1', snapshotPlan(packed))).resolves.toEqual({
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
     })
   })
 
@@ -355,6 +449,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       entriesApplied: 0,
       entriesSkipped: 0,
       entriesFailed: 0,
+      updatesApplied: 0,
       appliedThroughCursor: null
     })
     await withPacks.runner.run()

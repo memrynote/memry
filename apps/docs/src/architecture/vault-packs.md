@@ -373,6 +373,21 @@ unusable on its own and the item stays on `POST /sync/pull`. Released desktop an
 builds. A client advances a document's update cursor across packed updates only while their
 sequence numbers are consecutive, and pulls the rest from the server at the first gap.
 
+**Desktop body reader (#5390).** Desktop downloads every `crdt_snapshot` and `crdt_update` pack,
+then reads the body manifest (`GET /sync/crdt/manifest`, every page, after the pack bytes), then
+opens each document once and applies its packed snapshot and its packed updates in one pass
+(`packs/body-plan.ts`, `packs/pack-body-applier.ts`). A snapshot applies only when its revision is
+the manifest's. Updates apply from the snapshot's sequence, or from the document's own watermark
+under the same revision, each one above the manifest `floor` and exactly the cursor plus one; two
+entries for one sequence with different digests disable that document's packed updates. An update
+verifies against its `signerDeviceId` key only. The walk stops at the first gap, a failed read or
+a failed verify, and no watermark is written while the doc holds structs whose dependencies it
+never received, so the item routes fill the rest. When a server before #5232 answers the first
+manifest page 404, desktop applies packed snapshots under the old rule and no packed update. A read
+that stops short on a server with the route applies no packed body at all (§8.11). A snapshot pack
+counts as applied for the resume watermark only once every usable document it holds has run.
+Record packs stay on `POST /sync/pull`.
+
 ## Coverage Semantics a Client Must Respect
 
 A pack advertises a range on its kind's ordering axis. Three rules govern what that range does and
@@ -585,7 +600,8 @@ user, and falls back to the item-granular bootstrap. A bad pack is never fatal.
 | No CRDT store (in-memory provider)                                       | Whole run  | Returns — bodies rebuild from vault markdown instead               |
 | Pack has no `url` (deployment cannot presign)                            | That pack  | Filtered out at listing time                                       |
 | `url` expired and re-listing could not re-sign                           | That pack  | Skipped                                                            |
-| Transfer fails, or aborts                                                | That pack  | Skipped; temp file discarded                                       |
+| Transfer lost to the network (offline, 5xx, 429, 403 on an expired URL)  | Phase      | Pause 30/60/120/240 s, then downloaded again; a gap after the last |
+| Transfer fails any other way (404, 403 on a live URL), or aborts         | That pack  | Skipped; temp file discarded                                       |
 | Bad footer magic, wrong version, truncated file, payload digest mismatch | That pack  | `openPack` throws; discarded, every item in it stays item-granular |
 | Entry is not `crdt_snapshot`                                             | That entry | Counted as skipped                                                 |
 | Entry meta missing or malformed `{sequenceNum, revision}`                | That entry | Freshness unprovable → item GET                                    |
@@ -594,6 +610,11 @@ user, and falls back to the item-granular bootstrap. A bad pack is never fatal.
 | Decrypt failure, or no registered key verifies                           | That entry | Counted as failed → item GET                                       |
 
 Temp files never survive: success, failure and abort all discard them.
+
+A network drop pauses the whole pack phase (`pack-downloads.ts`, protocol 08 §8.12): no new pack GET
+starts, the running ones finish, and after the pause every lost or unstarted pack downloads again,
+with a fresh re-list for URLs that expired meanwhile. One pause for the phase, not a ladder per pack,
+so a 30-45 s drop costs one pause instead of every queued pack.
 
 ## Presigned URLs Are Credentials
 

@@ -123,7 +123,13 @@ describe('parsePullItems purged tombstones (#2302)', () => {
   // #2302
   it('admits a requested, clock-required tombstone with a non-empty clock', () => {
     expect(parse([tombstone()]).purgedTombstones).toEqual([
-      { id: 'task-t', type: 'task', deletedAt: 1_700_000_000, clock: { 'device-a': 2 } }
+      {
+        id: 'task-t',
+        type: 'task',
+        deletedAt: 1_700_000_000,
+        clock: { 'device-a': 2 },
+        serverCursor: 9
+      }
     ])
   })
 
