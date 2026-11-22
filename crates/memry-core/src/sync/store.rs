@@ -91,7 +91,9 @@ pub fn mark_deleted(
          ON CONFLICT(item_type, item_id) DO UPDATE SET
              server_cursor = COALESCE(excluded.server_cursor, sync_items.server_cursor),
              updated_at = excluded.updated_at,
-             deleted_at = excluded.deleted_at",
+             deleted_at = excluded.deleted_at,
+             corrupt_reason = NULL,
+             corrupt_at = NULL",
         params![item_type, item_id, server_cursor, now_ms, deleted_at],
     )
     .map_err(failed)?;

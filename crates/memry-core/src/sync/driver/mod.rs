@@ -41,6 +41,7 @@ mod lock_seed;
 pub mod observer;
 mod pause;
 pub mod progress;
+mod refusals;
 mod repairs;
 mod snapshots;
 
@@ -66,7 +67,6 @@ use crate::protocol::types::Declaration;
 use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
-use crate::storage::repositories::sync_items;
 use pause::PauseSwitch;
 
 use super::admission::CrdtAdmission;
@@ -355,6 +355,9 @@ impl SyncDriver {
             return None;
         }
         self.settle_misses().await;
+        if let Err(error) = self.retry_refusals(true).await {
+            eprintln!("memry-core: re-pulling records of an unknown signer failed: {error}");
+        }
         let started = super::pull::now_ms();
         let mut pass = self.engine.run_pass(trigger).await;
         pass.bodies_left = self.pull_bodies(&pass).await;
@@ -530,33 +533,15 @@ impl SyncDriver {
     }
 
     /// Re-pulls, under the pass gate and over the directory `open` just
-    /// fetched, every record stored corrupt for an unknown signer (chapter 01
+    /// fetched, every record refused for an unknown signer (chapter 01
     /// §1.4.0). The cipher's list of misses lives only as long as a driver, so
-    /// after a quit between the page that stored such a record and
-    /// [`SyncDriver::settle_misses`], the row is the only trace. A failed
-    /// re-pull is logged and left to the next pass's settle.
+    /// after a quit between the page that refused such a record and
+    /// [`SyncDriver::settle_misses`], the refusal's `meta` row is the only
+    /// trace ([`super::unknown_signer`], which also adopts a row an older
+    /// build left only corrupt). A failed re-pull is logged and left to the
+    /// next pass ([`SyncDriver::retry_refusals`]).
     async fn repull_unknown_signers(&self) -> Result<(), SyncError> {
-        let _gate = self.engine.hold_gate().await;
-        let ids = self
-            .db
-            .call(|conn| sync_items::unknown_signer_ids(conn))
-            .await?;
-        if ids.is_empty() {
-            return Ok(());
-        }
-        match self.first.pull.fetch_ids(&ids).await {
-            // A signer still missing from a fresh directory is not in the
-            // account, as in `settle_misses`.
-            Ok(_) => self.cipher.forget_missed(),
-            Err(error) => {
-                eprintln!(
-                    "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
-                    ids.len()
-                );
-                self.cipher.keep_missed(ids);
-            }
-        }
-        Ok(())
+        Ok(self.retry_refusals(false).await?)
     }
 
     /// After a lookup missed (chapter 01 §1.4.0): refetches the directory and

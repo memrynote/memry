@@ -14,6 +14,7 @@ use crate::sync::driver::observer::{AppliedFeed, AppliedOutcome, AppliedRecord};
 use crate::sync::hardening::{corrupt, quarantine};
 use crate::sync::note_body_feed::{self, FetchedBodies};
 use crate::sync::refused_items::{self, CORE_BUILD};
+use crate::sync::unknown_signer;
 
 impl PullLoop {
     /// Hands the page to [`apply`], which owns every decision about what an
@@ -48,6 +49,7 @@ impl PullLoop {
             .call(move |conn| {
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut totals = ApplyTotals::default();
+                unknown_signer::resolve_verified(&txn, &pending)?;
                 let owed_here = if owe_bodies {
                     body_debt::owe_page(&txn, &pending)?
                 } else {

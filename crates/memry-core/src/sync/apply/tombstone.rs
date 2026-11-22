@@ -12,7 +12,7 @@ use crate::domain::journal;
 use crate::storage::nested_tx;
 use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
-use crate::sync::{body_debt, delete_keep, journal_day_merge, store};
+use crate::sync::{body_debt, delete_keep, journal_day_merge, outbox, store};
 
 use super::{ApplyTotals, DOCUMENT_TYPES, feed, sqlite_failed};
 
@@ -96,6 +96,7 @@ pub(super) fn apply_tombstone(
         }
     }
     projectors::delete(&txn, item_type, item_id, deleted_at)?;
+    drop_queued_edits(&txn, item_type, item_id)?;
     let purged = if DOCUMENT_TYPES.contains(&item_type) {
         // The body debt goes with the body: a pull owed before the delete
         // would bring the server's surviving log back (#2297).
@@ -111,6 +112,29 @@ pub(super) fn apply_tombstone(
         totals.purged_documents.push(item_id.to_owned());
     }
     Ok(())
+}
+
+/// Retires the queued edits of a row this verified delete removed. Sent, each
+/// is an `update` carrying `deletedAt` that the server applies as a write,
+/// bringing the item back on every device (#5413, #5427). A queued delete and
+/// the document's body updates stay.
+fn drop_queued_edits(
+    conn: &Connection,
+    item_type: &str,
+    item_id: &str,
+) -> Result<(), StorageError> {
+    let mut statement = conn
+        .prepare("SELECT id FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op IN (?3, ?4)")
+        .map_err(sqlite_failed)?;
+    let ids = statement
+        .query_map(
+            rusqlite::params![item_type, item_id, outbox::OP_UPSERT, outbox::OP_CREATE],
+            |row| row.get(0),
+        )
+        .map_err(sqlite_failed)?
+        .collect::<Result<Vec<i64>, _>>()
+        .map_err(sqlite_failed)?;
+    outbox::retire_in(conn, &ids, "superseded by a verified delete")
 }
 
 /// Counts one applied delete: deleted when it took a live row, skipped when the row was
