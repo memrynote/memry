@@ -237,3 +237,21 @@ async fn an_edit_queued_after_the_delete_applied_is_not_pushed() {
     assert_eq!(pushed_item(&desktop), Vec::<String>::new());
     assert!(deleted(&desktop.db));
 }
+
+/// A directory refetch that fails other than in transport counts one attempt per waiting id,
+/// like a failed re-pull: the hold ages out instead of keeping the edit
+/// queued for as long as the directory is down.
+#[tokio::test]
+async fn a_failed_refetch_counts_against_the_budget() {
+    let desktop = refused_delete().await;
+    desktop.server.devices_garbled(true);
+    for _ in 0..5 {
+        desktop.pass().await;
+    }
+
+    edit(&desktop.db);
+    push_due(&desktop.db);
+    desktop.pass().await;
+    assert!(!deleted(&desktop.db), "never verified: kept");
+    assert_eq!(pushed_item(&desktop), vec!["update".to_owned()]);
+}

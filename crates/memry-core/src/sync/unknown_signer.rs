@@ -28,6 +28,8 @@
 //! [`retry`] runs ([`adopt_unrecorded`]); when its wait ends, its reason gets
 //! [`WAIT_ENDED`], which stops it being adopted again.
 
+use std::collections::HashSet;
+
 use rusqlite::{Connection, params};
 
 use crate::api::errors::{ApiError, StorageError};
@@ -63,11 +65,16 @@ pub(crate) fn refused(conn: &Connection, item_id: &str) -> Result<(), StorageErr
 /// Ends the wait on every id in `pending`: each arrived verified, applied or
 /// skipped, so its signer is known and nothing is left to re-pull.
 pub(crate) fn resolve_verified(conn: &Connection, pending: &[Pending]) -> Result<(), StorageError> {
-    if pending.is_empty() || waiting(conn)?.is_empty() {
+    if pending.is_empty() {
         return Ok(());
     }
+    // Only a waiting id runs `drop_refusal`, whose `sync_items` update scans
+    // the table (no index on `item_id`), inside the page's write transaction.
+    let waiting: HashSet<String> = waiting(conn)?.into_iter().map(|(id, _)| id).collect();
     for item in pending {
-        drop_refusal(conn, item.item_id())?;
+        if waiting.contains(item.item_id()) {
+            drop_refusal(conn, item.item_id())?;
+        }
     }
     Ok(())
 }
@@ -109,36 +116,56 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
             ids.len()
         );
-        if matches!(
-            error,
-            PullError::Api {
-                source: ApiError::Transport { .. }
-            }
-        ) {
+        if let PullError::Api { source } = &error
+            && is_transport(source)
+        {
             return Ok(());
         }
     }
-    db.call(move |conn| {
-        for (id, attempts) in due {
-            // Resolved by the re-pull, or a refusal of it is still recorded:
-            // this pass's attempt counts against the budget it had before.
-            if read_meta(conn, &key(&id))?.is_none() {
-                continue;
-            }
-            let attempts = attempts + 1;
-            if attempts < MAX_RETRIES {
-                write_meta(conn, &key(&id), &attempts.to_string())?;
-                continue;
-            }
-            eprintln!(
-                "memry-core: {id}'s signer is still unknown after {attempts} directories; \
-                 no longer re-pulled"
-            );
-            drop_refusal(conn, &id)?;
-        }
-        Ok(())
+    db.call(move |conn| count_attempt(conn, due)).await
+}
+
+/// A directory refetch for the re-pull failed. Like a failed re-pull, a
+/// transport failure counts no attempt and any other failure counts one for
+/// every waiting id, so a directory that never loads cannot hold an edit
+/// forever.
+pub(crate) async fn directory_failed(db: &Db, error: &ApiError) -> Result<(), StorageError> {
+    if is_transport(error) {
+        return Ok(());
+    }
+    db.call(|conn| {
+        adopt_unrecorded(conn)?;
+        let due = waiting(conn)?;
+        count_attempt(conn, due)
     })
     .await
+}
+
+fn is_transport(error: &ApiError) -> bool {
+    matches!(error, ApiError::Transport { .. })
+}
+
+/// Counts this pass's attempt for each of `due`, ending the wait of one whose
+/// budget ran out.
+fn count_attempt(conn: &Connection, due: Vec<(String, u32)>) -> Result<(), StorageError> {
+    for (id, attempts) in due {
+        // Resolved by the re-pull, or a refusal of it is still recorded:
+        // this pass's attempt counts against the budget it had before.
+        if read_meta(conn, &key(&id))?.is_none() {
+            continue;
+        }
+        let attempts = attempts + 1;
+        if attempts < MAX_RETRIES {
+            write_meta(conn, &key(&id), &attempts.to_string())?;
+            continue;
+        }
+        eprintln!(
+            "memry-core: {id}'s signer is still unknown after {attempts} directories; \
+             no longer re-pulled"
+        );
+        drop_refusal(conn, &id)?;
+    }
+    Ok(())
 }
 
 /// Whether any refusal waits.

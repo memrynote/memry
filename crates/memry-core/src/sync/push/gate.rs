@@ -19,6 +19,10 @@ impl PushCoordinator {
     ) -> Result<Option<Built>, PushError> {
         if row.deleted_at.is_some() && queued.op != outbox::OP_DELETE {
             let reason = "an edit of a row a verified delete removed";
+            eprintln!(
+                "memry-core: push: {}:{} retired: {reason}",
+                row.item_type, row.item_id
+            );
             return Ok(Some(Built::Retired(reason.to_owned())));
         }
         let held = unknown_signer::held(&self.db, queued).await?;

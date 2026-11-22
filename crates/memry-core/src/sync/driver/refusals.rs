@@ -13,8 +13,8 @@ use super::SyncDriver;
 
 impl SyncDriver {
     /// Re-pulls every refusal still waiting, under the pass gate. With
-    /// `refetch`, only when one waits, and over a refetched directory: a
-    /// failed refetch is logged and leaves the attempt to the next pass.
+    /// `refetch`, only when one waits, and over a refetched directory. A failed refetch is logged and counts like a
+    /// failed re-pull ([`unknown_signer::directory_failed`]).
     pub(super) async fn retry_refusals(&self, refetch: bool) -> Result<(), StorageError> {
         if refetch
             && !self
@@ -27,7 +27,7 @@ impl SyncDriver {
         let _gate = self.engine.hold_gate().await;
         if refetch && let Err(error) = self.cipher.refresh(&self.http).await {
             eprintln!("memry-core: refetching the device directory failed: {error}");
-            return Ok(());
+            return unknown_signer::directory_failed(&self.db, &error).await;
         }
         unknown_signer::retry(&self.db, &self.first.pull).await?;
         // `retry` counted the re-pull's own refusals. Settling them as fresh

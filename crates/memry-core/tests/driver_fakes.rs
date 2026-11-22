@@ -54,6 +54,8 @@ pub struct FakeServer {
     added_devices: Mutex<Vec<(String, u8)>>,
     /// `GET /auth/devices` answers 503 while set.
     devices_down: AtomicBool,
+    /// `GET /auth/devices` answers a body that lists no devices while set.
+    devices_garbled: AtomicBool,
     /// Routes whose requests are recorded and never answered.
     hung: Mutex<Vec<&'static str>>,
 }
@@ -70,6 +72,7 @@ impl FakeServer {
             markers: Mutex::default(),
             added_devices: Mutex::default(),
             devices_down: AtomicBool::new(false),
+            devices_garbled: AtomicBool::new(false),
             hung: Mutex::default(),
         })
     }
@@ -146,6 +149,13 @@ impl FakeServer {
     #[cfg(feature = "markdown")]
     pub fn devices_down(&self, down: bool) {
         self.devices_down.store(down, Ordering::SeqCst);
+    }
+
+    /// Answers `GET /auth/devices` with a malformed body until called with
+    /// `false`: a failure that is neither transport nor retried.
+    #[cfg(feature = "markdown")]
+    pub fn devices_garbled(&self, garbled: bool) {
+        self.devices_garbled.store(garbled, Ordering::SeqCst);
     }
 
     /// The `X-Memry-Sync-Types` of every request to `route`, in order.
@@ -294,6 +304,9 @@ impl FakeServer {
             "/auth/devices" => {
                 if self.devices_down.load(Ordering::SeqCst) {
                     return (503, "{}".to_owned());
+                }
+                if self.devices_garbled.load(Ordering::SeqCst) {
+                    return (200, "{}".to_owned());
                 }
                 let public = |seed: u8| {
                     let (public, _) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
