@@ -1914,8 +1914,11 @@ persisted cursor, opens a session and asks for packs again, so a quit during pac
 pull, the settle of pack-seeded docs or the body drain costs the work already done, not the
 elevation. An earlier build deleted the key at delivery: a kill in the 15-minute settle and drain
 of a large vault relaunched unelevated and never closed its bootstrap window. The server judges the resume
-window from the device's registration: when `POST /sync/bootstrap` answers 409, desktop deletes the
-key and syncs as steady state from the next run. Builds that predate the key ignore it.
+window from the device's registration: when `POST /sync/bootstrap` answers 409
+`BOOTSTRAP_NOT_ELIGIBLE`, desktop deletes the key and syncs as steady state from the next run. It
+deletes the key the same way on a 404 (a server without the route) or a 501 (`BOOTSTRAP_UNAVAILABLE`),
+so a relaunch does not re-post a session the server can never open. Any other refusal keeps the key.
+Builds that predate the key ignore it.
 
 After the window, any `GET /sync/changes` page that delivers an item spends eligibility, including
 one that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
