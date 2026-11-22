@@ -420,7 +420,7 @@ the signers and the server share). Without a pushed `deletedAt` the server
 stores its own time, which a device cannot sign in advance.
 
 **Normative — the bytes.** Encode, under the `DELETE_ATTESTATION` allowlist
-(§4.7.3), the map
+(§4.7.3), the map (v2; v1, which writers sign until the flip, is below)
 
 | Key         | Value                                                               |
 | ----------- | ------------------------------------------------------------------- |
@@ -444,17 +444,34 @@ ms, including the server's tombstone expiry
 **Normative — versions (#5247).** v2 binds the vault, so the server cannot
 replay a delete attested in one vault of the account into another, where a
 name-keyed id (a journal day, a tag, a property definition) names a different
-item. A writer that sends `X-Memry-Vault-Id` MUST sign v2 with that value. A
-writer that sends none signs v1: the same map with `purpose`
-`memry-delete-attestation-v1` and no `vaultId`, which every build before
-#5247 signs. A verifier MUST accept v2 whose `vaultId` is the vault it serves
-or syncs, and MUST accept v1 (compatibility: old devices and the attestations
-the server already holds). The two purposes are disjoint, so a v2 signature
-never verifies as v1, nor in another vault. The signature is 64 bytes in both
-versions and carries no version byte: the verifier tries v2 for its vault,
-then v1. Residual risk: v1 names no vault, so a v1 attestation stays
-replayable across vaults until v1 is retired. The record signature binds no
-vault either (chapter 01 §1.7).
+item. v1 is the same map with `purpose` `memry-delete-attestation-v1` and no
+`vaultId` (`packages/contracts/src/delete-attestation.ts:69-76`); every build
+before #5247 signs it.
+
+- A writer MUST sign v1 until the writer flip. A server that predates v2
+  verifies a v2 attestation as v1 and rejects the delete as
+  `403 SYNC_INVALID_SIGNATURE`, and a client cannot tell an old server from a
+  hostile one, so a writer MUST NOT fall back to v1 on a rejection. Writers:
+  desktop passes no vault id (`apps/desktop/src/main/sync/engine/push-coordinator.ts:323`,
+  used at `apps/desktop/src/main/sync/encrypt.ts:97`); the Rust core seals
+  without a vault (`crates/memry-core/src/api/sync/pass.rs:161`). The flip to
+  v2 (`AccountSealer::with_vault`, `crates/memry-core/src/protocol/account/seal.rs:195`)
+  is held until production servers verify v2 and the version floor (chapter 11) excludes builds that refuse a v2 purged marker.
+- A verifier MUST accept v2 whose `vaultId` is the vault it serves or syncs,
+  and MUST accept v1 (`packages/contracts/src/delete-attestation.ts:83`;
+  server `apps/sync-server/src/services/sync.ts:225`; desktop
+  `apps/desktop/src/main/sync/delete-attestation.ts:53`; Rust
+  `crates/memry-core/src/protocol/delete_attestation.rs:144`,
+  `crates/memry-core/src/sync/purged_markers.rs:149`).
+- A client that holds an attested purged marker and cannot read its vault id
+  MUST end the pull with an error and keep its cursor, never check v1 only
+  (`apps/desktop/src/main/sync/engine/pull-envelope.ts:227`).
+
+The two purposes are disjoint, so a v2 signature never verifies as v1, nor in
+another vault. The signature is 64 bytes in both versions and carries no
+version byte: the verifier tries v2 for its vault, then v1. Residual risk: v1
+names no vault, so a v1 attestation stays replayable across vaults until v1 is
+retired. The record signature binds no vault either (chapter 01 §1.7).
 
 **Not bound:** `signerDeviceId`, which selects the verifying key, so a
 swapped id fails verification.

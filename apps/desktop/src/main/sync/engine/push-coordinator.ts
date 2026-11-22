@@ -14,7 +14,6 @@ import { rebindQueuedOfflineEdits } from './offline-queue-rebind'
 import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError, SyncServerError } from '../http-client'
-import { getSyncVaultId } from '../sync-vault-id'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -318,11 +317,10 @@ export class PushCoordinator {
             vaultKey,
             signingKeys.secretKey,
             signingKeys.deviceId,
-            // The vault postToServer routes this push to, which a delete
-            // attestation binds (#5247).
-            dedupedItems.some((item) => item.operation === 'delete')
-              ? await getSyncVaultId()
-              : null,
+            // Delete attestations stay v1 (no vault) until production servers
+            // verify v2 (#5247, chapter 04 §4.8.4): an older server rejects a
+            // v2 delete as a bad signature. The flip passes getSyncVaultId().
+            null,
             {
               workerBridge: this.ctx.deps.workerBridge,
               queue: this.ctx.deps.queue,

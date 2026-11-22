@@ -33,7 +33,8 @@ vi.mock('electron', () => ({
 
 /** The vault this device syncs, as its sync requests name it (#5247). */
 const VAULT = 'vault-a'
-vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => VAULT }))
+const syncVaultId = vi.hoisted(() => ({ read: async (): Promise<string | null> => 'vault-a' }))
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: () => syncVaultId.read() }))
 
 // The note handler reads its row through the app's data DB handle.
 const currentDb: { db: TestDatabaseResult | null } = { db: null }
@@ -956,6 +957,33 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     warn.mockClear()
 
     await engine.pull()
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
+    expect(localRow(db, 'task', 'task-1')).toBeDefined()
+    expect(warn).not.toHaveBeenCalledWith('Pull: refused purged tombstones', expect.anything())
+  })
+
+  // #5247 review: without the vault id a v2 attestation cannot be checked. A
+  // v1-only check would refuse a valid v2 marker for good once the cursor
+  // moved, so the page fails and the cursor holds instead.
+  it('holds the cursor and refuses nothing when the vault id cannot be read', async () => {
+    const db = getDb()
+    seedRow(db, 'task', 'task-1', { 'device-a': 1 })
+    const engine = syncedEngine(db)
+    await servePage({
+      deleted: ['task-1'],
+      pull: { items: [], purgedTombstones: [purgedTombstone('task-1', 'task', TOMBSTONE_CLOCK)] }
+    })
+    const warn = vi.mocked(createLogger('PullEnvelope').warn)
+    warn.mockClear()
+    const read = syncVaultId.read
+    syncVaultId.read = async () => null
+
+    try {
+      await engine.pull()
+    } finally {
+      syncVaultId.read = read
+    }
 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
     expect(localRow(db, 'task', 'task-1')).toBeDefined()

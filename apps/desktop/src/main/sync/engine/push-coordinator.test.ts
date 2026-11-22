@@ -25,6 +25,9 @@ vi.mock('../../crypto/index', () => ({ secureCleanup: vi.fn() }))
 
 vi.mock('../sync-crypto-batch', () => ({ encryptPushBatch: encryptPushBatchMock }))
 
+// A readable vault id, so the v1 writer test (#5247) proves the push leaves it out.
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
+
 vi.mock('../item-handlers', () => ({
   getHandler: getHandlerMock,
   getRemoteSyncAdapter: getRemoteSyncAdapterMock
@@ -1148,6 +1151,28 @@ describe('PushCoordinator', () => {
       expect(body.items[0].operation).toBe('create')
       expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({ title: 'second' })
       expect(queue.getSize()).toBe(0)
+    })
+  })
+
+  // #5247: a server before v2 rejects a v2 delete attestation as a bad
+  // signature, so writers sign v1 (no vault id) until the flip.
+  describe('#given a delete in the batch', () => {
+    it('#then its attestation is signed without a vault id (v1)', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      queue.enqueue({
+        type: 'task',
+        itemId: 'task-9',
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'task-9', clock: { 'device-1': 2 }, deletedAt: 1 })
+      })
+
+      await coordinator.push()
+
+      expect(postToServerMock).toHaveBeenCalledTimes(1)
+      const vaultIdArg = 4
+      expect(encryptPushBatchMock.mock.calls[0][vaultIdArg]).toBeNull()
     })
   })
 
