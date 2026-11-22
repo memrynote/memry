@@ -68,7 +68,9 @@ export const toPolicySnapshot = (
  * it upgrades, so claims stay dormant until `required`
  * (`CRDT_CLAIM_MIN_DESKTOP_VERSION`) is set and the desktop write floor has
  * reached it. Until then a claim is dropped and the push runs under the
- * pre-#2299 rules, so no claimed row exists and no legacy client sees the 409.
+ * pre-#2299 rules, so no claimed row exists and no legacy client sees the
+ * claim's 409. The gate also holds the purge-cursor fence dormant (§7.15,
+ * #5367); the dead-document refusal answers the same 409 regardless.
  */
 export const snapshotClaimsEnabled = async (
   db: D1Database,

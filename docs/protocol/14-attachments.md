@@ -32,14 +32,14 @@ travels as a record is the **note's** reference list (§14.7).
 
 - Plaintext is split into fixed **8 MiB** chunks, with the final chunk short
   (`CHUNK_SIZE = 8 * 1024 * 1024`,
-  `apps/desktop/src/main/sync/attachments.ts:44`, applied at `:223`, `:228-230`).
+  `apps/desktop/src/main/sync/attachments.ts:48`, applied at `:241`, `:246-248`).
 - **At most 128 chunks per upload session**
   (`packages/contracts/src/blob-api.ts:17`, `:32`), so the effective per-file
   ceiling is **1 GiB** before plan limits.
 - **Each chunk on the wire is `nonce(24) ‖ ciphertext`**, built explicitly
-  (`apps/desktop/src/main/sync/attachments.ts:463-466`) and unpacked the same way
-  on read (`:808-809`). The AEAD is chapter 04 §4.3.
-- **All chunks share one file key** (`apps/desktop/src/main/sync/attachments.ts:463`
+  (`apps/desktop/src/main/sync/attachments.ts:534-537`) and unpacked the same way
+  on read (`:888-889`). The AEAD is chapter 04 §4.3.
+- **All chunks share one file key** (`apps/desktop/src/main/sync/attachments.ts:534`
   encrypts every chunk under the same `fileKey`), wrapped under the vault key
   once, in the manifest (§14.4).
 
@@ -49,7 +49,7 @@ travels as a record is the **note's** reference list (§14.7).
 ciphertext bytes** — that is, of `nonce ‖ ciphertext`, not of the plaintext —
 matched by `/^[a-f0-9]{64}$/`
 (`packages/contracts/src/blob-api.ts:10`, computed at
-`apps/desktop/src/main/sync/attachments.ts:468`).
+`apps/desktop/src/main/sync/attachments.ts:539`).
 
 **The object key is derived server-side from the caller's user and vault scope,
 so a client never submits key material** (`packages/contracts/src/blob-api.ts:5-8`).
@@ -66,8 +66,8 @@ readers on the selected vault never find (#2634). A presigned R2 URL is not a
 §14.5 route and carries no vault header.
 
 **The plaintext chunk hash is a separate value** used for the integrity check
-after decrypt (`apps/desktop/src/main/sync/attachments.ts:461`, checked at
-`:812`; declared at
+after decrypt (`apps/desktop/src/main/sync/attachments.ts:532`, checked at
+`:893`; declared at
 `packages/sync-client/src/push/attachment-manifest.ts:19-22`). **A reader MUST
 verify it**: the ciphertext hash proves the server returned the bytes it was
 asked for, and only the plaintext hash proves they decrypt to the right content.
@@ -111,7 +111,7 @@ redirecting a note's picture at somebody else's bytes.
 `:111-120`). A conforming reader MUST keep that order.
 
 An unresolvable signer device is a hard failure, not a fallback
-(`apps/desktop/src/main/sync/attachments.ts:703`).
+(`apps/desktop/src/main/sync/attachments.ts:782`).
 
 ## 14.5 Routes
 
@@ -496,10 +496,10 @@ it.
 ## 14.9 `CHUNK_SIZE` is not a contract constant — Q14.4
 
 **Normative.** `CHUNK_SIZE = 8 MiB` is a **desktop constant**
-(`apps/desktop/src/main/sync/attachments.ts:44`) and does not appear in
+(`apps/desktop/src/main/sync/attachments.ts:48`) and does not appear in
 `packages/contracts`. The manifest carries **`chunkSize` per file**
 (`packages/sync-client/src/push/attachment-manifest.ts:34`, written at
-`apps/desktop/src/main/sync/attachments.ts:498`).
+`apps/desktop/src/main/sync/attachments.ts:570`).
 
 **A reader therefore does not need it and MUST NOT assume it**: it MUST size
 every chunk from `manifest.chunks[j].size` and treat `manifest.chunkSize` as
