@@ -892,7 +892,7 @@ coverage ranges chain, and writes one pack that replaces them:
   they exist (§8.10): a newer row of the same item supersedes an entry, a
   deletion does not. An input the rollup cannot download or verify is left
   out and the run is planned again over every listed pack of the kind without
-  it (`apps/sync-server/src/services/pack-rollup.ts:326`, logged at `:335`); it stays listed. A
+  it (`apps/sync-server/src/services/pack-rollup.ts:328`, logged at `:337`); it stays listed. A
   rollup downloads at most 64 packs, so once a new plan needs more it plans only
   among packs already read (`:319`). A run never spans an excluded pack, so
   the bound of §8.14 counts each unreadable pack. Its coverage
@@ -1024,7 +1024,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
   rewrites before the listing and plans around them (`planRollup`,
   `apps/sync-server/src/services/pack-rollup.ts:89`), and its swap batch
   inserts nothing when either of two guards fails (`swapListing`,
-  `apps/sync-server/src/services/pack-rollup.ts:550-567`). The pending-set
+  `apps/sync-server/src/services/pack-rollup.ts:555-572`). The pending-set
   guard fails when a rewrite the plan did not exclude is pending. The
   listing-overlap guard fails when another listed pack of the kind starts
   inside the run's range; for `crdt_snapshot` the range's last second is open,
@@ -1062,7 +1062,7 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
      pass retries any delete that failed
      (`apps/sync-server/src/services/pack-message-passes.ts:50`, `:54`, `:64`).
      A rollup in that message lists no range twice: the pending-set and
-     listing-overlap guards fail its swap (`pack-rollup.ts:550-567`).
+     listing-overlap guards fail its swap (`pack-rollup.ts:555-572`).
   3. A compaction message whose last pass leaves objects due or rewrites
      pending throws (`apps/sync-server/src/services/pack-message-passes.ts:90-99`).
      It reads the pending rewrites again before that decision (`:73`), because
@@ -1207,7 +1207,7 @@ such pack stays listed. Dropping its row would end a record
 coverage range there (§8.10). A reader treats it as absent and takes its range
 item by item, which loses no data. Each rollup that meets it logs it at error
 level with the pack id and kind
-(`apps/sync-server/src/services/pack-rollup.ts:341-345`), and the backfill tick
+(`apps/sync-server/src/services/pack-rollup.ts:343-347`), and the backfill tick
 enqueues the kind every tick while it is above the bound, so an operator sees
 it at least once per tick. Within the bound no rollup reads it; detecting it there is
 #5272.

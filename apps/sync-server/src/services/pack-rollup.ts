@@ -288,7 +288,9 @@ export const rollupKind = async (
   // The pending rewrites are read before the listing (VERIFY-5283 V1): a
   // rewrite that commits between the two reads then shows as a listed pack,
   // never as a gap the run could span. A purge that takes a pack out after
-  // the pending read fails the swap (swapListing's pending and overlap guards).
+  // the pending read fails the swap (swapListing's pending and overlap
+  // guards), unless its rewrite kept no entry and listed no pack (see
+  // swapListing).
   const pending = await db
     .prepare(
       `SELECT pack_key FROM pack_replaced_objects
@@ -530,7 +532,10 @@ export const replacePacks = (
  * the plan took a pack out of the listing that the run may span: its rewrite
  * either is still pending (the pending guard) or already listed its pack
  * inside the range (the overlap guard), so neither lists the range twice
- * (VERIFY-5283 V1, REVIEW-5298 P1). An object the
+ * (VERIFY-5283 V1, REVIEW-5298 P1). Or its rewrite already committed empty:
+ * no entry was kept, so it listed no pack (pack-purge-rewrite.ts). Then no
+ * guard fails and the swap commits, which is harmless: no pack of the purge
+ * overlaps the merged one (REVIEW-5438). An object the
  * batch did not list is recorded for deletion at once (recordUnlisted).
  */
 const swapListing = async (
