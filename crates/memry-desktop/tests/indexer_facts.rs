@@ -16,7 +16,7 @@ use crate::index_support;
 use crate::vault_env;
 
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use index_support::{
     all_indexed, note_text, path_of, seeded, until, with_reporting_task, with_task, with_task_under,
@@ -656,6 +656,38 @@ fn a_reindex_a_first_sync_held_runs_at_the_next_open() {
     with_task(&open, receiver, |_| {
         sender.send(Applied::Indexed { complete: true }).unwrap();
         until("the reindex ran", || links_to(&open, first, second));
+    });
+    drop(open);
+    e.close();
+}
+
+/// A reindex asked while a first sync runs stays pending, not answered as done with its search
+/// deferred, and is answered once the first sync ended (#5409).
+#[test]
+fn a_reindex_asked_during_a_first_sync_is_answered_once_it_ended() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let hold = open.first_sync.hold();
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        let answer = task.reindex(Box::new(|_| {})).unwrap();
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(
+            answer.try_recv().is_err(),
+            "pending while the first sync runs"
+        );
+        drop(hold);
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(
+            links_to(&open, first, second),
+            "the answer follows the reindex"
+        );
     });
     drop(open);
     e.close();

@@ -289,7 +289,9 @@ impl Indexer {
         // The indexer holds its sender, so `changed` never ends while this runs.
         let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
-            if owed.walked() && !waiting.is_empty() {
+            // An asked reindex stays pending while a first sync runs, which holds its search
+            // reindex (#5409): its answer says the search is current.
+            if owed.walked() && !waiting.is_empty() && !self.first_sync.is_running() {
                 // A reindex reports through its own callback, which refreshes the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
@@ -434,7 +436,14 @@ impl Indexer {
                 announce,
             )
         });
-        // The sweep mints for every note, a later pass for the files it read.
+        // The sweep mints for every note, a later pass for the files it read. A pass a first
+        // sync held mints nothing, and the reindex run once it ended reads no file: it owes the
+        // sweep (#5409).
+        if let Ok(pass) = &outcome
+            && pass.held
+        {
+            owed.sweep = true;
+        }
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
