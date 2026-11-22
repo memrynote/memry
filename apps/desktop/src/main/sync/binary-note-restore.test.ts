@@ -17,6 +17,8 @@ vi.mock('../lib/logger', () => ({
 }))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), isDatabaseInitialized: () => false }))
 vi.mock('../store', () => ({ getCurrentVaultPath: () => null }))
+const { trackMainLog } = vi.hoisted(() => ({ trackMainLog: vi.fn() }))
+vi.mock('../telemetry/diagnostics', () => ({ trackMainLog }))
 
 const PNG = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52
@@ -85,6 +87,7 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
   })
 
   afterEach(() => {
+    trackMainLog.mockClear()
     attachmentEvents.offDownloadNeeded(downloader)
     resetAttachmentDownloadSession()
     vi.useRealTimers()
@@ -159,5 +162,21 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     resetAttachmentDownloadSession()
     expect(await restore()).toEqual({ requested: 0 })
     expect(fs.readFileSync(file, 'utf8')).toBe(WRITEBACK_MARKDOWN)
+    // The population #5419 needs is counted remotely, not only in the local log.
+    expect(trackMainLog).toHaveBeenCalledWith('warn', {
+      scope: 'BinaryNoteRestore',
+      action: 'binary_note_text_blob',
+      metrics: { itemCount: 1 }
+    })
+  })
+
+  it('still restores files when the remembered text-blob list is corrupt', async () => {
+    testDb.sqlite
+      .prepare('INSERT INTO sync_state (key, value, updated_at) VALUES (?, ?, ?)')
+      .run('binaryNoteTextBlobs', '{not json', Date.now())
+    const { file } = seedBinaryNote('Sunset.png', WRITEBACK_MARKDOWN)
+
+    expect(await restore()).toEqual({ requested: 1 })
+    expect(fs.readFileSync(file)).toEqual(PNG)
   })
 })

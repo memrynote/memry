@@ -61,7 +61,8 @@ import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
   recordAttachmentDownloadFailure,
-  recordAttachmentUploadFailure
+  recordAttachmentUploadFailure,
+  reportRefusedUpload
 } from '../sync/sync-activity'
 
 import {
@@ -509,7 +510,14 @@ export function registerAttachmentHandlers(): void {
       }
       const queue = getOrCreateUploadQueue()
       if (!queue) throw new Error('Sync not initialized')
-      const result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      let result: UploadResult
+      try {
+        result = await queue.enqueue(noteId, diskPath, createUploadProgressBroadcaster())
+      } catch (err) {
+        // The drain drops the row; the user still learns why.
+        if (err instanceof UnsendableAttachmentError) reportRefusedUpload(noteId, diskPath, err)
+        throw err
+      }
       recordFile(noteId, diskPath, result.attachmentId)
       return { attachmentId: result.attachmentId }
     },
@@ -571,7 +579,7 @@ export function registerAttachmentHandlers(): void {
           return
         }
         // An empty file (#3414) or text in a media file (#5415) fails
-        // identically on every retry: drop the row, no failure to show.
+        // identically on every retry: drop the row, never retry it.
         if (err instanceof UnsendableAttachmentError) {
           logger.info('Dropped an attachment upload that cannot succeed', {
             noteId,
@@ -584,6 +592,7 @@ export function registerAttachmentHandlers(): void {
               logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
             }
           }
+          reportRefusedUpload(noteId, diskPath, err)
           return
         }
         const message = err instanceof Error ? err.message : 'Unknown error'
