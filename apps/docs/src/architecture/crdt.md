@@ -337,6 +337,33 @@ read-only offline. The edits wait in the outbox, and its flush once online
 requests the snapshot again. A scheduled snapshot batch that comes due while
 held stays with the scheduler and goes out on the reconnect or the resume.
 
+This hold covers an offline **device**, not an unreachable **server**, and that
+gap is a known, accepted risk (#5247, C58.1). Offline means the OS reports no
+network (`apps/desktop/src/main/sync/network.ts:16`). Only that, or the sync
+pause, holds a body push: the outbox pauses when the OS goes offline
+(`apps/desktop/src/main/sync/runtime.ts:759`), and the snapshot paths hold
+(`apps/desktop/src/main/sync/crdt-provider.ts:510`). When the OS reports online
+but the sync server does not answer, a body push (outbox flush or snapshot)
+still starts. Every body route records `sent` before its request: the outbox
+flush (`apps/desktop/src/main/sync/note-body-outbox.ts:302`,
+`apps/desktop/src/main/sync/note-body-outbox.ts:309`), the single snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-push.ts:104`,
+`apps/desktop/src/main/sync/runtime.ts:652`) and the batch snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-batch.ts:159`,
+`apps/desktop/src/main/sync/runtime.ts:692`). Then the request fails. The
+`note_body_sync` row ends never-synced status
+(`apps/desktop/src/main/sync/note-sync-state.ts:261`), so a note created on this
+device reopens read-only while the device stays offline
+(`apps/desktop/src/main/sync/crdt-provider.ts:467`), like a note that did sync.
+No data is lost: the vault file and the outbox keep the edits. The state ends
+with the next body push, outbox flush or snapshot, that reaches the server.
+From then on the server holds the body, and the note is an ordinary synced note
+that opens editable once its merge completes. The rule that a request that may
+have reached the server counts as `sent` stays. A fix would hold every body
+route (the outbox flush and both snapshot pushes) after a transport error until
+the next request succeeds. That needs a new shared "last request failed" signal
+for a cosmetic offline state, so the code is left as is.
+
 The bypass has one residual risk: device A creates a note offline, so it holds
 the marker; a shared folder carries the file to device B, and B syncs it before
 A does. When A then opens the note offline, it seeds beside B's server body,
