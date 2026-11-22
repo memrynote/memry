@@ -436,8 +436,11 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     return null
   }
 
+  const tempPathOf = (pack: PackSummary): string =>
+    path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
+
   const fetchOne = async (pack: PackSummary): Promise<PackFetch<OpenedPack>> => {
-    const filePath = path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
+    const filePath = tempPathOf(pack)
     const signed = await freshUrl(pack)
     if (!signed) return 'gap'
     if ('lostMs' in signed) return signed
@@ -449,10 +452,12 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
         ...(deps.pace ? { pace: deps.pace } : {})
       })
     } catch (error) {
-      await discard(filePath)
       const lostMs = deps.signal?.aborted
         ? null
         : curablePauseMs(error, !urlLive(signed, clockSeconds()))
+      // A lost pack keeps its partial file: the next try resumes it with a
+      // Range. A gap's file goes now; a lost pack never held is swept below.
+      if (lostMs === null) await discard(filePath)
       log.info(
         lostMs === null
           ? 'Pack transfer failed — items fall back to the item-granular path'
@@ -497,6 +502,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   })
 
   const held = opened.filter((entry): entry is OpenedPack => entry !== null)
+  // A pack still lost after the last pause, or when an abort cut a pause short.
+  for (const [index, pack] of packs.entries()) {
+    if (opened[index] === null) await discard(tempPathOf(pack))
+  }
   try {
     if (held.length === 0 || deps.signal?.aborted) {
       return { ...emptyResult(), usedPacks: held.length > 0 }

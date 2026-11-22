@@ -1279,6 +1279,64 @@ describe('runPackBootstrap', () => {
       expect(result.entriesApplied).toBe(1)
     })
 
+    /** A transfer of `p-new` that drops after half its bytes landed on disk. */
+    const dropsHalfway = (harness: Harness, drops: (attempt: number) => boolean) => {
+      const serve = harness.deps.download!
+      const heldAtStart: number[] = []
+      harness.deps.sleep = async () => {}
+      harness.deps.download = async (options) => {
+        if (!options.url.endsWith('/p-new')) return serve(options)
+        heldAtStart.push(
+          await fs.stat(options.destPath).then(
+            (s) => s.size,
+            () => 0
+          )
+        )
+        if (!drops(heldAtStart.length)) return serve(options)
+        const bytes = harness.packFiles.get('p-new')!
+        await fs.mkdir(path.dirname(options.destPath), { recursive: true })
+        await fs.writeFile(options.destPath, bytes.subarray(0, bytes.length >> 1))
+        throw new NetworkError('pack transfer interrupted: socket closed')
+      }
+      return heldAtStart
+    }
+
+    it('#given a drop mid-body #then the partial file is kept for the next try to resume', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      const heldAtStart = dropsHalfway(harness, (attempt) => attempt === 1)
+
+      const result = await runPackBootstrap(harness.deps)
+
+      const half = harness.packFiles.get('p-new')!.length >> 1
+      expect(heldAtStart).toEqual([0, half])
+      expect(result.entriesApplied).toBe(2)
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
+    it('#given a pack still lost after the last pause #then its partial file is removed', async () => {
+      const harness = makeHarness()
+      twoPacks(harness)
+      dropsHalfway(harness, () => true)
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(result.entriesApplied).toBe(1)
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
+    it('#given an abort during the pause after a drop mid-body #then the partial file is removed', async () => {
+      const controller = new AbortController()
+      const harness = makeHarness({ signal: controller.signal })
+      twoPacks(harness)
+      dropsHalfway(harness, () => true)
+      harness.deps.sleep = async () => controller.abort()
+
+      await runPackBootstrap(harness.deps)
+
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
     it('#given an abort during a pause #then nothing downloads or applies after it', async () => {
       const controller = new AbortController()
       const harness = makeHarness({ signal: controller.signal })
