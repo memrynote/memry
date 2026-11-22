@@ -195,3 +195,36 @@ fn a_settings_row_an_earlier_build_deleted_revives_on_the_next_edit() {
     })
     .expect("settings revive");
 }
+
+// §5.12.2: a `_tombstone` row an older build filed still outranks the typed
+// item that arrives after it, though no current path files one.
+#[test]
+fn an_older_builds_bare_tombstone_outranks_a_later_typed_record() {
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    let dir = temp_dir("apply-legacy-bare-tombstone");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at, deleted_at)
+             VALUES ('_tombstone', 'work', 'metadata-only', 1, 1)",
+            [],
+        )
+        .map_err(sqlite_failed)?;
+        let record = InboundRecord {
+            item_type: "tag_definition".to_owned(),
+            item_id: "work".to_owned(),
+            payload_json: r#"{"name":"work","color":"blue"}"#.to_owned(),
+            server_cursor: Some(2),
+            signer_device_id: None,
+            updated_at: 2,
+            deleted_at: None,
+        };
+        let totals = apply_page(conn, vec![Pending::Record(record)], 3, None)?;
+        assert_eq!((totals.applied, totals.deleted), (0, 1));
+        let row = sync_items::load(conn, "tag_definition", "work")?.expect("the row");
+        assert!(row.deleted_at.is_some(), "the typed row stays deleted");
+        Ok(())
+    })
+    .expect("legacy bare tombstone");
+}
