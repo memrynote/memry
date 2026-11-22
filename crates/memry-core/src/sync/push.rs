@@ -47,9 +47,11 @@ use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
-use super::delete_wins;
 use super::engine::PushWave;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
+use super::pull::PullLoop;
+
+mod settle;
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
 pub const PUSH_BATCH_SIZE: usize = 100;
@@ -60,8 +62,8 @@ pub const MAX_PUSH_ITERATIONS: u32 = 50;
 /// server already holds a row no component of ours exceeds, so the queued row
 /// has nothing left to say and is acked rather than retried forever.
 pub const REASON_REPLAY_DETECTED: &str = "SYNC_REPLAY_DETECTED";
-/// §5.8: delete wins over a concurrent write. Same reasoning, and the delete
-/// applies locally ([`super::delete_wins`], #5406).
+/// §5.8: delete wins over a concurrent write. Same reasoning; a verified
+/// delete applies locally ([`super::delete_wins`], #5406).
 pub const REASON_DELETE_WINS: &str = "SYNC_DELETE_WINS";
 
 /// What a push failed with. A per-item rejection is **not** one of these: it
@@ -133,7 +135,10 @@ pub struct PushCoordinator {
     vault_id: Option<String>,
     /// This device's clock id, which a kept-text inbox copy is minted under
     /// when a delete applies here (§5.8, #3029).
-    clock_device: Option<String>,
+    clock_device: String,
+    /// The pull a `SYNC_DELETE_WINS` answer is checked through
+    /// ([`super::delete_wins::apply_delete_wins`]).
+    pull: Option<Arc<PullLoop>>,
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
@@ -145,6 +150,7 @@ impl PushCoordinator {
         db: Db,
         declaration: Declaration,
         sealer: Arc<dyn PushSealer>,
+        clock_device: &str,
     ) -> Self {
         Self {
             http,
@@ -152,7 +158,8 @@ impl PushCoordinator {
             sealer,
             declaration,
             vault_id: None,
-            clock_device: None,
+            clock_device: clock_device.to_owned(),
+            pull: None,
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
         }
@@ -164,8 +171,11 @@ impl PushCoordinator {
         self
     }
 
-    pub fn with_clock_device(mut self, device_id: &str) -> Self {
-        self.clock_device = Some(device_id.to_owned());
+    /// Pulls the id of a `SYNC_DELETE_WINS` answer with its markers, so a
+    /// signed delete or an attested marker can apply. Without it only a
+    /// remembered marker deletes the row.
+    pub fn with_pull(mut self, pull: Arc<PullLoop>) -> Self {
+        self.pull = Some(pull);
         self
     }
 
@@ -210,9 +220,17 @@ impl PushCoordinator {
         let mut sealed: Vec<Json> = Vec::with_capacity(items.len());
         let mut sent: Vec<Collapsed> = Vec::with_capacity(items.len());
         for item in items {
-            if self.applies_kept_marker(&item).await? {
-                report.deleted_locally += 1;
-                continue;
+            match self.applies_kept_marker(&item).await {
+                Ok(true) => {
+                    report.deleted_locally += 1;
+                    continue;
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    self.defer_unsettled(&item, &error.to_string()).await?;
+                    report.rejected += 1;
+                    continue;
+                }
             }
             match self.build(&item).await? {
                 Ok(json) => {
@@ -251,7 +269,14 @@ impl PushCoordinator {
         let mut acked: Vec<i64> = Vec::new();
         let mut deferred: Vec<(Vec<i64>, String, i64)> = Vec::new();
         let mut lost: Vec<Collapsed> = Vec::new();
-        for item in sent {
+        // Answers name no type: of two sent items under one id (a tag named
+        // `inbox`, the `inbox` settings row), neither deletes on delete-wins.
+        let sharing = |id: &str| sent.iter().filter(|item| item.row.item_id == id).count();
+        let shared: Vec<bool> = sent
+            .iter()
+            .map(|item| sharing(&item.row.item_id) > 1)
+            .collect();
+        for (item, shared) in sent.into_iter().zip(shared) {
             let key = item.row.item_id.clone();
             if accepted.iter().any(|id| id == &key) {
                 acked.extend(item.ids());
@@ -261,46 +286,28 @@ impl PushCoordinator {
             // §5.7 and §5.8: a replay and a delete-wins are the server saying
             // it already holds a row this one cannot improve on. Keeping the
             // row queued would retry it every pass for ever.
-            if reason == REASON_REPLAY_DETECTED {
-                acked.extend(item.ids());
-            } else if reason == REASON_DELETE_WINS {
+            if reason == REASON_DELETE_WINS && !shared {
                 lost.push(item);
+            } else if reason == REASON_REPLAY_DETECTED || reason == REASON_DELETE_WINS {
+                acked.extend(item.ids());
             } else {
                 let at = retry_at(now, item.row.attempt_count);
                 deferred.push((item.ids(), reason, at));
             }
         }
 
-        report.accepted += acked.len() + lost.iter().map(|item| item.ids().len()).sum::<usize>();
+        report.accepted += acked.len();
         report.rejected += deferred.len();
-        let device = self.clock_device.clone();
-        let deleted = self
-            .db
+        self.db
             .call(move |conn| {
-                let mut deleted = 0;
-                for item in &lost {
-                    let applied =
-                        delete_wins::apply_delete_wins(conn, item, device.as_deref(), now)?;
-                    deleted += usize::from(applied);
-                }
                 outbox::ack(conn, &acked)?;
                 for (ids, reason, at) in &deferred {
                     outbox::defer(conn, ids, reason, Some(*at))?;
                 }
-                Ok(deleted)
+                Ok(())
             })
             .await?;
-        report.deleted_locally += deleted;
-        Ok(())
-    }
-
-    /// An upsert of a row the reconcile kept against an unattested marker
-    /// applies that delete here instead of being sent ([`delete_wins`]).
-    async fn applies_kept_marker(&self, item: &Collapsed) -> Result<bool, PushError> {
-        let (item, device, now) = (item.clone(), self.clock_device.clone(), now_ms());
-        let apply =
-            move |conn: &mut _| delete_wins::apply_kept_marker(conn, &item, device.as_deref(), now);
-        Ok(self.db.call(apply).await?)
+        self.settle_delete_wins(lost, now, report).await
     }
 
     /// Reads the live row and seals it, or names why the row retires.

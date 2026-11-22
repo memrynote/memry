@@ -324,24 +324,28 @@ resolution for that conflict on both sides.
 A purged tombstone (§5.12.3) is applied under this same rule, through the same
 delete path.
 
-**A delete-wins answer applies the delete (Rust core, #5406).** Desktop acks
-`SYNC_DELETE_WINS` and leaves the delete to its next pull
-(`apps/desktop/src/main/sync/engine/push-coordinator.ts:429`). The core
-applies it at once through the pulled-tombstone path, with no clock and no
-cursor, before it acks the row (`crates/memry-core/src/sync/delete_wins.rs`,
-`apply_delete_wins`): a row the first-sync reconcile kept against an
-unattested marker (§5.12.3) never gets its delete from a pull, so an ack alone
-left the edit gone and the item live. The end state is the one desktop reaches
-after its pull, including the #3029 inbox copy below: the queued edit still
-counts as a local change waiting for the server.
+**A delete-wins answer applies only a verified delete (Rust core, #5406).**
+Desktop acks `SYNC_DELETE_WINS` and leaves the delete to its next pull
+(`apps/desktop/src/main/sync/engine/push-coordinator.ts:429`). The answer is a
+bare server string, so the core deletes nothing on it alone: it pulls the id
+with `purged_tombstones` declared (§5.12.3) and deletes the live row only on a
+signed tombstone (applied by that pull), an attested marker, or a marker the
+first-sync reconcile remembered for the row, each through the pulled-tombstone
+path with its clock (`crates/memry-core/src/sync/delete_wins.rs`,
+`apply_delete_wins`). The clock is recorded, so a re-create whose clock happens
+after it is kept. With none of the three the row stays live and the edit is
+acked, as on desktop. The answer names an id and no type, so when two sent
+items share that id neither is deleted. A failed pull or apply defers the item
+and deletes nothing.
 
 **An edit over a kept unattested marker is not sent (Rust core, #5406).** The
 server refuses no update over a marker stored without a clock (the permissive
 case above), so a device that kept such a row and pushed an edit would reverse
 the delete on every device. The reconcile remembers each unattested marker
-past the row it kept (core migration `0018`, `sync_unattested_markers`); the
-push wave applies that delete locally instead of sending an upsert of the row
-(`apply_kept_marker`). A clocked marker the row's clock happens strictly after
+past the row it kept (one `meta` row per item, key
+`sync.unattested_marker\0{type}\0{id}`, value `{deletedAt, serverCursor,
+clock}`; no migration); the push wave applies that delete locally instead of
+sending an upsert of the row (`apply_kept_marker`). A clocked marker the row's clock happens strictly after
 keeps the row, and the edit is sent. The marker is forgotten when the item is
 deleted, locally or by a pull, or when the server wrote the row after it.
 

@@ -3,22 +3,30 @@
 //!
 //! Two ways an edit of such a row reaches the push wave:
 //!
-//! - The server answers `SYNC_DELETE_WINS`. §5.8 makes that terminal, and the
-//!   recovery it names is applying the delete locally. Desktop leaves that to
-//!   its next pull, but a row the first-sync reconcile kept against an
-//!   unattested marker never gets its delete from a pull, so an ack alone left
-//!   the edit gone and the item live here. [`apply_delete_wins`] applies it.
 //! - The reconcile kept the row against a marker it could not verify
 //!   ([`remember`]). For a clockless marker the server has nothing to compare
 //!   and accepts any update, so pushing the edit would reverse the delete on
 //!   every device. [`apply_kept_marker`] applies the marker's delete instead,
 //!   and the wave sends nothing for the row.
+//! - The server answers `SYNC_DELETE_WINS`. The answer is a bare server
+//!   string, so it deletes nothing by itself: the wave pulls the id with its
+//!   markers, and [`apply_delete_wins`] deletes the row only on a signed
+//!   tombstone (applied by that pull), an attested marker, or a remembered
+//!   unattested one. Otherwise the row stays live and the edit is acked, as
+//!   desktop does.
 //!
-//! Both go through the pulled-tombstone path ([`apply::apply_page`]), so a
-//! note or journal's text this device never pushed is kept as an inbox copy
-//! (§5.8, #3029): the queued edit is still in the outbox when it runs.
+//! Every delete goes through the pulled-tombstone path ([`apply::apply_page`]),
+//! so its clock is recorded for a later re-create and a note or journal's text
+//! this device never pushed is kept as an inbox copy (§5.8, #3029): the queued
+//! edit is still in the outbox when it runs.
+//!
+//! A remembered marker is one baseline `meta` row per item, so no numbered
+//! migration is needed: `sync.unattested_marker\0{type}\0{id}` holding
+//! `{deletedAt, serverCursor, clock}` as JSON. An older build never reads it.
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::Connection;
+use serde::{Deserialize, Serialize};
+use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
@@ -26,10 +34,16 @@ use crate::storage::repositories::sync_items;
 
 use super::apply::{self, Pending};
 use super::clock::VectorClock;
+use super::first_sync_store::{read_meta, write_meta};
 use super::outbox::{self, Collapsed};
+use super::pull::PullLoop;
+use super::purged_markers;
+
+const MARKER_KEY_PREFIX: &str = "sync.unattested_marker\0";
 
 /// A purged marker the reconcile refused for lack of an attestation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct KeptMarker {
     pub deleted_at: i64,
     pub server_cursor: i64,
@@ -37,37 +51,31 @@ pub(crate) struct KeptMarker {
     pub clock: Option<VectorClock>,
 }
 
+impl KeptMarker {
+    fn tombstone(self, item_type: &str, item_id: &str) -> Pending {
+        Pending::Tombstone {
+            item_type: item_type.to_owned(),
+            item_id: item_id.to_owned(),
+            deleted_at: self.deleted_at,
+            server_cursor: Some(self.server_cursor),
+            clock: self.clock,
+            body_state_vector: None,
+        }
+    }
+}
+
+fn key(item_type: &str, item_id: &str) -> String {
+    format!("{MARKER_KEY_PREFIX}{item_type}\0{item_id}")
+}
+
 pub(crate) fn remember(
     conn: &Connection,
     item_type: &str,
     item_id: &str,
     marker: &KeptMarker,
-    now_ms: i64,
 ) -> Result<(), StorageError> {
-    let clock = marker
-        .clock
-        .as_ref()
-        .map(serde_json::to_string)
-        .transpose()
-        .map_err(|e| failed(e.to_string()))?;
-    conn.execute(
-        "INSERT INTO sync_unattested_markers
-             (item_type, item_id, deleted_at, server_cursor, clock, recorded_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         ON CONFLICT(item_type, item_id) DO UPDATE SET
-             deleted_at = excluded.deleted_at, server_cursor = excluded.server_cursor,
-             clock = excluded.clock, recorded_at = excluded.recorded_at",
-        params![
-            item_type,
-            item_id,
-            marker.deleted_at,
-            marker.server_cursor,
-            clock,
-            now_ms
-        ],
-    )
-    .map_err(sqlite)?;
-    Ok(())
+    let value = serde_json::to_string(marker).map_err(|e| failed(e.to_string()))?;
+    write_meta(conn, &key(item_type, item_id), &value)
 }
 
 /// The item was deleted, locally or by a pulled delete: the marker has been
@@ -77,11 +85,8 @@ pub(crate) fn forget(
     item_type: &str,
     item_id: &str,
 ) -> Result<(), StorageError> {
-    conn.execute(
-        "DELETE FROM sync_unattested_markers WHERE item_type = ?1 AND item_id = ?2",
-        params![item_type, item_id],
-    )
-    .map_err(sqlite)?;
+    conn.execute("DELETE FROM meta WHERE key = ?1", [key(item_type, item_id)])
+        .map_err(|e| failed(e.to_string()))?;
     Ok(())
 }
 
@@ -96,7 +101,7 @@ pub(crate) fn forget(
 pub(crate) fn apply_kept_marker(
     conn: &Connection,
     item: &Collapsed,
-    clock_device: Option<&str>,
+    clock_device: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     let (item_type, item_id) = (item.row.item_type.as_str(), item.row.item_id.as_str());
@@ -115,15 +120,16 @@ pub(crate) fn apply_kept_marker(
                 .is_none_or(|cursor| cursor < marker.server_cursor)
     });
     let deleted = stands && {
-        let tombstone = Pending::Tombstone {
-            item_type: item_type.to_owned(),
-            item_id: item_id.to_owned(),
-            deleted_at: marker.deleted_at,
-            server_cursor: Some(marker.server_cursor),
-            clock: marker.clock,
-            body_state_vector: None,
-        };
-        apply::apply_page(&txn, vec![tombstone], Vec::new(), now_ms, clock_device)?.deleted > 0
+        let tombstone = marker.tombstone(item_type, item_id);
+        apply::apply_page(
+            &txn,
+            vec![tombstone],
+            Vec::new(),
+            now_ms,
+            Some(clock_device),
+        )?
+        .deleted
+            > 0
     };
     forget(&txn, item_type, item_id)?;
     if deleted {
@@ -133,34 +139,55 @@ pub(crate) fn apply_kept_marker(
     Ok(deleted)
 }
 
-/// `SYNC_DELETE_WINS` for a queued upsert: applies the server's delete to the
-/// live row, then acks the item's rows. The answer carries no clock or cursor,
-/// so the delete applies unconditionally, as a clockless tombstone does; the
-/// tombstone a later pull brings overwrites `deleted_at` and records its clock.
+/// `SYNC_DELETE_WINS` for a queued upsert, after the wave pulled the id with
+/// its markers (`entries`). A signed tombstone that pull returned has already
+/// applied. Otherwise the live row is deleted by an attested marker, else by
+/// the marker the reconcile remembered for it, each with its clock through
+/// the §5.8 client rule; with neither the row stays live. The item's rows are
+/// acked either way. Answers whether the row is deleted now.
 pub(crate) fn apply_delete_wins(
     conn: &Connection,
     item: &Collapsed,
-    clock_device: Option<&str>,
+    entries: &[Json],
+    pull: Option<&PullLoop>,
+    clock_device: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     let (item_type, item_id) = (item.row.item_type.as_str(), item.row.item_id.as_str());
     let txn = nested_tx::begin(conn).map_err(sqlite)?;
-    let live =
-        sync_items::load(&txn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_none());
-    if live {
-        let tombstone = Pending::Tombstone {
-            item_type: item_type.to_owned(),
-            item_id: item_id.to_owned(),
-            deleted_at: now_ms,
-            server_cursor: None,
-            clock: None,
-            body_state_vector: None,
+    let live = sync_items::load(&txn, item_type, item_id)?.filter(|row| row.deleted_at.is_none());
+    if let Some(row) = live {
+        let held_at = row.server_cursor.unwrap_or(0);
+        let tombstone = match pull
+            .and_then(|pull| purged_markers::attested(entries, item_type, item_id, held_at, pull))
+        {
+            Some(tombstone) => Some(tombstone),
+            None => {
+                load(&txn, item_type, item_id)?.map(|marker| marker.tombstone(item_type, item_id))
+            }
         };
-        apply::apply_page(&txn, vec![tombstone], Vec::new(), now_ms, clock_device)?;
+        match tombstone {
+            Some(tombstone) => {
+                apply::apply_page(
+                    &txn,
+                    vec![tombstone],
+                    Vec::new(),
+                    now_ms,
+                    Some(clock_device),
+                )?;
+                forget(&txn, item_type, item_id)?;
+            }
+            None => eprintln!(
+                "memry-core: push: {item_type}:{item_id} answered {} with no signed delete or attested marker, kept",
+                super::push::REASON_DELETE_WINS
+            ),
+        }
     }
     outbox::ack(&txn, &item.ids())?;
+    let deleted =
+        sync_items::load(&txn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_some());
     txn.commit().map_err(sqlite)?;
-    Ok(live)
+    Ok(deleted)
 }
 
 fn load(
@@ -168,31 +195,10 @@ fn load(
     item_type: &str,
     item_id: &str,
 ) -> Result<Option<KeptMarker>, StorageError> {
-    let row: Option<(i64, i64, Option<String>)> = conn
-        .query_row(
-            "SELECT deleted_at, server_cursor, clock FROM sync_unattested_markers
-              WHERE item_type = ?1 AND item_id = ?2",
-            params![item_type, item_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )
-        .optional()
-        .map_err(sqlite)?;
-    let Some((deleted_at, server_cursor, clock)) = row else {
-        return Ok(None);
-    };
-    let clock = clock
-        .map(|text| serde_json::from_str::<VectorClock>(&text))
+    read_meta(conn, &key(item_type, item_id))?
+        .map(|text| serde_json::from_str::<KeptMarker>(&text))
         .transpose()
-        .map_err(|e| {
-            failed(format!(
-                "unattested marker clock for {item_type}:{item_id}: {e}"
-            ))
-        })?;
-    Ok(Some(KeptMarker {
-        deleted_at,
-        server_cursor,
-        clock,
-    }))
+        .map_err(|e| failed(format!("unattested marker for {item_type}:{item_id}: {e}")))
 }
 
 fn sqlite(error: rusqlite::Error) -> StorageError {

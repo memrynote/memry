@@ -29,11 +29,12 @@ use std::sync::Arc;
 
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::StorageError;
-use memry_core::protocol::account::AccountSealer;
+use memry_core::protocol::account::{self, AccountCipher, AccountSealer};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::sync::outbox;
 use memry_core::sync::policy::{self, ClientPolicy, PolicyTier};
+use memry_core::sync::pull::PullLoop;
 use memry_core::sync::push::{PushCoordinator, PushError, PushReport};
 use memry_core::sync::state::WriteGate;
 
@@ -77,14 +78,22 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
         )));
     }
 
+    // A `SYNC_DELETE_WINS` is checked by pulling the id: the signer
+    // directory verifies its signed delete or attested marker (§5.8, #5406).
+    let directory = account::device_directory(&http).await?;
+    let cipher = Arc::new(AccountCipher::new(vault_key.clone(), directory));
+    let pull = PullLoop::new(http.clone(), db.clone(), Declaration::subscribed(), cipher)
+        .with_vault(&vault)
+        .with_clock_device(&cli.device_id()?);
     let coordinator = PushCoordinator::new(
         http,
         db.clone(),
         Declaration::subscribed(),
         Arc::new(AccountSealer::new(vault_key, signer)),
+        &cli.device_id()?,
     )
     .with_vault(&vault)
-    .with_clock_device(&cli.device_id()?);
+    .with_pull(Arc::new(pull));
 
     let drained = coordinator.drain_wave().await;
     let failure = match drained {

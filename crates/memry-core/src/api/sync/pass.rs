@@ -110,17 +110,18 @@ impl VaultSync {
         let cipher = self.cipher().await?;
         let http = self.session.http();
 
-        let pulled = PullLoop::new(
-            Arc::clone(&http),
-            self.db.clone(),
-            Declaration::subscribed(),
-            cipher.clone(),
-        )
-        .with_vault(&self.vault_id)
-        .with_clock_device(&self.session.device_id()?)
-        .with_note_bodies(cipher.clone())
-        .run(MAX_PULL_PAGES)
-        .await?;
+        let pull = Arc::new(
+            PullLoop::new(
+                Arc::clone(&http),
+                self.db.clone(),
+                Declaration::subscribed(),
+                cipher.clone(),
+            )
+            .with_vault(&self.vault_id)
+            .with_clock_device(&self.session.device_id()?)
+            .with_note_bodies(cipher.clone()),
+        );
+        let pulled = pull.run(MAX_PULL_PAGES).await?;
 
         // Bodies next, best effort: every document owed a per-note pull,
         // within a budget. Nothing in it stops the push below (#2297).
@@ -151,9 +152,15 @@ impl VaultSync {
             what: e.to_string(),
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
-        let push = PushCoordinator::new(http, self.db.clone(), Declaration::subscribed(), sealer)
-            .with_vault(&self.vault_id)
-            .with_clock_device(&self.session.device_id()?);
+        let push = PushCoordinator::new(
+            http,
+            self.db.clone(),
+            Declaration::subscribed(),
+            sealer,
+            &self.session.device_id()?,
+        )
+        .with_vault(&self.vault_id)
+        .with_pull(pull);
         let report = push.drain_wave().await?;
         let pending = self
             .db

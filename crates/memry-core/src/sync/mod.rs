@@ -63,6 +63,7 @@ pub mod policy;
 pub mod pull;
 mod pull_decode;
 mod pull_report;
+mod purged_markers;
 pub mod push;
 pub mod revive_heal;
 pub mod settings_merge;

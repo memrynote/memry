@@ -296,7 +296,7 @@ mod tests {
         db.call_blocking(|conn| {
             run(conn, &DATA_MIGRATIONS[..16])?;
             live(conn, "note", "n1");
-            assert_eq!(run(conn, &DATA_MIGRATIONS[..17])?, 17);
+            assert_eq!(run(conn, DATA_MIGRATIONS)?, 17);
             assert!(list(conn)?.is_empty());
             record(conn, &hit(NOTE, "n1"), "q", 1)?;
             assert_eq!(listed(conn), [("n1".to_owned(), "q".to_owned(), 1)]);

@@ -37,11 +37,10 @@ use super::super::apply::{self, Pending};
 use super::super::delete_wins;
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
 use super::super::pull::{MAX_PULL_IDS, PullLoop};
+use super::super::purged_markers as markers;
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
 use super::{FirstSync, FirstSyncError, FirstSyncReport};
 use super::{now_ms, sqlite_failed};
-
-mod markers;
 
 /// Set when the reconcile finished, so a resumed first sync does not pull
 /// again what it already pulled.
@@ -104,7 +103,7 @@ impl FirstSync {
             markers::sort(&entries, chunk, &self.pull, &mut verdicts);
             self.records_progress(true).await?;
         }
-        let (removed, kept) = self.remove_attested(plan.stale, verdicts).await?;
+        let (removed, kept, remembered) = self.remove_attested(plan.stale, verdicts).await?;
         report.reconcile_removed += removed;
         report.reconcile_kept += kept;
         if kept > 0 {
@@ -113,7 +112,7 @@ impl FirstSync {
                 .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
                 .await?;
             eprintln!(
-                "memry-core: first sync reconcile: {kept} stale id(s) at cursor {cursor:?} had no verified delete or attested marker, kept ({dropped_pages} non-envelope answer(s))"
+                "memry-core: first sync reconcile: kept {kept} stale id(s) at cursor {cursor:?} with no verified delete or attested marker, {remembered} of them against a remembered unattested marker ({dropped_pages} non-envelope answer(s))"
             );
         }
         self.db
@@ -127,14 +126,14 @@ impl FirstSync {
     /// deleted here with the marker's clock. Every other stale row the pull
     /// left live at its cursor got no answer, a refused one, or no envelope,
     /// and is kept; a kept row an unattested marker names remembers it for
-    /// the push wave (#5406). Answers `(removed, kept)`.
+    /// the push wave (#5406). Answers `(removed, kept, remembered)`.
     async fn remove_attested(
         &self,
         stale: Vec<HeldRow>,
         verdicts: markers::Verdicts,
-    ) -> Result<(usize, usize), FirstSyncError> {
+    ) -> Result<(usize, usize, usize), FirstSyncError> {
         if stale.is_empty() {
-            return Ok((0, 0));
+            return Ok((0, 0, 0));
         }
         let now = now_ms();
         let counts = self
@@ -169,14 +168,20 @@ impl FirstSync {
                     })
                     .collect();
                 let totals = apply::apply_page(&txn, gone, Vec::new(), now, None)?;
+                let mut remembered = HashSet::new();
                 for (item_type, item_id, marker) in &verdicts.unattested {
                     let key = (item_type.clone(), item_id.clone());
                     if unanswered.contains_key(&key) && !named.contains(&key) {
-                        delete_wins::remember(&txn, item_type, item_id, marker, now)?;
+                        delete_wins::remember(&txn, item_type, item_id, marker)?;
+                        remembered.insert(key);
                     }
                 }
                 txn.commit().map_err(sqlite_failed)?;
-                Ok((totals.deleted, unanswered.len() - totals.deleted))
+                Ok((
+                    totals.deleted,
+                    unanswered.len() - totals.deleted,
+                    remembered.len(),
+                ))
             })
             .await?;
         Ok(counts)

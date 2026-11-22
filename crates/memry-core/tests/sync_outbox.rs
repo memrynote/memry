@@ -168,7 +168,13 @@ fn coordinator(
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     );
-    PushCoordinator::new(Arc::new(http), db, Declaration::subscribed(), sealer)
+    PushCoordinator::new(
+        Arc::new(http),
+        db,
+        Declaration::subscribed(),
+        sealer,
+        "device-a",
+    )
 }
 
 fn push_ok(accepted: &[&str]) -> String {

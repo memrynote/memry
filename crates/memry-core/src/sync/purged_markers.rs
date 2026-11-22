@@ -1,15 +1,16 @@
-//! The purged markers the manifest reconcile removes a stale row by (chapter
-//! 05 §5.12.1, §5.12.3, #5402).
+//! The purged markers that remove a live row: the manifest reconcile's stale
+//! rows (chapter 05 §5.12.1, §5.12.3, #5402) and a row whose edit the server
+//! answered `SYNC_DELETE_WINS` (§5.8, #5406).
 //!
 //! A marker is unsigned: the server asserts it. One removes a row only when
-//! it names a stale row the reconcile asked about, its type requires a clock,
+//! it names a row the caller asked about, its type requires a clock,
 //! its clock is not empty, its cursor is past the row's, and the deleting
 //! device's attestation over `{id, type, deletedAt, clock}` verifies under a
 //! key the device directory holds ([`delete_attestation::verify`]). It then
 //! applies as the signed tombstone with that clock, under §5.8's clock rule.
 //!
 //! A marker that passes every check but the clock or the attestation is
-//! unattested: it keeps the row, and is remembered for the push wave
+//! unattested: it keeps the row. The reconcile remembers it for the push wave
 //! ([`crate::sync::delete_wins`], #5406).
 
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ const CLOCK_EXEMPT_ITEM_TYPE: &str = "settings";
 
 /// What the markers for the `stale` rows decide.
 #[derive(Default)]
-pub(super) struct Verdicts {
+pub(crate) struct Verdicts {
     /// Tombstones the attested markers apply.
     pub attested: Vec<Pending>,
     /// Markers past their row with no verified attestation, by `(type, id)`.
@@ -41,9 +42,10 @@ enum Verdict {
     Unattested(String, String, KeptMarker),
 }
 
-/// Sorts the markers among `entries` for the `stale` rows they name. Every
-/// entry not attested is counted and logged.
-pub(super) fn sort(entries: &[Json], stale: &[HeldRow], pull: &PullLoop, out: &mut Verdicts) {
+/// Sorts the markers among `entries` for the `stale` rows they name. An entry
+/// neither attested nor unattested is counted and logged; the reconcile logs
+/// the unattested ones it keeps a row against.
+pub(crate) fn sort(entries: &[Json], stale: &[HeldRow], pull: &PullLoop, out: &mut Verdicts) {
     let cursors: HashMap<(&str, &str), i64> = stale
         .iter()
         .filter_map(|row| {
@@ -58,7 +60,6 @@ pub(super) fn sort(entries: &[Json], stale: &[HeldRow], pull: &PullLoop, out: &m
         match admit(entry, &cursors, pull) {
             Some(Verdict::Attested(pending)) => out.attested.push(pending),
             Some(Verdict::Unattested(item_type, item_id, marker)) => {
-                refused += 1;
                 out.unattested.push((item_type, item_id, marker));
             }
             None => refused += 1,
@@ -66,9 +67,28 @@ pub(super) fn sort(entries: &[Json], stale: &[HeldRow], pull: &PullLoop, out: &m
     }
     if refused > 0 {
         eprintln!(
-            "memry-core: first sync reconcile: refused {refused} purged tombstone(s) with no verified attestation for a stale row"
+            "memry-core: first sync reconcile: refused {refused} purged tombstone(s) that name no stale row or are malformed"
         );
     }
+}
+
+/// The tombstone an attested marker among `entries` applies to the one row
+/// `(item_type, item_id)` held at `held_cursor`. `None` when no entry for it
+/// verifies.
+pub(crate) fn attested(
+    entries: &[Json],
+    item_type: &str,
+    item_id: &str,
+    held_cursor: i64,
+    pull: &PullLoop,
+) -> Option<Pending> {
+    let cursors = HashMap::from([((item_type, item_id), held_cursor)]);
+    entries
+        .iter()
+        .find_map(|entry| match admit(entry, &cursors, pull)? {
+            Verdict::Attested(pending) => Some(pending),
+            Verdict::Unattested(..) => None,
+        })
 }
 
 fn admit(entry: &Json, cursors: &HashMap<(&str, &str), i64>, pull: &PullLoop) -> Option<Verdict> {

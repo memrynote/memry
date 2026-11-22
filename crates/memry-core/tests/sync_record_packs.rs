@@ -614,20 +614,34 @@ fn notes(db: &Db) -> HashMap<String, (bool, Option<i64>)> {
     .unwrap()
 }
 
-/// What the reconcile remembered for the push wave (#5406): id and clock.
+/// What the reconcile remembered for the push wave (#5406): id and clock,
+/// from the `meta` rows keyed `sync.unattested_marker\0{type}\0{id}`.
 fn remembered(db: &Db) -> Vec<(String, Option<String>)> {
-    db.call_blocking(|conn| {
-        let mut statement = conn
-            .prepare("SELECT item_id, clock FROM sync_unattested_markers ORDER BY item_id")
-            .unwrap();
-        let rows = statement
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-            .unwrap()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-        Ok(rows)
-    })
-    .unwrap()
+    let rows: Vec<(String, String)> = db
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare(
+                    "SELECT key, value FROM meta WHERE key LIKE 'sync.unattested_marker%' ORDER BY key",
+                )
+                .unwrap();
+            let rows = statement
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            Ok(rows)
+        })
+        .unwrap();
+    rows.into_iter()
+        .map(|(key, value)| {
+            let id = key.rsplit('\0').next().unwrap().to_owned();
+            let value: Json = serde_json::from_str(&value).unwrap();
+            let clock = Some(&value["clock"])
+                .filter(|c| !c.is_null())
+                .map(Json::to_string);
+            (id, clock)
+        })
+        .collect()
 }
 
 fn live_ids(db: &Db) -> Vec<String> {
