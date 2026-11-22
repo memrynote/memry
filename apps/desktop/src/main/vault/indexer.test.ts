@@ -792,6 +792,51 @@ Body of a note with broken frontmatter
       }
     })
 
+    it('#5412: restores the type of a binary note a write-back saved as markdown, keeping id and emoji', async () => {
+      const imagePath = 'notes/Sunset.png'
+      fs.writeFileSync(path.join(tempVault.path, imagePath), 'png-bytes')
+      await indexer.indexVault(tempVault.path)
+      const before = dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.path, imagePath))
+        .get()
+      expect(before?.fileType).toBe('image')
+      // What the write-back left on a fresh device: both rows markdown, no MIME type.
+      dataDb.db
+        .update(noteMetadata)
+        .set({ fileType: 'markdown', mimeType: null, emoji: '🌅', clock: { dev: 2 } })
+        .where(eq(noteMetadata.id, before!.id))
+        .run()
+      testDb.db
+        .update(noteCache)
+        .set({ fileType: 'markdown', mimeType: null })
+        .where(eq(noteCache.id, before!.id))
+        .run()
+
+      await indexer.indexVault(tempVault.path, { activity: 'scan' })
+      await vi.runAllTimersAsync()
+
+      const after = dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, before!.id))
+        .get()
+      expect(after).toEqual(
+        expect.objectContaining({
+          path: imagePath,
+          fileType: 'image',
+          mimeType: 'image/png',
+          emoji: '🌅',
+          clock: { dev: 2 }
+        })
+      )
+      const cacheRow = testDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
+      expect(cacheRow).toEqual(
+        expect.objectContaining({ fileType: 'image', mimeType: 'image/png' })
+      )
+    })
+
     it('T376: preserves note emoji across index rebuilds via note_metadata byPath', async () => {
       // Emoji is DB-only sidecar state — never written to the vault file — so a
       // cache rebuilt purely from files would lose the icon unless the indexer
