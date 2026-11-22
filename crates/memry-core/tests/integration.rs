@@ -290,6 +290,9 @@ mod driver_observers;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
+#[cfg(feature = "markdown")]
+#[path = "driver_unknown_signer.rs"]
+mod driver_unknown_signer;
 #[path = "driver_vault_header.rs"]
 mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
@@ -581,6 +584,8 @@ mod tombstone;
 mod tombstone_purge;
 #[path = "unknown_fields.rs"]
 mod unknown_fields;
+#[path = "unknown_signer_delete.rs"]
+mod unknown_signer_delete;
 #[path = "unlinked_mentions.rs"]
 mod unlinked_mentions;
 #[path = "vault_lock_sync.rs"]
