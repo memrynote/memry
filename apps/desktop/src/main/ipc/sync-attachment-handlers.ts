@@ -22,7 +22,7 @@ import {
   type TransferProgress,
   type UploadResult
 } from '../sync/attachments'
-import { EmptyAttachmentError } from '../sync/attachment-errors'
+import { UnsendableAttachmentError } from '../sync/attachment-errors'
 import { classifyError } from '../sync/sync-errors'
 import {
   getCachedMaxFileSize,
@@ -570,10 +570,13 @@ export function registerAttachmentHandlers(): void {
           }
           return
         }
-        // A zero-byte file fails identically on every retry: drop the row, no
-        // failure to show or report (#3414).
-        if (err instanceof EmptyAttachmentError) {
-          logger.info('Dropped the upload of an empty attachment', { noteId })
+        // An empty file (#3414) or text in a media file (#5415) fails
+        // identically on every retry: drop the row, no failure to show.
+        if (err instanceof UnsendableAttachmentError) {
+          logger.info('Dropped an attachment upload that cannot succeed', {
+            noteId,
+            reason: err.name
+          })
           if (isDatabaseInitialized()) {
             try {
               clearUpload(getDatabase(), noteId, diskPath)

@@ -967,6 +967,10 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await redriveAttachmentDownloads()
         reconcileHomeCoversNow()
         reconcileInboxAttachmentsNow()
+        // Binary note files the pre-#5414 write-back overwrote with markdown
+        // get their blob back (#5415).
+        const { restoreOverwrittenBinaryNotes } = await import('./binary-note-restore')
+        await restoreOverwrittenBinaryNotes()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the

@@ -14,7 +14,8 @@ import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError } from './attachment-errors'
+import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import { mediaFileHoldsText } from './media-signature'
 import {
   NetworkError,
   SyncServerError,
@@ -455,6 +456,9 @@ export class AttachmentSyncService {
       }
       if (fileStat.size === 0) {
         throw new EmptyAttachmentError(getMainI18n().t('errors:attachment.emptyFile'))
+      }
+      if (await mediaFileHoldsText(file, path.extname(filePath).slice(1), fileStat.size)) {
+        throw new TextInMediaFileError(getMainI18n().t('errors:attachment.textInMediaFile'))
       }
 
       // Plan preflight, before the expensive read+hash+encrypt pass below. The

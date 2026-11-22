@@ -6,7 +6,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { isVaultReachable } from '../vault/init'
-import { EmptyAttachmentError } from './attachment-errors'
+import { UnsendableAttachmentError } from './attachment-errors'
 import { classifyError } from './sync-errors'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
@@ -232,7 +232,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
         dropped++
         continue
       }
-      if (err instanceof EmptyAttachmentError) {
+      if (err instanceof UnsendableAttachmentError) {
         clearUpload(deps.db, row.noteId, row.diskPath)
         dropped++
         continue

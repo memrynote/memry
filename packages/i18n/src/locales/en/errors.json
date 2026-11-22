@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Failed to fetch download progress",
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
-    "emptyFile": "Cannot upload empty file"
+    "emptyFile": "Cannot upload empty file",
+    "textInMediaFile": "This file holds text instead of the media its name says"
   },
   "crdt": {
     "persistenceDegradedTitle": "Edit history isn't being kept on this device",
