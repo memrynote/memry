@@ -21,6 +21,7 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { flushProjectionEvents } from '../projections'
+import { readLocalBodyFacts } from '../sync/note-sync-state'
 import { diskCaseOf } from './disk-case'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { deleteNoteFromCache } from './note-sync'
@@ -66,14 +67,20 @@ function caseVariantCopies<T extends { path: string }>(
  * synced says nothing about its body. A twin keeps its row, so the twin rule
  * (`refusesCaseTwinFile`) still sees both rows, and neither takes the other's
  * body (#5297).
+ *
+ * The hash only says what the file held when it was indexed. A row with a
+ * change still waiting to sync can hold text the kept note lacks, so it stays
+ * until the change is sent, and a later open drops it.
  */
 function isNoteCopy(
   noteId: string,
   keptId: string,
+  dataDb: ReturnType<typeof getDatabase>,
   indexDb: ReturnType<typeof getIndexDatabase>
 ): boolean {
   const hash = getNoteCacheById(indexDb, noteId)?.contentHash
-  return !!hash && hash === getNoteCacheById(indexDb, keptId)?.contentHash
+  if (!hash || hash !== getNoteCacheById(indexDb, keptId)?.contentHash) return false
+  return !readLocalBodyFacts(dataDb, noteId).waiting
 }
 
 /**
@@ -115,7 +122,7 @@ export async function healCaseVariantRows(
   )
   const noteCopies: Array<{ id: string; path: string }> = []
   for (const { copy: note, kept } of caseVariants) {
-    if (!isNoteCopy(note.id, kept.id, indexDb)) {
+    if (!isNoteCopy(note.id, kept.id, dataDb, indexDb)) {
       logger.warn('Kept a case twin that shares its file with another note', { id: note.id })
       continue
     }

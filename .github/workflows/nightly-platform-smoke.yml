@@ -95,6 +95,41 @@ jobs:
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
+  case-insensitive-unit:
+    name: Case-insensitive file system tests (macOS)
+    # Specs gated on fileSystemIgnoresCase() skip on the ubuntu unit job, whose
+    # file system tells case apart. macOS APFS folds case, so they run here.
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules for Node
+        run: bash apps/desktop/scripts/ensure-native.sh node
+
+      - name: Run case-insensitive specs
+        working-directory: apps/desktop
+        run: |
+          specs=$(grep -rl --include='*.test.ts' 'fileSystemIgnoresCase' src)
+          test -n "$specs"
+          pnpm exec vitest run --config config/vitest.config.ts $specs
+
   package-smoke:
     name: Packaged runtime smoke
     runs-on: macos-latest
@@ -136,7 +171,7 @@ jobs:
     # A red nightly must be visible: nobody watches scheduled runs. Opens a
     # tracking issue on failure, or comments on the existing open one instead
     # of piling up a duplicate every night.
-    needs: [e2e-smoke-macos, package-smoke]
+    needs: [e2e-smoke-macos, case-insensitive-unit, package-smoke]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 5

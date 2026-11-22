@@ -20,6 +20,8 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import { syncQueue } from '@memry/db-schema/schema/sync-queue'
+import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
 vi.mock('../database', () => ({
@@ -170,6 +172,32 @@ describe('healCaseVariantRows', () => {
 
       expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
       expect(notes().canonical.map((row) => row.id)).toEqual(['local-twin', 'original', 'twin'])
+    }
+  )
+
+  // The index hash says only what the file held when indexed. A row whose doc
+  // has a body change the server has not taken may hold text the kept note
+  // lacks, so it stays until that change is sent (#5247 C37.1).
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps a same-hash copy whose body change is still waiting to sync',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      data.db
+        .insert(syncQueue)
+        .values({
+          id: 'queued-body',
+          type: NOTE_BODY_QUEUE_TYPE,
+          itemId: 'copy',
+          operation: 'update',
+          payload: '{}',
+          createdAt: new Date('2026-01-12T00:00:00.000Z')
+        })
+        .run()
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
     }
   )
 
