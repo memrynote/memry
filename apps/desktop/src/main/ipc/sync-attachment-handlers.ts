@@ -221,6 +221,7 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
+    beforeFileLands: markWritebackIgnored,
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
     getVaultKey: async () => {
@@ -666,7 +667,6 @@ export function registerAttachmentHandlers(): void {
         const queue = getOrCreateDownloadQueue()
         if (!queue) return releaseDownloadAttempt(noteId, attachmentId)
         try {
-          markWritebackIgnored(diskPath)
           // The eager path FEEDS THE QUEUE instead of firing a download directly:
           // the queue owns concurrency, pacing, the global 429 pause and the
           // hybrid priority ordering (recently-used + small first).

@@ -65,6 +65,7 @@ const TEST_PROJECT = {
   color: '#000',
   position: 0,
   isInbox: false,
+  clock: { 'device-A': 1 },
   modifiedAt: '2026-01-01T00:00:00Z',
   syncedAt: '2026-01-01T00:00:00Z'
 }
@@ -304,6 +305,18 @@ describe('dirty-recovery', () => {
     // #then
     expect(result.projects).toBe(1)
     expect(queue.getPendingCount()).toBe(1)
+  })
+
+  // The inbox the vault open writes has no clock. Pushed before a fresh
+  // device's first pull, it merged over the account's inbox and was pushed
+  // back (#5255); the seed after the pull owns it.
+  it('leaves a clock-less project to the seed after the pull', () => {
+    db.update(projects).set({ clock: null, syncedAt: null }).where(eq(projects.id, 'proj-1')).run()
+
+    const result = recoverDirtyItems(db)
+
+    expect(result.projects).toBe(0)
+    expect(queue.getPendingCount()).toBe(0)
   })
 
   it('recovers both tasks and projects in one call', () => {
