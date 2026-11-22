@@ -107,8 +107,8 @@ const blobDownloadLimit = createRateLimiter(blobDownloadBucket)
 
 /**
  * `blob_download` charged one token per requested id: a manifest batch does
- * the R2 reads of that many single manifest GETs (#5329). Invalid JSON costs
- * one token and answers 500; a body that fails the schema costs one and 400.
+ * the R2 reads of that many single manifest GETs (#5329). A body that is not
+ * JSON or fails the schema costs one token and answers 400.
  */
 const manifestBatchLimit = createRateLimiter({
   ...blobDownloadBucket,
@@ -774,7 +774,7 @@ blob.post('/attachments/holds/release', chunkHoldLimit, async (c) => {
  * Scope enforcement is structural: clients send chunk HASHES only — the R2
  * keys come back from D1 rows scoped by `user_id AND vault_id`, exactly the
  * ownership check the proxied chunk GET performs — so a foreign vault's or
- * user's hash is simply "not found". assertPresignKeyInVault runs before
+ * user's hash is left out of `urls`. assertPresignKeyInVault runs before
  * signing as defense in depth on the bytes that enter the URL.
  *
  * The manifest endpoint deliberately stays opaque (its body is E2E-encrypted
@@ -796,8 +796,7 @@ blob.post('/attachments/presign-batch', presignLimit, async (c) => {
     )
   }
 
-  const body: unknown = await c.req.json()
-  const parsed = PresignBatchRequestSchema.safeParse(body)
+  const parsed = PresignBatchRequestSchema.safeParse(await c.req.json().catch(() => null))
   if (!parsed.success) {
     throw new AppError(
       ErrorCodes.VALIDATION_ERROR,
@@ -822,10 +821,9 @@ blob.post('/attachments/presign-batch', presignLimit, async (c) => {
     for (const row of result.results) found.set(row.hash, row.r2_key)
   }
 
-  if (found.size < new Set(requested).size) {
-    throw new AppError(ErrorCodes.STORAGE_BLOB_NOT_FOUND, 'One or more chunks not found', 404)
-  }
-
+  // A hash this vault does not own is left out, and the client fetches that
+  // chunk through the proxy, which answers its 404 (#5247 C47.2). A 404 here
+  // reads as "no presign on this server" to desktop and proxies every chunk.
   const urls: Record<string, string> = {}
   for (const [hash, r2Key] of found) {
     assertPresignKeyInVault(r2Key, userId, vaultId)
@@ -919,7 +917,9 @@ blob.get('/attachments/:attachment_id/manifest', blobDownloadLimit, async (c) =>
 blob.post('/attachments/manifests/batch', manifestBatchLimit, async (c) => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
-  const parsed = AttachmentManifestBatchRequestSchema.safeParse(await c.req.json())
+  const parsed = AttachmentManifestBatchRequestSchema.safeParse(
+    await c.req.json().catch(() => null)
+  )
   if (!parsed.success) {
     throw new AppError(
       ErrorCodes.VALIDATION_ERROR,

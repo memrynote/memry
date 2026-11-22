@@ -134,11 +134,14 @@ describe('orphan pack object sweep (REVIEW-5260)', () => {
     }
     advance(PACK_ORPHAN_MIN_AGE_MS + 1000)
 
-    let total = 0
+    const perTick: number[] = []
     for (let tick = 0; tick < 3; tick++)
-      total += await cleanupOrphanedPackObjects(harness.db, storage)
+      perTick.push(await cleanupOrphanedPackObjects(harness.db, storage))
 
-    expect(total).toBe(600)
+    // 5 pages of 90 per tick: v1 in 3 pages and v2's first 2, then v2's last
+    // page and all of v3. A cursor that skipped keys left behind by the
+    // deletes would leave orphans for a later pass.
+    expect(perTick).toEqual([380, 220, 0])
     expect((await storage.list()).objects).toHaveLength(0)
     expect(harness.raw.prepare('SELECT COUNT(*) AS n FROM pack_orphan_sweep').get()).toEqual({
       n: 0

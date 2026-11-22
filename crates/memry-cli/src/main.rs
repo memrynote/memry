@@ -89,5 +89,6 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
             bench::bootstrap(&cli, &vault, pass_interval, resume).await
         }
         Command::BenchOracleState { vault } => bench::oracle_state(&cli, &vault).await,
+        Command::BenchBodyCoverage { vault } => bench::coverage(&cli, &vault).await,
     }
 }

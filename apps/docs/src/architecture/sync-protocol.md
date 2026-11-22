@@ -1128,7 +1128,9 @@ across devices:
   dropped before the online and token gate, so that happens offline too.
 - **Files that can never upload** — an empty file, and a media file that
   holds text instead of media, fail the same way on every retry, so the upload
-  refuses them before any request and its caller drops the queued row.
+  refuses them before any request and its caller drops the queued row. An
+  empty file drops silently. A media file that holds text is reported: a
+  vault-activity failure and an upload-failed toast that says why.
   "Text instead of media" means the extension has a known signature (SVG and
   unknown types are never judged), the leading bytes do not match it, and the
   file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the
@@ -1142,8 +1144,8 @@ across devices:
   the user replaced with real media fails the rule and is never touched
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
-  a warning logs the count, and the restore never requests that attachment
-  again. In on-demand download mode, or with no access token, the request is
+  a warning logs the count and sends it to telemetry, and the restore never
+  requests that attachment again. A corrupt list is logged and read as empty. In on-demand download mode, or with no access token, the request is
   released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
@@ -1914,8 +1916,11 @@ persisted cursor, opens a session and asks for packs again, so a quit during pac
 pull, the settle of pack-seeded docs or the body drain costs the work already done, not the
 elevation. An earlier build deleted the key at delivery: a kill in the 15-minute settle and drain
 of a large vault relaunched unelevated and never closed its bootstrap window. The server judges the resume
-window from the device's registration: when `POST /sync/bootstrap` answers 409, desktop deletes the
-key and syncs as steady state from the next run. Builds that predate the key ignore it.
+window from the device's registration: when `POST /sync/bootstrap` answers 409
+`BOOTSTRAP_NOT_ELIGIBLE`, desktop deletes the key and syncs as steady state from the next run. It
+deletes the key the same way on a 404 (a server without the route) or a 501 (`BOOTSTRAP_UNAVAILABLE`),
+so a relaunch does not re-post a session the server can never open. Any other refusal keeps the key.
+Builds that predate the key ignore it.
 
 After the window, any `GET /sync/changes` page that delivers an item spends eligibility, including
 one that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
@@ -2154,6 +2159,10 @@ stays valid on the proxied path; `GET /sync/packs` omits `url` and `expiresAt`. 
 three as "use the proxied path". Old servers answer 404 to the presign route, which clients treat
 identically.
 
+`presign-batch` leaves out a hash the caller's vault does not own and presigns the rest. The client
+fetches that one chunk through the proxied GET, which reports its 404. The route never answers 404
+for a missing hash, because a client would read that as "no presign here" and proxy every download.
+
 **`R2_S3_BUCKET` must name the same bucket the `STORAGE` binding points at.** Nothing in the code
 cross-checks this — the Worker cannot read a binding's bucket name — so a mismatch fails at
 `/complete` instead: the presigned PUTs land in the _other_ bucket, the Worker's `head` against
@@ -2212,7 +2221,23 @@ and the bootstrap open answer `packs: []` and `coverage: []` for each vault it n
 starts no backfill chain, so every client of that vault syncs item by item. It deletes and
 rewrites nothing: pack rows, watermarks and R2 objects stay, compaction keeps running, and
 deleting the secret serves the packs again with no rebuild. Unset, nothing changes. It is the
-rollback of the packs rollout (protocol chapter 08 §8.10), set only by an operator:
+rollback of the packs rollout (protocol chapter 08 §8.10), set only by an operator. Four points:
+
+- It does not stop compaction. To stop the packer, remove the `PACK_QUEUE` and
+  `PACK_BACKFILL_QUEUE` producer bindings, in each `[env.*]` section of `wrangler.toml`
+  (`apps/sync-server/wrangler.toml:124`, `:135`, `:184`, `:195`), and deploy. Messages already
+  queued still run. Removing `PACK_QUEUE` also drops the delayed purge retry
+  (`apps/sync-server/src/routes/sync.ts:589`, `apps/sync-server/src/services/cleanup.ts:371`),
+  so a purge that needs more than four rewrites, or whose R2 delete fails, leaves purged bodies in
+  R2 until the next 6-hourly backfill tick deletes them
+  (`apps/sync-server/src/services/pack-backfill.ts:187`), not within 900 s. When stopping the
+  backfill is enough, remove only `PACK_BACKFILL_QUEUE`.
+- It takes effect on the next listing. A run that already holds presigned pack URLs may keep
+  fetching for up to about 300 s more, until they expire.
+- Vault ids match exactly and case-sensitively. `default` is the vault of every account a legacy
+  client synced, so naming it disables packs for all of them.
+- `wrangler secret put` and `wrangler secret delete` deploy a new version of the current Worker
+  code. No code deploy is needed.
 
 ```sh
 # staging, one drill vault (or '*' for every vault)

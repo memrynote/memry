@@ -5,7 +5,7 @@
  * @module vault/folder-move-index
  */
 
-import { isBinaryFileType } from '@memry/shared/file-types'
+import { binaryRecordFields } from '../sync/item-handlers/binary-note-record'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import {
   extractDateFromPath,
@@ -54,16 +54,16 @@ export async function moveIndexedNotesWithFolder(
     const date = cached.date ?? null
     if (date !== extractDateFromPath(newRelativePath)) continue
 
-    if (isBinaryFileType(cached.fileType)) {
+    const binary = binaryRecordFields(cached)
+    if (binary) {
       moves.push({
         kind: 'file',
         input: {
           id: cached.id,
           path: newRelativePath,
           title: cached.title,
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-          fileType: cached.fileType as Exclude<typeof cached.fileType, 'markdown'>,
-          mimeType: cached.mimeType ?? null,
+          fileType: binary.fileType,
+          mimeType: binary.mimeType,
           fileSize: cached.fileSize ?? 0,
           createdAt: new Date(cached.createdAt),
           modifiedAt: new Date(cached.modifiedAt)

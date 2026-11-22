@@ -15,6 +15,7 @@ import { getDatabase, isDatabaseInitialized } from '../database'
 import { createLogger } from '../lib/logger'
 import { resolveVaultFileSync } from '../lib/paths'
 import { getCurrentVaultPath } from '../store'
+import { trackMainLog } from '../telemetry/diagnostics'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { hasMediaSignature, mediaFileHoldsText } from './media-signature'
 
@@ -43,7 +44,15 @@ function readTextBlobs(db: DrizzleDb): Set<string> {
     .where(eq(syncState.key, SYNC_STATE_KEYS.BINARY_NOTE_TEXT_BLOBS))
     .get()?.value
   if (!value) return new Set()
-  const ids: unknown = JSON.parse(value)
+  let ids: unknown
+  try {
+    ids = JSON.parse(value)
+  } catch (error) {
+    // Forgetting the list only costs one more download of each text blob, while
+    // a throw here would stop every restore scan for good.
+    log.warn('Binary note text-blob list is corrupt; starting it again', { error })
+    return new Set()
+  }
   return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === 'string') : [])
 }
 
@@ -66,6 +75,11 @@ function rememberTextBlob(db: DrizzleDb, attachmentId: string): void {
   log.warn('Server blob is text; binary note file not restored again', {
     attachmentId,
     textBlobs: ids.size
+  })
+  trackMainLog('warn', {
+    scope: 'BinaryNoteRestore',
+    action: 'binary_note_text_blob',
+    metrics: { itemCount: ids.size }
   })
 }
 
