@@ -1265,7 +1265,9 @@ for. For a 1,000-note vault:
 Before this, at 25 notes every 15 s with an unconditional baseline, all three regimes cost
 100 GET/min and 4 POST/min and took **ten minutes**. The cold row assumes every note has a
 server snapshot. A cold chunk still sends the probe, because its `snapshotMeta` names the
-notes with no snapshot, and each of those costs no GET (#5234).
+notes with no snapshot, and each of those costs no GET (#5234). Outside a fullSync, a cold
+chunk of fewer than 20 notes skips the probe: the POST is the scarce budget, and a record-page
+pull of a few notes would spend one to save a few GETs.
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
