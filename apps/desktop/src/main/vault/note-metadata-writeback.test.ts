@@ -25,8 +25,11 @@ import * as vaultIndex from './status'
 import * as database from '../database'
 import * as databaseClient from '../database/client'
 import { createNote, updateNote } from './notes'
-import { resetWritebackState, writebackNow } from '../sync/crdt-writeback'
+import { hasPendingWriteback, resetWritebackState, writebackNow } from '../sync/crdt-writeback'
 import { markdownToYFragment } from '../sync/blocknote-converter'
+import { noteHandler } from '../sync/item-handlers/note-handler'
+import { extractFolderFromPath } from '../sync/note-sync'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const hold = vi.hoisted(() => ({
   next: null as null | { reached: () => void; release: Promise<void> }
@@ -105,10 +108,10 @@ describe('a note tags or properties edit between a write-back read and write (#5
     vault.cleanup()
   })
 
-  it.each<[string, Omit<NoteUpdateInput, 'id'>, string]>([
-    ['tags', { headerTags: { add: ['focus'] } }, '- focus'],
-    ['properties', { properties: { mood: 'calm' } }, 'mood: calm']
-  ])('the %s edit and the typed body both stay in the file', async (_n, edit, kept) => {
+  /** A pass holds at its file write; `edit` runs meanwhile. Resolves the file once both settle. */
+  async function raceWithPass(
+    edit: (note: { id: string; path: string }) => unknown
+  ): Promise<string> {
     const note = await createNote({ title: 'Race', content: 'Morning.' })
     const doc = new Y.Doc()
     await markdownToYFragment('Morning. Typed.', doc.getXmlFragment(CRDT_FRAGMENT_NAME), note.path)
@@ -123,12 +126,49 @@ describe('a note tags or properties edit between a write-back read and write (#5
     })
     const writeback = writebackNow(note.id, doc)
     await reached
-    const update = updateNote({ id: note.id, ...edit })
+    const update = Promise.resolve(edit(note))
     await new Promise((resolve) => setTimeout(resolve, 50))
     release()
     await Promise.all([writeback, update])
-    const onDisk = fs.readFileSync(path.join(vault.path, note.path), 'utf8')
+    await vi.waitFor(() => expect(hasPendingWriteback(note.id)).toBe(false))
+    return fs.readFileSync(path.join(vault.path, note.path), 'utf8')
+  }
+
+  it.each<[string, Omit<NoteUpdateInput, 'id'>, string]>([
+    ['tags', { headerTags: { add: ['focus'] } }, '- focus'],
+    ['properties', { properties: { mood: 'calm' } }, 'mood: calm']
+  ])('the %s edit and the typed body both stay in the file', async (_n, edit, kept) => {
+    const onDisk = await raceWithPass((note) => updateNote({ id: note.id, ...edit }))
     expect.soft(onDisk).toContain(kept)
+    expect.soft(onDisk).toContain('Morning. Typed.')
+  })
+
+  // A body update writes its frontmatter beside the body, outside the turn.
+  // The body comes back through the doc (feed, re-arm); the frontmatter only
+  // through the update's own turn (#5479). The feed is stubbed here, so only
+  // the frontmatter is asserted.
+  it.each<[string, Omit<NoteUpdateInput, 'id'>, string]>([
+    ['tags', { content: 'Morning. Typed. More.', headerTags: { add: ['focus'] } }, '- focus'],
+    ['properties', { content: 'Morning. Typed. More.', properties: { mood: 'calm' } }, 'mood: calm']
+  ])('a body update with %s keeps them in the file (#5479)', async (_n, edit, kept) => {
+    const onDisk = await raceWithPass((note) => updateNote({ id: note.id, ...edit }))
+    expect(onDisk).toContain(kept)
+  })
+
+  it('a remote tags update applied during the pass stays in the file (#5479)', async () => {
+    const ctx: ApplyContext = { db: dataDb.db as unknown as DrizzleDb, emit: vi.fn() }
+    const clock = { 'device-remote': 1 }
+    const onDisk = await raceWithPass((note) =>
+      expect(
+        noteHandler.applyUpsert(
+          ctx,
+          note.id,
+          { tags: ['focus'], folderPath: extractFolderFromPath(note.path), clock },
+          clock
+        )
+      ).toBe('applied')
+    )
+    expect.soft(onDisk).toContain('- focus')
     expect.soft(onDisk).toContain('Morning. Typed.')
   })
 })

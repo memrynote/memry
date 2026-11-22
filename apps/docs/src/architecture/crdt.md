@@ -864,7 +864,14 @@ document to its vault `.md` file and re-indexes it for search.
   `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
   A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
   so one that landed between a pass's read and its write was lost with nothing left to re-arm
-  the pass (#5472). A body update feeds the doc before its file and stays out of the queue.
+  the pass (#5472). A body update feeds the doc before its file outside the queue, because the
+  feed can wait on the store and a pass queued behind it could hang the quit flush. The re-arm
+  restores its body but not the tags or properties written beside it, so a body update that
+  sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
+  properties) then writes them again over the file's body in the queue; a file that already
+  holds them is not written (#5479). A remote tags, properties, cover or aliases update
+  rewrites the frontmatter inside the sync apply, which cannot wait, so while a pass of the
+  note is pending or running it applies the same patch again in the queue, after that pass.
   The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and

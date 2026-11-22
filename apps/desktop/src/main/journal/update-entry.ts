@@ -36,13 +36,41 @@ import { getJournalEntryByDate, getNoteCacheByPath } from './store'
 const logger = createLogger('Journal:Update')
 
 /**
- * A tags or properties update writes only frontmatter, so it takes the entry's
- * write-back turn: a pass never writes back the frontmatter it read before it
- * (#5472). A body update feeds the doc first instead (`landBodyEdit`).
+ * Frontmatter is written in the entry's write-back turn, so a pass never
+ * writes back the frontmatter it read before it (#5472). A body update feeds
+ * the doc first (`landBodyEdit`) outside the turn, since the feed can wait on
+ * the store; the re-arm after a pass restores its body but not the tags or
+ * properties written beside it, so those are written again in the turn
+ * (#5479).
  */
-export function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
-  if (input.content !== undefined) return writeJournalUpdate(input)
-  return takeWritebackTurn(resolveJournalEntryId(input.date), () => writeJournalUpdate(input))
+export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
+  const id = resolveJournalEntryId(input.date)
+  if (input.content === undefined) return takeWritebackTurn(id, () => writeJournalUpdate(input))
+  const entry = await writeJournalUpdate(input)
+  const setsTags = input.tags !== undefined || input.inlineTags !== undefined
+  if (!setsTags && input.properties === undefined) return entry
+  await takeWritebackTurn(id, () =>
+    rewriteJournalFrontmatter(input.date, setsTags ? entry.tags : undefined, input.properties)
+  )
+  return entry
+}
+
+/** Writes `tags` and `properties` over the entry's file body, when its file lacks them. */
+async function rewriteJournalFrontmatter(
+  date: string,
+  tags: string[] | undefined,
+  properties: Record<string, unknown> | undefined
+): Promise<void> {
+  const current = await readJournalEntry(date)
+  if (!current) return
+  const { fileContent, previousFile } = await composeJournalEntryWrite(
+    date,
+    current.content,
+    tags ?? current.tags,
+    current,
+    properties ?? current.properties
+  )
+  if (fileContent !== previousFile) await writeJournalUpdate({ date, tags, properties })
 }
 
 async function writeJournalUpdate(input: UpdateEntryInput): Promise<JournalEntry> {
