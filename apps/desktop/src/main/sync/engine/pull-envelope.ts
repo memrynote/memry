@@ -38,6 +38,8 @@ export interface PurgedTombstone {
   type: RecordClockRequiredItemType
   deletedAt: number
   clock: VectorClock
+  /** The marker row's `server_cursor`: §8.10 rule 2 needs it past the held row's (#5390). */
+  serverCursor: number
   /** #2408: present only when the entry names both a signer and a signature. */
   attestation?: TombstoneAttestation
 }
@@ -86,7 +88,8 @@ function admitTombstone(
       reason: 'shape'
     }
   }
-  const { id, type, deletedAt, clock, signerDeviceId, deleteAttestation } = parsed.data
+  const { id, type, deletedAt, clock, serverCursor, signerDeviceId, deleteAttestation } =
+    parsed.data
   if (!requested.has(id)) return { id, type, reason: 'not_requested' }
   if (!CLOCK_REQUIRED_TYPES.has(type)) return { id, type, reason: 'type_not_clocked' }
   if (!clock || Object.keys(clock).length === 0) return { id, type, reason: 'clockless' }
@@ -96,6 +99,7 @@ function admitTombstone(
     type: type as RecordClockRequiredItemType,
     deletedAt,
     clock,
+    serverCursor,
     ...(signerDeviceId && deleteAttestation
       ? { attestation: { signerDeviceId, signature: deleteAttestation } }
       : {})
@@ -200,7 +204,7 @@ export async function applicablePurgedTombstones(
   db: DrizzleDb,
   tombstones: readonly PurgedTombstone[],
   resolveKey: ResolveDeviceKey,
-  skip: (ref: ItemRef) => boolean = () => false
+  skip: (marker: PurgedTombstone) => boolean = () => false
 ): Promise<{
   apply: AttestedTombstone[]
   unverified: Array<PurgedTombstone & { reason: AttestationRefusal }>
@@ -252,7 +256,7 @@ const logRefusals = (reasons: readonly string[]): void => {
  */
 export async function purgedTombstoneApplyItems(
   envelope: PullEnvelope,
-  skip: (ref: ItemRef) => boolean,
+  skip: (marker: PurgedTombstone) => boolean,
   deps: { db: DrizzleDb; resolveKey: ResolveDeviceKey }
 ): Promise<DecryptedPullItem[]> {
   if (envelope.refusedTombstones.length > 0) {

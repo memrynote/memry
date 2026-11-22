@@ -234,7 +234,8 @@ describe('runPackBootstrap', () => {
         entriesSkipped: 0,
         entriesFailed: 0,
         updatesApplied: 0,
-        appliedThroughCursor: null
+        appliedThroughCursor: null,
+        records: null
       })
       expect(harness.downloaded).toEqual([])
       expect(harness.stateWrites).toEqual([])
@@ -299,19 +300,18 @@ describe('runPackBootstrap', () => {
       expect(harness.downloaded).toEqual([])
     })
 
-    it('#given record packs only #then they are refused (no signature metadata)', async () => {
+    it('#given a device that already has a cursor #then record packs are never fetched', async () => {
       const harness = makeHarness({
         fetchPackPage: async () =>
           listResponse([packSummary({ id: 'p-records', itemKind: 'record' })])
       })
+      harness.state.set(SYNC_STATE_KEYS.LAST_CURSOR, '500')
 
       const result = await runPackBootstrap(harness.deps)
 
       expect(result.usedPacks).toBe(false)
       expect(harness.downloaded).toEqual([])
-      // The record cursor is what the item-granular pull runs on; nothing here
-      // may move it.
-      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('500')
     })
   })
 
@@ -828,6 +828,58 @@ describe('runPackBootstrap', () => {
       expect(harness.watermarks.get('note-2')).toEqual({ appliedSequence: 1 })
       expect(result.updatesApplied).toBe(3)
       expect(httpSpies.getFromServer).not.toHaveBeenCalled()
+    })
+
+    it('#given record packs #then the record manifest is read after the packs and bodies at the head are settled', async () => {
+      const recordReads: string[] = []
+      const { harness } = harnessWith([manifestDoc('note-1', 'r4'), manifestDoc('note-2', null)])
+      const meta = { operation: 'update', signature: 'sig', signerDeviceId: 'device-a' }
+      const blob = { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      harness.deps.fetchPackPage = async () => ({
+        ...listResponse([
+          packSummary({ id: 'p-snap', maxCursor: 200 }),
+          packSummary({ id: 'p-upd', itemKind: 'crdt_update', maxCursor: 900 }),
+          packSummary({ id: 'p-rec', itemKind: 'record', coverFrom: 0, coverThrough: 300 })
+        ]),
+        coverage: [{ itemKind: 'record', packedThrough: 300, coveredThrough: 310 }]
+      })
+      harness.deps.readRecordManifest = async () => {
+        recordReads.push(harness.downloaded.toSorted().join(','))
+        return {
+          items: [
+            { id: 'note-1', type: 'note', version: 1, modifiedAt: 1, size: 1, serverCursor: 20 }
+          ],
+          complete: true
+        }
+      }
+      harness.packFiles.set(
+        'p-rec',
+        buildTestPack([
+          {
+            kind: 'record',
+            id: 'note:note-1',
+            sortKey: 20,
+            meta,
+            bytes: new TextEncoder().encode(JSON.stringify(blob))
+          }
+        ]).bytes
+      )
+      // note-1 reaches maxSequenceNum 9 under r4; note-2 stops at 1.
+      harness.packFiles.set(
+        'p-upd',
+        buildTestPack([1, 2, 3, 4, 5, 6, 7, 8, 9].map((seq) => updateEntry('note-1', seq))).bytes
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(recordReads).toEqual(['p-rec,p-snap,p-upd'])
+      expect(result.records?.tailStart).toBe(310)
+      expect(
+        result.records?.apply.map(({ item, sortKey }) => [item.type, item.id, sortKey])
+      ).toEqual([['note', 'note-1', 20]])
+      expect(result.records?.pullById).toEqual([])
+      expect([...(result.records?.settledBodies ?? [])]).toEqual(['note-1'])
+      expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
     })
 
     it('#given an old server with no body manifest #then no packed update applies', async () => {
