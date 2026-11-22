@@ -490,7 +490,7 @@ export const listRange = async (
         itemCount: built.entries.length,
         byteSize: built.payloadBytes,
         coverage,
-        documents: packDocuments(kind, built.entries)
+        documents: packDocuments(built.entries)
       },
       replacing?.recorded ?? guard
     ),

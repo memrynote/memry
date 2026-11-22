@@ -389,9 +389,10 @@ describe('the scoped purge (#5229, protocol 08 §8.13)', () => {
 
     await push(app, deleteSpec(DAY))
 
-    // The client downloads what it listed: the rewritten packs answer 404.
+    // The client downloads what it listed: the rewritten packs answer 404,
+    // the two body packs and the record pack that hold the day (#5247).
     const packs = await download(listedBefore)
-    expect(packs).toHaveLength(listedBefore.length - 2)
+    expect(packs).toHaveLength(listedBefore.length - 3)
     const live = ['note-a', 'note-b', 'note-c']
     const answer = await batchAnswer(app, live)
     for (const noteId of live) {

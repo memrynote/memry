@@ -215,7 +215,7 @@ const resetUnrewritten = async (
   const kinds = new Map<string, { scope: VaultScope; kind: PackKindName }>()
   for (const row of rows) {
     const range = packKeyRange(row.pack_key)
-    if (!range || range.kind === 'record') continue
+    if (!range) continue
     const scope = { userId: row.user_id, vaultId: row.vault_id }
     kinds.set(`${row.user_id}\u0000${row.vault_id}\u0000${range.kind}`, { scope, kind: range.kind })
   }
