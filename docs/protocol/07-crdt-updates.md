@@ -196,9 +196,9 @@ carries no ciphertext. Each document is
 
 The answer lists every document of the vault that holds an update row or a
 snapshot row, and every document with a `floor` above 0, in ascending
-`noteId` (`apps/sync-server/src/services/crdt-manifest.ts:12-21`). `limit` is
+`noteId` (`apps/sync-server/src/services/crdt-manifest.ts:12-18`). `limit` is
 an integer from 1, default and ceiling `CRDT_MANIFEST_PAGE_LIMIT` = 1000
-(`packages/contracts/src/sync-api.ts:886`); a larger value is capped. A
+(`packages/contracts/src/sync-api.ts:889`); a larger value is capped. A
 `cursor` is the previous page's `nextCursor`, opaque to the client, and
 `nextCursor` is `null` on the last page, so a vault of `n` documents reads in
 `ceil(n / 1000)` requests. A page can hold more than `limit` documents, by

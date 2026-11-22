@@ -506,7 +506,8 @@ export class CrdtProvider {
     this.networkOnline = isOnline ?? ALWAYS_ONLINE
   }
 
-  private snapshotsHeld(): boolean {
+  /** True while every snapshot path sends nothing (sync paused or offline). */
+  snapshotsHeld(): boolean {
     return this.syncPaused() || !this.networkOnline()
   }
 

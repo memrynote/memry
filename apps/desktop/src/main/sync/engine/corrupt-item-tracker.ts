@@ -75,7 +75,7 @@ export class CorruptItemTracker {
    * Insertion order is kept equal to `failedAt` order (see `markFailed`), so
    * eviction is "delete from the front" without a sort.
    */
-  private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
+  private corruptItems = new Map<string, { failedAt: number }>()
   private evictionLogged = false
   private ctx: SyncContext
   private quarantine: QuarantineManager
@@ -101,7 +101,6 @@ export class CorruptItemTracker {
     const key = itemRefKey(ref.type, ref.id)
     const entry = this.corruptItems.get(key)
     if (entry) {
-      entry.attempts++
       entry.failedAt = Date.now()
       // Re-insert so Map iteration order stays `failedAt` order. `set` on an
       // existing key does not move it, and `failedAt` is mutated in place, so
@@ -110,7 +109,7 @@ export class CorruptItemTracker {
       this.corruptItems.delete(key)
       this.corruptItems.set(key, entry)
     } else {
-      this.corruptItems.set(key, { failedAt: Date.now(), attempts: 1 })
+      this.corruptItems.set(key, { failedAt: Date.now() })
     }
     this.evictOverflow()
   }
