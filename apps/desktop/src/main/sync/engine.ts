@@ -170,7 +170,10 @@ export class SyncEngine extends SyncEventEmitter {
           const keys = await deps.getSigningKeys()
           this.stateManager.setDeviceKeysMissing(keys === null)
           return keys
-        }
+        },
+        // The same for the vault key: a key read again by any cycle ends the
+        // editors' vault-locked wait (see `CrdtSyncCoordinator.isVaultKeyMissing`).
+        getVaultKey: async () => this.crdtSync.recordVaultKeyRead(await deps.getVaultKey())
       },
       options: resolvedOptions,
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),

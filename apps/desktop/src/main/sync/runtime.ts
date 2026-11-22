@@ -784,6 +784,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         getAccessToken: () => getValidAccessToken(),
         hasSessionEnded: () => hasSessionEnded(),
         getVaultKey: () => getOptionalRuntimeVaultKey(db, 'sync engine'),
+        // A vault-locked editor goes back to its loading state once the key reads again.
+        onVaultKeyReadable: () => crdtProvider.reportEditorWaits(),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!secretKey) return null

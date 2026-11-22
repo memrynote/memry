@@ -355,14 +355,15 @@ pull backoff; the count is kept in memory too, so it progresses when the debt
 table is unavailable. Main then broadcasts `crdt:doc-wait` with `stuck`. When
 the session ended (`hasSessionEnded`: the refresh token was rejected for good
 or is gone), the open result carries `awaitingRemote: 'signed-out'`, and
-when the last pull found no vault key (a locked keychain), `'vault-locked'`
-(#5342). A refresh that merely failed (offline, a 5xx) is neither. The pull stays owed. While a
-note is stuck, signed out or vault-locked, or the device is offline, the editor
-shows the vault file read-only with a notice, with no binding and no saves.
-A reason that changes after the open reaches the editor as `crdt:doc-wait`:
-the coordinator sends it once a note is stuck, and the runtime for every
-waiting editor once the session ends. Once the renderer is signed in again, a
-signed-out editor returns to its loading state, and the next sync drains the
+when the last vault key read found no key (a locked keychain), `'vault-locked'`
+(#5342). A refresh that merely failed (offline, a 5xx) is neither. The pull
+stays owed. While a note is stuck, signed out or vault-locked, or the device is
+offline, the editor shows the vault file read-only with a notice, with no
+binding and no saves. A reason that changes after the open reaches the editor
+as `crdt:doc-wait`: the coordinator sends it once a note is stuck, and the
+runtime for every waiting editor once the session ends, or with `merging` once
+any sync cycle reads the vault key again. Once the renderer is signed in again,
+a signed-out editor returns to its loading state, and the next sync drains the
 owed pull. The pull that later merges the body, or a pull that proves the
 server holds nothing, ends the wait, and the editor binds. A reconnect retries
 the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
