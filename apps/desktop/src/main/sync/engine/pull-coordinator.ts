@@ -203,7 +203,7 @@ export class PullCoordinator {
                   return HOLDS_CURSOR.has(stop)
                 },
                 pullById,
-                ...packDeps(this.stateManager, this.ctx.deps.db, this.ctx.applier)
+                ...packDeps(this.stateManager, this.ctx.deps.db)
               })
             : 'tail'
         if (fromPacks === 'refused') runState.refused = true

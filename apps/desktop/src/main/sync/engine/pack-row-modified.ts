@@ -2,11 +2,10 @@ import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import type { SyncItemType } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../../lib/logger'
-import type { ItemApplier } from '../apply-item'
 import { getHandler, type DrizzleDb } from '../item-handlers'
 import { hasPendingWrite } from './purged-tombstone-guard'
 
-const log = createLogger('UnlistedPackRow')
+const log = createLogger('PackRowModified')
 
 const clockOf = (row: Record<string, unknown>): Record<string, unknown> | null => {
   const value = row.clock ?? row.vectorClock
@@ -24,21 +23,20 @@ const clockOf = (row: Record<string, unknown>): Record<string, unknown> | null =
 }
 
 /**
- * §8.10 rule 2: removes a pack-applied row the complete manifest omits, here
- * only, with no push and no tombstone: the delete happened on the server. A
- * row this device modified since is kept: a queued write, its own device in
- * the clock (only a local edit puts it there on a fresh device), or no clock
- * to tell. The delete goes through the pull's apply with no clock, which every
- * handler applies unconditionally and records no tombstone clock for.
- * True when no live local row is left.
+ * Whether §8.10 rule 2 pulls an unlisted pack-phase row by id (#5390): its
+ * local row exists and this device did not modify it since. A queued write,
+ * its own device in the clock (only a local edit puts it there on a fresh
+ * device), or no clock to tell keeps the row out of the pull. The pull, not
+ * this check, decides a delete: only a verified delete or an attested marker
+ * removes the row (protocol 05 §5.12.1).
  */
-export function removeUnlistedPackRow(db: DrizzleDb, applier: ItemApplier, key: string): boolean {
+export function pullsUnlistedRow(db: DrizzleDb, key: string): boolean {
   const split = key.indexOf(':')
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keys are written from validated pull items' types
   const type = key.slice(0, split) as SyncItemType
   const itemId = key.slice(split + 1)
   const local = getHandler(type)?.fetchLocal?.(db, itemId)
-  if (!local) return true
+  if (!local) return false
   const clock = clockOf(local)
   const deviceId = getCurrentDeviceId(db)
   if (
@@ -47,14 +45,8 @@ export function removeUnlistedPackRow(db: DrizzleDb, applier: ItemApplier, key: 
     (deviceId !== null && deviceId in clock) ||
     hasPendingWrite(db, type, itemId)
   ) {
-    log.info('Pack-applied row absent from the manifest kept: modified here', { type, itemId })
+    log.info('Unlisted pack-phase row kept: modified here', { type, itemId })
     return false
   }
-  const result = applier.apply({ itemId, type, operation: 'delete', content: new Uint8Array() })
-  log.info('Pack-applied row absent from the manifest removed (§8.10 rule 2)', {
-    type,
-    itemId,
-    result
-  })
-  return result === 'applied'
+  return true
 }

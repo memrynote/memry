@@ -1,11 +1,10 @@
 import type { RecordPullItemResponse } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../../lib/logger'
-import type { ItemApplier } from '../apply-item'
 import type { DrizzleDb } from '../item-handlers'
 import type { PackedRecords } from '../packs/record-packs'
 import type { ItemRef } from './corrupt-item-tracker'
-import { removeUnlistedPackRow } from './unlisted-pack-row'
+import { pullsUnlistedRow } from './pack-row-modified'
 import type { PullRunState } from './pull-run-state'
 import { itemRefKey, PULL_REQUEST_MAX_IDS, SYNC_STATE_KEYS } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -46,20 +45,19 @@ export interface PackedRecordApplyDeps {
   setCursor: (cursor: string) => void
   /** Durably records the pack phase's `type:id` keys, before any of them applies. */
   recordApplied: (keys: ReadonlySet<string>) => void
-  /** §8.10 rule 2 for one key the manifest omits; true when no live local row is left. */
-  removeUnlisted: (key: string) => boolean
+  /** §8.10 rule 2: whether an unlisted key is pulled by id (a live row not modified here). */
+  pullsUnlisted: (key: string) => boolean
 }
 
 /** The durable half of the deps: the cursor and the pack phase's record (#5390). */
 export const packDeps = (
   state: SyncStateManager,
-  db: DrizzleDb,
-  applier: ItemApplier
-): Pick<PackedRecordApplyDeps, 'setCursor' | 'recordApplied' | 'removeUnlisted'> => ({
+  db: DrizzleDb
+): Pick<PackedRecordApplyDeps, 'setCursor' | 'recordApplied' | 'pullsUnlisted'> => ({
   setCursor: (cursor) => state.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, cursor),
   recordApplied: (keys) =>
     state.setStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED, JSON.stringify([...keys])),
-  removeUnlisted: (key) => removeUnlistedPackRow(db, applier, key)
+  pullsUnlisted: (key) => pullsUnlistedRow(db, key)
 })
 
 /**
@@ -95,11 +93,16 @@ export async function applyPackedRecords(
   }
   // §8.10 rule 2 (#5390): an earlier run of this phase may have applied rows
   // the manifest no longer lists, deleted since and maybe shed to a marker the
-  // tail never serves. Then the set is recorded, before the first slice, so a
-  // crash anywhere after it leaves every row this phase applies on record.
-  const recorded = new Set<string>()
-  for (const key of runState.packApplied ?? []) {
-    if (packed.listed.has(key) || !deps.removeUnlisted(key)) recorded.add(key)
+  // tail never serves. Each is pulled by id, below; only a verified delete or
+  // an attested marker in that answer removes it, and silence keeps it. The
+  // set is recorded before the first slice, so a crash anywhere after it
+  // leaves every row this phase applies on record.
+  const recorded = new Set(runState.packApplied)
+  const unlisted: ItemRef[] = []
+  for (const key of recorded) {
+    if (packed.listed.has(key) || !deps.pullsUnlisted(key)) continue
+    const split = key.indexOf(':')
+    unlisted.push({ type: key.slice(0, split), id: key.slice(split + 1) })
   }
   for (const { item } of packed.apply) {
     if (item.operation !== 'delete' && item.deletedAt === undefined) {
@@ -109,6 +112,11 @@ export async function applyPackedRecords(
   for (const ref of packed.pullById) recorded.add(itemRefKey(ref.type, ref.id))
   deps.recordApplied(recorded)
   runState.packApplied = recorded
+  // Not part of the tail start: these rows are not in the manifest.
+  if (unlisted.length > 0) {
+    log.info('Pull: unlisted pack-phase rows pulled by id', { count: unlisted.length })
+    if (!(await deps.pullById(unlisted)) || runState.signal.aborted) return 'tail'
+  }
   // The tail after the packs sends no body headers: body kinds state no coverage.
   runState.fromZero = true
   // Bodies the packs brought to the manifest head need no pull (#5390).

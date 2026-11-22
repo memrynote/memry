@@ -52,7 +52,13 @@ const emptyFeed = { items: [], deleted: [], hasMore: false, nextCursor: 12 }
 
 type PullFault = 'none' | 'rejected' | 'cancelled'
 
-const serve = async (engine: SyncEngine, fault: PullFault = 'none') => {
+type PullAnswer = (id: string) => Record<string, unknown> | null
+
+const serve = async (
+  engine: SyncEngine,
+  fault: PullFault = 'none',
+  answer: PullAnswer = (id) => pullItem(id)
+) => {
   const http = await import('../http-client')
   const cursorAtPull: Array<string | null | undefined> = []
   const getSpy = vi.spyOn(http, 'getFromServer').mockResolvedValue(emptyFeed)
@@ -65,7 +71,7 @@ const serve = async (engine: SyncEngine, fault: PullFault = 'none') => {
       throw new DOMException('The operation was aborted.', 'AbortError')
     }
     const { itemIds } = body as { itemIds: string[] }
-    return { items: itemIds.map((id) => pullItem(id)) }
+    return { items: itemIds.flatMap((id) => answer(id) ?? []) }
   })
   vi.spyOn(await import('../decrypt'), 'decryptItemFromPull').mockReturnValue({
     content: new TextEncoder().encode(JSON.stringify({ title: 'from B' })),
@@ -202,7 +208,11 @@ describe('PullCoordinator with record packs (#5390)', () => {
   describe('an interrupted pack phase and a manifest that dropped a row (§8.10 rule 2)', () => {
     /** The pull's real delete; an upsert lands a synced task row as a handler would. */
     const applyToDb = (db: TestDatabaseResult) => {
-      db.db.insert(projects).values({ id: 'p', name: 'p', color: '#000', position: 0 }).run()
+      db.db
+        .insert(projects)
+        .values({ id: 'p', name: 'p', color: '#000', position: 0 })
+        .onConflictDoNothing()
+        .run()
       const realApply = ItemApplier.prototype.apply
       return vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
         this: ItemApplier,
@@ -232,20 +242,25 @@ describe('PullCoordinator with record packs (#5390)', () => {
         .all()
         .map(({ id }) => id)
         .toSorted()
+    const run1Ids = ['task-gone', 'task-edited', 'task-silent', 'task-kept']
     const run1 = packedRecords({
-      apply: ['task-gone', 'task-edited', 'task-kept'].map((id, i) => ({
-        item: pullItem(id),
-        sortKey: i + 3
-      })),
-      listed: new Set(['task:task-gone', 'task:task-edited', 'task:task-kept', 'task:task-stale'])
+      apply: run1Ids.map((id, i) => ({ item: pullItem(id), sortKey: i + 3 })),
+      listed: new Set([...run1Ids, 'task-stale'].map((id) => `task:${id}`))
     })
-    // task-gone and task-edited were deleted elsewhere and their tombstones shed.
+    // Deleted elsewhere since run 1, their tombstones shed: the manifest omits them.
     const run2 = packedRecords({
-      apply: [{ item: pullItem('task-kept'), sortKey: 5 }],
+      apply: [{ item: pullItem('task-kept'), sortKey: 6 }],
       listed: new Set(['task:task-kept', 'task:task-stale'])
     })
+    // The by-id answer: task-gone's signed delete, nothing for task-silent.
+    const answer: PullAnswer = (id) => {
+      if (id === 'task-gone') {
+        return { ...pullItem(id), operation: 'delete', deletedAt: 2000, clock: { 'device-2': 2 } }
+      }
+      return id === 'task-silent' ? null : pullItem(id)
+    }
 
-    it('removes a pack-applied row the manifest omits on the rerun, keeps an edited or listed one, echoes nothing', async () => {
+    it('pulls an unlisted pack-phase row by id on the rerun and removes it only on a verified delete', async () => {
       const db = getDb()
       const cancelled = new SyncEngine(createMockDeps(db))
       await serve(cancelled, 'cancelled')
@@ -253,7 +268,7 @@ describe('PullCoordinator with record packs (#5390)', () => {
 
       await expect(cancelled.pull([], run1)).resolves.toEqual({ status: 'incomplete' })
       expect(cancelled.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? null).toBeNull()
-      expect(taskIds(db)).toEqual(['task-edited', 'task-gone', 'task-kept'])
+      expect(taskIds(db)).toEqual(['task-edited', 'task-gone', 'task-kept', 'task-silent'])
 
       vi.restoreAllMocks()
       const deps = createMockDeps(db)
@@ -265,19 +280,16 @@ describe('PullCoordinator with record packs (#5390)', () => {
         priority: 0
       })
       const engine = new SyncEngine(deps)
-      await serve(engine)
-      const realApply = ItemApplier.prototype.apply
-      vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
-        this: ItemApplier,
-        input,
-        page
-      ) {
-        return input.operation === 'delete' ? realApply.call(this, input, page) : 'skipped'
-      })
+      const server = await serve(engine, 'none', answer)
+      applyToDb(db)
 
       await expect(engine.pull([], run2)).resolves.toEqual({ status: 'delivered' })
 
-      expect(taskIds(db)).toEqual(['task-edited', 'task-kept'])
+      expect(server.postSpy.mock.calls.map(([, body]) => body)).toEqual([
+        { itemIds: ['task-gone', 'task-silent'] },
+        { itemIds: ['task-stale'] }
+      ])
+      expect(taskIds(db)).toEqual(['task-edited', 'task-kept', 'task-silent', 'task-stale'])
       expect(
         db.db.select({ itemId: syncQueue.itemId, op: syncQueue.operation }).from(syncQueue).all()
       ).toEqual([{ itemId: 'task-edited', op: 'update' }])
@@ -290,13 +302,16 @@ describe('PullCoordinator with record packs (#5390)', () => {
       const engine = new SyncEngine(createMockDeps(db))
       engine.setStateValue(
         SYNC_STATE_KEYS.RECORD_PACKS_APPLIED,
-        JSON.stringify(['task:task-gone', 'task:task-edited', 'task:task-kept', 'task:task-stale'])
+        JSON.stringify([...run1Ids, 'task-stale'].map((id) => `task:${id}`))
       )
-      await serve(engine)
+      const server = await serve(engine, 'none', answer)
       applyToDb(db)
 
       await expect(engine.pull([], run2)).resolves.toEqual({ status: 'delivered' })
 
+      expect(server.postSpy.mock.calls.map(([, body]) => body)).toEqual([
+        { itemIds: ['task-stale'] }
+      ])
       expect(taskIds(db)).toEqual(['task-kept', 'task-stale'])
       expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
       expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
@@ -310,12 +325,9 @@ describe('PullCoordinator with record packs (#5390)', () => {
 
       await engine.pull([], run1)
 
-      expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual([
-        'task:task-gone',
-        'task:task-edited',
-        'task:task-kept',
-        'task:task-stale'
-      ])
+      expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual(
+        [...run1Ids, 'task-stale'].map((id) => `task:${id}`)
+      )
       expect(db.db.select().from(tasks).where(eq(tasks.id, 'task-gone')).get()).toBeDefined()
     })
   })
