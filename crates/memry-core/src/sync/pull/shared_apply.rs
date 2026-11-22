@@ -2,14 +2,19 @@
 //! sync's by-id pulls ([`PullLoop::fetch_ids`]) and record pack entries
 //! (chapter 08 §8.4.2) go through one path, so neither drifts from the other.
 
-use serde_json::Value as Json;
+use serde_json::{Value as Json, json};
 
+use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::protocol::types::ArrivingItemType;
 use crate::storage::nested_tx;
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, PullReport, apply_items, sqlite_failed};
 use crate::sync::apply::{self, Pending};
 use crate::sync::pull_decode::{Decoding, now_ms};
+
+/// The feed-only token that makes `POST /sync/pull` serve purged markers
+/// (`FEED_ONLY_SYNC_TYPES`, `packages/contracts/src/sync-api.ts:155`).
+const PURGED_TOMBSTONES_SYNC_TYPE: &str = "purged_tombstones";
 
 impl PullLoop {
     /// Fetches, decodes and applies a named set of ids, **without touching
@@ -22,16 +27,52 @@ impl PullLoop {
     /// other rule does: per-item validation, the §5.13 apply order, and one
     /// corrupt item never poisoning its chunk mates.
     pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
+        Ok(self.fetch_ids_declaring(ids, false).await?.0)
+    }
+
+    /// [`Self::fetch_ids`] that also declares `purged_tombstones` (chapter 05
+    /// §5.12.3), so the server answers an id whose tombstone it shed with a
+    /// marker instead of nothing. Answers the bodies' `purgedTombstones`
+    /// entries unread: nothing here applies a marker. The manifest reconcile
+    /// admits and verifies them against the rows it asked about.
+    pub(crate) async fn fetch_ids_with_markers(
+        &self,
+        ids: &[String],
+    ) -> Result<(PullReport, Vec<Json>), PullError> {
+        self.fetch_ids_declaring(ids, true).await
+    }
+
+    async fn fetch_ids_declaring(
+        &self,
+        ids: &[String],
+        markers: bool,
+    ) -> Result<(PullReport, Vec<Json>), PullError> {
         let mut dropped_pages = 0;
+        let mut entries = Vec::new();
         let decoder = self.decoder();
         let mut decoding = Vec::with_capacity(ids.len().div_ceil(MAX_PULL_IDS));
         for chunk in ids.chunks(MAX_PULL_IDS) {
-            let mut body = self.fetch_bodies(chunk).await?;
+            let mut body = if markers {
+                let declared = format!(
+                    "{},{PURGED_TOMBSTONES_SYNC_TYPE}",
+                    self.declaration.header_value()
+                );
+                let request = self
+                    .request("POST", "/sync/pull")
+                    .header(SYNC_TYPES_HEADER, &declared)
+                    .json(&json!({ "itemIds": chunk }));
+                self.http.send_json::<Json>(request).await?
+            } else {
+                self.fetch_bodies(chunk).await?
+            };
             let Some(items) = body.get_mut("items").and_then(Json::as_array_mut) else {
                 dropped_pages += 1;
                 continue;
             };
             decoding.push(decoder.spawn(std::mem::take(items)));
+            if let Some(Json::Array(marked)) = body.get_mut("purgedTombstones") {
+                entries.append(marked);
+            }
         }
         let (mut report, failed) = self.apply_decoded(decoding).await?;
         report.dropped_pages = dropped_pages;
@@ -39,7 +80,12 @@ impl PullLoop {
             report.corrupt += 1;
             self.record_corrupt(&item, &reason).await?;
         }
-        Ok(report)
+        Ok((report, entries))
+    }
+
+    /// The signing key [`super::RecordCipher::signing_key`] resolves.
+    pub(crate) fn signing_key(&self, device_id: &str) -> Option<Vec<u8>> {
+        self.cipher.signing_key(device_id)
     }
 
     /// Whether this loop's declaration subscribes `item_type` (§5.3). A record
