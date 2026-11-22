@@ -162,8 +162,10 @@ export const deleteReplacedPackObjects = async (
           (
             await db
               .prepare(
-                `SELECT DISTINCT pack_key FROM pack_index
-                 WHERE pack_key IN (SELECT value FROM json_each(?))`
+                `SELECT r.pack_key FROM pack_replaced_objects r
+                 WHERE r.pack_key IN (SELECT value FROM json_each(?))
+                   AND EXISTS (SELECT 1 FROM pack_index p WHERE p.user_id = r.user_id
+                     AND p.vault_id = r.vault_id AND p.pack_key = r.pack_key)`
               )
               .bind(JSON.stringify(unlisted))
               .all<{ pack_key: string }>()

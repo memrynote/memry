@@ -195,7 +195,10 @@ At-least-once queue delivery means every step has to tolerate re-running:
    can commit and lose its response, and that commit can land after any read the writer makes. The
    deletion pass deletes it later, only while no row lists its key (`listingBatch` in
    `services/pack-replaced-objects.ts`). The pass reads `pack_index` again right before the R2
-   delete, so a late commit that lands after its first read keeps its object.
+   delete, so a late commit that lands after its first read keeps its object. A commit that lands
+   between that second read and the delete still loses it: the row stays listed with no object, a
+   reader meets a 404 and takes that range from the item routes as a gap, and a rollup cannot read
+   the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
@@ -406,7 +409,9 @@ a _smaller_ `note_id` sorts below the watermark, and a build before #5310 passed
 group it could not roll in. Each such row is in no pack, which costs every fresh device one
 `GET /sync/crdt/snapshot/:id`. The cron finds vaults holding a snapshot row at or below the
 watermark that no pack's `documents` holds, and that vault's snapshot backfill chain packs those
-rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
+rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). A message that
+healed and runs out of budget sends the next hop, so a remainder of several packs drains in one
+chain rather than one pack per tick. The pack starts
 at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
 commit holds only while no listed pack holds any of its documents, so two runs never pack a row
 twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows

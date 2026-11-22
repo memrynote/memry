@@ -167,17 +167,23 @@ export async function scanSeedDuplicates(store: CrdtStoreReader): Promise<SeedDu
 /**
  * Once per note: a note repaired before keeps any copy that comes back. The
  * open doc is checked again, because it holds edits the scan's store read may
- * predate.
+ * predate. A vault switch replaces the store under the same note ids, so the
+ * store is checked after each await that can span one.
  */
-async function repairNote(host: SeedRepairHost, noteId: string): Promise<boolean> {
+async function repairNote(
+  host: SeedRepairHost,
+  noteId: string,
+  storeId: string | null
+): Promise<boolean> {
   if (await host.seedRepairDone(noteId)) return false
   const release = host.holdDoc(noteId)
   try {
     const doc = await host.open(noteId, undefined, { skipSeed: true })
-    if (!removeSeedCopy(doc)) return false
+    if (host.storeId !== storeId || !removeSeedCopy(doc)) return false
     // The marker only after the delete is in the store: a marker without it
     // would keep the duplicate forever.
     await host.whenPersisted(noteId)
+    if (host.storeId !== storeId) return false
     await host.markSeedRepairDone(noteId)
     return true
   } finally {
@@ -191,14 +197,19 @@ export async function repairSeedDuplicates(host: SeedRepairHost): Promise<void> 
     log.info('Seed duplicate repair skipped: no CRDT store')
     return
   }
+  const storeId = host.storeId
   const started = performance.now()
   try {
     const scan = await scanSeedDuplicates(store)
     const removed: string[] = []
     let failed = 0
     for (const noteId of scan.exact) {
+      if (host.storeId !== storeId) {
+        log.info('Seed duplicate repair stopped: the store changed')
+        break
+      }
       try {
-        if (await repairNote(host, noteId)) removed.push(noteId)
+        if (await repairNote(host, noteId, storeId)) removed.push(noteId)
       } catch (error) {
         failed++
         log.info('Seed duplicate repair could not change a note', { noteId, error })
