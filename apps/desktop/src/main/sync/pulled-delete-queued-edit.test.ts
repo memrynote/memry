@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
@@ -134,6 +135,18 @@ describe('a queued edit of an item a pulled delete removed (#5428)', () => {
     const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
 
     expect(s.pullDelete({ 'device-1': 1, 'device-2': 1 })).toBe('applied')
+    await s.engine.push()
+
+    expect(s.pushed()).toEqual([])
+    expect(s.deps.queue.getSize()).toBe(0)
+  })
+
+  it('never pushes the edit when an older build already removed the row (re-delivered delete)', async () => {
+    const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
+    // A pre-upgrade build applied the delete but left the queued edit behind.
+    s.db.delete(tagDefinitions).where(eq(tagDefinitions.name, 'work')).run()
+
+    expect(s.pullDelete({ 'device-1': 1, 'device-2': 1 })).toBe('skipped')
     await s.engine.push()
 
     expect(s.pushed()).toEqual([])
