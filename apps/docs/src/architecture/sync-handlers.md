@@ -193,7 +193,13 @@ item's queued non-delete rows in the same transaction (#5428). Pushed, such a ro
 pre-delete payload sent as an `update`; the server stores it over the tombstone, and for a type
 without a required clock or a tombstone stored without one nothing refuses it, so the item comes
 back on every device. A skipped delete (local clock after the tombstone) leaves the row queued, so a
-re-create is still sent. The Rust core does the same in `outbox::drop_upserts`. A pulled `settings`
+re-create is still sent. A delete skipped because the item has no local row drops the rows too: an
+older build applied that delete and kept the edit, which would push frozen. Settings are excluded:
+they live in `config.json`, so the handler cannot tell a missing row. When that delete is never
+re-delivered, the push retires the edit instead (`engine/push-undelete-guard.ts`): a non-delete row
+whose local row is missing, with a recorded tombstone clock, or a soft-deleted `tag_category` or
+`canvas` row, whose `clock` holds the applied delete's clock, is removed from the queue and logged
+unless the edit's clock happens after that delete. Core does the same in `push.rs` `build`. The Rust core does the same in `outbox::drop_upserts`. A pulled `settings`
 delete is skipped: no client issues one, and applying it would wipe every preference.
 
 That mirrors the server. `shouldRejectResurrection` (`apps/sync-server/src/services/sync.ts`) refuses

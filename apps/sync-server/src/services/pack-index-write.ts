@@ -51,13 +51,13 @@ export const packKeyRange = (
 
 /**
  * The `pack_index.documents` value of a pack holding `entries` (protocol 08
- * §8.13): the distinct document ids of a body pack, which the purge reads to
- * find the packs that hold a deleted document. Null for a record pack.
+ * §8.13): the distinct entry ids, a body pack's document ids and a record
+ * pack's `type:id`s, which the purge and the tombstone shed read to find the
+ * packs that hold a deleted item.
  */
-export const packDocuments = (
-  kind: PackKindName,
-  entries: ReadonlyArray<{ id: string }>
-): string[] | null => (kind === 'record' ? null : [...new Set(entries.map((entry) => entry.id))])
+export const packDocuments = (entries: ReadonlyArray<{ id: string }>): string[] => [
+  ...new Set(entries.map((entry) => entry.id))
+]
 
 export interface PackIndexRow {
   id: string

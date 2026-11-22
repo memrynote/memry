@@ -261,28 +261,52 @@ export class SimulatedServer {
   }
 
   private async runD1Migrations(): Promise<void> {
-    const db = await this.getD1()
-    const rawSchema = fs
-      .readdirSync(MIGRATIONS_DIR)
-      .filter((file) => file.endsWith('.sql'))
-      // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; the array is a fresh filter() result
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
-      .map((file) => fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8'))
-      .join('\n')
+    await applyD1Migrations(await this.getD1(), MIGRATIONS_DIR)
+  }
+}
 
-    const cleaned = rawSchema
-      .split('\n')
-      .filter((line) => !line.trimStart().startsWith('--'))
-      .join('\n')
+/** Each statement of one migration file, with `--` comment lines dropped. */
+function migrationStatements(sql: string): string[] {
+  return sql
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('--'))
+    .join('\n')
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
 
-    const statements = cleaned
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0)
+/**
+ * Apply every `.sql` file in `dir`, in name order, as wrangler does on deploy.
+ * A failure throws an error that names the file whose statement failed.
+ */
+export async function applyD1Migrations(db: D1Database, dir: string): Promise<void> {
+  const files = fs
+    .readdirSync(dir)
+    .filter((file) => file.endsWith('.sql'))
+    // oxlint-disable-next-line unicorn/no-array-sort -- tsconfig target ES2022 has no Array#toSorted; the array is a fresh filter() result
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    .map((file) => ({
+      file,
+      statements: migrationStatements(fs.readFileSync(path.join(dir, file), 'utf-8'))
+    }))
 
-    // One batch is one round trip to workerd. A run() per statement made about
-    // a hundred, which on a busy host pushed `start()` past the 30 s beforeAll
-    // timeout in whichever suite booted then.
-    await db.batch(statements.map((stmt) => db.prepare(stmt)))
+  // One batch is one round trip to workerd. A run() per statement made about
+  // a hundred, which on a busy host pushed `start()` past the 30 s beforeAll
+  // timeout in whichever suite booted then.
+  try {
+    await db.batch(files.flatMap((f) => f.statements.map((stmt) => db.prepare(stmt))))
+    return
+  } catch (batchError) {
+    // A D1 batch is one transaction, so the failed batch left nothing behind.
+    // Replay one file per batch to find the file the error belongs to.
+    for (const { file, statements } of files) {
+      try {
+        await db.batch(statements.map((stmt) => db.prepare(stmt)))
+      } catch (err) {
+        throw new Error(`D1 migration ${file} failed: ${String(err)}`, { cause: err })
+      }
+    }
+    throw batchError
   }
 }

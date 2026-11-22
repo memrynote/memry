@@ -48,8 +48,8 @@ impl PushCoordinator {
         if item.row.op != outbox::OP_UPSERT {
             return Ok(false);
         }
-        let item_id = item.row.item_id.clone();
-        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_id);
+        let (item_type, item_id) = (item.row.item_type.clone(), item.row.item_id.clone());
+        let holds = move |conn: &mut _| unknown_signer::holds(conn, &item_type, &item_id);
         if !self.db.call(holds).await? {
             return Ok(false);
         }
@@ -86,17 +86,16 @@ impl PushCoordinator {
     /// `SYNC_DELETE_WINS` for one item: pulls its id with markers, then
     /// deletes only on verified evidence ([`delete_wins::apply_delete_wins`]).
     async fn settle_one(&self, item: &Collapsed, now: i64) -> Result<bool, String> {
-        let entries = match &self.pull {
-            Some(pull) => {
-                let ids = [item.row.item_id.clone()];
-                let (_, entries) = pull
-                    .fetch_ids_with_markers(&ids)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                entries
-            }
-            None => Vec::new(),
+        // §5.8: an item whose delete cannot be checked is deferred, as a
+        // failed pull is, and its queued upsert keeps protecting the row.
+        let Some(pull) = &self.pull else {
+            return Err("no pull to check the delete-wins answer through".to_owned());
         };
+        let ids = [item.row.item_id.clone()];
+        let (_, entries) = pull
+            .fetch_ids_with_markers(&ids)
+            .await
+            .map_err(|e| e.to_string())?;
         let (item, pull, device) = (item.clone(), self.pull.clone(), self.clock_device.clone());
         self.db
             .call(move |conn| {

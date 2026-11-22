@@ -152,7 +152,7 @@ pub fn apply(
         // Builds before #5434 left this row while the server copy stayed live
         // below the cursor. The push waits until a re-pull merges that copy, or
         // the seed's one key would replace the account's settings.
-        unknown_signer::refused(&tx, SETTINGS_ITEM_ID)?;
+        unknown_signer::refused(&tx, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?;
     }
 
     let payload = stored(&tx)?.ok_or_else(|| StorageError::Failed {

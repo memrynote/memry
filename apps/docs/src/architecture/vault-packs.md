@@ -194,7 +194,11 @@ At-least-once queue delivery means every step has to tolerate re-running:
    throws, the writer records the object the same way, best effort, and does not delete it: a batch
    can commit and lose its response, and that commit can land after any read the writer makes. The
    deletion pass deletes it later, only while no row lists its key (`listingBatch` in
-   `services/pack-replaced-objects.ts`).
+   `services/pack-replaced-objects.ts`). The pass reads `pack_index` again right before the R2
+   delete, so a late commit that lands after its first read keeps its object. A commit that lands
+   between that second read and the delete still loses it: the row stays listed with no object, a
+   reader meets a 404 and takes that range from the item routes as a gap, and a rollup cannot read
+   the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
@@ -335,8 +339,22 @@ or the cleanup; a purge whose batch never commits has not started the deadline, 
 retries it. The message logs `replaced pack objects still due after the compaction message;
 redelivered` (or `backfill message`) at error level. The fallback is the deletion pass at the start of
 every 6-hourly backfill tick, which covers every vault, and any later compaction or backfill message
-for the vault. Record packs are not scoped yet: older versions of the deleted note's record stay in record
-packs until a rollup drops them (#5247).
+for the vault.
+
+**Record packs** (#5247). A record pack row also records its entries' `type:id` in
+`pack_index.documents`. The body purge takes every record pack that names the deleted note or journal
+out of the listing and rewrites it the same way. The rewrite keeps only the entries that are still current,
+so the tombstone stays and the older versions of the record go. A pack that keeps an entry is listed again
+under its old range and coverage (migration 0027 keeps the coverage on the `pack_replaced_objects` row). A
+pack that keeps nothing is not listed again: its coverage moves to the neighbouring listed record pack in the
+same batch, or the record kind is reset when there is none, so the coverage chain never keeps a hole. Every replaced record object of the
+vault is made due at once, so the same 900-second deadline holds. The tombstone shed
+(`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
+packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that
+rewrite also drops the entries of tombstones past retention. It sheds the row in a later tick, once its vault
+has no pending record rewrite, no due record object left and no record object replaced within the grace.
+A vault that still lists a record pack built before this change (`documents` NULL) resets the record kind
+instead, and compaction rebuilds it from rows.
 
 The 6-hourly cleanup purges at most five vaults per tick, about 41 subrequests.
 

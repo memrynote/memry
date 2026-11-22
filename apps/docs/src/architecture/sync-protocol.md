@@ -1535,7 +1535,8 @@ A note the probe answered for and that is absent from a present `snapshotMeta` h
 snapshot at all. It skips the GET whether or not it has a watermark, and a note with no watermark or
 an empty document walks its incrementals from 0. That is the `since` a GET answering
 `{ snapshot: null }` produced. The probe runs on a cold chunk too, so a fresh bootstrap spends no GET
-on these notes (#5234). Another device can snapshot the note after the probe, which prunes the
+on these notes (#5234). Outside a fullSync, a cold chunk of fewer than 20 notes sends no probe and
+fetches every baseline. Another device can snapshot the note after the probe, which prunes the
 updates the walk starts from. Every apply round's `snapshotMeta` is checked for that case. A note
 that gained a snapshot is not settled and not seeded, and it is owed a pull. The next pass downloads
 the snapshot.

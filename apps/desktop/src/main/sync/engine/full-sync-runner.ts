@@ -142,6 +142,8 @@ export class FullSyncRunner {
    * through `abortPackPhase()` (or `dispose()`), never cut short by a pause.
    */
   private packPhaseAbort: AbortController | null = null
+  /** The pack phase a stop, cancel or wipe ended: its run skips the pull too. */
+  private stoppedPackPhase: AbortController | null = null
   /**
    * This engine queued the one-time note-body legacy sweep (#2297) and its
    * drain is outstanding; that drain, and only it, records the sweep done.
@@ -378,8 +380,14 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
   }
 
-  /** Ends a running pack phase at once, a pause included: nothing downloads or applies after it. */
-  abortPackPhase(): void {
+  /**
+   * Ends a running pack phase at once: nothing downloads or applies after it.
+   * After a 'stop' the run skips its pull as well. After a 'pause' it skips the
+   * pull only while the pause lasts: resume() schedules no pull while this run
+   * holds `fullSyncActive`, so this run pulls.
+   */
+  abortPackPhase(cause: 'pause' | 'stop'): void {
+    if (cause === 'stop') this.stoppedPackPhase = this.packPhaseAbort
     this.packPhaseAbort?.abort()
   }
 
@@ -452,6 +460,16 @@ export class FullSyncRunner {
     let pullDelivered = false
     let pushesDelivered = true
     try {
+      // A stop, wipe, vault switch or a pause still in force after the session
+      // opened or the packs ran ends the run here, as it ended the pack phase
+      // (#5389).
+      if (
+        packAbort &&
+        (this.stoppedPackPhase === packAbort || this.disposed || this.stateManager.isPaused())
+      ) {
+        this.lastRunCaughtUp = false
+        return skipped(this.stateManager.isPaused() ? 'paused' : 'cancelled')
+      }
       // Evidence for the full-text mark: the pull REPORTED that it delivered.
       // "The await did not reject" is true on every production run — the engine
       // swallows every error and the coordinator returns early on a busy lock,

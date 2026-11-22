@@ -317,26 +317,27 @@ pub fn mark_corrupt(
     Ok(())
 }
 
-/// The ids of the rows held corrupt because their signer was not in the
-/// device directory (chapter 01 §1.4.0), by the reason's fixed ending
-/// ([`crate::protocol::account::UNKNOWN_SIGNER`]).
-pub fn unknown_signer_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+/// The `(item_type, item_id)` of the rows held corrupt because their signer
+/// was not in the device directory (chapter 01 §1.4.0), by the reason's fixed
+/// ending ([`crate::protocol::account::UNKNOWN_SIGNER`]).
+pub fn unknown_signer_rows(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT DISTINCT item_id FROM sync_items
-             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_id",
+            "SELECT item_type, item_id FROM sync_items
+             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_type, item_id",
         )
         .map_err(failed)?;
     statement
-        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| row.get(0))
+        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?
-        .collect::<Result<Vec<String>, _>>()
+        .collect::<Result<Vec<_>, _>>()
         .map_err(failed)
 }
 
-/// Clears a row's corrupt flag when it records only an unknown signer
-/// ([`crate::protocol::account::UNKNOWN_SIGNER`]): a verified record for the
-/// id arrived. Any other reason stays.
+/// Clears the row's unknown-signer flag once a verified record of it arrived:
+/// its signer is known now. A flag for any other reason stays.
 pub fn clear_unknown_signer(
     conn: &Connection,
     item_type: &str,

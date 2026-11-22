@@ -172,8 +172,8 @@ impl PushCoordinator {
     }
 
     /// Pulls the id of a `SYNC_DELETE_WINS` answer with its markers, so a
-    /// signed delete or an attested marker can apply. Without it only a
-    /// remembered marker deletes the row.
+    /// signed delete or an attested marker can apply. Without it a
+    /// delete-wins item is deferred and nothing is deleted.
     pub fn with_pull(mut self, pull: Arc<PullLoop>) -> Self {
         self.pull = Some(pull);
         self

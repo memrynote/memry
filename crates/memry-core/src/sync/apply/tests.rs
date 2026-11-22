@@ -228,11 +228,15 @@ fn a_verified_settings_delete_clears_only_an_unknown_signer_flag() {
         let refused = format!("device-new{UNKNOWN_SIGNER}");
         for (flag, kept) in [(refused.as_str(), None), ("bad schema", Some("bad schema"))] {
             sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, flag, 2)?;
-            unknown_signer::refused(conn, SETTINGS_ITEM_ID)?;
+            unknown_signer::refused(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?;
             unknown_signer::resolve_verified(conn, &[delete()])?;
             assert_eq!(apply_page(conn, vec![delete()], 6, None)?.skipped, 1);
             assert_eq!(reason(conn).as_deref(), kept);
-            assert!(!unknown_signer::holds(conn, SETTINGS_ITEM_ID)?);
+            assert!(!unknown_signer::holds(
+                conn,
+                SETTINGS_ITEM_TYPE,
+                SETTINGS_ITEM_ID
+            )?);
         }
         Ok(())
     })
@@ -267,6 +271,23 @@ fn a_settings_edit_over_a_metadata_only_deleted_row_seeds_and_syncs() {
             )
             .map_err(sqlite_failed)?;
         assert_eq!(queued, 1);
+
+        // The hold is recorded once, by the seed. Later edits find the row
+        // live with a payload and leave the re-pull budget where it is.
+        let budget = |conn: &Connection| {
+            crate::sync::first_sync_store::read_meta(
+                conn,
+                "sync.unknown_signer_wait:settings:synced_settings",
+            )
+        };
+        assert_eq!(budget(conn)?.as_deref(), Some("0"));
+        crate::sync::first_sync_store::write_meta(
+            conn,
+            "sync.unknown_signer_wait:settings:synced_settings",
+            "3/7",
+        )?;
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 4)?;
+        assert_eq!(budget(conn)?.as_deref(), Some("3/7"));
         Ok(())
     })
     .expect("settings metadata-only");
