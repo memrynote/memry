@@ -83,13 +83,13 @@ fn signer() -> (Vec<u8>, Vec<u8>) {
 }
 
 /// The purged marker of `key` at `cursor` (chapter 05 §5.12.3), attested by
-/// `device-a` over its own claim unless `forged`. Deleted after the row was
-/// stored, so no local-newer refusal applies.
+/// `device-a` over its own claim unless `forged`. Deleted in mid-2025, before
+/// this device seeded the row from its pack: the seed is no local change.
 #[cfg(feature = "markdown")]
 fn marker(key: &str, cursor: i64, forged: bool) -> Json {
     let (item_type, id) = typed(key);
     let clock: memry_core::sync::clock::VectorClock = [("device-a".to_owned(), 2)].into();
-    let deleted_at = 4_000_000_000_000i64;
+    let deleted_at = 1_750_000_000_000i64;
     let claim = memry_core::protocol::delete_attestation::DeleteClaim {
         item_type,
         item_id: id,
@@ -404,6 +404,8 @@ struct Routes {
     hung: Notify,
     /// Runs once, when the first `/sync/pull` is sent.
     on_pull: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    /// Runs once, when `/sync/manifest` is sent.
+    on_manifest: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 impl Routes {
@@ -413,6 +415,7 @@ impl Routes {
             calls: Mutex::new(Vec::new()),
             hung: Notify::new(),
             on_pull: Mutex::new(None),
+            on_manifest: Mutex::new(None),
         })
     }
 
@@ -432,11 +435,15 @@ impl Routes {
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.calls.lock().unwrap().push(request.url.clone());
-        if request.url.contains("/sync/pull") {
-            let hook = self.on_pull.lock().unwrap().take();
-            if let Some(hook) = hook {
-                hook();
-            }
+        let hook = if request.url.contains("/sync/pull") {
+            self.on_pull.lock().unwrap().take()
+        } else if request.url.contains("/sync/manifest") {
+            self.on_manifest.lock().unwrap().take()
+        } else {
+            None
+        };
+        if let Some(hook) = hook {
+            hook();
         }
         let answer = self.server.lock().unwrap().answer(&request);
         match answer {
@@ -638,13 +645,17 @@ async fn an_undeclared_last_entry_does_not_drop_the_chunk_before_it() {
     assert_eq!(live_ids(&db).len(), 3);
 }
 
+/// An upsert queued while the stale pull is in flight outranks the attested
+/// marker that pull answers: the row is rechecked in the deleting transaction.
+#[cfg(feature = "markdown")]
 #[tokio::test]
 async fn a_row_edited_locally_during_the_reconcile_is_not_tombstoned() {
     let db = scratch_db("edited-in-flight");
     let mut server = covered_vault(4, 10);
     // n3 was deleted and its tombstone shed: the manifest omits it and the
-    // pull by id answers nothing.
+    // pull by id answers its attested marker.
     server.live.retain(|(id, _)| id != "n3");
+    server.markers.push(marker("n3", 7, false));
     let routes = Routes::new(server);
     let edit = db.clone();
     *routes.on_pull.lock().unwrap() = Some(Box::new(move || {
@@ -659,14 +670,18 @@ async fn a_row_edited_locally_during_the_reconcile_is_not_tombstoned() {
         })
         .unwrap();
     }));
-    let report = run(&db, &routes, &[]).await;
+    let report = first_sync_declaring(&db, &routes, &[], true)
+        .run(1_800_000_000_000)
+        .await
+        .expect("the first sync finishes");
     assert_eq!(routes.count("/sync/pull"), 1);
     assert_eq!(report.reconcile_removed, 0);
     assert!(notes(&db)["n3"].0, "the local edit keeps n3 live");
 }
 
 #[tokio::test]
-async fn a_shed_row_sharing_an_id_with_another_types_pulled_item_is_removed() {
+async fn a_deleted_row_sharing_an_id_with_another_types_pulled_item_is_removed_by_its_signed_delete()
+ {
     let db = scratch_db("shared-id");
     let mut server = covered_vault(2, 10);
     // note:x1 was deleted; task:x1, never packed, is live. The pull of the
@@ -767,16 +782,86 @@ async fn an_omitted_row_the_pull_answers_with_an_attested_marker_is_removed() {
     assert_eq!(report.reconcile_removed, 1);
 }
 
-/// A marker whose attestation does not verify deletes nothing.
+/// §5.12.3 for a task: its attested marker removes the pack-seeded row.
 #[cfg(feature = "markdown")]
 #[tokio::test]
-async fn an_omitted_row_with_a_forged_marker_is_kept() {
+async fn an_omitted_task_the_pull_answers_with_an_attested_marker_is_removed() {
+    let (db, report) = omitted_n3("omitted-task-marker", true, |server| {
+        server.packs[0].entries.push(Entry::live("task:t9", 4));
+        server.markers.push(marker("task:t9", 7, false));
+    })
+    .await;
+    assert!(
+        !live_row(&db, "task", "t9"),
+        "the attested marker removes t9"
+    );
+    assert_eq!(report.reconcile_removed, 1, "n3 has no marker and stays");
+}
+
+/// A marker deletes nothing when its attestation does not verify, its signer
+/// is unknown, or its cursor is no later than the row it would delete.
+#[cfg(feature = "markdown")]
+#[tokio::test]
+async fn an_omitted_row_with_a_forged_unknown_or_stale_marker_is_kept() {
     let (db, report) = omitted_n3("omitted-forged", true, |server| {
         server.markers.push(marker("n3", 7, true));
+        let mut unknown = marker("n3", 7, false);
+        unknown["signerDeviceId"] = json!("device-z");
+        server.markers.push(unknown);
+        server.markers.push(marker("n3", 3, false));
     })
     .await;
     assert!(notes(&db)["n3"].0);
     assert_eq!(report.reconcile_removed, 0);
+}
+
+/// A row this device already changed (an outbox entry before the reconcile)
+/// is never asked about, so its attested marker removes nothing.
+#[cfg(feature = "markdown")]
+#[tokio::test]
+async fn an_omitted_row_with_a_local_change_outranks_its_attested_marker() {
+    let db = scratch_db("omitted-local-change");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    server.markers.push(marker("n3", 7, false));
+    let routes = Routes::new(server);
+    let first = first_sync_declaring(&db, &routes, &[], true);
+    // The packs seed n3; the edit lands before the manifest is read.
+    let edit = db.clone();
+    *routes.on_manifest.lock().unwrap() = Some(Box::new(move || {
+        edit.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO outbox (item_type, item_id, op, enqueued_at)
+                 VALUES ('note', 'n3', 'upsert', 1)",
+                [],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    }));
+    let report = first
+        .run(1_800_000_000_000)
+        .await
+        .expect("the first sync finishes");
+    assert!(notes(&db)["n3"].0, "the local change keeps n3 live");
+    assert_eq!(report.reconcile_removed, 0);
+}
+
+/// Whether the `item_type` row `item_id` is live with a payload.
+fn live_row(db: &Db, item_type: &str, item_id: &str) -> bool {
+    let (item_type, item_id) = (item_type.to_owned(), item_id.to_owned());
+    db.call_blocking(move |conn| {
+        Ok(conn
+            .query_row(
+                "SELECT deleted_at IS NULL AND payload_state <> 'metadata-only'
+                 FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                [&item_type, &item_id],
+                |row| row.get(0),
+            )
+            .unwrap())
+    })
+    .unwrap()
 }
 
 #[tokio::test]

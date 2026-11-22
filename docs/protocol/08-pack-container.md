@@ -717,14 +717,19 @@ it with checks the server answers:
      declared types (`deleted_at IS NULL`), so absence suggests a delete, but
      the server is untrusted and absence is no evidence (chapter 05 §5.12.1).
      The row is removed only by what the pull returns: a delete that verifies
-     under chapter 05 §5.14, or, to a reader that declares `purged_tombstones`,
-     a marker whose delete attestation verifies (chapter 05 §5.12.3). A row
-     the pull answers with nothing, with a refused item, or with a body that
-     is not a pull envelope stays live and is logged with the record cursor.
-     An honest server reaches this state when an item was deleted after its
-     pack was built and its tombstone was shed before the reader pulled; the
-     attested marker converges it. A removal is local: an applied tombstone
-     queues no push.
+     under chapter 05 §5.14, or, to a reader that declares `purged_tombstones`
+     (chapter 05 §5.12.3), a marker that names a `(type, id)` the reader
+     asked about, carries a non-empty clock, has a `serverCursor` past the
+     row's held cursor, and whose delete attestation verifies under the
+     signer's key (chapter 04 §4.8.4). The reader seeded the row from the
+     pack, which is no local change, so the row's stored time never outranks
+     the marker; a local change or an outbox write queued while the pull was
+     in flight does, and keeps the row. A row the pull answers with nothing,
+     with a refused item, or with a body that is not a pull envelope stays
+     live and is logged with the record cursor. An honest server reaches this
+     state when an item was deleted after its pack was built and its
+     tombstone was shed before the reader pulled; the attested marker
+     converges it. A removal is local: an applied tombstone queues no push.
   3. A packed tombstone applies as the pull item would (§8.4.2). The manifest
      omits tombstones, and the tombstone's clock is what lets a later
      re-create pass delete-wins (chapter 05 §5.8).

@@ -488,9 +488,19 @@ impl PullLoop {
     /// other rule does: per-item validation, the §5.13 apply order, and one
     /// corrupt item never poisoning its chunk mates.
     pub async fn fetch_ids(&self, ids: &[String]) -> Result<PullReport, PullError> {
+        let (report, mut pending, markers) = self.fetch_id_items(ids).await?;
+        self.take_markers(markers, false, &mut pending).await?;
+        self.apply_fetched(report, pending).await
+    }
+
+    /// The decoded items and the purged markers `POST /sync/pull` answers
+    /// for `ids`, nothing applied yet.
+    async fn fetch_id_items(
+        &self,
+        ids: &[String],
+    ) -> Result<(PullReport, Vec<Pending>, purged::Entries), PullError> {
         let mut report = PullReport::default();
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
-
         let mut markers = purged::Entries::default();
         for chunk in ids.chunks(MAX_PULL_IDS) {
             let mut body = self.fetch_bodies(chunk).await?;
@@ -501,8 +511,15 @@ impl PullLoop {
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
-        self.take_markers(markers, false, &mut pending).await?;
+        Ok((report, pending, markers))
+    }
 
+    /// Applies what [`Self::fetch_id_items`] decoded, in §5.13's order.
+    async fn apply_fetched(
+        &self,
+        mut report: PullReport,
+        mut pending: Vec<Pending>,
+    ) -> Result<PullReport, PullError> {
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
         let (outcomes, _) = self

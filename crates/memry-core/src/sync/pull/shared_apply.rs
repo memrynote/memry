@@ -5,11 +5,36 @@
 use serde_json::Value as Json;
 
 use super::{PullError, PullLoop, PullReport};
+use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::types::ArrivingItemType;
 use crate::sync::apply::{self, Pending};
 use crate::sync::driver::observer::AppliedFeed;
+use crate::sync::hardening::purged;
 
 impl PullLoop {
+    /// [`Self::fetch_ids`] that applies the pulled items but answers the
+    /// purged markers unapplied: the manifest reconcile judges them against
+    /// the rows it asked about (`first_sync::reconcile::markers`).
+    pub(crate) async fn fetch_ids_with_markers(
+        &self,
+        ids: &[String],
+    ) -> Result<(PullReport, purged::Entries), PullError> {
+        let (report, pending, markers) = self.fetch_id_items(ids).await?;
+        Ok((self.apply_fetched(report, pending).await?, markers))
+    }
+
+    /// The key a record applied outside a pull page is sealed under: the
+    /// manifest reconcile's removals.
+    pub(crate) fn at_rest_key(&self) -> AtRestKey {
+        self.at_rest.clone()
+    }
+
+    /// The vault folder a delete reads a note's file in, as the pull's own
+    /// deletes do ([`PullLoop::with_vault_root`]).
+    pub(crate) fn vault_root(&self) -> Option<std::path::PathBuf> {
+        self.vault_root.clone()
+    }
+
     /// Whether this loop's declaration subscribes `item_type` (§5.3). A record
     /// pack is not filtered by the subscription, so its reader skips an
     /// undeclared entry as `POST /sync/pull` would never have served it

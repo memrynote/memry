@@ -17,11 +17,13 @@
 //!    been deleted on the server. It is pulled by id: a tombstone the server
 //!    still holds arrives signed with its clock, and one whose payload it shed
 //!    (§5.12.3) arrives as a marker to a pull that declares
-//!    `purged_tombstones`, which deletes only when its attestation verifies
-//!    ([`super::super::hardening::purged`]). A row the pull answers with
-//!    nothing, a refused item or no envelope is kept and logged (§5.12.1): an
-//!    omission is no evidence of a delete. The delete is local: a pulled
-//!    tombstone queues no push.
+//!    `purged_tombstones`, which deletes only when it names a row asked about,
+//!    its cursor is past the row's and its attestation verifies
+//!    ([`markers`]). A row the pull answers with nothing, a refused item or no
+//!    envelope is kept and logged (§5.12.1): an omission is no evidence of a
+//!    delete. A row the device changed locally is kept, rechecked in the
+//!    transaction that deletes. The delete is local: a pulled tombstone queues
+//!    no push.
 //! 3. Packed tombstones already applied as pulled ones would.
 //!
 //! The unpaged manifest is one request and one consistent read. The pulls are
@@ -31,10 +33,16 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 
+use crate::storage::nested_tx;
+
+use super::super::apply::{self, Pending};
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
 use super::super::pull::{MAX_PULL_IDS, PullLoop};
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
 use super::{FirstSync, FirstSyncError, FirstSyncPhase, FirstSyncProgress, FirstSyncReport};
+use super::{now_ms, sqlite_failed};
+
+mod markers;
 
 /// Set when the reconcile finished, so a resumed first sync does not pull
 /// again what it already pulled.
@@ -94,13 +102,15 @@ impl FirstSync {
                 total,
             });
         }
+        let mut attested = Vec::new();
         let mut dropped_pages = 0;
         for chunk in plan.stale.chunks(MAX_PULL_IDS) {
             let ids: Vec<String> = chunk.iter().map(|row| row.item_id.clone()).collect();
-            let page = self.pull.fetch_ids(&ids).await?;
+            let (page, entries) = self.pull.fetch_ids_with_markers(&ids).await?;
             report.reconcile_requests += 1;
             report.reconcile_removed += page.deleted;
             dropped_pages += page.dropped_pages;
+            attested.extend(markers::attested(entries, chunk, &self.pull).await?);
             done += chunk.len() as u64;
             self.progress.progress(FirstSyncProgress {
                 phase: FirstSyncPhase::Metadata,
@@ -108,7 +118,8 @@ impl FirstSync {
                 total,
             });
         }
-        let kept = self.count_unanswered(plan.stale).await?;
+        let (removed, kept) = self.remove_attested(plan.stale, attested).await?;
+        report.reconcile_removed += removed;
         if kept > 0 {
             let cursor = self
                 .db
@@ -125,30 +136,71 @@ impl FirstSync {
     }
 
     /// Rule 2's last step (§5.12.1, #5402): the pull by id already applied
-    /// every verified delete and attested marker it returned. A stale row it
-    /// left live at the cursor it had got no answer, a refused one, or no
-    /// envelope, and an omission is no evidence of a delete: it is kept.
-    /// Answers how many, for the log.
-    async fn count_unanswered(&self, stale: Vec<HeldRow>) -> Result<usize, FirstSyncError> {
+    /// every signed delete it returned. A stale row an attested marker names
+    /// is deleted here with the marker's clock, unless the device changed it
+    /// locally. Every other stale row the pull left live at its cursor got no
+    /// answer, a refused one, or no envelope, and is kept. Answers
+    /// `(removed, kept)`.
+    async fn remove_attested(
+        &self,
+        stale: Vec<HeldRow>,
+        attested: Vec<Pending>,
+    ) -> Result<(usize, usize), FirstSyncError> {
         if stale.is_empty() {
-            return Ok(0);
+            return Ok((0, 0));
         }
-        let held = self.db.call(|conn| held_rows(conn)).await?;
-        let still: HashSet<(String, String, Option<i64>)> = held
-            .into_iter()
-            .filter(|row| row.held)
-            .map(|row| (row.item_type, row.item_id, row.server_cursor))
-            .collect();
-        Ok(stale
-            .into_iter()
-            .filter(|row| {
-                still.contains(&(
-                    row.item_type.clone(),
-                    row.item_id.clone(),
-                    row.server_cursor,
-                ))
+        let now = now_ms();
+        let at_rest = self.pull.at_rest_key();
+        let vault_root = self.pull.vault_root();
+        let (counts, feed) = self
+            .db
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                // An edit made while the pull was in flight keeps its row.
+                let still: HashSet<(String, String, Option<i64>)> = held_rows(&txn)?
+                    .into_iter()
+                    .filter(|row| row.held && !row.local_change)
+                    .map(|row| (row.item_type, row.item_id, row.server_cursor))
+                    .collect();
+                let unanswered: HashSet<(String, String)> = stale
+                    .into_iter()
+                    .filter(|row| {
+                        still.contains(&(
+                            row.item_type.clone(),
+                            row.item_id.clone(),
+                            row.server_cursor,
+                        ))
+                    })
+                    .map(|row| (row.item_type, row.item_id))
+                    .collect();
+                // One marker per row: a repeated entry applies once.
+                let mut named = HashSet::new();
+                let gone: Vec<Pending> = attested
+                    .into_iter()
+                    .filter(|marker| {
+                        let key = (marker.item_type().to_owned(), marker.item_id().to_owned());
+                        unanswered.contains(&key) && named.insert(key)
+                    })
+                    .collect();
+                let mut totals = apply::ApplyTotals::default();
+                apply::apply_page_into(
+                    &txn,
+                    gone,
+                    Vec::new(),
+                    now,
+                    None,
+                    vault_root.as_deref(),
+                    &at_rest,
+                    &mut totals,
+                )?;
+                txn.commit().map_err(sqlite_failed)?;
+                let removed = totals.deleted;
+                Ok(((removed, unanswered.len() - removed), totals.feed))
             })
-            .count())
+            .await?;
+        // Told after the commit, as the pull does: an observer reads the row.
+        self.pull.tell(feed).await;
+        Ok(counts)
     }
 }
 

@@ -878,8 +878,10 @@ ids and `:434` applies none. The core's first sync refs pass
 (`crates/memry-core/src/sync/first_sync.rs:429-435`) still records a bare
 tombstone (§5.12.2) for every `deleted` id; #5340 tracks moving it to this
 rule. The core's manifest reconcile pulls each unlisted row by id
-(`crates/memry-core/src/sync/first_sync/reconcile.rs:100`), so only what
-that pull verifies deletes, and keeps and logs the rest (`reconcile.rs:118`).
+(`crates/memry-core/src/sync/first_sync/reconcile.rs:109`), so only what
+that pull verifies deletes: a signed delete, or a marker for a row it asked
+about whose attestation verifies (`reconcile/markers.rs:26`). It keeps and
+logs the rest (`reconcile.rs:121`).
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are
