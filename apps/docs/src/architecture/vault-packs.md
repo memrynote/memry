@@ -243,8 +243,8 @@ corrupt clock, and a row whose index record would exceed `PACK_MAX_INDEX_ENTRY_B
 watermark still moves past them.
 
 Each queue message builds one pack per kind, about 542 subrequests together, and a large vault
-builds across invocations from its watermarks. The Rust core reader is a later step of
-[#5221](https://github.com/memrynote/memry/issues/5221).
+builds across invocations from its watermarks. The Rust core reads packs on first sync (#5320,
+`crates/memry-core/src/sync/pack_bootstrap/`).
 
 An update entry is one `crdt_updates` row: the document id as identity, empty `keyBytes`,
 `server_cursor` as sort key and watermark, and `{sequenceNum, signerDeviceId, createdAt}` as meta.
@@ -405,7 +405,9 @@ a _smaller_ `note_id` sorts below the watermark, and a build before #5310 passed
 group it could not roll in. Each such row is in no pack, which costs every fresh device one
 `GET /sync/crdt/snapshot/:id`. The cron finds vaults holding a snapshot row at or below the
 watermark that no pack's `documents` holds, and that vault's snapshot backfill chain packs those
-rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
+rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). A message that
+healed and runs out of budget sends the next hop, so a remainder of several packs drains in one
+chain rather than one pack per tick. The pack starts
 at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
 commit holds only while no listed pack holds any of its documents, so two runs never pack a row
 twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows
