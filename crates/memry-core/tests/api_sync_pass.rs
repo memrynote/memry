@@ -20,6 +20,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::epoch::HeldBody;
 use memry_core::crypto::{keys, sodium};
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::envelope::{self, RecordMaterial, RecordRequest, SyncOperation};
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::sync::body_debt;
 use serde_json::json;
@@ -422,6 +423,29 @@ fn vault_with_side(
     (vault, side, session)
 }
 
+/// `id`'s note delete, sealed and signed as `server-device-1`.
+fn signed_delete(id: &str) -> serde_json::Value {
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let sealed = envelope::encrypt(
+        &RecordRequest {
+            id,
+            item_type: "note",
+            operation: SyncOperation::Delete,
+            content: b"",
+            vault_key: &vault_key[..],
+            signing_secret_key: &secret[..],
+            signer_device_id: "server-device-1",
+            clock: Some([("peer".to_owned(), 5)].into()),
+            state_vector: None,
+            deleted_at: Some(1_760_000_000_000),
+        },
+        &RecordMaterial::random(),
+    )
+    .expect("sealed");
+    envelope::to_json(&sealed.envelope)
+}
+
 fn devices()
 -> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError> {
     let (public, _secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
@@ -629,13 +653,14 @@ async fn a_rate_limited_body_step_still_pushes_and_the_next_pass_resumes_from_th
 async fn a_tombstoned_owed_document_is_never_body_pulled() {
     let transport = FakeTransport::new(vec![
         devices(),
-        // X is deleted on this page, with no type on the wire (§5.12.1).
+        // X is deleted on this page: listed in `deleted`, its signed delete
+        // returned by the pull (§5.12.1, #5340).
         response(
             200,
             &json!({"items": [], "deleted": ["deadnotexxxx"], "hasMore": false, "nextCursor": 3, "noteBodies": []})
                 .to_string(),
         ),
-        response(200, &json!({"items": []}).to_string()),
+        response(200, &json!({"items": [signed_delete("deadnotexxxx")]}).to_string()),
     ]);
     let (vault, side, session) = vault_with_side("tombstoned-debt", transport.clone());
     side.call_blocking(|conn| {
@@ -684,6 +709,45 @@ async fn a_tombstoned_owed_document_is_never_body_pulled() {
         })
         .expect("count the rows");
     assert_eq!(rows, 0);
+}
+
+/// §5.12.1, §5.14 (#5340): a delete the pull returns for a `deleted` id opens
+/// and verifies before it deletes. One carrying a real signature over another
+/// item is one corrupt item, and the row stays live.
+#[tokio::test]
+async fn a_delete_whose_signature_covers_another_item_deletes_nothing() {
+    let mut forged = signed_delete("deadnotexxxx");
+    forged["signature"] = signed_delete("othernotexxx")["signature"].clone();
+    let transport = FakeTransport::new(vec![
+        devices(),
+        response(
+            200,
+            &json!({"items": [], "deleted": ["deadnotexxxx"], "hasMore": false, "nextCursor": 3, "noteBodies": []})
+                .to_string(),
+        ),
+        response(200, &json!({"items": [forged]}).to_string()),
+    ]);
+    let (vault, side, session) = vault_with_side("forged-delete", transport);
+    side.call_blocking(|conn| {
+        memry_core::storage::repositories::sync_items::upsert_metadata_only(
+            conn,
+            "note",
+            "deadnotexxxx",
+            1,
+            Some(1),
+        )
+    })
+    .expect("a live row");
+
+    vault.sync(session).sync_now().await.expect("the pass");
+
+    let row = side
+        .call_blocking(|conn| {
+            memry_core::storage::repositories::sync_items::load(conn, "note", "deadnotexxxx")
+        })
+        .expect("read")
+        .expect("the row");
+    assert_eq!(row.deleted_at, None, "a forged delete deletes nothing");
 }
 
 /// #2297 review A-5/B-6: a debt is settled only by a pull that reached the

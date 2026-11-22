@@ -466,6 +466,9 @@ mod tests {
             corrupt: 3,
             expired: 0,
             dropped_pages: 0,
+            // Set only by the first sync's pull by id, which this command
+            // never runs.
+            uncovered: 0,
             cursor: Some("42".to_string()),
             has_more: true,
             refused: true,

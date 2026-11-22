@@ -2,9 +2,9 @@
 //! as an inbox note first (#3029, chapter 05 §5.8 client behavior).
 //!
 //! Real `PullLoop`, `HttpClient`, SQLite, update log, outbox and `yrs`. The
-//! transport and the record cipher are fakes. A tombstone is opened only for
-//! its `bodyStateVector` (#3037); a cipher that opens nothing is a delete
-//! without one.
+//! transport and the record cipher are fakes. A tombstone opens like any
+//! record (§5.14) and is read only for its `bodyStateVector` (#3037); one that
+//! opens to an empty payload is a delete without one.
 
 mod http_fakes;
 
@@ -21,7 +21,7 @@ use memry_core::crdt::update_log;
 use memry_core::domain::body_write;
 use memry_core::domain::journal_ops::body;
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::sync_items;
@@ -53,10 +53,15 @@ fn scratch_db(label: &str) -> Db {
     open_data(&dir.join("data.db")).expect("open data.db")
 }
 
-struct NeverOpens;
+struct OpensDeletes;
 
-impl RecordCipher for NeverOpens {
-    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+impl RecordCipher for OpensDeletes {
+    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        // §5.14: a delete opens before it applies; this one opens to the
+        // empty payload a signed delete seals.
+        if envelope.deleted_at.is_some() || envelope.operation == SyncOperation::Delete {
+            return Ok(Vec::new());
+        }
         Err(EnvelopeError::SignatureInvalid)
     }
 }
@@ -120,7 +125,7 @@ async fn deliver_with_payload(
             Some(payload) => {
                 Arc::new(OpensTo(payload.to_string().into_bytes())) as Arc<dyn RecordCipher>
             }
-            None => Arc::new(NeverOpens),
+            None => Arc::new(OpensDeletes),
         },
     )
     .with_clock_device(DEVICE)

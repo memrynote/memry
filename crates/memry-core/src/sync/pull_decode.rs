@@ -10,7 +10,7 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
-use crate::protocol::envelope::{self, RecordEnvelope, SyncOperation};
+use crate::protocol::envelope::{self, SyncOperation};
 use crate::protocol::types::{ArrivingItemType, Declaration};
 use crate::storage::repositories::sync_items::InboundRecord;
 
@@ -65,6 +65,16 @@ impl Decoder {
             return Err(format!("undeclared item type `{}`", envelope.item_type));
         }
 
+        // §5.14: every item opens before it applies, a delete included. The
+        // server is untrusted, so a delete it could forge (no signature, a signer
+        // with no key, a signature over other bytes) is one corrupt item and
+        // deletes nothing, as Electron's `decryptPullBatch` refuses it
+        // (`apps/desktop/src/main/sync/decrypt.ts:79`).
+        let plaintext = self
+            .cipher
+            .open(&envelope)
+            .map_err(|error| format!("could not open the record: {error}"))?;
+
         // §5.12: a present `deletedAt` overrides the declared operation, and
         // the body is never applied, only read for `bodyStateVector` (§5.8).
         let deleted_at = envelope
@@ -72,7 +82,7 @@ impl Decoder {
             .or_else(|| (envelope.operation == SyncOperation::Delete).then(now_ms));
         if let Some(deleted_at) = deleted_at {
             return Ok(Pending::Tombstone {
-                body_state_vector: self.tombstone_body_state_vector(&envelope),
+                body_state_vector: tombstone_body_state_vector(&envelope.item_type, &plaintext),
                 item_type: envelope.item_type.clone(),
                 item_id: envelope.id.clone(),
                 deleted_at,
@@ -81,10 +91,6 @@ impl Decoder {
             });
         }
 
-        let plaintext = self
-            .cipher
-            .open(&envelope)
-            .map_err(|error| format!("could not open the record: {error}"))?;
         let payload_json = String::from_utf8(plaintext)
             .map_err(|_| "the decrypted payload is not UTF-8".to_owned())?;
 
@@ -98,21 +104,20 @@ impl Decoder {
             deleted_at: None,
         }))
     }
+}
 
-    /// A note or journal tombstone's `bodyStateVector` (§5.8, #3037). `None`
-    /// for other types and for a payload that does not open (an old build's
-    /// delete, a shed marker): the keep rule then decides as before.
-    fn tombstone_body_state_vector(&self, envelope: &RecordEnvelope) -> Option<String> {
-        if !DOCUMENT_TYPES.contains(&envelope.item_type.as_str()) {
-            return None;
-        }
-        let plaintext = self.cipher.open(envelope).ok()?;
-        let payload: Json = serde_json::from_slice(&plaintext).ok()?;
-        payload
-            .get("bodyStateVector")
-            .and_then(Json::as_str)
-            .map(str::to_owned)
+/// A note or journal tombstone's `bodyStateVector` (§5.8, #3037). `None`
+/// for other types and for a payload without one (an older build's delete
+/// seals an empty payload): the keep rule then decides as before.
+fn tombstone_body_state_vector(item_type: &str, plaintext: &[u8]) -> Option<String> {
+    if !DOCUMENT_TYPES.contains(&item_type) {
+        return None;
     }
+    let payload: Json = serde_json::from_slice(plaintext).ok()?;
+    payload
+        .get("bodyStateVector")
+        .and_then(Json::as_str)
+        .map(str::to_owned)
 }
 
 pub(super) fn server_cursor(item: &Json) -> Option<i64> {
