@@ -18,6 +18,9 @@
 //! `bench oracle-state` prints what this device holds in the shape the
 //! zero-loss oracle reads (`tests/sync-harness/src/zero-loss-oracle`), so the
 //! sync harness can run the oracle on a core bootstrap (#5232).
+//!
+//! `bench body-coverage` counts the live documents the server holds a body for
+//! that this device does not, after a bootstrap.
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -65,7 +68,10 @@ pub fn parse(args: &mut Args) -> Result<Command, UsageError> {
         Some("oracle-state") => Ok(Command::BenchOracleState {
             vault: required(args, "--vault", "bench oracle-state")?,
         }),
-        _ => usage("bench needs a subcommand: bootstrap or oracle-state"),
+        Some("body-coverage") => Ok(Command::BenchBodyCoverage {
+            vault: required(args, "--vault", "bench body-coverage")?,
+        }),
+        _ => usage("bench needs a subcommand: bootstrap, oracle-state or body-coverage"),
     }
 }
 
@@ -187,15 +193,35 @@ pub async fn bootstrap(
     }
 
     let (live, without_body) = db.call(|conn| body_coverage(conn)).await?;
-    let server_bodies = body_pull.server_body_ids().await?;
     mark(
         "end",
+        json!({ "liveDocuments": live, "withBody": live - without_body.len() as u64 }),
+    );
+    Ok(())
+}
+
+/// `bench body-coverage`: the local body coverage, and how many documents the
+/// server holds a body for that this device does not. Its own command, so the
+/// body manifest read is not bootstrap traffic: neither the benchmark's timed
+/// window nor the zero-loss harness's request counts see it.
+pub async fn coverage(cli: &Cli, vault: &str) -> Result<(), CliError> {
+    let db = cli.open_vault(vault)?;
+    let (live, without_body) = db.call(|conn| body_coverage(conn)).await?;
+    let server_bodies = match body_pull(cli, db, vault).await?.server_body_ids().await {
+        Ok(ids) => ids,
+        Err(error) => {
+            eprintln!("bench body-coverage: the body manifest read failed: {error}");
+            None
+        }
+    };
+    println!(
+        "{}",
         json!({
             "liveDocuments": live,
             "withBody": live - without_body.len() as u64,
-            // Null when the body manifest read stopped short.
+            // Null when the body manifest read failed or stopped short.
             "missingBodies": server_bodies.map(|ids| missing_bodies(&without_body, &ids)),
-        }),
+        })
     );
     Ok(())
 }
@@ -460,12 +486,19 @@ mod tests {
                 vault: "v-1".to_string()
             })
         );
+        assert_eq!(
+            bench("bench body-coverage --vault v-1"),
+            Ok(Command::BenchBodyCoverage {
+                vault: "v-1".to_string()
+            })
+        );
         for line in [
             "bench bootstrap --vault v-1 --pass-interval",
             "bench bootstrap --vault v-1 --pass-interval 1.5",
             "bench bootstrap --vault v-1 --pass-interval -3",
             "bench bootstrap --vault v-1 --resume --resume-later",
             "bench oracle-state",
+            "bench body-coverage",
         ] {
             assert!(bench(line).is_err(), "`{line}` should not parse");
         }
