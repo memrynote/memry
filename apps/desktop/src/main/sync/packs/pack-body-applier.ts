@@ -69,6 +69,12 @@ export interface PackBodyApplier {
 export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplier => {
   const decrypt = deps.decrypt ?? decryptCrdtUpdate
   let signerKeys: SignerKeys | null = null
+  // Most snapshots come from the few devices that last compacted, and an
+  // account keeps a key per device it ever linked: trying every key per
+  // snapshot cost 126 s of a 270 s pack phase on 17k notes (#5390). The key
+  // that verified last is tried first; which key verifies does not depend on
+  // the order.
+  let lastSigner: Uint8Array | null = null
 
   const keys = async (): Promise<SignerKeys> => {
     if (!signerKeys) signerKeys = await deps.getSignerPublicKeys()
@@ -81,9 +87,12 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     noteId: string,
     candidates: SignerKeys
   ): Uint8Array | null => {
-    for (const publicKey of candidates.values()) {
+    const ordered = lastSigner ? [lastSigner, ...candidates.values()] : candidates.values()
+    for (const publicKey of ordered) {
       try {
-        return decrypt(bytes, vaultKey, noteId, publicKey)
+        const plain = decrypt(bytes, vaultKey, noteId, publicKey)
+        lastSigner = publicKey
+        return plain
       } catch {
         // Not this key (or not decryptable under it); try the next.
       }
