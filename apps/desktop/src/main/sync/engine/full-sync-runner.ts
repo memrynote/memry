@@ -48,6 +48,8 @@ const CURSOR_SKIP_REPAIR_DONE = 'done'
  * POST /sync/bootstrap deletes the key. Older builds ignore the row.
  */
 const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
+/** Pack-seeded docs settled at once; the provider keeps 32 inactive docs open. */
+const PACK_SEED_SETTLE_CONCURRENCY = 8
 
 /**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
@@ -879,8 +881,7 @@ export class FullSyncRunner {
     let materialized = 0
     let purged = 0
     let owed = 0
-    for (const noteId of noteIds) {
-      if (this.ctx.abortController?.signal.aborted) break
+    const settleOne = async (noteId: string): Promise<void> => {
       try {
         if (!isKnownNote(db, noteId)) {
           await provider.purge(noteId)
@@ -904,6 +905,17 @@ export class FullSyncRunner {
         })
       }
     }
+    // Each doc settles on its own and clears only its own marker, so several
+    // run at once: one at a time, 17k docs left the process idle on store,
+    // converter and file awaits for most of the settle (#5390). An abort stops
+    // new docs from starting; the ones in flight finish.
+    let next = 0
+    const worker = async (): Promise<void> => {
+      while (next < noteIds.length && !this.ctx.abortController?.signal.aborted) {
+        await settleOne(noteIds[next++])
+      }
+    }
+    await Promise.all(Array.from({ length: PACK_SEED_SETTLE_CONCURRENCY }, worker))
     if (listPackSeeded(db).length === 0) {
       this.stateManager.deleteStateValue(SYNC_STATE_KEYS.PACK_SEED_SETTLE_PENDING)
     }
