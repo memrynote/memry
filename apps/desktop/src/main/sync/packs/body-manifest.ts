@@ -1,7 +1,7 @@
 import { CrdtManifestResponseSchema, type CrdtManifestDocument } from '@memry/contracts/sync-api'
 
 import { createLogger } from '../../lib/logger'
-import { getFromServer, RateLimitError } from '../http-client'
+import { getFromServer, RateLimitError, SyncServerError } from '../http-client'
 
 const log = createLogger('BodyManifest')
 
@@ -25,15 +25,18 @@ const defaultFetchPage = async (token: string, cursor: string | null): Promise<u
 
 /**
  * A body manifest read (protocol 08 §8.4.3): every page of
- * `GET /sync/crdt/manifest` from no cursor until `nextCursor` is null. Null
- * when the read stops short for any reason (a server without the route answers
- * 404, a malformed page, a transport failure, a 429 past one window): a read
- * that stopped short answers nothing, so no packed body is confirmed by it.
+ * `GET /sync/crdt/manifest` from no cursor until `nextCursor` is null.
+ *
+ * - null: a server without the route answered the first page 404. The reader
+ *   keeps the snapshot-only rule of a server that predates the manifest.
+ * - 'short': the read stopped short on a server that has the route (a
+ *   malformed page, a transport failure, a 429 past one window, an abort).
+ *   It confirms nothing, and no packed body applies (§8.11).
  */
 export const readBodyManifest = async (
   token: string,
   deps: BodyManifestDeps = {}
-): Promise<BodyManifest | null> => {
+): Promise<BodyManifest | null | 'short'> => {
   const fetchPage = deps.fetchPage ?? defaultFetchPage
   const sleep = deps.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
   const now = deps.now ?? (() => Date.now())
@@ -41,7 +44,7 @@ export const readBodyManifest = async (
   let cursor: string | null = null
   let limitedSince: number | null = null
   for (;;) {
-    if (deps.signal?.aborted) return null
+    if (deps.signal?.aborted) return 'short'
     let raw: unknown
     try {
       raw = await fetchPage(token, cursor)
@@ -54,16 +57,19 @@ export const readBodyManifest = async (
           continue
         }
       }
-      log.info('Body manifest read stopped short — packed bodies stay unconfirmed', {
+      if (cursor === null && error instanceof SyncServerError && error.statusCode === 404) {
+        return null
+      }
+      log.info('Body manifest read stopped short — no packed body applies', {
         error: error instanceof Error ? error.message : String(error)
       })
-      return null
+      return 'short'
     }
     limitedSince = null
     const page = CrdtManifestResponseSchema.safeParse(raw)
     if (!page.success) {
-      log.info('Body manifest page failed validation — packed bodies stay unconfirmed')
-      return null
+      log.info('Body manifest page failed validation — no packed body applies')
+      return 'short'
     }
     for (const document of page.data.documents) documents.set(document.noteId, document)
     cursor = page.data.nextCursor

@@ -32,13 +32,23 @@ describe('readBodyManifest', () => {
     })
 
     expect(cursors).toEqual([null, 'c1'])
-    expect([...(manifest?.keys() ?? [])]).toEqual(['a', 'b', 'c'])
+    expect(manifest instanceof Map && [...manifest.keys()]).toEqual(['a', 'b', 'c'])
+  })
+
+  it('answers null only when a server without the route answers 404', async () => {
+    const manifest = await readBodyManifest('jwt', {
+      fetchPage: async () => {
+        throw new SyncServerError('Not found', 404)
+      }
+    })
+
+    expect(manifest).toBeNull()
   })
 
   it.each([
-    ['a server without the route answers 404', new SyncServerError('Not found', 404)],
+    ['a 404 after the first page', new SyncServerError('Not found', 404)],
     ['a transport failure', new Error('socket hang up')]
-  ])('answers nothing when %s mid-read', async (_label, failure) => {
+  ])('answers short when %s mid-read', async (_label, failure) => {
     let calls = 0
     const manifest = await readBodyManifest('jwt', {
       fetchPage: async () => {
@@ -48,13 +58,13 @@ describe('readBodyManifest', () => {
     })
 
     // A read that stopped short confirms nothing, even the pages it did read.
-    expect(manifest).toBeNull()
+    expect(manifest).toBe('short')
   })
 
   it('answers nothing for a malformed page', async () => {
     await expect(
       readBodyManifest('jwt', { fetchPage: async () => ({ documents: [{ noteId: '' }] }) })
-    ).resolves.toBeNull()
+    ).resolves.toBe('short')
   })
 
   it('asks a 429 page again after retry-after and keeps the pages already read', async () => {
@@ -71,7 +81,7 @@ describe('readBodyManifest', () => {
       }
     })
 
-    expect([...(manifest?.keys() ?? [])]).toEqual(['a', 'b'])
+    expect(manifest instanceof Map && [...manifest.keys()]).toEqual(['a', 'b'])
     expect(cursors).toEqual([null, 'c1', 'c1', 'c1'])
     expect(fake.slept()).toBe(40_000)
   })
@@ -85,7 +95,7 @@ describe('readBodyManifest', () => {
       }
     })
 
-    expect(manifest).toBeNull()
+    expect(manifest).toBe('short')
     expect(fake.slept()).toBeLessThanOrEqual(60_000)
   })
 
@@ -97,6 +107,6 @@ describe('readBodyManifest', () => {
         signal: controller.signal,
         fetchPage: async () => page(['a'], null)
       })
-    ).resolves.toBeNull()
+    ).resolves.toBe('short')
   })
 })

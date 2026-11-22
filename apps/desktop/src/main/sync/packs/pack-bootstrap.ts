@@ -447,6 +447,9 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
 
     // Read after the pack bytes are held, in this run (protocol 08 §8.4.3).
     const manifest = await readManifest(accessToken, deps.signal ? { signal: deps.signal } : {})
+    // A short read on a server with the route confirms nothing (§8.11): every
+    // body stays on its item routes and no pack is claimed.
+    if (manifest === 'short') return { ...emptyResult(), usedPacks: true }
 
     const readOf = (handle: PackFileHandle, entry: PackIndexEntry) => async () => {
       const bytes = await handle.readEntry(entry)
@@ -460,9 +463,13 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     const snapshotsOf = new Map<string, PackedSnapshot[]>()
     const updatesOf = new Map<string, PackedUpdate[]>()
     const order: string[] = []
-    const lastDocOf = new Map<string, string>()
+    // Per snapshot pack, its usable documents not yet run. A pack is complete
+    // once that set is empty: a document can sit in two packs (dead bytes,
+    // §8.8), so running another pack's copy does not run this pack's others.
+    const remaining = new Map<string, Set<string>>()
     const seen = new Set<string>()
     for (const { pack, handle } of held) {
+      if (pack.itemKind === 'crdt_snapshot') remaining.set(pack.id, new Set())
       for (const entry of handle.entries) {
         if (entry.kind !== pack.itemKind) {
           counters.skipped++
@@ -502,18 +509,23 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
           seen.add(entry.id)
           order.push(entry.id)
         }
-        if (pack.itemKind === 'crdt_snapshot') lastDocOf.set(pack.id, entry.id)
+        remaining.get(pack.id)?.add(entry.id)
       }
     }
     totalDocuments = order.length
     emitProgress()
 
-    // A snapshot pack is complete once its last document is processed: the
-    // documents run in pack order, so every one of its documents came before.
-    const packEndingAt = new Map<string, string[]>()
-    for (const [packId, noteId] of lastDocOf) {
-      packEndingAt.set(noteId, [...(packEndingAt.get(noteId) ?? []), packId])
+    const packsOf = new Map<string, string[]>()
+    for (const [packId, noteIds] of remaining) {
+      for (const noteId of noteIds) packsOf.set(noteId, [...(packsOf.get(noteId) ?? []), packId])
     }
+    const complete = (packId: string): void => {
+      remaining.delete(packId)
+      completed.add(packId)
+      packsApplied++
+    }
+    // A pack with no usable entry has nothing to run.
+    for (const [packId, noteIds] of remaining) if (noteIds.size === 0) complete(packId)
 
     let sinceCommit = 0
     let aborted = false
@@ -560,10 +572,14 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
         })
       }
       processedDocuments++
-      const ending = packEndingAt.get(noteId)
-      if (ending) {
-        for (const packId of ending) completed.add(packId)
-        packsApplied += ending.length
+      let ending = false
+      for (const packId of packsOf.get(noteId) ?? []) {
+        const left = remaining.get(packId)
+        left?.delete(noteId)
+        if (left?.size === 0) {
+          complete(packId)
+          ending = true
+        }
       }
       if (sinceCommit >= pageEntries || ending) {
         await commitPage()
