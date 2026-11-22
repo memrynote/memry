@@ -28,6 +28,7 @@ use super::learn::{Learner, order};
 use super::{BATCH, BATCH_BYTES, Backfilled, IndexError, IndexProgress};
 use crate::notes::properties::{file_properties, read_definition_types};
 use crate::session::OpenVault;
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::vault::note_file::{NoteFileError, large_by_size, large_file_class, read_note};
 
 /// One open vault's index. A note's journal day is its record's, which the core reads when it
@@ -41,6 +42,8 @@ pub struct Indexer {
     pub(super) search: Arc<Search>,
     /// Holds the device key the definitions' records are read under.
     store: Arc<dyn SecureStore>,
+    /// While it is held, the search reindex waits (#5409).
+    pub(super) first_sync: FirstSyncRunning,
 }
 
 /// The definitions a pass types the property values it reads with, and the notes it owes them.
@@ -83,6 +86,8 @@ pub(super) struct Pass {
     pub learned: bool,
     /// The search reindex ran to its end: the body tags are the files' ([`Self::define_tags`]).
     pub reindexed: bool,
+    /// The search reindex was owed and a first sync held it: it stays owed, with no backoff.
+    pub held: bool,
 }
 
 enum Read {
@@ -102,6 +107,7 @@ impl Indexer {
             vault: vault.vault.clone(),
             search: vault.search.clone(),
             store,
+            first_sync: vault.first_sync.clone(),
         }
     }
 
@@ -200,7 +206,8 @@ impl Indexer {
     }
 
     /// Reads and measures `notes` in batches of at most [`BATCH`] files and [`BATCH_BYTES`],
-    /// then brings the search index up to date when `links` is owed, and hands `announce` the
+    /// then brings the search index up to date when `links` is owed and no first sync holds it
+    /// (#5409), and hands `announce` the
     /// links it changed once they are committed, with the relation values `links` holds: those
     /// written since the last announce, this pass's and [`Self::measure_now`]'s. `progress` gets `built`
     /// of `total` first, after each batch and at the end, and none once `stop` is set; `stop`
@@ -226,6 +233,7 @@ impl Indexer {
             written: Vec::new(),
             learned: false,
             reindexed: false,
+            held: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         if total > 0 {
@@ -291,16 +299,25 @@ impl Indexer {
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
+        // Not while a first sync runs: the reindex holds the `data.db` writer for its whole pass,
+        // which the first sync's bodies pass waits on (#5409). One that started before it
+        // stops, committing nothing, and stays owed.
+        let held = || self.first_sync.is_running();
         if links.is_some() {
-            match self.search.reindex_until(stop)? {
-                Some(mut changed) => {
-                    changed.extend(links.take().unwrap_or_default());
-                    if !changed.is_empty() {
-                        announce(changed);
+            if held() {
+                pass.held = true;
+            } else {
+                match self.search.reindex_until(&|| stop() || held())? {
+                    Some(mut changed) => {
+                        changed.extend(links.take().unwrap_or_default());
+                        if !changed.is_empty() {
+                            announce(changed);
+                        }
+                        pass.reindexed = true;
                     }
-                    pass.reindexed = true;
+                    None if stop() => pass.stopped = true,
+                    None => pass.held = true,
                 }
-                None => pass.stopped = true,
             }
         }
         // Every note it read is typed with them, and an unread one holds no rows.

@@ -19,6 +19,7 @@ use super::{
     VaultOpened, lock,
 };
 use crate::registry::vaults::basename;
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::vault::config::{applied_exclude_patterns, invalidate_vault_config_cache};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
 use crate::vault::kept_copies::show_ownerless as show_kept_copies;
@@ -211,6 +212,7 @@ impl Session {
                 .map_or_else(|| basename(&path_text), |s| s.name.clone()),
             vault: Arc::new(vault),
             search,
+            first_sync: FirstSyncRunning::default(),
         };
         let projectors = lock(&self.inner.projectors).clone();
         let runtime = Arc::new(

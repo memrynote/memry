@@ -26,6 +26,7 @@ use crate::shell::power::PowerEvent;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend, read_auth_facts};
 use crate::sync::disk::DiskObserver;
 use crate::sync::events::OnSyncEvent;
+use crate::sync::first_sync_running::FirstSyncRunning;
 use crate::sync::gate::{self, GateDecision, SyncNotStartedReason, SyncStartGate};
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
@@ -148,6 +149,7 @@ struct HeldOpen {
     name: String,
     vault: Weak<Vault>,
     search: Weak<Search>,
+    first_sync: FirstSyncRunning,
 }
 
 impl HeldOpen {
@@ -158,6 +160,7 @@ impl HeldOpen {
             name: open.name.clone(),
             vault: Arc::downgrade(&open.vault),
             search: Arc::downgrade(&open.search),
+            first_sync: open.first_sync.clone(),
         }
     }
 
@@ -168,6 +171,7 @@ impl HeldOpen {
             name: self.name.clone(),
             vault: self.vault.upgrade()?,
             search: self.search.upgrade()?,
+            first_sync: self.first_sync.clone(),
         })
     }
 }
@@ -203,7 +207,8 @@ impl SyncWiring {
             Arc::new(move || account.sync_facts()),
             self.account.at_rest_keys(),
         )
-        .with_vault_root(open.path.clone());
+        .with_vault_root(open.path.clone())
+        .with_first_sync(open.first_sync.clone());
         let backend = match &self.tier {
             Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
                 Arc::clone(tier),
