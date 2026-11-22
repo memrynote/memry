@@ -332,6 +332,9 @@ impl PushCoordinator {
             None => return Ok(Err(format!("unknown outbox op `{}`", item.row.op))),
         };
         let pending = PendingRecord { operation, row };
+        if let Some(reason) = settle::undeletes(&pending) {
+            return Ok(Err(reason));
+        }
         Ok(self.sealer.seal_record(&pending).map_err(|e| e.to_string()))
     }
 

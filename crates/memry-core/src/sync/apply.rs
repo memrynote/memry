@@ -270,6 +270,10 @@ fn apply_tombstone(
         now_ms,
     )?;
     store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
+    // Sent, the queued edit would undelete the item (VERIFY-5426). After
+    // `delete_keep::keep`, which reads the queue (rule 1). A re-create whose
+    // clock is after the delete returned above, still queued.
+    outbox::drop_upserts(&txn, Some(item_type), item_id)?;
     if item_type == journal::ITEM_TYPE {
         journal_day_merge::mark_deleted(&txn, item_id)?;
         // A live foreign row keeps its row and body for the drain (#2984).
@@ -363,6 +367,7 @@ fn apply_untyped_tombstone(
         )?;
     }
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
+    outbox::drop_upserts(&txn, None, item_id)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;
     if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
         txn.commit().map_err(sqlite_failed)?;

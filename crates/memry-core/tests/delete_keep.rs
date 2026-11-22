@@ -322,6 +322,16 @@ async fn a_note_edited_offline_is_kept_under_its_title() {
                 "Edited offline".to_owned()
             )]
         );
+        // The delete wins: the note's queued record edit would go out as an
+        // update over it and undelete the note on the server (VERIFY-5426).
+        let queued: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM outbox WHERE item_type = 'note' AND item_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .expect("count");
+        assert_eq!(queued, 0, "nothing of the note is left to push");
         Ok(())
     })
     .expect("check");

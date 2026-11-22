@@ -4,17 +4,20 @@
 //! `VaultSync::sync_now` end to end: real `HttpClient`, `AuthSession`, SQLite,
 //! sealing and signature checks; the transport is scripted in call order.
 //!
-//! | Test                                                        | Rule              |
-//! | ----------------------------------------------------------- | ----------------- |
-//! | the delete applies on the next pass, after the refetch       | §1.4.0, #5413     |
-//! | a local edit is held while the delete waits, never pushed    | §5.8, #5413       |
-//! | a delete whose signature fails otherwise is never re-pulled  | §5.14, #5340      |
-//! | a signer that never appears stops being re-pulled            | #5413             |
-//! | a local edit after the refusal neither ends the wait nor wins | §5.8, #5413       |
-//! | a new refusal of a given-up id gets a fresh budget           | #5413             |
-//! | a failed re-pull counts unless the transport failed          | #5413             |
-//! | a verified record skipped as older ends the wait             | §5.8, #5413       |
-//! | a refusal an older build recorded is re-pulled once adopted  | #5413             |
+//! | Test                                                          | Rule             |
+//! | ------------------------------------------------------------- | ---------------- |
+//! | the delete applies on the next pass, after the refetch        | §1.4.0, #5413    |
+//! | a local edit is held while the delete waits, never pushed     | §5.8, #5413      |
+//! | a delete whose signature fails otherwise is never re-pulled   | §5.14, #5340     |
+//! | a signer that never appears stops being re-pulled             | #5413            |
+//! | a local edit after the refusal neither ends the wait nor wins | §5.8, #5413      |
+//! | a new refusal of a given-up id gets a fresh budget            | #5413            |
+//! | a failed re-pull counts unless the transport failed           | #5413            |
+//! | a verified record skipped as older ends the wait              | §5.8, #5413      |
+//! | a refusal an older build recorded is re-pulled once adopted   | #5413            |
+//! | a settings edit queued over a verified delete never undeletes | §5.8, #5413      |
+//! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
+//! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
 
 mod http_fakes;
 
@@ -258,11 +261,14 @@ async fn a_settings_edit_is_held_while_its_unverified_delete_waits() {
     transport.push(devices(true));
     transport.push(re_pulled("settings", "editor"));
     transport.push(empty_changes());
-    transport.push(accepted("editor"));
-    sync.sync_now().await.expect("the second pass");
+    let summary = sync.sync_now().await.expect("the second pass");
 
     assert!(deleted(&side, "settings", "editor"));
-    pushed_only_the_delete(&transport, "editor");
+    assert_eq!(
+        summary.pending, 0,
+        "the delete settles the edit: {summary:?}"
+    );
+    never_pushed_over_the_delete(&transport, "editor");
 }
 
 #[tokio::test]
@@ -339,16 +345,16 @@ fn accepted(id: &str) -> Scripted {
     )
 }
 
-/// Every pushed record of `id` carries the delete: nothing went over it.
-fn pushed_only_the_delete(transport: &FakeTransport, id: &str) {
-    let pushes = transport.calls_to("/sync/push");
-    assert!(!pushes.is_empty(), "the queued edit is settled by a push");
-    for push in pushes {
+/// No record of `id` went out over its delete. The scripts answer no
+/// `/sync/push`, so a send panics the transport; this also names the case
+/// where a push was legitimately queued: only a delete may carry the id.
+fn never_pushed_over_the_delete(transport: &FakeTransport, id: &str) {
+    for push in transport.calls_to("/sync/push") {
         let body: Json = serde_json::from_slice(&push.body.expect("a body")).expect("json");
         for item in body["items"].as_array().expect("items") {
             if item["id"] == id {
-                assert!(
-                    item["deletedAt"].is_i64(),
+                assert_eq!(
+                    item["operation"], "delete",
                     "an edit over the delete: {item}"
                 );
             }
@@ -394,12 +400,11 @@ async fn a_local_edit_after_the_refusal_neither_ends_the_wait_nor_wins() {
     transport.push(devices(true));
     transport.push(re_pulled("settings", id));
     transport.push(empty_changes());
-    transport.push(accepted(id));
     sync.sync_now().await.expect("the second pass");
 
     assert_eq!(urls(&transport)[first + 1], "/sync/pull");
     assert!(deleted(&side, "settings", id));
-    pushed_only_the_delete(&transport, id);
+    never_pushed_over_the_delete(&transport, id);
 }
 
 #[tokio::test]
@@ -545,4 +550,109 @@ async fn a_refusal_an_older_build_recorded_is_re_pulled() {
     sync.sync_now().await.expect("the first pass of this build");
 
     assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+/// The general case: a verified delete on the feed applies over a row whose
+/// edit is still queued. The server takes any settings write over a delete,
+/// so the edit must not go out (VERIFY-5426).
+#[tokio::test]
+async fn a_settings_edit_queued_over_a_verified_delete_never_undeletes_it() {
+    let [page, pulled] = deleted_page(
+        &["editor"],
+        vec![delete_by_new_device("settings", "editor")],
+    );
+    // The script answers no `/sync/push`: an attempt panics the transport.
+    let transport = FakeTransport::new(vec![devices(true), page, pulled]);
+    let (vault, side, session) = vault("edit-under-delete", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at)
+             VALUES ('settings', 'editor', ?1, 'full', 1, 1)",
+            params![r#"{"fontSize":14}"#],
+        )
+        .map_err(failed)?;
+        outbox::commit(conn, &Change::upsert("settings", "editor"), 1, |_| Ok(())).map(|_| ())
+    })
+    .expect("an edited settings row");
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    assert!(deleted(&side, "settings", "editor"));
+    assert_eq!(
+        summary.pending, 0,
+        "the delete settles the edit: {summary:?}"
+    );
+    never_pushed_over_the_delete(&transport, "editor");
+}
+
+/// Second line: a queued upsert whose row is deleted retires unsent, however
+/// it got there.
+#[tokio::test]
+async fn a_queued_edit_of_a_deleted_row_is_never_sent() {
+    let transport = FakeTransport::new(vec![devices(true), empty_changes()]);
+    let (vault, side, session) = vault("deleted-row-queued", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at, deleted_at)
+             VALUES ('settings', 'editor', ?1, 'full', 1, 1, 5)",
+            params![r#"{"fontSize":14}"#],
+        )
+        .map_err(failed)?;
+        outbox::commit(conn, &Change::upsert("settings", "editor"), 1, |_| Ok(())).map(|_| ())
+    })
+    .expect("a deleted row with a queued edit");
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    assert_eq!(summary.pending, 0, "retired, not retried: {summary:?}");
+    never_pushed_over_the_delete(&transport, "editor");
+}
+
+/// §5.8's client rule: a live row whose clock happens after the delete's is a
+/// re-create that saw the delete. The delete is skipped and the edit is sent.
+#[tokio::test]
+async fn a_re_create_whose_clock_is_after_the_delete_is_still_sent() {
+    const TASK: &str = "taskrecreate";
+    let delete_clock = BTreeMap::from([(NEW_DEVICE.to_owned(), 1)]);
+    let [page, pulled] = deleted_page(
+        &[TASK],
+        vec![clocked_delete_by_new_device(
+            "task",
+            TASK,
+            Some(delete_clock),
+        )],
+    );
+    let transport = FakeTransport::new(vec![devices(true), page, pulled, accepted(TASK)]);
+    let (vault, side, session) = vault("re-create", transport.clone());
+    side.call_blocking(|conn| {
+        let clock = format!(r#"{{"{NEW_DEVICE}":1,"server-device-1":1}}"#);
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at, clock)
+             VALUES ('task', ?1, ?2, 'full', 1, 1, ?3)",
+            params![
+                TASK,
+                format!(r#"{{"title":"Again","clock":{clock}}}"#),
+                clock
+            ],
+        )
+        .map_err(failed)?;
+        outbox::commit(conn, &Change::upsert("task", TASK), 1, |_| Ok(())).map(|_| ())
+    })
+    .expect("a re-created task with its edit queued");
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    assert!(!deleted(&side, "task", TASK), "{summary:?}");
+    let pushes = transport.calls_to("/sync/push");
+    assert_eq!(pushes.len(), 1, "{summary:?}");
+    let body: Json =
+        serde_json::from_slice(pushes[0].body.as_deref().expect("a body")).expect("json");
+    let item = &body["items"][0];
+    assert_eq!(item["id"], TASK);
+    assert_eq!(item["operation"], "update", "{item}");
+    assert!(item.get("deletedAt").is_none_or(Json::is_null), "{item}");
+    assert_eq!(summary.pending, 0, "{summary:?}");
 }

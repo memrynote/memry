@@ -3,10 +3,31 @@
 //! fails. A failure defers that item and never the wave.
 
 use crate::api::errors::StorageError;
+use crate::protocol::envelope::SyncOperation;
 use crate::sync::outbox::{self, Collapsed};
 use crate::sync::{delete_wins, unknown_signer};
 
-use super::{PushCoordinator, PushError, PushReport, now_ms, retry_at};
+use super::{PendingRecord, PushCoordinator, PushError, PushReport, now_ms, retry_at};
+
+/// Why a queued upsert of a row this device holds deleted retires unsent.
+///
+/// Sent, it is an `update`, which the server stores with no `deletedAt`
+/// while its signature covers one: the item comes back live on the server
+/// for a clockless type, and every peer refuses the record (VERIFY-5426).
+/// The pulled delete drops such an upsert ([`outbox::drop_upserts`]); this
+/// catches one queued another way, such as an older build's queue.
+pub(super) fn undeletes(item: &PendingRecord) -> Option<String> {
+    let row = &item.row;
+    if item.operation != SyncOperation::Update || row.deleted_at.is_none() {
+        return None;
+    }
+    let reason = "an upsert of a deleted row: the delete wins (§5.8)".to_owned();
+    eprintln!(
+        "memry-core: push: {}:{} retired: {reason}",
+        row.item_type, row.item_id
+    );
+    Some(reason)
+}
 
 impl PushCoordinator {
     /// An upsert of a row the reconcile kept against an unattested marker
