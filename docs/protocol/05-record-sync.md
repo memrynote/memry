@@ -928,9 +928,13 @@ pulled delete opens and verifies before it applies
 and `:325` applies none. The core's first sync refs pass pulls each page's
 `deleted` ids before its cursor moves, applies only what that pull verified,
 and logs the uncovered ids with the page cursor
-(`crates/memry-core/src/sync/first_sync.rs:450-467`), so a bare id records
-nothing (#5338, #5340, #5405). A stale row an attested marker names is the
-reconcile's, above.
+(`crates/memry-core/src/sync/first_sync.rs:457-476`), so a bare id records
+nothing (#5338, #5340, #5405). After record packs, while the manifest
+reconcile is still to run, the refs pass pulls none: the reconcile pulls every
+pack-held row the manifest does not list in the same request as the rows it
+lists (`crates/memry-core/src/sync/first_sync/reconcile.rs:89-110`), and a
+metadata-only row is pulled by pass two. A stale row an attested marker names
+is the reconcile's, above.
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are

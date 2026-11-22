@@ -317,9 +317,12 @@ impl FirstSync {
             .diagnostics
             .phase(DiagnosticPhase::RecordPacks, self.record_packs_pass(report))
             .await?;
-        self.diagnostics
-            .phase(DiagnosticPhase::Refs, self.refs_pass(report))
-            .await?;
+        // A reconcile still to run pulls every held row the manifest disagrees
+        // with, so the refs pass leaves `deleted` to it (#5405).
+        let reconciled = self.db.call(|c| read_meta(c, META_FIRST_SYNC_RECONCILED));
+        let defer = record_packs_used && reconciled.await?.is_none();
+        let refs = self.refs_pass(defer, report);
+        self.diagnostics.phase(DiagnosticPhase::Refs, refs).await?;
         // The feed has been read to its end: the vault's total is known.
         self.records_progress(true).await?;
         if record_packs_used {
@@ -425,7 +428,11 @@ impl FirstSync {
     /// pass two's job, and separating them is the whole point of the
     /// windowing: on a large vault the refs pass is twenty calls and gives
     /// the client the complete inventory it needs to order everything else.
-    async fn refs_pass(&self, report: &mut FirstSyncReport) -> Result<(), FirstSyncError> {
+    async fn refs_pass(
+        &self,
+        defer_deletes: bool,
+        report: &mut FirstSyncReport,
+    ) -> Result<(), FirstSyncError> {
         loop {
             let cursor = self
                 .db
@@ -453,7 +460,9 @@ impl FirstSync {
             // A bare id deletes and records nothing, as in Electron
             // (`changes-page.ts:38`). A chunk that was not a pull envelope
             // reopens the feed re-read, so its deletes are not skipped for good.
-            let missed = if page.deleted.is_empty() {
+            // Before a pending reconcile no pull is needed: it pulls a pack-held
+            // row the manifest does not list, pass two a metadata-only row.
+            let missed = if page.deleted.is_empty() || defer_deletes {
                 false
             } else {
                 let pulled = self.pull.fetch_ids(&page.deleted).await?;
