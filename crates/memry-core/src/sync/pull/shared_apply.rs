@@ -4,7 +4,7 @@
 
 use serde_json::Value as Json;
 
-use super::{PullError, PullLoop, PullReport};
+use super::{MAX_PULL_IDS, PullError, PullLoop, PullReport};
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::types::ArrivingItemType;
 use crate::sync::apply::{self, Pending};
@@ -12,6 +12,48 @@ use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::hardening::purged;
 
 impl PullLoop {
+    /// The decoded items and the purged markers `POST /sync/pull` answers
+    /// for `ids`, nothing applied yet.
+    pub(super) async fn fetch_id_items(
+        &self,
+        ids: &[String],
+    ) -> Result<(PullReport, Vec<Pending>, purged::Entries), PullError> {
+        let mut report = PullReport::default();
+        let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
+        let mut markers = purged::Entries::default();
+        for chunk in ids.chunks(MAX_PULL_IDS) {
+            let mut body = self.fetch_bodies(chunk).await?;
+            markers.read(&body, chunk);
+            let Some(items) = Self::pulled_items(&mut body) else {
+                report.dropped_pages += 1;
+                continue;
+            };
+            self.take_items(items, &mut report, &mut pending).await?;
+        }
+        Ok((report, pending, markers))
+    }
+
+    /// Applies what [`Self::fetch_id_items`] decoded, in §5.13's order.
+    pub(super) async fn apply_fetched(
+        &self,
+        mut report: PullReport,
+        mut pending: Vec<Pending>,
+    ) -> Result<PullReport, PullError> {
+        pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
+        let mut feed = AppliedFeed::default();
+        let (outcomes, _) = self
+            .apply_all(pending, Vec::new(), true, None, &mut feed)
+            .await?;
+        self.tell(feed).await;
+        report.applied += outcomes.applied;
+        report.deleted += outcomes.deleted;
+        report.skipped += outcomes.skipped;
+        report.corrupt += outcomes.corrupt;
+        report.expired += outcomes.expired;
+        report.purged_documents.extend(outcomes.purged_documents);
+        Ok(report)
+    }
+
     /// [`Self::fetch_ids`] that applies the pulled items but answers the
     /// purged markers unapplied: the manifest reconcile judges them against
     /// the rows it asked about (`first_sync::reconcile::markers`).
