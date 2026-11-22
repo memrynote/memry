@@ -452,7 +452,7 @@ before #5247 signs it.
   verifies a v2 attestation as v1 and rejects the delete as
   `403 SYNC_INVALID_SIGNATURE`, and a client cannot tell an old server from a
   hostile one, so a writer MUST NOT fall back to v1 on a rejection. Writers:
-  desktop passes no vault id (`apps/desktop/src/main/sync/engine/push-coordinator.ts:323`,
+  desktop passes no vault id (`apps/desktop/src/main/sync/engine/push-coordinator.ts:329`,
   used at `apps/desktop/src/main/sync/encrypt.ts:97`); the Rust core seals
   without a vault (`crates/memry-core/src/api/sync/pass.rs:161`). The flip to
   v2 (`AccountSealer::with_vault`, `crates/memry-core/src/protocol/account/seal.rs:195`)
