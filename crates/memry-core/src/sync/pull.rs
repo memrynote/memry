@@ -490,7 +490,7 @@ impl PullLoop {
                 sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
                 sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)?;
                 if reason.ends_with(UNKNOWN_SIGNER) {
-                    unknown_signer::refused(conn, &item_id)?;
+                    unknown_signer::refused(conn, &item_type, &item_id)?;
                 }
                 Ok(())
             })

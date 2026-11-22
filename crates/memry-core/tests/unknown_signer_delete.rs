@@ -12,9 +12,12 @@
 //! | a signer that never appears stops being re-pulled             | #5413            |
 //! | a local edit after the refusal neither ends the wait nor wins | §5.8, #5413      |
 //! | a new refusal of a given-up id gets a fresh budget            | #5413            |
+//! | an edit held under #5426's id-only key stays held             | #5413, C89.1     |
 //! | a failed re-pull counts unless the transport failed           | #5413            |
 //! | a verified record skipped as older ends the wait              | §5.8, #5413      |
 //! | a refusal an older build recorded is re-pulled once adopted   | #5413            |
+//! | one an older build records after this build ran is adopted too | #5413, C89.1    |
+//! | a verified record of another type with the same id waits on    | #5413, C89.1    |
 //! | an edit queued over a verified delete never undeletes        | §5.8, #5413      |
 //! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
 //! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
@@ -125,8 +128,18 @@ fn clocked_delete_by_new_device(
     id: &str,
     clock: Option<BTreeMap<String, u64>>,
 ) -> Json {
+    signed_delete(&NEW_DEVICE_SEED, NEW_DEVICE, item_type, id, clock)
+}
+
+fn signed_delete(
+    seed: &[u8; 32],
+    signer: &str,
+    item_type: &str,
+    id: &str,
+    clock: Option<BTreeMap<String, u64>>,
+) -> Json {
     let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
-    let (_public, secret) = sodium::sign_seed_keypair(&NEW_DEVICE_SEED).expect("a keypair");
+    let (_public, secret) = sodium::sign_seed_keypair(seed).expect("a keypair");
     let sealed = envelope::encrypt(
         &RecordRequest {
             id,
@@ -135,7 +148,7 @@ fn clocked_delete_by_new_device(
             content: b"",
             vault_key: &vault_key[..],
             signing_secret_key: &secret[..],
-            signer_device_id: NEW_DEVICE,
+            signer_device_id: signer,
             clock,
             state_vector: None,
             deleted_at: Some(1_760_000_000_000),
@@ -407,6 +420,69 @@ async fn a_local_edit_after_the_refusal_neither_ends_the_wait_nor_wins() {
     never_pushed_over_the_delete(&transport, id);
 }
 
+/// A #5426 install recorded the wait as `sync.unknown_signer_retries:{id}`
+/// only; the edit already cleared the row's flag, so that key is the hold
+/// (REVIEW-5448).
+#[tokio::test]
+async fn an_edit_held_under_an_id_only_key_stays_held() {
+    let id = "editor";
+    let [page, pulled] = deleted_page(&[id], vec![delete_by_new_device("filter", id)]);
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("id-only-key", transport.clone());
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at)
+             VALUES ('filter', 'editor', '{}', 'full', 1, 1)",
+            [],
+        )
+        .map_err(failed)
+        .map(|_| ())
+    })
+    .expect("a filter row");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+    side.call_blocking(|conn| {
+        let name = [("name", RepoChange::Set(json!("dark")))];
+        outbox::commit(conn, &Change::upsert("filter", id), 2, |tx| {
+            sync_items::apply_local_edit_in(tx, "filter", id, &name, 2).map(|_| ())
+        })
+        .map(|_| ())
+    })
+    .expect("a local filter edit");
+    side.call_blocking(|conn| {
+        conn.execute_batch(
+            "DELETE FROM meta WHERE key LIKE 'sync.unknown_signer%';
+             INSERT INTO meta (key, value) VALUES ('sync.unknown_signer_retries:editor', '1'),
+                                                  ('sync.unknown_signer_seeded', '1');",
+        )
+        .map_err(failed)
+    })
+    .expect("the wait as #5426 recorded it");
+    push_due(&side);
+
+    let first = transport.call_count();
+    transport.push(devices(false));
+    transport.push(re_pulled("filter", id));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("the first pass of this build");
+
+    assert_eq!(urls(&transport)[first + 1], "/sync/pull");
+    never_pushed_over_the_delete(&transport, id);
+    let pending: i64 = side
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_id = 'editor'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("the queue");
+    assert_eq!(pending, 1, "the edit stays queued");
+    assert!(!deleted(&side, "filter", id), "still unverified");
+}
+
 #[tokio::test]
 async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
     let [page, pulled] = deleted_page(
@@ -534,14 +610,7 @@ async fn a_refusal_an_older_build_recorded_is_re_pulled() {
     let transport = FakeTransport::new(vec![]);
     let (vault, side, session) = vault("older-build", transport.clone());
     live_row(&side, "note", "deadnotexxxx");
-    side.call_blocking(|conn| {
-        let reason = format!(
-            "could not open the record: signer device `{NEW_DEVICE}`{}",
-            memry_core::protocol::account::UNKNOWN_SIGNER
-        );
-        sync_items::mark_corrupt(conn, "note", "deadnotexxxx", &reason, 1)
-    })
-    .expect("a refusal recorded only in corrupt_reason");
+    refused_by_an_older_build(&side, "note", "deadnotexxxx");
     let sync = vault.sync(session);
 
     transport.push(devices(true));
@@ -550,6 +619,80 @@ async fn a_refusal_an_older_build_recorded_is_re_pulled() {
     sync.sync_now().await.expect("the first pass of this build");
 
     assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+/// A refusal recorded the way a build before #5426 does: in `corrupt_reason`
+/// only, with no retry row.
+fn refused_by_an_older_build(side: &Db, item_type: &str, id: &str) {
+    let (item_type, id) = (item_type.to_owned(), id.to_owned());
+    side.call_blocking(move |conn| {
+        let reason = format!(
+            "could not open the record: signer device `{NEW_DEVICE}`{}",
+            memry_core::protocol::account::UNKNOWN_SIGNER
+        );
+        sync_items::mark_corrupt(conn, &item_type, &id, &reason, 1)
+    })
+    .expect("a refusal recorded only in corrupt_reason");
+}
+
+/// Downgrade, refuse, upgrade: the older build's refusal comes after this
+/// build already adopted the earlier ones (VERIFY-5426).
+#[tokio::test]
+async fn a_refusal_an_older_build_records_after_this_build_ran_is_re_pulled() {
+    let transport = FakeTransport::new(vec![devices(false), empty_changes()]);
+    let (vault, side, session) = vault("downgraded", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("a pass of this build");
+
+    refused_by_an_older_build(&side, "note", "deadnotexxxx");
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "deadnotexxxx"));
+    transport.push(empty_changes());
+    sync.sync_now().await.expect("the pass after the upgrade");
+
+    assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+/// A verified record ends the wait of its own `(type, id)` only.
+#[tokio::test]
+async fn a_verified_record_of_another_type_with_the_same_id_does_not_end_the_wait() {
+    let [page, pulled] = deleted_page(
+        &["sameidxxxxxx"],
+        vec![delete_by_new_device("note", "sameidxxxxxx")],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("same-id", transport.clone());
+    live_row(&side, "note", "sameidxxxxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    let this_device = signed_delete(
+        &THIS_DEVICE_SEED,
+        "server-device-1",
+        "task",
+        "sameidxxxxxx",
+        None,
+    );
+    transport.push(devices(false));
+    transport.push(re_pulled("note", "sameidxxxxxx"));
+    // The server's by-id pull serves every type with that id.
+    let [page, pulled] = deleted_page(
+        &["sameidxxxxxx"],
+        vec![delete_by_new_device("note", "sameidxxxxxx"), this_device],
+    );
+    transport.push(page);
+    transport.push(pulled);
+    sync.sync_now().await.expect("a pass verifying the task");
+
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "sameidxxxxxx"));
+    transport.push(empty_changes());
+    sync.sync_now()
+        .await
+        .expect("the pass that knows the signer");
+
+    assert!(deleted(&side, "note", "sameidxxxxxx"));
 }
 
 /// The general case: a verified delete on the feed applies over a row whose

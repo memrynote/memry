@@ -1301,6 +1301,15 @@ notes with no snapshot, and each of those costs no GET (#5234). Outside a fullSy
 chunk of fewer than 20 notes skips the probe: the POST is the scarce budget, and a record-page
 pull of a few notes would spend one to save a few GETs.
 
+A walk checks every page's `snapshotMeta` against the snapshot it started from: the one
+the baseline GET or the probe saw, or none. A peer snapshot that lands in between prunes
+the updates at or below it, so a page naming a different revision, or a higher sequence,
+stops that note's walk before it records anything above the new snapshot. The note is owed
+and flagged, never settled or seeded, and its re-queued pull takes the new snapshot as its
+baseline (protocol chapter 07 §7.8; #5243, #5474, #5477). The single-note pull returns
+`false` there, so the pending-note replay does not push a snapshot. The Rust core takes the
+new baseline in the same walk instead; both end with the same body.
+
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
 counts are measured rather than predicted: at one round per sub-chunk the GET slice binds,
