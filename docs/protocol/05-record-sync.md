@@ -865,6 +865,10 @@ that row's signed delete, or with a purged marker when the client declared
   the client refused (§5.14), MUST delete nothing and record nothing. It is not
   an error and it does not stop the page; a client SHOULD log it with the page
   cursor. A refused item never falls through to a delete by id.
+- The same rule holds for any id a client pulls because the server left it out,
+  such as a pack-held row the manifest reconcile finds unlisted (chapter 08
+  §8.10, Closing checks, rule 2): absence and silence are no evidence of a
+  delete.
 
 Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.ts`)
 is the only read of `changes.deleted`, which joins the pull request, and only
@@ -875,7 +879,11 @@ ids and `:454` applies none. The core's first sync refs pass pulls each page's
 `deleted` ids before its cursor moves, applies only what that pull verified,
 and logs the uncovered ids with the page cursor
 (`crates/memry-core/src/sync/first_sync.rs:418-435`), so a bare id records
-nothing (#5340).
+nothing (#5340). The core's manifest reconcile pulls each unlisted row by id
+(`crates/memry-core/src/sync/first_sync/reconcile.rs:109`), so only what
+that pull verifies deletes: a signed delete, or a marker for a row it asked
+about whose attestation verifies (`reconcile/markers.rs:26`). It keeps and
+logs the rest (`reconcile.rs:121`).
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are

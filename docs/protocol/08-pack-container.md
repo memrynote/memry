@@ -711,14 +711,25 @@ it with checks the server answers:
      no write, so it holds none for that item. A pulled item whose payload
      is lost comes back in `blobMissing` (chapter 05 §5.12.4), and the reader
      then knows its held row is not current.
-  2. A live record the reader took from a pack and the manifest does not list
-     is not applied, or is removed if it was applied, unless the device
-     modified it locally since. The manifest lists every live row of the
-     declared types (`deleted_at IS NULL`,
-     `apps/sync-server/src/services/sync.ts:1232`), so absence from a complete
-     manifest read after the pack means the item was deleted. This is the one
-     exception to the chapter 05 §5.12.3 rule that absence deletes nothing,
-     and it covers only rows taken from a pack and never changed.
+  2. A live record the reader took from a pack and the manifest does not list,
+     and that the device did not modify locally since, is pulled by id
+     through `POST /sync/pull`. The manifest lists every live row of the
+     declared types (`deleted_at IS NULL`), so absence suggests a delete, but
+     the server is untrusted and absence is no evidence (chapter 05 §5.12.1).
+     The row is removed only by what the pull returns: a delete that verifies
+     under chapter 05 §5.14, or, to a reader that declares `purged_tombstones`
+     (chapter 05 §5.12.3), a marker that names a `(type, id)` the reader
+     asked about, carries a non-empty clock, has a `serverCursor` past the
+     row's held cursor, and whose delete attestation verifies under the
+     signer's key (chapter 04 §4.8.4). The reader seeded the row from the
+     pack, which is no local change, so the row's stored time never outranks
+     the marker; a local change or an outbox write queued while the pull was
+     in flight does, and keeps the row. A row the pull answers with nothing,
+     with a refused item, or with a body that is not a pull envelope stays
+     live and is logged with the record cursor. An honest server reaches this
+     state when an item was deleted after its pack was built and its
+     tombstone was shed before the reader pulled; the attested marker
+     converges it. A removal is local: an applied tombstone queues no push.
   3. A packed tombstone applies as the pull item would (§8.4.2). The manifest
      omits tombstones, and the tombstone's clock is what lets a later
      re-create pass delete-wins (chapter 05 §5.8).
@@ -1042,8 +1053,8 @@ fail. `record` packs are not scoped yet (**Not implemented yet**, below).
     `PACK_REPLACED_GRACE_SECONDS` after that removal. A URL signed while such
     a pack was listed expires within 300 s (§8.12), so no reader downloads it
     after the shed. A reader that downloaded it before the shed meets the
-    tombstone through a pack or the feed (§8.10), and the manifest reconcile
-    (§8.10) drops the live entry in any case. The rewrite drops every entry
+    tombstone through a pack or the feed (§8.10), or the manifest reconcile
+    (§8.10) drops the live entry through the marker's attestation. The rewrite drops every entry
     of that `(type, id)`, because a marker has no payload to pack. Today the
     shed empties the row in place, and the manifest reconcile alone keeps
     a packed entry of it inert.
@@ -1055,7 +1066,8 @@ those entries inert:
 - `record`: the tombstone is at a higher cursor and wins on clock (chapter 05
   §5.8); a re-create seeds its clock from the tombstone, so it dominates the
   old entry too. A live entry of an item whose tombstone was shed is dropped
-  by the manifest reconcile (§8.10).
+  by the manifest reconcile through the marker's attestation (§8.10); with no
+  attestation that verifies, it stays live on that reader.
 - `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`,
   or the body manifest's `snapshot.revision` (§8.4.3), read after the pack
   (§8.10); a deleted incarnation's revision never does.
