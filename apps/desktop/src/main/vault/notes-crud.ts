@@ -31,7 +31,7 @@ import {
   type HeaderTagChange
 } from './note-write'
 import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
-import { hasPendingWriteback } from '../sync/crdt-writeback'
+import { hasPendingWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import {
@@ -671,8 +671,17 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // Update
 // ============================================================================
 
+/**
+ * An update without a body writes only frontmatter, so it also takes the
+ * note's write-back turn: a pass never writes back the frontmatter it read
+ * before it (#5472). A body update feeds the doc first (`landBodyEdit`).
+ */
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  return writeNoteInOrder(input.id, () => writeNote(input))
+  return writeNoteInOrder(input.id, () =>
+    input.content === undefined
+      ? takeWritebackTurn(input.id, () => writeNote(input))
+      : writeNote(input)
+  )
 }
 
 async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {

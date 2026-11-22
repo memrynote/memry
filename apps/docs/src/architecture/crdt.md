@@ -337,6 +337,33 @@ read-only offline. The edits wait in the outbox, and its flush once online
 requests the snapshot again. A scheduled snapshot batch that comes due while
 held stays with the scheduler and goes out on the reconnect or the resume.
 
+This hold covers an offline **device**, not an unreachable **server**, and that
+gap is a known, accepted risk (#5247, C58.1). Offline means the OS reports no
+network (`apps/desktop/src/main/sync/network.ts:16`). Only that, or the sync
+pause, holds a body push: the outbox pauses when the OS goes offline
+(`apps/desktop/src/main/sync/runtime.ts:759`), and the snapshot paths hold
+(`apps/desktop/src/main/sync/crdt-provider.ts:510`). When the OS reports online
+but the sync server does not answer, a body push (outbox flush or snapshot)
+still starts. Every body route records `sent` before its request: the outbox
+flush (`apps/desktop/src/main/sync/note-body-outbox.ts:302`,
+`apps/desktop/src/main/sync/note-body-outbox.ts:309`), the single snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-push.ts:104`,
+`apps/desktop/src/main/sync/runtime.ts:652`) and the batch snapshot push
+(`apps/desktop/src/main/sync/crdt-snapshot-batch.ts:159`,
+`apps/desktop/src/main/sync/runtime.ts:692`). Then the request fails. The
+`note_body_sync` row ends never-synced status
+(`apps/desktop/src/main/sync/note-sync-state.ts:261`), so a note created on this
+device reopens read-only while the device stays offline
+(`apps/desktop/src/main/sync/crdt-provider.ts:467`), like a note that did sync.
+No data is lost: the vault file and the outbox keep the edits. The state ends
+with the next body push, outbox flush or snapshot, that reaches the server.
+From then on the server holds the body, and the note is an ordinary synced note
+that opens editable once its merge completes. The rule that a request that may
+have reached the server counts as `sent` stays. A fix would hold every body
+route (the outbox flush and both snapshot pushes) after a transport error until
+the next request succeeds. That needs a new shared "last request failed" signal
+for a cosmetic offline state, so the code is left as is.
+
 The bypass has one residual risk: device A creates a note offline, so it holds
 the marker; a shared folder carries the file to device B, and B syncs it before
 A does. When A then opens the note offline, it seeds beside B's server body,
@@ -356,14 +383,15 @@ pull backoff; the count is kept in memory too, so it progresses when the debt
 table is unavailable. Main then broadcasts `crdt:doc-wait` with `stuck`. When
 the session ended (`hasSessionEnded`: the refresh token was rejected for good
 or is gone), the open result carries `awaitingRemote: 'signed-out'`, and
-when the last pull found no vault key (a locked keychain), `'vault-locked'`
-(#5342). A refresh that merely failed (offline, a 5xx) is neither. The pull stays owed. While a
-note is stuck, signed out or vault-locked, or the device is offline, the editor
-shows the vault file read-only with a notice, with no binding and no saves.
-A reason that changes after the open reaches the editor as `crdt:doc-wait`:
-the coordinator sends it once a note is stuck, and the runtime for every
-waiting editor once the session ends. Once the renderer is signed in again, a
-signed-out editor returns to its loading state, and the next sync drains the
+when the last vault key read found no key (a locked keychain), `'vault-locked'`
+(#5342). A refresh that merely failed (offline, a 5xx) is neither. The pull
+stays owed. While a note is stuck, signed out or vault-locked, or the device is
+offline, the editor shows the vault file read-only with a notice, with no
+binding and no saves. A reason that changes after the open reaches the editor
+as `crdt:doc-wait`: the coordinator sends it once a note is stuck, and the
+runtime for every waiting editor once the session ends, or with `merging` once
+any sync cycle reads the vault key again. Once the renderer is signed in again,
+a signed-out editor returns to its loading state, and the next sync drains the
 owed pull. The pull that later merges the body, or a pull that proves the
 server holds nothing, ends the wait, and the editor binds. A reconnect retries
 the merge of every waiting editor document (`resumeWaitingEditorDocs`), which
@@ -831,8 +859,13 @@ document to its vault `.md` file and re-indexes it for search.
   the load no longer sits between the row and the write. A note runs one pass at a time: a
   pass armed while another converts waits for it, because one that started early would read
   the row from before the first pass's write, take that write for an outside edit and feed
-  it back into the doc over what the user typed since. The quit flush waits for running
-  passes too. That flush converts on main unless the worker is already up, because a worker
+  it back into the doc over what the user typed since. A tags or properties update of a note
+  or journal entry (the note and journal saves, the property editor, the agent's
+  `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
+  A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
+  so one that landed between a pass's read and its write was lost with nothing left to re-arm
+  the pass (#5472). A body update feeds the doc before its file and stays out of the queue.
+  The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and
   every seed of a note from its file, and exits after 3 minutes
@@ -1264,7 +1297,9 @@ for. For a 1,000-note vault:
 Before this, at 25 notes every 15 s with an unconditional baseline, all three regimes cost
 100 GET/min and 4 POST/min and took **ten minutes**. The cold row assumes every note has a
 server snapshot. A cold chunk still sends the probe, because its `snapshotMeta` names the
-notes with no snapshot, and each of those costs no GET (#5234).
+notes with no snapshot, and each of those costs no GET (#5234). Outside a fullSync, a cold
+chunk of fewer than 20 notes skips the probe: the POST is the scarce budget, and a record-page
+pull of a few notes would spend one to save a few GETs.
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the

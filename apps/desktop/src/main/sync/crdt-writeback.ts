@@ -112,8 +112,8 @@ interface WritebackCost {
 
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
-/** The pass running, or queued behind a running one, for each note. */
-const runningPasses = new Map<string, Promise<void>>()
+/** The turn (a pass or a frontmatter writer) running, or queued behind a running one, for each note. */
+const runningPasses = new Map<string, Promise<unknown>>()
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -314,17 +314,27 @@ async function runWriteback(
   local: boolean,
   remoteEditedAtMs: number | undefined
 ): Promise<void> {
-  const previous = runningPasses.get(noteId)
-  const pass = (previous ?? Promise.resolve())
-    // The previous pass reported its own failure; this one runs regardless.
+  await takeWritebackTurn(noteId, () => runPass(noteId, doc, local, remoteEditedAtMs))
+}
+
+/**
+ * Runs `run` once the note's earlier turns have settled. A pass writes back
+ * the frontmatter it read, and a writer that changes only frontmatter (tags,
+ * properties) leaves the doc as it was, so the re-arm after a pass cannot see
+ * it: landing between a pass's read and its write lost it (#5472). Those
+ * writers take a turn here too. `run` must not wait on a pass of the note.
+ */
+export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Promise<T> {
+  const turn = (runningPasses.get(noteId) ?? Promise.resolve())
+    // The previous turn reported its own failure; this one runs regardless.
     .catch(() => {})
-    .then(() => runPass(noteId, doc, local, remoteEditedAtMs))
-  runningPasses.set(noteId, pass)
-  try {
-    await pass
-  } finally {
-    if (runningPasses.get(noteId) === pass) runningPasses.delete(noteId)
+    .then(run)
+  runningPasses.set(noteId, turn)
+  const clear = (): void => {
+    if (runningPasses.get(noteId) === turn) runningPasses.delete(noteId)
   }
+  turn.then(clear, clear)
+  return turn
 }
 
 /** Runs a pass and records what it cost, which is what paces the next one. */

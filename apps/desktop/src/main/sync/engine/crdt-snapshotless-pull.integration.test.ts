@@ -200,8 +200,10 @@ describe('CRDT body pull against a real sync server', () => {
     return paced(() => pushCrdtSnapshot(noteId, encrypted, token))
   }
 
-  const coordinatorOver = (provider: CrdtProvider): CrdtSyncCoordinator => {
+  /** `fullSyncActive` probes every chunk; outside one a small cold chunk is not probed. */
+  const coordinatorOver = (provider: CrdtProvider, fullSyncActive = false): CrdtSyncCoordinator => {
     const ctx = {
+      fullSyncActive,
       deps: {
         crdtProvider: provider,
         getAccessToken: async () => token,
@@ -230,13 +232,102 @@ describe('CRDT body pull against a real sync server', () => {
 
     const provider = memoryProvider()
     requests.length = 0
-    await coordinatorOver(provider).pullCrdtForNotes([...bare, snapped])
+    await coordinatorOver(provider, true).pullCrdtForNotes([...bare, snapped])
 
     expect(snapshotGets()).toEqual([snapped])
     for (const noteId of bare) {
       expect(provider.text(noteId)).toBe(`${noteId} first. ${noteId} second.`)
     }
     expect(provider.text(snapped)).toBe(`${snapped} baseline. ${snapped} after.`)
+  }, 60_000)
+
+  it('sends no probe and a snapshot GET for every note of a small cold chunk outside a fullSync', async () => {
+    const run = randomUUID().slice(0, 8)
+    const bare = `bare-${run}`
+    const snapped = `snapped-${run}`
+    await pushUpdate(bare, `${bare} first.`)
+    await pushSnapshot(snapped, `${snapped} baseline. `)
+    await pushUpdate(snapped, `${snapped} after.`)
+
+    const provider = memoryProvider()
+    requests.length = 0
+    await coordinatorOver(provider).pullCrdtForNotes([bare, snapped])
+
+    const probes = requests.filter(
+      (r) => r.path === '/sync/crdt/updates/batch' && (r.body as { limit?: number }).limit === 1
+    )
+    expect(probes).toEqual([])
+    expect(snapshotGets()).toEqual([bare, snapped])
+    expect(provider.text(bare)).toBe(`${bare} first.`)
+    expect(provider.text(snapped)).toBe(`${snapped} baseline. ${snapped} after.`)
+  }, 60_000)
+
+  it('owes a note whose snapshot lands between its null snapshot GET and the walk', async () => {
+    const run = randomUUID().slice(0, 8)
+    const noteId = `racing-get-${run}`
+    await pushUpdate(noteId, 'early. ')
+
+    // No probe on this small cold chunk: the GET answers no snapshot, then
+    // another device snapshots the note and prunes the update the walk from 0
+    // would have read.
+    afterResponse.hook = async (request) => {
+      if (request.method !== 'GET' || !request.path.startsWith('/sync/crdt/snapshot/')) return
+      afterResponse.hook = null
+      await pushSnapshot(noteId, 'late.')
+    }
+
+    const provider = memoryProvider()
+    const coordinator = coordinatorOver(provider)
+    requests.length = 0
+    try {
+      await coordinator.pullCrdtForNotes([noteId])
+    } finally {
+      afterResponse.hook = null
+    }
+
+    expect(provider.text(noteId)).not.toBe('early. late.')
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    expect(coordinator.drainPendingPulls()).toEqual([noteId])
+
+    await coordinator.pullCrdtForNotes([noteId])
+
+    expect(snapshotGets()).toEqual([noteId, noteId])
+    expect(provider.text(noteId)).toBe('early. late.')
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
+  }, 60_000)
+
+  // #5474: the single-note pull (a `crdt_updated` broadcast, the pending-note
+  // replay) has the same window, and the replay pushes a snapshot on `true`.
+  it('owes a note whose snapshot lands between its null snapshot GET and the single-note walk', async () => {
+    const noteId = `racing-single-${randomUUID().slice(0, 8)}`
+    await pushUpdate(noteId, 'early. ')
+
+    afterResponse.hook = async (request) => {
+      if (request.method !== 'GET' || !request.path.startsWith('/sync/crdt/snapshot/')) return
+      afterResponse.hook = null
+      await pushSnapshot(noteId, 'late.')
+    }
+
+    const provider = memoryProvider()
+    const coordinator = coordinatorOver(provider)
+    requests.length = 0
+    let merged: boolean
+    try {
+      merged = await coordinator.pullCrdtForNote(noteId)
+    } finally {
+      afterResponse.hook = null
+    }
+
+    expect(merged).toBe(false)
+    expect(provider.seeded).toEqual([])
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    expect(coordinator.drainPendingPulls()).toEqual([noteId])
+
+    expect(await coordinator.pullCrdtForNote(noteId)).toBe(true)
+
+    expect(snapshotGets()).toEqual([noteId, noteId])
+    expect(provider.text(noteId)).toBe('early. late.')
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
   }, 60_000)
 
   it('owes a note whose snapshot lands between the probe and the walk, and the next pass fetches it', async () => {
@@ -254,7 +345,7 @@ describe('CRDT body pull against a real sync server', () => {
     }
 
     const provider = memoryProvider()
-    const coordinator = coordinatorOver(provider)
+    const coordinator = coordinatorOver(provider, true)
     requests.length = 0
     try {
       await coordinator.pullCrdtForNotes([noteId])

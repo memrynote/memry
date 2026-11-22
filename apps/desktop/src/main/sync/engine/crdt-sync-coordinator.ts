@@ -50,6 +50,15 @@ export function serverSecondsToMs(createdAt: number | undefined): number | undef
  */
 const CRDT_BATCH_MAX_NOTES = 100
 
+/**
+ * The smallest cold chunk (no note with a watermark) worth a probe outside a
+ * fullSync. The probe POST is charged to the 30/min `crdt_batch_pull` bucket,
+ * and on a cold chunk it can save only the snapshot GETs of snapshotless notes,
+ * so a record-page pull of a few notes would spend a scarce POST to save a few
+ * cheap GETs (#5247 C1.1).
+ */
+const COLD_PROBE_MIN_NOTES = 20
+
 const noCost = (): CrdtPullCost => ({ snapshotGets: 0, batchPosts: 0 })
 
 const isEmptyStateVector = (vector: Uint8Array): boolean => vector.length <= 2
@@ -102,6 +111,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * exactly the requests this code issued before this feature existed.
    */
   private snapshotMetaUnsupported = false
+  /** Notes already warned about pending structs this session, so a stuck note warns once. */
+  private warnedPendingStructs = new Set<string>()
   private resolveDeviceKey: ResolveDeviceKey
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
@@ -111,7 +122,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * and merging its server body would let the write-back re-create it.
    */
   private hasNoteRow: (noteId: string) => boolean
-  /** The last body pull that had a token found no vault key; see `isVaultKeyMissing`. */
+  /** The last vault key read found no key; see `isVaultKeyMissing`. */
   private vaultKeyMissing = false
 
   constructor(
@@ -376,6 +387,19 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
   }
 
+  /**
+   * A walk with no server snapshot behind it, whose own page names one: a
+   * snapshot pushed since the baseline GET or the probe pruned the updates at
+   * or below it, so the walk is missing them (#5243, #5474). Owed, never
+   * settled or seeded, and the next pass downloads the snapshot. A server
+   * before #2299 sends no meta, so nothing is owed.
+   */
+  private owesPrunedWalk(noteId: string, meta: CrdtSnapshotMeta | null | undefined): boolean {
+    if (!meta) return false
+    this.owePendingPull(noteId)
+    return true
+  }
+
   private fetchSnapshotBaseline(
     noteId: string,
     token: string,
@@ -598,6 +622,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
                 signerDeviceId: string
               }>
               hasMore: boolean
+              /** Null: no snapshot. Absent: a server before #2299. */
+              snapshotMeta?: CrdtSnapshotMeta | null
             }>(
               `/sync/crdt/updates?note_id=${encodeURIComponent(noteId)}&since=${since}&limit=100`,
               token
@@ -611,6 +637,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           updateCount: result.updates.length,
           hasMore: result.hasMore
         })
+        if (!baseline.held && this.owesPrunedWalk(noteId, result.snapshotMeta)) return false
         if (result.updates.length > 0) serverHeld = true
 
         // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
@@ -687,6 +714,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       if (this.holdsPendingStructs(noteId)) {
+        this.warnPendingStructs(noteId)
         sawUnmerged = true
         skippedUpdate = true
         this.owePendingPull(noteId, failures, true)
@@ -835,11 +863,18 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * a single doc is opened or a single snapshot downloaded.
    *
    * `null` means "decide nothing from a probe" and every note in the chunk then
-   * takes the unconditional path this method fronts — an old server.
+   * takes the unconditional path this method fronts — an old server, or a small
+   * cold chunk outside a fullSync.
    *
    * Deliberately NOT available to `applyCrdtIncrementals`: see the comment on
    * `snapshotBaselineSkip`.
    */
+  private warnPendingStructs(noteId: string): void {
+    if (this.warnedPendingStructs.has(noteId)) return
+    this.warnedPendingStructs.add(noteId)
+    log.warn('CRDT pull left pending structs, owing the note a pull', { noteId })
+  }
+
   private async probeBatchChunk(
     noteIds: string[],
     token: string,
@@ -850,6 +885,14 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     // Sent on a cold chunk too (#5234): `snapshotMeta` names the notes the
     // server holds no snapshot for, and each of those is a snapshot GET saved.
     // A fresh bootstrap measured 62 of 100 GETs answering `{ snapshot: null }`.
+    // A small cold chunk outside a fullSync is not worth the POST.
+    if (
+      !this.ctx.fullSyncActive &&
+      noteIds.length < COLD_PROBE_MIN_NOTES &&
+      !noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))
+    ) {
+      return null
+    }
 
     const result = await withRetry(
       () => {
@@ -1151,6 +1194,10 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       const resumeFrom = new Map<string, number>()
+      // Notes walked with no server snapshot behind them: skipped as snapshotless,
+      // or a baseline GET that answered none. A snapshot landing before the walk
+      // prunes what the walk reads, so the guard below checks each of them.
+      const noSnapshotWalks = new Set<string>()
       for (const noteId of opened) {
         // With no server snapshot, a GET answers `{ snapshot: null }` and the
         // walk starts at 0, so start it at 0 without the GET.
@@ -1165,6 +1212,9 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         if (this.lastAppliedSequence.has(noteId)) this.forgetWatermark(noteId)
         if (crdtProvider.hasPersistence()) oweUnsyncedFileBody(noteId)
         if (fromZero !== undefined) resumeFrom.set(noteId, fromZero)
+      }
+      for (const noteId of resumeFrom.keys()) {
+        if (snapshotless.has(noteId)) noSnapshotWalks.add(noteId)
       }
 
       // The snapshot GETs run ahead of the apply, which still takes one note
@@ -1199,6 +1249,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           )
           sinceMap.set(noteId, baseline.since)
           if (baseline.held) serverHeld.add(noteId)
+          else noSnapshotWalks.add(noteId)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)
             this.owePendingPull(noteId, failures, true)
@@ -1257,15 +1308,11 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           }
         ).then((r) => r.value)
 
-        // A snapshot pushed since the probe pruned the updates at or below it,
-        // so a walk that skipped the baseline as snapshotless is missing them.
-        // Never settled or seeded: owed, and the next pass downloads it.
-        for (const noteId of snapshotless) {
-          if (!resumeFrom.has(noteId) || !sinceMap.has(noteId)) continue
-          if (!result.snapshotMeta?.[noteId]) continue
+        for (const noteId of noSnapshotWalks) {
+          if (!sinceMap.has(noteId)) continue
+          if (!this.owesPrunedWalk(noteId, result.snapshotMeta?.[noteId])) continue
           sinceMap.delete(noteId)
           sawUnmerged.add(noteId)
-          this.owePendingPull(noteId)
         }
 
         const signerIds = new Set<string>()
@@ -1368,6 +1415,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
 
       for (const noteId of sinceMap.keys()) {
         if (!this.holdsPendingStructs(noteId)) continue
+        this.warnPendingStructs(noteId)
         sawUnmerged.add(noteId)
         skippedUpdate.add(noteId)
         this.owePendingPull(noteId, failures, true)
@@ -1437,12 +1485,25 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   }
 
   /**
-   * The last body pull that had a token found no vault key, as with a locked
-   * keychain. Signing in does not fix that, so its editors get their own
-   * read-only notice (#5342).
+   * The last vault key read found no key, as with a locked keychain. Signing
+   * in does not fix that, so its editors get their own read-only notice
+   * (#5342).
    */
   isVaultKeyMissing(): boolean {
     return this.vaultKeyMissing
+  }
+
+  /**
+   * Told every vault key read, and returns the key; `SyncEngine` routes each
+   * read here. A key found again after a miss calls `onVaultKeyReadable`, so
+   * waiting editors leave the vault-locked notice without waiting for the next
+   * body pull.
+   */
+  recordVaultKeyRead(vaultKey: Uint8Array | null): Uint8Array | null {
+    const unlocked = this.vaultKeyMissing && vaultKey !== null
+    this.vaultKeyMissing = vaultKey === null
+    if (unlocked) this.ctx.deps.onVaultKeyReadable?.()
+    return vaultKey
   }
 
   /** `hasServerBodyEvidence`, or a server update this session applied to the note (#5371). */
@@ -1454,7 +1515,6 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     const token = await this.ctx.deps.getAccessToken()
     if (!token) return null
     const vaultKey = await this.ctx.deps.getVaultKey()
-    this.vaultKeyMissing = !vaultKey
     return vaultKey ? { token, vaultKey } : null
   }
 
