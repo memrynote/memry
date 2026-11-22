@@ -62,6 +62,12 @@ impl KeptMarker {
             body_state_vector: None,
         }
     }
+
+    /// The server wrote nothing to the item after this marker, so it still
+    /// stands for a live row held at `held_at`.
+    fn stands_over(&self, held_at: Option<i64>) -> bool {
+        held_at.is_none_or(|cursor| cursor < self.server_cursor)
+    }
 }
 
 fn key(item_type: &str, item_id: &str) -> String {
@@ -113,12 +119,8 @@ pub(crate) fn apply_kept_marker(
     };
     let txn = nested_tx::begin(conn).map_err(sqlite)?;
     let row = sync_items::load(&txn, item_type, item_id)?;
-    let stands = row.is_some_and(|row| {
-        row.deleted_at.is_none()
-            && row
-                .server_cursor
-                .is_none_or(|cursor| cursor < marker.server_cursor)
-    });
+    let stands =
+        row.is_some_and(|row| row.deleted_at.is_none() && marker.stands_over(row.server_cursor));
     let deleted = stands && {
         let tombstone = marker.tombstone(item_type, item_id);
         apply::apply_page(
@@ -142,9 +144,10 @@ pub(crate) fn apply_kept_marker(
 /// `SYNC_DELETE_WINS` for a queued upsert, after the wave pulled the id with
 /// its markers (`entries`). A signed tombstone that pull returned has already
 /// applied. Otherwise the live row is deleted by an attested marker, else by
-/// the marker the reconcile remembered for it, each with its clock through
-/// the §5.8 client rule; with neither the row stays live. The item's rows are
-/// acked either way. Answers whether the row is deleted now.
+/// the marker the reconcile remembered for it unless the server wrote the
+/// item after that marker, each with its clock through the §5.8 client rule;
+/// with neither the row stays live. The remembered marker is dropped and the
+/// item's rows are acked either way. Answers whether the row is deleted now.
 pub(crate) fn apply_delete_wins(
     conn: &Connection,
     item: &Collapsed,
@@ -162,10 +165,11 @@ pub(crate) fn apply_delete_wins(
             .and_then(|pull| purged_markers::attested(entries, item_type, item_id, held_at, pull))
         {
             Some(tombstone) => Some(tombstone),
-            None => {
-                load(&txn, item_type, item_id)?.map(|marker| marker.tombstone(item_type, item_id))
-            }
+            None => load(&txn, item_type, item_id)?
+                .filter(|marker| marker.stands_over(row.server_cursor))
+                .map(|marker| marker.tombstone(item_type, item_id)),
         };
+        forget(&txn, item_type, item_id)?;
         match tombstone {
             Some(tombstone) => {
                 apply::apply_page(
@@ -175,7 +179,6 @@ pub(crate) fn apply_delete_wins(
                     now_ms,
                     Some(clock_device),
                 )?;
-                forget(&txn, item_type, item_id)?;
             }
             None => eprintln!(
                 "memry-core: push: {item_type}:{item_id} answered {} with no signed delete or attested marker, kept",
@@ -207,4 +210,73 @@ fn sqlite(error: rusqlite::Error) -> StorageError {
 
 fn failed(what: String) -> StorageError {
     StorageError::Failed { what }
+}
+
+/// The remembered-marker fallback of [`apply_delete_wins`]. A wave reaches it
+/// only when the reconcile remembers a marker after [`apply_kept_marker`] ran
+/// for the item, so it is driven here directly.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::{Db, open_data, test_support::temp_dir};
+    use crate::sync::outbox::Change;
+
+    /// A live task `t1` held at `cursor`, edited locally, and a clockless
+    /// marker at cursor 9 the reconcile remembered for it.
+    fn kept_row(label: &str, cursor: i64) -> (Db, crate::storage::test_support::TempDir) {
+        let dir = temp_dir(label);
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        db.call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                         clock, updated_at)
+                 VALUES ('task', 't1', '{}', 'full', ?1, '{\"device-b\":3}', 1)",
+                [cursor],
+            )
+            .map_err(sqlite)?;
+            outbox::commit(conn, &Change::upsert("task", "t1"), 1, |_| Ok(()))?;
+            let marker = KeptMarker {
+                deleted_at: 1_700_000_000_000,
+                server_cursor: 9,
+                clock: None,
+            };
+            remember(conn, "task", "t1", &marker)
+        })
+        .expect("seed the kept row");
+        (db, dir)
+    }
+
+    /// `SYNC_DELETE_WINS` for `t1` with no attested marker in the by-id pull.
+    fn delete_wins_without_evidence(db: &Db) -> bool {
+        db.call_blocking(|conn| {
+            let rows = outbox::claim(conn, 2, 10)?;
+            let item = outbox::collapse_records(rows).remove(0);
+            apply_delete_wins(conn, &item, &[], None, "device-b", 2)
+        })
+        .expect("settle the delete-wins")
+    }
+
+    fn remembered(db: &Db) -> Option<KeptMarker> {
+        db.call_blocking(|conn| load(conn, "task", "t1"))
+            .expect("read the marker")
+    }
+
+    #[test]
+    fn a_remembered_marker_deletes_the_row_it_stands_for() {
+        let (db, _dir) = kept_row("delete-wins-kept", 5);
+        assert!(delete_wins_without_evidence(&db));
+        assert_eq!(remembered(&db), None);
+    }
+
+    /// C78.1: the server wrote the item after the marker (a re-create), so
+    /// the marker no longer stands for the row, as in [`apply_kept_marker`].
+    #[test]
+    fn a_remembered_marker_older_than_the_row_keeps_it_and_is_dropped() {
+        let (db, _dir) = kept_row("delete-wins-stale", 12);
+        assert!(
+            !delete_wins_without_evidence(&db),
+            "the newer row stays live"
+        );
+        assert_eq!(remembered(&db), None);
+    }
 }

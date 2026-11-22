@@ -29,7 +29,8 @@ use std::sync::Arc;
 
 use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::StorageError;
-use memry_core::protocol::account::{self, AccountCipher, AccountSealer};
+use memry_core::protocol::account::{self, AccountCipher, AccountSealer, DeviceDirectory};
+use memry_core::protocol::http::HttpClient;
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
 use memry_core::sync::outbox;
@@ -80,7 +81,7 @@ pub async fn push(cli: &Cli, vault: Option<&str>) -> Result<(), CliError> {
 
     // A `SYNC_DELETE_WINS` is checked by pulling the id: the signer
     // directory verifies its signed delete or attested marker (§5.8, #5406).
-    let directory = account::device_directory(&http).await?;
+    let directory = signer_directory(&http).await;
     let cipher = Arc::new(AccountCipher::new(vault_key.clone(), directory));
     let pull = PullLoop::new(http.clone(), db.clone(), Declaration::subscribed(), cipher)
         .with_vault(&vault)
@@ -196,6 +197,22 @@ pub fn format_push(outcome: &Outcome) -> String {
     out
 }
 
+/// The signer directory, or an empty one when it cannot be fetched: a push
+/// needs it only to verify a `SYNC_DELETE_WINS`, and with no signer known
+/// nothing verifies, so that row stays live (§5.8) and a signed record waits
+/// on its signer. Failing the whole push would park every other edit.
+async fn signer_directory(http: &HttpClient) -> DeviceDirectory {
+    account::device_directory(http)
+        .await
+        .unwrap_or_else(|error| {
+            eprintln!(
+                "memry-cli: push: the device directory could not be fetched ({error}); \
+                 a delete-wins answer keeps its row"
+            );
+            DeviceDirectory::default()
+        })
+}
+
 fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -206,6 +223,44 @@ fn now_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use memry_core::api::errors::TransportError;
+    use memry_core::protocol::http::ClientIdentity;
+    use memry_core::seams::transport::{
+        HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+    };
+
+    /// A server that answers every request `404`.
+    struct Down;
+
+    #[async_trait::async_trait]
+    impl Transport for Down {
+        async fn send(&self, _request: HttpRequest) -> Result<HttpResponse, TransportError> {
+            Ok(HttpResponse {
+                status: 404,
+                headers: Default::default(),
+                body: br#"{"error":"NOT_FOUND"}"#.to_vec(),
+            })
+        }
+
+        fn open_socket(
+            &self,
+            _request: SocketRequest,
+            _listener: Arc<dyn SocketListener>,
+        ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+            Err(TransportError::Failed {
+                what: "no socket".to_string(),
+            })
+        }
+    }
+
+    /// C78.2: a directory the server cannot serve leaves nothing verifiable,
+    /// and the push still runs.
+    #[tokio::test]
+    async fn a_failed_directory_fetch_yields_an_empty_directory_not_an_error() {
+        let identity = ClientIdentity::new("ios", "1.2.3").expect("a valid identity");
+        let http = HttpClient::new(Arc::new(Down), "https://sync.example", identity);
+        assert_eq!(signer_directory(&http).await, DeviceDirectory::default());
+    }
 
     fn outcome(gate: WriteGate) -> Outcome {
         Outcome {
