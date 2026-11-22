@@ -883,6 +883,45 @@ describe('runPackBootstrap', () => {
       expect(harness.state.get(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
     })
 
+    it('#given record packs #then their bytes are left to the pull that applies them', async () => {
+      // The pull counts every record it applies, packed ones included
+      // (pull-coordinator processPage); a second count here doubled them.
+      const recordBytes = vi.fn()
+      const { harness } = harnessWith([])
+      harness.deps.recordBytes = recordBytes
+      harness.deps.fetchPackPage = async () => ({
+        ...listResponse([
+          packSummary({ id: 'p-rec', itemKind: 'record', coverFrom: 0, coverThrough: 300 })
+        ]),
+        coverage: [{ itemKind: 'record', packedThrough: 300, coveredThrough: 300 }]
+      })
+      harness.deps.readRecordManifest = async () => ({
+        items: [
+          { id: 'task-1', type: 'task', version: 1, modifiedAt: 1, size: 1, serverCursor: 20 }
+        ],
+        complete: true
+      })
+      const meta = { operation: 'update', signature: 'sig', signerDeviceId: 'device-a' }
+      const blob = { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+      harness.packFiles.set(
+        'p-rec',
+        buildTestPack([
+          {
+            kind: 'record',
+            id: 'task:task-1',
+            sortKey: 20,
+            meta,
+            bytes: new TextEncoder().encode(JSON.stringify(blob))
+          }
+        ]).bytes
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(result.records?.apply.map(({ item }) => item.id)).toEqual(['task-1'])
+      expect(recordBytes).not.toHaveBeenCalledWith('records', expect.anything())
+    })
+
     it('#given an old server with no body manifest #then no packed update applies', async () => {
       const { harness } = harnessWith(null)
 

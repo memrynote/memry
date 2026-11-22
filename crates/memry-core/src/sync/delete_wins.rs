@@ -121,15 +121,7 @@ pub(crate) fn apply_kept_marker(
     });
     let deleted = stands && {
         let tombstone = marker.tombstone(item_type, item_id);
-        apply::apply_page(
-            &txn,
-            vec![tombstone],
-            Vec::new(),
-            now_ms,
-            Some(clock_device),
-        )?
-        .deleted
-            > 0
+        apply::apply_page(&txn, vec![tombstone], now_ms, Some(clock_device))?.deleted > 0
     };
     forget(&txn, item_type, item_id)?;
     if deleted {
@@ -168,13 +160,7 @@ pub(crate) fn apply_delete_wins(
         };
         match tombstone {
             Some(tombstone) => {
-                apply::apply_page(
-                    &txn,
-                    vec![tombstone],
-                    Vec::new(),
-                    now_ms,
-                    Some(clock_device),
-                )?;
+                apply::apply_page(&txn, vec![tombstone], now_ms, Some(clock_device))?;
                 forget(&txn, item_type, item_id)?;
             }
             None => eprintln!(
