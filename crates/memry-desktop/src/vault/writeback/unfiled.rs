@@ -136,7 +136,7 @@ impl Pass {
                     return Err(Outcome::Kept(Keep::DayWaits));
                 };
                 let rel = day_path_in(&config, date)
-                    .map_err(|error| Outcome::Failed(format!("the day's path: {error}")))?;
+                    .map_err(|error| Outcome::Broken(format!("the day's path: {error}")))?;
                 let taken =
                     lane.check_free(&rel).is_err() || root.join(&rel).symlink_metadata().is_ok();
                 if taken {
@@ -156,7 +156,7 @@ impl Pass {
                     .as_deref()
                     .filter(|folder| !folder.is_empty());
                 let rel = free_path(lane, root, root, &unfiled.title, folder)
-                    .map_err(|error| Outcome::Failed(format!("no path for the note: {error}")))?;
+                    .map_err(|error| Outcome::Broken(format!("no path for the note: {error}")))?;
                 let mut frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
                 with_aliases(&mut frontmatter, &unfiled.aliases);
                 // A `cover` property that is no cover is the user's; a remote cover never
@@ -171,7 +171,7 @@ impl Pass {
             }
         };
         let written =
-            written.map_err(|error| Outcome::Failed(format!("the frontmatter: {error}")))?;
+            written.map_err(|error| Outcome::Broken(format!("the frontmatter: {error}")))?;
         Ok((rel, written))
     }
 }
