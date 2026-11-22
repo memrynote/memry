@@ -1173,15 +1173,15 @@ also capped at 256 items by its subrequest budget
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
-kinds** (`packages/contracts/src/sync-api.ts:796-800`), below the 1,000 a
+kinds** (`packages/contracts/src/sync-api.ts:809-813`), below the 1,000 a
 released reader walks (§8.11). A writer rolls up before a new row would pass
 it; when a rollup cannot make room, the writer stops, and the rest of the vault
 stays on the tail. The server checks the cap before a build and again in the
 D1 batch that inserts the `pack_index` row: the insert commits only while the
 vault listed fewer than 999 packs before it, and the watermark moves only
-when that row exists (or past a snapshot tie it cannot roll in, §8.10). The build deletes its object only when its own row,
+when that row exists. The build deletes its object only when its own row,
 looked up by its id, is absent after the batch, so a listed row always has
-its object (`roomGuard`, `apps/sync-server/src/services/pack-list.ts:41-61`).
+its object (`roomGuard`, `apps/sync-server/src/services/pack-list.ts:37-57`).
 The cron backfill enqueues no build for a vault at the cap (`findBacklogVaults`,
 `apps/sync-server/src/services/pack-backfill.ts`) but enqueues each of its kinds
 above the bound, and a backfill message rolls up before it builds, so a capped
