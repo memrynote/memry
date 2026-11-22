@@ -1049,7 +1049,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:289`, `:378`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:284`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.
@@ -1078,11 +1078,6 @@ disjoint. A tag whose name happens to match a note id would otherwise purge that
 note's body, and the loss is **unrecoverable in practice**: this section leaves
 the server rows in place, so nothing reports an error and the device simply
 stops asking for them.
-
-**The untyped tombstone of §5.12.1 is the deliberate exception and purges
-unconditionally.** That is not id-shape inference either: an untyped delete
-marks _every_ row under that id whatever its type, so whatever owns the body
-rows is among the things being deleted.
 
 **Disposition of Q07.4: answered** (this section).
 
