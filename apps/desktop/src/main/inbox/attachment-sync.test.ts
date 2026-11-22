@@ -9,8 +9,10 @@ import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
+import { SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import { inboxAttachmentUploads, inboxItems } from '@memry/db-schema/schema/inbox'
 import { SyncServerError } from '@memry/sync-client/http-errors'
+import { TextInMediaFileError } from '../sync/attachment-errors'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 
 vi.mock('electron', () => ({ net: { fetch: vi.fn() } }))
@@ -145,6 +147,21 @@ describe('uploading a pending capture', () => {
     expect(row()?.attachmentId).toBeNull()
     expect(pending()).toEqual([])
     expect(effects.syncInboxUpdate).not.toHaveBeenCalled()
+  })
+
+  it('leaves a media file holding text local-only and tells the user why (#5415)', async () => {
+    capture()
+    io.uploadAttachment.mockRejectedValue(new TextInMediaFileError('Holds text'))
+
+    await reconcile()
+
+    expect(pending()).toEqual([])
+    expect(broadcast).toHaveBeenCalledWith(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+      noteId: ITEM,
+      diskPath: path.join(itemDir(), FILE),
+      error: 'Holds text',
+      reason: 'Holds text'
+    })
   })
 
   it('keeps the mark after a transient failure and uploads on the next pass', async () => {
