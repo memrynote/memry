@@ -172,9 +172,11 @@ impl Owed {
         matches!(self.walk, Walk::Failed | Walk::Ended)
     }
 
-    /// When the owed work is due; `None` while nothing is owed or the walk has not ended.
-    fn next(&self) -> Option<Instant> {
-        let owed = self.scan || self.links.is_some() || self.retype || !self.queue.is_empty();
+    /// When the owed work is due; `None` while nothing is owed or the walk has not ended. A
+    /// search reindex alone is not due while a first sync holds it (`first_sync`, #5409).
+    fn next(&self, first_sync: bool) -> Option<Instant> {
+        let links = self.links.is_some() && !first_sync;
+        let owed = self.scan || links || self.retype || !self.queue.is_empty();
         (self.walked() && owed).then(|| self.due.unwrap_or_else(Instant::now))
     }
 
@@ -190,7 +192,9 @@ impl Owed {
                 self.queue.extend(ids);
                 self.scan |= scan;
             }
-            Ok(pass) if pass.unread.is_empty() && self.links.is_none() => self.failures = 0,
+            Ok(pass) if pass.unread.is_empty() && (self.links.is_none() || pass.held) => {
+                self.failures = 0;
+            }
             Ok(pass) => {
                 tracing::warn!(
                     scope = "note_index",
@@ -282,8 +286,12 @@ impl Indexer {
             ..Owed::default()
         };
         let mut waiting: Vec<(Progress, Reply)> = Vec::new();
+        // The indexer holds its sender, so `changed` never ends while this runs.
+        let mut first_sync = self.first_sync.subscribe();
         while !cancel.is_cancelled() {
-            if owed.walked() && !waiting.is_empty() {
+            // An asked reindex stays pending while a first sync runs, which holds its search
+            // reindex (#5409): its answer says the search is current.
+            if owed.walked() && !waiting.is_empty() && !self.first_sync.is_running() {
                 // A reindex reports through its own callback, which refreshes the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
@@ -298,7 +306,7 @@ impl Indexer {
                     });
                 }
             }
-            let next = owed.next();
+            let next = owed.next(self.first_sync.is_running());
             let wake = tokio::time::Instant::from_std(next.unwrap_or_else(Instant::now));
             tokio::select! {
                 biased;
@@ -328,6 +336,8 @@ impl Indexer {
                     }
                     Err(RecvError::Closed) => return,
                 },
+                // A first sync that ended makes a held reindex due.
+                _ = first_sync.changed() => {}
                 () = tokio::time::sleep_until(wake), if next.is_some() => {
                     let carried = std::mem::take(&mut owed.report);
                     let step = |step| report(OpenBuild::Step(step));
@@ -426,7 +436,14 @@ impl Indexer {
                 announce,
             )
         });
-        // The sweep mints for every note, a later pass for the files it read.
+        // The sweep mints for every note, a later pass for the files it read. A pass a first
+        // sync held mints nothing, and the reindex run once it ended reads no file: it owes the
+        // sweep (#5409).
+        if let Ok(pass) = &outcome
+            && pass.held
+        {
+            owed.sweep = true;
+        }
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
@@ -514,7 +531,28 @@ mod tests {
             written: Vec::new(),
             learned: false,
             reindexed: false,
+            held: false,
         })
+    }
+
+    /// A search reindex a first sync held stays owed with no backoff, and is due once the first
+    /// sync ended (#5409).
+    #[test]
+    fn a_held_reindex_stays_owed_and_is_due_once_the_first_sync_ended() {
+        let mut owed = Owed {
+            links: Some(LinkChanges::default()),
+            walk: Walk::Ended,
+            ..Owed::default()
+        };
+        let mut held = finished(&[]);
+        if let Ok(pass) = &mut held {
+            pass.held = true;
+        }
+        owed.settle(BTreeSet::new(), false, &held);
+        assert_eq!(owed.failures, 0);
+        assert!(owed.links.is_some() && !owed.scan && owed.queue.is_empty());
+        assert_eq!(owed.next(true), None, "not due while the first sync runs");
+        assert!(owed.next(false).is_some(), "due once it ended");
     }
 
     /// A pass that finished, a reindex's included, starts the next backoff from the first step.
