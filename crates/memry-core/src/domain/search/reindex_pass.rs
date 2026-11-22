@@ -71,7 +71,6 @@ pub enum Step {
 }
 
 /// One reindex pass, planned and then worked in batches.
-#[derive(Debug)]
 pub struct ReindexPass {
     version: i64,
     full: bool,
@@ -84,6 +83,9 @@ pub struct ReindexPass {
     next: usize,
     /// The `(resume point, notes watermark)` this pass expects to find, raw.
     expect: (Option<String>, Option<String>),
+    /// Loaded at the first batch and again after a batch settled changed names: reading every
+    /// name per batch would cost a 17k-note vault seconds over a pass.
+    names: Option<WikiNames>,
     done: Reindexed,
 }
 
@@ -140,6 +142,7 @@ impl ReindexPass {
             notes,
             next: 0,
             expect,
+            names: None,
             done: Reindexed {
                 full,
                 ..Reindexed::default()
@@ -158,8 +161,11 @@ impl ReindexPass {
         stop: &dyn Fn() -> bool,
     ) -> Result<Step, StorageError> {
         // The wiki names changed since the last batch get their lookup keys back, so a link
-        // lookup reads only its matches again (`wiki_target`).
-        settle_name_keys(data)?;
+        // lookup reads only its matches again (`wiki_target`). Only the reindex settles them,
+        // so a batch that settled none sees the names the last one loaded.
+        if settle_name_keys(data)? > 0 {
+            self.names = None;
+        }
         let transaction = nested_tx::begin(index).map_err(failed)?;
         let found = (
             meta_raw(&transaction, RESUME_KEY)?,
@@ -183,7 +189,10 @@ impl ReindexPass {
         let started = Instant::now();
         let mut batch = BTreeSet::new();
         if self.next < self.notes.len() {
-            let names = WikiNames::load(data)?;
+            let names = match &mut self.names {
+                Some(names) => &*names,
+                None => &*self.names.insert(WikiNames::load(data)?),
+            };
             while self.next < self.notes.len()
                 && batch.len() < BATCH_NOTES
                 && (batch.is_empty() || started.elapsed() < BATCH_TIME)
@@ -194,7 +203,7 @@ impl ReindexPass {
                 let id = &self.notes[self.next];
                 index_note(
                     data,
-                    &names,
+                    names,
                     &transaction,
                     id,
                     now_ms,
@@ -205,7 +214,7 @@ impl ReindexPass {
                 self.next += 1;
             }
             if !self.full {
-                super::links::reresolve(&names, &transaction, &batch, &mut self.done.links)?;
+                super::links::reresolve(names, &transaction, &batch, &mut self.done.links)?;
             }
         }
 
