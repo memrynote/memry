@@ -164,12 +164,10 @@ describe('planRecordPacks', () => {
 
   it('rebuilds entries, splitting the identity at the first colon', async () => {
     const held = [{ pack, handle: handleOf([{ id: 'folder_config:a:b', sortKey: 7, meta }]) }]
-    const plan = await planRecordPacks(
-      held,
-      coverage,
-      async () => ({ items: [{ ...row('a:b', 7), type: 'folder_config' }], complete: true }),
-      () => {}
-    )
+    const plan = await planRecordPacks(held, coverage, async () => ({
+      items: [{ ...row('a:b', 7), type: 'folder_config' }],
+      complete: true
+    }))
     expect(plan?.apply.map(({ item }) => [item.type, item.id])).toEqual([['folder_config', 'a:b']])
     expect(plan?.tailStart).toBe(100)
   })
@@ -186,15 +184,10 @@ describe('planRecordPacks', () => {
         ])
       }
     ]
-    const plan = await planRecordPacks(
-      held,
-      coverage,
-      async () => ({
-        items: [row('ok', 10), row('no-meta', 40), row('bad-blob', 60)],
-        complete: true
-      }),
-      () => {}
-    )
+    const plan = await planRecordPacks(held, coverage, async () => ({
+      items: [row('ok', 10), row('no-meta', 40), row('bad-blob', 60)],
+      complete: true
+    }))
     expect(plan?.tailStart).toBe(39)
     expect(plan?.apply.map(({ item }) => item.id)).toEqual(['ok'])
     // Above the tail start: the tail serves bad-blob.
@@ -203,30 +196,18 @@ describe('planRecordPacks', () => {
 
   it('does not trust the packs when the manifest stopped short or failed', async () => {
     const held = [{ pack, handle: handleOf([{ id: 'task:ok', sortKey: 10, meta }]) }]
-    const short = await planRecordPacks(
-      held,
-      coverage,
-      async () => ({ items: [], complete: false }),
-      () => {}
-    )
-    const failed = await planRecordPacks(
-      held,
-      coverage,
-      async () => null,
-      () => {}
-    )
+    const short = await planRecordPacks(held, coverage, async () => ({
+      items: [],
+      complete: false
+    }))
+    const failed = await planRecordPacks(held, coverage, async () => null)
     expect(short).toBeNull()
     expect(failed).toBeNull()
   })
 
   it('reads no manifest when coverage reaches nothing', async () => {
     const readManifest = vi.fn()
-    const plan = await planRecordPacks(
-      [{ pack, handle: handleOf([]) }],
-      undefined,
-      readManifest,
-      () => {}
-    )
+    const plan = await planRecordPacks([{ pack, handle: handleOf([]) }], undefined, readManifest)
     expect(plan).toBeNull()
     expect(readManifest).not.toHaveBeenCalled()
   })
