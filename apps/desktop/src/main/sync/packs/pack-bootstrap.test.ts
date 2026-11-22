@@ -620,6 +620,62 @@ describe('runPackBootstrap', () => {
       expect(resumed.state.get(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR)).toBe('100')
     })
 
+    it('#given a document in two packs #then the older pack is not complete until its own documents ran', async () => {
+      const controller = new AbortController()
+      const harness = makeHarness({
+        fetchPackPage: async () =>
+          listResponse([
+            packSummary({ id: 'p-new', maxCursor: 200 }),
+            packSummary({ id: 'p-old', maxCursor: 100 })
+          ]),
+        signal: controller.signal
+      })
+      const snap = (id: string) => ({
+        id,
+        bytes: snapshotBytes(id),
+        meta: { sequenceNum: 1, revision: id }
+      })
+      harness.packFiles.set('p-new', buildTestPack([snap('note-a'), snap('note-x')]).bytes)
+      // note-a is p-old's last-listed document (dead bytes, protocol 08 §8.8).
+      harness.packFiles.set('p-old', buildTestPack([snap('note-y'), snap('note-a')]).bytes)
+      const originalEmit = harness.deps.emit
+      harness.deps.emit = (channel, data) => {
+        originalEmit(channel, data)
+        if ((data as { processedItems: number }).processedItems >= 1) controller.abort()
+      }
+
+      await runPackBootstrap(harness.deps)
+
+      expect(harness.docs.has('note-y')).toBe(false)
+      // note-y never ran, so p-old's cursor must not be claimed.
+      expect(harness.state.get(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR)).toBeUndefined()
+    })
+
+    it('#given a snapshot pack with no usable entry #then it completes and the watermark passes it', async () => {
+      const harness = makeHarness({
+        fetchPackPage: async () =>
+          listResponse([
+            packSummary({ id: 'p-new', maxCursor: 200 }),
+            packSummary({ id: 'p-old', maxCursor: 100 })
+          ])
+      })
+      harness.packFiles.set(
+        'p-new',
+        buildTestPack([
+          { id: 'note-1', bytes: snapshotBytes('note-1'), meta: { sequenceNum: 1, revision: 'a' } }
+        ]).bytes
+      )
+      // No freshness token: nothing in it can be applied.
+      harness.packFiles.set(
+        'p-old',
+        buildTestPack([{ id: 'note-2', bytes: snapshotBytes('note-2') }]).bytes
+      )
+
+      await runPackBootstrap(harness.deps)
+
+      expect(harness.state.get(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR)).toBe('200')
+    })
+
     it('#given a persisted watermark #then covered packs are not downloaded again', async () => {
       const harness = makeHarness({
         fetchPackPage: async () =>
@@ -716,7 +772,7 @@ describe('runPackBootstrap', () => {
       snapshot: revision ? { revision, sequenceNum: 4 } : null
     })
 
-    const harnessWith = (manifest: ReturnType<typeof manifestDoc>[] | null) => {
+    const harnessWith = (manifest: ReturnType<typeof manifestDoc>[] | null | 'short') => {
       const reads: string[] = []
       const harness = makeHarness({
         fetchPackPage: async () =>
@@ -726,7 +782,8 @@ describe('runPackBootstrap', () => {
           ]),
         readManifest: async () => {
           reads.push(harness.downloaded.join(','))
-          return manifest && new Map(manifest.map((doc) => [doc.noteId, doc]))
+          if (manifest === 'short' || manifest === null) return manifest
+          return new Map(manifest.map((doc) => [doc.noteId, doc]))
         }
       })
       harness.packFiles.set(
@@ -838,6 +895,17 @@ describe('runPackBootstrap', () => {
       expect(harness.docs.has('note-2')).toBe(false)
       expect(harness.watermarks.has('note-2')).toBe(false)
       expect(result.updatesApplied).toBe(0)
+    })
+
+    it('#given a manifest read that stopped short on a server with the route #then no packed body applies', async () => {
+      const { harness } = harnessWith('short')
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(harness.docs.size).toBe(0)
+      expect(harness.watermarks.size).toBe(0)
+      expect(result.entriesApplied).toBe(0)
+      expect(harness.state.get(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR)).toBeUndefined()
     })
 
     it('#given a floor above packed updates #then they are never applied', async () => {

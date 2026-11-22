@@ -382,9 +382,11 @@ under the same revision, each one above the manifest `floor` and exactly the cur
 entries for one sequence with different digests disable that document's packed updates. An update
 verifies against its `signerDeviceId` key only. The walk stops at the first gap, a failed read or
 a failed verify, and no watermark is written while the doc holds structs whose dependencies it
-never received, so the item routes fill the rest. With no manifest (a server before #5232 answers
-404, or a read that stopped short) desktop applies packed snapshots under the old rule and no
-packed update. Record packs stay on `POST /sync/pull`.
+never received, so the item routes fill the rest. When a server before #5232 answers the first
+manifest page 404, desktop applies packed snapshots under the old rule and no packed update. A read
+that stops short on a server with the route applies no packed body at all (§8.11). A snapshot pack
+counts as applied for the resume watermark only once every usable document it holds has run.
+Record packs stay on `POST /sync/pull`.
 
 ## Coverage Semantics a Client Must Respect
 
