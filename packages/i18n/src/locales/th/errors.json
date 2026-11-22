@@ -63,7 +63,8 @@
     "downloadProgressFailed": "ดึงความคืบหน้าการดาวน์โหลดไม่สำเร็จ",
     "exceedsMaxSize": "ไฟล์ใหญ่เกินไป: {size} เกินขีดจำกัด {limit}",
     "exceedsPlanLimit": "ไฟล์ใหญ่เกินกว่าที่แผนอนุญาต: {size} เกิน {limit}",
-    "emptyFile": "ไม่สามารถอัปโหลดไฟล์ว่างได้"
+    "emptyFile": "ไม่สามารถอัปโหลดไฟล์ว่างได้",
+    "textInMediaFile": "ไฟล์นี้มีข้อความแทนสื่อตามที่ชื่อไฟล์ระบุ"
   },
   "crdt": {
     "persistenceDegradedTitle": "อุปกรณ์นี้ไม่ได้เก็บประวัติการแก้ไขไว้",

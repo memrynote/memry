@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Impossible de récupérer la progression du téléchargement",
     "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
     "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}",
-    "emptyFile": "Impossible d'envoyer un fichier vide"
+    "emptyFile": "Impossible d'envoyer un fichier vide",
+    "textInMediaFile": "Ce fichier contient du texte au lieu du média qu’indique son nom"
   },
   "crdt": {
     "persistenceDegradedTitle": "L'historique des modifications n'est pas conservé sur cet appareil",

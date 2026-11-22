@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
     "exceedsMaxSize": "Datoteka je prevelika: {size} premašuje ograničenje od {limit}",
     "exceedsPlanLimit": "Datoteka je veća nego što vaš plan dopušta: {size} premašuje {limit}",
-    "emptyFile": "Nije moguće prenijeti praznu datoteku"
+    "emptyFile": "Nije moguće prenijeti praznu datoteku",
+    "textInMediaFile": "Ova datoteka sadrži tekst umjesto medija koji navodi njezin naziv"
   },
   "crdt": {
     "persistenceDegradedTitle": "Povijest uređivanja ne sprema se na ovom uređaju",

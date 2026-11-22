@@ -63,7 +63,8 @@
     "downloadProgressFailed": "無法取得下載進度",
     "exceedsMaxSize": "檔案過大：{size} 超過 {limit} 的上限",
     "exceedsPlanLimit": "檔案超過你的方案允許的大小：{size} 超過 {limit}",
-    "emptyFile": "無法上傳空白檔案"
+    "emptyFile": "無法上傳空白檔案",
+    "textInMediaFile": "此檔案包含文字，而非其名稱所示的媒體"
   },
   "crdt": {
     "persistenceDegradedTitle": "這部裝置目前未保留編輯記錄",

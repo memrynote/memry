@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Latauksen edistymisen hakeminen epäonnistui",
     "exceedsMaxSize": "Tiedosto on liian suuri: {size} ylittää rajan {limit}",
     "exceedsPlanLimit": "Tiedosto on suurempi kuin tilauksesi sallii: {size} ylittää rajan {limit}",
-    "emptyFile": "Tyhjää tiedostoa ei voi lähettää"
+    "emptyFile": "Tyhjää tiedostoa ei voi lähettää",
+    "textInMediaFile": "Tämä tiedosto sisältää tekstiä nimensä mukaisen median sijaan"
   },
   "crdt": {
     "persistenceDegradedTitle": "Muokkaushistoriaa ei säilytetä tällä laitteella",

@@ -63,7 +63,8 @@
     "downloadProgressFailed": "تعذّر جلب تقدّم التنزيل",
     "exceedsMaxSize": "الملف كبير جدًا: {size} يتجاوز الحد المسموح به {limit}",
     "exceedsPlanLimit": "حجم الملف أكبر مما يسمح به اشتراكك: {size} يتجاوز {limit}",
-    "emptyFile": "لا يمكن رفع ملف فارغ"
+    "emptyFile": "لا يمكن رفع ملف فارغ",
+    "textInMediaFile": "يحتوي هذا الملف على نص بدلًا من الوسائط التي يدل عليها اسمه"
   },
   "crdt": {
     "persistenceDegradedTitle": "لا يتم الاحتفاظ بسجل التعديلات على هذا الجهاز",
