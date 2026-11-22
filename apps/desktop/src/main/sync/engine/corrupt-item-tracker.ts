@@ -4,7 +4,8 @@ import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import {
   applicablePurgedTombstones,
   parsePullItems,
-  purgedTombstoneToApplyItem
+  purgedTombstoneToApplyItem,
+  type PurgedTombstone
 } from './pull-envelope'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { withRetry } from '@memry/sync-client/retry'
@@ -156,12 +157,14 @@ export class CorruptItemTracker {
    * the envelope schema. An admitted purged tombstone (#2302) is `recovered`
    * as a delete, applied under the same clock guard as a signed one, unless
    * this device refuses it locally, which lands it in `skipped` with every ref
-   * the cooldown kept from being requested.
+   * the cooldown kept from being requested. A marker `skipMarker` names is
+   * not applied and counts as `missing`.
    */
   async refetch(
     failedItems: ItemRef[],
     token: string,
-    vaultKey: Uint8Array
+    vaultKey: Uint8Array,
+    skipMarker?: (marker: PurgedTombstone) => boolean
   ): Promise<RefetchResult> {
     const eligible = failedItems.filter((ref) => this.shouldRetry(ref))
     const total = emptyRefetchResult()
@@ -173,7 +176,8 @@ export class CorruptItemTracker {
       const chunk = await this.refetchChunk(
         eligible.slice(i, i + PULL_REQUEST_MAX_IDS),
         token,
-        vaultKey
+        vaultKey,
+        skipMarker
       )
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys of a RefetchResult-keyed record; keys are exactly keyof RefetchResult
       for (const key of Object.keys(total) as Array<keyof RefetchResult>) {
@@ -186,7 +190,8 @@ export class CorruptItemTracker {
   private async refetchChunk(
     eligible: ItemRef[],
     token: string,
-    vaultKey: Uint8Array
+    vaultKey: Uint8Array,
+    skipMarker?: (marker: PurgedTombstone) => boolean
   ): Promise<RefetchResult> {
     try {
       const pullResult = await withRetry(
@@ -232,7 +237,8 @@ export class CorruptItemTracker {
       const tombstones = await applicablePurgedTombstones(
         this.ctx.deps.db,
         parsed.purgedTombstones.filter((t) => requested.has(itemRefKey(t.type, t.id))),
-        this.resolveDeviceKey
+        this.resolveDeviceKey,
+        skipMarker
       )
       const blobMissing = parsed.blobMissing.filter((ref) =>
         requested.has(itemRefKey(ref.type, ref.id))

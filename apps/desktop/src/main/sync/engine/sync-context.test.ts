@@ -92,6 +92,8 @@ describe('SYNC_STATE_KEYS', () => {
         PACK_SEED_SETTLE_PENDING: 'packSeedSettlePending',
         // Additive (#5390): absent means no record-pack phase row is on record.
         RECORD_PACKS_APPLIED: 'recordPacksApplied',
+        // Additive (#5390): absent means rule 2 kept no row.
+        RECORD_PACKS_UNRESOLVED: 'recordPacksUnresolved',
         CURSOR_SKIP_REPAIR: 'cursorSkipRepair',
         SCHEMA_INVALID_ITEMS: 'schemaInvalidItems',
         // #2297: absent, `pending` or `done`; an install without it has not

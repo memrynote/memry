@@ -247,6 +247,11 @@ describe('PullCoordinator with record packs (#5390)', () => {
       apply: run1Ids.map((id, i) => ({ item: pullItem(id), sortKey: i + 3 })),
       listed: new Set([...run1Ids, 'task-stale'].map((id) => `task:${id}`))
     })
+    // Each row with the cursor of the write it holds: its pack sortKey, or the manifest's.
+    const run1Held = {
+      ...Object.fromEntries(run1Ids.map((id, i) => [`task:${id}`, i + 3])),
+      'task:task-stale': 8
+    }
     // Deleted elsewhere since run 1, their tombstones shed: the manifest omits them.
     const run2 = packedRecords({
       apply: [{ item: pullItem('task-kept'), sortKey: 6 }],
@@ -300,10 +305,7 @@ describe('PullCoordinator with record packs (#5390)', () => {
     it('redoes cleanly after a crash between the durable record and the first slice', async () => {
       const db = getDb()
       const engine = new SyncEngine(createMockDeps(db))
-      engine.setStateValue(
-        SYNC_STATE_KEYS.RECORD_PACKS_APPLIED,
-        JSON.stringify([...run1Ids, 'task-stale'].map((id) => `task:${id}`))
-      )
+      engine.setStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED, JSON.stringify(run1Held))
       const server = await serve(engine, 'none', answer)
       applyToDb(db)
 
@@ -326,7 +328,7 @@ describe('PullCoordinator with record packs (#5390)', () => {
       await engine.pull([], run1)
 
       expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual(
-        [...run1Ids, 'task-stale'].map((id) => `task:${id}`)
+        run1Held
       )
       expect(db.db.select().from(tasks).where(eq(tasks.id, 'task-gone')).get()).toBeDefined()
     })

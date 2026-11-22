@@ -22,6 +22,7 @@ import { SyncEngine } from '../engine'
 import * as bulkApply from '../bulk-apply'
 import { ItemApplier } from '../apply-item'
 import { SYNC_STATE_KEYS } from './sync-context'
+import type { PackedRecords } from '../packs/record-packs'
 import { createLogger } from '../../lib/logger'
 import { signPayload } from '../../crypto/signatures'
 
@@ -411,7 +412,10 @@ describe('purged tombstones and lost blobs on the desktop pull (#2302)', () => {
     seedRow(db, 'task', 'task-packed', { 'device-a': 1 })
     seedRow(db, 'task', 'task-local', { 'device-a': 1 })
     const engine = new SyncEngine(mockDeps(db))
-    engine.setStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED, JSON.stringify(['task:task-packed']))
+    engine.setStateValue(
+      SYNC_STATE_KEYS.RECORD_PACKS_APPLIED,
+      JSON.stringify({ 'task:task-packed': 3 })
+    )
     await servePage({
       deleted: ['task-packed', 'task-local'],
       pull: {
@@ -906,5 +910,171 @@ describe('#2408 attestation: a forged or missing attestation never deletes', () 
     expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('3')
     expect(localRow(db, 'task', 'task-1')).toBeDefined()
     expect(warn).not.toHaveBeenCalledWith('Pull: refused purged tombstones', expect.anything())
+  })
+})
+
+/**
+ * #5390, protocol 08 §8.10 Closing checks rule 2: a record-pack phase cut
+ * short leaves rows with no cursor. A rerun with no pack plan pulls from
+ * cursor 0, whose first page never carries a marker, so rule 2 runs over the
+ * recorded rows first, by id, with purged tombstones declared.
+ */
+describe('rule 2 over an interrupted record-pack phase (#5390)', () => {
+  const { getDb } = setupTestDb()
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const TAG = 'reading'
+  /** The tag's pack entry cursor: the write the row holds. */
+  const HELD = 4
+  /** As a current desktop pushes it: epoch milliseconds, mid-2025. */
+  const DELETED_AT_MS = 1_750_000_000_000
+  const MARKER_CLOCK: VectorClock = { 'device-2': 2 }
+
+  const packedTag: PackedRecords = {
+    apply: [{ item: signedItem(TAG, 'tag_definition') as never, sortKey: HELD }],
+    pullById: [{ id: 'task-elsewhere', type: 'task', serverCursor: 8 }],
+    tailStart: 10,
+    listed: new Set([`tag_definition:${TAG}`, 'task:task-elsewhere']),
+    settledBodies: new Set()
+  }
+
+  const marker = (serverCursor: number) => ({
+    id: TAG,
+    type: 'tag_definition',
+    deletedAt: DELETED_AT_MS,
+    clock: MARKER_CLOCK,
+    serverCursor,
+    signerDeviceId: SIGNER,
+    deleteAttestation: attestationFor({
+      id: TAG,
+      type: 'tag_definition',
+      clock: MARKER_CLOCK,
+      deletedAt: DELETED_AT_MS
+    })
+  })
+
+  /** The tag lands as the handler writes a pulled one: its payload's createdAt, the pull's clock. */
+  const landTags = (db: TestDatabaseResult) => {
+    const realApply = ItemApplier.prototype.apply
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation(function (
+      this: ItemApplier,
+      input,
+      page
+    ) {
+      if (input.operation === 'delete' || input.type !== 'tag_definition') {
+        return realApply.call(this, input, page)
+      }
+      db.db
+        .insert(tagDefinitions)
+        .values({
+          name: input.itemId,
+          color: 'blue',
+          clock: input.clock,
+          createdAt: '2025-01-01T00:00:00.000Z'
+        })
+        .onConflictDoNothing()
+        .run()
+      return 'applied'
+    })
+  }
+
+  /** Run 1: the tag lands, then the by-id pull is cancelled. No cursor is set. */
+  const interruptedPackRun = async (db: TestDatabaseResult): Promise<void> => {
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    vi.spyOn(http, 'postToServer').mockImplementation(async () => {
+      engine.requestCancel()
+      throw new DOMException('The operation was aborted.', 'AbortError')
+    })
+    await mockDecrypt()
+    landTags(db)
+
+    await expect(engine.pull([], packedTag)).resolves.toEqual({ status: 'incomplete' })
+
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    vi.restoreAllMocks()
+  }
+
+  /** Run 2: no pack plan, an honest server whose cursor-0 feed carries no marker. */
+  const rerunWithoutPacks = async (db: TestDatabaseResult, markerCursor: number) => {
+    const deps = mockDeps(db)
+    const engine = new SyncEngine(deps)
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    const postSpy = vi.spyOn(http, 'postToServer').mockImplementation(async (_path, body) => ({
+      items: [],
+      purgedTombstones: (body as { itemIds: string[] }).itemIds.includes(TAG)
+        ? [marker(markerCursor)]
+        : []
+    }))
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    return { deps, engine, getSpy, postSpy }
+  }
+
+  it('removes the row by its attested marker before the cursor-0 feed, and queues nothing', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+
+    const { deps, engine, getSpy, postSpy } = await rerunWithoutPacks(db, 9)
+
+    expect(postSpy).toHaveBeenCalledWith('/sync/pull', { itemIds: [TAG] }, expect.any(String))
+    expect(getSpy.mock.calls.map(([p]) => p)).toEqual(['/sync/changes?limit=500&inline=1'])
+    expect(localRow(db, 'tag_definition', TAG)).toBeUndefined()
+    expect(deps.queue.getPendingCount()).toBe(0)
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)).toBeUndefined()
+  })
+
+  it('keeps the record when the rule-2 pull stops short, and reads no feed page', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer')
+    vi.spyOn(http, 'postToServer').mockImplementation(async () => {
+      engine.requestCancel()
+      throw new DOMException('The operation was aborted.', 'AbortError')
+    })
+
+    await expect(engine.pull()).resolves.toEqual({ status: 'incomplete' })
+
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toEqual({
+      [`tag_definition:${TAG}`]: HELD,
+      'task:task-elsewhere': 8
+    })
+  })
+
+  it('keeps the row on a marker not past its held cursor, and records it unresolved', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+
+    const { deps, engine } = await rerunWithoutPacks(db, HELD)
+
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(deps.queue.getPendingCount()).toBe(0)
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)!)).toEqual([
+      `tag_definition:${TAG}`
+    ])
   })
 })

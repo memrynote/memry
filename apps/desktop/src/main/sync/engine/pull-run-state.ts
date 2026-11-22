@@ -19,8 +19,8 @@ export interface PullRunState {
   refused?: boolean
   /** The run started from cursor 0: it applies no purged tombstone (#2302), except to `packApplied`. */
   fromZero?: boolean
-  /** `type:id` of the rows the record-pack phase applied while LAST_CURSOR is unset (#5390). */
-  packApplied?: Set<string>
+  /** `type:id` → held cursor of the rows the record-pack phase applied (#5390); see `readPackApplied`. */
+  packApplied?: Map<string, number>
   /** Notes whose body record packs' bootstrap already settled: owed no body pull (#5390). */
   bodySettled?: ReadonlySet<string>
 }

@@ -11,6 +11,8 @@ import { sortByApplyOrder } from './apply-order'
 import { reportConflict } from './conflict-report'
 import type { CorruptItemTracker, ItemRef, RecoveredItem } from './corrupt-item-tracker'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
+import { markerNotPastHeld } from './packed-record-apply'
+import type { PullRunState } from './pull-run-state'
 import type { OrphanRef } from './orphan-repair'
 import { PendingSyncIntentError } from '../pending-sync-intent-error'
 import {
@@ -202,7 +204,7 @@ export async function refetchCorruptItems(
 export async function fetchMissingItems(
   deps: Pick<ItemRecoveryDeps, 'ctx' | 'tracker' | 'ledger'>,
   refs: readonly ItemRef[],
-  run: { vaultKey: Uint8Array; signal: AbortSignal },
+  run: Pick<PullRunState, 'vaultKey' | 'signal' | 'packApplied'>,
   apply: (items: DecryptedPullItem[]) => Promise<void>
 ): Promise<boolean> {
   const ordered = sortByApplyOrder([...refs])
@@ -217,7 +219,8 @@ export async function fetchMissingItems(
     const { recovered, invalid, blobMissing } = await deps.tracker.refetch(
       ordered.slice(i, i + PULL_REQUEST_MAX_IDS),
       token,
-      run.vaultKey
+      run.vaultKey,
+      (marker) => markerNotPastHeld(run, marker)
     )
     deps.ledger.record(invalid, 'envelope')
     deps.ledger.record(blobMissing, 'blob_missing')
