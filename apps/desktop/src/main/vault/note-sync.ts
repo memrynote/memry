@@ -676,6 +676,8 @@ export function moveFileInCache(_db: IndexDb, input: FileSyncInput): void {
     updateNoteMetadata(dataDb, input.id, {
       path: input.path,
       title: input.title,
+      fileType: input.fileType,
+      mimeType: input.mimeType,
       fileSize: input.fileSize,
       modifiedAt: input.modifiedAt.toISOString()
     })
