@@ -44,6 +44,7 @@ const h = vi.hoisted(() => ({
   /** The next file write waits here, after its writer read the file and built its bytes. */
   holdWrite: null as null | { reached: () => void; release: Promise<void> },
   indexDb: null as unknown,
+  ipc: new Map<string, (...args: unknown[]) => unknown>(),
   store: new Map<string, Uint8Array[]>(),
   contentHash: (_raw: string): string => ''
 }))
@@ -52,6 +53,9 @@ const h = vi.hoisted(() => ({
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-writeback-vault-'))
 
 vi.mock('electron', () => ({
+  ipcMain: {
+    handle: (channel: string, run: (...args: unknown[]) => unknown) => h.ipc.set(channel, run)
+  },
   app: { getPath: () => '/tmp', getVersion: () => '0.0.0' },
   BrowserWindow: { fromId: () => null, getAllWindows: () => [] }
 }))
@@ -149,27 +153,44 @@ vi.mock('../vault/file-ops', () => ({
 }))
 vi.mock('../vault/journal', async () => {
   const fileOps = await import('../vault/file-ops')
-  const { parseNote } = await import('../vault/frontmatter')
+  const { parseNote, serializeNote } = await import('../vault/frontmatter')
   const at = (date: string): string => `/vault/Journal/${date}.md`
-  const entryOf = (date: string, raw: string) => ({
-    id: `j${date}`,
-    date,
-    content: parseNote(raw).content,
-    tags: [],
-    aliases: [],
-    properties: {},
-    wordCount: 0,
-    characterCount: 0,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    modifiedAt: '2026-01-01T00:00:00.000Z'
-  })
-  const compose = async (date: string, content: string) => ({
-    entry: entryOf(date, content),
-    fileContent: content,
-    frontmatter: { date },
-    previousFile: h.files.get(at(date)) ?? null,
-    write: () => fileOps.atomicWrite(at(date), content)
-  })
+  const entryOf = (date: string, raw: string) => {
+    const { content, frontmatter } = parseNote(raw)
+    const { date: _date, tags, ...properties } = frontmatter
+    return {
+      id: `j${date}`,
+      date,
+      content,
+      tags: Array.isArray(tags) ? tags.map(String) : [],
+      aliases: [],
+      properties,
+      wordCount: 0,
+      characterCount: 0,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      modifiedAt: '2026-01-01T00:00:00.000Z'
+    }
+  }
+  // Tags and properties go into frontmatter only when there are any, so a
+  // body-only save writes the body as it did before #5472.
+  const compose = async (
+    date: string,
+    content: string,
+    tags: string[] = [],
+    _existing?: unknown,
+    properties: Record<string, unknown> = {}
+  ) => {
+    const frontmatter = { ...(tags.length > 0 ? { tags } : {}), ...properties }
+    const fileContent =
+      Object.keys(frontmatter).length > 0 ? serializeNote(frontmatter, content) : content
+    return {
+      entry: entryOf(date, fileContent),
+      fileContent,
+      frontmatter: { date, ...frontmatter },
+      previousFile: h.files.get(at(date)) ?? null,
+      write: () => fileOps.atomicWrite(at(date), fileContent)
+    }
+  }
   return {
     getJournalPath: at,
     getJournalRelativePath: (date: string) => `Journal/${date}.md`,
@@ -180,8 +201,8 @@ vi.mock('../vault/journal', async () => {
     readJournalFile: async (date: string) => (h.files.has(at(date)) ? { frontmatter: {} } : null),
     composeJournalEntryWrite: compose,
     // The save before D-DOC-FIRST, so this file runs against dfe3d4ae7b too.
-    writeJournalEntryWithContent: async (date: string, content: string) => {
-      const { write, ...result } = await compose(date, content)
+    writeJournalEntryWithContent: async (...args: Parameters<typeof compose>) => {
+      const { write, ...result } = await compose(...args)
       await write()
       return result
     },
@@ -264,6 +285,10 @@ import { atomicWrite } from '../vault/file-ops'
 import { landSourceRewrite } from '../vault/rename-link-rewrite'
 import { updateJournalEntry } from '../journal/update-entry'
 import { createJournalHandles } from '../agent/mcp/tools/journal-handles'
+import { updateJournalProperties } from '../journal/properties'
+import { registerJournalHandlers } from '../ipc/journal-handlers'
+import { JournalChannels } from '@memry/contracts/ipc-channels'
+import type { UpdateEntryInput } from '@memry/contracts/journal-api'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
 import { deleteNoteCache, getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import type { NewNoteCache, NoteCache } from '@memry/db-schema/schema/notes-cache'
@@ -716,5 +741,61 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
     expect.soft(onDisk).toContain('Remote.')
     expect.soft(count(md, 'First line')).toBe(1)
     expect.soft(md).not.toContain('Moved.')
+  })
+})
+
+// A tags or properties update writes only frontmatter and never moves the doc,
+// so the write-back's re-arm cannot see it. It waits for the running pass
+// instead of landing between its read and its write (#5472).
+describe('a tags or properties update between a journal write-back read and write (#5472)', () => {
+  beforeAll(registerJournalHandlers)
+  beforeEach(disarm)
+  const viaIpc = (input: UpdateEntryInput): unknown =>
+    h.ipc.get(JournalChannels.invoke.UPDATE_ENTRY)!({}, input)
+  const agent = (): ReturnType<typeof createJournalHandles> =>
+    createJournalHandles(h.indexDb as never)
+  const cases: Array<[string, (date: string) => unknown, string]> = [
+    ['IPC journal tags save', (date) => viaIpc({ date, tags: ['focus'] }), 'focus'],
+    [
+      'IPC journal properties save',
+      (date) => updateJournalProperties(date, { mood: 'calm' }),
+      'mood: calm'
+    ],
+    ['agent journal.update tags', (date) => agent().update({ date, tags: ['focus'] }), 'focus'],
+    [
+      'agent journal.update properties',
+      (date) => agent().update({ date, properties: { mood: 'calm' } }),
+      'mood: calm'
+    ]
+  ]
+  cases.forEach(([name, apply, kept], i) => {
+    it(`${name}: the file keeps it and the typed body`, async () => {
+      const date = `2026-05-1${i}`
+      const id = `j${date}`
+      const notePath = `Journal/${date}.md`
+      await seedNote(id, notePath, 'Morning.')
+      const doc = await restart(id)
+      Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+      let release = (): void => {}
+      const reached = new Promise<void>((resolve) => {
+        h.holdWrite = {
+          reached: resolve,
+          release: new Promise<void>((r) => {
+            release = r
+          })
+        }
+      })
+      const writeback = writebackNow(id, doc)
+      await reached
+      const update = Promise.resolve(apply(date))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      release()
+      await Promise.all([writeback, update])
+      await settle(id)
+      const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+      expect.soft(md).toContain('Morning. Typed.')
+      expect.soft(h.files.get(`/vault/${notePath}`)).toContain(kept)
+      expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed.')
+    })
   })
 })

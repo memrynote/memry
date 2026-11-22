@@ -832,8 +832,13 @@ document to its vault `.md` file and re-indexes it for search.
   the load no longer sits between the row and the write. A note runs one pass at a time: a
   pass armed while another converts waits for it, because one that started early would read
   the row from before the first pass's write, take that write for an outside edit and feed
-  it back into the doc over what the user typed since. The quit flush waits for running
-  passes too. That flush converts on main unless the worker is already up, because a worker
+  it back into the doc over what the user typed since. A tags or properties update of a note
+  or journal entry (the note and journal saves, the property editor, the agent's
+  `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
+  A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
+  so one that landed between a pass's read and its write was lost with nothing left to re-arm
+  the pass (#5472). A body update feeds the doc before its file and stays out of the queue.
+  The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and
   every seed of a note from its file, and exits after 3 minutes
