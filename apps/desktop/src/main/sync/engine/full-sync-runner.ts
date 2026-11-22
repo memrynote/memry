@@ -136,6 +136,13 @@ export class FullSyncRunner {
    */
   private pacedCrdtPullAbort: AbortController | null = null
   /**
+   * The pack phase's own controller (#5389). It runs before the first pull
+   * takes the lock, so `ctx.abortController` is null on a fresh device and a
+   * stop, cancel, pause, emergency wipe or vault switch reaches the phase only
+   * through `abortPackPhase()` (or `dispose()`), never cut short by a pause.
+   */
+  private packPhaseAbort: AbortController | null = null
+  /**
    * This engine queued the one-time note-body legacy sweep (#2297) and its
    * drain is outstanding; that drain, and only it, records the sweep done.
    */
@@ -268,6 +275,7 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
+    this.packPhaseAbort?.abort()
     // The telemetry window dies with the engine that armed it (#1835). Without
     // this the module-global window outlives the vault: `beginBootstrap` no-ops
     // while one is set, so the NEXT vault's bootstrap inherits this one's t0 and
@@ -370,6 +378,11 @@ export class FullSyncRunner {
     this.legacyNoteBodySweepQueued = false
   }
 
+  /** Ends a running pack phase at once, a pause included: nothing downloads or applies after it. */
+  abortPackPhase(): void {
+    this.packPhaseAbort?.abort()
+  }
+
   async run(): Promise<SyncRunOutcome> {
     // A paused device runs no part of a full sync (#3382). Its pull and push
     // were refused at the lock, yet the manifest check still fetched, reset
@@ -399,6 +412,9 @@ export class FullSyncRunner {
     // the session opened took the lock, read the whole feed outside this run,
     // and left the repair unrecorded (#5234).
     this.ctx.fullSyncActive = true
+    // Also before the first await: a stop, cancel, pause, wipe or vault switch
+    // while the session opens must reach the pack phase that follows (#5389).
+    const packAbort = isFreshDevice ? (this.packPhaseAbort = new AbortController()) : null
     try {
       if (isFreshDevice) {
         beginBootstrap('first_full_sync')
@@ -420,7 +436,7 @@ export class FullSyncRunner {
       /* telemetry only — sync proceeds */
     }
     let packedRecords: PackedRecords | null = null
-    if (isFreshDevice) {
+    if (packAbort) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
       // follows finds them already merged and issues no snapshot GETs for
@@ -429,7 +445,7 @@ export class FullSyncRunner {
       // byte-for-byte as it does on a deployment with no packs at all. It is
       // awaited rather than fired off because it writes into the same Y.Docs
       // and the same DBs the pull is about to touch.
-      packedRecords = await this.applyBootstrapPacks()
+      packedRecords = await this.applyBootstrapPacks(packAbort)
     }
     // A pull that delivered ran to the head of the feed unrefused (#1835): only
     // then can a vault sweep cover every note whose record exists (#2297).
@@ -719,8 +735,9 @@ export class FullSyncRunner {
    * way — nothing in this path writes `LAST_CURSOR`. Returns the reconciled
    * record packs the pull applies before it sets one (#5390).
    */
-  private async applyBootstrapPacks(): Promise<PackedRecords | null> {
+  private async applyBootstrapPacks(abort: AbortController): Promise<PackedRecords | null> {
     try {
+      if (abort.signal.aborted || this.disposed || this.stateManager.isPaused()) return null
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
@@ -836,7 +853,7 @@ export class FullSyncRunner {
         getStateValue: (key) => this.stateManager.getStateValue(key),
         setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
         emit: (channel, data) => this.ctx.deps.emitToRenderer(channel, data),
-        ...(this.ctx.abortController ? { signal: this.ctx.abortController.signal } : {}),
+        signal: abort.signal,
         pace: () => pacer.acquire()
       })
 
@@ -855,6 +872,8 @@ export class FullSyncRunner {
         error: error instanceof Error ? error.message : String(error)
       })
       return null
+    } finally {
+      if (this.packPhaseAbort === abort) this.packPhaseAbort = null
     }
   }
 

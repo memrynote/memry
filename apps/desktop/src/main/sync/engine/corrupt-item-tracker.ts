@@ -50,6 +50,12 @@ export interface RefetchResult {
    * caller must treat these as unknown, never as gone.
    */
   skipped: ItemRef[]
+  /**
+   * Never answered (#5390): on the cooldown, or the request failed (an HTTP
+   * error, an unreadable response, a cancel). Absence here says nothing about
+   * the row.
+   */
+  unanswered: ItemRef[]
 }
 
 const emptyRefetchResult = (): RefetchResult => ({
@@ -58,7 +64,8 @@ const emptyRefetchResult = (): RefetchResult => ({
   missing: [],
   invalid: [],
   blobMissing: [],
-  skipped: []
+  skipped: [],
+  unanswered: []
 })
 
 export class CorruptItemTracker {
@@ -106,6 +113,11 @@ export class CorruptItemTracker {
       this.corruptItems.set(key, { failedAt: Date.now(), attempts: 1 })
     }
     this.evictOverflow()
+  }
+
+  /** Lifts the cooldown on `refs`, so the next re-fetch requests them. */
+  forget(refs: readonly ItemRef[]): void {
+    for (const ref of refs) this.corruptItems.delete(itemRefKey(ref.type, ref.id))
   }
 
   clearExpired(): void {
@@ -168,7 +180,9 @@ export class CorruptItemTracker {
   ): Promise<RefetchResult> {
     const eligible = failedItems.filter((ref) => this.shouldRetry(ref))
     const total = emptyRefetchResult()
-    total.skipped.push(...failedItems.filter((ref) => !eligible.includes(ref)))
+    const cooling = failedItems.filter((ref) => !eligible.includes(ref))
+    total.skipped.push(...cooling)
+    total.unanswered.push(...cooling)
     if (eligible.length === 0) return total
 
     log.info('Attempting re-fetch for corrupt items', { count: eligible.length })
@@ -215,7 +229,7 @@ export class CorruptItemTracker {
       if (parsed.kind === 'not_envelope') {
         log.error('Re-fetch: invalid response')
         for (const ref of eligible) this.markFailed(ref)
-        return { ...emptyRefetchResult(), permanentFailures: eligible }
+        return { ...emptyRefetchResult(), permanentFailures: eligible, unanswered: eligible }
       }
 
       // The pull endpoint matches ids across ALL negotiated types, so an id
@@ -295,14 +309,15 @@ export class CorruptItemTracker {
         missing,
         invalid,
         blobMissing,
-        skipped: tombstones.refused.map(({ id, type }) => ({ id, type }))
+        skipped: tombstones.refused.map(({ id, type }) => ({ id, type })),
+        unanswered: []
       }
     } catch (error) {
       log.error('Re-fetch request failed', {
         error: error instanceof Error ? error.message : String(error)
       })
       for (const ref of eligible) this.markFailed(ref)
-      return { ...emptyRefetchResult(), permanentFailures: eligible }
+      return { ...emptyRefetchResult(), permanentFailures: eligible, unanswered: eligible }
     }
   }
 }

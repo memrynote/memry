@@ -23,6 +23,7 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import { syncState } from '@memry/db-schema/schema/sync-state'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -720,6 +721,30 @@ describe('checkManifestIntegrity', () => {
 
       expect(queue.dequeue(10).map((item) => item.itemId)).toEqual(['mine'])
       expect(unresolvedSet()).toBe(JSON.stringify(['tag_definition:reading']))
+    })
+
+    it('#then re-enqueues it once this device edited it, since its own write is what went missing', async () => {
+      testDb.db
+        .insert(syncDevices)
+        .values({
+          id: 'device-A',
+          name: 'This device',
+          platform: 'darwin',
+          appVersion: '1.0.0',
+          linkedAt: new Date(),
+          isCurrentDevice: true,
+          signingPublicKey: 'pk'
+        } as never)
+        .run()
+      testDb.db
+        .update(tagDefinitions)
+        .set({ clock: { 'device-B': 1, 'device-A': 1 } })
+        .where(eq(tagDefinitions.name, 'reading'))
+        .run()
+
+      await check([])
+
+      expect(queue.dequeue(10).map((item) => item.itemId)).toEqual(['reading', 'mine'])
     })
 
     it('#then retires it once the server lists it again', async () => {

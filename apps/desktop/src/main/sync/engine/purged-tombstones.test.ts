@@ -25,6 +25,7 @@ import { SYNC_STATE_KEYS } from './sync-context'
 import type { PackedRecords } from '../packs/record-packs'
 import { createLogger } from '../../lib/logger'
 import { signPayload } from '../../crypto/signatures'
+import { SyncServerError } from '@memry/sync-client/http-errors'
 
 vi.mock('electron', () => ({
   app: { getVersion: () => '1.0.0', getPath: () => '/tmp/memry-purged-tombstones-test' }
@@ -1062,6 +1063,47 @@ describe('rule 2 over an interrupted record-pack phase (#5390)', () => {
       [`tag_definition:${TAG}`]: HELD,
       'task:task-elsewhere': 8
     })
+  })
+
+  it('refuses on a server error in the rule-2 pull, keeps the record, and the next pull removes the row by its marker', async () => {
+    const db = getDb()
+    await interruptedPackRun(db)
+    const engine = new SyncEngine(mockDeps(db))
+    const http = await import('../http-client')
+    const getSpy = vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 12
+    })
+    const postSpy = vi
+      .spyOn(http, 'postToServer')
+      .mockRejectedValue(new SyncServerError('internal error', 500))
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    const failing = engine.pull()
+    await vi.runAllTimersAsync()
+    vi.useRealTimers()
+
+    await expect(failing).resolves.toEqual({ status: 'incomplete' })
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(localRow(db, 'tag_definition', TAG)).toBeDefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_UNRESOLVED)).toBeUndefined()
+    expect(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)!)).toHaveProperty(
+      `tag_definition:${TAG}`,
+      HELD
+    )
+
+    // The same engine asks again on the next pull, inside the re-fetch cooldown.
+    postSpy.mockImplementation(async (_path, body) => ({
+      items: [],
+      purgedTombstones: (body as { itemIds: string[] }).itemIds.includes(TAG) ? [marker(9)] : []
+    }))
+    await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
+
+    expect(localRow(db, 'tag_definition', TAG)).toBeUndefined()
+    expect(engine.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBe('12')
+    expect(engine.getStateValue(SYNC_STATE_KEYS.RECORD_PACKS_APPLIED)).toBeUndefined()
   })
 
   it('keeps the row on a marker not past its held cursor, and records it unresolved', async () => {

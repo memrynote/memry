@@ -38,6 +38,7 @@ import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { ItemRef } from './engine/corrupt-item-tracker'
 import { readUnresolved, writeUnresolved } from './engine/pack-unresolved'
+import { editedHere } from './engine/pack-row-modified'
 import { clearPendingDelete, isNoteKnownDeleted, listPendingDeletes } from './pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
@@ -184,7 +185,8 @@ export async function checkManifestIntegrity(
       listDeclinedRefs(deps.db).map((ref) => itemRefKey(ref.type, ref.id))
     )
     // #5390: rows a record-pack rerun kept with no delete evidence (§8.10
-    // rule 2). Their absence suggests a delete, and a create would reverse it.
+    // rule 2). Their absence suggests a delete, and a create would reverse it,
+    // until this device edits the row: then its own write is lost, not a delete.
     const unresolved = readUnresolved(deps.db)
 
     let reEnqueuedCount = 0
@@ -192,7 +194,10 @@ export async function checkManifestIntegrity(
       const serverRef = serverItemMap.get(itemRefKey(local.type, local.id))
 
       if (!serverRef) {
-        if (unresolved.has(itemRefKey(local.type, local.id))) {
+        if (
+          unresolved.has(itemRefKey(local.type, local.id)) &&
+          !editedHere(deps.db, local.type, local.id)
+        ) {
           log.info('Local item missing from server manifest was kept by the pack phase, skipping', {
             id: local.id,
             type: local.type

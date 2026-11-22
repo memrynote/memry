@@ -269,6 +269,10 @@ describe('CorruptItemTracker', () => {
           skipped: [
             { id: 'item-1', type: 'task' },
             { id: 'item-2', type: 'task' }
+          ],
+          unanswered: [
+            { id: 'item-1', type: 'task' },
+            { id: 'item-2', type: 'task' }
           ]
         })
       })

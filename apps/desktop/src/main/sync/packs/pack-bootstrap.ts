@@ -20,6 +20,7 @@ import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { getFromServer } from '../http-client'
 import { readManifestPages } from '../manifest-check'
 import { discardPackFile, downloadPackToFile } from './pack-download'
+import { curablePauseMs, downloadPacks, type PackFetch } from './pack-downloads'
 import { readBodyManifest } from './body-manifest'
 import {
   planDocument,
@@ -72,6 +73,11 @@ export const MAX_PARALLEL_PACK_DOWNLOADS = 3
 /** Clock-skew margin subtracted from a presigned URL's claimed expiry. */
 const PRESIGN_EXPIRY_SAFETY_SECONDS = 30
 
+const urlLive = (pack: PackSummary, nowSeconds: number): boolean =>
+  pack.url !== undefined &&
+  pack.expiresAt !== undefined &&
+  pack.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS > nowSeconds
+
 /** Floor between two re-lists for fresh presigned URLs, shared by all workers. */
 const PACK_RELIST_MIN_INTERVAL_SECONDS = 60
 
@@ -98,6 +104,8 @@ export interface PackBootstrapDeps {
   discard?: (filePath: string) => Promise<void>
   recordBytes?: (channel: 'records' | 'crdt' | 'attachments', byteCount: number) => void
   now?: () => number
+  /** The pack phase's pauses (`pack-downloads.ts`); production waits on a real timer. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>
   pageEntries?: number
   maxParallelDownloads?: number
 }
@@ -156,6 +164,12 @@ interface PackListing {
    * Contiguity is meaningless across that hole — see `commitPage`.
    */
   truncated: boolean
+  /**
+   * The list request failed the way the network may cure (§8.12), with the
+   * least pause it asks for: a re-list that may succeed after a pause. Any
+   * other failure (401, 404, 400) leaves it unset, so the pack is a gap.
+   */
+  lostMs?: number
   /** The first page's `record` coverage statement (§8.10), when it made one. */
   recordCoverage?: PackCoverage
 }
@@ -187,7 +201,8 @@ const listUsablePacks = async (
       log.debug('Pack list unavailable — using the item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
-      return { packs: [], truncated: false }
+      const lostMs = curablePauseMs(error, false)
+      return { packs: [], truncated: false, ...(lostMs === null ? {} : { lostMs }) }
     }
 
     const parsed = PackListResponseSchema.safeParse(raw)
@@ -333,7 +348,14 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
 
   const counters: ApplyCounters = { applied: 0, skipped: 0, failed: 0, updates: 0 }
   const completed = new Set<string>()
-  let relist: { at: number; pending: Promise<Map<string, PackSummary>> } | null = null
+  let relist: { at: number; pending: Promise<PackListing> } | null = null
+  // URL expiry is judged by the later of the wall clock and the phase's
+  // monotonic clock (§8.12), so a wall clock set back mid-phase cannot keep
+  // a dead URL live.
+  const startedWallMs = now()
+  const startedMonoMs = performance.now()
+  const clockSeconds = (): number =>
+    Math.floor(Math.max(now(), startedWallMs + performance.now() - startedMonoMs) / 1000)
   let packsApplied = 0
   let appliedThroughCursor: number | null = null
   // The listed item count until the packs are indexed, then the document count.
@@ -388,24 +410,25 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
    * re-list is shared by all workers and reused for a minute, so a whole queue
    * of aged-out packs costs one extra request, not one per pack.
    */
-  const freshUrl = async (pack: PackSummary): Promise<string | null> => {
-    const nowSeconds = Math.floor(now() / 1000)
-    const live = (candidate: PackSummary): boolean =>
-      candidate.url !== undefined &&
-      candidate.expiresAt !== undefined &&
-      candidate.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS > nowSeconds
-    if (live(pack)) return pack.url!
+  const relistNow = async (nowSeconds: number): Promise<PackListing> => {
+    // A token read now, not at phase start: a re-list can come after 450 s
+    // of pauses, past an access token's life.
+    const token = await deps.getAccessToken().catch(() => null)
+    return token ? listUsablePacks(deps, token, nowSeconds) : { packs: [], truncated: false }
+  }
+
+  const freshUrl = async (pack: PackSummary): Promise<PackSummary | { lostMs: number } | null> => {
+    const nowSeconds = clockSeconds()
+    if (urlLive(pack, nowSeconds)) return pack
 
     if (!relist || nowSeconds - relist.at >= PACK_RELIST_MIN_INTERVAL_SECONDS) {
-      relist = {
-        at: nowSeconds,
-        pending: listUsablePacks(deps, accessToken, nowSeconds).then(
-          (result) => new Map(result.packs.map((entry) => [entry.id, entry]))
-        )
-      }
+      relist = { at: nowSeconds, pending: relistNow(nowSeconds) }
     }
-    const refreshed = (await relist.pending).get(pack.id)
-    if (refreshed && live(refreshed)) return refreshed.url!
+    const listed = await relist.pending
+    const refreshed = listed.packs.find((entry) => entry.id === pack.id)
+    if (refreshed && urlLive(refreshed, nowSeconds)) return refreshed
+    // A re-list the network may cure keeps the pack lost for the next pause.
+    if (listed.lostMs !== undefined) return { lostMs: listed.lostMs }
 
     log.info('Pack URL expired and could not be re-signed — items fall back to item GETs', {
       packId: pack.id
@@ -413,27 +436,33 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     return null
   }
 
-  const fetchOne = async (pack: PackSummary): Promise<OpenedPack | null> => {
+  const fetchOne = async (pack: PackSummary): Promise<PackFetch<OpenedPack>> => {
     const filePath = path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
-    const url = await freshUrl(pack)
-    if (!url) return null
+    const signed = await freshUrl(pack)
+    if (!signed) return 'gap'
+    if ('lostMs' in signed) return signed
     try {
       await download({
-        url,
+        url: signed.url!,
         destPath: filePath,
         ...(deps.signal ? { signal: deps.signal } : {}),
         ...(deps.pace ? { pace: deps.pace } : {})
       })
     } catch (error) {
-      log.info('Pack transfer failed — items fall back to the item-granular path', {
-        packId: pack.id,
-        error: error instanceof Error ? error.message : String(error)
-      })
       await discard(filePath)
-      return null
+      const lostMs = deps.signal?.aborted
+        ? null
+        : curablePauseMs(error, !urlLive(signed, clockSeconds()))
+      log.info(
+        lostMs === null
+          ? 'Pack transfer failed — items fall back to the item-granular path'
+          : 'Pack transfer lost to the network — it downloads again after a pause',
+        { packId: pack.id, error: error instanceof Error ? error.message : String(error) }
+      )
+      return lostMs === null ? 'gap' : { lostMs }
     }
     try {
-      return { pack, handle: await open(filePath), filePath }
+      return { held: { pack, handle: await open(filePath), filePath } }
     } catch (error) {
       // Corrupt footer magic, wrong version, bad payload digest, truncated
       // file: the whole pack is discarded and every item in it stays on the
@@ -443,7 +472,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
         error: error instanceof Error ? error.message : String(error)
       })
       await discard(filePath)
-      return null
+      return 'gap'
     }
   }
 
@@ -456,19 +485,16 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
 
   emitProgress()
 
-  // Newest range first, bounded parallelism: workers pull from one shared
-  // cursor so the ordering survives concurrency.
-  const opened: Array<OpenedPack | null> = Array.from({ length: packs.length }, () => null)
-  let next = 0
-  const workers = Array.from({ length: Math.min(parallel, packs.length) }, async () => {
-    for (;;) {
-      if (deps.signal?.aborted) return
-      const index = next++
-      if (index >= packs.length) return
-      opened[index] = await fetchOne(packs[index])
-    }
+  // Newest range first, bounded parallelism, one pause owner (#5389).
+  const opened = await downloadPacks(packs, {
+    parallel,
+    fetchOne,
+    onPause: () => {
+      relist = null
+    },
+    ...(deps.signal ? { signal: deps.signal } : {}),
+    ...(deps.sleep ? { sleep: deps.sleep } : {})
   })
-  await Promise.all(workers)
 
   const held = opened.filter((entry): entry is OpenedPack => entry !== null)
   try {
@@ -477,14 +503,18 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     }
 
     // Read after the pack bytes are held, in this run (protocol 08 §8.4.3).
-    const manifest = await readManifest(accessToken, deps.signal ? { signal: deps.signal } : {})
+    // With a token read now: the pauses before it can outlive the first one.
+    const manifestToken = await deps.getAccessToken().catch(() => null)
+    const manifest = manifestToken
+      ? await readManifest(manifestToken, deps.signal ? { signal: deps.signal } : {})
+      : 'short'
     const recordHeld = held.filter(({ pack }) => pack.itemKind === 'record')
     const records =
       recordHeld.length > 0
         ? await planRecordPacks(
             recordHeld,
             listing.recordCoverage,
-            () => readRecordManifest(accessToken, deps.signal),
+            async () => (manifestToken ? readRecordManifest(manifestToken, deps.signal) : null),
             (byteCount) => recordBytes('records', byteCount)
           )
         : null
