@@ -864,6 +864,10 @@ that row's signed delete, or with a purged marker when the client declared
   the client refused (§5.14), MUST delete nothing and record nothing. It is not
   an error and it does not stop the page; a client SHOULD log it with the page
   cursor. A refused item never falls through to a delete by id.
+- The same rule holds for any id a client pulls because the server left it out,
+  such as a pack-held row the manifest reconcile finds unlisted (chapter 08
+  §8.10, Closing checks, rule 2): absence and silence are no evidence of a
+  delete.
 
 Desktop: `changes-page.ts:38` (`apps/desktop/src/main/sync/engine/changes-page.ts`)
 is the only read of `changes.deleted`, which joins the pull request, and only
@@ -873,7 +877,9 @@ and attested markers (`pull-coordinator.ts:908`) apply. Rust core page pull:
 ids and `:434` applies none. The core's first sync refs pass
 (`crates/memry-core/src/sync/first_sync.rs:429-435`) still records a bare
 tombstone (§5.12.2) for every `deleted` id; #5340 tracks moving it to this
-rule.
+rule. The core's manifest reconcile pulls each unlisted row by id
+(`crates/memry-core/src/sync/first_sync/reconcile.rs:100`), so only what
+that pull verifies deletes, and keeps and logs the rest (`reconcile.rs:118`).
 
 A client MUST NOT attempt to infer the type from the id shape: chapter 13 §13.6
 records that `tag_definition` ids are tag names and `folder_config` ids are
