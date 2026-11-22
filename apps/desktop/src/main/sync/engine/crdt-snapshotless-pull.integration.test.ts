@@ -200,6 +200,16 @@ describe('CRDT body pull against a real sync server', () => {
     return paced(() => pushCrdtSnapshot(noteId, encrypted, token))
   }
 
+  /** An update from a second, independent author: no struct of it waits on the first. */
+  const pushForeignUpdate = (noteId: string, text: string): Promise<unknown> => {
+    const doc = new Y.Doc()
+    doc.getText('body').insert(0, text)
+    const update = Buffer.from(
+      encryptCrdtUpdate(Y.encodeStateAsUpdate(doc), vaultKey, noteId, signing.privateKey)
+    ).toString('base64')
+    return paced(() => postToServer('/sync/crdt/updates', { noteId, updates: [update] }, token))
+  }
+
   /** `fullSyncActive` probes every chunk; outside one a small cold chunk is not probed. */
   const coordinatorOver = (provider: CrdtProvider, fullSyncActive = false): CrdtSyncCoordinator => {
     const ctx = {
@@ -362,6 +372,91 @@ describe('CRDT body pull against a real sync server', () => {
 
     expect(snapshotGets()).toEqual([noteId])
     expect(provider.text(noteId)).toBe('early. late.')
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
+  }, 60_000)
+
+  // #5477: the walk holds snapshot S1 as its baseline, and a peer's S2 prunes
+  // the updates between them. `tail.` comes from an independent author, so no
+  // pending struct flags the note: only the page's `snapshotMeta` can.
+  const fragments = ['base. ', 'mid. ', 'late. ', 'tail.']
+  it.each(['single', 'batch'] as const)(
+    'owes a %s walk whose held snapshot a newer peer snapshot replaces before the walk',
+    async (mode) => {
+      const noteId = `rebased-${mode}-${randomUUID().slice(0, 8)}`
+      await pushSnapshot(noteId, 'base. ')
+      await pushUpdate(noteId, 'mid. ')
+
+      afterResponse.hook = async (request) => {
+        if (request.method !== 'GET' || !request.path.startsWith('/sync/crdt/snapshot/')) return
+        afterResponse.hook = null
+        await pushSnapshot(noteId, 'late. ')
+        await pushForeignUpdate(noteId, 'tail.')
+      }
+
+      const provider = memoryProvider()
+      const coordinator = coordinatorOver(provider)
+      const pull = async (): Promise<boolean | undefined> =>
+        mode === 'single'
+          ? coordinator.pullCrdtForNote(noteId)
+          : coordinator.pullCrdtForNotes([noteId]).then(() => undefined)
+      requests.length = 0
+      let merged: boolean | undefined
+      try {
+        merged = await pull()
+      } finally {
+        afterResponse.hook = null
+      }
+
+      expect(merged).toBe(mode === 'single' ? false : undefined)
+      expect(provider.text(noteId)).not.toContain('late.')
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+      expect(coordinator.drainPendingPulls()).toEqual([noteId])
+
+      const second = await pull()
+
+      expect(second).toBe(mode === 'single' ? true : undefined)
+      expect(snapshotGets()).toEqual([noteId, noteId])
+      for (const text of fragments) expect(provider.text(noteId)).toContain(text)
+      expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
+    },
+    60_000
+  )
+
+  it('owes a note whose probe-matched snapshot a newer peer snapshot replaces before the walk', async () => {
+    const noteId = `rebased-probe-${randomUUID().slice(0, 8)}`
+    await pushSnapshot(noteId, 'base. ')
+    await pushUpdate(noteId, 'mid. ')
+    const provider = memoryProvider()
+    const coordinator = coordinatorOver(provider, true)
+    await coordinator.pullCrdtForNotes([noteId])
+    expect(provider.text(noteId)).toBe('base. mid. ')
+
+    // The probe proves S1 is the merged baseline and skips its GET; S2 lands
+    // before the walk and prunes `more.`.
+    await pushUpdate(noteId, 'more. ')
+    afterResponse.hook = async (request) => {
+      const body = request.body as { limit?: number } | undefined
+      if (request.path !== '/sync/crdt/updates/batch' || body?.limit !== 1) return
+      afterResponse.hook = null
+      await pushSnapshot(noteId, 'late. ')
+      await pushForeignUpdate(noteId, 'tail.')
+    }
+    requests.length = 0
+    try {
+      await coordinator.pullCrdtForNotes([noteId])
+    } finally {
+      afterResponse.hook = null
+    }
+
+    expect(snapshotGets()).toEqual([])
+    expect(provider.text(noteId)).not.toContain('late.')
+    expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
+    expect(coordinator.drainPendingPulls()).toEqual([noteId])
+
+    await coordinator.pullCrdtForNotes([noteId])
+
+    expect(snapshotGets()).toEqual([noteId])
+    for (const text of [...fragments, 'more. ']) expect(provider.text(noteId)).toContain(text)
     expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(false)
   }, 60_000)
 
