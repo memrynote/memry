@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Hindi makuha ang progreso ng pag-download",
     "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
     "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}",
-    "emptyFile": "Hindi mai-upload ang walang lamang file"
+    "emptyFile": "Hindi mai-upload ang walang lamang file",
+    "textInMediaFile": "Teksto ang laman ng file na ito sa halip na ang media na sinasabi ng pangalan nito"
   },
   "crdt": {
     "persistenceDegradedTitle": "Hindi itinatabi sa device na ito ang kasaysayan ng pag-edit",

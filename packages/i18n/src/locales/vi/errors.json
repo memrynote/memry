@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
-    "emptyFile": "Không thể tải lên tệp rỗng"
+    "emptyFile": "Không thể tải lên tệp rỗng",
+    "textInMediaFile": "Tệp này chứa văn bản thay vì nội dung đa phương tiện như tên tệp cho biết"
   },
   "crdt": {
     "persistenceDegradedTitle": "Lịch sử chỉnh sửa không được lưu trên thiết bị này",

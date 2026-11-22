@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Nu s-a putut prelua progresul descărcării",
     "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
     "exceedsPlanLimit": "Fișierul este mai mare decât permite planul: {size} depășește {limit}",
-    "emptyFile": "Nu se poate încărca un fișier gol"
+    "emptyFile": "Nu se poate încărca un fișier gol",
+    "textInMediaFile": "Acest fișier conține text în loc de conținutul media indicat de nume"
   },
   "crdt": {
     "persistenceDegradedTitle": "Istoricul editărilor nu este păstrat pe acest dispozitiv",

@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Nie udało się odczytać postępu pobierania",
     "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
     "exceedsPlanLimit": "Plik jest większy, niż pozwala twój plan: {size} przekracza {limit}",
-    "emptyFile": "Nie można przesłać pustego pliku"
+    "emptyFile": "Nie można przesłać pustego pliku",
+    "textInMediaFile": "Ten plik zawiera tekst zamiast multimediów wskazanych w jego nazwie"
   },
   "crdt": {
     "persistenceDegradedTitle": "Historia edycji nie jest przechowywana na tym urządzeniu",

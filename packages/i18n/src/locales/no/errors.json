@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grensen på {limit}",
     "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}",
-    "emptyFile": "Kan ikke laste opp en tom fil"
+    "emptyFile": "Kan ikke laste opp en tom fil",
+    "textInMediaFile": "Denne filen inneholder tekst i stedet for mediet navnet angir"
   },
   "crdt": {
     "persistenceDegradedTitle": "Redigeringsloggen lagres ikke på denne enheten",

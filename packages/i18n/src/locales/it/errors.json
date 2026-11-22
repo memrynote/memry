@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
-    "emptyFile": "Impossibile caricare un file vuoto"
+    "emptyFile": "Impossibile caricare un file vuoto",
+    "textInMediaFile": "Questo file contiene testo invece del contenuto multimediale indicato dal nome"
   },
   "crdt": {
     "persistenceDegradedTitle": "La cronologia delle modifiche non viene conservata su questo dispositivo",

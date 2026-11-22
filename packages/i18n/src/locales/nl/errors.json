@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",
     "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
     "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}",
-    "emptyFile": "Kan geen leeg bestand uploaden"
+    "emptyFile": "Kan geen leeg bestand uploaden",
+    "textInMediaFile": "Dit bestand bevat tekst in plaats van de media die de naam aangeeft"
   },
   "crdt": {
     "persistenceDegradedTitle": "De bewerkingsgeschiedenis wordt niet bewaard op dit apparaat",

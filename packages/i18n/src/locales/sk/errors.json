@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
     "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
     "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}",
-    "emptyFile": "Prázdny súbor sa nedá nahrať"
+    "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "textInMediaFile": "Tento súbor obsahuje text namiesto média, ktoré uvádza jeho názov"
   },
   "crdt": {
     "persistenceDegradedTitle": "História úprav sa na tomto zariadení neukladá",

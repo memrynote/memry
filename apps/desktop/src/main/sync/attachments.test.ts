@@ -12,7 +12,7 @@ import {
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError } from './attachment-errors'
+import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
 import type * as PromisesModule from 'node:fs/promises'
 
 let tmpDir: string
@@ -310,6 +310,19 @@ describe('AttachmentSyncService', () => {
       await expect(service.uploadAttachment('note-1', testFile)).rejects.toBeInstanceOf(
         EmptyAttachmentError
       )
+    })
+
+    it('refuses a media file that holds text, before any request (#5415)', async () => {
+      const testFile = path.join(tmpDir, 'Sunset.png')
+      await writeFile(testFile, '![Sunset](attachments/sunset.png)\n')
+
+      const mockFetch = createMockFetch(new Map())
+      const service = new AttachmentSyncService(createTestDeps(mockFetch))
+
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toBeInstanceOf(
+        TextInMediaFileError
+      )
+      expect(mockFetch).not.toHaveBeenCalled()
     })
 
     it('uploads every chunk without probing for server-side dedup', async () => {

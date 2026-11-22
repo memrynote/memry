@@ -1126,6 +1126,25 @@ across devices:
   each embedded vault file without an outbox row, the note's own folder
   included, gets one and uploads at once. Rows whose file was deleted are
   dropped before the online and token gate, so that happens offline too.
+- **Files that can never upload** — an empty file, and a media file that
+  holds text instead of media, fail the same way on every retry, so the upload
+  refuses them before any request and its caller drops the queued row.
+  "Text instead of media" means the extension has a known signature (SVG and
+  unknown types are never judged), the leading bytes do not match it, and the
+  file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the
+  CRDT write-back wrote a binary note's doc as markdown over its downloaded
+  file, and uploading those bytes would replace the blob on every device.
+- **Restoring overwritten binary notes** — at each sync runtime start, after
+  the download re-drive, every binary note with an attachment id and a file
+  that holds text by the rule above gets the same download request a pull
+  sends. The blob lands by atomic rename. A failed download keeps its
+  `attachment_download_failures` row and is re-driven on its backoff. A file
+  the user replaced with real media fails the rule and is never touched
+  (#5415). When a restore lands and the file still holds text, the server blob
+  is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
+  a warning logs the count, and the restore never requests that attachment
+  again. In on-demand download mode, or with no access token, the request is
+  released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a

@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Nem sikerült lekérni a letöltés állapotát",
     "exceedsMaxSize": "A fájl túl nagy: {size} meghaladja a(z) {limit} korlátot",
     "exceedsPlanLimit": "A fájl nagyobb, mint amit a csomagja megenged: {size} meghaladja a(z) {limit} méretet",
-    "emptyFile": "Üres fájl nem tölthető fel"
+    "emptyFile": "Üres fájl nem tölthető fel",
+    "textInMediaFile": "Ez a fájl szöveget tartalmaz a nevében jelzett média helyett"
   },
   "crdt": {
     "persistenceDegradedTitle": "A szerkesztési előzmények nem maradnak meg ezen az eszközön",

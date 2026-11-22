@@ -63,7 +63,8 @@
     "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",
     "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
     "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}",
-    "emptyFile": "Tidak dapat memuat naik fail kosong"
+    "emptyFile": "Tidak dapat memuat naik fail kosong",
+    "textInMediaFile": "Fail ini mengandungi teks dan bukan media yang dinyatakan oleh namanya"
   },
   "crdt": {
     "persistenceDegradedTitle": "Sejarah edit tidak disimpan pada peranti ini",

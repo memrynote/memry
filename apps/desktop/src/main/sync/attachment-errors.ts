@@ -1,11 +1,32 @@
 /**
- * A zero-byte file has nothing to upload and will fail identically on every
- * retry, so the outbox drops its row instead of backing off and retrying (#3414).
- * A later write re-queues the path through the body-save or backfill route.
+ * An upload that fails identically on every retry, so callers drop its queued
+ * row instead of backing off and retrying. A later write re-queues the path
+ * through the body-save or backfill route.
  */
-export class EmptyAttachmentError extends Error {
+export class UnsendableAttachmentError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnsendableAttachmentError'
+  }
+}
+
+/** A zero-byte file has nothing to upload (#3414). */
+export class EmptyAttachmentError extends UnsendableAttachmentError {
   constructor(message: string) {
     super(message)
     this.name = 'EmptyAttachmentError'
+  }
+}
+
+/**
+ * A media file (by extension) that holds text instead of media: before #5414
+ * the CRDT write-back serialized a binary note's doc over its downloaded file.
+ * Uploading it would replace the note's blob with markdown on every device, so
+ * it is refused, and `binary-note-restore` downloads the blob back (#5415).
+ */
+export class TextInMediaFileError extends UnsendableAttachmentError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TextInMediaFileError'
   }
 }
