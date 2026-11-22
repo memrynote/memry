@@ -629,13 +629,23 @@ before step 05 (#5228) sends, leaves packed updates unusable (chapter 08 §8.4.3
 (`packages/sync-client/src/pull/crdt-pull.ts:70-76`).
 
 **Exception: the body manifest read.** Each page of `GET /sync/crdt/manifest`
-retries a `429`, waiting the `retry-after` it carries up to one 60 s window,
-or 2, 4 and 8 s when the answer carries none, because the read is one
-bounded walk that answers nothing unless every page is read (chapter 08
-§8.4.3), and no poll comes back for it
-(`crates/memry-core/src/protocol/http/retry.rs:88-93`, `:102-104`,
-`crates/memry-core/src/protocol/http.rs:284`, `:293`, `:471-474`,
-`crates/memry-core/src/sync/body_pull/manifest.rs:42`, #5349).
+retries a `429`, because the read is one bounded walk that answers nothing
+unless every page is read (chapter 08 §8.4.3), and no poll comes back for it
+(#5349). The two clients differ only in how long they wait:
+
+- **Rust core.** Up to 3 retries per page. Each waits the `retry-after` the
+  answer carries, as whole seconds, and the read stops when that wait passes
+  60 s. When the answer carries no `retry-after`, or one that is not whole
+  seconds, the waits are 2, 4 and 8 s
+  (`crates/memry-core/src/protocol/http/retry.rs:4`, `:13`, `:42-46`, `:88-93`,
+  `:102-104`, `crates/memry-core/src/protocol/http.rs:284`, `:293`,
+  `:463-466`, `:471-474`,
+  `crates/memry-core/src/sync/body_pull/manifest.rs:42`).
+- **Desktop.** No retry count. Each wait is the larger of 1 s and the
+  `retry-after`, read as seconds or as an HTTP date, and the read stops when
+  a wait would end more than 60 s after the page's first `429`
+  (`apps/desktop/src/main/sync/packs/body-manifest.ts:9`, `:52-58`,
+  `packages/sync-client/src/http-errors.ts:55-65`).
 
 **CRDT rate limits are per device, not per account**, because body sync is
 device-local work (`apps/sync-server/src/routes/sync.ts:761-811`):
