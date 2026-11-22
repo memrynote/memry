@@ -11,10 +11,12 @@ type ReadOnlyReason = 'stuck' | 'offline' | 'signed-out' | 'vault-locked'
  * read-only (#5290, D-UNMERGED-OPEN-EXIT-2): once the body cannot be merged
  * for now (`stuck`), while the session has ended (`signed-out`, #5342), while
  * no vault key can be read (`vault-locked`), or while the device is offline.
- * Main answers `signed-out` once, at open, so a window that is signed in again
- * goes back to the loading state until the owed pull merges. Otherwise the
- * wait is short and the loading state shows. The file is never written into the doc,
- * so nothing is typed beside a server body that merges later.
+ * Main sends `signed-out` at open or when the session ends, and does not take
+ * it back, so a window that is signed in again goes back to the loading state
+ * until the owed pull merges. Main sends `merging` once the vault key reads
+ * again. Otherwise the wait is short and the loading state shows. The file is
+ * never written into the doc, so nothing is typed beside a server body that
+ * merges later.
  */
 export function useRemoteBodyReadOnly(
   remoteWait: CrdtRemoteBodyWait | null

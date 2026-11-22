@@ -996,7 +996,7 @@ The non-envelope case is the exception because the fault is on the server.
 tombstone: an id in `deleted` with no verified delete records nothing. The Rust
 core still honours a bare tombstone an older build filed: it is a `sync_items`
 row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
-before an apply (`crates/memry-core/src/sync/apply.rs:174`). The rest of this
+before an apply (`crates/memry-core/src/sync/apply.rs:172`). The rest of this
 section describes those rows.
 
 §5.12.1 establishes that a `deleted[]` entry is an **id with no

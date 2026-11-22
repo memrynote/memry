@@ -280,8 +280,9 @@ export class SimulatedServer {
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
 
-    for (const stmt of statements) {
-      await db.prepare(stmt).run()
-    }
+    // One batch is one round trip to workerd. A run() per statement made about
+    // a hundred, which on a busy host pushed `start()` past the 30 s beforeAll
+    // timeout in whichever suite booted then.
+    await db.batch(statements.map((stmt) => db.prepare(stmt)))
   }
 }
