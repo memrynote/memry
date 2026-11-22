@@ -15,7 +15,7 @@
 //! | a failed re-pull counts unless the transport failed           | #5413            |
 //! | a verified record skipped as older ends the wait              | §5.8, #5413      |
 //! | a refusal an older build recorded is re-pulled once adopted   | #5413            |
-//! | a settings edit queued over a verified delete never undeletes | §5.8, #5413      |
+//! | an edit queued over a verified delete never undeletes        | §5.8, #5413      |
 //! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
 //! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
 
@@ -38,7 +38,7 @@ use memry_core::protocol::envelope::{self, RecordMaterial, RecordRequest, SyncOp
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
 use memry_core::storage::Db;
-use memry_core::storage::repositories::sync_items;
+use memry_core::storage::repositories::{Change as RepoChange, sync_items};
 use memry_core::sync::outbox::{self, Change};
 use rusqlite::params;
 use serde_json::{Value as Json, json};
@@ -230,40 +230,37 @@ async fn a_delete_from_a_device_the_list_did_not_hold_yet_applies_on_the_next_pa
 }
 
 #[tokio::test]
-async fn a_settings_edit_is_held_while_its_unverified_delete_waits() {
-    let [page, pulled] = deleted_page(
-        &["editor"],
-        vec![delete_by_new_device("settings", "editor")],
-    );
+async fn an_edit_is_held_while_its_unverified_delete_waits() {
+    let [page, pulled] = deleted_page(&["editor"], vec![delete_by_new_device("filter", "editor")]);
     let transport = FakeTransport::new(vec![devices(false), page, pulled]);
     let (vault, side, session) = vault("held-edit", transport.clone());
     side.call_blocking(|conn| {
         conn.execute(
             "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
                                      updated_at)
-             VALUES ('settings', 'editor', ?1, 'full', 1, 1)",
+             VALUES ('filter', 'editor', ?1, 'full', 1, 1)",
             params![r#"{"fontSize":14}"#],
         )
         .map_err(failed)?;
-        outbox::commit(conn, &Change::upsert("settings", "editor"), 1, |_| Ok(())).map(|_| ())
+        outbox::commit(conn, &Change::upsert("filter", "editor"), 1, |_| Ok(())).map(|_| ())
     })
-    .expect("an edited settings row");
+    .expect("an edited filter row");
     let sync = vault.sync(session);
 
-    // The server takes any settings write over a delete, so sending the edit
+    // The server takes any filter write over a delete, so sending the edit
     // now would bring the item back on every device. The script answers no
     // `/sync/push`: an attempt panics the transport.
     let summary = sync.sync_now().await.expect("the first pass");
     assert_eq!(summary.pending, 1, "the edit stays queued: {summary:?}");
-    assert!(!deleted(&side, "settings", "editor"));
+    assert!(!deleted(&side, "filter", "editor"));
 
     push_due(&side);
     transport.push(devices(true));
-    transport.push(re_pulled("settings", "editor"));
+    transport.push(re_pulled("filter", "editor"));
     transport.push(empty_changes());
     let summary = sync.sync_now().await.expect("the second pass");
 
-    assert!(deleted(&side, "settings", "editor"));
+    assert!(deleted(&side, "filter", "editor"));
     assert_eq!(
         summary.pending, 0,
         "the delete settles the edit: {summary:?}"
@@ -371,39 +368,42 @@ fn re_pulled(item_type: &str, id: &str) -> Scripted {
 
 #[tokio::test]
 async fn a_local_edit_after_the_refusal_neither_ends_the_wait_nor_wins() {
-    let id = "synced_settings";
-    let [page, pulled] = deleted_page(&[id], vec![delete_by_new_device("settings", id)]);
+    let id = "editor";
+    let [page, pulled] = deleted_page(&[id], vec![delete_by_new_device("filter", id)]);
     let transport = FakeTransport::new(vec![devices(false), page, pulled]);
     let (vault, side, session) = vault("edit-after", transport.clone());
     side.call_blocking(|conn| {
         conn.execute(
             "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
                                      updated_at)
-             VALUES ('settings', 'synced_settings', '{}', 'full', 1, 1)",
+             VALUES ('filter', 'editor', '{}', 'full', 1, 1)",
             [],
         )
         .map_err(failed)
         .map(|_| ())
     })
-    .expect("a settings row");
+    .expect("a filter row");
     let sync = vault.sync(session);
     sync.sync_now().await.expect("the refusing pass");
 
     // The edit clears the row's corrupt flag; the refusal must outlive it.
     side.call_blocking(|conn| {
-        memry_core::domain::settings::set(conn, "theme", json!("dark"), "server-device-1", 2)
-            .map(|_| ())
+        let name = [("name", RepoChange::Set(json!("dark")))];
+        outbox::commit(conn, &Change::upsert("filter", id), 2, |tx| {
+            sync_items::apply_local_edit_in(tx, "filter", id, &name, 2).map(|_| ())
+        })
+        .map(|_| ())
     })
-    .expect("a local settings edit");
+    .expect("a local filter edit");
 
     let first = transport.call_count();
     transport.push(devices(true));
-    transport.push(re_pulled("settings", id));
+    transport.push(re_pulled("filter", id));
     transport.push(empty_changes());
     sync.sync_now().await.expect("the second pass");
 
     assert_eq!(urls(&transport)[first + 1], "/sync/pull");
-    assert!(deleted(&side, "settings", id));
+    assert!(deleted(&side, "filter", id));
     never_pushed_over_the_delete(&transport, id);
 }
 
@@ -553,14 +553,11 @@ async fn a_refusal_an_older_build_recorded_is_re_pulled() {
 }
 
 /// The general case: a verified delete on the feed applies over a row whose
-/// edit is still queued. The server takes any settings write over a delete,
+/// edit is still queued. The server takes any filter write over a delete,
 /// so the edit must not go out (VERIFY-5426).
 #[tokio::test]
-async fn a_settings_edit_queued_over_a_verified_delete_never_undeletes_it() {
-    let [page, pulled] = deleted_page(
-        &["editor"],
-        vec![delete_by_new_device("settings", "editor")],
-    );
+async fn an_edit_queued_over_a_verified_delete_never_undeletes_it() {
+    let [page, pulled] = deleted_page(&["editor"], vec![delete_by_new_device("filter", "editor")]);
     // The script answers no `/sync/push`: an attempt panics the transport.
     let transport = FakeTransport::new(vec![devices(true), page, pulled]);
     let (vault, side, session) = vault("edit-under-delete", transport.clone());
@@ -568,17 +565,17 @@ async fn a_settings_edit_queued_over_a_verified_delete_never_undeletes_it() {
         conn.execute(
             "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
                                      updated_at)
-             VALUES ('settings', 'editor', ?1, 'full', 1, 1)",
+             VALUES ('filter', 'editor', ?1, 'full', 1, 1)",
             params![r#"{"fontSize":14}"#],
         )
         .map_err(failed)?;
-        outbox::commit(conn, &Change::upsert("settings", "editor"), 1, |_| Ok(())).map(|_| ())
+        outbox::commit(conn, &Change::upsert("filter", "editor"), 1, |_| Ok(())).map(|_| ())
     })
-    .expect("an edited settings row");
+    .expect("an edited filter row");
 
     let summary = vault.sync(session).sync_now().await.expect("the pass");
 
-    assert!(deleted(&side, "settings", "editor"));
+    assert!(deleted(&side, "filter", "editor"));
     assert_eq!(
         summary.pending, 0,
         "the delete settles the edit: {summary:?}"
@@ -596,11 +593,11 @@ async fn a_queued_edit_of_a_deleted_row_is_never_sent() {
         conn.execute(
             "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
                                      updated_at, deleted_at)
-             VALUES ('settings', 'editor', ?1, 'full', 1, 1, 5)",
+             VALUES ('filter', 'editor', ?1, 'full', 1, 1, 5)",
             params![r#"{"fontSize":14}"#],
         )
         .map_err(failed)?;
-        outbox::commit(conn, &Change::upsert("settings", "editor"), 1, |_| Ok(())).map(|_| ())
+        outbox::commit(conn, &Change::upsert("filter", "editor"), 1, |_| Ok(())).map(|_| ())
     })
     .expect("a deleted row with a queued edit");
 

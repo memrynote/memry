@@ -576,6 +576,13 @@ blob is **one sync item** with `itemId = 'synced_settings'`
 (`packages/sync-client/src/settings-sync.ts:171`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
+**The settings item is never deleted.** A receiver MUST skip a pulled
+`settings` tombstone: the item stays live, its queued edit stays queued, and
+later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
+`crates/memry-core/src/sync/apply.rs:255-263`, #5433). A core that marked it
+deleted on an earlier build clears that delete on the item's next merged write
+(`crates/memry-core/src/domain/settings.rs:217-225`).
+
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
 

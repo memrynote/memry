@@ -167,6 +167,7 @@ pub fn apply(
         ("settings", Change::Set(Value::Object(settings))),
         ("fieldClocks", Change::Set(Value::Object(field_clocks))),
     ];
+    revive(&tx)?;
     let merged = sync_items::apply_local_edit_in(
         &tx,
         SETTINGS_ITEM_TYPE,
@@ -201,6 +202,23 @@ fn ensure_item(tx: &Connection, now_ms: i64) -> Result<(), StorageError> {
             sync_items::PAYLOAD_STATE_FULL,
             now_ms
         ],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Clears a delete an earlier build applied to the settings row (#5433).
+///
+/// Settings are never deleted now (`sync::apply` skips a pulled settings
+/// delete, as desktop does), so a deleted row can only be that build's. Left
+/// deleted, every later edit would retire unsent (`push::settle::undeletes`).
+/// Called by both writers before they merge, so the payload the delete kept
+/// comes back live with the edit, and the projection with it.
+pub(crate) fn revive(tx: &Connection) -> Result<(), StorageError> {
+    tx.execute(
+        "UPDATE sync_items SET deleted_at = NULL
+         WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NOT NULL",
+        params![SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID],
     )
     .map_err(failed)?;
     Ok(())
