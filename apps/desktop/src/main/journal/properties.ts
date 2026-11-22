@@ -14,14 +14,16 @@ import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { getJournalEntryByDate } from '../notes/store'
 import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite } from '../sync/writeback-baseline'
-import { writeNoteInOrder } from '../vault/note-write'
+import { takeWritebackTurn } from '../sync/crdt-writeback'
+import { resolveJournalEntryId } from './create-entry'
 
 /**
- * Property writes of one journal entry run one at a time, so a patch reads
- * the file after every earlier write instead of overwriting it.
+ * Property writes of one journal entry take its write-back turn, so a patch
+ * reads the file after every earlier write instead of overwriting it, and a
+ * pass never writes back the properties it read before this write (#5472).
  */
 const queueJournalWrite = <T>(date: string, write: () => Promise<T>): Promise<T> =>
-  writeNoteInOrder(`journal:${date}`, write)
+  takeWritebackTurn(resolveJournalEntryId(date), write)
 
 /** Replaces a journal entry's properties with `properties`. */
 export function updateJournalProperties(
