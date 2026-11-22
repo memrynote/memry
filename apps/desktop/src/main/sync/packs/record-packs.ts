@@ -76,8 +76,7 @@ export const recordCoverageEnd = (
  * entry of a type this build does not declare is skipped and exempt.
  */
 export const readRecordEntries = async (
-  handles: readonly PackFileHandle[],
-  onBytes: (byteCount: number) => void
+  handles: readonly PackFileHandle[]
 ): Promise<{ records: PackedRecord[]; unusable: number[] }> => {
   const records: PackedRecord[] = []
   const unusable: number[] = []
@@ -93,7 +92,6 @@ export const readRecordEntries = async (
       if (split > 0 && meta.success) {
         try {
           const bytes = await handle.readEntry(entry)
-          onBytes(bytes.byteLength)
           const blob: unknown = JSON.parse(decoder.decode(bytes))
           const parsed = RecordPullItemResponseSchema.safeParse({
             ...meta.data,
@@ -185,8 +183,7 @@ export const reconcileRecords = (
 export const planRecordPacks = async (
   held: ReadonlyArray<{ pack: PackSummary; handle: PackFileHandle }>,
   coverage: PackCoverage | undefined,
-  readManifest: () => Promise<RecordManifestRead | null>,
-  onBytes: (byteCount: number) => void
+  readManifest: () => Promise<RecordManifestRead | null>
 ): Promise<Omit<PackedRecords, 'settledBodies'> | null> => {
   const reach = recordCoverageEnd(
     held.map(({ pack }) => pack),
@@ -208,10 +205,8 @@ export const planRecordPacks = async (
     }
     manifest.push(parsed.data)
   }
-  const { records, unusable } = await readRecordEntries(
-    held.map(({ handle }) => handle),
-    onBytes
-  )
+  // No byte count here: the pull counts each record it applies, packed or not.
+  const { records, unusable } = await readRecordEntries(held.map(({ handle }) => handle))
   // §8.4.2, Record tail: at most sortKey - 1 of every unusable entry.
   let tailStart = reach
   for (const sortKey of unusable) tailStart = Math.min(tailStart, Math.max(0, sortKey - 1))

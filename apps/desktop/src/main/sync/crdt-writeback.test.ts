@@ -281,7 +281,7 @@ describe('crdt writeback', () => {
     expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
       { kind: 'index-db' },
       expect.objectContaining({ id: 'note-1', path: 'notes/Existing.md' }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
     // The body changed here, so `content` rides along — that is what lets an
     // open editor pick up a remote edit instead of showing stale text.
@@ -608,7 +608,7 @@ describe('crdt writeback', () => {
     expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
       { kind: 'index-db' },
       expect.objectContaining({ parsedContent: 'updated markdown {++added++} {--deleted--}' }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
   })
 
@@ -644,7 +644,7 @@ describe('crdt writeback', () => {
         path: 'notes/Real Title.md',
         title: 'Real Title'
       }),
-      { isNew: false }
+      { isNew: false, source: 'sync' }
     )
   })
 
