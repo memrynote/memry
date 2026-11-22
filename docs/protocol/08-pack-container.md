@@ -316,9 +316,8 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   all requested after the reader holds the pack bytes, in the same run. A
   document absent from a body manifest read has no body row and floor 0 at
   its page's read, so its packed updates are unusable and it goes to the
-  routes of chapter 07 §7.2. A page answered `429` is asked again after its
-  `retry-after`, up to one 60 s window, keeping the pages already read
-  (chapter 07 §7.10, #5349). A read that stops short (any page failing, a
+  routes of chapter 07 §7.2. A page answered `429` is asked again, keeping
+  the pages already read, as chapter 07 §7.10 states per client (#5349). A read that stops short (any page failing, a
   malformed page) answers nothing: the reader reads `floor` from
   `POST /sync/crdt/updates/batch` for every document it holds packed bodies
   of. **A server without the route** (every server before #5232) answers it
