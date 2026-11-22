@@ -93,6 +93,24 @@ export function findBootstrapDb(roots, known) {
   return fresh[0] ?? null
 }
 
+/** How long after the start mark a run with no new vault database warns. */
+export const NO_DB_WARN_MS = 60_000
+
+/**
+ * The warning for a run whose start mark is `startMs` and that has found no new
+ * vault database by `nowMs`, or null. A vault folder the run reuses already
+ * holds its data.db, so `findBootstrapDb` skips it and t_bodies would read "not
+ * reached" with no reason given.
+ */
+export function noBootstrapDbWarning(startMs, nowMs) {
+  if (nowMs - startMs < NO_DB_WARN_MS) return null
+  return (
+    `bench:bootstrap: no new vault data.db ${Math.round((nowMs - startMs) / 1000)} s after the ` +
+    'start mark; a reused vault folder that already holds data.db is not measured. ' +
+    'Remove it and run again.'
+  )
+}
+
 /**
  * When every record was fetched, read off the proxy's timeline: the feed head
  * is the first `GET /sync/changes` page after `startMs` without more, and the
