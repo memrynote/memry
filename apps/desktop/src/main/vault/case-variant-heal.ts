@@ -29,6 +29,14 @@ import { emitNoteEvent } from './notes-io'
 
 const logger = createLogger('CaseVariantHeal')
 
+interface NoteRow {
+  id: string
+  path: string
+  clock: unknown
+  syncedAt: string | null
+  modifiedAt: string
+}
+
 /**
  * Groups of rows whose paths differ only in case, and within each group the
  * rows that name the same file as the row the disk spells, so are its copies.
@@ -69,18 +77,22 @@ function caseVariantCopies<T extends { path: string }>(
  * body (#5297).
  *
  * The hash only says what the file held when it was indexed. A row with a
- * change still waiting to sync can hold text the kept note lacks, so it stays
- * until the change is sent, and a later open drops it.
+ * change still waiting to sync can hold text or fields the kept note lacks, so
+ * it stays until the change is sent, and a later open drops it. A record change
+ * saved but not yet queued is the one `recoverDirtyNotes` re-pushes: a clock
+ * and no sync since the last change.
  */
 function isNoteCopy(
-  noteId: string,
+  note: NoteRow,
   keptId: string,
   dataDb: ReturnType<typeof getDatabase>,
   indexDb: ReturnType<typeof getIndexDatabase>
 ): boolean {
-  const hash = getNoteCacheById(indexDb, noteId)?.contentHash
+  const hash = getNoteCacheById(indexDb, note.id)?.contentHash
   if (!hash || hash !== getNoteCacheById(indexDb, keptId)?.contentHash) return false
-  return !readLocalBodyFacts(dataDb, noteId).waiting
+  const unsyncedRecord =
+    note.clock !== null && (note.syncedAt === null || note.modifiedAt > note.syncedAt)
+  return !unsyncedRecord && !readLocalBodyFacts(dataDb, note.id).waiting
 }
 
 /**
@@ -118,11 +130,20 @@ export async function healCaseVariantRows(
   const indexDb = getIndexDatabase()
   const caseVariants = caseVariantCopies(
     vaultPath,
-    dataDb.select({ id: noteMetadata.id, path: noteMetadata.path }).from(noteMetadata).all()
+    dataDb
+      .select({
+        id: noteMetadata.id,
+        path: noteMetadata.path,
+        clock: noteMetadata.clock,
+        syncedAt: noteMetadata.syncedAt,
+        modifiedAt: noteMetadata.modifiedAt
+      })
+      .from(noteMetadata)
+      .all()
   )
   const noteCopies: Array<{ id: string; path: string }> = []
   for (const { copy: note, kept } of caseVariants) {
-    if (!isNoteCopy(note.id, kept.id, dataDb, indexDb)) {
+    if (!isNoteCopy(note, kept.id, dataDb, indexDb)) {
       logger.warn('Kept a case twin that shares its file with another note', { id: note.id })
       continue
     }
