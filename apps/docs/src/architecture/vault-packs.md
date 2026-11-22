@@ -405,7 +405,9 @@ a _smaller_ `note_id` sorts below the watermark, and a build before #5310 passed
 group it could not roll in. Each such row is in no pack, which costs every fresh device one
 `GET /sync/crdt/snapshot/:id`. The cron finds vaults holding a snapshot row at or below the
 watermark that no pack's `documents` holds, and that vault's snapshot backfill chain packs those
-rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). The pack starts
+rows once nothing is left above the watermark (`services/pack-snapshot-heal.ts`). A message that
+healed and runs out of budget sends the next hop, so a remainder of several packs drains in one
+chain rather than one pack per tick. The pack starts
 at the row's second, or at the free `min_cursor` below it, and the watermark does not move. Its
 commit holds only while no listed pack holds any of its documents, so two runs never pack a row
 twice, and only while the watermark is the one it read, so a kind reset in between leaves the rows
@@ -514,7 +516,10 @@ touch.
    slice, verify it against the index's per-entry digest, decrypt, verify the Ed25519 signature,
    and seed the Y.Doc — with `skipSeed`, so the doc is not first seeded from local markdown, which
    would give it a client id and a history the packed baseline never saw. On success the note's
-   snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET.
+   snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET. The
+   decrypt and signature checks run on the sync crypto worker, one batch per document (the
+   snapshot under the device key that verified the last one, then every update under its named
+   signer's key), and on the main thread only when the worker is not running or rejects.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
 6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are

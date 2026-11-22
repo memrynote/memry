@@ -39,7 +39,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
-import { isBinaryFileType, type FileType } from '@memry/shared/file-types'
+import { binaryRecordFields } from '../sync/item-handlers/binary-note-record'
 import { updateNoteMetadata } from '@memry/storage-data'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'
@@ -72,7 +72,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   assertNoteWritable(id, existing.path)
 
   const cached = getNoteCacheById(db, id)
-  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+  const binary = cached ? binaryRecordFields(cached) : null
 
   const oldPath = toAbsolutePath(existing.path)
   const dir = path.dirname(oldPath)
@@ -86,18 +86,17 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   // Pure filesystem rename — file bytes untouched; title/dates live in the DBs
   await fs.rename(oldPath, newPath)
 
-  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+  if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, title: newTitle, modified: new Date(now) }
   }
 
-  if (isBinary) {
+  if (binary) {
     syncFileToCache(db, {
       id,
       path: newRelativePath,
       title: newTitle,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
-      mimeType: cached?.mimeType ?? null,
+      fileType: binary.fileType,
+      mimeType: binary.mimeType,
       fileSize: cached?.fileSize ?? 0,
       createdAt: existing.created,
       modifiedAt: new Date(now)
@@ -184,7 +183,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   assertFolderWritable(newFolder)
 
   const cached = getNoteCacheById(db, id)
-  const isBinary = cached?.fileType ? isBinaryFileType(cached.fileType) : false
+  const binary = cached ? binaryRecordFields(cached) : null
 
   const oldPath = toAbsolutePath(existing.path)
   const filename = path.basename(oldPath)
@@ -201,18 +200,17 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
   // file between two folders.
   await fs.rename(oldPath, newPath)
 
-  if (!isBinary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
+  if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, modified: new Date(now) }
   }
 
-  if (isBinary) {
+  if (binary) {
     syncFileToCache(db, {
       id,
       path: newRelativePath,
       title: existing.title,
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
-      fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
-      mimeType: cached?.mimeType ?? null,
+      fileType: binary.fileType,
+      mimeType: binary.mimeType,
       fileSize: cached?.fileSize ?? 0,
       createdAt: existing.created,
       modifiedAt: new Date(now)
