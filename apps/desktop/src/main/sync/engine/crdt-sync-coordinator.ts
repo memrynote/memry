@@ -59,6 +59,9 @@ const CRDT_BATCH_MAX_NOTES = 100
  */
 const COLD_PROBE_MIN_NOTES = 20
 
+/** The server snapshot a walk started from, `null` for none. */
+type WalkBaseline = { revision: string | null; sequenceNum: number } | null
+
 const noCost = (): CrdtPullCost => ({ snapshotGets: 0, batchPosts: 0 })
 
 const isEmptyStateVector = (vector: Uint8Array): boolean => vector.length <= 2
@@ -388,14 +391,30 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
   }
 
   /**
-   * A walk with no server snapshot behind it, whose own page names one: a
-   * snapshot pushed since the baseline GET or the probe pruned the updates at
-   * or below it, so the walk is missing them (#5243, #5474). Owed, never
-   * settled or seeded, and the next pass downloads the snapshot. A server
-   * before #2299 sends no meta, so nothing is owed.
+   * A walk whose own page names a server snapshot other than its baseline's:
+   * a snapshot pushed since the baseline GET or the probe pruned the updates
+   * at or below it, so the walk is missing them (#5243, #5474, #5477). The
+   * baseline is the snapshot the GET or the probe saw, `null` for none. This
+   * is chapter 07 §7.8's per-page rule; the Rust core takes the new baseline
+   * in place, this owes the note instead, so the walk stops before it records
+   * an update above the new snapshot and the next pass downloads it. Owed,
+   * never settled or seeded. A server before #2299 sends no meta, so nothing
+   * is owed. A baseline GET without a revision (a server before #2187) is
+   * compared by sequence only.
    */
-  private owesPrunedWalk(noteId: string, meta: CrdtSnapshotMeta | null | undefined): boolean {
+  private owesPrunedWalk(
+    noteId: string,
+    meta: CrdtSnapshotMeta | null | undefined,
+    baseline: WalkBaseline
+  ): boolean {
     if (!meta) return false
+    if (
+      baseline &&
+      (baseline.revision === null || meta.revision === baseline.revision) &&
+      meta.sequenceNum <= baseline.sequenceNum
+    ) {
+      return false
+    }
     this.owePendingPull(noteId)
     return true
   }
@@ -416,17 +435,21 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * the local doc. The caller has to carry that up: a snapshot push would
    * overwrite the very blob that was skipped. `dropped` means the provider
    * refused the bytes (the doc was closing): left out too, but not a failure.
-   * `held` means the server holds a snapshot of this note, merged or not.
+   * `held` is the server's snapshot of this note, merged or not, and `null`
+   * when it holds none.
    */
   private async applySnapshotBaseline(
     noteId: string,
     snapshot: ReturnType<typeof fetchCrdtSnapshot>,
     vaultKey: Uint8Array,
     mode: 'single' | 'batch'
-  ): Promise<{ since: number; verified: boolean; dropped?: boolean; held: boolean }> {
+  ): Promise<{ since: number; verified: boolean; dropped?: boolean; held: WalkBaseline }> {
     const snapshotResult = await snapshot
+    const held = snapshotResult
+      ? { revision: snapshotResult.revision, sequenceNum: snapshotResult.sequenceNum }
+      : null
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
-      return { since: 0, verified: true, held: snapshotResult != null }
+      return { since: 0, verified: true, held }
     }
     // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
     recordBootstrapBytes('crdt', snapshotResult.snapshot.byteLength)
@@ -437,7 +460,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         noteId,
         signerDeviceId: snapshotResult.signerDeviceId
       })
-      return { since: 0, verified: false, held: true }
+      return { since: 0, verified: false, held }
     }
 
     // Off-thread decrypt (worker when available); a failure throws here just
@@ -456,7 +479,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       this.signerKeysFor([snapshotResult], () => signerPubKey)
     )
     if (this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted) === false) {
-      return { since: 0, verified: true, dropped: true, held: true }
+      return { since: 0, verified: true, dropped: true, held }
     }
     const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
     // Recorded here and nowhere else, after the bytes are in the doc: every
@@ -480,7 +503,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       mode,
       sequenceNum: snapshotResult.sequenceNum
     })
-    return { since: baselineSequence, verified: true, held: true }
+    return { since: baselineSequence, verified: true, held }
   }
 
   /** The pull's last body step: settles foreign journals owed to their day (#2939). */
@@ -593,7 +616,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       let since = baseline.since
       let sawUnmerged = !baseline.verified || baseline.dropped === true
       // The server holds a body for this note, so it is never seeded (#5286).
-      let serverHeld = baseline.held
+      let serverHeld = baseline.held !== null
       // Owed a pull as well as flagged, matching the batch path: a signer that
       // was only transiently unresolvable then clears the flag on a later pass
       // rather than costing this note its compaction point for the session.
@@ -637,7 +660,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           updateCount: result.updates.length,
           hasMore: result.hasMore
         })
-        if (!baseline.held && this.owesPrunedWalk(noteId, result.snapshotMeta)) return false
+        if (this.owesPrunedWalk(noteId, result.snapshotMeta, baseline.held)) return false
         if (result.updates.length > 0) serverHeld = true
 
         // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
@@ -1099,6 +1122,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           activeNoteIds.slice(i, i + applySize),
           skipBaseline,
           snapshotless,
+          probe?.snapshotMeta,
           token,
           vaultKey,
           signal,
@@ -1143,6 +1167,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     noteIds: string[],
     skipBaseline: Map<string, number>,
     snapshotless: ReadonlySet<string>,
+    probeMeta: Record<string, CrdtSnapshotMeta> | undefined,
     token: string,
     vaultKey: Uint8Array,
     signal: AbortSignal,
@@ -1194,10 +1219,10 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
       }
 
       const resumeFrom = new Map<string, number>()
-      // Notes walked with no server snapshot behind them: skipped as snapshotless,
-      // or a baseline GET that answered none. A snapshot landing before the walk
-      // prunes what the walk reads, so the guard below checks each of them.
-      const noSnapshotWalks = new Set<string>()
+      // The snapshot each walk started from: the probe's, the baseline GET's, or
+      // `null` for none. A newer one landing before the walk prunes what the
+      // walk reads, so the guard below checks each walk against it.
+      const walkBaselines = new Map<string, WalkBaseline>()
       for (const noteId of opened) {
         // With no server snapshot, a GET answers `{ snapshot: null }` and the
         // walk starts at 0, so start it at 0 without the GET.
@@ -1214,7 +1239,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
         if (fromZero !== undefined) resumeFrom.set(noteId, fromZero)
       }
       for (const noteId of resumeFrom.keys()) {
-        if (snapshotless.has(noteId)) noSnapshotWalks.add(noteId)
+        walkBaselines.set(noteId, snapshotless.has(noteId) ? null : (probeMeta?.[noteId] ?? null))
       }
 
       // The snapshot GETs run ahead of the apply, which still takes one note
@@ -1249,7 +1274,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           )
           sinceMap.set(noteId, baseline.since)
           if (baseline.held) serverHeld.add(noteId)
-          else noSnapshotWalks.add(noteId)
+          walkBaselines.set(noteId, baseline.held)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)
             this.owePendingPull(noteId, failures, true)
@@ -1308,10 +1333,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
           }
         ).then((r) => r.value)
 
-        for (const noteId of noSnapshotWalks) {
-          if (!sinceMap.has(noteId)) continue
-          if (!this.owesPrunedWalk(noteId, result.snapshotMeta?.[noteId])) continue
+        for (const [noteId, baseline] of walkBaselines) {
+          if (!activeSince.has(noteId)) continue
+          if (!this.owesPrunedWalk(noteId, result.snapshotMeta?.[noteId], baseline)) continue
+          // Stopped here, so no update above the new snapshot is recorded.
           sinceMap.delete(noteId)
+          activeSince.delete(noteId)
+          delete result.notes[noteId]
           sawUnmerged.add(noteId)
         }
 
