@@ -35,8 +35,7 @@ use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use crate::domain::body_tags;
 #[cfg(feature = "markdown")]
 use crate::domain::file_text;
-use crate::domain::wiki_target::{WikiNames, settle_name_keys};
-use crate::storage::nested_tx;
+use crate::domain::wiki_target::WikiNames;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
@@ -59,9 +58,9 @@ pub const STAMPS_KEY: &str = "stamps.version";
 /// The current [`STAMPS_KEY`]. `1`: body updates stamped at apply time. `2`
 /// (#4315): the body cache keyed by a version a snapshot moves, so the bodies
 /// cached empty under `1` are read again.
-const STAMPS_VERSION: i64 = 2;
+pub(super) const STAMPS_VERSION: i64 = 2;
 
-/// What one [`reindex`] pass did.
+/// What one [`super::reindex`] pass did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Reindexed {
     /// Both tables were emptied first: the watermark was missing or `data.db`
@@ -79,101 +78,9 @@ pub struct Reindexed {
     pub links: LinkChanges,
 }
 
-/// Brings `index.db` up to date with `data.db`, incrementally where it can.
-///
-/// Safe to call at any time and on any schedule: it is idempotent, and calling
-/// it against an empty `index.db` is the supported full rebuild.
-pub fn reindex(
-    data: &Connection,
-    index: &Connection,
-    now_ms: i64,
-) -> Result<Reindexed, StorageError> {
-    reindex_until(data, index, now_ms, &|| false).map(|done| done.unwrap_or_default())
-}
-
-/// [`reindex`] that `stop` can end between two rows, for a caller that must let go of both
-/// databases promptly (desktop's vault close). A stopped pass commits nothing to `index.db`:
-/// the index is as it was, the watermarks too, and the next pass does the whole work. The
-/// `data.db` body tags of the notes it reached are written outside that transaction; each is
-/// derived from the note's document, so the next pass writes the same rows again. `None` when
-/// stopped.
-pub fn reindex_until(
-    data: &Connection,
-    index: &Connection,
-    now_ms: i64,
-    stop: &dyn Fn() -> bool,
-) -> Result<Option<Reindexed>, StorageError> {
-    let version: i64 = data
-        .query_row("PRAGMA user_version", [], |row| row.get(0))
-        .map_err(failed)?;
-    // The wiki names changed since the last pass get their lookup keys back, so a link lookup
-    // reads only its matches again (`wiki_target`).
-    settle_name_keys(data)?;
-
-    let transaction = nested_tx::begin(index).map_err(failed)?;
-    let indexed = meta_number(&transaction, DATA_VERSION_KEY)?;
-    let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
-    let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;
-
-    let stamps = meta_number(&transaction, STAMPS_KEY)?;
-
-    let full = indexed != Some(version)
-        || stamps != Some(STAMPS_VERSION)
-        || notes_from.is_none()
-        || tasks_from.is_none();
-    if full {
-        transaction
-            .execute_batch("DELETE FROM fts_notes; DELETE FROM fts_tasks;")
-            .map_err(failed)?;
-    }
-    let notes_from = if full { 0 } else { notes_from.unwrap_or(0) };
-    let tasks_from = if full { 0 } else { tasks_from.unwrap_or(0) };
-
-    let mut done = Reindexed {
-        full,
-        ..Reindexed::default()
-    };
-    let (note_ids, notes_high) = note_candidates(data, notes_from)?;
-    if !note_ids.is_empty() {
-        let names = WikiNames::load(data)?;
-        for id in &note_ids {
-            if stop() {
-                return Ok(None);
-            }
-            index_note(data, &names, &transaction, id, now_ms, full, &mut done)?;
-        }
-        if !full {
-            super::links::reresolve(&names, &transaction, &note_ids, &mut done.links)?;
-        }
-    }
-    let (task_ids, tasks_high) = task_candidates(data, tasks_from)?;
-    for id in &task_ids {
-        if stop() {
-            return Ok(None);
-        }
-        index_task(data, &transaction, id, &mut done)?;
-    }
-    super::inbox::reindex(data, &transaction, full, &mut done)?;
-
-    meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
-    meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
-    meta_set(
-        &transaction,
-        NOTES_WATERMARK_KEY,
-        &notes_high.unwrap_or(notes_from).max(notes_from).to_string(),
-    )?;
-    meta_set(
-        &transaction,
-        TASKS_WATERMARK_KEY,
-        &tasks_high.unwrap_or(tasks_from).max(tasks_from).to_string(),
-    )?;
-    transaction.commit().map_err(failed)?;
-    Ok(Some(done))
-}
-
 /// Every note or journal whose record, body log or body snapshot moved at or
 /// after `from`, and the largest stamp seen.
-fn note_candidates(
+pub(super) fn note_candidates(
     data: &Connection,
     from: i64,
 ) -> Result<(BTreeSet<String>, Option<i64>), StorageError> {
@@ -199,7 +106,7 @@ fn note_candidates(
 }
 
 /// Every task whose projection row moved at or after `from`.
-fn task_candidates(
+pub(super) fn task_candidates(
     data: &Connection,
     from: i64,
 ) -> Result<(BTreeSet<String>, Option<i64>), StorageError> {
@@ -233,7 +140,7 @@ pub(super) fn candidates(
 }
 
 /// Re-indexes one note or journal, and notes what that did to its links.
-fn index_note(
+pub(super) fn index_note(
     data: &Connection,
     names: &WikiNames,
     index: &Connection,
@@ -461,7 +368,7 @@ fn index_links(
 
 /// Re-indexes one task. A task has no body document, so `description` is the
 /// whole of its second column.
-fn index_task(
+pub(super) fn index_task(
     data: &Connection,
     index: &Connection,
     id: &str,

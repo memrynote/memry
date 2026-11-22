@@ -22,8 +22,9 @@
 //!   backoff.
 //! - **Links, body tags and full text** have one owner, the core search reindex, which reads
 //!   them from the note's document. It is owed at every open and after every pass that wrote a
-//!   row, and stops when the vault closes ([`Search::reindex_until`]); a stopped one commits
-//!   nothing to `index.db` and stays owed. The links a committed one changed go to the `links`
+//!   row, and stops when the vault closes ([`Search::reindex_until`]). It commits in batches
+//!   that let go of the `data.db` writer between them; a stopped one keeps its committed
+//!   batches, stays owed, and the next pass goes on after them. The links a committed one changed go to the `links`
 //!   callback, once per pass: a note event goes out when the file's row changes, before this,
 //!   so a links panel refetching on it would read the links the edit replaced.
 //! - **An app write is measured before it answers** ([`NoteIndex::measure`]): a journal save

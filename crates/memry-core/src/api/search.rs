@@ -56,6 +56,8 @@ mod grouped;
 mod image_embeddings;
 #[cfg(feature = "markdown")]
 mod objects;
+#[cfg(test)]
+mod reindex_tests;
 mod results;
 #[cfg(feature = "vec")]
 mod similarity;
@@ -137,20 +139,47 @@ impl Search {
 }
 
 impl Search {
-    /// [`Search::reindex`] that `stop` can end between two rows; a stopped pass commits
-    /// nothing (`None`). Otherwise the links it committed changes to, which desktop announces.
-    /// For desktop's note index, which must let go of both databases when the vault closes.
-    /// Not on the FFI surface.
+    /// [`Search::reindex`] that `stop` can end between two rows (`None`): the batches it
+    /// committed stand and the next pass goes on after them. Otherwise the links it changed,
+    /// which desktop announces. For desktop's note index, which must let go of both databases
+    /// when the vault closes. Not on the FFI surface.
     pub fn reindex_until(
         &self,
         stop: &dyn Fn() -> bool,
     ) -> Result<Option<LinkChanges>, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                Ok(search::reindex_until(data, index, now_ms(), stop)?.map(|done| done.links))
-            })
-        })
+        Ok(self.reindex_in_batches(stop)?.map(|done| done.links))
+    }
+
+    /// Plans the pass on readers, then holds the writers of both databases for one batch at a
+    /// time ([`search::ReindexPass`]), so a writer waiting on `data.db` waits one batch.
+    fn reindex_in_batches(
+        &self,
+        stop: &dyn Fn() -> bool,
+    ) -> Result<Option<search::Reindexed>, StorageError> {
+        loop {
+            let mut pass = self.data.read_blocking(|data| {
+                self.index
+                    .read_blocking(|index| search::ReindexPass::plan(data, index))
+            })?;
+            loop {
+                let step = self.data.call_blocking(|data| {
+                    self.index
+                        .call_blocking(|index| pass.batch(data, index, now_ms(), stop))
+                })?;
+                match step {
+                    search::ReindexStep::More => {}
+                    search::ReindexStep::Done(done) => return Ok(Some(done)),
+                    search::ReindexStep::Stopped => return Ok(None),
+                    search::ReindexStep::Stale => break,
+                }
+                // The writes that queued behind this batch go before the next one, for at most
+                // one batch's time, so a steady stream of them cannot starve the reindex.
+                let deadline = std::time::Instant::now() + search::BATCH_TIME;
+                while self.data.writers_waiting() > 0 && std::time::Instant::now() < deadline {
+                    std::thread::yield_now();
+                }
+            }
+        }
     }
 
     /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
@@ -545,10 +574,9 @@ impl Search {
     /// belongs on an explicit moment — a screen appearing, a sync finishing —
     /// and never on a keystroke.
     pub fn reindex(&self) -> Result<ReindexSummary, StorageError> {
-        let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| Ok(summary(search::reindex(data, index, now_ms())?)))
-        })
+        Ok(summary(
+            self.reindex_in_batches(&|| false)?.unwrap_or_default(),
+        ))
     }
 }
 
