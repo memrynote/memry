@@ -358,6 +358,7 @@ async fn a_newer_desktop_payload_survives_an_edit_cycle_with_its_unmodelled_keys
         db.clone(),
         Declaration::subscribed(),
         sealer.clone(),
+        "device-a",
     );
     coordinator.drain_wave().await.expect("the wave");
 

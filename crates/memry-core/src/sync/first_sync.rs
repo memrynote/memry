@@ -171,6 +171,9 @@ pub struct FirstSyncReport {
     pub reconcile_pulled: usize,
     /// Pack-held rows the reconcile found deleted on the server and removed.
     pub reconcile_removed: usize,
+    /// Stale rows the reconcile kept live: no verified delete or attested
+    /// marker (§5.12.1, #5406).
+    pub reconcile_kept: usize,
     /// Requests the reconcile sent: the manifest plus its pulls.
     pub reconcile_requests: usize,
     /// Bodies from `crdt_snapshot` and `crdt_update` packs (§8.4.3, §8.10).
