@@ -164,3 +164,16 @@ export function isSupportedPath(filePath: string): boolean {
 export function isBinaryFileType(fileType: string): boolean {
   return fileType !== 'markdown'
 }
+
+/**
+ * Is this note row a binary note (image, PDF, audio, video)? Its file is the
+ * downloaded blob, so nothing reads it as markdown or writes markdown over it.
+ * A shipped build saved some binary rows as markdown (#5412); a markdown
+ * note's file is always `.md`, so a binary extension on the path decides too
+ * (`foo.png` is binary, `foo.png.md` is not).
+ */
+export function isBinaryNoteRow(row: { fileType?: string | null; path: string }): boolean {
+  if (row.fileType && isBinaryFileType(row.fileType)) return true
+  const pathType = getFileType(getExtension(row.path))
+  return pathType !== null && isBinaryFileType(pathType)
+}
