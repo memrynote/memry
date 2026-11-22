@@ -5,8 +5,10 @@ use std::collections::{HashSet, VecDeque};
 use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
 
+#[cfg(unix)]
+use super::super::Failure;
 use super::super::schedule::{Cost, Runner, due_at};
-use super::super::{COOLDOWN_FACTOR, DEBOUNCE, Failure, MAX_COOLDOWN, WriteBack, WriteBackFailed};
+use super::super::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};
 use super::*;
 
 /// Well under the debounce: no pass may start within it.
