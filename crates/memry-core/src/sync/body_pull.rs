@@ -56,6 +56,7 @@
 //! snapshot are replays.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -73,6 +74,7 @@ use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdateEntry, UpdatePage, read_update_page};
 use super::crypto_batch::off_runtime;
 use super::driver::observer::Observers;
+use super::first_sync::MAX_RATE_LIMIT_PAUSE_S;
 use super::store;
 
 mod baseline;
@@ -97,6 +99,24 @@ pub const MAX_PAGES_PER_DOCUMENT: u32 = 50;
 
 /// Documents per snapshot-meta probe: the batch route's own cap (§7.3).
 pub(super) const PROBE_CHUNK: usize = 100;
+
+/// Waits out a 429 `error` while the read has a pause left, and answers
+/// whether it waited, so the caller asks again (#5570). A refused probe or
+/// manifest page otherwise falls back to a route pull per document. The
+/// server's floor is one second (`Math.max(retryAfter, 1)`); a wait past
+/// [`MAX_RATE_LIMIT_PAUSE_S`] is not a sixty-second bucket.
+async fn waited_out_429(error: &ApiError, paused: &mut u32, pauses: u32) -> bool {
+    let ApiError::RateLimited { retry_after_s, .. } = error else {
+        return false;
+    };
+    let wait_s = retry_after_s.unwrap_or(1).max(1);
+    if *paused >= pauses || wait_s > MAX_RATE_LIMIT_PAUSE_S {
+        return false;
+    }
+    *paused += 1;
+    tokio::time::sleep(Duration::from_secs(wait_s)).await;
+    true
+}
 
 /// The cursor scope for one document's body feed (chapter 05 §5.11: the
 /// `scope` column exists for exactly this, and it is **not** a per-type record
@@ -282,7 +302,7 @@ impl BodyPull {
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut total = BodyPullReport::default();
         for chunk in doc_ids.chunks(PROBE_CHUNK) {
-            let mut probed = self.probe(chunk, &mut total.requests).await?;
+            let mut probed = self.probe(chunk, &mut total.requests, 0).await?;
             for doc_id in chunk {
                 total.absorb(self.pull_with(doc_id, probed.remove(doc_id)).await?);
             }
@@ -293,7 +313,7 @@ impl BodyPull {
     /// One document: baseline if §7.8 says so, then incrementals.
     pub async fn pull_document(&self, doc_id: &str) -> Result<BodyPullReport, BodyPullError> {
         let mut probes = 0;
-        let mut probed = self.probe(&[doc_id.to_owned()], &mut probes).await?;
+        let mut probed = self.probe(&[doc_id.to_owned()], &mut probes, 0).await?;
         let mut report = self.pull_with(doc_id, probed.remove(doc_id)).await?;
         report.requests += probes;
         Ok(report)
