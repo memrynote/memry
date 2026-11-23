@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nu s-a putut aplica șablonul",
     "appendBlocksFailed": "Nu s-a putut muta blocul în acea notiță",
     "appendIntoCaseTwin": "Acea notiță are același fișier cu o notiță al cărei nume diferă doar prin majuscule și minuscule. Redenumește una dintre ele, apoi mută din nou blocul.",
+    "caseTwinMoveRefused": "Această notiță își împarte fișierul cu o notiță al cărei nume diferă doar prin majuscule și minuscule, așa că nu poate fi mutată în acest mod. Redenumește sau mută cealaltă notiță ori șterge copia de care nu ai nevoie.",
     "exportPdfFailed": "Nu s-a putut exporta în PDF",
     "exportHtmlFailed": "Nu s-a putut exporta în HTML",
     "restoreVersionFailed": "Nu s-a putut restaura versiunea",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Nu s-a putut crea dosarul",
     "renameFailed": "Nu s-a putut redenumi dosarul",
+    "renameCaseTwins": "Acest folder conține notițe care împart un fișier cu o notiță al cărei nume de folder diferă doar prin majuscule și minuscule. Redenumește sau mută mai întâi acele notițe, apoi redenumește folderul.",
     "deleteFailed": "Nu s-a putut șterge dosarul",
     "setConfigFailed": "Nu s-a putut seta configurația dosarului"
   },

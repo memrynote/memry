@@ -102,6 +102,10 @@ vi.mock('../sync/crdt-external-feed', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
   return { ...real, feedExternalEditToCrdt: vi.fn(real.feedExternalEditToCrdt as never) }
 })
+vi.mock('./file-ops', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, safeRead: vi.fn(real.safeRead as never) }
+})
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
 }))
@@ -140,7 +144,13 @@ import { appendBlocksToNote } from './append-blocks'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher, getWatcher } from './watcher'
-import { deleteNoteCommand } from '../notes/domain'
+import {
+  deleteNoteCommand,
+  moveNoteCommand,
+  renameFolderCommand,
+  renameNoteCommand
+} from '../notes/domain'
+import { safeRead } from './file-ops'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
@@ -761,4 +771,276 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       })
     }, 30_000)
   }
+
+  // ==========================================================================
+  // Rename and move (#5498)
+  // ==========================================================================
+
+  const read = (relativePath: string) =>
+    fs.existsSync(path.join(vault.path, relativePath))
+      ? fs.readFileSync(path.join(vault.path, relativePath), 'utf8')
+      : null
+
+  const pathOf = (id: string) =>
+    data.db.select().from(noteMetadata).where(eq(noteMetadata.id, id)).get()?.path
+
+  /** Whether the note's index baseline is the bytes of its file. */
+  const ownBaseline = (id: string) => {
+    const file = read(pathOf(id) ?? '')
+    return (
+      file !== null && getNoteCacheById(index.db, id)?.contentHash === generateContentHash(file)
+    )
+  }
+
+  /** A peer's rename or move as a pull applies it. */
+  const applyPeerMove = (id: string, title: string, folderPath: string) =>
+    noteHandler.applyUpsert(
+      { db: asClientDb(data.db), emit: vi.fn() },
+      id,
+      { title, folderPath, modifiedAt: '2026-02-01T00:00:00.000Z' },
+      { peer: 1 }
+    )
+
+  async function applyPeerMoveWhenReady(id: string, title: string, folderPath: string) {
+    await vi.waitFor(() => expect(applyPeerMove(id, title, folderPath)).toBe('applied'))
+  }
+
+  /** Nothing of a twin move has happened. */
+  const unmoved = () => ({
+    rows: [pathOf('lower'), pathOf('upper')],
+    file: shared(),
+    b: read('Supernotes/b.md')
+  })
+  const UNMOVED = { rows: ['Supernotes/a.md', 'SUPERNOTES/a.md'], file: UPPER, b: null }
+
+  /** The survivor's write-back after the next vault open takes no foreign body. */
+  async function survivorKeepsOwn(survivor: 'lower' | 'upper') {
+    await stopWatcher()
+    await openVault()
+    await writeBack(survivor, survivor === 'lower' ? LOWER : UPPER)
+    return crossed()
+  }
+
+  for (const [how, move] of [
+    ['local', () => renameNoteCommand('lower', 'b')],
+    ['peer', () => applyPeerMoveWhenReady('lower', 'b', 'Supernotes')]
+  ] as const) {
+    it(`a ${how} rename of a twin writes its own body to the new file and leaves the shared file`, async () => {
+      await twins()
+
+      await move()
+
+      expect({
+        rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+        renamed: read('Supernotes/b.md'),
+        file: shared(),
+        baselines: [ownBaseline('lower'), ownBaseline('upper')]
+      }).toEqual({
+        rows: { lower: 'Supernotes/b.md', upper: 'SUPERNOTES/a.md' },
+        renamed: expect.stringContaining('lower [[x]]'),
+        file: UPPER,
+        baselines: [true, true]
+      })
+      expect(read('Supernotes/b.md')).not.toContain('upper')
+      expect(await survivorKeepsOwn('upper')).toEqual([])
+    }, 30_000)
+  }
+
+  // REVIEW-5501 (1, 2): the twin whose bytes are on disk moves; the shared
+  // file becomes the survivor's own in the same step.
+  for (const [how, move] of [
+    ['local', () => moveNoteCommand('upper', 'Other')],
+    ['peer', () => applyPeerMoveWhenReady('upper', 'a', 'Other')]
+  ] as const) {
+    it(`a ${how} move of the twin on disk leaves the survivor its own file`, async () => {
+      await twins()
+
+      await move()
+
+      expect({
+        rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+        moved: read('Other/a.md'),
+        file: shared(),
+        baselines: [ownBaseline('lower'), ownBaseline('upper')]
+      }).toEqual({
+        rows: { lower: 'Supernotes/a.md', upper: 'Other/a.md' },
+        moved: UPPER,
+        file: expect.stringContaining('lower [[x]]'),
+        baselines: [true, true]
+      })
+      expect(shared()).not.toContain('upper')
+      expect(await survivorKeepsOwn('lower')).toEqual([])
+    }, 30_000)
+  }
+
+  // REVIEW-5501 (3): each twin keeps its own header across the move.
+  it("a moved twin keeps its own header, and the survivor's file keeps its own", async () => {
+    await headerTwins()
+
+    await moveNoteCommand('upper', 'Other')
+    await flushProjectionEvents()
+
+    expect({ moved: read('Other/a.md'), ...lowerHeader() }).toEqual({
+      moved: UPPER_HEAD + UPPER,
+      ...LOWER_KEPT
+    })
+  }, 30_000)
+
+  it('a twin moved off bytes that are not its own gets its header from its index rows', async () => {
+    await headerTwins()
+
+    await moveNoteCommand('lower', 'Other')
+
+    expect({ moved: read('Other/a.md'), file: shared() }).toEqual({
+      moved: expect.stringMatching(LOWER_HEAD_RE),
+      file: UPPER_HEAD + UPPER
+    })
+  }, 30_000)
+
+  it("a twin whose own body is not on this device moves without the other's body", async () => {
+    await twins()
+    docs.set('lower', new Y.Doc())
+
+    await renameNoteCommand('lower', 'b')
+
+    expect({ row: pathOf('lower'), file: shared() }).toEqual({
+      row: 'Supernotes/b.md',
+      file: UPPER
+    })
+    expect(read('Supernotes/b.md')).not.toContain('upper')
+  }, 30_000)
+
+  // REVIEW-5501 (4): a twin that would become a journal is refused.
+  it('a twin rename that would make it a journal is refused and changes nothing', async () => {
+    fs.mkdirSync(path.join(vault.path, 'journal'), { recursive: true })
+    seed('lower', 'journal/a.md', LOWER)
+    seed('upper', 'journal/A.md', UPPER)
+    await openVault()
+    docs.set('lower', await docOf(LOWER))
+
+    await expect(renameNoteCommand('lower', '2026-01-15')).rejects.toThrow(
+      'errors:note.caseTwinMoveRefused'
+    )
+    expect({
+      rows: [pathOf('lower'), pathOf('upper')],
+      file: read('journal/a.md'),
+      dated: read('journal/2026-01-15.md')
+    }).toEqual({ rows: ['journal/a.md', 'journal/A.md'], file: UPPER, dated: null })
+  }, 30_000)
+
+  it('renaming a note with no twin moves its file', async () => {
+    await twins()
+    seed('solo', 'Other/s.md', '# s\n\nsolo\n')
+
+    await renameNoteCommand('solo', 't')
+
+    expect({ old: read('Other/s.md'), renamed: read('Other/t.md'), row: pathOf('solo') }).toEqual({
+      old: null,
+      renamed: '# s\n\nsolo\n',
+      row: 'Other/t.md'
+    })
+  }, 30_000)
+
+  // Nothing durable happens before the move's step.
+  for (const stalled of ['lower', 'upper'] as const) {
+    it(`a twin rename waiting on ${stalled}'s doc changes nothing, and fails when it cannot load`, async () => {
+      await twins()
+      const store = stall()
+      unavailable.set(stalled, store.promise)
+
+      const first = renameNoteCommand('lower', 'b')
+      await vi.waitFor(() =>
+        expect(getCrdtProvider().open).toHaveBeenCalledWith(stalled, undefined, { skipSeed: true })
+      )
+      expect(unmoved()).toEqual(UNMOVED)
+
+      store.fail()
+      await expect(first).rejects.toBeInstanceOf(NoteError)
+      unavailable.clear()
+      expect(unmoved()).toEqual(UNMOVED)
+      expect(await survivorKeepsOwn('upper')).toEqual([])
+
+      await renameNoteCommand('lower', 'b')
+      expect({ row: pathOf('lower'), file: shared() }).toEqual({
+        row: 'Supernotes/b.md',
+        file: UPPER
+      })
+    }, 30_000)
+
+    it(`a peer's twin move keeps waiting while ${stalled}'s doc cannot load`, async () => {
+      await twins()
+      const store = stall()
+      unavailable.set(stalled, store.promise)
+
+      expect(() => applyPeerMove('upper', 'a', 'Other')).toThrow(PendingSyncIntentError)
+      await vi.waitFor(() =>
+        expect(getCrdtProvider().open).toHaveBeenCalledWith(stalled, undefined, { skipSeed: true })
+      )
+      expect(() => applyPeerMove('upper', 'a', 'Other')).toThrow(PendingSyncIntentError)
+      expect({ ...unmoved(), moved: read('Other/a.md') }).toEqual({ ...UNMOVED, moved: null })
+
+      store.fail()
+      unavailable.clear()
+      await applyPeerMoveWhenReady('upper', 'a', 'Other')
+      expect({ upper: pathOf('upper'), moved: read('Other/a.md'), file: shared() }).toEqual({
+        upper: 'Other/a.md',
+        moved: UPPER,
+        file: expect.stringContaining('lower [[x]]')
+      })
+    }, 30_000)
+  }
+
+  // The two files and the row's move are one step.
+  it('a twin move that stops right after its step leaves both twins their own files', async () => {
+    await twins()
+    const real = vi.mocked(safeRead).getMockImplementation()
+    vi.mocked(safeRead).mockImplementation((p: string) =>
+      p.endsWith(`${path.sep}a.md`) && p.includes(`${path.sep}Other${path.sep}`)
+        ? new Promise(() => {})
+        : real!(p)
+    )
+    try {
+      void moveNoteCommand('upper', 'Other')
+      await vi.waitFor(() => expect(pathOf('upper')).toBe('Other/a.md'))
+
+      expect({
+        moved: read('Other/a.md'),
+        file: shared(),
+        baselines: [ownBaseline('lower'), ownBaseline('upper')]
+      }).toEqual({
+        moved: UPPER,
+        file: expect.stringContaining('lower [[x]]'),
+        baselines: [true, true]
+      })
+    } finally {
+      vi.mocked(safeRead).mockImplementation(real!)
+    }
+    expect(await survivorKeepsOwn('lower')).toEqual([])
+  }, 30_000)
+
+  it('renaming the folder of two twins keeps both on the file they share', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'Supernotes/A.md', UPPER)
+    await openVault()
+
+    await renameFolderCommand('Supernotes', 'Renamed')
+
+    expect({
+      rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+      file: read('Renamed/a.md')
+    }).toEqual({ rows: { lower: 'Renamed/a.md', upper: 'Renamed/A.md' }, file: UPPER })
+  }, 30_000)
+
+  it('renaming a folder that would strand a twin spelled in another case is refused', async () => {
+    await twins()
+
+    await expect(renameFolderCommand('Supernotes', 'Renamed')).rejects.toThrow(
+      'errors:folder.renameCaseTwins'
+    )
+    expect({ ...unmoved(), renamed: fs.existsSync(path.join(vault.path, 'Renamed')) }).toEqual({
+      ...UNMOVED,
+      renamed: false
+    })
+  }, 30_000)
 })

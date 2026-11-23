@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Det gick inte att använda mallen",
     "appendBlocksFailed": "Det gick inte att flytta blocket till den anteckningen",
     "appendIntoCaseTwin": "Den anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener. Byt namn på en av dem och flytta sedan blocket igen.",
+    "caseTwinMoveRefused": "Den här anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener, så den kan inte flyttas på det här sättet. Byt namn på eller flytta den andra anteckningen, eller ta bort kopian du inte behöver.",
     "exportPdfFailed": "Det gick inte att exportera till PDF",
     "exportHtmlFailed": "Det gick inte att exportera till HTML",
     "restoreVersionFailed": "Det gick inte att återställa versionen",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Det gick inte att skapa mappen",
     "renameFailed": "Det gick inte att byta namn på mappen",
+    "renameCaseTwins": "Den här mappen innehåller anteckningar som delar fil med en anteckning vars mappnamn bara skiljer sig i versaler och gemener. Byt namn på eller flytta de anteckningarna först, och byt sedan namn på mappen.",
     "deleteFailed": "Det gick inte att radera mappen",
     "setConfigFailed": "Det gick inte att spara mappinställningarna"
   },

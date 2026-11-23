@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Hindi magamit ang template",
     "appendBlocksFailed": "Hindi mailipat ang block sa talang iyon",
     "appendIntoCaseTwin": "Kahati ng talang iyon ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik. Palitan ang pangalan ng isa sa mga ito, pagkatapos ay ilipat muli ang block.",
+    "caseTwinMoveRefused": "Kahati ng talang ito ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik, kaya hindi ito mailipat sa ganitong paraan. Palitan ang pangalan o ilipat ang kabilang tala, o burahin ang kopyang hindi mo kailangan.",
     "exportPdfFailed": "Hindi ma-export ang PDF",
     "exportHtmlFailed": "Hindi ma-export ang HTML",
     "restoreVersionFailed": "Hindi maibalik ang bersyon",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Hindi makagawa ng folder",
     "renameFailed": "Hindi mapalitan ang pangalan ng folder",
+    "renameCaseTwins": "May mga tala sa folder na ito na kahati ng file ang isang tala na ang pangalan ng folder ay naiiba lamang sa malaki at maliit na titik. Palitan muna ang pangalan o ilipat ang mga talang iyon, pagkatapos ay palitan ang pangalan ng folder.",
     "deleteFailed": "Hindi matanggal ang folder",
     "setConfigFailed": "Hindi maitakda ang config ng folder"
   },
