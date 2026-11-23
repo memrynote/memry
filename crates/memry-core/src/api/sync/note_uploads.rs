@@ -110,7 +110,14 @@ impl VaultSync {
                 Ok(false) => {}
                 Err(error) if is_refused(&error) => summary.refused += 1,
                 Err(SyncError::Locked) => return Err(SyncError::Locked),
-                Err(_) => break,
+                Err(error) => {
+                    // Owed rows and recorded chunk sets stay, so the next
+                    // pass tries both again.
+                    eprintln!(
+                        "memry-core: attachment uploads: {attachment_id} waits for the next pass: {error}"
+                    );
+                    break;
+                }
             }
         }
         Ok(summary)

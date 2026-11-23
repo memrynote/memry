@@ -653,3 +653,91 @@ async fn deliver_a_delete(db: &memry_core::storage::Db, note_id: &str) {
     assert!(!report.refused);
     assert_eq!(report.deleted, 1, "{report:?}");
 }
+
+/// A detach while the bytes go up, and the dereference that follows fails:
+/// the chunks stay recorded and the next pass releases them, once.
+#[tokio::test]
+async fn a_failed_release_after_a_detach_is_retried_by_the_next_pass() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let mut script = upload_script();
+    script.push(error_response(429, "RATE_LIMITED", "slow down"));
+    let uploaded = {
+        let app = launch_over(&dir, &store, FakeTransport::slow(script, 50));
+        let sync = Arc::clone(&app.sync);
+        let drain = tokio::spawn(async move { sync.upload_queued_attachments().await });
+        while app.transport.call_count() < 2 {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+        app.sync
+            .detach_attachment(note.clone(), id.clone())
+            .await
+            .expect("detach");
+        drain
+            .await
+            .expect("join")
+            .expect("the walk ends, it does not fail");
+        assert_eq!(
+            app.transport
+                .calls_to("/sync/attachments/dereference")
+                .len(),
+            1
+        );
+        chunk_hashes(&app.transport.calls_to("/upload/initiate")[0])
+    };
+
+    let app = launch(
+        &dir,
+        &store,
+        vec![response(200, &json!({"dereferenced": 1}).to_string())],
+    );
+    app.sync.upload_queued_attachments().await.expect("drain");
+    let released = app.transport.calls_to("/sync/attachments/dereference");
+    assert_eq!(released.len(), 1, "released on the next pass");
+    assert_eq!(body_json(&released[0])["chunkHashes"], json!(uploaded));
+    assert!(app.references(&note).is_empty());
+
+    let calls = app.transport.call_count();
+    app.sync.upload_queued_attachments().await.expect("again");
+    assert_eq!(app.transport.call_count(), calls, "released once");
+}
+
+/// The kept bytes are the only copy: the upload reads them and never writes
+/// them. A read-only file with a pinned mtime uploads, and comes out as it went in.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_queued_upload_never_writes_the_kept_bytes() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+    let path = dir.join("images").join(&id);
+    let pinned = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000);
+    std::fs::File::options()
+        .write(true)
+        .open(&path)
+        .and_then(|file| file.set_modified(pinned))
+        .expect("pin the mtime");
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o444)).expect("read-only");
+
+    let app = launch(&dir, &store, upload_script());
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained.uploaded, 1);
+    assert_eq!(app.references(&note), vec![id]);
+    let after = std::fs::metadata(&path).expect("still there");
+    assert_eq!(after.modified().expect("mtime"), pinned, "never rewritten");
+    assert_eq!(after.permissions().mode() & 0o777, 0o444);
+    assert_eq!(std::fs::read(&path).expect("the bytes"), BYTES);
+}
