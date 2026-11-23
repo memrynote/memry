@@ -114,6 +114,81 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
+/// Whether the note's body was purged here and holds nothing since: another
+/// device's delete applied (§7.15), so no block shows the picture any more.
+/// A note deleted only here keeps its body until then, and its upload stays
+/// owed. A note this database does not hold is not judged purged.
+pub fn note_is_purged(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let local = crate::crdt::update_log::Namespace::Local.row_id(note_id);
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NOT NULL) \
+           AND EXISTS(SELECT 1 FROM yjs_doc_epochs WHERE doc_id = ?1 AND epoch > 0) \
+           AND NOT EXISTS(SELECT 1 FROM yjs_updates WHERE doc_id IN (?1, ?2)) \
+           AND NOT EXISTS(SELECT 1 FROM yjs_snapshots WHERE doc_id IN (?1, ?2))",
+        params![note_id, local],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
+/// Where an upload's chunk addresses wait in `meta` until a reference names
+/// them (#5533). No migration: `meta` is the baseline key-value table, and an
+/// older build ignores the key.
+const CHUNKS_KEY: &str = "attachment_upload.chunks:";
+
+/// Records the chunks an upload is about to put. The server counts each one
+/// from its put (§14.8), and a crash before the reference would otherwise
+/// leave them named by nothing on this device.
+pub fn record_chunks(
+    conn: &Connection,
+    attachment_id: &str,
+    hashes: &[String],
+) -> Result<(), StorageError> {
+    let value = serde_json::to_string(hashes).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![format!("{CHUNKS_KEY}{attachment_id}"), value],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Every recorded chunk set, by attachment id.
+pub fn recorded_chunks(conn: &Connection) -> Result<Vec<(String, Vec<String>)>, StorageError> {
+    conn.prepare("SELECT substr(key, ?1), value FROM meta WHERE substr(key, 1, ?2) = ?3")
+        .map_err(failed)?
+        .query_map(
+            params![
+                CHUNKS_KEY.len() as i64 + 1,
+                CHUNKS_KEY.len() as i64,
+                CHUNKS_KEY
+            ],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .map_err(failed)?
+        .map(|row| {
+            let (id, value) = row.map_err(failed)?;
+            let hashes = serde_json::from_str(&value).map_err(|error| StorageError::Failed {
+                what: format!("the recorded chunks of {id}: {error}"),
+            })?;
+            Ok((id, hashes))
+        })
+        .collect()
+}
+
+/// The recorded chunks are referenced or released.
+pub fn forget_chunks(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{CHUNKS_KEY}{attachment_id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// The upload is no longer owed: it landed, the server refused it for good,
 /// or the user detached the picture. The `attachments` row and the bytes stay.
 pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {

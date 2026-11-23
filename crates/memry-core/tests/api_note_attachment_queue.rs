@@ -441,3 +441,215 @@ async fn a_detach_during_the_upload_leaves_no_reference_and_releases_the_chunks(
         "the orphaned chunks go back"
     );
 }
+
+fn chunk_hashes(initiate: &memry_core::seams::transport::HttpRequest) -> Vec<String> {
+    serde_json::from_value(body_json(initiate)["chunkHashes"].clone()).expect("chunk hashes")
+}
+
+/// A crash between the manifest PUT and the transaction that references it
+/// (#5533). The next pass uploads again under the same id, and the first
+/// upload's chunks, which nothing will ever reference, go back exactly once.
+/// The chunks the note references are never released.
+#[tokio::test]
+async fn a_crash_after_the_manifest_put_releases_the_first_upload_once() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let first = {
+        let app = launch_over(&dir, &store, FakeTransport::slow(upload_script(), 50));
+        let sync = Arc::clone(&app.sync);
+        let drain = tokio::spawn(async move { sync.upload_queued_attachments().await });
+        // The process dies while the manifest PUT is on the wire: the server
+        // has the manifest and the chunks, this device recorded nothing after.
+        while app.manifest_ids().is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+        drain.abort();
+        assert!(drain.await.expect_err("killed").is_cancelled());
+        assert!(app.references(&note).is_empty(), "never referenced");
+        chunk_hashes(&app.transport.calls_to("/upload/initiate")[0])
+    };
+
+    let mut script = vec![response(200, &json!({"dereferenced": 1}).to_string())];
+    script.extend(upload_script());
+    let app = launch(&dir, &store, script);
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained.uploaded, 1);
+    assert_eq!(app.manifest_ids(), vec![id.clone()], "the same id again");
+    assert_eq!(app.references(&note), vec![id]);
+    let second = chunk_hashes(&app.transport.calls_to("/upload/initiate")[0]);
+    let released = app.transport.calls_to("/sync/attachments/dereference");
+    assert_eq!(released.len(), 1, "the first set goes back once");
+    assert_eq!(body_json(&released[0])["chunkHashes"], json!(first));
+    assert!(
+        second.iter().all(|hash| !first.contains(hash)),
+        "the referenced upload shares no chunk with the released one"
+    );
+
+    let calls = app.transport.call_count();
+    app.sync.upload_queued_attachments().await.expect("again");
+    assert_eq!(app.transport.call_count(), calls, "nothing released twice");
+}
+
+/// A crash after the chunks went up, then a detach before the next pass: no
+/// upload is owed any more, and the chunks still go back.
+#[tokio::test]
+async fn a_detach_after_a_crashed_upload_still_releases_its_chunks() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+    let first = {
+        let app = launch_over(&dir, &store, FakeTransport::slow(upload_script(), 50));
+        let sync = Arc::clone(&app.sync);
+        let drain = tokio::spawn(async move { sync.upload_queued_attachments().await });
+        while app.manifest_ids().is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        }
+        drain.abort();
+        let _ = drain.await;
+        chunk_hashes(&app.transport.calls_to("/upload/initiate")[0])
+    };
+
+    let app = launch(
+        &dir,
+        &store,
+        vec![response(200, &json!({"dereferenced": 1}).to_string())],
+    );
+    app.sync
+        .detach_attachment(note.clone(), id)
+        .await
+        .expect("detach");
+    app.sync.upload_queued_attachments().await.expect("drain");
+
+    let released = app.transport.calls_to("/sync/attachments/dereference");
+    assert_eq!(released.len(), 1);
+    assert_eq!(body_json(&released[0])["chunkHashes"], json!(first));
+    assert!(app.transport.calls_to("/upload/initiate").is_empty());
+}
+
+/// Another device's delete, pulled here, purges the note's body: the block
+/// that showed the picture is gone, so the upload is no longer owed and its
+/// bytes go with it.
+#[tokio::test]
+async fn a_purged_note_drops_its_owed_upload_and_its_bytes() {
+    let (dir, store) = (scratch_dir(), store());
+    let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+    let note = app.note(&store);
+    let id = app.attach(&note).await.expect("kept for later");
+
+    deliver_a_delete(&app.vault.db_handle(), &note).await;
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained, Default::default());
+    assert_eq!(app.transport.call_count(), 1, "nothing went up");
+    assert!(
+        !dir.join("images").join(&id).exists(),
+        "the bytes of a purged note's picture go"
+    );
+    let owed = app
+        .vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.query_row("SELECT COUNT(*) FROM note_attachment_uploads", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("count");
+    assert_eq!(owed, 0, "no upload owed for a purged note");
+}
+
+/// A note deleted on this device only, with its body still here, keeps its
+/// picture owed: the delete can still be undone.
+#[tokio::test]
+async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
+    let (dir, store) = (scratch_dir(), store());
+    let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+    let note = app.note(&store);
+    let id = app.attach(&note).await.expect("kept for later");
+
+    app.vault
+        .notes_writer(store.clone())
+        .expect("a writer")
+        .delete(note.clone())
+        .expect("delete");
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained, Default::default());
+    assert_eq!(
+        app.transport.call_count(),
+        1,
+        "a deleted note uploads nothing"
+    );
+    assert_eq!(
+        std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
+        BYTES
+    );
+}
+
+/// One real pull page carrying another device's delete of the note, which
+/// applies the tombstone and purges the body (§7.15).
+async fn deliver_a_delete(db: &memry_core::storage::Db, note_id: &str) {
+    use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+    use memry_core::protocol::http::{ClientIdentity, HttpClient};
+    use memry_core::protocol::types::Declaration;
+    use memry_core::sync::pull::{PullLoop, RecordCipher};
+
+    struct OpensDeletes;
+    impl RecordCipher for OpensDeletes {
+        fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+            Ok(Vec::new())
+        }
+    }
+
+    let tombstone = json!({
+        "id": note_id,
+        "type": "note",
+        "operation": "update",
+        "clientUpdatedAt": 5,
+        "encryptedKey": "AAAA",
+        "keyNonce": "AAAA",
+        "encryptedData": "AAAA",
+        "dataNonce": "AAAA",
+        "signature": "AAAA",
+        "signerDeviceId": "device-desktop",
+        "deletedAt": 5,
+    });
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"items": [{"id": note_id, "type": "note"}], "deleted": [], "hasMore": false, "nextCursor": "9"})
+                .to_string(),
+        ),
+        response(200, &json!({ "items": [tombstone] }).to_string()),
+    ]);
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    let report = PullLoop::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(OpensDeletes),
+    )
+    .with_clock_device(DEVICE)
+    .pull_page()
+    .await
+    .expect("the page");
+    assert!(!report.refused);
+    assert_eq!(report.deleted, 1, "{report:?}");
+}
