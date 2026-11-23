@@ -22,7 +22,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
-use memry_core::crdt::epoch::HeldBody;
+use memry_core::crdt::epoch::{self, Epoch, HeldBody};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::snapshots::{
     Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer,
@@ -88,6 +88,16 @@ fn pusher(db: &Db, transport: Arc<FakeTransport>, secret_key: Vec<u8>) -> Snapsh
     )
 }
 
+/// The document's epoch, captured as a caller does before loading it.
+fn opened(db: &Db, doc_id: &'static str) -> Epoch {
+    db.call_blocking(move |conn| {
+        epoch::capture(conn, doc_id).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("capture the epoch")
+}
+
 fn open_document(doc_id: &str) -> (DocumentRegistry, Arc<Document>) {
     let sink: UpdateSink = Arc::new(|_, _| {});
     let registry = DocumentRegistry::new("device-a", sink);
@@ -137,7 +147,7 @@ async fn a_pushed_snapshot_carries_a_root_this_build_never_names() {
     let transport =
         FakeTransport::new(vec![response(200, &json!({"sequenceNum": 12}).to_string())]);
     let outcome = pusher(&db, transport.clone(), secret_key.to_vec())
-        .push(&document, SnapshotGate::clean(), 1_000)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1_000)
         .await
         .expect("the push");
     assert!(matches!(
@@ -234,7 +244,7 @@ async fn the_watermark_does_not_move_on_a_second_snapshot_and_the_prune_follows_
     let pusher = pusher(&db, transport, secret_key.to_vec());
 
     let first = pusher
-        .push(&document, SnapshotGate::clean(), 1_000)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1_000)
         .await
         .expect("first push");
     assert_eq!(
@@ -247,7 +257,7 @@ async fn the_watermark_does_not_move_on_a_second_snapshot_and_the_prune_follows_
     );
 
     let second = pusher
-        .push(&document, SnapshotGate::clean(), 2_000)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 2_000)
         .await
         .expect("second push");
     assert_eq!(
@@ -293,7 +303,7 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
     // accident.
     assert_eq!(
         pusher
-            .push(&document, SnapshotGate::clean(), 1)
+            .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
             .await
             .expect("empty"),
         SnapshotOutcome::Refused(Refusal::EmptyState)
@@ -309,7 +319,10 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
         ..SnapshotGate::clean()
     };
     assert_eq!(
-        pusher.push(&document, unmerged, 1).await.expect("unmerged"),
+        pusher
+            .push(&document, opened(&db, NOTE), unmerged, 1)
+            .await
+            .expect("unmerged"),
         SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
     );
 
@@ -319,7 +332,10 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
         ..SnapshotGate::clean()
     };
     assert_eq!(
-        pusher.push(&document, local_only, 1).await.expect("local"),
+        pusher
+            .push(&document, opened(&db, NOTE), local_only, 1)
+            .await
+            .expect("local"),
         SnapshotOutcome::Refused(Refusal::LocalOnly)
     );
     let purged = SnapshotGate {
@@ -327,7 +343,10 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
         ..SnapshotGate::clean()
     };
     assert_eq!(
-        pusher.push(&document, purged, 1).await.expect("purged"),
+        pusher
+            .push(&document, opened(&db, NOTE), purged, 1)
+            .await
+            .expect("purged"),
         SnapshotOutcome::Refused(Refusal::Purged)
     );
 
@@ -363,7 +382,7 @@ async fn a_document_owed_a_body_pull_refuses_the_snapshot_push() {
     let refused = pusher(&db, FakeTransport::new(vec![]), secret_key.to_vec());
     assert_eq!(
         refused
-            .push(&document, SnapshotGate::clean(), 1)
+            .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
             .await
             .expect("owed"),
         SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
@@ -373,7 +392,7 @@ async fn a_document_owed_a_body_pull_refuses_the_snapshot_push() {
         .expect("settle");
     let transport = FakeTransport::new(vec![response(200, &json!({"sequenceNum": 3}).to_string())]);
     let pushed = pusher(&db, transport.clone(), secret_key.to_vec())
-        .push(&document, SnapshotGate::clean(), 1)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
         .await
         .expect("settled");
     assert!(
@@ -420,7 +439,7 @@ async fn a_resident_document_behind_its_log_refuses_the_snapshot_push() {
     let refused = pusher(&db, FakeTransport::new(vec![]), secret_key.to_vec());
     assert_eq!(
         refused
-            .push(&document, SnapshotGate::clean(), 1)
+            .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
             .await
             .expect("behind"),
         SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
@@ -429,7 +448,7 @@ async fn a_resident_document_behind_its_log_refuses_the_snapshot_push() {
     document.apply_durable_update(&landed).expect("the reload");
     let transport = FakeTransport::new(vec![response(200, &json!({"sequenceNum": 3}).to_string())]);
     let pushed = pusher(&db, transport.clone(), secret_key.to_vec())
-        .push(&document, SnapshotGate::clean(), 1)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
         .await
         .expect("caught up");
     assert!(
@@ -480,7 +499,7 @@ async fn a_snapshot_pushed_across_a_purge_is_not_stored_for_the_new_body() {
         Arc::new(PurgingSealer { db: db.clone() }),
         Declaration::subscribed(),
     )
-    .push(&document, SnapshotGate::clean(), 1_000)
+    .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1_000)
     .await
     .expect("push");
 
@@ -497,4 +516,47 @@ async fn a_snapshot_pushed_across_a_purge_is_not_stored_for_the_new_body() {
         .expect("read");
     assert!(!stored, "no snapshot of the purged body");
     assert!(owed, "the new body owes a pull");
+}
+
+/// #5356: a document loaded before a revive holds the purged body. Its state
+/// would replace the new body on the server and delete the server's rows, so
+/// the push refuses before the endpoint and stores nothing.
+#[tokio::test]
+async fn a_document_loaded_before_a_purge_refuses_before_the_endpoint() {
+    let db = scratch_db("loaded-before-purge");
+    let (_public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[13u8; 32]).expect("keypair");
+    let opened_at = opened(&db, NOTE);
+    let (_registry, document) = open_document(NOTE);
+    document
+        .apply_durable_update(&update_with_a_foreign_root())
+        .expect("apply");
+    db.call_blocking(|conn| {
+        update_log::purge_in(conn, NOTE).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("purge");
+
+    // An empty script: any request panics.
+    let outcome = pusher(&db, FakeTransport::new(vec![]), secret_key.to_vec())
+        .push(&document, opened_at, SnapshotGate::clean(), 1_000)
+        .await
+        .expect("push");
+
+    assert_eq!(outcome, SnapshotOutcome::Refused(Refusal::Purged));
+    assert!(
+        stored_snapshot_is_absent(&db),
+        "no snapshot of the purged body"
+    );
+}
+
+fn stored_snapshot_is_absent(db: &Db) -> bool {
+    db.call_blocking(|conn| {
+        update_log::snapshot(conn, Namespace::Server, NOTE).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("read")
+    .is_none()
 }

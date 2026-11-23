@@ -520,7 +520,7 @@ export class SyncWorkerBridge {
         items,
         vaultKey: new Uint8Array(vaultKey),
         signerKeys,
-        ...options
+        stopAtFirstOpen: options.stopAtFirstOpen
       })
 
       if (response.type === 'error') {

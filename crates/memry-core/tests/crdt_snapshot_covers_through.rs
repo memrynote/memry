@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, error_response, response};
 use memry_core::api::errors::StorageError;
+use memry_core::crdt::epoch::{self, Epoch};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::snapshots::{
     Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher, SnapshotSealer,
@@ -113,6 +114,16 @@ fn seed(db: &Db, cursor: Option<&str>, legacy: Option<&str>) {
     .expect("seed the device");
 }
 
+/// The document's epoch, captured as a caller does before loading it.
+fn opened(db: &Db, doc_id: &'static str) -> Epoch {
+    db.call_blocking(move |conn| {
+        epoch::capture(conn, doc_id).map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("capture the epoch")
+}
+
 async fn sent_body(db: &Db) -> serde_json::Value {
     let (_registry, document) = document();
     let transport = FakeTransport::new(vec![response(
@@ -120,7 +131,7 @@ async fn sent_body(db: &Db) -> serde_json::Value {
         &json!({"sequenceNum": 1, "revision": "rev-pushed"}).to_string(),
     )]);
     let outcome = pusher(db, transport.clone())
-        .push(&document, SnapshotGate::clean(), 1)
+        .push(&document, opened(db, NOTE), SnapshotGate::clean(), 1)
         .await
         .expect("the push");
     assert!(
@@ -168,11 +179,11 @@ async fn a_not_covered_refusal_owes_the_document_and_is_never_retried_hot() {
     let pusher = pusher(&db, transport.clone());
 
     let first = pusher
-        .push(&document, SnapshotGate::clean(), 1)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 1)
         .await
         .expect("a refusal, not an error");
     let second = pusher
-        .push(&document, SnapshotGate::clean(), 2)
+        .push(&document, opened(&db, NOTE), SnapshotGate::clean(), 2)
         .await
         .expect("refused locally");
 

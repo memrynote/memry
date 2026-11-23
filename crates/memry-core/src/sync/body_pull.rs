@@ -467,7 +467,7 @@ impl BodyPull {
     async fn fetch_baseline(
         &self,
         doc_id: &str,
-        epoch: i64,
+        epoch: crate::crdt::epoch::Epoch,
         cursor: i64,
         report: &mut BodyPullReport,
     ) -> Result<bool, BodyPullError> {

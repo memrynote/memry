@@ -2,7 +2,6 @@
 //! [`crate::sync::body_drain`] per call.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use tokio::time::Instant;
 
@@ -17,11 +16,6 @@ use crate::sync::bootstrap::BootstrapClient;
 use crate::sync::first_sync::{
     BODY_CONCURRENCY_ELEVATED, BODY_CONCURRENCY_STEADY, ProgressSink, SilentProgress,
 };
-
-/// The longest a `429`'s `Retry-After` holds the drain back. The server's
-/// windows are a minute; a larger answer is capped rather than parking the
-/// drain for the life of the process or overflowing the clock.
-const MAX_DRAIN_PAUSE_S: u64 = 600;
 
 /// What one drain round did.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -80,7 +74,11 @@ impl VaultSync {
                 .with_diagnostics(Arc::clone(&diagnostics)),
         );
         let _close = bootstrap.close_on_drop();
-        let elevated = bootstrap.open(now_ms() / 1_000).await.elevated();
+        let opened = bootstrap.open(now_ms() / 1_000).await;
+        // A 429 on the open holds back the next round, whose open would meet
+        // it again; this one still runs, at one stream.
+        let open_resume_at = opened.rate_limit_s.map(body_drain::resume_after);
+        let elevated = opened.elevated();
         let bodies = Arc::new(
             BodyPull::new(
                 diagnostics.observe(&http),
@@ -114,9 +112,7 @@ impl VaultSync {
             .await;
         bootstrap.close().await;
         let round = round?;
-        *self.drain_resume_at() = round
-            .rate_limit_s
-            .map(|wait_s| Instant::now() + Duration::from_secs(wait_s.min(MAX_DRAIN_PAUSE_S)));
+        *self.drain_resume_at() = round.resume_at.max(open_resume_at);
         Ok(BodyDrainSummary {
             documents: count(round.documents),
             // The open is a request too, and so is the close of a granted one.
@@ -128,6 +124,14 @@ impl VaultSync {
 }
 
 impl VaultSync {
+    /// Holds the drain back after a `429` that asked for `wait_s`, met
+    /// outside a round: by the first sync's bodies pass, which gave up on it.
+    pub(super) fn hold_drain_back(&self, wait_s: u64) {
+        let resume_at = body_drain::resume_after(wait_s);
+        let mut held = self.drain_resume_at();
+        *held = (*held).max(Some(resume_at));
+    }
+
     fn drain_resume_at(&self) -> std::sync::MutexGuard<'_, Option<Instant>> {
         self.drain_resume_at
             .lock()

@@ -33,7 +33,7 @@ use yrs::Update;
 use yrs::updates::decoder::Decode as _;
 
 use crate::api::errors::{ApiError, StorageError};
-use crate::crdt::epoch::{self, HeldBody};
+use crate::crdt::epoch::{self, Epoch, HeldBody};
 use crate::crdt::update_log::{self, Namespace};
 use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
 use crate::storage::nested_tx;
@@ -79,7 +79,7 @@ pub(super) struct FetchedBodies {
     /// The page carried `noteBodies` at all, so the server serves bodies.
     pub(super) served: bool,
     /// [`HeldBodies::epochs`], checked again where the bodies land.
-    pub(super) epochs: HashMap<String, i64>,
+    pub(super) epochs: HashMap<String, Epoch>,
 }
 
 /// The request builder and client [`fetch`] sends through, so its requests
@@ -287,7 +287,7 @@ pub(super) struct HeldBodies {
     /// The server snapshot revision, where one is stored.
     pub(super) revisions: HashMap<String, String>,
     /// Each known document's epoch (§7.16), read before the fetch (#5356).
-    pub(super) epochs: HashMap<String, i64>,
+    pub(super) epochs: HashMap<String, Epoch>,
 }
 
 pub(super) fn held_bodies(
@@ -318,7 +318,7 @@ pub(super) fn held_bodies(
             continue;
         }
         held.known.insert(doc_id.to_owned());
-        let epoch = epoch::read(conn, doc_id).map_err(crdt_failed)?;
+        let epoch = epoch::capture(conn, doc_id).map_err(crdt_failed)?;
         held.epochs.insert(doc_id.to_owned(), epoch);
         if let Some(at) = cursor.and_then(|text| text.parse::<i64>().ok()) {
             held.cursors.insert(doc_id.to_owned(), at);

@@ -57,3 +57,12 @@ strip = "debuginfo"
 # do not depend on the optimisation level.
 [profile.dev.package.libsodium-sys-stable]
 opt-level = 3
+
+# The next hottest dependencies in a Debug core bootstrap of the same vault
+# (Time Profiler, #5247): SQLite's C code and SHA-256, about 2.5% and 1% of
+# CPU at -O0. Neither changes output bytes. yrs showed 0.2% and stays unoptimised.
+[profile.dev.package.libsqlite3-sys]
+opt-level = 3
+
+[profile.dev.package.sha2]
+opt-level = 3
