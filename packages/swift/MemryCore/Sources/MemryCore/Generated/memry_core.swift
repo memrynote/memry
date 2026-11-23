@@ -28446,15 +28446,22 @@ public func FfiConverterTypeApproverStatus_lower(_ value: ApproverStatus) -> Rus
 public enum AttachmentRefusal: Equatable, Hashable {
     
     /**
-     * 413, or the `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
+     * The `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
      */
     case storageFull
+    /**
+     * `STORAGE_FILE_TOO_LARGE` or `VALIDATION_BODY_TOO_LARGE`: the file is
+     * past the plan's or the server's per-file limit, which freeing space
+     * never changes.
+     */
+    case tooLarge
     /**
      * 403: the account may not upload it.
      */
     case notAllowed
     /**
-     * Any other refusal: a 4xx such as a 400, or bytes that would not frame.
+     * Any other refusal: a 4xx such as a 400 or a 413 with another code, or
+     * bytes that would not frame.
      */
     case rejected
 
@@ -28480,9 +28487,11 @@ public struct FfiConverterTypeAttachmentRefusal: FfiConverterRustBuffer {
         
         case 1: return .storageFull
         
-        case 2: return .notAllowed
+        case 2: return .tooLarge
         
-        case 3: return .rejected
+        case 3: return .notAllowed
+        
+        case 4: return .rejected
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -28496,12 +28505,16 @@ public struct FfiConverterTypeAttachmentRefusal: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
         
         
-        case .notAllowed:
+        case .tooLarge:
             writeInt(&buf, Int32(2))
         
         
-        case .rejected:
+        case .notAllowed:
             writeInt(&buf, Int32(3))
+        
+        
+        case .rejected:
+            writeInt(&buf, Int32(4))
         
         }
     }

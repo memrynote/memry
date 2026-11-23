@@ -1033,3 +1033,37 @@ async fn a_refusal_in_a_pass_that_failed_is_told_by_the_next_pass() {
         "{pass:?}"
     );
 }
+
+/// #5532 review: only a full quota is storage full. A file past the plan's or
+/// the server's per-file limit is too large, which freeing space never fixes,
+/// and a 413 with no code the core knows promises neither.
+#[tokio::test]
+async fn a_413_names_storage_full_only_for_the_quota() {
+    for (code, expected) in [
+        ("STORAGE_QUOTA_EXCEEDED", AttachmentRefusal::StorageFull),
+        ("STORAGE_FILE_TOO_LARGE", AttachmentRefusal::TooLarge),
+        ("VALIDATION_BODY_TOO_LARGE", AttachmentRefusal::TooLarge),
+        ("SOMETHING_ELSE", AttachmentRefusal::Rejected),
+    ] {
+        let (dir, store) = (scratch_dir(), store());
+        let (note, id) = {
+            let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+            let note = app.note(&store);
+            let id = app.attach(&note).await.expect("kept for later");
+            (note, id)
+        };
+        let app = launch(&dir, &store, vec![error_response(413, code, "refused")]);
+        let drained = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            drained.news,
+            vec![QueuedAttachmentNews::Refused {
+                attachment_id: id,
+                note_id: note,
+                note_title: "Offline".to_owned(),
+                refusal: expected,
+                status: 413,
+            }],
+            "{code}"
+        );
+    }
+}

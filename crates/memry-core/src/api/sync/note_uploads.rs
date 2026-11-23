@@ -75,11 +75,16 @@ pub(super) fn is_refused(error: &SyncError) -> bool {
 /// Why the server refused an owed upload (#5532).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum AttachmentRefusal {
-    /// 413, or the `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
+    /// The `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
     StorageFull,
+    /// `STORAGE_FILE_TOO_LARGE` or `VALIDATION_BODY_TOO_LARGE`: the file is
+    /// past the plan's or the server's per-file limit, which freeing space
+    /// never changes.
+    TooLarge,
     /// 403: the account may not upload it.
     NotAllowed,
-    /// Any other refusal: a 4xx such as a 400, or bytes that would not frame.
+    /// Any other refusal: a 4xx such as a 400 or a 413 with another code, or
+    /// bytes that would not frame.
     Rejected,
 }
 
@@ -114,8 +119,14 @@ fn refusal(error: &SyncError) -> Option<(AttachmentRefusal, u16)> {
     else {
         return Some((AttachmentRefusal::Rejected, 0));
     };
+    // The codes `apps/sync-server` answers an upload with: the quota
+    // (`services/quota.ts`), and the per-file limits of the plan
+    // (`services/entitlements.ts`) and of the server (`routes/blob.ts`).
     let refusal = match (status, code.as_deref()) {
-        (413, _) | (_, Some("STORAGE_QUOTA_EXCEEDED")) => AttachmentRefusal::StorageFull,
+        (_, Some("STORAGE_QUOTA_EXCEEDED")) => AttachmentRefusal::StorageFull,
+        (_, Some("STORAGE_FILE_TOO_LARGE" | "VALIDATION_BODY_TOO_LARGE")) => {
+            AttachmentRefusal::TooLarge
+        }
         (403, _) => AttachmentRefusal::NotAllowed,
         _ => AttachmentRefusal::Rejected,
     };

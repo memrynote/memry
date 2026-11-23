@@ -8,12 +8,19 @@ import SwiftUI
 
 /// One refused upload, as the alert shows it.
 struct AttachmentRefusalAlert: Equatable, Identifiable {
+    /// The vault whose sync pass told it: only that vault can open the note.
+    let vaultId: String
     let attachmentId: String
     let noteId: String
     let noteTitle: String
     let refusal: AttachmentRefusal
+    /// The HTTP status, 0 for bytes this device could not frame.
+    let status: UInt16
 
     var id: String { attachmentId }
+
+    /// Only a full quota clears by freeing space.
+    var offersFreeUpSpace: Bool { refusal == .storageFull }
 }
 
 /// The refusals waiting for the user, oldest first. One per attachment.
@@ -23,17 +30,20 @@ final class AttachmentRefusals {
     static let shared = AttachmentRefusals()
     private(set) var pending: [AttachmentRefusalAlert] = []
 
-    /// The alert on screen.
-    var shown: AttachmentRefusalAlert? { pending.first }
+    /// The alert on screen in the open vault.
+    func shown(in vaultId: String?) -> AttachmentRefusalAlert? {
+        pending.first { $0.vaultId == vaultId }
+    }
 
-    /// Takes a sync pass's news: a refusal waits for the user, and an upload
-    /// that landed takes its refusal back.
-    func absorb(_ news: [QueuedAttachmentNews]) {
+    /// Takes a sync pass's news for `vaultId`: a refusal waits for the user,
+    /// and an upload that landed takes its refusal back.
+    func absorb(_ news: [QueuedAttachmentNews], vaultId: String) {
         for item in news {
             switch item {
-            case let .refused(attachmentId, noteId, noteTitle, refusal, _):
+            case let .refused(attachmentId, noteId, noteTitle, refusal, status):
                 let alert = AttachmentRefusalAlert(
-                    attachmentId: attachmentId, noteId: noteId, noteTitle: noteTitle, refusal: refusal
+                    vaultId: vaultId, attachmentId: attachmentId, noteId: noteId, noteTitle: noteTitle,
+                    refusal: refusal, status: status
                 )
                 if let index = pending.firstIndex(where: { $0.id == attachmentId }) {
                     pending[index] = alert
@@ -46,12 +56,11 @@ final class AttachmentRefusals {
         }
     }
 
-    func dismiss() {
-        if !pending.isEmpty { pending.removeFirst() }
+    /// Idempotent: one tap dismisses through both the button and the
+    /// alert's `isPresented` setter.
+    func dismiss(_ attachmentId: String) {
+        pending.removeAll { $0.id == attachmentId }
     }
-
-    /// The vault closed: its notes cannot be opened from another one.
-    func clear() { pending = [] }
 }
 
 enum AttachmentRefusalCopy {
@@ -60,21 +69,28 @@ enum AttachmentRefusalCopy {
         return "A file in \u{201C}\(note)\u{201D} could not sync"
     }
 
-    static func message(_ refusal: AttachmentRefusal) -> String {
+    static func message(_ alert: AttachmentRefusalAlert) -> String {
         let device = ThisDevice.noun
-        return switch refusal {
-        case .storageFull:
+        let stays = "It stays on this \(device) until you remove it from the note."
+        return switch (alert.refusal, alert.status) {
+        case (.storageFull, _):
             "Your storage is full. The file stays on this \(device) and syncs once you free up space."
-        case .notAllowed:
-            "Your account cannot upload this file. It stays on this \(device) until you remove it from the note."
-        case .rejected:
-            "The server refused this file. It stays on this \(device) until you remove it from the note."
+        case (.tooLarge, _):
+            "This file is too large to sync. \(stays)"
+        case (.notAllowed, _):
+            "Your account cannot upload this file. \(stays)"
+        case (.rejected, 402):
+            "Your sync plan is not active. The file stays on this \(device) and syncs once you renew it."
+        case (.rejected, 0):
+            "This \(device) could not prepare the file for sync. \(stays)"
+        case (.rejected, _):
+            "The server refused this file. \(stays)"
         }
     }
 
-    static let openNote = "Open Note"
-    static let freeUpSpace = "Free Up Space"
-    static let notNow = "Not Now"
+    static let openNote = "Open note"
+    static let freeUpSpace = "Free up space"
+    static let dismiss = "OK"
 }
 
 extension View {
@@ -92,29 +108,32 @@ private struct AttachmentRefusalHost: ViewModifier {
     let openNote: (String) -> Void
     let openStorage: () -> Void
     @State private var refusals = AttachmentRefusals.shared
+    @Environment(\.handoffVaultId) private var vaultId
 
     func body(content: Content) -> some View {
-        let shown = refusals.shown
+        let shown = refusals.shown(in: vaultId)
         content
             .alert(
                 shown.map(AttachmentRefusalCopy.title) ?? "",
-                isPresented: Binding(get: { shown != nil }, set: { if !$0 { refusals.dismiss() } }),
+                isPresented: Binding(
+                    get: { shown != nil },
+                    set: { if !$0, let shown { refusals.dismiss(shown.id) } }
+                ),
                 presenting: shown
             ) { alert in
-                if alert.refusal == .storageFull {
+                if alert.offersFreeUpSpace {
                     Button(AttachmentRefusalCopy.freeUpSpace) {
-                        refusals.dismiss()
+                        refusals.dismiss(alert.id)
                         openStorage()
                     }
                 }
                 Button(AttachmentRefusalCopy.openNote) {
-                    refusals.dismiss()
+                    refusals.dismiss(alert.id)
                     openNote(alert.noteId)
                 }
-                Button(AttachmentRefusalCopy.notNow, role: .cancel) { refusals.dismiss() }
+                Button(AttachmentRefusalCopy.dismiss, role: .cancel) { refusals.dismiss(alert.id) }
             } message: { alert in
-                Text(AttachmentRefusalCopy.message(alert.refusal))
+                Text(AttachmentRefusalCopy.message(alert))
             }
-            .onDisappear { refusals.clear() }
     }
 }
