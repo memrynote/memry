@@ -70,8 +70,11 @@ struct Launch {
 }
 
 fn launch(dir: &Path, store: &Arc<FakeSecureStore>, script: Vec<Scripted>) -> Launch {
+    launch_over(dir, store, FakeTransport::new(script))
+}
+
+fn launch_over(dir: &Path, store: &Arc<FakeSecureStore>, transport: Arc<FakeTransport>) -> Launch {
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
-    let transport = FakeTransport::new(script);
     let session = Arc::new(
         AuthSession::new(
             transport.clone(),
@@ -319,18 +322,7 @@ async fn the_sync_pass_uploads_a_kept_attachment_before_it_pushes_the_reference(
         (note, id)
     };
 
-    let (public, _secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
-    let mut script = vec![
-        response(
-            200,
-            &json!({"devices": [{"id": DEVICE, "signingPublicKey": BASE64.encode(&public)}]})
-                .to_string(),
-        ),
-        response(
-            200,
-            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
-        ),
-    ];
+    let mut script = pass_head();
     script.extend(upload_script());
     script.push(response(
         200,
@@ -351,4 +343,101 @@ async fn the_sync_pass_uploads_a_kept_attachment_before_it_pushes_the_reference(
     assert!(manifest.is_some() && manifest < push, "{urls:?}");
     assert_eq!(app.manifest_ids(), vec![id.clone()]);
     assert_eq!(app.references(&note), vec![id]);
+}
+
+fn pass_head() -> Vec<Scripted> {
+    let (public, _secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    vec![
+        response(
+            200,
+            &json!({"devices": [{"id": DEVICE, "signingPublicKey": BASE64.encode(&public)}]})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
+        ),
+    ]
+}
+
+/// A refusal on a later pass keeps the picture: the bytes are the only copy,
+/// so the row stays owed, the block stays bound and the pass reports it.
+#[tokio::test]
+async fn a_later_refusal_keeps_the_upload_owed_and_the_bytes_bound() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    script.push(response(
+        200,
+        &json!({"accepted": [note], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+    ));
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    let app = launch(&dir, &store, script);
+
+    let pass = app.sync.sync_now().await.expect("the pass");
+
+    match app.block(&note) {
+        BlockAttachment::Bound { attachment } => assert_eq!(attachment.attachment_id, id),
+        other => panic!("a refused upload must keep its block, got {other:?}"),
+    }
+    let evicted = app
+        .vault
+        .db_handle()
+        .call_blocking(|conn| attachments::evict_to_budget(conn, -1))
+        .expect("evict");
+    assert!(evicted.paths.is_empty(), "the only copy is never evicted");
+    assert_eq!(
+        std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
+        BYTES
+    );
+    assert!(pass.rejected > 0, "the refusal is visible: {pass:?}");
+    let drain = app.sync.upload_queued_attachments().await.expect("drain");
+    assert_eq!((drain.uploaded, drain.refused), (0, 1), "still owed");
+}
+
+/// A detach that lands while the bytes are going up wins: the note never
+/// gains the reference back and the uploaded chunks are released.
+#[tokio::test]
+async fn a_detach_during_the_upload_leaves_no_reference_and_releases_the_chunks() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let mut script = upload_script();
+    script.push(response(200, &json!({"success": true}).to_string()));
+    let app = launch_over(&dir, &store, FakeTransport::slow(script, 50));
+
+    let sync = Arc::clone(&app.sync);
+    let drain = tokio::spawn(async move { sync.upload_queued_attachments().await });
+    // Wait until the upload is on the wire, then detach under it.
+    while app.transport.call_count() < 2 {
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    }
+    app.sync
+        .detach_attachment(note.clone(), id.clone())
+        .await
+        .expect("detach");
+    let drained = drain.await.expect("join").expect("drain");
+
+    assert_eq!(drained.uploaded, 0, "nothing was referenced");
+    assert_eq!(app.manifest_ids(), vec![id], "the upload itself finished");
+    assert!(app.references(&note).is_empty(), "no reference to push");
+    assert_eq!(
+        app.transport
+            .calls_to("/sync/attachments/dereference")
+            .len(),
+        1,
+        "the orphaned chunks go back"
+    );
 }
