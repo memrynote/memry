@@ -16,7 +16,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, error_response, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::errors::{SyncError, TransportError};
-use memry_core::api::sync::VaultSync;
+use memry_core::api::sync::{AttachmentRefusal, QueuedAttachmentNews, VaultSync};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments::{self, BlockAttachment};
@@ -439,5 +439,104 @@ async fn a_detach_during_the_upload_leaves_no_reference_and_releases_the_chunks(
             .len(),
         1,
         "the orphaned chunks go back"
+    );
+}
+
+/// #5532: a refusal on a later pass reaches the shell once, naming the note
+/// and the reason, not on every pass that retries it, nor again after a
+/// relaunch. The upload that later lands is told too, so the shell can take
+/// its alert back.
+#[tokio::test]
+async fn a_later_refusal_is_told_once_and_its_later_upload_is_told_too() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+    let refused = QueuedAttachmentNews::Refused {
+        attachment_id: id.clone(),
+        note_id: note.clone(),
+        note_title: "Offline".to_owned(),
+        refusal: AttachmentRefusal::StorageFull,
+        status: 413,
+    };
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    script.push(response(
+        200,
+        &json!({"accepted": [note], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+    ));
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    let app = launch(&dir, &store, script);
+    let pass = app.sync.sync_now().await.expect("the pass");
+    assert_eq!(pass.attachments, vec![refused], "{pass:?}");
+    let again = app.sync.upload_queued_attachments().await.expect("drain");
+    assert_eq!((again.refused, again.news.len()), (1, 0), "{again:?}");
+    drop(app);
+
+    let mut script = vec![error_response(403, "FORBIDDEN", "not allowed")];
+    script.extend(upload_script());
+    let app = launch(&dir, &store, script);
+    let forbidden = app.sync.upload_queued_attachments().await.expect("drain");
+    assert!(
+        matches!(
+            forbidden.news.as_slice(),
+            [QueuedAttachmentNews::Refused {
+                refusal: AttachmentRefusal::NotAllowed,
+                status: 403,
+                ..
+            }]
+        ),
+        "a new reason is a new refusal: {forbidden:?}"
+    );
+    let landed = app.sync.upload_queued_attachments().await.expect("drain");
+    assert_eq!(
+        landed.news,
+        vec![QueuedAttachmentNews::Uploaded {
+            attachment_id: id.clone(),
+            note_id: note.clone(),
+        }]
+    );
+    assert_eq!(app.references(&note), vec![id]);
+}
+
+/// #5532: a pass that fails after the walk returns no summary, so the user
+/// heard nothing; the next pass tells the refusal instead of keeping quiet.
+// Paused: the push's retry ladder sleeps on tokio's clock.
+#[tokio::test(start_paused = true)]
+async fn a_refusal_in_a_pass_that_failed_is_told_by_the_next_pass() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        (note, id)
+    };
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    // Every attempt the push's retry ladder makes.
+    script.extend((0..8).map(|_| Err(TransportError::Offline)));
+    let app = launch(&dir, &store, script);
+    app.sync.sync_now().await.expect_err("the push failed");
+    drop(app);
+
+    let mut script = pass_head();
+    script.push(error_response(413, "STORAGE_QUOTA_EXCEEDED", "over quota"));
+    script.push(response(
+        200,
+        &json!({"accepted": [note], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+    ));
+    let app = launch(&dir, &store, script);
+    let pass = app.sync.sync_now().await.expect("the pass");
+    assert!(
+        matches!(
+            pass.attachments.as_slice(),
+            [QueuedAttachmentNews::Refused { attachment_id, .. }] if *attachment_id == id
+        ),
+        "{pass:?}"
     );
 }

@@ -192,6 +192,7 @@ struct CoreVaultFiller: VaultFilling {
         do {
             let pass = try await sync.syncNow()
             SyncTelemetry.passCompleted(pass, since: start)
+            await AttachmentRefusals.shared.absorb(pass.attachments)
             NotificationCenter.default.post(name: .vaultSyncPassSucceeded, object: nil)
             return pass
         } catch {

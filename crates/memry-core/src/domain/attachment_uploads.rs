@@ -114,11 +114,61 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
+/// The note's title, empty when it has none, so a refusal can name it.
+pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1",
+        params![note_id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|title| title.flatten().unwrap_or_default())
+    .map_err(failed)
+}
+
 /// The upload is no longer owed: it landed, the server refused it for good,
 /// or the user detached the picture. The `attachments` row and the bytes stay.
 pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     conn.execute(
         "DELETE FROM note_attachment_uploads WHERE attachment_id = ?1",
+        params![attachment_id],
+    )
+    .map_err(failed)?;
+    forget_refusal(conn, attachment_id)
+}
+
+/// The refusal status the shell was last told about for this upload (#5532).
+pub fn told_refusal(conn: &Connection, attachment_id: &str) -> Result<Option<u16>, StorageError> {
+    conn.query_row(
+        "SELECT status FROM note_attachment_refusals WHERE attachment_id = ?1",
+        params![attachment_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
+}
+
+/// Records that the shell was told the upload was refused with `status`.
+/// An upload no longer owed records nothing.
+pub fn remember_refusal(
+    conn: &Connection,
+    attachment_id: &str,
+    status: u16,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO note_attachment_refusals (attachment_id, status) \
+         SELECT ?1, ?2 WHERE EXISTS \
+           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?1) \
+         ON CONFLICT (attachment_id) DO UPDATE SET status = excluded.status",
+        params![attachment_id, status],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+fn forget_refusal(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM note_attachment_refusals WHERE attachment_id = ?1",
         params![attachment_id],
     )
     .map_err(failed)?;
@@ -139,5 +189,6 @@ pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageErro
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(&tx, attachment_id)?;
     tx.commit().map_err(failed)
 }
