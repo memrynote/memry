@@ -193,6 +193,28 @@ async fn updates_pulled_mid_chunk_are_not_shadowed_by_an_older_baseline() {
     assert_eq!(cursor(&db, DOC).as_deref(), Some("7"));
 }
 
+/// §7.5: a baseline a body pull stored mid-chunk at the pack's own revision is
+/// the same blob, so the pack entry is stale even though the stored cursor is
+/// below its `sequenceNum`: the held snapshot and cursor stay as they are.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_baseline_at_the_packs_revision_stored_mid_chunk_is_kept() {
+    let (db, seeded) = seed_with(
+        "same-revision",
+        Box::new(|db| {
+            db.call_blocking(|conn| {
+                update_log::put_server_snapshot(conn, DOC, b"HELD", 3, Some("rev-pack"), 1)
+                    .expect("the held snapshot");
+                store::write_cursor(conn, &format!("crdt:{DOC}"), Some("3"), 1)
+            })
+            .expect("store the held baseline");
+        }),
+    )
+    .await;
+    assert_eq!(seeded, PackSeed::Stale);
+    assert_eq!(snapshot(&db).as_deref(), Some(&b"HELD"[..]));
+    assert_eq!(cursor(&db, DOC).as_deref(), Some("3"));
+}
+
 /// The production open: chapter 04 §4.12 against one desktop device.
 struct DesktopCipher {
     vault_key: Vec<u8>,

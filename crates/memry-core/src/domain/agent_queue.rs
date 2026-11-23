@@ -25,6 +25,7 @@ use crate::domain::{agent_conversation, agent_message};
 use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox::{self, Change};
+use crate::sync::server_vault::RecordVault;
 
 /// Whether a write queues its record for the push.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -136,7 +137,8 @@ fn enqueue(
     Ok(queued)
 }
 
-/// Queues every conversation of `vault_id`, deleted ones included, and every
+/// Queues every conversation of the vault whose local id is `vault_id` (either
+/// id of its [`RecordVault`]), deleted ones included, and every
 /// final message of those conversations, as Electron's
 /// `backfillAgentChatRows` does when the account turns paid. A deleted
 /// conversation is queued too, so one the server holds from an earlier paid
@@ -155,17 +157,18 @@ pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize,
         return Ok(0);
     }
     let conn = &transaction;
+    let vault = RecordVault::read(conn, vault_id)?;
     let conversations = ids(
         conn,
-        "SELECT id FROM agent_conversations WHERE vault_id = ?1 ORDER BY created_at, id",
-        vault_id,
+        "SELECT id FROM agent_conversations WHERE vault_id IN (?1, ?2) ORDER BY created_at, id",
+        &vault,
     )?;
     let messages = ids(
         conn,
         "SELECT id FROM agent_messages
-         WHERE conversation_id IN (SELECT id FROM agent_conversations WHERE vault_id = ?1)
+         WHERE conversation_id IN (SELECT id FROM agent_conversations WHERE vault_id IN (?1, ?2))
          ORDER BY created_at, id",
-        vault_id,
+        &vault,
     )?;
     let queued = enqueue(conn, agent_conversation::ITEM_TYPE, &conversations, now_ms)?
         + enqueue(conn, agent_message::ITEM_TYPE, &messages, now_ms)?;
@@ -178,10 +181,10 @@ pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize,
     Ok(queued)
 }
 
-fn ids(conn: &Connection, sql: &str, vault_id: &str) -> Result<Vec<String>, StorageError> {
+fn ids(conn: &Connection, sql: &str, vault: &RecordVault) -> Result<Vec<String>, StorageError> {
     let mut statement = conn.prepare(sql).map_err(failed)?;
     statement
-        .query_map(params![vault_id], |row| row.get(0))
+        .query_map(params![vault.stamp(), vault.local()], |row| row.get(0))
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)

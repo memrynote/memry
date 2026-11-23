@@ -402,3 +402,27 @@ fn a_row_not_read_yet_keeps_the_mark() {
     assert_eq!(f.run(&id), Outcome::Unchanged);
     assert_eq!(f.read("Renamed.md"), "first words\n");
 }
+
+/// A pass kept for a server body not pulled yet keeps the mark (#5509): the pass after the body
+/// arrives gives the file the pulled frontmatter, as Electron's `applyUpsert` writes it.
+#[test]
+fn a_pass_kept_for_its_unpulled_body_keeps_the_mark() {
+    let mut f = fixture();
+    let id = note(&mut f, "first words\n");
+    pulled(&f, &id, |w| {
+        w.set_property(id.clone(), "status".into(), "\"done\"".into())
+            .unwrap();
+    });
+    f.owe_server_body(&id);
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::BodyNotPulled));
+    assert_eq!(
+        f.read("n.md"),
+        "first words\n",
+        "the file waits for the body"
+    );
+
+    f.sql("DELETE FROM meta WHERE key = 'sync.body_owed:' || ?1", &id);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(f.read("n.md"), "---\nstatus: done\n---\nfirst words\n");
+}

@@ -295,10 +295,17 @@ impl Indexer {
                 // A reindex reports through its own callback, which refreshes the list. The
                 // open's build ends after it, once the rows hold every note.
                 let carried = std::mem::take(&mut owed.report);
-                for (progress, answer) in waiting.drain(..) {
-                    // The asker may have gone; the work is done either way.
-                    let _ = answer
-                        .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
+                for (mut progress, answer) in std::mem::take(&mut waiting) {
+                    match self.reindex(&mut owed, &mut progress, cancel, announce, landed, defined)
+                    {
+                        // A first sync that started meanwhile held its search reindex: the
+                        // asker waits for it to end, as one asked during it does.
+                        None => waiting.push((progress, answer)),
+                        // The asker may have gone; the work is done either way.
+                        Some(done) => {
+                            let _ = answer.send(done);
+                        }
+                    }
                 }
                 if carried {
                     report(OpenBuild::Ended {
@@ -472,16 +479,17 @@ impl Indexer {
         measured
     }
 
-    /// Every note measured again, the queue and an owed scan with it.
+    /// Every note measured again, the queue and an owed scan with it; `None` when a first sync
+    /// held its search reindex, which is still owed.
     fn reindex(
         &self,
         owed: &mut Owed,
-        mut progress: Progress,
+        progress: &mut Progress,
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
         defined: &dyn Fn(),
-    ) -> Result<Backfilled, IndexError> {
+    ) -> Option<Result<Backfilled, IndexError>> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
         owed.retype = false;
@@ -512,9 +520,10 @@ impl Indexer {
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
         match outcome {
-            Ok(pass) if pass.stopped => Err(IndexError::NotOpen),
-            Ok(pass) => Ok(pass.done),
-            Err(error) => Err(error),
+            Ok(pass) if pass.stopped => Some(Err(IndexError::NotOpen)),
+            Ok(pass) if pass.held => None,
+            Ok(pass) => Some(Ok(pass.done)),
+            Err(error) => Some(Err(error)),
         }
     }
 }

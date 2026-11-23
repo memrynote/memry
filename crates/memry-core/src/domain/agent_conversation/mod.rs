@@ -31,6 +31,7 @@ use crate::storage::repositories::Change;
 use crate::storage::repositories::projectors::agent::set_sealed_pending;
 use crate::storage::repositories::schema::Object;
 use crate::sync::outbox;
+use crate::sync::server_vault::RecordVault;
 
 /// The sync type of a conversation record.
 pub const ITEM_TYPE: &str = "agent_conversation";
@@ -87,7 +88,8 @@ pub struct ConversationPatch<'a> {
 }
 
 /// Creates a conversation with an empty trust list, unpinned, queued under
-/// [`Queue::Outbox`].
+/// [`Queue::Outbox`]. It states the [`RecordVault`] stamp of the vault whose
+/// local id is `new.vault_id`.
 pub fn create(
     conn: &Connection,
     key: &AtRestKey,
@@ -98,7 +100,7 @@ pub fn create(
 ) -> Result<Conversation, AgentError> {
     let conversation = Conversation {
         id: mint_id(),
-        vault_id: new.vault_id.to_owned(),
+        vault_id: RecordVault::read(conn, new.vault_id)?.stamp().to_owned(),
         title: new.title.to_owned(),
         backend: new.backend.to_owned(),
         backend_model: new.backend_model.map(str::to_owned),
@@ -252,22 +254,25 @@ pub fn get(
     Ok(opened(conn, ITEM_TYPE, id, key)?.map(|payload| from_payload(id, &payload)))
 }
 
-/// Every live conversation of `vault_id`, most recently updated first
-/// (`listByVault`).
+/// Every live conversation of the vault whose local id is `vault_id`, most
+/// recently updated first (`listByVault`): those stating its [`RecordVault`]
+/// stamp or its local id.
 pub fn list(
     conn: &Connection,
     key: &AtRestKey,
     vault_id: &str,
 ) -> Result<Vec<Conversation>, AgentError> {
+    let vault = RecordVault::read(conn, vault_id)?;
     let ids: Vec<String> = {
         let mut statement = conn
             .prepare_cached(
-                "SELECT id FROM agent_conversations WHERE vault_id = ?1 AND deleted_at IS NULL
+                "SELECT id FROM agent_conversations
+                 WHERE vault_id IN (?1, ?2) AND deleted_at IS NULL
                  ORDER BY updated_at DESC, id",
             )
             .map_err(failed)?;
         statement
-            .query_map(params![vault_id], |row| row.get(0))
+            .query_map(params![vault.stamp(), vault.local()], |row| row.get(0))
             .map_err(failed)?
             .collect::<Result<_, _>>()
             .map_err(failed)?
