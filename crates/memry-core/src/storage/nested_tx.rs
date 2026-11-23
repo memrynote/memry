@@ -134,17 +134,20 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// These two open with `Connection::transaction`, which takes
-    /// `&mut Connection`, so nothing holding a page's shared `&Connection`
-    /// can reach them.
+    /// `update_log.rs`, `compact.rs`, `migrations.rs` and
+    /// `legacy_numbering.rs` open with `Connection::transaction` or
+    /// `transaction_with_behavior`, which take `&mut Connection`, so nothing
+    /// holding a page's shared `&Connection` can reach them.
     ///
     /// The `*_tests.rs` files and the test modules of `connection.rs`,
     /// `guard.rs`, `pool.rs` and `recovery.rs` (desktop, feat/tauri-v2) hold
     /// a lock or leave a transaction open on a second connection on purpose.
-    const RAW_TRANSACTION_ALLOWED: [&str; 11] = [
+    const RAW_TRANSACTION_ALLOWED: [&str; 13] = [
         "nested_tx.rs",
         "crdt/update_log.rs",
+        "crdt/compact.rs",
         "storage/migrations.rs",
+        "storage/migrations/legacy_numbering.rs",
         "storage/connection.rs",
         "storage/guard.rs",
         "storage/pool.rs",
@@ -155,12 +158,13 @@ mod tests {
         "storage/migrations/canvases_tests.rs",
     ];
 
-    /// rusqlite's two transaction openers, and a `BEGIN` statement with or
+    /// rusqlite's three transaction openers, and a `BEGIN` statement with or
     /// without a mode. iCalendar's `BEGIN:` lines are not SQL.
     fn opens_raw_transaction(source: &str) -> bool {
-        const OPENERS: [&str; 8] = [
+        const OPENERS: [&str; 9] = [
             ".unchecked_transaction(",
             ".transaction()",
+            ".transaction_with_behavior(",
             "(\"BEGIN\"",
             "(\"BEGIN;",
             "(\"BEGIN ",
@@ -175,6 +179,9 @@ mod tests {
     fn no_core_write_opens_a_transaction_that_cannot_nest() {
         assert!(opens_raw_transaction(r#"conn.execute_batch("BEGIN")?"#));
         assert!(opens_raw_transaction("let tx = conn.transaction()?;"));
+        assert!(opens_raw_transaction(
+            "conn.transaction_with_behavior(TransactionBehavior::Immediate)"
+        ));
         assert!(!opens_raw_transaction(r#"format!("BEGIN:{}", name)"#));
         fn scan(dir: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).expect("read src") {
