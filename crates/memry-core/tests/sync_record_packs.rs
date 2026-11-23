@@ -216,8 +216,8 @@ struct Server {
     snapshots: usize,
     /// The live items: `type:id` ([`typed`]) and current `server_cursor`.
     live: Vec<(String, i64)>,
-    /// Deleted ids the feed reports.
-    deleted: Vec<String>,
+    /// Deleted ids the feed reports, with the cursor of the delete.
+    deleted: Vec<(String, i64)>,
     /// Ids `POST /sync/pull` answers with a signed delete.
     signed_deletes: Vec<String>,
     /// Purged markers `POST /sync/pull` serves for the ids it is asked, only
@@ -415,15 +415,17 @@ impl Server {
             let head = self
                 .live
                 .iter()
+                .chain(&self.deleted)
                 .map(|(_, c)| *c)
                 .max()
                 .unwrap_or(0)
                 .max(from);
-            let deleted = if from == 0 {
-                self.deleted.clone()
-            } else {
-                Vec::new()
-            };
+            let deleted: Vec<&str> = self
+                .deleted
+                .iter()
+                .filter(|(_, cursor)| *cursor > from)
+                .map(|(id, _)| id.as_str())
+                .collect();
             return Some(response(
                 200,
                 &json!({"items": items, "deleted": deleted, "hasMore": false, "nextCursor": head})
@@ -1046,6 +1048,25 @@ async fn the_manifest_pulls_what_the_packs_did_not_hold_at_its_cursor_and_drops_
     assert_eq!(rows["n2"].1, None, "pulled by id: no known cursor");
     assert!(!rows["n3"].0 && !rows["n4"].0);
     assert_eq!(report.reconcile_removed, 1);
+}
+
+/// #5405: while the reconcile is due the refs pass sends no pull for a
+/// `deleted` id. n3 was deleted after the packs (cursor 6), so the feed tail
+/// lists it and the manifest omits it; n2 was rewritten (cursor 9). The
+/// reconcile pulls both in one request, and n3's signed delete removes it.
+#[tokio::test]
+async fn a_pack_held_row_the_feed_reports_deleted_is_removed_by_the_reconciles_one_pull() {
+    let db = scratch_db("feed-deleted");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    server.live[1].1 = 9;
+    server.deleted.push(("n3".into(), 6));
+    server.signed_deletes.push("n3".into());
+    let routes = Routes::new(server);
+    run(&db, &routes, &[]).await;
+    assert_eq!(routes.count("/sync/pull"), 1, "{:?}", routes.calls());
+    assert!(!notes(&db)["n3"].0, "the signed delete removes n3");
+    assert!(notes(&db)["n2"].0);
 }
 
 /// `covered_vault(4, 10)` whose manifest omits n3, set up by `stage`.
