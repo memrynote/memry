@@ -82,7 +82,7 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
-import { handSharedFileToTwin, sharedWithCaseTwin } from '../../vault/case-twin-file'
+import { keepSurvivorFile, sharesCaseTwinFile } from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -772,7 +772,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     const absolutePath = toAbsolutePath(existing.path)
     // Asked while this row still names the file (#5495).
-    const twinKeepsFile = sharedWithCaseTwin(getVaultRoot(), existing.path)
+    const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), existing.path)
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -826,7 +826,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
     if (twinKeepsFile) {
-      void handSharedFileToTwin(getVaultRoot(), existing.path, itemId)
+      void keepSurvivorFile(getVaultRoot(), existing.path, itemId)
     } else {
       // Journaled with the page and unlinked after it commits (#2385): a lost
       // unlink would leave a file with no row for the indexer to push back.

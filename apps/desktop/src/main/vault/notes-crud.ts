@@ -22,7 +22,7 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import { handSharedFileToTwin, sharedWithCaseTwin } from './case-twin-file'
+import { keepSurvivorFile, sharesCaseTwinFile } from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -888,12 +888,12 @@ export async function deleteNote(id: string): Promise<void> {
   assertNoteWritable(id, cached.path)
 
   // A case twin's file is the other twin's too (#5495): only this row goes.
-  const twinKeepsFile = sharedWithCaseTwin(getVaultRoot(), cached.path)
+  const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), cached.path)
   if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
 
   deleteNoteFromCache(db, id)
   deleteNotePosition(getDatabase(), cached.path)
-  if (twinKeepsFile) await handSharedFileToTwin(getVaultRoot(), cached.path, id)
+  if (twinKeepsFile) await keepSurvivorFile(getVaultRoot(), cached.path, id)
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,
