@@ -2,7 +2,9 @@
  * Two binary notes whose paths differ only in case share one file on a
  * case-insensitive disk, and the file holds one twin's bytes. A change to it
  * is never pushed as either twin's attachment (#5522), and a peer's rename or
- * move of one twin leaves the file with the other (#5560).
+ * move of one twin leaves the file with the other (#5560). After such a split,
+ * a file that may hold the other twin's bytes is not pushed until its own
+ * bytes land, and a change made to it is kept as a conflict copy.
  *
  * @module vault/case-twins-binary.test
  */
@@ -12,6 +14,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -99,10 +102,13 @@ import {
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher } from './watcher'
+import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from './case-twin-file'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
 import {
+  MISSING_PROBE_LIMIT,
+  markDownloadFailed,
   releaseDownloadAttempt,
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
@@ -125,9 +131,12 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
   let index: TestDatabaseResult
   const saved = vi.fn()
   const downloads = vi.fn()
+  const asked = vi.fn()
   const onSaved = (event: { noteId: string }) => saved(event.noteId)
-  const onDownload = (event: { noteId: string; diskPath: string }) =>
+  const onDownload = (event: { noteId: string; attachmentId: string; diskPath: string }) => {
     downloads(event.noteId, event.diskPath)
+    asked(event.attachmentId)
+  }
   const abs = (relativePath: string) => path.join(vault.path, relativePath)
 
   beforeEach(() => {
@@ -166,15 +175,21 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     vi.clearAllMocks()
   })
 
+  interface Own {
+    attachmentId?: string | null
+    localOnly?: boolean
+  }
+
   /** A pulled attachment note: its canonical and index rows, and its bytes at the row's spelling. */
-  function seed(id: string, relativePath: string, bytes: string): void {
+  function seed(id: string, relativePath: string, bytes: string, own: Own = {}): void {
     const fields = {
       id,
       path: relativePath,
       title: path.basename(relativePath, path.extname(relativePath)),
       fileType: 'image' as const,
       mimeType: 'image/png',
-      attachmentId: `att-${id}`,
+      attachmentId: own.attachmentId === undefined ? `att-${id}` : own.attachmentId,
+      localOnly: own.localOnly ?? false,
       clock: { dev1: 1 },
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-12T00:00:00.000Z',
@@ -200,10 +215,10 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     fs.readFileSync(path.join(vault.path, relativePath), 'utf8')
 
   /** Twin A's row spells `Supernotes/`, B's `SUPERNOTES/`; B's bytes are on disk. */
-  function twins(diskFolder: 'Supernotes' | 'SUPERNOTES'): void {
+  function twins(diskFolder: 'Supernotes' | 'SUPERNOTES', a: Own = {}, b: Own = {}): void {
     fs.mkdirSync(path.join(vault.path, diskFolder), { recursive: true })
-    seed('twin-a', 'Supernotes/p.png', 'a-bytes')
-    seed('twin-b', 'SUPERNOTES/p.png', 'b-bytes')
+    seed('twin-a', 'Supernotes/p.png', 'a-bytes', a)
+    seed('twin-b', 'SUPERNOTES/p.png', 'b-bytes', b)
   }
 
   const pushed = () => ({
@@ -244,6 +259,30 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     return { updates: pushed().updates.filter(twin), saved: pushed().saved.filter(twin) }
   }
 
+  /** A download of note `id`'s attachment, asked for at `requestedPath`, as the downloader lands it. */
+  function land(id: string, attachmentId: string, requestedPath: string, bytes: string): string {
+    const at = landCaseTwinDownload(requestedPath, attachmentId)
+    markWritebackIgnored(at)
+    fs.writeFileSync(at, bytes)
+    recordDownloadedFileSize(id, bytes.length)
+    return at
+  }
+
+  const conflictCopies = (folder: string) =>
+    fs.readdirSync(abs(folder)).filter((name) => name.includes('(conflict copy)'))
+
+  /** Waits until the watcher takes a conflict copy in as a new note and pushes it. */
+  async function copyPushed(relativePath: string): Promise<void> {
+    await vi.waitFor(
+      () => {
+        const copy = rows().find((row) => row.path === relativePath)
+        expect(copy).toBeDefined()
+        expect(pushed().saved).toContain(copy?.id)
+      },
+      { timeout: 15_000, interval: 100 }
+    )
+  }
+
   // The row whose spelling matches the disk takes the change event: A's for a
   // `Supernotes/` folder, B's for `SUPERNOTES/`.
   for (const diskFolder of ['Supernotes', 'SUPERNOTES'] as const) {
@@ -262,23 +301,32 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     }, 30_000)
   }
 
-  /** A peer's record for twin B as a pull applies it: renamed, moved, or both. */
-  function applyPeerUpdate(change: { title?: string; folderPath?: string }) {
+  /** A peer's record for a twin as a pull applies it (B by default): renamed, moved, or both. */
+  function applyPeerUpdate(change: {
+    id?: 'twin-a' | 'twin-b'
+    title?: string
+    folderPath?: string
+    attachmentId?: string | null
+  }) {
+    const id = change.id ?? 'twin-b'
     const payload: NoteSyncPayload = {
       title: change.title ?? 'p',
-      folderPath: change.folderPath ?? 'SUPERNOTES',
+      folderPath: change.folderPath ?? (id === 'twin-b' ? 'SUPERNOTES' : 'Supernotes'),
       fileType: 'image',
       mimeType: 'image/png',
-      attachmentId: 'att-twin-b',
+      ...(change.attachmentId === null ? {} : { attachmentId: change.attachmentId ?? `att-${id}` }),
       clock: { dev1: 1, peer: 1 },
       createdAt: '2026-01-10T00:00:00.000Z',
       modifiedAt: '2026-01-13T00:00:00.000Z'
     }
-    return noteHandler.applyUpsert({ db: asClientDb(data.db), emit: vi.fn() }, 'twin-b', payload, {
+    return noteHandler.applyUpsert({ db: asClientDb(data.db), emit: vi.fn() }, id, payload, {
       dev1: 1,
       peer: 1
     })
   }
+
+  const applyPeerDelete = (id: string) =>
+    noteHandler.applyDelete({ db: asClientDb(data.db), emit: vi.fn() }, id)
 
   for (const [how, change, newPath] of [
     ['rename', { title: 'q' }, 'SUPERNOTES/q.png'],
@@ -301,8 +349,55 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
         ['twin-b', abs(newPath)],
         ['twin-a', abs('Supernotes/p.png')]
       ])
+
+      // Bytes nobody changed since the split are on the server: no copy is kept.
+      land('twin-b', 'att-twin-b', abs(newPath), 'b-bytes')
+      land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+      expect(read('Supernotes/p.png')).toBe('a-bytes')
+      expect(read(newPath)).toBe('b-bytes')
+      expect([...conflictCopies('Supernotes'), ...conflictCopies(path.dirname(newPath))]).toEqual(
+        []
+      )
     })
   }
+
+  // With the disk spelling the leaver's folder, an event on the file finds no
+  // row at its path and adopts the survivor's row under the disk's spelling.
+  for (const [how, split] of [
+    ['move', () => applyPeerUpdate({ folderPath: 'Other' })],
+    ['delete', () => applyPeerDelete('twin-b')]
+  ] as const) {
+    it(`after a peer's ${how}, an edit to the file spelled as the leaver's folder is not pushed`, async () => {
+      twins('SUPERNOTES')
+      seed('control', 'SUPERNOTES/c.png', 'c-bytes')
+      expect(split()).toBe('applied')
+      await startWatcher(vault.path)
+
+      await editUntilPushed(
+        { 'SUPERNOTES/p.png': 'edited', 'SUPERNOTES/c.png': 'edited' },
+        pushedNote('control')
+      )
+
+      expect(twinPushes()).toEqual({ updates: [], saved: [] })
+    }, 30_000)
+  }
+
+  it("an edit to a split twin's file whose index row lags is not pushed", async () => {
+    twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+    // The index is derived and can trail its canonical row: the add path then
+    // claims the canonical row's id for the file.
+    index.db.delete(noteCache).where(eq(noteCache.id, 'twin-a')).run()
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'Supernotes/p.png': 'edited', 'Supernotes/c.png': 'edited' },
+      pushedNote('control')
+    )
+
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+  }, 30_000)
 
   const heldChanges = (): unknown =>
     JSON.parse(
@@ -351,7 +446,18 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     })
   }
 
-  it("an outside edit to a split twin's copy is not pushed until its own bytes land", async () => {
+  it("a download asked for at a split twin's old path lands at its new one", () => {
+    twins('Supernotes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+    // B's download asked for before the split targets the shared file.
+    expect(land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-own')).toBe(abs('Other/p.png'))
+
+    expect(read('Other/p.png')).toBe('b-own')
+    expect(read('Supernotes/p.png')).toBe('b-bytes')
+  })
+
+  it("an edit to a split twin's copy is not pushed, and is kept as a conflict copy when its bytes land", async () => {
     twins('Supernotes')
     seed('control', 'Other/c.png', 'c-bytes')
     expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
@@ -363,12 +469,16 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     )
     expect(twinPushes()).toEqual({ updates: [], saved: [] })
 
-    recordDownloadedFileSize('twin-b', 'b-bytes'.length)
+    land('twin-b', 'att-twin-b', abs('Other/p.png'), 'b-bytes')
+    expect(read('Other/p.png')).toBe('b-bytes')
+    expect(read('Other/p (conflict copy).png')).toBe('edited')
+    await copyPushed('Other/p (conflict copy).png')
+
     await editUntilPushed({ 'Other/p.png': 'edited again' }, pushedNote('twin-b'))
     expect(twinPushes().updates).toContain('twin-b')
-  }, 45_000)
+  }, 60_000)
 
-  it('a held change to the shared file stays at the split and is not pushed', async () => {
+  it("a held change to the shared file is kept as a conflict copy when the survivor's bytes land", async () => {
     twins('Supernotes')
     seed('control', 'Supernotes/c.png', 'c-bytes')
     await startWatcher(vault.path)
@@ -380,16 +490,21 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
 
     expect(read('Supernotes/p.png')).toBe('h-bytes')
-    expect(downloads.mock.calls).toEqual([['twin-b', abs('Other/p.png')]])
+    expect(downloads.mock.calls).toEqual([
+      ['twin-b', abs('Other/p.png')],
+      ['twin-a', abs('Supernotes/p.png')]
+    ])
     saved.mockClear()
-    await editUntilPushed(
-      { 'Supernotes/p.png': 'edited after the split', 'Supernotes/c.png': 'edited again' },
-      pushedNote('control')
-    )
+    await editUntilPushed({ 'Supernotes/c.png': 'edited again' }, pushedNote('control'))
     expect(twinPushes()).toEqual({ updates: [], saved: [] })
-  }, 45_000)
 
-  it('a change the watcher has not seen stays at the split', () => {
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
+    expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
+    await copyPushed('Supernotes/p (conflict copy).png')
+  }, 60_000)
+
+  it('a change the watcher has not seen is kept as a conflict copy when the bytes land', () => {
     twins('Supernotes')
     // Written while the app was closed, or with its event still on the way.
     fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
@@ -397,11 +512,125 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
 
     expect(read('Supernotes/p.png')).toBe('edited offline')
-    expect(downloads.mock.calls).toEqual([['twin-b', abs('Other/p.png')]])
+    expect(downloads.mock.calls).toEqual([
+      ['twin-b', abs('Other/p.png')],
+      ['twin-a', abs('Supernotes/p.png')]
+    ])
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
   })
 
-  const applyPeerDelete = (id: string) =>
-    noteHandler.applyDelete({ db: asClientDb(data.db), emit: vi.fn() }, id)
+  const foreignMarks = (): unknown =>
+    JSON.parse(
+      data.db
+        .select({ value: syncState.value })
+        .from(syncState)
+        .where(eq(syncState.key, 'caseTwinForeignBytes'))
+        .get()?.value ?? '{}'
+    )
+
+  it('a change whose event arrives after the split is kept as a conflict copy', async () => {
+    twins('Supernotes')
+    await startWatcher(vault.path)
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+    try {
+      // The size both twins recorded, and its event still on the way at the split.
+      fs.writeFileSync(abs('Supernotes/p.png'), 'h-bytes')
+      expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+      expect(foreignMarks()).toMatchObject({ 'twin-a': { size: 'h-bytes'.length } })
+      await vi.waitFor(() => expect(foreignMarks()).toMatchObject({ 'twin-a': null }), {
+        timeout: 15_000,
+        interval: 100
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
+  }, 30_000)
+
+  it("a peer's update to a split twin asks for its new attachment onto its file", () => {
+    twins('Supernotes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+    downloads.mockClear()
+    asked.mockClear()
+
+    expect(applyPeerUpdate({ id: 'twin-a', attachmentId: 'att-a2' })).toBe('applied')
+
+    expect(downloads.mock.calls).toEqual([['twin-a', abs('Supernotes/p.png')]])
+    expect(asked.mock.calls).toEqual([['att-a2']])
+  })
+
+  // Nothing else holds the bytes of a twin with no attachment or kept local
+  // only: its file is the best copy there is, and stays pushable.
+  for (const [how, own] of [
+    ['with no attachment', { attachmentId: null }],
+    ['kept local only', { localOnly: true }]
+  ] as const) {
+    it(`a split twin ${how} keeps its file pushable`, async () => {
+      twins('Supernotes', own)
+      seed('control', 'Supernotes/c.png', 'c-bytes')
+      expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+      expect(downloads.mock.calls).toEqual([['twin-b', abs('Other/p.png')]])
+      await startWatcher(vault.path)
+
+      await editUntilPushed(
+        { 'Supernotes/p.png': 'edited', 'Supernotes/c.png': 'edited' },
+        pushedNote('twin-a')
+      )
+    }, 30_000)
+  }
+
+  it('a moved twin with no attachment keeps its copy pushable', async () => {
+    twins('Supernotes', {}, { attachmentId: null })
+    seed('control', 'Other/c.png', 'c-bytes')
+    expect(applyPeerUpdate({ folderPath: 'Other', attachmentId: null })).toBe('applied')
+    expect(downloads.mock.calls).toEqual([['twin-a', abs('Supernotes/p.png')]])
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'Other/p.png': 'edited', 'Other/c.png': 'edited' },
+      pushedNote('twin-b')
+    )
+  }, 30_000)
+
+  /** The server answers A's own attachment as gone on every probe: it is never asked for again. */
+  const abandonA = () => {
+    for (let i = 0; i < MISSING_PROBE_LIMIT; i++) {
+      const gone = Object.assign(new Error('Not found'), { statusCode: 404 })
+      markDownloadFailed(asClientDb(data.db), 'twin-a', 'att-twin-a', gone)
+    }
+  }
+
+  it('a split twin whose attachment the server no longer has keeps its file pushable', async () => {
+    twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+    abandonA()
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'Supernotes/p.png': 'edited', 'Supernotes/c.png': 'edited' },
+      pushedNote('twin-a')
+    )
+  }, 30_000)
+
+  it('a split twin is released when the server gives up on its own attachment', async () => {
+    twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+    // What the downloader records for each failed probe of A's bytes.
+    abandonA()
+    releaseAbandonedCaseTwinBytes(asClientDb(data.db), 'twin-a', 'att-twin-a')
+    await startWatcher(vault.path)
+
+    await editUntilPushed(
+      { 'Supernotes/p.png': 'edited', 'Supernotes/c.png': 'edited' },
+      pushedNote('twin-a')
+    )
+  }, 30_000)
 
   it("a peer's delete of a binary twin asks for the survivor's own bytes onto the file", async () => {
     twins('Supernotes')
@@ -421,7 +650,7 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(twinPushes()).toEqual({ updates: [], saved: [] })
   }, 30_000)
 
-  it('a held change stays when a peer deletes a binary twin, and is not pushed', async () => {
+  it('a held change is kept as a conflict copy when a peer deletes a binary twin', async () => {
     twins('Supernotes')
     seed('control', 'Supernotes/c.png', 'c-bytes')
     await startWatcher(vault.path)
@@ -432,13 +661,10 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(applyPeerDelete('twin-b')).toBe('applied')
 
     expect(read('Supernotes/p.png')).toBe('h-bytes')
-    expect(downloads).not.toHaveBeenCalled()
-    saved.mockClear()
-    await editUntilPushed(
-      { 'Supernotes/p.png': 'edited after the delete', 'Supernotes/c.png': 'edited again' },
-      pushedNote('control')
-    )
-    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+    expect(downloads.mock.calls).toEqual([['twin-a', abs('Supernotes/p.png')]])
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
   }, 45_000)
 
   it("a peer's move of a binary twin that cannot land changes nothing", () => {

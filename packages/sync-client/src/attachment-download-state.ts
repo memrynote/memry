@@ -147,6 +147,15 @@ export function shouldAttemptDownload(
   return Date.now() >= row.nextAttemptAt
 }
 
+/**
+ * Whether the server has answered this download as gone on MISSING_PROBE_LIMIT
+ * separate occasions: it is never asked for again.
+ */
+export function isDownloadAbandoned(db: DrizzleDb, ownerId: string, attachmentId: string): boolean {
+  const row = readFailure(db, ownerId, attachmentId)
+  return row?.reason === 'missing' && row.nextAttemptAt === null
+}
+
 /** Claim the attempt so concurrent pulls of the same note do not fan out twice. */
 export function markDownloadRequested(ownerId: string, attachmentId: string): void {
   inFlight.add(keyOf(ownerId, attachmentId))

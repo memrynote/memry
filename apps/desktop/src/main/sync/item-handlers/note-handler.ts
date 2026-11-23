@@ -84,6 +84,7 @@ import {
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
 import {
+  askForCaseTwinOwnBytes,
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
   planCaseTwinMove,
@@ -360,6 +361,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           syncedAt,
           modifiedAt
         })
+        askForCaseTwinOwnBytes(ctx.db, itemId)
         if (isMarkdownRecordOverBinaryNote(existing, data)) {
           healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
         }
