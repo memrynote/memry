@@ -5,6 +5,15 @@
  * birthtime. The probe moves a temp file's ctime and watches whether the
  * birthtime follows it, once per process.
  *
+ * The answer is never checked again. libuv also falls back, for the rest of
+ * the process, the first time any statx fails with EINVAL or EOPNOTSUPP, and
+ * that can depend on the file's filesystem (libuv names DVS-exported ones). A
+ * vault on such a mount can turn every later stat into stat(2) after the probe
+ * found real birthtimes. One file cannot show the switch: with statx, a file
+ * written right after its creation already has a birthtime equal to its ctime.
+ * Identity keys then carry the ctime as the birthtime, and a wrong rename match
+ * needs an unrelated file with the same device, inode, ctime, size and mtime.
+ *
  * @module vault/birthtime-probe
  */
 

@@ -334,7 +334,8 @@ export function buildStatRenameKey(
  * same second would share it, so no file gets a key once the startup probe
  * (`probeBirthtime`) finds that. Until the probe answers, a birthtime equal to
  * the ctime counts as none; after it found real birthtimes, a fresh file whose
- * birthtime and ctime share a timestamp tick keeps its key.
+ * birthtime and ctime share a timestamp tick keeps its key. The probe answers
+ * once per process; `birthtime-probe.ts` says when that answer goes stale.
  */
 export function buildFileIdentityKey(
   stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'>
