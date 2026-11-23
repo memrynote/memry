@@ -330,6 +330,10 @@ async fn a_manifest_read_rate_limited_on_every_page_stops_at_its_deadline() {
 
     assert_eq!(started.elapsed(), MANIFEST_READ_DEADLINE);
     assert!(report.ran && !report.manifest, "{report:?}");
+    assert!(
+        report.fallback_reasons[0].contains("deadline"),
+        "{report:?}"
+    );
     // 16 waits of 45 s would take 720 s; 300 s holds 6 of them.
     assert_eq!(routes.slept().len(), 7);
     assert_eq!(routes.count("/sync/crdt/updates/batch"), 1);

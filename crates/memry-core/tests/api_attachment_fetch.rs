@@ -10,6 +10,7 @@
 //! | the re-driver defers on cellular by default         | prefetch on cellular opt-in  |
 //! | the re-driver reads its manifests in one batch      | §14.5.2 batched read (#5337) |
 //! | the re-driver falls back to single manifest GETs    | §14.5.2 older server         |
+//! | a key-store error fails each row, not the re-drive  | one failure never stops it   |
 
 mod http_fakes;
 
@@ -58,7 +59,10 @@ fn scratch_vault_named(vault_id: &str) -> (Vault, PathBuf) {
 }
 
 fn session(transport: Arc<FakeTransport>) -> Arc<AuthSession> {
-    let store = FakeSecureStore::new();
+    session_over(transport, FakeSecureStore::new())
+}
+
+fn session_over(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> Arc<AuthSession> {
     store.put_text(SecureStoreKey::AccessToken, "access-1");
     store
         .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
@@ -362,4 +366,22 @@ async fn the_redriver_falls_back_to_single_manifest_gets_on_an_older_server() {
             .len(),
         1
     );
+}
+
+#[tokio::test]
+async fn a_key_store_error_fails_each_row_and_not_the_redrive() {
+    let (vault, _dir) = scratch_vault_named("vault-key-error");
+    reference_all(&vault, &[A, B]);
+    let transport = FakeTransport::new(vec![]);
+    let store = FakeSecureStore::new();
+    let sync = vault.sync(session_over(transport.clone(), Arc::clone(&store)));
+    store.lock_device();
+
+    let summary = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("the re-drive counts the rows");
+
+    assert_eq!((summary.downloaded, summary.failed), (0, 2));
+    assert_eq!(transport.call_count(), 0);
 }

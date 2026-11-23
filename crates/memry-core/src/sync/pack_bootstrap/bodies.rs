@@ -223,14 +223,12 @@ impl PackBootstrap {
         }
 
         let checks = match self.bodies.read_body_manifest(&mut report.requests).await? {
-            Some(checks) => {
+            Ok(checks) => {
                 report.manifest = true;
                 checks
             }
-            None => {
-                report
-                    .fallback_reasons
-                    .push("no body manifest: checked through the batch route".to_owned());
+            Err(reason) => {
+                report.fallback_reasons.push(reason.to_owned());
                 let docs = since_per_document(&held);
                 self.bodies
                     .batch_checks(&docs, &mut report.requests)

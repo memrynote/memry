@@ -80,7 +80,7 @@ impl VaultSync {
     /// would show a failure for working behaviour.
     ///
     /// The verification order of §14.4.1 is not this function's to choose: it
-    /// calls [`crate::protocol::attachments::open_manifest`], which checks
+    /// calls [`crate::protocol::attachments::fetch_manifest`], which checks
     /// the signature before unwrapping the file key, and an unresolvable
     /// signer is refused there rather than skipped.
     pub async fn fetch_attachment(
@@ -94,10 +94,9 @@ impl VaultSync {
 
     /// Retries every attachment a note references whose bytes are not here
     /// (#1829's re-driver). The shell calls it on reconnect and after a sync
-    /// pass; each attachment goes through [`Self::fetch_attachment`]'s path, so
-    /// the metered policy and the bounded queue apply unchanged and large
-    /// prefetch on cellular stays opt-in per item. The manifests of the call's
-    /// downloads are read in one batch first (§14.5.2).
+    /// pass; each attachment goes through [`Self::fetch_attachment`], so the
+    /// metered policy and the bounded queue apply unchanged and large
+    /// prefetch on cellular stays opt-in per item.
     ///
     /// One failure never stops the walk: it is counted and the row stays
     /// missing for the next call.
@@ -115,6 +114,8 @@ impl VaultSync {
             failed: 0,
             remaining: count(missing.len().saturating_sub(REDRIVE_BATCH_LIMIT)),
         };
+        // The manifests of this call's downloads are read in one batch first
+        // (§14.5.2). The doc comments above feed the UniFFI checksums.
         let window: Vec<String> = missing.into_iter().take(REDRIVE_BATCH_LIMIT).collect();
         let mut prefetched = self.prefetch_manifests(&window, reachable).await?;
         for attachment_id in window {
@@ -270,7 +271,9 @@ impl VaultSync {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .get(&self.vault_id)
             .is_some_and(|at| at.elapsed() < MANIFEST_BATCH_COOLDOWN);
-        if ids.len() < 2 || unsupported || self.session.master_key()?.is_none() {
+        // A key that cannot be read fails each row on its own, as before.
+        let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
+        if ids.len() < 2 || unsupported || !unlocked {
             return Ok(HashMap::new());
         }
         let mut manifests = HashMap::new();

@@ -33,12 +33,19 @@ impl BodyPull {
     /// waits out `Retry-After` and is asked again (#5349). A read still
     /// running at [`MANIFEST_READ_DEADLINE`] stops short too, so a server
     /// that rate-limits every page cannot hold it for a window per page.
+    /// The `Err` is the reason the read stopped short.
     pub(in crate::sync) async fn read_body_manifest(
         &self,
         requests: &mut usize,
-    ) -> Result<Option<HashMap<String, BodyCheck>>, BodyPullError> {
+    ) -> Result<Result<HashMap<String, BodyCheck>, &'static str>, BodyPullError> {
         let read = tokio::time::timeout(MANIFEST_READ_DEADLINE, self.walk_body_manifest(requests));
-        Ok(read.await.ok().flatten())
+        Ok(match read.await {
+            Ok(Some(checks)) => Ok(checks),
+            Ok(None) => Err("no body manifest: checked through the batch route"),
+            Err(_) => {
+                Err("the body manifest read passed its deadline: checked through the batch route")
+            }
+        })
     }
 
     async fn walk_body_manifest(&self, requests: &mut usize) -> Option<HashMap<String, BodyCheck>> {
@@ -73,7 +80,7 @@ impl BodyPull {
     /// short. The bootstrap bench counts a missing body against these only.
     pub async fn server_body_ids(&self) -> Result<Option<HashSet<String>>, BodyPullError> {
         let mut requests = 0;
-        let checks = self.read_body_manifest(&mut requests).await?;
+        let checks = self.read_body_manifest(&mut requests).await?.ok();
         Ok(checks.map(|checks| checks.into_keys().collect()))
     }
 
