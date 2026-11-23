@@ -797,6 +797,11 @@ async fn a_pack_get_past_its_deadline_is_not_retried_but_an_idle_one_is() {
             .filter(|url| url.starts_with("https://r2.example/packs/"))
             .count();
         assert_eq!(packs, sends, "{calls:?}");
+        assert_eq!(
+            live_ids(&db).len(),
+            40,
+            "the records land after {sends} pack sends"
+        );
     }
 }
 
