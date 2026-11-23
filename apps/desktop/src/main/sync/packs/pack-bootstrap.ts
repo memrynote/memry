@@ -86,8 +86,8 @@ export interface PackBootstrapDeps {
   getAccessToken: () => Promise<string | null>
   /**
    * Directory for pack temp files. Each run downloads into a directory of its
-   * own under it, removed on success, failure and abort; the next run removes
-   * what a quit or crash left behind.
+   * own under it, removed on success, failure and abort. The next run resumes
+   * a crashed run's files for the packs it downloads and removes the rest.
    */
   tempDir: string
   bodies: PackBodyApplier
@@ -315,13 +315,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const pageEntries = Math.max(1, deps.pageEntries ?? PACK_APPLY_PAGE_ENTRIES)
   const parallel = Math.max(1, deps.maxParallelDownloads ?? MAX_PARALLEL_PACK_DOWNLOADS)
 
-  await sweepPackTempDir(deps.tempDir)
-
   const accessToken = await deps.getAccessToken().catch(() => null)
-  if (!accessToken) return emptyResult()
-
-  const listing = await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
-  if (listing.packs.length === 0) return emptyResult()
+  const listing: PackListing = accessToken
+    ? await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
+    : { packs: [], truncated: false }
 
   const resumeFrom = Number(deps.getStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR) ?? '')
   const alreadyCovered = Number.isFinite(resumeFrom) ? resumeFrom : 0
@@ -342,7 +339,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       ? listing.packs.filter((pack) => pack.itemKind === 'record')
       : []
   const packs = [...snapshotPacks, ...updatePacks, ...recordPacks]
-  if (packs.length === 0) return emptyResult()
+  if (packs.length === 0) {
+    await sweepPackTempDir(deps.tempDir, null)
+    return emptyResult()
+  }
 
   log.info('Pack bootstrap starting', {
     packCount: packs.length,
@@ -500,6 +500,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       log.info('Could not create the pack temp directory — item-granular bootstrap', { error })
       return emptyResult()
     }
+    await sweepPackTempDir(deps.tempDir, {
+      runDir,
+      files: new Set(packs.map((pack) => path.basename(tempPathOf(pack))))
+    })
 
     emitProgress()
 
@@ -756,9 +760,15 @@ const liveRunDirs = new Set<string>()
 /**
  * Remove what a quit or crash left in the temp dir: run directories no live
  * run owns, and the `<packId>.pack` files builds before run directories wrote
- * there. Nothing else in it is touched.
+ * there. Nothing else in it is touched. A dead run's file for a pack this run
+ * downloads first moves into `resume.runDir`: the download continues it with a
+ * Range (a finished file gets a 416 and no bytes), and the payload digest
+ * still checks it.
  */
-const sweepPackTempDir = async (tempDir: string): Promise<void> => {
+const sweepPackTempDir = async (
+  tempDir: string,
+  resume: { runDir: string; files: ReadonlySet<string> } | null
+): Promise<void> => {
   const names = await fs.readdir(tempDir).catch((error: unknown) => {
     if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
       log.debug('Could not read the pack temp directory', {
@@ -768,14 +778,26 @@ const sweepPackTempDir = async (tempDir: string): Promise<void> => {
     return []
   })
   for (const name of names) {
-    const stale = name.startsWith(RUN_DIR_PREFIX) ? !liveRunDirs.has(name) : name.endsWith('.pack')
+    const runDir = name.startsWith(RUN_DIR_PREFIX)
+    const stale = runDir ? !liveRunDirs.has(name) : name.endsWith('.pack')
     if (!stale) continue
-    await fs
-      .rm(path.join(tempDir, name), { recursive: true, force: true })
-      .catch((error: unknown) => {
-        log.debug('Could not remove a pack temp file a quit or crash left', {
-          error: error instanceof Error ? error.message : String(error)
-        })
+    const at = path.join(tempDir, name)
+    if (runDir && resume) {
+      for (const file of await fs.readdir(at).catch((): string[] => [])) {
+        if (!resume.files.has(file)) continue
+        await fs
+          .rename(path.join(at, file), path.join(resume.runDir, file))
+          .catch((error: unknown) => {
+            log.debug('Could not resume a pack file a crash left', {
+              error: error instanceof Error ? error.message : String(error)
+            })
+          })
+      }
+    }
+    await fs.rm(at, { recursive: true, force: true }).catch((error: unknown) => {
+      log.debug('Could not remove a pack temp file a quit or crash left', {
+        error: error instanceof Error ? error.message : String(error)
       })
+    })
   }
 }

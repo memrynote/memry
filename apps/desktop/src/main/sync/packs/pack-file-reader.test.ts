@@ -311,6 +311,56 @@ describe('openPackFile', () => {
     }
   })
 
+  // Windows refuses to remove a file with an open handle, so the run's rm must
+  // not start while a close the budget began is still running.
+  it('#given the budget is closing a pack file #then closing the pack waits for that close', async () => {
+    const pack = buildTestPack([
+      { id: 'note-a', bytes: bodyOf('a', 200), meta: { sequenceNum: 1, revision: 'r' } }
+    ])
+    const files: string[] = []
+    for (let i = 0; i <= MAX_OPEN_PACK_FILES; i++) {
+      files.push(path.join(dir, `p${i}.pack`))
+      await fs.writeFile(files[i], pack.bytes)
+    }
+    const realOpen = fs.open.bind(fs)
+    const { promise: closeStarted, resolve: startClose } = Promise.withResolvers<void>()
+    const { promise: closeGoes, resolve: releaseClose } = Promise.withResolvers<void>()
+    const opens = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      const handle = await realOpen(...args)
+      if (String(args[0]) !== files[0]) return handle
+      const realClose = handle.close
+      handle.close = async () => {
+        startClose()
+        await closeGoes
+        await realClose()
+      }
+      return handle
+    })
+
+    try {
+      const handles: PackFileHandle[] = []
+      for (const file of files.slice(0, MAX_OPEN_PACK_FILES)) {
+        handles.push(await openPackFile(file))
+      }
+      // One file past the budget: its read closes the oldest, p0.
+      const last = openPackFile(files[MAX_OPEN_PACK_FILES])
+      await closeStarted
+      const closing = handles[0].close().then(() => 'closed')
+      const settled = await Promise.race([
+        closing,
+        new Promise((resolve) => setImmediate(() => resolve('pending')))
+      ])
+      expect(settled).toBe('pending')
+      releaseClose()
+      await closing
+      handles.push(await last)
+      for (const handle of handles) await handle.close()
+    } finally {
+      releaseClose()
+      opens.mockRestore()
+    }
+  })
+
   it('#given stat and close both fail #then opening reports the stat error', async () => {
     const file = path.join(dir, 'stat.pack')
     await fs.writeFile(file, Buffer.alloc(100))

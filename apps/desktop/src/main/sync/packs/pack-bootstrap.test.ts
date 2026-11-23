@@ -10,6 +10,7 @@ import type { PageApplyHandle } from '../bulk-apply'
 import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { createPackBodyApplier } from './pack-body-applier'
 import { contiguousAppliedCursor, runPackBootstrap, type PackBootstrapDeps } from './pack-bootstrap'
+import { downloadPackToFile } from './pack-download'
 import { buildTestPack } from './test-pack-builder'
 import type * as HttpClientModule from '../http-client'
 import type * as LoggerModule from '../../lib/logger'
@@ -826,14 +827,31 @@ describe('runPackBootstrap', () => {
       const harness = makeHarness({
         fetchPackPage: async () =>
           listResponse([
+            packSummary({ id: 'p-s', maxCursor: 200 }),
             packSummary({ id: 'p-u1', itemKind: 'crdt_update', maxCursor: 900 }),
             packSummary({ id: 'p-u2', itemKind: 'crdt_update', maxCursor: 800 })
           ]),
         readManifest: async () =>
-          new Map(
-            ['note-1', 'note-2', 'note-3'].map((noteId) => [noteId, manifestDoc(noteId, null)])
-          )
+          new Map([
+            ...['note-1', 'note-2', 'note-3'].map(
+              (noteId) => [noteId, manifestDoc(noteId, null)] as const
+            ),
+            ['note-4', manifestDoc('note-4', 'r4')] as const
+          ])
       })
+      harness.packFiles.set(
+        'p-s',
+        buildTestPack(
+          [
+            {
+              id: 'note-4',
+              bytes: snapshotBytes('note-4'),
+              meta: { sequenceNum: 4, revision: 'r4' }
+            }
+          ],
+          { breakEntryDigestFor: ['note-4'] }
+        ).bytes
+      )
       const unregistered = (noteId: string) => {
         const entry = updateEntry(noteId, 1)
         return { ...entry, meta: { ...entry.meta, signerDeviceId: 'device-z' } }
@@ -849,8 +867,9 @@ describe('runPackBootstrap', () => {
 
       const result = await runPackBootstrap(harness.deps)
 
-      expect(result.entriesFailed).toBe(3)
+      expect(result.entriesFailed).toBe(4)
       expect(refusalLines()).toEqual([
+        { packId: 'p-s', refused: { unreadable: 1 } },
         { packId: 'p-u1', refused: { unregistered_signer: 2 } },
         { packId: 'p-u2', refused: { unreadable: 1 } }
       ])
@@ -1626,6 +1645,62 @@ describe('runPackBootstrap', () => {
       expect(firstResult.entriesApplied).toBe(1)
       expect(first.docs.get('note-1')).toEqual([snapshotBytes('note-1')])
       expect(await fs.readdir(first.tempDir)).toEqual([])
+    })
+
+    // A crash skips the run's finally, so its directory stays. The next run
+    // continues each listed pack's file instead of downloading it whole again.
+    it('#given a crash left finished and partial pack files #then the next run resumes them and removes the rest', async () => {
+      const harness = makeHarness({
+        fetchPackPage: async () =>
+          listResponse([
+            packSummary({ id: 'p-done', maxCursor: 200, itemCount: 1 }),
+            packSummary({ id: 'p-half', maxCursor: 100, itemCount: 1 })
+          ])
+      })
+      for (const [id, noteId] of [
+        ['p-done', 'note-1'],
+        ['p-half', 'note-2']
+      ]) {
+        harness.packFiles.set(
+          id,
+          buildTestPack([
+            { id: noteId, bytes: snapshotBytes(noteId), meta: { sequenceNum: 1, revision: 'r' } }
+          ]).bytes
+        )
+      }
+      const done = harness.packFiles.get('p-done')!
+      const whole = harness.packFiles.get('p-half')!
+      const half = whole.subarray(0, whole.length >> 1)
+      const crashed = path.join(harness.tempDir, 'run-crashed')
+      await fs.mkdir(crashed, { recursive: true })
+      await fs.writeFile(path.join(crashed, 'p-done.pack'), done)
+      await fs.writeFile(path.join(crashed, 'p-half.pack'), half)
+      await fs.writeFile(path.join(crashed, 'p-gone.pack'), 'a pack no longer listed')
+      // R2's answers to a Range request: 206 with the rest, 416 past the end.
+      const requests: Array<{ id: string; range: string | null; bytes: number }> = []
+      harness.deps.download = (options) =>
+        downloadPackToFile({
+          ...options,
+          fetchFn: async (url, init) => {
+            const id = String(url).split('/').pop()!
+            const bytes = harness.packFiles.get(id)!
+            const range = new Headers(init?.headers).get('Range')
+            const from = range ? Number(/^bytes=(\d+)-$/.exec(range)![1]) : 0
+            const rest = bytes.slice(from)
+            requests.push({ id, range, bytes: rest.length })
+            if (from >= bytes.length) return new Response(null, { status: 416 })
+            return new Response(rest, { status: range ? 206 : 200 })
+          }
+        })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(result.entriesApplied).toBe(2)
+      expect(requests).toEqual([
+        { id: 'p-done', range: `bytes=${done.length}-`, bytes: 0 },
+        { id: 'p-half', range: `bytes=${half.length}-`, bytes: whole.length - half.length }
+      ])
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
     })
 
     it('#given pack files a quit or crash left behind #then the next run removes them', async () => {

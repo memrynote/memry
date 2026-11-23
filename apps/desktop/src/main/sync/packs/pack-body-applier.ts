@@ -240,7 +240,19 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       // signer's key, then every readable update under its named signer's key
       // only (chapter 07 §7.14). With no signer to guess, the snapshot walks
       // the keys first, so one that verifies under none costs no update reads.
-      const snapshotBytes = plan.snapshot ? await plan.snapshot.read() : null
+      let snapshotBytes: Uint8Array | null = null
+      if (plan.snapshot) {
+        try {
+          snapshotBytes = await plan.snapshot.read()
+        } catch (error) {
+          log.debug('Packed snapshot unreadable — item GET instead', {
+            noteId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+          countRefusal(plan.snapshot.packId, 'unreadable')
+          return null
+        }
+      }
       const guessSigner =
         snapshotBytes && lastSignerId && candidates.has(lastSignerId) ? lastSignerId : null
       const refuseSnapshot = (): null => {

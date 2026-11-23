@@ -182,18 +182,15 @@ export const MAX_OPEN_PACK_FILES = 16
 interface PackFile {
   readonly filePath: string
   source: Promise<PackByteSource> | null
+  /** Settles once every close started on this file has finished. */
+  closed: Promise<void>
   reads: number
 }
 
 // Pack files holding an fd, least recently read first.
 const openFiles = new Set<PackFile>()
 
-/** Close the file's fd. A close failure is logged, never thrown over a read's result. */
-const closeFile = async (file: PackFile): Promise<void> => {
-  const source = file.source
-  if (!source) return
-  file.source = null
-  openFiles.delete(file)
+const closeSource = async (source: Promise<PackByteSource>): Promise<void> => {
   try {
     await (await source).close()
   } catch (error) {
@@ -201,6 +198,21 @@ const closeFile = async (file: PackFile): Promise<void> => {
       error: error instanceof Error ? error.message : String(error)
     })
   }
+}
+
+/**
+ * Close the file's fd. A close failure is logged, never thrown over a read's
+ * result. A close the budget already started is waited for too: Windows cannot
+ * remove a file whose handle is still open.
+ */
+const closeFile = async (file: PackFile): Promise<void> => {
+  const source = file.source
+  if (source) {
+    file.source = null
+    openFiles.delete(file)
+    file.closed = Promise.all([file.closed, closeSource(source)]).then(() => undefined)
+  }
+  await file.closed
 }
 
 const withSource = async <T>(
@@ -245,7 +257,7 @@ export const openPackFile = async (
   filePath: string,
   options: OpenPackOptions = {}
 ): Promise<PackFileHandle> => {
-  const file: PackFile = { filePath, source: null, reads: 0 }
+  const file: PackFile = { filePath, source: null, closed: Promise.resolve(), reads: 0 }
   let entries: PackIndexEntry[]
   try {
     entries = (await withSource(file, (source) => openPack(source, options))).entries

@@ -745,10 +745,13 @@ user, and falls back to the item-granular bootstrap. A bad pack is never fatal.
 | Per-entry checksum mismatch                                              | That entry | Counted as failed → item GET                                       |
 | Decrypt failure, or no registered key verifies                           | That entry | Counted as failed → item GET                                       |
 
-Temp files never survive: success, failure and abort all remove the run's directory. A quit or
-crash that ends a run before that leaves it behind, and the next pack phase removes it at its
-start, along with the flat `<packId>.pack` files that builds before run directories wrote. A run
-still going in the same process keeps its directory.
+Temp files never survive a run that ends: success, failure and abort all remove the run's
+directory. A crash leaves it behind. Once the next pack phase has created its own directory, it
+moves the dead directory's file for each pack it downloads into it. The download resumes that file
+with a Range (a finished file gets a 416 and no bytes), and the payload digest checks it again.
+The phase then removes the dead directories and the flat `<packId>.pack` files that builds before
+run directories wrote. A phase with no pack to download removes them all. A run still going in the
+same process keeps its directory.
 
 A network drop pauses the whole pack phase (`pack-downloads.ts`, protocol 08 §8.12): no new pack GET
 starts, the running ones finish, and after the pause every lost or unstarted pack downloads again,
