@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
     "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}",
     "emptyFile": "Impossible d'envoyer un fichier vide",
+    "emptyNotAttached": "Ce fichier est vide, il n'a donc pas été joint. Si vous avez collé une image, copiez-la à nouveau puis collez-la.",
     "textInMediaFile": "Ce fichier contient du texte au lieu du média qu’indique son nom"
   },
   "crdt": {

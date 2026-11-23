@@ -107,6 +107,7 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
     clearUpload: vi.fn(actual.clearUpload),
     isLocalOnlyNote: vi.fn(() => false),
     markUploadFailed: vi.fn(actual.markUploadFailed),
+    refuseUpload: vi.fn(actual.refuseUpload),
     registerOutboxUploader: (...args: Parameters<typeof actual.registerOutboxUploader>): void => {
       outboxUploaders.push(args[0])
       actual.registerOutboxUploader(...args)
@@ -240,6 +241,7 @@ import {
   clearUpload,
   isLocalOnlyNote,
   markUploadFailed,
+  refuseUpload,
   resetAttachmentQueue,
   type registerOutboxUploader as AttachmentOutboxregisterOutboxUploader
 } from '../sync/attachment-outbox'
@@ -283,6 +285,7 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.existsSync.mockReset().mockReturnValue(true)
     vi.mocked(clearUpload).mockClear()
     vi.mocked(markUploadFailed).mockClear()
+    vi.mocked(refuseUpload).mockClear()
     attachmentMocks.queue.enqueue.mockReset().mockResolvedValue({
       attachmentId: 'attachment-1',
       sessionId: 'session-1',
@@ -864,7 +867,7 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/empty.bin' })
 
     await vi.waitFor(() =>
-      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/attachments/empty.bin')
+      expect(refuseUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/attachments/empty.bin')
     )
     expect(markUploadFailed).not.toHaveBeenCalled()
     expect(
@@ -886,7 +889,11 @@ describe('sync-attachment-handlers', () => {
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/sunset.png' })
 
     await vi.waitFor(() =>
-      expect(clearUpload).toHaveBeenCalledWith(undefined, 'note-1', '/vault/attachments/sunset.png')
+      expect(refuseUpload).toHaveBeenCalledWith(
+        undefined,
+        'note-1',
+        '/vault/attachments/sunset.png'
+      )
     )
     expect(markUploadFailed).not.toHaveBeenCalled()
     expect(

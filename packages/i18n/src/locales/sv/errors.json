@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
     "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}",
     "emptyFile": "Det går inte att ladda upp en tom fil",
+    "emptyNotAttached": "Den här filen är tom, så den bifogades inte. Om du klistrade in en bild kopierar du den igen och klistrar in den.",
     "textInMediaFile": "Den här filen innehåller text i stället för det medium som namnet anger"
   },
   "crdt": {

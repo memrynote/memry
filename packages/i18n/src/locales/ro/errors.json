@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
     "exceedsPlanLimit": "Fișierul este mai mare decât permite planul: {size} depășește {limit}",
     "emptyFile": "Nu se poate încărca un fișier gol",
+    "emptyNotAttached": "Acest fișier este gol, așa că nu a fost atașat. Dacă ați lipit o imagine, copiați-o din nou și lipiți-o.",
     "textInMediaFile": "Acest fișier conține text în loc de conținutul media indicat de nume"
   },
   "crdt": {

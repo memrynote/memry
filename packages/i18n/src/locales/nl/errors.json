@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
     "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}",
     "emptyFile": "Kan geen leeg bestand uploaden",
+    "emptyNotAttached": "Dit bestand is leeg en is daarom niet bijgevoegd. Als je een afbeelding hebt geplakt, kopieer die dan opnieuw en plak hem.",
     "textInMediaFile": "Dit bestand bevat tekst in plaats van de media die de naam aangeeft"
   },
   "crdt": {

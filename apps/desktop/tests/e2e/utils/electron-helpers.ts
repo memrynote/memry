@@ -284,12 +284,26 @@ export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Pro
   } catch {
     // Tour never appeared (already dismissed or not first-run).
     await dismissGithubStarCard(page)
+    await dismissIosBetaPrompt(page)
     return
   }
   await page.keyboard.press('Escape')
   await overlay.waitFor({ state: 'hidden', timeout }).catch(() => {})
   await settleFlags()
   await dismissGithubStarCard(page)
+  await dismissIosBetaPrompt(page)
+}
+
+/**
+ * Close the one-time iPhone beta prompt. It opens on the first launch with a
+ * vault open, and its modal overlay intercepts every click in the window.
+ * Closing it records it as seen, so a reload does not show it again.
+ */
+async function dismissIosBetaPrompt(page: Page): Promise<void> {
+  const prompt = page.getByRole('dialog', { name: 'Memry for iPhone is in beta' })
+  if (!(await prompt.isVisible().catch(() => false))) return
+  await page.keyboard.press('Escape')
+  await prompt.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
 }
 
 /**
