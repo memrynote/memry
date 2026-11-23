@@ -11,7 +11,7 @@ use crate::protocol::http::RetryPolicy;
 use crate::sync::pack_bootstrap::body_plan::{BodyCheck, ServerSnapshot};
 use crate::sync::pack_bootstrap::query_encode;
 
-use super::{BodyPull, BodyPullError, PROBE_CHUNK, waited_out_429};
+use super::{BodyPull, BodyPullError, PROBE_CHUNK, RateLimitPauses};
 
 /// Documents per manifest page: the route's ceiling (chapter 07 §7.4.1).
 pub const CRDT_MANIFEST_PAGE_LIMIT: u32 = 1000;
@@ -38,7 +38,7 @@ impl BodyPull {
     ) -> Result<Option<HashMap<String, BodyCheck>>, BodyPullError> {
         let mut checks = HashMap::new();
         let mut cursor: Option<String> = None;
-        let mut paused = 0;
+        let mut pauses = RateLimitPauses::new(MANIFEST_RATE_LIMIT_PAUSES);
         for _ in 0..MAX_MANIFEST_PAGES {
             let mut path = format!("/sync/crdt/manifest?limit={CRDT_MANIFEST_PAGE_LIMIT}");
             if let Some(cursor) = &cursor {
@@ -50,10 +50,10 @@ impl BodyPull {
                 let request = self.request("GET", &path).retry(RetryPolicy::polled());
                 match self.http.send_json::<Json>(request).await {
                     Ok(body) => break body,
-                    Err(error)
-                        if waited_out_429(&error, &mut paused, MANIFEST_RATE_LIMIT_PAUSES)
-                            .await => {}
-                    Err(_) => return Ok(None),
+                    Err(error) => match pauses.take(&error) {
+                        Some(wait) => self.wait(wait).await,
+                        None => return Ok(None),
+                    },
                 }
             };
             let Some((documents, next)) = read_manifest_page(&body) else {
