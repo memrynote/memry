@@ -318,6 +318,7 @@ async function colonIdRecord(source: RecordEnvelopeCase): Promise<RecordEnvelope
   const content = 'a folder config whose path holds colons'
   const signer = signerFromSeed(source.input.signingSeedHex)
   const { pushItem } = await encryptRecordForPush(deterministicProvider(), {
+    vaultId: null,
     id: 'Projects:2026:Q1',
     type: 'folder_config',
     operation: 'update',

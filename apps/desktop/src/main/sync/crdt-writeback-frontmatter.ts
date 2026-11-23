@@ -40,17 +40,22 @@ export function mergeFrontmatter(
   return { frontmatter: merged, changed }
 }
 
+/**
+ * `mergeFrontmatter` for a journal day, which also keeps its `date:`. The file
+ * owns `tags:` as a note's does: a tags-only update and a remote journal
+ * record write only the file, so the doc's array is stale after either (#5476).
+ */
 export function mergeJournalFrontmatter(
   date: string,
   existing: NoteFrontmatter | null,
   doc: Y.Doc,
   writing: WritingFrontmatter
 ): MergedFrontmatter {
-  const yjsTags = getYjsTags(doc)
   const merged: NoteFrontmatter = { ...existing, date }
   let changed = normalizeDateValue(existing?.date) !== date
   if (mergeWritingFrontmatter(merged, writing)) changed = true
-  if (yjsTags.length > 0 && !sameTags(existing?.tags, yjsTags)) {
+  const yjsTags = existing === null ? getYjsTags(doc) : []
+  if (yjsTags.length > 0) {
     merged.tags = yjsTags
     changed = true
   }
@@ -73,14 +78,6 @@ function mergeWritingFrontmatter(
   if (next === undefined) delete frontmatter[WRITING_FRONTMATTER_KEY]
   else frontmatter[WRITING_FRONTMATTER_KEY] = next
   return true
-}
-
-function sameTags(existing: unknown, next: string[]): boolean {
-  return (
-    Array.isArray(existing) &&
-    existing.length === next.length &&
-    existing.every((v, i) => String(v) === next[i])
-  )
 }
 
 /** YAML gives `date: 2026-07-05` back as a Date object — compare by day. */

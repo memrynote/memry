@@ -166,6 +166,8 @@ pub struct AccountSealer {
     vault_key: Zeroizing<Vec<u8>>,
     signer: DeviceSigner,
     entropy: Arc<dyn SealEntropy>,
+    /// The vault the push is routed to, which a delete attestation binds.
+    vault_id: Option<String>,
 }
 
 impl AccountSealer {
@@ -184,7 +186,15 @@ impl AccountSealer {
             vault_key: Zeroizing::new(vault_key),
             signer,
             entropy,
+            vault_id: None,
         }
+    }
+
+    /// The `X-Memry-Vault-Id` the push carries; delete attestations bind it
+    /// (chapter 04 §4.8.4, #5247). Without one they are signed v1.
+    pub fn with_vault(mut self, vault_id: &str) -> Self {
+        self.vault_id = Some(vault_id.to_owned());
+        self
     }
 
     pub fn signer(&self) -> &DeviceSigner {
@@ -242,7 +252,11 @@ impl PushSealer for AccountSealer {
             clock.as_ref(),
             row.deleted_at,
         ) {
-            let attestation = delete_attestation::sign(&claim, &self.signer.secret_key)?;
+            let attestation = delete_attestation::sign(
+                &claim,
+                self.vault_id.as_deref(),
+                &self.signer.secret_key,
+            )?;
             if let Some(fields) = pushed.as_object_mut() {
                 fields.insert("deleteAttestation".to_owned(), Json::String(attestation));
             }

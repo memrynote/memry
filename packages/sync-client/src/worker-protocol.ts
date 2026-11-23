@@ -95,6 +95,8 @@ export type MainToWorkerMessage =
       vaultKey: Uint8Array
       signingSecretKey: Uint8Array
       signerDeviceId: string
+      /** The vault the push is routed to; delete attestations bind it (#5247). */
+      vaultId: string | null
     }
   | {
       type: 'decrypt-batch'

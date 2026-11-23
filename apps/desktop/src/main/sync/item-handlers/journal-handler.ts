@@ -38,6 +38,7 @@ import {
   markOwedJournalDayMergeDeleted,
   oweJournalDayMerge,
   readDayBody,
+  readDayTags,
   removeJournalRow
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
@@ -83,7 +84,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           foreignId,
           date,
           clock: remoteClock,
-          recordMarkdown: data.content || null
+          recordMarkdown: data.content || null,
+          tags: data.tags
         })
         continue
       }
@@ -92,7 +94,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         date,
         clock: holder?.clock ?? null,
         // The day's file is about to be written over.
-        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null
+        fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null,
+        tags: plan.removeHolder ? readDayTags(date) : undefined
       })
     }
     if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)

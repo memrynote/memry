@@ -5,8 +5,9 @@
 //! A marker is unsigned: the server asserts it. One removes a row only when
 //! it names a row the caller asked about, its type requires a clock,
 //! its clock is not empty, its cursor is past the row's, and the deleting
-//! device's attestation over `{id, type, deletedAt, clock}` verifies under a
-//! key the device directory holds ([`delete_attestation::verify`]). It then
+//! device's attestation over `{id, type, deletedAt, clock}` in this vault
+//! verifies under a key the device directory holds
+//! ([`delete_attestation::verify`]; v2 binds the vault, #5247). It then
 //! applies as the signed tombstone with that clock, under §5.8's clock rule.
 //!
 //! A marker that passes every check but the clock or the attestation is
@@ -145,7 +146,7 @@ fn admit(entry: &Json, cursors: &HashMap<(&str, &str), i64>, pull: &PullLoop) ->
                 clock: &clock,
                 deleted_at,
             };
-            delete_attestation::verify(&claim, attestation, &key).is_ok()
+            delete_attestation::verify(&claim, pull.vault_id(), attestation, &key).is_ok()
         });
     if !verified {
         return Some(unattested(Some(clock)));

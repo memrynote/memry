@@ -617,14 +617,16 @@ fn pending_row(
 
 /// #2408, chapter 04 §4.8.4: a delete push carries an attestation over the
 /// clock and deletedAt it actually sends (rebound, `_offline`-free, ms), and
-/// only an attestable delete carries one.
+/// only an attestable delete carries one. #5247: it is v2, bound to the
+/// vault the push is routed to.
 #[test]
 fn a_delete_push_attests_the_clock_and_deleted_at_it_sends() {
     let (public, secret) = sodium::sign_seed_keypair(&[9u8; 32]).expect("a keypair");
     let sealer = AccountSealer::new(
         vec![3u8; 32],
         DeviceSigner::new("device-a", secret.to_vec()).expect("a signer"),
-    );
+    )
+    .with_vault("vault-a");
 
     let sealed = sealer
         .seal_record(&pending_row(
@@ -641,8 +643,17 @@ fn a_delete_push_attests_the_clock_and_deleted_at_it_sends() {
         clock: &clock,
         deleted_at: sealed["deletedAt"].as_i64().expect("deletedAt"),
     };
-    delete_attestation::verify(&claim, str_field(&sealed, "deleteAttestation"), &public)
+    let attestation = str_field(&sealed, "deleteAttestation");
+    delete_attestation::verify(&claim, Some("vault-a"), attestation, &public)
         .expect("the attestation verifies over what was pushed");
+    assert!(
+        delete_attestation::verify(&claim, Some("vault-b"), attestation, &public).is_err(),
+        "another vault refuses it"
+    );
+    assert!(
+        delete_attestation::verify(&claim, None, attestation, &public).is_err(),
+        "it is v2, never v1"
+    );
 
     for (item_type, operation, deleted_at) in [
         ("task", SyncOperation::Update, None),

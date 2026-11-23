@@ -841,6 +841,13 @@ document to its vault `.md` file and re-indexes it for search.
   write-back flush again — followed by `closeAllDatabases()` — on the timeout and
   cleanup-error paths before it force-exits. See
   [Shutdown Budget](/architecture/observability#shutdown-budget).
+- **The file owns its `tags:` list** — a pass keeps the `tags:` of an existing note or
+  journal file and writes the doc's `tags` array only into a file it creates
+  (`crdt-writeback-frontmatter.ts`). Tag edits write only the file, and tags reach other
+  devices in the note or journal record, so the doc's array can be stale: a journal day
+  created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
+  A foreign journal entry folded into its day brings its tags through the day merge instead
+  (protocol §1.9.1).
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
@@ -864,7 +871,17 @@ document to its vault `.md` file and re-indexes it for search.
   `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
   A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
   so one that landed between a pass's read and its write was lost with nothing left to re-arm
-  the pass (#5472). A body update feeds the doc before its file and stays out of the queue.
+  the pass (#5472). A body update feeds the doc before its file outside the queue, because the
+  feed can wait on the store and a pass queued behind it could hang the quit flush. The re-arm
+  restores its body but not the tags or properties written beside it, so a body update that
+  sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
+  properties) then writes them again over the file's body in the queue: the tags it added and
+  removed, not its whole list, so a tags save queued ahead of it keeps its tags. A file that
+  already holds them is not written (#5479). A remote tags, properties, cover or aliases update
+  rewrites the frontmatter inside the sync apply, which cannot wait. While a pass of the note is
+  pending or running, it applies the same patch again as soon as the running turn ends, ahead of
+  the turns queued behind it (`repairAfterRunningTurn`), so a local edit queued meanwhile lands
+  on top of the remote record instead of under it.
   The quit flush waits for running passes too. That flush converts on main unless the worker is already up, because a worker
   starting cold would spend the shutdown budget, and a quit that runs out of it loses the
   edit. A note deleted while its pass converts is not written back. One worker serves every pass and
