@@ -224,7 +224,7 @@ Caps:
 (`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
 caller's vault is absent from `urls`, and the client fetches that chunk through
 the proxied GET, which reports its 404
-(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+(`apps/sync-server/src/routes/blob.ts:812-830`). The route never answers 404 for
 a missing hash, because desktop reads a 404 here as "presign unavailable"
 (`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
 requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
