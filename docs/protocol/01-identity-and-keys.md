@@ -439,22 +439,25 @@ pass settles them. The decision is a pure function of five facts
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:270`).
    Then add `F`'s tags to `j<D>`'s tags as a set union, keeping the tags
    `j<D>` has and their order, and push the change when the union adds a
-   tag. `j<D>`'s own tags (desktop: the day file's) are authoritative for
-   the day, so `F`'s doc `tags` array, which the fold brings along, never
-   reaches them (#5476, #5483). The tags added are the holder tags, plus the
-   record tags unless `F` is deleted: the device that deleted `F` added its
-   record tags already, so adding them again would bring back a tag removed
-   since. Holder tags are this device's and may never have been pushed, so
-   they are added either way. A later record replaces the record tags
-   kept, for the same reason. `j<D>`'s current tags are read at the moment
-   they are written, in the same transaction or write-back turn, never
-   earlier. This rule is normative for both clients. Desktop does not meet
-   it fully yet: it keeps one tag list and adds it whether or not `F` is
-   deleted, and splitting that list is a follow-up
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:251`,
-   `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`). Core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:280`, which
-   matches tags case-insensitively and keeps the first spelling.
+   tag. Tags compare by tag key (case-insensitive), so a tag `j<D>` holds in
+   another spelling adds nothing and the first spelling stays
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:338`,
+   `apps/desktop/src/main/journal/update-entry.ts:71`; core:
+   `crates/memry-core/src/domain/tags.rs:96`). `j<D>`'s own tags (desktop:
+   the day file's) are authoritative for the day, so `F`'s doc `tags` array,
+   which the fold brings along, never reaches them (#5476, #5483). The tags
+   added are the holder tags, plus the record tags unless `F` is deleted: the
+   device that deleted `F` added its record tags already, so adding them
+   again would bring back a tag removed since. Holder tags are this device's
+   and may never have been pushed, so they are added either way. A later
+   record replaces the record tags kept, for the same reason
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:99`,
+   `:264`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`;
+   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:280`). `j<D>`'s
+   current tags are read at the moment they are written, in the same
+   transaction or write-back turn, never earlier. Desktop owed merges written
+   before the record tags were kept apart hold one list, which is added as
+   holder tags.
 7. Only here, after the merge, and when `F` is live and its clock is
    non-empty, queue its tombstone with clock
    `increment(F.clock, self)` and payload `{"clock": ...}`, and record that
