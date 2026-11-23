@@ -17,7 +17,7 @@ use std::time::Duration;
 use tokio::task::JoinSet;
 use tokio::time::Instant;
 
-use crate::api::errors::{ApiError, StorageError};
+use crate::api::errors::StorageError;
 use crate::protocol::http::HttpClient;
 use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
@@ -435,14 +435,9 @@ async fn body_worker(
 
 /// The pause a 429 asks for, when it is one the pass may wait out itself.
 fn rate_limit_pause(error: &BodyPullError) -> Option<u64> {
-    let BodyPullError::Api {
-        source: ApiError::RateLimited { retry_after_s, .. },
-    } = error
-    else {
+    let BodyPullError::Api { source } = error else {
         return None;
     };
-    // A 429 without `Retry-After` still means "not now"; one second is the
-    // server's own floor (`Math.max(retryAfter, 1)`).
-    let wait_s = retry_after_s.unwrap_or(1).max(1);
+    let wait_s = source.rate_limit_wait_s()?;
     (wait_s <= MAX_RATE_LIMIT_PAUSE_S).then_some(wait_s)
 }

@@ -314,7 +314,13 @@ async fn an_absurd_retry_after_is_capped() {
     let first = sync.drain_bodies(None).await.expect("the round");
     assert_eq!((first.documents, first.remaining), (1, 1), "{first:?}");
 
-    tokio::time::advance(std::time::Duration::from_secs(600)).await;
+    tokio::time::advance(std::time::Duration::from_secs(599)).await;
+    let calls = transport.call_count();
+    let held = sync.drain_bodies(None).await.expect("the paused round");
+    assert_eq!((held.documents, held.remaining), (0, 1), "{held:?}");
+    assert_eq!(transport.call_count(), calls, "still paused at 599 s");
+
+    tokio::time::advance(std::time::Duration::from_secs(1)).await;
     for answer in [devices(), no_bootstrap(), probe_page(), updates_page()] {
         transport.push(answer);
     }
@@ -324,6 +330,91 @@ async fn an_absurd_retry_after_is_capped() {
         (1, 0),
         "{resumed:?}"
     );
+}
+
+fn rate_limited_for_30_s() -> Answer {
+    response_with_header(
+        429,
+        r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+        ("retry-after", "30"),
+    )
+}
+
+/// Two owed bodies: a round whose open and probe answer `open` and `probe`,
+/// then, with both owed again, a round asked for at once and, when that one
+/// sent nothing, one more 30 s later. Each round as (documents, remaining,
+/// requests).
+async fn two_rounds(label: &str, open: Answer, probe: Answer) -> Vec<(u32, u32, usize)> {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault_with_side(label, transport.clone());
+    let ids = owed_notes(&side, 2);
+    for answer in [devices(), open, probe, updates_page(), updates_page()] {
+        transport.push(answer);
+    }
+    let sync = vault.sync(session);
+    let mut rounds = Vec::new();
+    for _ in 0..2 {
+        let calls = transport.call_count();
+        let round = sync.drain_bodies(None).await.expect("the round");
+        rounds.push((
+            round.documents,
+            round.remaining,
+            transport.call_count() - calls,
+        ));
+        if rounds.len() == 1 {
+            let again = ids.clone();
+            side.call_blocking(move |conn| {
+                again.iter().try_for_each(|id| body_debt::owe(conn, id))
+            })
+            .expect("owe the bodies again");
+            for answer in [
+                devices(),
+                no_bootstrap(),
+                probe_page(),
+                updates_page(),
+                updates_page(),
+            ] {
+                transport.push(answer);
+            }
+        }
+    }
+    if rounds[1].2 == 0 {
+        tokio::time::advance(std::time::Duration::from_secs(30)).await;
+        let calls = transport.call_count();
+        let round = sync.drain_bodies(None).await.expect("the resumed round");
+        rounds.push((
+            round.documents,
+            round.remaining,
+            transport.call_count() - calls,
+        ));
+    }
+    rounds
+}
+
+/// A round whose open answered no session holds nothing back: the next one
+/// sends at once.
+#[tokio::test(start_paused = true)]
+async fn a_round_without_a_rate_limit_is_followed_at_once() {
+    let rounds = two_rounds("no-429", no_bootstrap(), probe_page()).await;
+    assert_eq!(rounds, vec![(2, 0, 5), (2, 0, 5)]);
+}
+
+/// #5247: the batch probe has its own limit, so a `429` on it does not end the
+/// round, which pulls through each document's routes; the next round waits
+/// out its `Retry-After`.
+#[tokio::test(start_paused = true)]
+async fn a_rate_limited_probe_holds_the_next_round_back() {
+    let rounds = two_rounds("probe-429", no_bootstrap(), rate_limited_for_30_s()).await;
+    assert_eq!(rounds, vec![(2, 0, 5), (0, 2, 0), (2, 0, 5)]);
+}
+
+/// #5247: a `429` on the bootstrap open leaves the round at one stream, and
+/// the next round, whose open would meet it again, waits out its
+/// `Retry-After`.
+#[tokio::test(start_paused = true)]
+async fn a_rate_limited_bootstrap_open_holds_the_next_round_back() {
+    let rounds = two_rounds("open-429", rate_limited_for_30_s(), probe_page()).await;
+    assert_eq!(rounds, vec![(2, 0, 5), (0, 2, 0), (2, 0, 5)]);
 }
 
 #[tokio::test]

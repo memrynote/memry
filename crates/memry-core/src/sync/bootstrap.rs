@@ -101,6 +101,9 @@ pub struct BootstrapOpen {
     /// Why there is no session, for a log line. **Never shown to a user**
     /// (§10.5) and never a reason to retry.
     pub fallback_reason: Option<String>,
+    /// The wait a `RATE_LIMITED` 429 on the open asked for, in seconds, so a
+    /// caller that opens again soon holds back until then (#5247).
+    pub rate_limit_s: Option<u64>,
 }
 
 impl BootstrapOpen {
@@ -205,6 +208,7 @@ impl BootstrapClient {
                 session: None,
                 tail_cursor: 0,
                 fallback_reason: Some("one bootstrap session per run (§10.11 rule 3)".to_owned()),
+                rate_limit_s: None,
             };
         }
         self.lock().opened_once = true;
@@ -230,6 +234,7 @@ impl BootstrapClient {
                     // deployment gap and this string is the whole of the
                     // client's reaction to it.
                     fallback_reason: Some(error.to_string()),
+                    rate_limit_s: error.rate_limit_wait_s(),
                 };
             }
         };
@@ -242,6 +247,7 @@ impl BootstrapClient {
                 session: None,
                 tail_cursor,
                 fallback_reason: Some("the open response carried no session token".to_owned()),
+                rate_limit_s: None,
             };
         };
 
@@ -251,6 +257,7 @@ impl BootstrapClient {
             session: Some(session),
             tail_cursor,
             fallback_reason: None,
+            rate_limit_s: None,
         }
     }
 
