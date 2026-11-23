@@ -60,7 +60,11 @@ vi.mock('./crdt-writeback-port', async () => {
   const writeback = await import('./crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('./crdt-writeback', () => ({
+  markWritebackIgnored: vi.fn(),
+  takeWritebackTurn: (_id: string, run: () => Promise<unknown>) => run(),
+  writebackNow: vi.fn()
+}))
 vi.mock('../projections', () => ({
   flushProjectionEvents: vi.fn(async () => {}),
   publishProjectionEvent: vi.fn()
@@ -77,6 +81,7 @@ vi.mock('../database/client', () => ({
 }))
 vi.mock('../journal/runtime-effects', () => ({
   enqueueJournalCreate: vi.fn(),
+  enqueueJournalUpdate: vi.fn(),
   initializeJournalCrdt: vi.fn(async () => {})
 }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: () => ({}) }))
@@ -141,6 +146,7 @@ import {
   runJournalDayMerges
 } from './journal-day-merge'
 import { listPendingDeletes } from './pending-deletes'
+import { parseJournalEntry } from '../vault/journal'
 
 const DATE = '2026-06-09'
 const DAY = `j${DATE}`
@@ -280,6 +286,41 @@ describe('runJournalDayMerges', () => {
       JSON.stringify({ clock: { b: 1, me: 1 } })
     )
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  // The day file owns its tags (#5476), so the foreign doc's tags array never
+  // reaches it: the merge carries the foreign entry's tags into the file.
+  it.each([
+    [[], ['x']],
+    [['a'], ['a', 'x']]
+  ])('a day file tagged %j gains the folded foreign tags: %j', async (dayTags, expected) => {
+    journalHandler.applyUpsert(
+      ctx,
+      DAY,
+      { date: DATE, content: 'canonical\n', tags: dayTags },
+      { c: 1 }
+    )
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['x', 'a'].slice(0, dayTags.length + 1) },
+      { b: 1 }
+    )
+
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(expected)
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  it('keeps the tags of a foreign row that held the day when the day record writes over it', async () => {
+    foreignRow({ minter: 2 }, { body: '---\ntags:\n  - mine\n---\nminted here\n' })
+
+    journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: 'canonical\n', tags: [] }, { c: 1 })
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['mine'])
+    expect(textOf(DAY)).toBe('minted here')
   })
 
   it('leaves a live foreign id with neither body nor text live, creating no day', async () => {
