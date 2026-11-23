@@ -121,6 +121,9 @@ pub(super) struct UploadedBlob {
     manifest_text: String,
     remote_size: i64,
     local_path: String,
+    /// The chunks' R2 addresses, for a dereference when nothing will
+    /// reference the upload after all.
+    pub(super) encrypted_hashes: Vec<String>,
 }
 
 impl UploadedBlob {
@@ -141,10 +144,12 @@ impl UploadedBlob {
 
 impl VaultSync {
     /// The upload chain of §14.2–§14.5 for one file under `attachment_id`:
-    /// frame, upload the chunks, store the signed manifest, and write the bytes
-    /// under `images/`. It references the attachment from nothing; the caller
-    /// does that, after [`UploadedBlob::cache`]. `initiate` is the first
-    /// call's retry ladder.
+    /// frame, upload the chunks and store the signed manifest. It writes no
+    /// bytes and references the attachment from nothing: the caller keeps the
+    /// file at `images/<attachment_id>` ([`Self::write_bytes`]) and references
+    /// it after [`UploadedBlob::cache`]. A queued note upload's file is the
+    /// only copy, so it is never rewritten here (#5510). `initiate` is the
+    /// first call's retry ladder.
     pub(super) async fn upload_blob(
         &self,
         attachment_id: String,
@@ -245,15 +250,19 @@ impl VaultSync {
             })?;
         let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
         let remote_size = attachment_upload::encrypted_size(&chunks) as i64;
-        let local_path = self.write_bytes(&attachment_id, bytes)?;
 
         Ok(UploadedBlob {
+            // `write_bytes`'s name for the file, which the caller owns.
+            local_path: attachment_id.clone(),
             attachment_id,
             filename: filename.to_owned(),
             mime_type: mime_type.to_owned(),
             manifest_text,
             remote_size,
-            local_path,
+            encrypted_hashes: chunks
+                .iter()
+                .map(|chunk| chunk.reference.encrypted_hash.clone())
+                .collect(),
         })
     }
 

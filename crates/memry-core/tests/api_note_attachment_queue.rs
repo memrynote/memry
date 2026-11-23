@@ -206,7 +206,11 @@ async fn a_relaunch_keeps_the_upload_and_the_next_pass_sends_it_once_under_its_i
 
     let app = launch(&dir, &store, upload_script());
     assert_eq!(
-        app.sync.upload_queued_attachments().await.expect("drain"),
+        app.sync
+            .upload_queued_attachments()
+            .await
+            .expect("drain")
+            .uploaded,
         1
     );
 
@@ -221,7 +225,11 @@ async fn a_relaunch_keeps_the_upload_and_the_next_pass_sends_it_once_under_its_i
 
     let calls = app.transport.call_count();
     assert_eq!(
-        app.sync.upload_queued_attachments().await.expect("again"),
+        app.sync
+            .upload_queued_attachments()
+            .await
+            .expect("again")
+            .uploaded,
         0
     );
     assert_eq!(app.transport.call_count(), calls, "nothing uploads twice");
@@ -238,7 +246,11 @@ async fn an_online_attach_uploads_and_references_at_once() {
     assert_eq!(app.manifest_ids(), vec![id.clone()]);
     assert_eq!(app.references(&note), vec![id]);
     assert_eq!(
-        app.sync.upload_queued_attachments().await.expect("drain"),
+        app.sync
+            .upload_queued_attachments()
+            .await
+            .expect("drain")
+            .uploaded,
         0
     );
 }
@@ -263,7 +275,11 @@ async fn a_refused_attach_is_taken_back_and_keeps_nothing() {
         .unwrap_or(0);
     assert_eq!(left, 0, "no bytes kept for a refused attach");
     assert_eq!(
-        app.sync.upload_queued_attachments().await.expect("drain"),
+        app.sync
+            .upload_queued_attachments()
+            .await
+            .expect("drain")
+            .uploaded,
         0
     );
 }
@@ -281,7 +297,11 @@ async fn a_picture_detached_before_its_upload_never_uploads() {
         .expect("detach");
 
     assert_eq!(
-        app.sync.upload_queued_attachments().await.expect("drain"),
+        app.sync
+            .upload_queued_attachments()
+            .await
+            .expect("drain")
+            .uploaded,
         0
     );
     assert_eq!(app.transport.call_count(), 1, "only the first try went out");

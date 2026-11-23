@@ -93,6 +93,7 @@ mod realtime;
 pub use attachment_fetch::AttachmentRedriveSummary;
 pub use drain::BodyDrainSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
+pub use note_uploads::QueuedUploadSummary;
 pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
 

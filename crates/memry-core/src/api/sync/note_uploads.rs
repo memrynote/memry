@@ -47,38 +47,44 @@ pub(super) fn is_refused(error: &SyncError) -> bool {
     }
 }
 
+/// What one walk over the owed uploads did.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct QueuedUploadSummary {
+    pub uploaded: u32,
+    /// Refused by the server this time and still owed. The sync pass counts
+    /// them as rejected, which is the shell's visible outcome.
+    pub refused: u32,
+}
+
 impl VaultSync {
     /// Uploads every attachment still owed, oldest first. The sync pass runs
     /// it before its push.
     ///
-    /// A refused upload is not owed any more: the picture stays on this
-    /// device and no other device hears of it, as §14.7.2 does for a capture.
-    /// Any other failure ends the walk and keeps the rest for the next pass.
-    ///
-    /// - Returns: how many uploaded.
-    pub async fn upload_queued_attachments(&self) -> Result<u32, SyncError> {
+    /// **A refused upload stays owed.** The picture is in a note this user
+    /// sees, and the bytes here are the only copy: clearing the row would let
+    /// the block unbind and the cache evict them. The next pass tries again,
+    /// as desktop's attachment outbox does, so space freed later still gets
+    /// it up. Any other failure ends the walk and keeps the rest for the next
+    /// pass.
+    pub async fn upload_queued_attachments(&self) -> Result<QueuedUploadSummary, SyncError> {
         let ids = self
             .db
             .call(|conn| attachment_uploads::pending_ids(conn))
             .await?;
-        let mut uploaded = 0;
+        let mut summary = QueuedUploadSummary::default();
         for attachment_id in ids {
             match self
                 .upload_queued(&attachment_id, RetryPolicy::polled())
                 .await
             {
-                Ok(true) => uploaded += 1,
+                Ok(true) => summary.uploaded += 1,
                 Ok(false) => {}
-                Err(error) if is_refused(&error) => {
-                    self.db
-                        .call(move |conn| attachment_uploads::clear(conn, &attachment_id))
-                        .await?;
-                }
+                Err(error) if is_refused(&error) => summary.refused += 1,
                 Err(SyncError::Locked) => return Err(SyncError::Locked),
                 Err(_) => break,
             }
         }
-        Ok(uploaded)
+        Ok(summary)
     }
 
     /// Keeps the bytes under `images/` and records them as owed an upload,
@@ -127,7 +133,8 @@ impl VaultSync {
     /// its note.
     ///
     /// - Returns: `false` when nothing was owed (another caller uploaded it,
-    ///   or it was detached) or the note is deleted here, which keeps it owed.
+    ///   or it was detached, before or during the upload) or the note is
+    ///   deleted here, which keeps it owed.
     pub(super) async fn upload_queued(
         &self,
         attachment_id: &str,
@@ -165,9 +172,16 @@ impl VaultSync {
             .await?;
 
         let now = now_ms();
-        self.db
+        let hashes = uploaded.encrypted_hashes.clone();
+        let referenced = self
+            .db
             .call(move |conn| {
                 let tx = crate::storage::nested_tx::begin(conn).map_err(notes::failed)?;
+                // Detached while the bytes were going up: the user removed the
+                // picture, so the note must not gain it back.
+                if attachment_uploads::get(&tx, &upload.attachment_id)?.is_none() {
+                    return Ok(false);
+                }
                 uploaded.cache(&tx, now)?;
                 notes::add_attachment_reference(
                     &tx,
@@ -177,9 +191,16 @@ impl VaultSync {
                     now,
                 )?;
                 attachment_uploads::clear(&tx, &upload.attachment_id)?;
-                tx.commit().map_err(notes::failed)
+                tx.commit().map_err(notes::failed)?;
+                Ok(true)
             })
             .await?;
-        Ok(true)
+        if !referenced {
+            // Nothing will name these chunks, so their quota goes back (§14.8).
+            attachment_upload::dereference(&self.session.http(), &self.vault_id, &hashes)
+                .await
+                .map_err(attachment_error)?;
+        }
+        Ok(referenced)
     }
 }

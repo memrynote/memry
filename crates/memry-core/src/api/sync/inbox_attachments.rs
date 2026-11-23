@@ -247,6 +247,7 @@ impl VaultSync {
             }
             Err(error) => return Err(error),
         };
+        self.write_bytes(&uploaded.attachment_id, &bytes)?;
 
         let (id, device_id, now) = (item_id.to_owned(), device_id.to_owned(), now_ms());
         let recorded = self

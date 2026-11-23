@@ -145,7 +145,7 @@ impl VaultSync {
         revive_heal::run(&self.db, &body_pull).await?;
         // Attachments kept while offline go up before the push, so the note's
         // new reference leaves with it (#5510).
-        self.upload_queued_attachments().await?;
+        let attachments = self.upload_queued_attachments().await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -189,7 +189,9 @@ impl VaultSync {
             deleted: count(pulled.deleted),
             bodies: count(bodies.documents),
             pushed: count(report.accepted),
-            rejected: count(report.rejected),
+            // A refused attachment upload counts too: it is the only failure
+            // of this pass the shell would otherwise never see (#5510).
+            rejected: count(report.rejected).saturating_add(attachments.refused),
             pending: u32::try_from(pending).unwrap_or(u32::MAX),
         })
     }
