@@ -916,9 +916,21 @@ document to its vault `.md` file and re-indexes it for search.
   exactly as it is and the pass reports `writeback_unrepresentable_node` rather than
   writing a version with that content missing. The note resumes normal write-back as soon
   as the document no longer holds such a node; the refusal does not latch.
-- **A binary note is never written back** — the server holds a CRDT body for image, PDF,
-  audio and video notes too, and a fresh device settles it into a doc. The file at that
-  note's path is its downloaded blob, so the pass writes nothing and leaves the row's
+- **A binary note has no CRDT body** — the file at an image, PDF, audio or video note's
+  path is its downloaded blob. Older builds still made a doc for one, and on Windows they
+  made binary notes of pasted attachments whose docs pushed their titles to the server
+  (#5607, see
+  [Note rows made of attachment files](/architecture/local-storage#note-rows-made-of-attachment-files)). This build opens no doc when a binary note is created. A doc opened for one
+  anyway queues no body update and pushes no snapshot at quit, at close or at compaction,
+  and the note-body outbox drops the body rows an older build queued for one unsent.
+  On pull, the change feed fetches and owes no body for a binary note, and a queued or
+  per-note pull of one is dropped like the pull of a deleted note: it opens no doc and
+  arms no write-back. The pack bootstrap opens no doc for a note this device holds as
+  binary. A packed body can land before the note's record, so the settle after the pull
+  purges the doc of a note the record made binary. `isBinaryNote`
+  (`src/main/sync/note-body-apply.ts`) applies the check below to these push and pull gates.
+- **A binary note is never written back** — when a doc exists for a binary note, the pass
+  writes nothing to the note's file and leaves the row's
   `file_type` and `mime_type` alone. A binary extension on the path (`.png`, not
   `.png.md`) skips the pass too, so a row an older build saved as markdown this way is
   never written back before the next vault-open index walk retypes it from its file
