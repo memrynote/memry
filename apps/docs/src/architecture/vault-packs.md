@@ -551,7 +551,10 @@ touch.
    note's file (`CrdtProvider.materialize`), and each one whose id has no row is purged, watermark
    included. Without the first half a live note would keep the body its record carried, because
    the record's CRDT walk finds the watermark current and merges nothing. Without the second, a
-   deleted note's doc would outlive it.
+   deleted note's doc would outlive it. A binary note has no body (#5607, see
+   [CRDT](/architecture/crdt)): the apply opens no doc for a note this device holds as binary,
+   and the settle purges the doc of a note whose record made it binary, as it purges one with no
+   row.
 
    The settle is durable. Before an apply records its watermark, it writes a
    `packSeeded:<noteId>` row to `sync_state` (and `packSeedSettlePending` once per run), and the

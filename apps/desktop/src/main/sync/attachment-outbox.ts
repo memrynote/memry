@@ -7,6 +7,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { isVaultReachable } from '../vault/init'
+import { isStrayAttachmentNote } from '../vault/attachments'
 import { UnsendableAttachmentError } from './attachment-errors'
 import { SYNC_STATE_KEYS } from './engine/sync-context'
 import { classifyError } from './sync-errors'
@@ -244,7 +245,9 @@ function retryOpensAt(row: { attempts: number; updatedAt: number }): number {
 
 /**
  * The oldest rows whose retry window is open. Rows of a local-only note never
- * count toward the batch, so they cannot hold back the rows behind them.
+ * count toward the batch, so they cannot hold back the rows behind them. Nor
+ * do a stray's (#5607): its file is the attachment store's, and its upload
+ * would be a second blob of the file the embedding note already uploads.
  */
 function listDueUploads(
   db: DrizzleDb,
@@ -260,7 +263,12 @@ function listDueUploads(
     .from(attachmentUploadQueue)
     .orderBy(asc(attachmentUploadQueue.updatedAt))
     .all()
-    .filter((row) => retryOpensAt(row) <= now && !isLocalOnlyNote(db, row.noteId))
+    .filter(
+      (row) =>
+        retryOpensAt(row) <= now &&
+        !isLocalOnlyNote(db, row.noteId) &&
+        !isStrayAttachmentNote(db, row.noteId)
+    )
     .slice(0, DRAIN_BATCH_LIMIT)
 }
 
