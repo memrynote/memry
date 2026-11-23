@@ -349,6 +349,25 @@ describe('healCaseVariantRows', () => {
     }
   )
 
+  // The drop checks the copy's row again after the last await: a body change
+  // queued while the store read was slow means the doc holds unsent text.
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps a copy whose body change was queued while its store read was in flight',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      await saveDoc('original', 'body\n')
+      await saveDoc('copy', 'body\n')
+      crdt.beforeRead = async (noteId) => {
+        if (noteId === 'copy') queueRow(NOTE_BODY_QUEUE_TYPE)()
+      }
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
+    }
+  )
+
   // Sync off queues nothing, so only the saved doc shows text the copy holds
   // and the shared file lacks, such as an edit not yet written back at quit.
   // A doc seeded from the same file as the kept note's holds nothing more.
