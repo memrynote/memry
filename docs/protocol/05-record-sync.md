@@ -1123,17 +1123,20 @@ attestation under the signer's key from the driver's device directory,
 refetched once per run when the signer is not in it, a failed refetch failing
 the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`;
 `purged.rs:264`), the local refusals over the item's `sync_items` row
-(`purged.rs:312`), then the signed-tombstone apply. Every id a
-`purgedTombstones` entry names is kept out of the page's untyped deletes
-(`crates/memry-core/src/sync/pull.rs:414`). A run that started from cursor 0
+(`purged.rs:312`), then the signed-tombstone apply. An id a
+`purgedTombstones` entry names deletes only through that entry's attested
+marker, never as a bare `deleted` id (§5.12.1;
+`crates/memry-core/src/sync/pull.rs:420`, `:427-433`). A run that started from cursor 0
 applies none until a page lands at the head, a refused one included, since the
-cursor moves past it (`crates/memry-core/src/sync/pull.rs:443`). The core keeps
+cursor moves past it (`crates/memry-core/src/sync/pull/items.rs:92-94`). The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
 is read from cursor 0 and cleared in the transaction that lands the head
-(`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
+(`crates/memry-core/src/sync/note_body_feed.rs:427`), so it holds across the
 passes of a long run and across a restart. Its first
-sync's refs pass, which applies every `deleted` id untyped, reads the feed
-without the token (`crates/memry-core/src/sync/first_sync.rs:362`). iOS
+sync's refs pass fetches every `deleted` id, and only the verified typed delete
+or attested marker that fetch returns deletes
+(`crates/memry-core/src/sync/first_sync/deleted_ids.rs:62-86`). That pass reads
+the feed without the token (`crates/memry-core/src/sync/first_sync.rs:405`). iOS
 (`Declaration::subscribed`) and the shared sync-client do not declare it
 (#2304), so they never see a marker; an iOS device that missed a delete keeps
 its copy locally, and the marker stops a push of it from reaching the server.
