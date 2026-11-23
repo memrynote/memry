@@ -241,9 +241,8 @@ final class VaultFillViewModel {
     }
 
     /// The scene's phase, from the vault scope. The background cancels the
-    /// drain, so a wait after an empty round does not outlive the foreground.
-    /// Back in the foreground, a drain that the background, a round that pulled
-    /// nothing, or a failed round paused continues while bodies are owed.
+    /// drain, waits included; back in the foreground, a drain that it, an empty
+    /// round, or a failed round paused continues while bodies are owed.
     func sceneChanged(active: Bool) async {
         isForeground = active
         guard active else {
