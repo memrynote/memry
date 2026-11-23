@@ -10,8 +10,8 @@ use memry_core::markdown::frontmatter::{
 
 use super::{assert_wrote, fixture};
 use crate::vault::hash::content_hash;
-use crate::vault::writeback::Outcome;
 use crate::vault::writeback::journal::{Dated, dated_block, set_date};
+use crate::vault::writeback::{Keep, Outcome};
 
 const ELECTRON: [(&str, &str, &str); 3] = [
     (
@@ -286,4 +286,61 @@ fn a_regenerated_block_takes_the_date_unless_it_says_the_day() {
         map.get("date"),
         Some(&YamlValue::String("2025-01-21".into()))
     );
+}
+
+const PULLED_DAY: &str = "2025-01-14";
+const PULLED_FILE: &str = "journal/2025-01-14.md";
+const PULLED_TEXT: &str =
+    "---\ndate: '2025-01-14'\nemoji: x\ntags:\n  - lm-jtag\nmood: calm\nenergy: 3\n---\nbody\n";
+
+/// A day whose record a pull changed: tags `lm-jtag`, `r2a-a`, a new `p3c`, `energy` removed on
+/// the other device. Marked as the sync observer marks a pulled journal record.
+fn pulled_day(f: &mut super::Fixture) -> String {
+    let id = f.adopt_day(PULLED_FILE, PULLED_DAY, PULLED_TEXT);
+    assert_eq!(f.run(&id), Outcome::Unchanged);
+    let journal = f.vault.journal(f.store.clone()).unwrap();
+    journal
+        .set_tags(PULLED_DAY.into(), vec!["lm-jtag".into(), "r2a-a".into()])
+        .unwrap();
+    journal
+        .set_property(PULLED_DAY.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+    journal
+        .set_property(PULLED_DAY.into(), "mood".into(), r#""calm""#.into())
+        .unwrap();
+    journal
+        .remove_property(PULLED_DAY.into(), "energy".into())
+        .unwrap();
+    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    id
+}
+
+/// The block a pulled day's file ends with: the record's tags and properties, a removed one
+/// gone, the day's own keys (`date`, `emoji`) and the body as they were (#5509; Electron's pull
+/// writes `buildJournalEntryWrite`, `journal-handler.ts` `applyUpsert`).
+const PULLED_WRITTEN: &str = "---\ndate: '2025-01-14'\nemoji: x\ntags:\n  - lm-jtag\n  - r2a-a\nmood: calm\np3c: c-val\n---\nbody\n";
+
+#[test]
+fn a_pulled_days_tags_and_properties_reach_its_file_and_a_removed_one_leaves() {
+    let mut f = fixture();
+    let id = pulled_day(&mut f);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(f.read(PULLED_FILE), PULLED_WRITTEN);
+    assert_eq!(f.run(&id), Outcome::Unchanged, "the mark is taken");
+}
+
+/// A day kept for a server body not pulled yet keeps its mark: the pass after the body arrives
+/// writes the pulled block (B's `keep=BodyNotPulled note_id=j2026-11-23`, #5509).
+#[test]
+fn a_pulled_day_waiting_for_its_body_gets_the_block_once_the_body_is_here() {
+    let mut f = fixture();
+    let id = pulled_day(&mut f);
+    f.owe_server_body(&id);
+    assert_eq!(f.run(&id), Outcome::Kept(Keep::BodyNotPulled));
+    assert_eq!(f.read(PULLED_FILE), PULLED_TEXT, "the file waits");
+    f.sql("DELETE FROM meta WHERE key = 'sync.body_owed:' || ?1", &id);
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(f.read(PULLED_FILE), PULLED_WRITTEN);
 }

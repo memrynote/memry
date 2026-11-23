@@ -78,21 +78,27 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
     record_of(conn, id, (title, folder_path, is_day, aliases)).map(Some)
 }
 
-/// The live markdown note `id` as its record reads now, whether or not a row names its file:
-/// what a pulled change gives the file it has (desktop write-back, #5309). `None` for a journal
-/// day, which lives in `journal_entries`, and for a deleted or file note.
+/// The live markdown note or journal day `id` as its record reads now, whether or not a row
+/// names its file: what a pulled change gives the file it has (desktop write-back, #5309; a
+/// day's tags, other names and properties, #5509). `None` for a deleted day or note, and for a
+/// file note.
 pub fn placed(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageError> {
     let found = conn
         .query_row(
-            "SELECT title, folder_path, aliases FROM notes
-              WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'",
+            "SELECT title, folder_path, 0, aliases FROM notes
+              WHERE id = ?1 AND deleted_at IS NULL AND file_type = 'markdown'
+             UNION ALL
+             SELECT date, NULL, 1,
+                    (SELECT aliases FROM journal_aliases a WHERE a.journal_id = j.id)
+               FROM journal_entries j
+              WHERE id = ?1 AND deleted_at IS NULL",
             params![id],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, Option<String>>(1)?,
-                    false,
-                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, bool>(2)?,
+                    row.get::<_, Option<String>>(3)?,
                 ))
             },
         )

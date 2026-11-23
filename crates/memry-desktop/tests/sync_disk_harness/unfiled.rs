@@ -77,6 +77,51 @@ async fn a_journal_day_created_on_a_gets_its_day_file_on_b() {
     filed(&b.env, &id, rel);
 }
 
+/// A journal day's tags and properties A changes reach B's day file, and a property A removed
+/// leaves it (#5509): Electron's pull writes the record into the day's file
+/// (`journal-handler.ts` `applyUpsert`, `buildJournalEntryWrite`).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pulled_days_tags_and_properties_reach_bs_day_file() {
+    let server = Server::start();
+    let b = Disk::new(&server).await;
+    b.sync().await;
+    let a = Peer::new(&server).await;
+    let date = "2026-11-03";
+    let journal = a.core.journal(a.store.clone()).unwrap();
+    let typed = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "day from A".into(),
+        new_block_id: "a-day".into(),
+    };
+    journal.edit_day(date.into(), typed).unwrap();
+    journal
+        .set_property(date.into(), "mood".into(), r#""calm""#.into())
+        .unwrap();
+    a.sync().await;
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    let rel = "journal/2026-11-03.md";
+    until_holds(&b.env, rel, "mood: calm");
+
+    journal.set_tags(date.into(), vec!["r2a-a".into()]).unwrap();
+    journal
+        .set_property(date.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+    journal.remove_property(date.into(), "mood".into()).unwrap();
+    a.sync().await;
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    let file = until_holds(&b.env, rel, "p3c: c-val");
+    assert!(file.contains("tags:\n  - r2a-a\n"), "{file:?}");
+    assert!(
+        !file.contains("mood"),
+        "the removed property leaves: {file:?}"
+    );
+    assert!(file.contains("day from A"), "{file:?}");
+}
+
 /// A note pulled by a driver that writes no file (a crash before the pass, a build before L5)
 /// gets its file at the next open: the reconcile lists notes with no row.
 #[tokio::test(flavor = "multi_thread")]
