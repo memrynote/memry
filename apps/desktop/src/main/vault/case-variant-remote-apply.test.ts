@@ -62,7 +62,9 @@ vi.mock('../sync/crdt-provider', () => ({
     updateMeta: vi.fn(),
     getDoc: () => undefined,
     recordOwedFullState: vi.fn(),
-    hasPersistence: () => true
+    hasPersistence: () => true,
+    awaitPendingInit: async () => {},
+    readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] })
   }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))

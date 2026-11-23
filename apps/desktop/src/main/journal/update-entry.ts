@@ -27,6 +27,7 @@ import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
 import { applyHeaderTagEdit } from '../vault/frontmatter'
+import { foldTag } from '@memry/shared/tag-fold'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
@@ -60,6 +61,24 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
     rewriteJournalFrontmatter(input.date, tagEdit, input.properties)
   )
   return entry
+}
+
+/**
+ * Adds `tags` to `date`'s entry file, keeping the ones it has. The file is read
+ * in the entry's turn, so a tag edit queued ahead of this keeps its tags.
+ * Never call from inside a turn of the entry: it waits for that turn.
+ */
+export function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
+  return takeWritebackTurn(resolveJournalEntryId(date), async () => {
+    const kept = (await readJournalEntry(date))?.tags ?? []
+    // By tag key, and keeping `kept` as written: a file holding case variants
+    // (`Work`, `work`) must not hide a tag that is missing.
+    const keys = new Set(kept.map((tag) => foldTag(tag.trim())))
+    const added = applyHeaderTagEdit([], {
+      add: tags.filter((tag) => !keys.has(foldTag(tag.trim())))
+    })
+    if (added.length > 0) await writeJournalUpdate({ date, tags: [...kept, ...added] })
+  })
 }
 
 /**
