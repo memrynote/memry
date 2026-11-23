@@ -608,9 +608,12 @@ failures, whichever comes first, and the queued edit then pushes
 - **Never counts**: a transport failure, a 5xx, or a 429.
 
 **Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
-record whose signer has no public key as a decrypt failure and applies the rest
-of the page (`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`,
-`:240-250`; `apps/desktop/src/main/sync/engine-pull.test.ts:306`).
+record whose signer has no public key as a decrypt failure that is not a crypto
+error, and applies the rest of the page
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`, `:240-250`;
+`apps/desktop/src/main/sync/engine-pull.test.ts:306`). The page's corrupt
+re-fetch takes only crypto and parse failures, so it never retries that record
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:1041`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
