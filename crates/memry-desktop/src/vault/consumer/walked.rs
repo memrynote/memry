@@ -333,13 +333,13 @@ impl Applier {
             {
                 record_large_file(lane.files(), &id, true);
             }
+            self.report_found(&path, &id, true, Some(scan));
             lane.publish(Applied::Added {
                 note_id: id,
                 path: path.clone(),
                 created: true,
                 source: ChangeSource::Walk,
             });
-            self.report_found(&path, true, Some(scan));
             steps.push((path, Step::Done));
         }
     }
