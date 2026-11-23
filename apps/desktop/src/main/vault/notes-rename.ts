@@ -78,24 +78,26 @@ async function leaveCaseTwinFile(
   const vaultPath = getVaultRoot()
   await prepareCaseTwinLeave(vaultPath, existing.path, existing.id, true)
   const cached = getNoteCacheById(getIndexDatabase(), existing.id)
-  const moved = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)()
-  syncNoteToCache(
-    getIndexDatabase(),
-    {
-      id: existing.id,
-      path: newRelativePath,
-      fileContent: moved.content,
-      contentHash: generateContentHash(moved.content),
-      frontmatter: moved.frontmatter,
-      parsedContent: moved.markdown,
-      title,
-      createdAt: cached?.createdAt ?? existing.created.toISOString(),
-      modifiedAt: now,
-      localOnly: cached?.localOnly ?? false,
-      emoji: cached?.emoji ?? null
-    },
-    { isNew: false }
-  )
+  const move = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)
+  move((moved) => {
+    syncNoteToCache(
+      getIndexDatabase(),
+      {
+        id: existing.id,
+        path: newRelativePath,
+        fileContent: moved.content,
+        contentHash: generateContentHash(moved.content),
+        frontmatter: moved.frontmatter,
+        parsedContent: moved.markdown,
+        title,
+        createdAt: cached?.createdAt ?? existing.created.toISOString(),
+        modifiedAt: now,
+        localOnly: cached?.localOnly ?? false,
+        emoji: cached?.emoji ?? null
+      },
+      { isNew: false }
+    )
+  })
 }
 
 export async function renameNote(id: string, newTitle: string): Promise<Note> {
