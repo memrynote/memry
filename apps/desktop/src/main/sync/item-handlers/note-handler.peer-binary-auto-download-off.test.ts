@@ -237,12 +237,28 @@ describe("a peer's replacement of a binary note with attachment auto-download of
     return noteHandler.applyUpsert({ db: asClientDb(data.db), emit: vi.fn() }, id, payload, clock)
   }
 
-  const attachmentOf = (id: string) =>
+  const noteRow = (id: string) =>
     data.db
       .select()
       .from(noteMetadata)
       .all()
-      .find((row) => row.id === id)?.attachmentId
+      .find((row) => row.id === id)
+  const attachmentOf = (id: string) => noteRow(id)?.attachmentId
+
+  /**
+   * The download of `bytes` has landed on note `id`'s file. The bytes are on
+   * disk before the note records them, so a test that waits on the file alone
+   * edits a note still held, and the landing then runs into the next test.
+   */
+  async function landed(id: string, relativePath: string, bytes: string): Promise<void> {
+    await vi.waitFor(
+      () => {
+        expect(read(relativePath)).toBe(bytes)
+        expect(noteRow(id)?.fileSize).toBe(bytes.length)
+      },
+      { timeout: 2_000 }
+    )
+  }
 
   /** An edit here, uploaded: the note records it only when its file is its own. */
   function editAndUpload(id: string, relativePath: string, bytes: string): void {
@@ -256,7 +272,7 @@ describe("a peer's replacement of a binary note with attachment auto-download of
 
     expect(pull('img', 'att-new')).toBe('applied')
 
-    await vi.waitFor(() => expect(read('Pictures/p.png')).toBe('peer-bytes'), { timeout: 2_000 })
+    await landed('img', 'Pictures/p.png', 'peer-bytes')
     editAndUpload('img', 'Pictures/p.png', 'edited-after')
     expect(attachmentOf('img')).toBe('att-edit-img')
   })
@@ -273,7 +289,7 @@ describe("a peer's replacement of a binary note with attachment auto-download of
 
     await redriveAttachmentDownloads()
 
-    await vi.waitFor(() => expect(read('Pictures/p.png')).toBe('peer-bytes'), { timeout: 2_000 })
+    await landed('img', 'Pictures/p.png', 'peer-bytes')
   })
 
   it("leaves a new note's file to download on demand", async () => {
