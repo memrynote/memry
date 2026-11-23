@@ -702,10 +702,13 @@ fn unfiled_lists_live_notes_and_days_no_row_names() {
         (note.title.as_str(), note.folder_path.as_deref(), note.date),
         ("Remote plan", Some("Work"), None)
     );
-    assert_eq!(note.aliases, ["PM", "Roadmap"]);
+    assert_eq!(
+        note.aliases.as_deref(),
+        Some(&["PM".to_owned(), "Roadmap".to_owned()][..])
+    );
     let day = files.unfiled("d-pulled").unwrap().expect("unfiled");
     assert_eq!(day.date.as_deref(), Some("2026-11-02"));
-    assert_eq!(day.aliases, ["Launch"]);
+    assert_eq!(day.aliases.as_deref(), Some(&["Launch".to_owned()][..]));
     assert_eq!(day.cover, None);
     for id in ["n-filed", "n-deleted", "n-image", "d-owed", "d-deleted"] {
         assert_eq!(files.unfiled(id).unwrap(), None, "{id}");

@@ -20,8 +20,10 @@ pub struct Unfiled {
     /// The day's date, `None` for a note.
     pub date: Option<String>,
     pub tags: Vec<String>,
-    /// The other names the record holds.
-    pub aliases: Vec<String>,
+    /// The other names the record holds. `None` for a day with no stored list (no
+    /// `journal_aliases` row, or NULL): a pull never sent one, so the file keeps its own. A
+    /// note's NULL reads as `[]`.
+    pub aliases: Option<Vec<String>>,
     pub properties: Map<String, Value>,
     /// A note's `cover` as its payload carries it (protocol 13.7.1.1), unchecked: the writer
     /// gates each key as Electron's `applyNoteCoverToFrontmatter` does. `None` for a day.
@@ -118,9 +120,16 @@ fn record_of(
     } else {
         notes::ITEM_TYPE
     };
-    let aliases = names::parse_stored(aliases).map_err(|error| StorageError::Failed {
-        what: format!("{id} aliases: {error}"),
-    })?;
+    let aliases = match (is_day, aliases) {
+        (true, None) => None,
+        (_, aliases) => {
+            Some(
+                names::parse_stored(aliases).map_err(|error| StorageError::Failed {
+                    what: format!("{id} aliases: {error}"),
+                })?,
+            )
+        }
+    };
     let cover = match is_day {
         true => None,
         false => note_payload(conn, id)?.and_then(|mut payload| match payload.remove("cover") {

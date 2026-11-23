@@ -32,8 +32,8 @@
 //!   Electron's pull writes a day's record into its file (`journal-handler.ts` `applyUpsert`,
 //!   `buildJournalEntryWrite`; #5509 reverses #3530's "tags are never written"), with its own
 //!   keys (`date`, `id`, `created`, `modified`, `emoji`) left to the file, and its `aliases`
-//!   only when the record holds some: a day's record takes other names from a pull only, and
-//!   Electron keeps the file's when the pull carries none (`remoteAliases`).
+//!   only when the record holds a list: a stored `[]` removes the file's, no list leaves them
+//!   (Electron `remoteAliases`: an array, `[]` included, is the list; absent keeps).
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
@@ -290,14 +290,15 @@ pub(super) fn patch(
         set_list(map, "tags", &record.tags);
         changed = true;
     }
-    // A day's record takes other names from a pull only: none there leaves the file's.
-    let aliases_differ = match &record.date {
-        Some(_) if record.aliases.is_empty() => false,
-        Some(date) => normalize_aliases(date, &aliases(map)) != record.aliases,
-        None => aliases(map) != record.aliases,
+    // A day with no stored list leaves the file's; `[]` is a list and clears them.
+    let wanted = match (&record.date, &record.aliases) {
+        (_, None) => None,
+        (Some(date), Some(held)) => Some(normalize_aliases(date, held))
+            .filter(|held| normalize_aliases(date, &aliases(map)) != *held),
+        (None, Some(held)) => Some(held.clone()).filter(|held| aliases(map) != *held),
     };
-    if aliases_differ {
-        set_list(map, "aliases", &record.aliases);
+    if let Some(wanted) = wanted {
+        set_list(map, "aliases", &wanted);
         changed = true;
     }
     let Some(held) = text_values(raw, types) else {

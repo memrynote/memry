@@ -344,3 +344,56 @@ fn a_pulled_day_waiting_for_its_body_gets_the_block_once_the_body_is_here() {
     assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
     assert_eq!(f.read(PULLED_FILE), PULLED_WRITTEN);
 }
+
+/// A pulled `[]` clears a day's other names from its file, the replaced file kept as a version
+/// first; a day with no stored list leaves the file's (REVIEW-5584 finding 1; Electron
+/// `remoteAliases`: an array, `[]` included, is the list, absent keeps).
+#[test]
+fn a_pulled_empty_alias_list_clears_the_days_aliases_and_no_list_keeps_them() {
+    let mut f = fixture();
+    let id = pulled_day(&mut f);
+    f.sql(
+        "INSERT INTO journal_aliases (journal_id, aliases) VALUES (?1, '[\"Launch\"]')",
+        &id,
+    );
+    let outcome = f.run(&id);
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    let launched = f.read(PULLED_FILE);
+    assert!(launched.contains("aliases:\n  - Launch\n"), "{launched:?}");
+
+    f.sql(
+        "UPDATE journal_aliases SET aliases = '[]' WHERE journal_id = ?1",
+        &id,
+    );
+    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    let Outcome::Wrote { version_kept, .. } = f.run(&id) else {
+        panic!(
+            "the cleared list did not reach the file: {}",
+            f.read(PULLED_FILE)
+        );
+    };
+    assert!(version_kept);
+    assert_eq!(f.versions(&id).last(), Some(&launched));
+    assert_eq!(f.read(PULLED_FILE), PULLED_WRITTEN);
+
+    f.sql(
+        "UPDATE journal_aliases SET aliases = '[\"Launch\"]' WHERE journal_id = ?1",
+        &id,
+    );
+    f.pass.mark_pulled(&id, Some(PULLED_DAY));
+    assert!(matches!(f.run(&id), Outcome::Wrote { .. }));
+    let relaunched = f.read(PULLED_FILE);
+    assert!(
+        relaunched.contains("aliases:\n  - Launch\n"),
+        "{relaunched:?}"
+    );
+    for clear in [
+        "UPDATE journal_aliases SET aliases = NULL WHERE journal_id = ?1",
+        "DELETE FROM journal_aliases WHERE journal_id = ?1",
+    ] {
+        f.sql(clear, &id);
+        f.pass.mark_pulled(&id, Some(PULLED_DAY));
+        f.run(&id);
+        assert_eq!(f.read(PULLED_FILE), relaunched, "{clear}");
+    }
+}
