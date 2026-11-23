@@ -25,8 +25,26 @@ import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodie
 import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { eq } from 'drizzle-orm'
 import { NOTE_BODY_QUEUE_TYPE } from '@memry/sync-client/queue'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { LeveldbPersistence } from 'y-leveldb'
+import type { CrdtPersistence } from '../sync/crdt-persistence'
+import * as Y from 'yjs'
 
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
+// The provider's doc store is the real LevelDB adapter; only the provider's
+// vault-scoped init (preflight child, store path) is left out.
+const crdt = vi.hoisted(() => ({ store: null as CrdtPersistence | null }))
+vi.mock('../sync/crdt-provider', async () => {
+  const { readOnlyStore } = await import('../sync/crdt-persistence')
+  return {
+    getCrdtProvider: () => ({
+      awaitPendingInit: async () => {},
+      hasPersistence: () => crdt.store !== null,
+      getDoc: () => undefined,
+      readOnlyStore: () => (crdt.store ? readOnlyStore(crdt.store) : null)
+    })
+  }
+})
 vi.mock('../database', () => ({
   getIndexDatabase: vi.fn(),
   getDatabase: vi.fn(),
@@ -37,6 +55,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { healCaseVariantRows } from './case-variant-heal'
+import { markdownToYFragment } from '../sync/blocknote-converter'
 import { folderConfigHandler } from '../sync/item-handlers/folder-config-handler'
 import { isSupersededByLiveRow, recordPendingDelete } from '../sync/pending-deletes'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
@@ -55,6 +74,7 @@ describe('healCaseVariantRows', () => {
   let vault: ReturnType<typeof createTestVault>
   let data: TestDatabaseResult
   let index: TestDatabaseResult
+  let crdtDir: string
 
   beforeEach(() => {
     vault = createTestVault('case-heal')
@@ -62,11 +82,16 @@ describe('healCaseVariantRows', () => {
     index = createTestIndexDb()
     vi.mocked(getDatabase).mockReturnValue(asClientDb(data.db))
     vi.mocked(getIndexDatabase).mockReturnValue(index.db)
+    crdtDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-heal-crdt-'))
+    crdt.store = new LeveldbPersistence(crdtDir)
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
   })
 
   afterEach(async () => {
     await stopProjectionRuntime({ drain: true })
+    await crdt.store?.destroy()
+    crdt.store = null
+    fs.rmSync(crdtDir, { recursive: true, force: true })
     index.close()
     data.close()
     vault.cleanup()
@@ -226,6 +251,46 @@ describe('healCaseVariantRows', () => {
     expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
     expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
   })
+
+  /** The doc an editor saved for `noteId`: the store holds it, no file does. */
+  async function saveDoc(noteId: string, markdown: string): Promise<void> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    await crdt.store?.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
+    doc.destroy()
+  }
+
+  // Sync off queues nothing, so only the saved doc shows text the copy holds
+  // and the shared file lacks, such as an edit not yet written back at quit.
+  // A doc seeded from the same file as the kept note's holds nothing more.
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps a same-hash copy whose saved doc holds text the kept note lacks',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      seedRows('seeded', 'superNotes/a.md', { contentHash: 'hash-body' })
+      await saveDoc('original', 'body\n')
+      await saveDoc('seeded', 'body\n')
+      await saveDoc('copy', 'body\n\nwords typed before quit\n')
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
+    }
+  )
+
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps every note copy while no doc store is open',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      await crdt.store?.destroy()
+      crdt.store = null
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
+    }
+  )
 
   // A folder row with a clock can be a server record, and a dropped one comes
   // back by the next manifest check only to be dropped again (#5327). An

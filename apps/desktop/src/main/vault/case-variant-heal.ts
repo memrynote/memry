@@ -15,6 +15,8 @@
  */
 
 import { eq } from 'drizzle-orm'
+import * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -22,6 +24,9 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { flushProjectionEvents } from '../projections'
 import { readLocalBodyFacts } from '../sync/note-sync-state'
+import { getCrdtProvider } from '../sync/crdt-provider'
+import type { CrdtStoreReader } from '../sync/crdt-persistence'
+import { sameBody } from '../sync/crdt-seed-duplicates'
 import { diskCaseOf } from './disk-case'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { deleteNoteFromCache } from './note-sync'
@@ -95,6 +100,38 @@ function isNoteCopy(
   return !unsyncedRecord && !readLocalBodyFacts(dataDb, note.id).waiting
 }
 
+/** `noteId`'s doc as an open editor holds it, or as the store saved it. */
+async function savedDoc(noteId: string, store: CrdtStoreReader): Promise<Y.Doc> {
+  const doc = new Y.Doc()
+  const live = getCrdtProvider().getDoc(noteId)
+  const updates = live ? [Y.encodeStateAsUpdate(live)] : await store.updates(noteId)
+  doc.transact(() => {
+    for (const update of updates) Y.applyUpdate(doc, update)
+  })
+  return doc
+}
+
+/**
+ * Whether the copy's doc holds no body the kept note's doc lacks. With sync
+ * off nothing is queued, and the doc is the one place an edit not yet written
+ * to the shared file lives. A copy with an empty doc, or one seeded from the
+ * same file as the kept note's, holds nothing more.
+ */
+async function docHoldsNothingMore(
+  copyId: string,
+  keptId: string,
+  store: CrdtStoreReader
+): Promise<boolean> {
+  const copy = await savedDoc(copyId, store)
+  const kept = await savedDoc(keptId, store)
+  try {
+    return copy.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0 || sameBody(copy, kept)
+  } finally {
+    copy.destroy()
+    kept.destroy()
+  }
+}
+
 /**
  * Whether a case-variant folder_config row is a local copy of the row the disk
  * spells: it never entered sync (no clock), so the server holds nothing for
@@ -141,9 +178,27 @@ export async function healCaseVariantRows(
       .from(noteMetadata)
       .all()
   )
+  // Without the store, a copy's saved doc is unknown, so every row stays. The
+  // store opens off the vault-open path, so it is waited for only when a row
+  // may go.
+  let store: CrdtStoreReader | null = null
+  if (caseVariants.length > 0) {
+    const provider = getCrdtProvider()
+    await provider.awaitPendingInit()
+    store = provider.hasPersistence() ? provider.readOnlyStore() : null
+    if (!store) {
+      logger.warn('Kept case-variant note rows: the doc store is not open', {
+        count: caseVariants.length
+      })
+    }
+  }
   const noteCopies: Array<{ id: string; path: string }> = []
   for (const { copy: note, kept } of caseVariants) {
-    if (!isNoteCopy(note, kept.id, dataDb, indexDb)) {
+    if (!store) continue
+    if (
+      !isNoteCopy(note, kept.id, dataDb, indexDb) ||
+      !(await docHoldsNothingMore(note.id, kept.id, store))
+    ) {
       logger.warn('Kept a case twin that shares its file with another note', { id: note.id })
       continue
     }

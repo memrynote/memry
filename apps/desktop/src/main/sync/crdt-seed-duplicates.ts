@@ -99,6 +99,13 @@ function sameTree(a: unknown, b: unknown): boolean {
   )
 }
 
+/** Equal bodies: the same block trees, block ids aside. */
+export function sameBody(a: Y.Doc, b: Y.Doc): boolean {
+  const aBlocks = a.getXmlFragment(CRDT_FRAGMENT_NAME).toArray()
+  const bBlocks = b.getXmlFragment(CRDT_FRAGMENT_NAME).toArray()
+  return aBlocks.length === bBlocks.length && aBlocks.every((x, i) => sameTree(x, bBlocks[i]))
+}
+
 export function classifyBody(doc: Y.Doc): BodyShape {
   const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
   const roots: Y.AbstractType<unknown>[] = []

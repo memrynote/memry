@@ -63,6 +63,8 @@ vi.mock('../sync/crdt-provider', () => {
     getDoc: (id: string) => docs.get(id),
     recordOwedFullState: vi.fn(),
     hasPersistence: () => true,
+    awaitPendingInit: async () => {},
+    readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
     open: async (id: string) => docs.get(id),

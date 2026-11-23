@@ -54,10 +54,12 @@ export const openFileByteSource = async (filePath: string): Promise<PackByteSour
       if (length < 0 || position < 0 || position + length > size) {
         throw new Error('pack read out of bounds')
       }
-      const buffer = Buffer.allocUnsafe(length)
-      const { bytesRead } = await handle.read(buffer, 0, length, position)
+      // Not Buffer.allocUnsafe: a small read lands in Node's shared pool, and
+      // a post to the crypto worker clones the view's whole 8 KiB buffer.
+      const bytes = new Uint8Array(length)
+      const { bytesRead } = await handle.read(bytes, 0, length, position)
       if (bytesRead !== length) throw new Error('pack truncated')
-      return new Uint8Array(buffer.buffer, buffer.byteOffset, bytesRead)
+      return bytes
     },
     close: () => handle.close()
   }
