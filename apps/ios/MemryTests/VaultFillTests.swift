@@ -303,8 +303,11 @@ struct SyncProgressRelayTests {
     /// by the semaphore wait below, which is what makes the assertion mean
     /// something: a relay that hopped synchronously could not return until the
     /// main actor was free, so `signal()` would never be reached and the wait
-    /// would time out. The wait is bounded at two seconds, so this **fails**
-    /// rather than hangs (spec-defect 99).
+    /// would time out. The wait is bounded, so this **fails** rather than hangs
+    /// (spec-defect 99). The bound only breaks that deadlock; it is not a
+    /// latency budget. At 2 s it timed out on loaded CI runners, where a
+    /// global-queue block can wait seconds for a thread (#5484), so the caller
+    /// gets a thread of its own and the bound is far past any scheduling delay.
     @Test("the relay returns without waiting for the main actor")
     @MainActor
     func theRelayDoesNotWaitForTheMainActor() {
@@ -312,12 +315,15 @@ struct SyncProgressRelayTests {
         let relay = SyncProgressRelay { progress in seen.withLock { $0.append(progress) } }
         let returned = DispatchSemaphore(value: 0)
 
-        DispatchQueue.global().async {
+        // The core calls the relay from the executor's `.userInitiated` queue.
+        let caller = Thread {
             relay.progress(progress: tick(.metadata, 7, 94))
             returned.signal()
         }
+        caller.qualityOfService = .userInitiated
+        caller.start()
 
-        #expect(returned.wait(timeout: .now() + 2) == .success)
+        #expect(returned.wait(timeout: .now() + 30) == .success)
         // And it really had not delivered yet — the main actor was busy in the
         // wait above, so the hop cannot have run. This is the half that proves
         // the relay enqueued rather than blocked.

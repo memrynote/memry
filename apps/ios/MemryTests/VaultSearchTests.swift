@@ -164,6 +164,26 @@ struct VaultSearchTests {
         #expect(search.queries.withLock { $0 }.count == 2, "a cancelled follower re-runs nothing")
     }
 
+    @Test("a reindex that lands before the sheet follows the index still re-runs the query")
+    func aReindexBeforeFollowingStillRequeries() async throws {
+        // #5484: the sheet's `.task` loads the recents before it follows the
+        // index, and a reindex finishing in that window was never followed.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+        index.schedule()
+        await index.settle()
+
+        let follower = Task { await model.followIndex() }
+        defer { follower.cancel() }
+        try await wait { search.queries.withLock { $0.count } >= 2 }
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the reindex never reached the query")
+    }
+
     @Test("a model whose sheet is gone runs no query when a reindex finishes")
     func aDismissedModelStaysQuiet() async {
         // SwiftUI keeps a dismissed sheet's toolbar, and with it the model,

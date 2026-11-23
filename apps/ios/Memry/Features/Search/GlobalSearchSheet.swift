@@ -81,7 +81,11 @@ struct GlobalSearchSheet: View {
         }
         .task {
             if model == nil, let searcher = browse?.searcher {
-                model = VaultSearchViewModel(search: searcher, index: searchIndex)
+                let created = VaultSearchViewModel(search: searcher, index: searchIndex)
+                model = created
+                // The search field takes text from its first layout, which can
+                // come before this task: such a query reached no model (#5484).
+                created.run(query)
             }
             if recents == nil, let store = browse?.recents {
                 recents = SearchRecentsViewModel(store: store)

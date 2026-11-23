@@ -12,14 +12,16 @@ import UIKit
 // and types through its real search bar.
 
 @MainActor
-@Suite("Global search sheet", .serialized)
+@Suite("Global search sheet", .serialized, .timeLimit(.minutes(1)))
 struct GlobalSearchSheetTests {
     /// Answers nothing and counts the queries it was asked.
     private final class CountedSearch: VaultSearching, @unchecked Sendable {
         let queries = Mutex(0)
+        let changes = Changes()
 
         func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
             queries.withLock { $0 += 1 }
+            changes.changed()
             return SearchGroups(notes: [], journals: [], tasks: [], inbox: [])
         }
         func reindex() async throws {}
@@ -58,11 +60,11 @@ struct GlobalSearchSheetTests {
         let field = try #require(bar)
         field.text = "dune"
         field.delegate?.searchBar?(field, textDidChange: "dune")
-        try await wait { search.queries.withLock { $0 } >= 1 }
+        await search.changes.until { search.queries.withLock { $0 } >= 1 }
         #expect(search.queries.withLock { $0 } == 1, "the typed query never ran")
 
         index.schedule()
-        try await wait { search.queries.withLock { $0 } >= 2 }
+        await search.changes.until { search.queries.withLock { $0 } >= 2 }
 
         #expect(search.queries.withLock { $0 } == 2, "the reindex never reached the open sheet")
     }

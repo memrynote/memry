@@ -129,6 +129,10 @@ final class VaultSearchViewModel {
     private let index: VaultSearchIndex?
     /// The trimmed query on screen, run again after each reindex.
     private var query = ""
+    /// The last reindex the query on screen has seen. Set when the model is
+    /// made, not when following starts: the sheet loads its recents first, and
+    /// a reindex finishing in between must still re-run the query (#5484).
+    private var followed: Int
 
     init(
         search: any VaultSearching,
@@ -138,6 +142,7 @@ final class VaultSearchViewModel {
     ) {
         self.search = search
         self.index = index
+        self.followed = index?.completed ?? 0
         self.debounce = debounce
         self.source = source
     }
@@ -163,9 +168,8 @@ final class VaultSearchViewModel {
     /// query nobody sees on every sync pass.
     func followIndex() async {
         guard let index else { return }
-        var seen = index.completed
-        for await completed in Observations({ index.completed }) where completed != seen {
-            seen = completed
+        for await completed in Observations({ index.completed }) where completed != followed {
+            followed = completed
             rerun()
         }
     }
