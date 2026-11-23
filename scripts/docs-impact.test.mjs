@@ -6,7 +6,7 @@ import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { isStrictSkipEnabled } from './docs-impact.mjs'
+import { isDocsRelevantPath, isStrictSkipEnabled } from './docs-impact.mjs'
 
 const scriptPath = fileURLToPath(new URL('./docs-impact.mjs', import.meta.url))
 
@@ -57,6 +57,15 @@ describe('isStrictSkipEnabled', () => {
     assert.equal(isStrictSkipEnabled({ MEMRY_DOCS_IMPACT_SKIP: '0' }), false)
     assert.equal(isStrictSkipEnabled({ MEMRY_DOCS_IMPACT_SKIP: 'true' }), false)
     assert.equal(isStrictSkipEnabled({}), false)
+  })
+})
+
+describe('isDocsRelevantPath', () => {
+  it('treats __tests__ helpers as tests, not docs-relevant source', () => {
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/__tests__/d1-sqlite.ts'), false)
+    assert.equal(isDocsRelevantPath('apps/desktop/src/main/__tests__/helpers.ts'), false)
+    assert.equal(isDocsRelevantPath('packages/sync-core/src/__tests__/fixture-builder.ts'), false)
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/services/pack-list.ts'), true)
   })
 })
 

@@ -16,7 +16,7 @@ import { getNoteProperties, type PropertyValue } from '@main/database/queries/no
 import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { noteCoverForPush, settleNoteCoverRemoval } from './note-cover-sync'
-import { binaryRecordFields } from './binary-note-record'
+import { binaryRecordFields } from '@memry/shared/file-types'
 
 const log = createLogger('NoteHandlerSyncHelpers')
 
