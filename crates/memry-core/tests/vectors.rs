@@ -695,7 +695,7 @@ fn check_record_envelope_case(case: &Json) {
         input["deletedAt"].as_i64(),
     );
     assert_eq!(
-        claim.map(|claim| delete_attestation::sign(&claim, secret_key.as_slice()).unwrap()),
+        claim.map(|claim| delete_attestation::sign(&claim, None, secret_key.as_slice()).unwrap()),
         attestation.map(|value| value.as_str().unwrap().to_owned()),
         "{name}: deleteAttestation"
     );

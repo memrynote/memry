@@ -155,6 +155,9 @@ impl VaultSync {
         .map_err(|e| StorageError::Failed {
             what: e.to_string(),
         })?;
+        // Delete attestations stay v1 until production servers verify v2
+        // (#5247, chapter 04 §4.8.4): an older server rejects a v2 delete.
+        // The flip adds `.with_vault(&self.vault_id)`.
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let push = PushCoordinator::new(
             http,

@@ -431,7 +431,8 @@ export class SyncWorkerBridge {
     items: RawPushItem[],
     vaultKey: Uint8Array,
     signingSecretKey: Uint8Array,
-    signerDeviceId: string
+    signerDeviceId: string,
+    vaultId: string | null
   ): Promise<{
     results: EncryptedPushResult[]
     errors: Array<{ queueId: string; itemId: string; error: string; code?: 'item_too_large' }>
@@ -444,7 +445,8 @@ export class SyncWorkerBridge {
         items,
         vaultKey: new Uint8Array(vaultKey),
         signingSecretKey: new Uint8Array(signingSecretKey),
-        signerDeviceId
+        signerDeviceId,
+        vaultId
       })
 
       if (response.type === 'error') {

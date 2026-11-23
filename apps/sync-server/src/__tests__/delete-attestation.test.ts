@@ -93,8 +93,12 @@ type App = ReturnType<typeof buildApp>
 const sign = async (key: CryptoKey, bytes: Uint8Array) =>
   toB64(await crypto.subtle.sign('Ed25519', key, bytes))
 
-const attest = (claim: DeleteClaim, key: CryptoKey = signingKey) =>
-  sign(key, encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION'))
+const attest = (
+  claim: DeleteClaim,
+  key: CryptoKey = signingKey,
+  vaultId: string | null = VAULT_ID
+) =>
+  sign(key, encodeSignaturePayload(deleteAttestationPayload(claim, vaultId), 'DELETE_ATTESTATION'))
 
 interface PushSpec {
   id: string
@@ -315,6 +319,46 @@ describe('delete attestations on push, shed and pull (#2408)', () => {
       expect(stored('task-t')).toMatchObject({ deleted_at: null, delete_attestation: null })
     }
   )
+
+  // #5247: v2 binds the vault the push is routed to; v1 stays accepted from
+  // builds before #5247, which sign no vault id.
+  const pushDeleteAttestedIn = async (vaultId: string | null) => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-t', clock: { [DEVICE_ID]: 1 } }])
+    const claim: DeleteClaim = {
+      id: 'task-t',
+      type: 'task',
+      clock: { [DEVICE_ID]: 2 },
+      deletedAt: now()
+    }
+    const attestation = await attest(claim, signingKey, vaultId)
+    const res = await push(app, [
+      {
+        id: 'task-t',
+        clock: claim.clock,
+        deletedAt: claim.deletedAt,
+        deleteAttestation: attestation
+      }
+    ])
+    return { attestation, res }
+  }
+
+  it.each([
+    ['a v2 attestation for this vault', VAULT_ID],
+    ['a v1 attestation from an old build', null]
+  ] as const)('accepts and stores %s', async (_label, vaultId) => {
+    const { attestation, res } = await pushDeleteAttestedIn(vaultId)
+
+    expect(res.body.accepted).toEqual(['task-t'])
+    expect(stored('task-t').delete_attestation).toBe(attestation)
+  })
+
+  it('rejects a v2 attestation signed for another vault', async () => {
+    const { res } = await pushDeleteAttestedIn('vault-other')
+
+    expect(res.body.rejected).toEqual([{ id: 'task-t', reason: 'SYNC_INVALID_SIGNATURE' }])
+    expect(stored('task-t').delete_attestation).toBeNull()
+  })
 
   // #2408: an attestation over a different claim than the pushed one is a forgery.
   it('rejects an attestation over another clock than the pushed one', async () => {

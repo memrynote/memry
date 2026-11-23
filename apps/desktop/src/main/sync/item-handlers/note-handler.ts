@@ -72,6 +72,7 @@ import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { applyPinnedTags } from '@memry/sync-client/item-handlers/note-pin-helpers'
 import { applyRemoteFrontmatter, remoteAliases } from './note-handler-frontmatter'
+import { reapplyRemoteFrontmatterAfterPass } from './note-frontmatter-turn'
 import {
   buildNotePushPayload,
   fetchLocalNote,
@@ -445,6 +446,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             updateFields.contentHash = baselineAfterWrite(indexDb, itemId, raw, updatedContent)
             writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
             if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
+            reapplyRemoteFrontmatterAfterPass(itemId, frontmatterPatch)
           } else {
             // Pure rename/move — file bytes untouched
             fs.renameSync(oldAbsPath, newAbsPath)
@@ -497,6 +499,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           }
           writtenAliases = { kind: 'read', aliases: extractAliases(parsed.frontmatter, newTitle) }
           if (coverPresent) recordAppliedNoteCover(ctx.db, itemId, parsed.frontmatter)
+          reapplyRemoteFrontmatterAfterPass(itemId, frontmatterPatch)
         } catch {
           log.warn('Could not read note for frontmatter update', { itemId })
         }

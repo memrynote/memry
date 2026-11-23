@@ -10,7 +10,7 @@ mod support;
 use memry_core::crypto::cbor::field_order;
 use memry_core::crypto::sodium;
 use memry_core::protocol::delete_attestation::{
-    DeleteClaim, PURPOSE, claim_of, message, sign, verify,
+    DeleteClaim, PURPOSE, PURPOSE_V1, claim_of, message, sign, verify,
 };
 use memry_core::protocol::envelope::SyncOperation;
 use memry_core::sync::clock::VectorClock;
@@ -44,6 +44,7 @@ fn with_claim<T>(node: &Json, f: impl FnOnce(&DeleteClaim<'_>) -> T) -> T {
 fn the_purpose_and_allowlist_match_the_file() {
     let file = vector_file("delete-attestation");
     assert_eq!(str_field(&file["meta"], "purpose"), PURPOSE);
+    assert_eq!(str_field(&file["meta"], "purposeV1"), PURPOSE_V1);
     let order: Vec<&str> = file["meta"]["fieldOrder"]
         .as_array()
         .expect("fieldOrder")
@@ -67,25 +68,56 @@ fn every_case_reproduces_the_message_and_the_signature_byte_for_byte() {
         sodium::sign_seed_keypair(&hex_field(meta, "signerSeedHex")).expect("a keypair");
     assert_eq!(public, b64(str_field(meta, "signerPublicKeyB64")));
 
+    let vault = Some(str_field(meta, "vaultId"));
     let cases = file["cases"].as_array().expect("cases");
     for case in cases {
         let name = str_field(case, "name");
         with_claim(&case["claim"], |claim| {
             assert_eq!(
-                message(claim).expect("encodes"),
+                message(claim, vault).expect("encodes"),
                 hex_field(case, "messageHex"),
                 "{name}"
             );
             assert_eq!(
-                sign(claim, &secret).expect("signs"),
+                sign(claim, vault, &secret).expect("signs"),
                 str_field(case, "signatureB64"),
                 "{name}"
             );
-            verify(claim, str_field(case, "signatureB64"), &public)
+            verify(claim, vault, str_field(case, "signatureB64"), &public)
                 .unwrap_or_else(|error| panic!("{name}: {error}"));
         });
     }
     assert_eq!(cases.len() as u64, meta["caseCount"].as_u64().unwrap());
+}
+
+// #5247: the v1 bytes builds before #5247 sign, accepted in any vault.
+#[test]
+fn every_v1_case_reproduces_and_verifies_in_any_vault() {
+    let file = vector_file("delete-attestation");
+    let meta = &file["meta"];
+    let (public, secret) =
+        sodium::sign_seed_keypair(&hex_field(meta, "signerSeedHex")).expect("a keypair");
+    let cases = file["v1Cases"].as_array().expect("v1Cases");
+    assert!(!cases.is_empty());
+    for case in cases {
+        let name = str_field(case, "name");
+        with_claim(&case["claim"], |claim| {
+            assert_eq!(
+                message(claim, None).expect("encodes"),
+                hex_field(case, "messageHex"),
+                "{name}"
+            );
+            assert_eq!(
+                sign(claim, None, &secret).expect("signs"),
+                str_field(case, "signatureB64"),
+                "{name}"
+            );
+            for vault in [Some(str_field(meta, "vaultId")), Some("default"), None] {
+                verify(claim, vault, str_field(case, "signatureB64"), &public)
+                    .unwrap_or_else(|error| panic!("{name} in {vault:?}: {error}"));
+            }
+        });
+    }
 }
 
 // #2408: forged or mismatched attestations never verify.
@@ -97,9 +129,10 @@ fn every_mutation_is_refused() {
     for mutation in mutations {
         let name = str_field(mutation, "name");
         let key = b64(str_field(mutation, "signerPublicKeyB64"));
+        let vault = mutation["vaultId"].as_str();
         with_claim(&mutation["claim"], |claim| {
             assert!(
-                verify(claim, str_field(mutation, "signatureB64"), &key).is_err(),
+                verify(claim, vault, str_field(mutation, "signatureB64"), &key).is_err(),
                 "{name} verified"
             );
         });

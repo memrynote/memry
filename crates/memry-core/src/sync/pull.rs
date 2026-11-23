@@ -160,6 +160,12 @@ impl PullLoop {
         self
     }
 
+    /// The vault this loop pulls, which a purged marker's attestation must
+    /// name (chapter 04 §4.8.4, #5247).
+    pub(crate) fn vault_id(&self) -> Option<&str> {
+        self.vault_id.as_deref()
+    }
+
     /// Drains up to `max_pages` pages, stopping at the end of the feed or at
     /// the first refusal.
     ///
