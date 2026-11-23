@@ -23,11 +23,8 @@ import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
 import { syncNoteToCache } from '../../vault/note-sync'
 import { settleRemoteNoteFileSync, writeThroughLock } from '../../vault-locks/files'
-import {
-  hasPendingWriteback,
-  markWritebackIgnored,
-  repairAfterRunningTurn
-} from '../crdt-writeback'
+import { recordAppWrite } from '../../vault/app-writes'
+import { hasPendingWriteback, repairAfterRunningTurn } from '../crdt-writeback'
 import { baselineAfterWrite } from '../writeback-baseline'
 import { applyRemoteFrontmatter, type RemoteFrontmatterPatch } from './note-handler-frontmatter'
 
@@ -59,12 +56,13 @@ async function reapply(noteId: string, patch: RemoteFrontmatterPatch): Promise<v
   const updated = serializeParsedNote(parsed, parsed.content, { frontmatterEdited: true })
   if (updated === raw) return
   const absPath = toAbsolutePath(cached.path)
-  markWritebackIgnored(absPath)
+  const landed = recordAppWrite(absPath, updated)
   await writeThroughLock(absPath, async () => {
     await fs.promises.writeFile(`${absPath}.tmp`, updated, 'utf-8')
     await fs.promises.rename(`${absPath}.tmp`, absPath)
     return updated
   })
+  landed()
   settleRemoteNoteFileSync(noteId, absPath, cached.path, updated)
   syncNoteToCache(
     indexDb,

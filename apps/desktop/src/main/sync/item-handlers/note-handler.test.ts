@@ -108,15 +108,12 @@ vi.mock('../../notes/runtime-effects', () => ({
     mockCleanupProjectLinksForDeletedNote(...(args as []))
 }))
 
-const mockMarkWritebackIgnored = vi.fn()
 vi.mock('../crdt-network-update', async () => await import('../crdt-writeback'))
 vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({
-  markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
-}))
+vi.mock('../crdt-writeback', () => ({}))
 
 const mockPurgeCrdtDoc = vi.fn(() => Promise.resolve())
 const mockDeleteSyncedVaultFile = vi.fn()
@@ -161,7 +158,8 @@ vi.mock('../../vault/file-ops', async () => {
   }
 })
 
-vi.mock('../../vault/attachments', () => ({
+vi.mock('../../vault/attachments', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getNoteAttachmentsDir: vi.fn((vaultPath: string, noteId: string) =>
     path.join(vaultPath, 'attachments', noteId)
   )

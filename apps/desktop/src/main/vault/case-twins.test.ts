@@ -142,7 +142,8 @@ import { getCrdtProvider } from '../sync/crdt-provider'
 import { owesFileBody, recordOwedFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
 import { markdownToYFragment } from '../sync/blocknote-converter'
-import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
+import { writebackNow } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -243,8 +244,9 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     insertNoteCache(index.db, { ...fields, contentHash: generateContentHash(body) })
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    markWritebackIgnored(absolutePath)
+    const landed = recordAppWrite(absolutePath, body)
     fs.writeFileSync(absolutePath, body)
+    landed()
   }
 
   const LOWER = '# a\n\nlower [[x]]\n'

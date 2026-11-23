@@ -29,7 +29,7 @@ import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { noteLinkStem } from '@memry/shared/wiki-target'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { extractDateFromPath, getNoteCacheById } from '@main/database/queries/notes'
 import {
@@ -283,9 +283,10 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
     // id, so a move never invalidates it; the doc still holds the pre-move body
     // and the next write-back would serialize that straight back over the
     // corrected file. The doc takes the rewrite first, then the file
-    // (`landBodyEdit`). The watcher's external-edit feed must not race it; the
-    // sync note handler marks its own writes the same way.
-    if (rewritten !== null) markWritebackIgnored(newPath)
+    // (`landBodyEdit`). The watcher's external-edit feed must not race it, so
+    // the bytes the move put here and the rewrite's are recorded as the app's;
+    // the sync note handler records its own writes the same way.
+    if (rewritten !== null) recordAppWrite(newPath, original)()
     const contentHash =
       rewritten === null
         ? baselineAfterWrite(db, id, original, original)
@@ -293,7 +294,11 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
             notePath: newRelativePath,
             feed: () =>
               feedExternalEditToCrdt(id, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
-            write: () => atomicWrite(newPath, rewritten)
+            write: async () => {
+              const landed = recordAppWrite(newPath, rewritten)
+              await atomicWrite(newPath, rewritten)
+              landed()
+            }
           })
     syncNoteToCache(
       db,

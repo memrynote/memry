@@ -47,7 +47,7 @@ import {
 } from './engine/sync-run-outcome'
 import { QuarantineManager } from './engine/quarantine-manager'
 import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
-import { isKnownNote } from './note-body-apply'
+import { isBinaryNote, isKnownNote } from './note-body-apply'
 import { crdtBodyDebtStore } from './engine/crdt-body-debts'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
@@ -209,7 +209,7 @@ export class SyncEngine extends SyncEventEmitter {
     this.crdtSync = new CrdtSyncCoordinator(
       this.ctx,
       (id) => this.pullCoordinator.resolveDeviceKey(id),
-      (id) => isKnownNote(this.ctx.deps.db, id),
+      (id) => isKnownNote(this.ctx.deps.db, id) && !isBinaryNote(this.ctx.deps.db, id),
       crdtBodyDebtStore(this.ctx.deps.db)
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
