@@ -1090,7 +1090,14 @@ export class VaultWatcher {
 
       const db = getIndexDatabase()
 
-      const cached = getNoteCacheByPath(db, relativePath)
+      // The event's own spelling holds the row of a change queued just before
+      // an outside case-only rename: the disk already spells the new name, and
+      // the row moves only when the rename's unlink + add match. Adding the new
+      // spelling here listed the note under a fresh id, and the unmatched
+      // unlink then deleted the original (#5247). Both spellings open the file.
+      const cached =
+        getNoteCacheByPath(db, relativePath) ??
+        getNoteCacheByPath(db, normalizeRelativePath(path.relative(this.vaultPath, eventPath)))
 
       if (!cached) {
         await this.handleFileAdd(absolutePath)
@@ -1098,9 +1105,9 @@ export class VaultWatcher {
       }
 
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileChange(relativePath, cached, db)
+        await this.handleMarkdownFileChange(cached.path, cached, db)
       } else {
-        await this.handleNonMarkdownFileChange(absolutePath, relativePath, fileType, cached, db)
+        await this.handleNonMarkdownFileChange(absolutePath, cached.path, fileType, cached, db)
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
