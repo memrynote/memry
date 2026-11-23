@@ -36,7 +36,12 @@ import { getIndexDatabase } from '../../database/client'
 import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
-import { getNoteAttachmentsDir } from '../../vault/attachments'
+import {
+  getNoteAttachmentsDir,
+  isAttachmentStoreRow,
+  isInAttachmentStore
+} from '../../vault/attachments'
+import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import { getStatus as getVaultStatus } from '../../vault/status'
 import {
   generateContentHash,
@@ -240,6 +245,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     const indexDb = getIndexDatabase()
     const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
     const now = utcNow()
+
+    // A binary record in the attachment store is a note an older Windows build
+    // made of an attachment file (#5607). This device keeps no row for one,
+    // and the vault-open pass drops any it has (`vault/stray-attachment-rows`).
+    if (
+      data.fileType &&
+      isBinaryFileType(data.fileType) &&
+      isInAttachmentStore(data.folderPath ?? '')
+    ) {
+      recordDeclinedRef(ctx.db, { type: 'note', id: itemId })
+      return 'skipped'
+    }
 
     const existing = getNoteMetadataById(ctx.db, itemId)
     if (existing && belongsToOtherType(itemId, 'note', existing)) return 'skipped'
@@ -892,8 +909,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
     // Journaled with the page and unlinked after it commits (#2385): a lost
     // unlink would leave a file with no row for the indexer to push back. A
-    // case twin's file stays with the other twin.
-    if (!leave) deleteSyncedVaultFile(absolutePath)
+    // case twin's file stays with the other twin, and a stray row's file with
+    // the attachment store (#5607).
+    if (!leave && !isAttachmentStoreRow(existing)) deleteSyncedVaultFile(absolutePath)
 
     // The note may be the last one in a folder another device deleted (#2512).
     const folder = extractFolderFromPath(existing.path)

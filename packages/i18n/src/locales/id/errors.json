@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Gagal menerapkan templat",
     "appendBlocksFailed": "Gagal memindahkan blok ke catatan tersebut",
     "appendIntoCaseTwin": "Catatan itu berbagi file dengan catatan yang namanya hanya berbeda pada huruf besar dan kecil. Ganti nama salah satunya, lalu pindahkan blok lagi.",
+    "appendIntoBinary": "Blok hanya dapat dipindahkan ke catatan, bukan ke file gambar, PDF, audio, atau video.",
     "caseTwinMoveRefused": "Catatan ini berbagi file dengan catatan yang namanya hanya berbeda huruf besar dan kecilnya, jadi catatan ini tidak dapat dipindahkan dengan cara ini. Ganti nama atau pindahkan catatan yang lain, atau hapus salinan yang tidak Anda perlukan.",
     "exportPdfFailed": "Gagal mengekspor PDF",
     "exportHtmlFailed": "Gagal mengekspor HTML",
