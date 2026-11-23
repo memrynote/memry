@@ -297,6 +297,12 @@ short-circuits `operation === 'delete'` and reads only the optional
 #3037). Both schemas list `bodyStateVector` as an optional string; it appears
 only on a delete.
 
+A `journal` also carries `fieldClocks` and `fieldClocksAt`
+(`packages/contracts/src/sync-payloads.ts:384-388`, #5508): one clock per
+`tags.<tagKey>` and `properties.<key>` unit, stamped at the payload's `clock`.
+Both are optional, and a payload without them is read whole at its clock
+(chapter 06 §6.12.1).
+
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.
 
@@ -998,14 +1004,15 @@ is a new item, not a re-push of the merged one.
 
 **Normative** (the enumeration is chapter 06 §6.8):
 
-| Type                        | Algorithm                                                | Carries `fieldClocks`                              |
-| --------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| `task`                      | field-level                                              | yes (`packages/contracts/src/sync-payloads.ts:61`) |
-| `project`                   | field-level                                              | yes (`:247`)                                       |
-| `calendar_event`            | field-level                                              | yes (`:405`)                                       |
-| `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
-| `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
-| every other subscribed type | document-level resolver                                  | no                                                 |
+| Type                        | Algorithm                                                            | Carries `fieldClocks`                              |
+| --------------------------- | -------------------------------------------------------------------- | -------------------------------------------------- |
+| `task`                      | field-level                                                          | yes (`packages/contracts/src/sync-payloads.ts:61`) |
+| `project`                   | field-level                                                          | yes (`:247`)                                       |
+| `calendar_event`            | field-level                                                          | yes (`:405`)                                       |
+| `settings`                  | dotted-path field clocks                                             | yes, its own key space                             |
+| `journal`                   | document-level resolver, `tags` and `properties` per unit (06 §6.12) | yes, for those two keys (`:387`)                   |
+| `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21)             | no                                                 |
+| every other subscribed type | document-level resolver                                              | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by
 chapter 06 §6.11 on every apply path, in addition to the type's algorithm in the

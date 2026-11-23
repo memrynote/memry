@@ -56,6 +56,7 @@ pub mod field_merge;
 pub mod first_sync;
 pub mod first_sync_store;
 pub mod journal_day_merge;
+pub mod journal_merge;
 pub mod note_body_feed;
 pub mod outbox;
 pub mod pack_bootstrap;

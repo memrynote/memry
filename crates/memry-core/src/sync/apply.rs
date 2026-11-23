@@ -53,7 +53,9 @@ use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
 use super::clock::{ClockOrder, VectorClock, compare};
-use super::{body_debt, delete_keep, journal_day_merge, outbox, settings_merge, store};
+use super::{
+    body_debt, delete_keep, journal_day_merge, journal_merge, outbox, settings_merge, store,
+};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -399,6 +401,8 @@ pub fn apply_inbound_on(
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
+        // `tags` and `properties` per unit, the rest by §6.3.1 (§6.12, #5508).
+        journal::ITEM_TYPE => journal_merge::apply_remote(conn, record, now_ms),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
         // Desktop's four calendar handlers (spec 007 CL010/CL011).

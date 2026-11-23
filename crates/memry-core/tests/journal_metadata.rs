@@ -25,14 +25,16 @@ const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 const DAY: &str = "2099-06-15";
 
-/// `JournalSyncPayloadSchema` (`packages/contracts/src/sync-payloads.ts:279`).
-const SCHEMA_KEYS: [&str; 8] = [
+/// `JournalSyncPayloadSchema` (`packages/contracts/src/sync-payloads.ts:369`).
+const SCHEMA_KEYS: [&str; 10] = [
     "date",
     "aliases",
     "content",
     "tags",
     "properties",
     "clock",
+    "fieldClocks",
+    "fieldClocksAt",
     "createdAt",
     "modifiedAt",
 ];

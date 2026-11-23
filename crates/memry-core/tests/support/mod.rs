@@ -102,6 +102,9 @@ pub fn vector_file(name: &str) -> Json {
             include_str!("../../../../packages/contracts/test-vectors/task-filtering.json")
         }
         "journal" => include_str!("../../../../packages/contracts/test-vectors/journal.json"),
+        "journal-merge" => {
+            include_str!("../../../../packages/contracts/test-vectors/journal-merge.json")
+        }
         "markdown-seed" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-seed.json")
         }

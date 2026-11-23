@@ -547,11 +547,12 @@ a client uses when a row has a document clock but no field clocks yet
 | `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
+| `journal`                       | the document-level resolver of §6.3.1, with `tags` and `properties` merged per unit, §6.12 |
 | `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
-(chapter 13 §13.5); the task and project lists live in
+(chapter 13 §13.5), and `journal` carries them for two keys only (§6.12); the task and project lists live in
 `packages/sync-client/src/field-merge.ts:11-40`, the calendar event list in
 `apps/desktop/src/main/calendar/field-merge-calendar.ts:4`. Every other type carries only
 `clock` and takes the `resolveClockConflict` path
@@ -907,3 +908,81 @@ production map functions.
 `packages/shared/src/versioned.ts` and asserted by
 `packages/contracts/src/__tests__/versioned-values.test.ts` and
 `crates/memry-core/tests/versioned_values_vectors.rs`.
+
+## 6.12 Journal tags and properties merge per unit (#5508)
+
+**Normative, amended 2026-11-23 (#5508).** Before this section a `journal`
+took §6.3.1 alone: on `concurrent` the remote payload applied whole, and P2
+rebuilt the outbox row from that live row. Four devices that each added a tag,
+removed one, or set a property kept only the last pusher's edit, and a removed
+tag came back. Every other journal key still takes §6.3.1; the body is the
+CRDT's (chapter 07).
+
+### 6.12.1 Units, and when a side's unit clocks are trusted
+
+A unit is `tags.<tagKey>`, the trimmed, folded tag of §1.9.1 step 6, or
+`properties.<key>`, the raw key after the prefix, never split on `.`
+(`packages/sync-client/src/journal-merge.ts:28-41`,
+`crates/memry-core/src/sync/journal_merge.rs:48-67`). `fieldClocks` maps a unit
+to the **document clock at which a device last wrote it**, so a unit clock never
+exceeds the `clock` of the payload carrying it. A unit clocked but absent from
+the value is a removal; its clock is what stops a stale copy re-adding it.
+
+`fieldClocksAt` is the `clock` the writer stamped the units at
+(`packages/contracts/src/sync-payloads.ts:384-388`). **A side's unit clocks are
+trusted only when `fieldClocks` is present and `fieldClocksAt` equals its
+`clock`** under §6.4.2 (`packages/sync-client/src/journal-merge.ts:43-62`,
+`crates/memry-core/src/sync/journal_merge.rs:79-101`). Otherwise every unit the
+side names, in its value or in its `fieldClocks`, is clocked at the side's
+`clock`: the side was written whole at its clock, which is the rule the side's
+writer ran.
+
+That is the version gate. No version byte covers a JSON record payload
+(chapter 00 §0.2), and moving `CRYPTO_VERSION` would make an older build refuse
+the record. An older build keeps both keys (the core stores the payload verbatim,
+§13.2; desktop keeps them in its remainder, §13.2.1) but ticks `clock` past the
+stamp, so its edit is read whole at its clock: a mixed-version pair merges by
+today's rule and never below it, and needs no client floor. A payload with no
+`fieldClocks` is the same case. Every unit clock is at most the document clock
+that saw it, so a side read at its clock dominates every unit it saw.
+
+### 6.12.2 A local edit clocks the units it changed
+
+A writer diffs the fields it pushes against the last synced ones: each unit
+whose value differs (§6.4.2; a new spelling of the same tag key differs) takes
+the new `clock`, the rest keep theirs, and `fieldClocksAt` is set to `clock`
+(`packages/sync-client/src/journal-merge.ts:64-80`). With no synced base every
+unit is seeded at `clock`. The core restamps on every journal write, in the
+one function every local edit goes through
+(`crates/memry-core/src/storage/repositories/sync_items.rs:244-250`,
+`crates/memry-core/src/sync/journal_merge.rs:199-213`). Desktop reads tags and
+properties from the day file, so it diffs against a base kept in `sync_state`
+under `journal.fields:<id>`, written on every apply and every push build
+(`apps/desktop/src/main/sync/journal-fields.ts:19`,
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:205`, `:324-330`).
+
+### 6.12.3 The merge
+
+`before` and `equal` apply wholesale and `after` skips, as §6.3.1 has it. On
+`concurrent` the units are the union of both sides' unit clocks and value units,
+each arbitrated by §6.3's rule (`mergeFields`: tick sum, the asymmetric
+`_offline` test, remote wins ties). **A winner with no value removes the unit**;
+§6.9.0's keep-on-absent does not apply, because `tags` is an array and
+`properties` an open record, which no build strips. Local survivors keep local
+order and local spelling, then remote-only survivors follow in remote order
+(`packages/sync-client/src/journal-merge.ts:82-133`,
+`crates/memry-core/src/sync/journal_merge.rs:135-198`). The stored row carries
+the union `clock`, the merged unit clocks and `fieldClocksAt` equal to the union
+clock; every other key is the remote's (`crates/memry-core/src/sync/journal_merge.rs:214-260`,
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:131-152`).
+
+**A merge in which any unit's local clock is `concurrent` with or `after` the
+remote's MUST re-queue the merged journal** (§6.5.2 P3). The core enqueues in
+the apply's transaction, as settings do
+(`crates/memry-core/src/sync/journal_merge.rs:190`, `:250-256`); desktop's
+`'conflict'` return re-queues every concurrent journal.
+
+Pinned by the `journal-merge` vector class (`packages/contracts/test-vectors/journal-merge.json`),
+generated from `journal-merge.ts` and run by
+`packages/contracts/src/__tests__/journal-merge.test.ts` and
+`crates/memry-core/tests/journal_merge_vectors.rs`.

@@ -43,6 +43,13 @@ import {
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import { keepUnseenText } from '../keep-unseen-text'
+import { mergeJournalFields, type JournalFields } from '@memry/sync-client/journal-merge'
+import {
+  forgetJournalFieldsBase,
+  localJournalFields,
+  readDayFields,
+  writeJournalFieldsBase
+} from '../journal-fields'
 
 const log = createLogger('JournalHandler')
 
@@ -109,17 +116,41 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     let mergedClock = remoteClock
     let result: ApplyResult = 'applied'
+    let tags = data.tags
+    let properties = data.properties ?? undefined
+    // The fields as synced: the remote's, or the merge's under the union clock.
+    let synced: Omit<JournalFields, 'tags' | 'properties'> = {
+      clock: data.clock ?? remoteClock,
+      fieldClocks: data.fieldClocks,
+      fieldClocksAt: data.fieldClocksAt
+    }
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
       if (resolution.action === 'skip') {
         log.info('Skipping remote journal update, local is newer', { itemId })
         return 'skipped'
       }
-      if (resolution.action === 'merge') {
-        log.warn('Concurrent journal edit, applying (CRDT handles merge)', { itemId })
-        result = 'conflict'
-      }
       mergedClock = resolution.mergedClock
+      if (resolution.action === 'merge') {
+        // Tags and properties merge per unit (§6.12); the body is the CRDT's.
+        result = 'conflict'
+        const day = readDayFields(date)
+        if (day) {
+          const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
+          const merged = mergeJournalFields(local, { ...data, clock: data.clock ?? remoteClock })
+          tags = merged.tags
+          properties = merged.properties
+          synced = {
+            clock: mergedClock,
+            fieldClocks: merged.fieldClocks,
+            fieldClocksAt: mergedClock
+          }
+        } else {
+          log.warn('Concurrent journal edit with no readable day file; remote fields apply', {
+            itemId
+          })
+        }
+      }
     }
 
     // Everything below stays synchronous: it runs inside the pull's page
@@ -129,8 +160,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       write = buildJournalEntryWrite(
         date,
         data.content,
-        data.tags,
-        data.properties ?? undefined,
+        tags,
+        properties,
         remoteAliases(data.aliases, date)
       )
     } catch (error) {
@@ -171,6 +202,11 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       { isNew: !existing, source: 'sync' }
     )
     writeSyncedVaultFile(absolutePath, fileContent)
+    writeJournalFieldsBase(ctx.db, itemId, {
+      tags: frontmatter.tags ?? [],
+      properties: extractJournalProperties(frontmatter) ?? {},
+      ...synced
+    })
     void flushProjectionEvents()
 
     ctx.emit(
@@ -243,6 +279,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
     deleteNoteFromCache(indexDb, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
+    forgetJournalFieldsBase(ctx.db, itemId)
     // After the row delete, and journaled with the page (#2385): see
     // `noteHandler.applyDelete`.
     if (existing.journalDate) deleteSyncedVaultFile(getJournalPath(existing.journalDate))
@@ -273,6 +310,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
     let aliases: string[] | undefined
+    let unitClocks: Pick<JournalFields, 'fieldClocks' | 'fieldClocksAt'> = {}
     try {
       const raw = readJournalTextSync(cached.journalDate)
       if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
@@ -281,6 +319,16 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       tags = parsed.frontmatter.tags ?? []
       properties = extractJournalProperties(parsed.frontmatter) ?? null
       aliases = extractAliases(parsed.frontmatter, cached.journalDate)
+      // Unit clocks only for fields read from the file (§6.12.2): a push
+      // without them is read whole at its clock, today's rule.
+      const fields = localJournalFields(
+        db,
+        cached.id,
+        { tags, properties: properties ?? {} },
+        cached.clock ?? {}
+      )
+      writeJournalFieldsBase(db, cached.id, fields)
+      unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,
@@ -295,6 +343,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       properties,
       ...(aliases !== undefined ? { aliases } : {}),
       clock: cached.clock ?? {},
+      ...unitClocks,
       createdAt: cached.createdAt,
       modifiedAt: cached.modifiedAt
     })

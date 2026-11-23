@@ -31,6 +31,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
+use crate::sync::journal_merge;
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
@@ -239,9 +240,14 @@ pub fn apply_local_edit_in(
         });
     };
 
-    let merged = StoredPayload::parse(&stored)
-        .map_err(refuse(item_type, item_id))?
-        .merge(changes);
+    let stored = StoredPayload::parse(&stored).map_err(refuse(item_type, item_id))?;
+    let mut merged = stored.merge(changes);
+    if item_type == "journal" {
+        // Chapter 06 §6.12.2: every journal edit restamps its unit clocks.
+        let edited = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
+        let stamp = journal_merge::local_edit_changes(stored.object(), edited.object())?;
+        merged = edited.merge(&stamp);
+    }
     let reparsed = StoredPayload::parse(&merged).map_err(refuse(item_type, item_id))?;
     let view =
         projectors::read(item_type, reparsed.object()).map_err(refuse(item_type, item_id))?;

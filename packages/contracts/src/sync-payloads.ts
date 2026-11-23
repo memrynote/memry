@@ -381,6 +381,11 @@ export const JournalSyncPayloadSchema = z.object({
   // As on notes: absent or `null` keeps the receiver's list, `[]` clears it.
   aliases: z.array(z.string()).nullable().optional(),
   clock: VectorClockSchema.optional(),
+  // Chapter 06 §6.12 (#5508): one clock per `tags.<tagKey>` and
+  // `properties.<key>` unit, trusted only while `fieldClocksAt` equals `clock`.
+  // An older build keeps both keys but ticks `clock` past the stamp.
+  fieldClocks: FieldClocksSchema.optional(),
+  fieldClocksAt: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional(),
   // Delete tombstones only, as on notes (chapter 05 §5.8, #3037).
