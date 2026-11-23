@@ -14,6 +14,9 @@ struct RemovedVaultNotice: View {
             Text("That vault was removed from your account. Its copy stays on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
+            Text("The copy is not encrypted.")
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
             status
             if export.isCopying {
                 Button("Cancel export", action: export.cancel)
@@ -43,7 +46,7 @@ struct RemovedVaultNotice: View {
             EmptyView()
         case let .copying(done, total):
             ProgressView(value: Double(done), total: Double(max(total, 1))) {
-                Text(total == 0 ? "Preparing the copy" : "Copying \(done) of \(total) files")
+                Text(total == 0 ? "Preparing the copy" : "Copying \(done) of \(total) \(total == 1 ? "file" : "files")")
                     .font(Tokens.Typography.supporting.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
             }

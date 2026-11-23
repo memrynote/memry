@@ -129,8 +129,7 @@ struct RemovedVaultExportTests {
         let vault = space.vault
         let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { vault }
 
-        export.start(into: blocked)
-        await export.settled()
+        await export.start(into: blocked)?.value
 
         #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
         #expect(try space.tree(space.vault) == space.files)
@@ -144,8 +143,7 @@ struct RemovedVaultExportTests {
         let vault = space.vault
         let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { vault }
 
-        export.start(into: space.out)
-        await export.settled()
+        await export.start(into: space.out)?.value
 
         #expect(export.phase == .exported(folder: "Personal (memrynote export)"))
         let folder = space.out.appendingPathComponent("Personal (memrynote export)", isDirectory: true)
@@ -160,10 +158,111 @@ struct RemovedVaultExportTests {
         defer { space.remove() }
         let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { throw Stop() }
 
-        export.start(into: space.out)
-        await export.settled()
+        await export.start(into: space.out)?.value
 
         #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
         #expect(try FileManager.default.contentsOfDirectory(atPath: space.out.path).isEmpty)
+    }
+
+    @Test("a missing vault folder fails visibly and creates nothing")
+    @MainActor
+    func missingFolder() async throws {
+        let space = try Workspace()
+        defer { space.remove() }
+        let gone = space.root.appendingPathComponent("vault/gone", isDirectory: true)
+        let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { gone }
+
+        await export.start(into: space.out)?.value
+
+        #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: space.out.path).isEmpty)
+    }
+
+    @Test("a vault path that is a file, not a folder, fails visibly")
+    @MainActor
+    func notAFolder() async throws {
+        let space = try Workspace()
+        defer { space.remove() }
+        let file = space.vault.appendingPathComponent("data.db")
+        let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { file }
+
+        await export.start(into: space.out)?.value
+
+        #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: space.out.path).isEmpty)
+    }
+
+    @Test("an unreadable subfolder fails the export instead of skipping its files")
+    @MainActor
+    func unreadableSubfolder() async throws {
+        let space = try Workspace()
+        let nested = space.vault.appendingPathComponent("images/nested", isDirectory: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: nested.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: nested.path)
+            space.remove()
+        }
+        let vault = space.vault
+        let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { vault }
+
+        await export.start(into: space.out)?.value
+
+        #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: space.out.path).isEmpty)
+    }
+
+    @Test("a file that fails partway removes the partial copy and keeps the vault")
+    @MainActor
+    func partialCopyRemoved() async throws {
+        let space = try Workspace()
+        let locked = space.vault.appendingPathComponent("images/a.png")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: locked.path)
+            space.remove()
+        }
+        let vault = space.vault
+        let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: "Personal")) { vault }
+
+        await export.start(into: space.out)?.value
+
+        #expect(export.phase == .failed(RemovedVaultExport.exportFailed))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: space.out.path).isEmpty)
+    }
+
+    @Test("each write-ahead log is copied before its database")
+    func walBeforeDatabase() throws {
+        let space = try Workspace()
+        defer { space.remove() }
+        try Data("vectors".utf8).write(to: space.vault.appendingPathComponent("vectors.db"))
+        try Data("vectors wal".utf8).write(to: space.vault.appendingPathComponent("vectors.db-wal"))
+
+        let order = try VaultFolderCopy.files(under: space.vault)
+
+        for wal in order where wal.hasSuffix("-wal") {
+            let database = String(wal.dropLast(4))
+            #expect(order.firstIndex(of: wal)! < order.firstIndex(of: database)!)
+        }
+        #expect(Set(order) == Set(space.files.keys).union(["vectors.db", "vectors.db-wal"]))
+    }
+
+    @Test("a long vault name still exports, under a shortened folder name")
+    @MainActor
+    func longName() async throws {
+        let space = try Workspace()
+        defer { space.remove() }
+        let vault = space.vault
+        let long = String(repeating: "é", count: 300)
+        let export = RemovedVaultExport(summary: VaultSummary(id: "b", name: long)) { vault }
+
+        await export.start(into: space.out)?.value
+
+        guard case let .exported(folder) = export.phase else {
+            Issue.record("expected exported, got \(export.phase)")
+            return
+        }
+        #expect(folder.hasSuffix(" (memrynote export)"))
+        #expect(folder.decomposedStringWithCanonicalMapping.utf8.count <= 255)
+        #expect(try space.tree(space.out.appendingPathComponent(folder, isDirectory: true)) == space.files)
     }
 }

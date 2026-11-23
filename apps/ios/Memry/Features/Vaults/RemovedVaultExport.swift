@@ -24,7 +24,7 @@ enum VaultFolderCopy {
         progress: (Int, Int) throws -> Void
     ) throws -> URL {
         let manager = FileManager.default
-        let files = try regularFiles(under: source)
+        let files = try files(under: source)
         let destination = try freshFolder(in: parent, named: name)
         do {
             try progress(0, files.count)
@@ -48,18 +48,33 @@ enum VaultFolderCopy {
     }
 
     /// Paths relative to `source`, read before anything is copied so the
-    /// total is known.
-    private static func regularFiles(under source: URL) throws -> [String] {
+    /// total is known. Each `-wal` comes before its database, so a copy that
+    /// stops between the two never holds a database without its log. A
+    /// missing folder, or a subfolder the walk cannot read, throws: a copy
+    /// with files silently left out must never read as exported.
+    static func files(under source: URL) throws -> [String] {
+        guard try source.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
         let keys: [URLResourceKey] = [.isRegularFileKey]
+        var walkError: (any Error)?
         guard let walk = FileManager.default.enumerator(
-            at: source, includingPropertiesForKeys: keys, options: [], errorHandler: { _, _ in false }
+            at: source, includingPropertiesForKeys: keys, options: [], errorHandler: { _, error in
+                walkError = error
+                return false
+            }
         ) else { throw CocoaError(.fileReadNoSuchFile) }
         let base = source.standardizedFileURL.pathComponents.count
         var files: [String] = []
         for case let url as URL in walk where try url.resourceValues(forKeys: Set(keys)).isRegularFile == true {
             files.append(url.standardizedFileURL.pathComponents.dropFirst(base).joined(separator: "/"))
         }
-        return files
+        if let walkError { throw walkError }
+        return files.sorted { copyOrder($0) < copyOrder($1) }
+    }
+
+    private static func copyOrder(_ path: String) -> (String, Int) {
+        path.hasSuffix("-wal") ? (String(path.dropLast(4)), 0) : (path, 1)
     }
 
     private static func freshFolder(in parent: URL, named name: String) throws -> URL {
@@ -106,25 +121,34 @@ final class RemovedVaultExport {
 
     /// Copies the vault into `destination`, a folder the user picked. The
     /// walk and the copy run off the main actor; the screen sees progress.
-    func start(into destination: URL) {
-        guard !isCopying else { return }
+    /// Returns the copy's task, which ends after `phase` settles, or nil when
+    /// a copy is already running.
+    @discardableResult
+    func start(into destination: URL) -> Task<Void, Never>? {
+        guard !isCopying else { return nil }
         phase = .copying(done: 0, total: 0)
         let source = source
-        let name = "\(VaultLabel(summary).text) (memrynote export)"
+        // A file name holds 255 UTF-8 bytes, counted here decomposed, the
+        // longest form a file system may store. 200 for the label leaves room
+        // for the suffix and a " 1000" from a name clash.
+        var label = VaultLabel(summary).text
+        while label.decomposedStringWithCanonicalMapping.utf8.count > 200 { label.removeLast() }
+        let name = "\(label) (memrynote export)"
         task = Task.detached { [weak self] in
-            let scoped = destination.startAccessingSecurityScopedResource()
-            defer { if scoped { destination.stopAccessingSecurityScopedResource() } }
-            let result = Result {
-                try VaultFolderCopy.copy(from: try source(), into: destination, named: name) { done, total in
-                    try Task.checkCancellation()
-                    // One hop per hundred files: a 16k-file vault would
-                    // otherwise queue 16k main-actor updates.
-                    guard done == total || done % 100 == 0 else { return }
-                    Task { @MainActor in self?.progressed(done, total) }
+            let result = destination.withSecurityScope {
+                Result {
+                    try VaultFolderCopy.copy(from: try source(), into: destination, named: name) { done, total in
+                        try Task.checkCancellation()
+                        // One hop per hundred files: a 16k-file vault would
+                        // otherwise queue 16k main-actor updates.
+                        guard done == total || done % 100 == 0 else { return }
+                        Task { @MainActor in self?.progressed(done, total) }
+                    }
                 }
             }
             await self?.finished(result)
         }
+        return task
     }
 
     /// The folder picker itself failed, before any copy started.
@@ -135,11 +159,6 @@ final class RemovedVaultExport {
 
     func cancel() {
         task?.cancel()
-    }
-
-    /// Waits for the running copy. Tests only.
-    func settled() async {
-        await task?.value
     }
 
     static let exportFailed = UserFacingError(
