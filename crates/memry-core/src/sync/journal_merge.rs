@@ -10,8 +10,9 @@
 //!   absent from the value is a removal.
 //! - A side's `fieldClocks` are trusted only when `fieldClocksAt` equals its
 //!   `clock` (§6.12.1). An older build keeps the keys (§13.2) but ticks `clock`
-//!   past the stamp; its side is then read as written whole at its clock,
-//!   which is the document rule it ran.
+//!   past the stamp; a remote side is then read as written whole at its
+//!   clock, which is the document rule it ran. An untrusted local side proves
+//!   no unit clock, so the remote wins each of its units.
 //! - A merge whose local unit clock is concurrent with or ahead of the
 //!   remote's re-queues the merged payload in the same transaction
 //!   (§6.5.2 P3), as `settings_merge` does.
@@ -113,26 +114,22 @@ pub fn journal_unit_clocks(
 }
 
 /// §6.12.2: the unit clocks a local edit from `base` to `next` pushes, as the
-/// `fieldClocks` and `fieldClocksAt` values. No base seeds every unit at
-/// `next`'s clock.
+/// `fieldClocks` and `fieldClocksAt` values. With no base the writer cannot
+/// tell which units it wrote since it last synced, so the edit carries none.
 pub fn field_clocks_for_edit(
     base: Option<&Map<String, Value>>,
     next: &Map<String, Value>,
+) -> Result<Option<(Value, Value)>, StorageError> {
+    base.map(|base| edit_clocks(base, next)).transpose()
+}
+
+fn edit_clocks(
+    base: &Map<String, Value>,
+    next: &Map<String, Value>,
 ) -> Result<(Value, Value), StorageError> {
     let clock = doc_clock(next)?;
-    let seed;
-    let from = match base {
-        Some(base) => base,
-        None => {
-            let mut only = next.clone();
-            only.shift_remove("fieldClocks");
-            only.shift_remove("fieldClocksAt");
-            seed = only;
-            &seed
-        }
-    };
-    let mut clocks = journal_unit_clocks(from, &BTreeSet::new())?;
-    let before = units(from);
+    let mut clocks = journal_unit_clocks(base, &BTreeSet::new())?;
+    let before = units(base);
     let after = units(next);
     let all: BTreeSet<&String> = before.iter().chain(after.iter()).map(|(u, _)| u).collect();
     for unit in all {
@@ -160,7 +157,11 @@ pub fn merge_journal_fields(
         .chain(local_units.iter().map(|(u, _)| u.clone()))
         .chain(remote_units.iter().map(|(u, _)| u.clone()))
         .collect();
-    let local_clocks = journal_unit_clocks(local, &all)?;
+    // §6.12.1: an untrusted local side proves no unit clock. Its `clock`
+    // carries this device's ticks since it last synced, so every unit reads as
+    // the empty clock and the remote wins it, as the document rule applies a
+    // concurrent remote whole.
+    let local_clocks = trusted_map(local, &doc_clock(local)?).unwrap_or_default();
     let remote_clocks = journal_unit_clocks(remote, &all)?;
     let fields: Vec<&str> = all.iter().map(String::as_str).collect();
     let as_map =
@@ -215,7 +216,7 @@ pub(crate) fn local_edit_changes(
     stored: &Map<String, Value>,
     merged: &Map<String, Value>,
 ) -> Result<[(&'static str, Change); 2], StorageError> {
-    let (clocks, at) = field_clocks_for_edit(Some(stored), merged)?;
+    let (clocks, at) = edit_clocks(stored, merged)?;
     Ok([
         ("fieldClocks", Change::Set(clocks)),
         ("fieldClocksAt", Change::Set(at)),

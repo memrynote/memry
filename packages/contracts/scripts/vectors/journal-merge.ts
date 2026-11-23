@@ -67,7 +67,7 @@ const A_AFTER_CLI = pushed(A, CLI)
 /** The reviewer's repro (REVIEW-5529): a legacy day holding one tag and one property. */
 const LEGACY_DAY_FIELDS = { tags: ['T'], properties: { p: 1 } }
 const LEGACY_DAY: JournalFields = { ...LEGACY_DAY_FIELDS, clock: { X: 1 } }
-const STAMPED_LEGACY_DAY = edit(null, { ...LEGACY_DAY_FIELDS, clock: { X: 1 } })
+const STAMPED_LEGACY_DAY = edit(LEGACY_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1 } })
 const B_AFTER_A = pushed(B, A_AFTER_CLI)
 
 interface EditSpec {
@@ -108,7 +108,7 @@ const EDITS: EditSpec[] = [
   },
   {
     name: 'no-base',
-    pins: '§6.12.2: with no synced base every unit is seeded at the edit clock',
+    pins: '§6.12.2: with no synced base an edit carries no unit clocks and is read whole at its clock (VERIFY-5529)',
     base: null,
     next: { tags: ['a'], properties: { k: 1 }, clock: { A: 3 } }
   }
@@ -228,6 +228,14 @@ const MERGES: MergeSpec[] = [
     local: edit(LEGACY_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: 1 } }),
     remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
   },
+  // VERIFY-5529: a day last synced by an older build has no base, so the local
+  // side is untrusted; body-only saves ticked its clock past the shared one.
+  ...[1, 2, 3].map((saves) => ({
+    name: `no-base-${saves}-saves-old-build-removes`,
+    pins: `§6.12.1: an untrusted local side proves no unit clock; ${saves} body-only save(s) do not outrank an older build’s concurrent removal`,
+    local: edit(null, { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: saves } }),
+    remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
+  })),
   {
     name: 'local-dominates-every-unit-requeues',
     pins: '§6.5.2 P3: a local unit ahead of the remote re-queues',

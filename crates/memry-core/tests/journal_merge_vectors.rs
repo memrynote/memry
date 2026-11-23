@@ -36,9 +36,9 @@ fn every_edit_case_clocks_the_units_desktop_clocks() {
     for case in cases("edits") {
         let base = case["base"].as_object();
         let next = case["next"].as_object().expect("next is an object");
-        let (clocks, at) = field_clocks_for_edit(base, next).expect("clocks read");
+        let clocks = field_clocks_for_edit(base, next).expect("clocks read");
         assert_eq!(
-            json!({ "fieldClocks": clocks, "fieldClocksAt": at }),
+            json!(clocks.map(|(clocks, at)| json!({ "fieldClocks": clocks, "fieldClocksAt": at }))),
             case["expected"],
             "{}",
             name(&case)

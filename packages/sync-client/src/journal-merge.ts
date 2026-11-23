@@ -43,21 +43,27 @@ function units(side: JournalFields): Map<string, unknown> {
 
 /**
  * §6.12.1: a side's unit clocks are trusted only when a writer that knows them
- * stamped them at the clock it pushed. Otherwise (no `fieldClocks`, or an older
- * build ticked `clock` past the stamp) the side was written whole at its
+ * stamped them at the clock it pushed. Not so with no `fieldClocks`, or when
+ * an older build ticked `clock` past the stamp.
+ */
+function trusted(side: JournalFields): side is JournalFields & { fieldClocks: FieldClocks } {
+  return (
+    side.fieldClocks !== undefined &&
+    side.fieldClocksAt !== undefined &&
+    valuesEqual(side.fieldClocksAt, side.clock ?? {})
+  )
+}
+
+/**
+ * §6.12.1: a side's unit clocks. An untrusted side was written whole at its
  * document clock: every unit in `union`, and every unit it names, takes that
  * clock, so a unit it lacks is a removal rather than an unclocked absence.
  */
 export function journalUnitClocks(side: JournalFields, union: Iterable<string> = []): FieldClocks {
-  const map = side.fieldClocks ?? {}
-  const trusted =
-    side.fieldClocks !== undefined &&
-    side.fieldClocksAt !== undefined &&
-    valuesEqual(side.fieldClocksAt, side.clock ?? {})
-  if (trusted) return { ...map }
+  if (trusted(side)) return { ...side.fieldClocks }
   const clock = side.clock ?? {}
   const seeded: FieldClocks = {}
-  for (const unit of [...union, ...Object.keys(map), ...units(side).keys()]) {
+  for (const unit of [...union, ...Object.keys(side.fieldClocks ?? {}), ...units(side).keys()]) {
     seeded[unit] = { ...clock }
   }
   return seeded
@@ -66,15 +72,17 @@ export function journalUnitClocks(side: JournalFields, union: Iterable<string> =
 /**
  * §6.12.2: the unit clocks a local edit pushes. Each unit whose value differs
  * from `base`, the last synced fields, takes `next.clock`; the rest keep theirs.
- * With no base every unit is seeded at `next.clock`.
+ * With no base the writer cannot tell which units it wrote since it last
+ * synced, so the edit carries no unit clocks and is read whole at its clock,
+ * as an older build's is.
  */
 export function journalFieldClocksForEdit(
   base: JournalFields | null,
   next: JournalFields & { clock: VectorClock }
-): { fieldClocks: FieldClocks; fieldClocksAt: VectorClock } {
-  const from = base ?? { tags: next.tags, properties: next.properties, clock: next.clock }
-  const clocks = journalUnitClocks(from)
-  const before = units(from)
+): { fieldClocks: FieldClocks; fieldClocksAt: VectorClock } | null {
+  if (base === null) return null
+  const clocks = journalUnitClocks(base)
+  const before = units(base)
   const after = units(next)
   for (const unit of new Set([...before.keys(), ...after.keys()])) {
     if (!valuesEqual(before.get(unit), after.get(unit))) clocks[unit] = { ...next.clock }
@@ -101,7 +109,11 @@ export function mergeJournalFields(
       ...remoteUnits.keys()
     ])
   ].toSorted()
-  const localClocks = journalUnitClocks(local, all)
+  // §6.12.1: an untrusted local side proves no unit clock. Its `clock` carries
+  // this device's ticks since it last synced, body-only saves included, so
+  // every unit reads as the empty clock and the remote wins it, as the
+  // document rule applies a concurrent remote whole.
+  const localClocks = trusted(local) ? { ...local.fieldClocks } : {}
   const remoteClocks = journalUnitClocks(remote, all)
 
   const { merged, mergedFieldClocks } = mergeFields(

@@ -154,3 +154,26 @@ fn an_older_builds_removal_is_not_resurrected_by_a_body_only_edit() {
     pull(&phone, &old_build.to_string());
     assert_eq!(view(&phone), (json!([]), json!({})));
 }
+
+/// VERIFY-5529: a stored day with no trusted unit clocks whose clock runs past
+/// the shared `{X:1}`, as an older core build's own edits leave it, proves no
+/// unit clock. Its extra ticks do not outrank an older build's concurrent
+/// removal (§6.12.1).
+#[test]
+fn an_untrusted_local_day_does_not_outrank_an_older_builds_removal() {
+    for ticks in 1..=3 {
+        let phone = open(&format!("untrusted-local-{ticks}"));
+        let day = json!({
+            "date": DAY, "content": "", "tags": ["T"], "properties": { "p": 1 },
+            "clock": { "X": 1, "N": ticks }
+        });
+        pull(&phone, &day.to_string());
+
+        let old_build = json!({
+            "date": DAY, "content": null, "tags": [], "properties": {},
+            "clock": { "X": 1, "O": 1 }
+        });
+        pull(&phone, &old_build.to_string());
+        assert_eq!(view(&phone), (json!([]), json!({})), "{ticks} ticks");
+    }
+}

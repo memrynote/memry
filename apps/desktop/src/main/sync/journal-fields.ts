@@ -29,7 +29,7 @@ export function readJournalFieldsBase(db: DrizzleDb, itemId: string): JournalFie
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the value is written only by writeJournalFieldsBase
     return JSON.parse(row.value) as JournalFields
   } catch (error) {
-    log.warn('Unreadable journal fields base; unit clocks reseed at the row clock', {
+    log.warn('Unreadable journal fields base; the day syncs whole until its next pull', {
       itemId,
       error
     })
@@ -66,7 +66,8 @@ export function readDayFields(
 
 /**
  * This device's journal fields at `clock`: the file's values, each unit that
- * differs from the base clocked at `clock` (§6.12.2).
+ * differs from the base clocked at `clock` (§6.12.2). With no base they carry
+ * no unit clocks: the day was last synced by an older build, or not yet.
  */
 export function localJournalFields(
   db: DrizzleDb,

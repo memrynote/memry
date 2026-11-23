@@ -98,9 +98,12 @@ over `tags.<tagKey>` and `properties.<key>` units, and a winner with no value re
 removed tag stays removed. A unit's clock is the document clock its writer last wrote it at, and a
 side's unit clocks count only while `fieldClocksAt` equals its `clock`; an older build keeps the keys
 but ticks the clock past the stamp, so its payload is read whole at its clock: every unit either
-side names takes that clock, and a unit missing from its value is a removal. Desktop diffs the day
-file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); the Rust core
-restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
+side names takes that clock, and a unit missing from its value is a removal. An untrusted local side
+proves no unit clock, so the remote wins each of its units: its clock carries this device's own
+ticks since it last synced, which would otherwise outrank an older build's removal. Desktop diffs
+the day file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); a day
+with no such base, last synced by an older build, is pushed whole without unit clocks until a pull
+writes the base. The Rust core restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.

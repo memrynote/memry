@@ -6,7 +6,7 @@
     "class": "journal-merge",
     "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
     "implementation": "packages/sync-client/src/journal-merge.ts",
-    "caseCount": 18
+    "caseCount": 21
   },
   "edits": [
     {
@@ -212,7 +212,7 @@
     },
     {
       "name": "no-base",
-      "pins": "§6.12.2: with no synced base every unit is seeded at the edit clock",
+      "pins": "§6.12.2: with no synced base an edit carries no unit clocks and is read whole at its clock (VERIFY-5529)",
       "base": null,
       "next": {
         "tags": [
@@ -225,19 +225,7 @@
           "A": 3
         }
       },
-      "expected": {
-        "fieldClocks": {
-          "tags.a": {
-            "A": 3
-          },
-          "properties.k": {
-            "A": 3
-          }
-        },
-        "fieldClocksAt": {
-          "A": 3
-        }
-      }
+      "expected": null
     }
   ],
   "merges": [
@@ -1108,6 +1096,123 @@
         "fieldClocksAt": {
           "X": 1,
           "N": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "no-base-1-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 1 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "no-base-2-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 2 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "no-base-3-saves-old-build-removes",
+      "pins": "§6.12.1: an untrusted local side proves no unit clock; 3 body-only save(s) do not outrank an older build’s concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 3
         }
       },
       "remote": {

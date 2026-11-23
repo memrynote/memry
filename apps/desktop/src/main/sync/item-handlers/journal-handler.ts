@@ -351,8 +351,9 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       tags = parsed.frontmatter.tags ?? []
       properties = extractJournalProperties(parsed.frontmatter) ?? null
       aliases = extractAliases(parsed.frontmatter, cached.journalDate)
-      // Unit clocks only for fields read from the file (§6.12.2): a push
-      // without them is read whole at its clock, today's rule.
+      // Unit clocks only for fields read from the file and diffed against a
+      // synced base (§6.12.2): a push without them is read whole at its clock,
+      // today's rule.
       if (stamp) {
         const fields = localJournalFields(
           db,
@@ -360,8 +361,10 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           { tags, properties: properties ?? {} },
           cached.clock ?? {}
         )
-        writeJournalFieldsBase(db, cached.id, fields)
-        unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
+        if (fields.fieldClocks) {
+          writeJournalFieldsBase(db, cached.id, fields)
+          unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
+        }
       }
     } catch {
       log.warn('Could not read journal file for push payload', {

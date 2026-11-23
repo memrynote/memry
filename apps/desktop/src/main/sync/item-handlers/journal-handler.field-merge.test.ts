@@ -75,7 +75,7 @@ vi.mock('../../vault/index', () => ({
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { buildJournalEntryWrite } from '../../vault/journal'
 import { journalHandler } from './journal-handler'
-import { readJournalFieldsBase } from '../journal-fields'
+import { forgetJournalFieldsBase, readJournalFieldsBase } from '../journal-fields'
 
 const DATE = '2026-11-23'
 const DAY = `j${DATE}`
@@ -211,6 +211,48 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     expect(payload.tags).toEqual([])
     // A day with no properties pushes `null`.
     expect(payload.properties).toBeNull()
+  })
+
+  // VERIFY-5529: a day last synced by an older build has no synced base. Its
+  // body-only saves tick the row clock without writing a tag or a property.
+  const dayWithNoBase = (saves: number) => {
+    apply({ ...base, tags: ['T'], properties: { p: 1 } })
+    forgetJournalFieldsBase(ctx.db, DAY)
+    editLocally(['T'], { p: 1 }, { X: 1, N: saves })
+  }
+  const oldBuildRemoval: JournalSyncPayload = {
+    date: DATE,
+    content: null,
+    tags: [],
+    properties: {},
+    clock: { X: 1, O: 1 }
+  }
+
+  it.each([1, 2, 3])(
+    'keeps an older build’s removal on a day with no synced base after %i body-only saves',
+    (saves) => {
+      dayWithNoBase(saves)
+
+      apply(oldBuildRemoval)
+
+      const payload = pushed()
+      expect(payload.tags).toEqual([])
+      expect(payload.properties).toBeNull()
+    }
+  )
+
+  it('pushes a day with no synced base whole and still keeps an older build’s removal', () => {
+    dayWithNoBase(2)
+    const first = pushed()
+
+    apply(oldBuildRemoval)
+
+    const payload = pushed()
+    expect(payload.tags).toEqual([])
+    expect(payload.properties).toBeNull()
+    // With no base the device cannot tell which units it wrote, so its push is
+    // read whole at its clock, as an older build's is (§6.12.2).
+    expect(first).not.toHaveProperty('fieldClocks')
   })
 
   // REVIEW-5529 finding 2: re-pulling the legacy row this device already holds
