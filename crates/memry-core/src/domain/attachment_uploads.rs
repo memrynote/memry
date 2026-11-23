@@ -137,15 +137,26 @@ pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError>
     forget_refusal(conn, attachment_id)
 }
 
-/// The refusal status the shell was last told about for this upload (#5532).
+/// The `meta` key holding the refusal status the shell was last told about
+/// for one owed upload (#5532). A `meta` row rather than a table: the core's
+/// numbered migrations stay frozen until the Tauri branch merges. An older
+/// build never reads the key; a row it leaves behind once its upload lands
+/// names a random id that no new attach reuses, so it is never read again.
+fn refusal_key(attachment_id: &str) -> String {
+    format!("attachment_upload.refusal_seen:{attachment_id}")
+}
+
+/// The refusal status the shell was last told about for this upload.
 pub fn told_refusal(conn: &Connection, attachment_id: &str) -> Result<Option<u16>, StorageError> {
-    conn.query_row(
-        "SELECT status FROM note_attachment_refusals WHERE attachment_id = ?1",
-        params![attachment_id],
-        |row| row.get(0),
-    )
-    .optional()
-    .map_err(failed)
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![refusal_key(attachment_id)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(stored.and_then(|status| status.parse().ok()))
 }
 
 /// Records that the shell was told the upload was refused with `status`.
@@ -156,11 +167,15 @@ pub fn remember_refusal(
     status: u16,
 ) -> Result<(), StorageError> {
     conn.execute(
-        "INSERT INTO note_attachment_refusals (attachment_id, status) \
+        "INSERT INTO meta (key, value) \
          SELECT ?1, ?2 WHERE EXISTS \
-           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?1) \
-         ON CONFLICT (attachment_id) DO UPDATE SET status = excluded.status",
-        params![attachment_id, status],
+           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?3) \
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        params![
+            refusal_key(attachment_id),
+            status.to_string(),
+            attachment_id
+        ],
     )
     .map_err(failed)?;
     Ok(())
@@ -168,8 +183,8 @@ pub fn remember_refusal(
 
 fn forget_refusal(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     conn.execute(
-        "DELETE FROM note_attachment_refusals WHERE attachment_id = ?1",
-        params![attachment_id],
+        "DELETE FROM meta WHERE key = ?1",
+        params![refusal_key(attachment_id)],
     )
     .map_err(failed)?;
     Ok(())
