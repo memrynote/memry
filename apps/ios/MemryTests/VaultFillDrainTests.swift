@@ -13,6 +13,14 @@ private func bodies(_ done: UInt64, of total: UInt64) -> SyncProgress {
     SyncProgress(phase: .bodies, completed: done, total: total)
 }
 
+/// A pause that ends at once and records how long it was asked for. The
+/// drain's waits are the ones that are not the quiet timer's.
+private final class Waits: @unchecked Sendable {
+    private let asked = Mutex<[Duration]>([])
+    @MainActor var drain: [Duration] { asked.withLock { $0 }.filter { $0 != VaultFillViewModel.quietAfter } }
+    func pause(_ duration: Duration) async throws { asked.withLock { $0.append(duration) } }
+}
+
 @MainActor
 @Suite("#5233 the body drain", .serialized)
 struct VaultFillDrainTests {
@@ -26,10 +34,12 @@ struct VaultFillDrainTests {
                 ([bodies(900, of: 900)], .success(.round(100, remaining: 0))),
             ]
         )
-        let fill = VaultFillViewModel(filler: filler)
+        let waits = Waits()
+        let fill = VaultFillViewModel(filler: filler, pause: waits.pause)
         await fill.begin()
 
         #expect(filler.history == [.gate, .first, .drain, .drain, .drain])
+        #expect(waits.drain.isEmpty, "no wait between rounds that pull")
         #expect(fill.phase == .filled)
         #expect(fill.strip == nil)
         // Ends for good: a later foreground asks for nothing.
@@ -49,41 +59,47 @@ struct VaultFillDrainTests {
         #expect(fill.phase == .filled)
     }
 
-    /// Owed documents backing off after a failure come back as `remaining`
-    /// with nothing pulled; asking again at once would spin.
-    @Test("a round that pulled nothing pauses the drain")
-    func anEmptyRoundPausesTheDrain() async throws {
-        let filler = StoreFiller(
-            store: VaultStore(), alreadyComplete: true,
-            rounds: [
-                ([], .success(.round(0, remaining: 7))),
-                ([], .success(.round(5, remaining: 0))),
-            ]
-        )
-        let fill = VaultFillViewModel(filler: filler)
-        await fill.begin()
-        #expect(filler.history == [.gate, .drain])
-    }
-
-    /// A 429 or a lost network on a round's first document pulls nothing
-    /// with bodies still owed. That pauses the drain; it does not end it.
-    @Test("a round that pulled nothing with bodies owed resumes on the next foreground")
-    func anEmptyRoundResumesOnForeground() async throws {
+    /// After a probe or open 429 the core answers each round with nothing
+    /// pulled until its hold ends, and does not say when (REVIEW-5547 #1).
+    @Test("a round that pulled nothing waits, then the drain resumes by itself")
+    func anEmptyRoundResumesAfterAWait() async throws {
         let filler = StoreFiller(
             store: VaultStore(), alreadyComplete: true,
             rounds: [
                 ([], .success(.round(0, remaining: 900))),
-                ([], .success(.round(400, remaining: 0))),
+                ([], .success(.round(0, remaining: 900))),
+                ([], .success(.round(400, remaining: 500))),
+                ([], .success(.round(500, remaining: 0))),
             ]
         )
-        let fill = VaultFillViewModel(filler: filler)
+        let waits = Waits()
+        let fill = VaultFillViewModel(filler: filler, pause: waits.pause)
         await fill.begin()
-        #expect(filler.history == [.gate, .drain])
+        #expect(filler.history == [.gate, .drain, .drain, .drain, .drain])
+        #expect(waits.drain == [.seconds(3), .seconds(3)], "one wait per empty round, none after a pull")
+        #expect(fill.phase == .filled)
+    }
+
+    /// Owed documents backing off for longer than any 429 hold: the waits
+    /// outlast the core's longest hold, grow, and never spin.
+    @Test("rounds that keep pulling nothing pause the drain until the next foreground")
+    func emptyRoundsPauseTheDrain() async throws {
+        let empty = Array(repeating: (ticks: [SyncProgress](), answer: Result<BodyDrainSummary, any Error>.success(.round(0, remaining: 7))), count: 40)
+        let filler = StoreFiller(store: VaultStore(), alreadyComplete: true, rounds: empty)
+        let waits = Waits()
+        let fill = VaultFillViewModel(filler: filler, pause: waits.pause)
+        await fill.begin()
+        let total = waits.drain.reduce(Duration.zero, +)
+        #expect(total > VaultFillViewModel.longestHold && total <= VaultFillViewModel.longestHold + .seconds(60))
+        #expect(waits.drain.allSatisfy { $0 >= .seconds(3) && $0 <= .seconds(60) })
+        #expect(waits.drain == waits.drain.sorted())
+        let rounds = filler.history.count - 1
+        #expect(rounds == waits.drain.count + 1)
 
         await fill.sceneChanged(active: false)
         await fill.sceneChanged(active: true)
-        #expect(filler.history == [.gate, .drain, .drain])
-        #expect(fill.phase == .filled)
+        #expect(filler.history.count - 1 > rounds, "the next foreground resumes it")
+        fill.leave()
     }
 
     @Test("a screen that goes away asks for no further round")

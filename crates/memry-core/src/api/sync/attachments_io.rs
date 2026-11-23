@@ -29,29 +29,29 @@ impl VaultSync {
         mime_type: String,
         bytes: Vec<u8>,
     ) -> Result<String, SyncError> {
-        let device_id = self.session.device_id()?;
-        let uploaded = self.upload_blob(&filename, &mime_type, &bytes).await?;
-
-        // Local cache first, then the reference: the row is what a placeholder
-        // reads, and the push is what tells every other device.
-        let note = note_id.clone();
-        let attachment_id = uploaded.attachment_id.clone();
-        let now = now_ms();
-        self.db
-            .call(move |conn| {
-                uploaded.cache(conn, now)?;
-                notes::add_attachment_reference(
-                    conn,
-                    &note,
-                    &uploaded.attachment_id,
-                    &device_id,
-                    now,
-                )?;
-                Ok(())
-            })
+        // The bytes are kept before anything goes over the network (#5510):
+        // the file and its row land first, under the id this returns, so the
+        // shell inserts the block whether or not the upload gets through. The
+        // upload is tried once here. One that fails for want of a network or
+        // a healthy server stays owed, and the next sync pass sends it under
+        // the same id (`note_uploads`). Only a refusal no retry can fix, a 4xx
+        // such as a quota or file-size 413, takes the attach back. Said here
+        // rather than in the doc comment, which UniFFI checksums into the
+        // generated Swift.
+        let attachment_id = self
+            .queue_note_attachment(note_id, filename, mime_type, &bytes)
             .await?;
-
-        Ok(attachment_id)
+        match self
+            .upload_queued(&attachment_id, RetryPolicy::never())
+            .await
+        {
+            Err(error) if is_refused(&error) => {
+                self.discard_queued(&attachment_id).await?;
+                Err(error)
+            }
+            // Uploaded, or kept for the next sync pass.
+            _ => Ok(attachment_id),
+        }
     }
 
     /// Detaches an attachment from a note and releases its bytes (N215, N212).
@@ -79,6 +79,8 @@ impl VaultSync {
         let (row, still_referenced) = self
             .db
             .call(move |conn| {
+                // A picture removed before its upload never uploads (#5510).
+                attachment_uploads::clear(conn, &id)?;
                 notes::remove_attachment_reference(conn, &note, &id, &device_id, now)?;
                 let row = attachments::get(conn, &id)?;
                 // Another note may embed the same attachment. Releasing its
@@ -119,6 +121,9 @@ pub(super) struct UploadedBlob {
     manifest_text: String,
     remote_size: i64,
     local_path: String,
+    /// The chunks' R2 addresses, for a dereference when nothing will
+    /// reference the upload after all.
+    pub(super) encrypted_hashes: Vec<String>,
 }
 
 impl UploadedBlob {
@@ -138,15 +143,20 @@ impl UploadedBlob {
 }
 
 impl VaultSync {
-    /// The upload chain of §14.2–§14.5 for one file: frame, upload the chunks,
-    /// store the signed manifest, and write the bytes under `images/`. It
-    /// references the attachment from nothing; the caller does that, after
-    /// [`UploadedBlob::cache`].
+    /// The upload chain of §14.2–§14.5 for one file under `attachment_id`:
+    /// frame, upload the chunks and store the signed manifest. It writes no
+    /// bytes and references the attachment from nothing: the caller keeps the
+    /// file at `images/<attachment_id>` ([`Self::write_bytes`]) and references
+    /// it after [`UploadedBlob::cache`]. A queued note upload's file is the
+    /// only copy, so it is never rewritten here (#5510). `initiate` is the
+    /// first call's retry ladder.
     pub(super) async fn upload_blob(
         &self,
+        attachment_id: String,
         filename: &str,
         mime_type: &str,
         bytes: &[u8],
+        initiate: RetryPolicy,
     ) -> Result<UploadedBlob, SyncError> {
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -155,10 +165,6 @@ impl VaultSync {
         // One file key for every chunk, because the manifest wraps exactly one
         // (§14.2). Fresh per attachment, never reused.
         let file_key = Zeroizing::new(sodium::random_bytes(32));
-        // 128 bits of libsodium randomness, hex — the same shape a note id
-        // takes, and for the same reason: the id becomes a path parameter on
-        // `/sync/attachments/:attachment_id/manifest`.
-        let attachment_id = hex_id();
 
         let chunks = attachment_upload::frame_chunks(
             bytes,
@@ -175,6 +181,7 @@ impl VaultSync {
             filename,
             bytes.len() as u64,
             &chunks,
+            initiate,
         )
         .await
         .map_err(attachment_error)?;
@@ -243,15 +250,19 @@ impl VaultSync {
             })?;
         let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
         let remote_size = attachment_upload::encrypted_size(&chunks) as i64;
-        let local_path = self.write_bytes(&attachment_id, bytes)?;
 
         Ok(UploadedBlob {
+            // `write_bytes`'s name for the file, which the caller owns.
+            local_path: attachment_id.clone(),
             attachment_id,
             filename: filename.to_owned(),
             mime_type: mime_type.to_owned(),
             manifest_text,
             remote_size,
-            local_path,
+            encrypted_hashes: chunks
+                .iter()
+                .map(|chunk| chunk.reference.encrypted_hash.clone())
+                .collect(),
         })
     }
 

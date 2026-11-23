@@ -35,9 +35,10 @@ import Observation
 // bodies owed. After it, and after a gate that answered "already complete",
 // `.draining` asks the core for rounds while the app is in the foreground, a
 // round pulled something and some are still owed. A round that pulled nothing
-// with bodies still owed (a 429, a lost network) pauses the drain, and the
-// next foreground resumes it. The vault's passes are not held for it: a round
-// holds the core's pass gate for one bounded round.
+// with bodies still owed (a 429 hold, a backoff) asks again after growing
+// waits, until past the core's longest hold; then the next foreground resumes
+// it. The vault's passes are not held for it: a round holds the core's pass
+// gate for one bounded round.
 
 @MainActor
 @Observable
@@ -111,6 +112,14 @@ final class VaultFillViewModel {
     /// going. A body manifest page that the server rate-limits waits up to
     /// 60 s with no tick (#5352), which left the strip frozen on its last count.
     static let quietAfter: Duration = .seconds(10)
+
+    /// The waits after a round that pulled nothing: from `firstRetry`,
+    /// doubling up to `longestRetry`, until they add up past `longestHold`,
+    /// the core's longest 429 hold (`MAX_DRAIN_PAUSE_S` in
+    /// `crates/memry-core/src/sync/body_drain.rs`), which it does not report.
+    static let firstRetry: Duration = .seconds(3)
+    static let longestRetry: Duration = .seconds(60)
+    static let longestHold: Duration = .seconds(600)
 
     init(
         filler: any VaultFilling,
@@ -258,37 +267,48 @@ final class VaultFillViewModel {
         await drainTask?.value
     }
 
-    /// Owed bodies, one bounded round at a time, until none is owed, a round
-    /// pulls nothing (the rest are backing off, or the network is gone), the
-    /// app leaves the foreground, the screen goes away (``leave()``), or a
-    /// round fails. Only "none owed" ends it for good; every other stop is a
-    /// pause the next foreground resumes. A failure is quiet: the bodies stay
-    /// owed and the next foreground or the note view pulls them, so it is a
-    /// log line, not a banner over the vault.
+    /// Owed bodies, one bounded round at a time, until none is owed, rounds
+    /// pull nothing for longer than ``longestHold``, the app leaves the
+    /// foreground, the screen goes away (``leave()``), or a round fails. Only
+    /// "none owed" ends it for good; every other stop is a pause the next
+    /// foreground resumes. A failure is quiet: the bodies stay owed and the
+    /// next foreground or the note view pulls them, so it is a log line, not a
+    /// banner over the vault.
     private func drainRounds() async {
         var pulled = 0
+        var idle: Duration = .zero
         while isForeground, !Task.isCancelled {
+            let round: BodyDrainSummary
             do {
-                let round = try await filler.drainBodies { [weak self] progress in
+                round = try await filler.drainBodies { [weak self] progress in
                     self?.reportDrain(progress)
-                }
-                pulled += Int(round.documents)
-                if round.remaining == 0 {
-                    drained = true
-                    Log.sync.notice("the body drain ended")
-                    break
-                }
-                if round.documents == 0 {
-                    // Asking again at once would spin on documents that are
-                    // backing off or a network that is gone.
-                    Log.sync.notice("the body drain paused", .count(Int(round.remaining)))
-                    break
                 }
             } catch {
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("a body drain round did not finish", .code(mapped.code))
                 break
             }
+            pulled += Int(round.documents)
+            if round.remaining == 0 {
+                drained = true
+                Log.sync.notice("the body drain ended")
+                break
+            }
+            if round.documents > 0 {
+                idle = .zero
+                continue
+            }
+            // Held back after a 429, or backing off. Asking again at once
+            // would spin; the core answers at once until the hold ends.
+            guard idle <= Self.longestHold else {
+                Log.sync.notice("the body drain paused", .count(Int(round.remaining)))
+                break
+            }
+            let wait = min(max(idle, Self.firstRetry), Self.longestRetry)
+            idle += wait
+            phase = .filled
+            guard (try? await pause(wait)) != nil, !Task.isCancelled else { break }
+            phase = .draining(nil)
         }
         if pulled > 0 { Log.sync.notice("the body drain pulled", .count(pulled)) }
         phase = .filled
@@ -367,16 +387,5 @@ final class VaultFillViewModel {
         else { return false }
         landedThrough = progress.completed
         return true
-    }
-
-    /// One diagnostic line per phase, not per tick. `scripts/bootstrap-bench`
-    /// reads "the first sync is pulling bodies" as its records mark.
-    private static func logReached(_ progress: SyncProgress) {
-        let total = LogDetail.count(Int(progress.total ?? progress.completed))
-        switch progress.phase {
-        case .records: Log.sync.notice("the first sync is pulling records", total)
-        case .bodies: Log.sync.notice("the first sync is pulling bodies", total)
-        case .done: Log.sync.notice("the first sync is finishing", total)
-        }
     }
 }

@@ -231,7 +231,13 @@ impl VaultSync {
         };
 
         let uploaded = match self
-            .upload_blob(&target.filename, &target.mime_type, &bytes)
+            .upload_blob(
+                hex_id(),
+                &target.filename,
+                &target.mime_type,
+                &bytes,
+                RetryPolicy::polled(),
+            )
             .await
         {
             Ok(uploaded) => uploaded,
@@ -241,6 +247,7 @@ impl VaultSync {
             }
             Err(error) => return Err(error),
         };
+        self.write_bytes(&uploaded.attachment_id, &bytes)?;
 
         let (id, device_id, now) = (item_id.to_owned(), device_id.to_owned(), now_ms());
         let recorded = self

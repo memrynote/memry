@@ -66,7 +66,8 @@ vi.mock('../sync/crdt-provider', () => ({
     awaitPendingInit: async () => {},
     readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
-    isAwaitingMerge: () => false
+    isAwaitingMerge: () => false,
+    purge: vi.fn(async () => {})
   }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
@@ -398,6 +399,47 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p.png')).toBe('edited offline')
     expect(downloads.mock.calls).toEqual([['twin-b', abs('Other/p.png')]])
   })
+
+  const applyPeerDelete = (id: string) =>
+    noteHandler.applyDelete({ db: asClientDb(data.db), emit: vi.fn() }, id)
+
+  it("a peer's delete of a binary twin asks for the survivor's own bytes onto the file", async () => {
+    twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+
+    expect(rows().map((row) => row.id)).toEqual(['control', 'twin-a'])
+    expect(downloads.mock.calls).toEqual([['twin-a', abs('Supernotes/p.png')]])
+    expect(owed()).toEqual(['twin-a::att-twin-a'])
+    // Until A's own bytes land, the file may hold B's.
+    await startWatcher(vault.path)
+    await editUntilPushed(
+      { 'Supernotes/p.png': 'edited', 'Supernotes/c.png': 'edited' },
+      pushedNote('control')
+    )
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+  }, 30_000)
+
+  it('a held change stays when a peer deletes a binary twin, and is not pushed', async () => {
+    twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+    await startWatcher(vault.path)
+    await editUntilPushed({ 'Supernotes/p.png': 'h-bytes', 'Supernotes/c.png': 'edited' }, () =>
+      expect(heldChanges()).toEqual(['supernotes/p.png'])
+    )
+
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+
+    expect(read('Supernotes/p.png')).toBe('h-bytes')
+    expect(downloads).not.toHaveBeenCalled()
+    saved.mockClear()
+    await editUntilPushed(
+      { 'Supernotes/p.png': 'edited after the delete', 'Supernotes/c.png': 'edited again' },
+      pushedNote('control')
+    )
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
+  }, 45_000)
 
   it("a peer's move of a binary twin that cannot land changes nothing", () => {
     twins('Supernotes')
