@@ -84,14 +84,19 @@ describe('concurrent journal tag and property edits (#5508)', () => {
   let testDb: TestDatabaseResult
   let ctx: ApplyContext
 
-  beforeEach(() => {
-    vi.clearAllMocks()
+  /** An empty vault and database: another device. */
+  const freshDevice = () => {
     _resetBulkApplyForTests()
     fs.rmSync(vaultPath, { recursive: true, force: true })
     fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
     testDb = createTestDataDb()
     currentDb.value = testDb.db
     ctx = { db: asSyncDb(testDb.db), emit: vi.fn() }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    freshDevice()
   })
 
   afterEach(() => {
@@ -253,6 +258,38 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     // With no base the device cannot tell which units it wrote, so its push is
     // read whole at its clock, as an older build's is (§6.12.2).
     expect(first).not.toHaveProperty('fieldClocks')
+  })
+
+  // #5572: an older build removed `gone` at {X:1,O:1}. A new build applies that
+  // record whole, edits, and pushes. A device that never pulled the record
+  // still holds `gone` and concurrently set `q`.
+  const legacyDay: JournalSyncPayload = { ...base, tags: ['gone'], properties: { p: 1 } }
+  const oldBuildRemovesGone: JournalSyncPayload = {
+    date: DATE,
+    content: 'body\n',
+    tags: [],
+    properties: { p: 1 },
+    clock: { X: 1, O: 1 }
+  }
+
+  it.each([
+    ['held the tag', [legacyDay, oldBuildRemovesGone]],
+    ['never held the tag', [oldBuildRemovesGone]]
+  ])('keeps an older build’s removal relayed by a device that %s (#5572)', (_name, records) => {
+    for (const record of records) apply(record)
+    editLocally(['added'], { p: 1 }, { X: 1, O: 1, D: 1 })
+    const relay = pushed()
+
+    testDb.close()
+    freshDevice()
+    apply(legacyDay)
+    editLocally(['gone'], { p: 1, q: 1 }, { X: 1, C: 1 })
+    expect(apply(relay)).toBe('conflict')
+
+    const payload = pushed()
+    expect(payload.tags).toEqual(['added'])
+    // `q` is concurrent with the older build's record, which never saw it.
+    expect(payload.properties).toEqual({ p: 1, q: 1 })
   })
 
   // REVIEW-5529 finding 2: re-pulling the legacy row this device already holds

@@ -3,8 +3,10 @@
  *
  * A journal's `tags` merge as a set and its `properties` per key, each unit
  * under its own clock (#5508). `edits` records the unit clocks a local edit
- * pushes (`journalFieldClocksForEdit`); `merges` records a concurrent pair's
- * merge (`mergeJournalFields`). Every expected value is the real output of the
+ * pushes (`journalFieldClocksForEdit`); `wholesales` records the unit clocks a
+ * device keeps with a record applied whole (`journalFieldClocksForWholesale`);
+ * `merges` records a concurrent pair's merge (`mergeJournalFields`). Every
+ * expected value is the real output of the
  * functions desktop runs. The Rust core runs the file in
  * `crates/memry-core/tests/journal_merge_vectors.rs`.
  *
@@ -13,6 +15,7 @@
 import type { JournalFields } from '../../../sync-client/src/journal-merge.ts'
 import {
   journalFieldClocksForEdit,
+  journalFieldClocksForWholesale,
   mergeJournalFields
 } from '../../../sync-client/src/journal-merge.ts'
 import { meta } from './shared'
@@ -58,8 +61,14 @@ function pushed(local: JournalFields, remote: JournalFields): JournalFields {
     properties: merged.properties,
     clock,
     fieldClocks: merged.fieldClocks,
-    fieldClocksAt: clock
+    fieldClocksAt: clock,
+    ...(merged.fieldClocksFloor ? { fieldClocksFloor: merged.fieldClocksFloor } : {})
   }
+}
+
+/** A device's fields after it applied `remote` whole (§6.12.1). */
+function appliedWhole(remote: JournalFields): JournalFields {
+  return { ...remote, ...journalFieldClocksForWholesale(remote) }
 }
 
 const A_AFTER_CLI = pushed(A, CLI)
@@ -69,6 +78,31 @@ const LEGACY_DAY_FIELDS = { tags: ['T'], properties: { p: 1 } }
 const LEGACY_DAY: JournalFields = { ...LEGACY_DAY_FIELDS, clock: { X: 1 } }
 const STAMPED_LEGACY_DAY = edit(LEGACY_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1 } })
 const B_AFTER_A = pushed(B, A_AFTER_CLI)
+
+/**
+ * #5572: an older build removed `gone` from the legacy day at {X:1,O:1}. A new
+ * build applies that record whole and adds a tag; a device that never pulled
+ * the record still holds `gone` and concurrently set `q`.
+ */
+const GONE_DAY: JournalFields = { tags: ['gone'], properties: { p: 1 }, clock: { X: 1 } }
+const OLD_BUILD_REMOVES_GONE: JournalFields = {
+  tags: [],
+  properties: { p: 1 },
+  clock: { X: 1, O: 1 }
+}
+const STALE = edit(appliedWhole(GONE_DAY), {
+  tags: ['gone'],
+  properties: { p: 1, q: 1 },
+  clock: { X: 1, C: 1 }
+})
+const RELAY = edit(appliedWhole(OLD_BUILD_REMOVES_GONE), {
+  tags: ['added'],
+  properties: { p: 1 },
+  clock: { X: 1, O: 1, D: 1 }
+})
+
+/** An older build's record whose clock carries two body-only saves (VERIFY-5529). */
+const TWO_SAVES_DAY: JournalFields = { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: 2 } }
 
 interface EditSpec {
   name: string
@@ -80,7 +114,7 @@ interface EditSpec {
 const EDITS: EditSpec[] = [
   {
     name: 'legacy-base-add-tag',
-    pins: '§6.12.2: an unclocked base seeds every unit at its clock; the added tag takes the new clock',
+    pins: '§6.12.2: an unclocked base clocks no unit and its clock is the floor; the added tag takes the new clock',
     base: BASE,
     next: { ...withTags(['lm-jtag', 't-a']), clock: { X: 1, A: 1 } }
   },
@@ -107,10 +141,46 @@ const EDITS: EditSpec[] = [
     next: { tags: ['work'], properties: {}, clock: { A: 2 } }
   },
   {
+    name: 'trusted-base-carries-its-floor',
+    pins: '§6.12.2: an edit from a base applied whole keeps the base floor (#5572)',
+    base: appliedWhole(OLD_BUILD_REMOVES_GONE),
+    next: { tags: ['added'], properties: { p: 1 }, clock: { X: 1, O: 1, D: 1 } }
+  },
+  {
     name: 'no-base',
     pins: '§6.12.2: with no synced base an edit carries no unit clocks and is read whole at its clock (VERIFY-5529)',
     base: null,
     next: { tags: ['a'], properties: { k: 1 }, clock: { A: 3 } }
+  }
+]
+
+interface WholesaleSpec {
+  name: string
+  pins: string
+  remote: JournalFields
+}
+
+const WHOLESALES: WholesaleSpec[] = [
+  {
+    name: 'untrusted-remote-is-its-floor',
+    pins: '§6.12.1: an older build’s record clocks no unit, and its clock is the floor that carries its removals (#5572)',
+    remote: OLD_BUILD_REMOVES_GONE
+  },
+  {
+    name: 'stale-stamp-is-dropped',
+    pins: '§6.12.1: unit clocks an older build kept past their stamp are not writes',
+    remote: {
+      tags: ['lm-jtag', 'old'],
+      properties: { mood: 'good' },
+      clock: { X: 1, C: 1, O: 1 },
+      fieldClocks: CLI.fieldClocks,
+      fieldClocksAt: CLI.fieldClocksAt
+    }
+  },
+  {
+    name: 'trusted-remote-keeps-its-own',
+    pins: '§6.12.1: a trusted remote is kept as it arrived',
+    remote: A
   }
 ]
 
@@ -237,6 +307,30 @@ const MERGES: MergeSpec[] = [
     remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
   })),
   {
+    name: 'issue-5572-relay',
+    pins: '#5572: the relay’s floor removes the tag the older build removed; q, a write concurrent with that record, survives',
+    local: STALE,
+    remote: RELAY
+  },
+  {
+    name: 'issue-5572-relay-pulls-stale-copy',
+    pins: '§6.12.3: the same pair the other way round: the local floor removes the stale copy and re-queues',
+    local: RELAY,
+    remote: STALE
+  },
+  {
+    name: 'older-builds-applied-whole-then-concurrent-removal',
+    pins: '§6.12.1: a record applied whole clocks no unit, so its body-only ticks do not outrank a concurrent older build’s removal',
+    local: appliedWhole(TWO_SAVES_DAY),
+    remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
+  },
+  {
+    name: 'untrusted-base-edit-then-concurrent-removal',
+    pins: '§6.12.2: an edit from an untrusted base clocks only what it changed, so the base’s ticks do not outrank a concurrent removal',
+    local: edit(TWO_SAVES_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: 3 } }),
+    remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
+  },
+  {
     name: 'local-dominates-every-unit-requeues',
     pins: '§6.5.2 P3: a local unit ahead of the remote re-queues',
     local: edit(A, {
@@ -269,6 +363,10 @@ export function buildJournalMerge(): Record<string, unknown> {
     ...spec,
     expected: journalFieldClocksForEdit(structuredClone(spec.base), structuredClone(spec.next))
   }))
+  const wholesales = WHOLESALES.map((spec) => ({
+    ...spec,
+    expected: journalFieldClocksForWholesale(structuredClone(spec.remote))
+  }))
   const merges = MERGES.map((spec) => ({
     ...spec,
     expected: mergeJournalFields(structuredClone(spec.local), structuredClone(spec.remote))
@@ -278,9 +376,10 @@ export function buildJournalMerge(): Record<string, unknown> {
       class: 'journal-merge',
       chapter: 'docs/protocol/06-vector-clocks-and-field-merge.md',
       implementation: 'packages/sync-client/src/journal-merge.ts',
-      caseCount: edits.length + merges.length
+      caseCount: edits.length + wholesales.length + merges.length
     }),
     edits,
+    wholesales,
     merges
   }
 }

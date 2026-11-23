@@ -4,7 +4,9 @@
 
 mod support;
 
-use memry_core::sync::journal_merge::{field_clocks_for_edit, merge_journal_fields};
+use memry_core::sync::journal_merge::{
+    field_clocks_for_edit, field_clocks_for_wholesale, merge_journal_fields,
+};
 use serde_json::{Value as Json, json};
 use support::vector_file;
 
@@ -27,7 +29,7 @@ fn name(case: &Json) -> &str {
 #[test]
 fn the_case_count_is_the_recorded_one() {
     let file = vector_file("journal-merge");
-    let total = cases("edits").len() + cases("merges").len();
+    let total = cases("edits").len() + cases("wholesales").len() + cases("merges").len();
     assert_eq!(total as u64, file["meta"]["caseCount"]);
 }
 
@@ -37,12 +39,16 @@ fn every_edit_case_clocks_the_units_desktop_clocks() {
         let base = case["base"].as_object();
         let next = case["next"].as_object().expect("next is an object");
         let clocks = field_clocks_for_edit(base, next).expect("clocks read");
-        assert_eq!(
-            json!(clocks.map(|(clocks, at)| json!({ "fieldClocks": clocks, "fieldClocksAt": at }))),
-            case["expected"],
-            "{}",
-            name(&case)
-        );
+        assert_eq!(json!(clocks), case["expected"], "{}", name(&case));
+    }
+}
+
+#[test]
+fn every_wholesale_case_keeps_the_unit_clocks_desktop_keeps() {
+    for case in cases("wholesales") {
+        let remote = case["remote"].as_object().expect("remote is an object");
+        let clocks = field_clocks_for_wholesale(remote).expect("clocks read");
+        assert_eq!(json!(clocks), case["expected"], "{}", name(&case));
     }
 }
 
@@ -58,6 +64,10 @@ fn every_merge_case_merges_as_desktop_merges() {
             "fieldClocks": merged.field_clocks,
             "requeue": merged.requeue,
         });
+        let mut actual = actual;
+        if let Some(floor) = merged.field_clocks_floor {
+            actual["fieldClocksFloor"] = json!(floor);
+        }
         assert_eq!(actual, case["expected"], "{}", name(&case));
     }
 }

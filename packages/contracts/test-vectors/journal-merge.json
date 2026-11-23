@@ -6,12 +6,12 @@
     "class": "journal-merge",
     "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
     "implementation": "packages/sync-client/src/journal-merge.ts",
-    "caseCount": 21
+    "caseCount": 29
   },
   "edits": [
     {
       "name": "legacy-base-add-tag",
-      "pins": "§6.12.2: an unclocked base seeds every unit at its clock; the added tag takes the new clock",
+      "pins": "§6.12.2: an unclocked base clocks no unit and its clock is the floor; the added tag takes the new clock",
       "base": {
         "tags": [
           "lm-jtag"
@@ -40,15 +40,6 @@
       },
       "expected": {
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
@@ -57,6 +48,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       }
     },
@@ -91,17 +85,14 @@
           "tags.lm-jtag": {
             "X": 1,
             "I": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
           }
         },
         "fieldClocksAt": {
           "X": 1,
           "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       }
     },
@@ -122,15 +113,6 @@
           "A": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
@@ -139,6 +121,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "next": {
@@ -157,24 +142,21 @@
       },
       "expected": {
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
           },
           "properties.mood": {
             "X": 1,
             "A": 2
-          },
-          "properties.energy": {
-            "X": 1
-          },
-          "tags.t-a": {
-            "X": 1,
-            "A": 1
           }
         },
         "fieldClocksAt": {
           "X": 1,
           "A": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       }
     },
@@ -207,6 +189,63 @@
         },
         "fieldClocksAt": {
           "A": 2
+        },
+        "fieldClocksFloor": {
+          "A": 1
+        }
+      }
+    },
+    {
+      "name": "trusted-base-carries-its-floor",
+      "pins": "§6.12.2: an edit from a base applied whole keeps the base floor (#5572)",
+      "base": {
+        "tags": [],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "next": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
         }
       }
     },
@@ -223,6 +262,106 @@
         },
         "clock": {
           "A": 3
+        }
+      },
+      "expected": null
+    }
+  ],
+  "wholesales": [
+    {
+      "name": "untrusted-remote-is-its-floor",
+      "pins": "§6.12.1: an older build’s record clocks no unit, and its clock is the floor that carries its removals (#5572)",
+      "remote": {
+        "tags": [],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "stale-stamp-is-dropped",
+      "pins": "§6.12.1: unit clocks an older build kept past their stamp are not writes",
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "old"
+        ],
+        "properties": {
+          "mood": "good"
+        },
+        "clock": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "properties.p3c": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        }
+      },
+      "expected": {
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "C": 1,
+          "O": 1
+        }
+      }
+    },
+    {
+      "name": "trusted-remote-keeps-its-own",
+      "pins": "§6.12.1: a trusted remote is kept as it arrived",
+      "remote": {
+        "tags": [
+          "lm-jtag",
+          "t-a"
+        ],
+        "properties": {
+          "mood": "good",
+          "energy": 7
+        },
+        "clock": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocks": {
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": null
@@ -246,15 +385,6 @@
           "A": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
@@ -263,6 +393,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -279,15 +412,6 @@
           "C": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
@@ -296,6 +420,9 @@
         "fieldClocksAt": {
           "X": 1,
           "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -309,23 +436,17 @@
           "p3c": "c-val"
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
-          },
-          "tags.lm-jtag": {
-            "X": 1
           },
           "tags.t-a": {
             "X": 1,
             "A": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -347,15 +468,6 @@
           "B": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-b": {
             "X": 1,
             "B": 1
@@ -364,6 +476,9 @@
         "fieldClocksAt": {
           "X": 1,
           "B": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -382,18 +497,9 @@
           "C": 1
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
-          },
-          "tags.lm-jtag": {
-            "X": 1
           },
           "tags.t-a": {
             "X": 1,
@@ -404,6 +510,9 @@
           "X": 1,
           "A": 1,
           "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -418,18 +527,9 @@
           "p3c": "c-val"
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
-          },
-          "tags.lm-jtag": {
-            "X": 1
           },
           "tags.t-a": {
             "X": 1,
@@ -439,6 +539,9 @@
             "X": 1,
             "B": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -460,17 +563,14 @@
           "tags.lm-jtag": {
             "X": 1,
             "I": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
           }
         },
         "fieldClocksAt": {
           "X": 1,
           "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -491,18 +591,9 @@
           "C": 1
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
-          },
-          "tags.lm-jtag": {
-            "X": 1
           },
           "tags.t-a": {
             "X": 1,
@@ -518,6 +609,9 @@
           "B": 1,
           "A": 1,
           "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -531,12 +625,6 @@
           "p3c": "c-val"
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
@@ -553,6 +641,9 @@
             "X": 1,
             "B": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -574,17 +665,14 @@
           "tags.lm-jtag": {
             "X": 1,
             "I": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
           }
         },
         "fieldClocksAt": {
           "X": 1,
           "I": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -600,12 +688,6 @@
           "B": 2
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
           "properties.energy": {
             "X": 1,
             "B": 2
@@ -614,6 +696,9 @@
         "fieldClocksAt": {
           "X": 1,
           "B": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -627,13 +712,13 @@
             "X": 1,
             "B": 2
           },
-          "properties.mood": {
-            "X": 1
-          },
           "tags.lm-jtag": {
             "X": 1,
             "I": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -657,6 +742,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -677,6 +765,9 @@
         "fieldClocksAt": {
           "X": 1,
           "B": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -690,6 +781,9 @@
             "A": 1,
             "B": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -770,6 +864,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -795,6 +892,9 @@
         "fieldClocksAt": {
           "X": 1,
           "B": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -813,6 +913,9 @@
             "A": 1,
             "B": 2
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -834,15 +937,6 @@
           "A": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
@@ -851,6 +945,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -867,15 +964,6 @@
           "O": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "properties.p3c": {
             "X": 1,
             "C": 1
@@ -895,37 +983,17 @@
           "mood": "good"
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1,
-            "C": 1,
-            "O": 1
-          },
-          "properties.mood": {
-            "X": 1,
-            "C": 1,
-            "O": 1
-          },
-          "properties.p3c": {
-            "X": 1,
-            "C": 1,
-            "O": 1
-          },
-          "tags.lm-jtag": {
-            "X": 1,
-            "C": 1,
-            "O": 1
-          },
-          "tags.old": {
-            "X": 1,
-            "C": 1,
-            "O": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1,
             "C": 1,
             "O": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "C": 1,
+          "O": 1
         },
         "requeue": true
       }
@@ -947,15 +1015,6 @@
           "A": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
@@ -964,6 +1023,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -988,23 +1050,15 @@
           "energy": 9
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1,
-            "O": 3
-          },
-          "properties.mood": {
-            "X": 1,
-            "O": 3
-          },
-          "tags.lm-jtag": {
-            "X": 1,
-            "O": 3
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1,
             "O": 3
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 3
         },
         "requeue": true
       }
@@ -1023,17 +1077,13 @@
           "X": 1,
           "N": 1
         },
-        "fieldClocks": {
-          "tags.t": {
-            "X": 1
-          },
-          "properties.p": {
-            "X": 1
-          }
-        },
+        "fieldClocks": {},
         "fieldClocksAt": {
           "X": 1,
           "N": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -1043,14 +1093,7 @@
           "X": 1,
           "O": 1
         },
-        "fieldClocks": {
-          "tags.t": {
-            "X": 1
-          },
-          "properties.p": {
-            "X": 1
-          }
-        },
+        "fieldClocks": {},
         "fieldClocksAt": {
           "X": 1
         }
@@ -1058,15 +1101,10 @@
       "expected": {
         "tags": [],
         "properties": {},
-        "fieldClocks": {
-          "properties.p": {
-            "X": 1,
-            "O": 1
-          },
-          "tags.t": {
-            "X": 1,
-            "O": 1
-          }
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
         },
         "requeue": false
       }
@@ -1085,17 +1123,13 @@
           "X": 1,
           "N": 1
         },
-        "fieldClocks": {
-          "tags.t": {
-            "X": 1
-          },
-          "properties.p": {
-            "X": 1
-          }
-        },
+        "fieldClocks": {},
         "fieldClocksAt": {
           "X": 1,
           "N": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -1109,15 +1143,10 @@
       "expected": {
         "tags": [],
         "properties": {},
-        "fieldClocks": {
-          "properties.p": {
-            "X": 1,
-            "O": 1
-          },
-          "tags.t": {
-            "X": 1,
-            "O": 1
-          }
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
         },
         "requeue": false
       }
@@ -1148,15 +1177,10 @@
       "expected": {
         "tags": [],
         "properties": {},
-        "fieldClocks": {
-          "properties.p": {
-            "X": 1,
-            "O": 1
-          },
-          "tags.t": {
-            "X": 1,
-            "O": 1
-          }
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
         },
         "requeue": false
       }
@@ -1187,15 +1211,10 @@
       "expected": {
         "tags": [],
         "properties": {},
-        "fieldClocks": {
-          "properties.p": {
-            "X": 1,
-            "O": 1
-          },
-          "tags.t": {
-            "X": 1,
-            "O": 1
-          }
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
         },
         "requeue": false
       }
@@ -1226,15 +1245,266 @@
       "expected": {
         "tags": [],
         "properties": {},
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "issue-5572-relay",
+      "pins": "#5572: the relay’s floor removes the tag the older build removed; q, a write concurrent with that record, survives",
+      "local": {
+        "tags": [
+          "gone"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "C": 1
+        },
         "fieldClocks": {
-          "properties.p": {
+          "properties.q": {
             "X": 1,
-            "O": 1
-          },
-          "tags.t": {
-            "X": 1,
-            "O": 1
+            "C": 1
           }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "issue-5572-relay-pulls-stale-copy",
+      "pins": "§6.12.3: the same pair the other way round: the local floor removes the stale copy and re-queues",
+      "local": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocks": {
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "O": 1,
+          "D": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "remote": {
+        "tags": [
+          "gone"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "clock": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
+        }
+      },
+      "expected": {
+        "tags": [
+          "added"
+        ],
+        "properties": {
+          "p": 1,
+          "q": 1
+        },
+        "fieldClocks": {
+          "properties.q": {
+            "X": 1,
+            "C": 1
+          },
+          "tags.added": {
+            "X": 1,
+            "O": 1,
+            "D": 1
+          }
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "O": 1
+        },
+        "requeue": true
+      }
+    },
+    {
+      "name": "older-builds-applied-whole-then-concurrent-removal",
+      "pins": "§6.12.1: a record applied whole clocks no unit, so its body-only ticks do not outrank a concurrent older build’s removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 2
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2,
+          "O": 1
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "untrusted-base-edit-then-concurrent-removal",
+      "pins": "§6.12.2: an edit from an untrusted base clocks only what it changed, so the base’s ticks do not outrank a concurrent removal",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 3
+        },
+        "fieldClocks": {},
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 3
+        },
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {},
+        "fieldClocksFloor": {
+          "X": 1,
+          "N": 2,
+          "O": 1
         },
         "requeue": false
       }
@@ -1256,24 +1526,21 @@
           "A": 2
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
+          "tags.t-a": {
+            "X": 1,
+            "A": 1
           },
           "properties.mood": {
             "X": 1,
             "A": 2
-          },
-          "properties.energy": {
-            "X": 1
-          },
-          "tags.t-a": {
-            "X": 1,
-            "A": 1
           }
         },
         "fieldClocksAt": {
           "X": 1,
           "A": 2
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -1290,15 +1557,6 @@
           "Z": 1
         },
         "fieldClocks": {
-          "tags.lm-jtag": {
-            "X": 1
-          },
-          "properties.mood": {
-            "X": 1
-          },
-          "properties.energy": {
-            "X": 1
-          },
           "properties.z": {
             "X": 1,
             "Z": 1
@@ -1307,6 +1565,9 @@
         "fieldClocksAt": {
           "X": 1,
           "Z": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -1320,9 +1581,6 @@
           "z": true
         },
         "fieldClocks": {
-          "properties.energy": {
-            "X": 1
-          },
           "properties.mood": {
             "X": 1,
             "A": 2
@@ -1331,13 +1589,13 @@
             "X": 1,
             "Z": 1
           },
-          "tags.lm-jtag": {
-            "X": 1
-          },
           "tags.t-a": {
             "X": 1,
             "A": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }
@@ -1361,6 +1619,9 @@
         "fieldClocksAt": {
           "X": 1,
           "A": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "remote": {
@@ -1384,6 +1645,9 @@
           "X": 1,
           "B": 1,
           "C": 1
+        },
+        "fieldClocksFloor": {
+          "X": 1
         }
       },
       "expected": {
@@ -1398,6 +1662,9 @@
             "B": 1,
             "C": 1
           }
+        },
+        "fieldClocksFloor": {
+          "X": 1
         },
         "requeue": true
       }

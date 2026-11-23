@@ -1,13 +1,14 @@
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { tagKey } from '@memry/shared/tag-fold'
-import { compare as compareClock } from '@memry/sync-client/vector-clock'
+import { compare as compareClock, merge as mergeClock } from '@memry/sync-client/vector-clock'
 import { mergeFields, valuesEqual } from './field-merge'
 
 /**
  * The journal keys chapter 06 §6.12 merges per unit. `fieldClocks` holds one
  * clock per `tags.<tagKey>` and `properties.<key>` unit: the document clock at
  * which a device last wrote that unit. A unit clocked but absent from the
- * value is a removal.
+ * value is a removal. `fieldClocksFloor` covers every unit `fieldClocks` does
+ * not name: the payload supersedes every write to it at or before the floor.
  */
 export interface JournalFields {
   tags?: string[] | null
@@ -15,12 +16,21 @@ export interface JournalFields {
   clock?: VectorClock
   fieldClocks?: FieldClocks
   fieldClocksAt?: VectorClock
+  fieldClocksFloor?: VectorClock
+}
+
+/** The unit clock keys a journal payload carries (§6.12). */
+export interface JournalUnitStamp {
+  fieldClocks: FieldClocks
+  fieldClocksAt: VectorClock
+  fieldClocksFloor?: VectorClock
 }
 
 export interface JournalFieldsMerge {
   tags: string[]
   properties: Record<string, unknown>
   fieldClocks: FieldClocks
+  fieldClocksFloor?: VectorClock
   /** Some local unit clock is concurrent with or ahead of the remote's (§6.5.2 P3). */
   requeue: boolean
 }
@@ -54,40 +64,58 @@ function trusted(side: JournalFields): side is JournalFields & { fieldClocks: Fi
   )
 }
 
-/**
- * §6.12.1: a side's unit clocks. An untrusted side was written whole at its
- * document clock: every unit in `union`, and every unit it names, takes that
- * clock, so a unit it lacks is a removal rather than an unclocked absence.
- */
-export function journalUnitClocks(side: JournalFields, union: Iterable<string> = []): FieldClocks {
-  if (trusted(side)) return { ...side.fieldClocks }
-  const clock = side.clock ?? {}
-  const seeded: FieldClocks = {}
-  for (const unit of [...union, ...Object.keys(side.fieldClocks ?? {}), ...units(side).keys()]) {
-    seeded[unit] = { ...clock }
-  }
-  return seeded
+function stamp(fieldClocks: FieldClocks, at: VectorClock, floor?: VectorClock): JournalUnitStamp {
+  const out: JournalUnitStamp = { fieldClocks, fieldClocksAt: { ...at } }
+  if (floor !== undefined && Object.keys(floor).length > 0) out.fieldClocksFloor = { ...floor }
+  return out
 }
 
 /**
  * §6.12.2: the unit clocks a local edit pushes. Each unit whose value differs
- * from `base`, the last synced fields, takes `next.clock`; the rest keep theirs.
- * With no base the writer cannot tell which units it wrote since it last
- * synced, so the edit carries no unit clocks and is read whole at its clock,
- * as an older build's is.
+ * from `base`, the last synced fields, takes `next.clock`; the rest keep
+ * theirs, and so does the base's floor. An untrusted base clocks no unit: it
+ * was written whole at its clock, which becomes the floor. With no base the
+ * writer cannot tell which units it wrote since it last synced, so the edit
+ * carries no unit clocks and is read whole at its clock, as an older build's is.
  */
 export function journalFieldClocksForEdit(
   base: JournalFields | null,
   next: JournalFields & { clock: VectorClock }
-): { fieldClocks: FieldClocks; fieldClocksAt: VectorClock } | null {
+): JournalUnitStamp | null {
   if (base === null) return null
-  const clocks = journalUnitClocks(base)
+  const clocks: FieldClocks = trusted(base) ? { ...base.fieldClocks } : {}
   const before = units(base)
   const after = units(next)
   for (const unit of new Set([...before.keys(), ...after.keys()])) {
     if (!valuesEqual(before.get(unit), after.get(unit))) clocks[unit] = { ...next.clock }
   }
-  return { fieldClocks: clocks, fieldClocksAt: { ...next.clock } }
+  return stamp(clocks, next.clock, trusted(base) ? base.fieldClocksFloor : (base.clock ?? {}))
+}
+
+/**
+ * §6.12.1: the unit clocks a device keeps with `remote` applied whole
+ * (§6.3.1 `before` or `equal`, or a first sighting). A trusted remote keeps
+ * its own (`null`). An untrusted one was written whole at its clock, so it
+ * clocks no unit and its clock is the floor: the next edit from it carries
+ * its removals, and none of its units outranks a concurrent write.
+ */
+export function journalFieldClocksForWholesale(remote: JournalFields): JournalUnitStamp | null {
+  if (trusted(remote)) return null
+  return stamp({}, remote.clock ?? {}, remote.clock ?? {})
+}
+
+/**
+ * §6.12.1: a floor supersedes every write it has seen, so it reads at its
+ * clock against the other side's claim on a unit only when it strictly
+ * dominates that claim, or there is none. A write concurrent with it is one
+ * its writer never saw.
+ */
+function floorAgainst(
+  floor: VectorClock | undefined,
+  other: VectorClock | undefined
+): VectorClock | undefined {
+  if (floor === undefined) return undefined
+  return other === undefined || compareClock(other, floor) === 'before' ? floor : undefined
 }
 
 /**
@@ -109,13 +137,37 @@ export function mergeJournalFields(
       ...remoteUnits.keys()
     ])
   ].toSorted()
-  // §6.12.1: an untrusted local side proves no unit clock. Its `clock` carries
+  // §6.12.1: an untrusted local side proves nothing. Its `clock` carries
   // this device's ticks since it last synced, body-only saves included, so
-  // every unit reads as the empty clock and the remote wins it, as the
-  // document rule applies a concurrent remote whole.
-  const localClocks = trusted(local) ? { ...local.fieldClocks } : {}
-  const remoteClocks = journalUnitClocks(remote, all)
-
+  // the remote wins each unit, as the document rule applies a concurrent
+  // remote whole. An untrusted remote reads at its clock on every unit, the
+  // document rule it ran.
+  const localStamped: FieldClocks = trusted(local) ? local.fieldClocks : {}
+  const localFloor = trusted(local) ? local.fieldClocksFloor : undefined
+  const remoteStamped: FieldClocks = trusted(remote)
+    ? remote.fieldClocks
+    : Object.fromEntries(all.map((unit) => [unit, { ...remote.clock }]))
+  const remoteFloor = trusted(remote) ? remote.fieldClocksFloor : (remote.clock ?? {})
+  const localClocks: FieldClocks = {}
+  const remoteClocks: FieldClocks = {}
+  // Units a trusted side wrote and no floor superseded: only these keep a
+  // clock, so a record's clock never turns into a write.
+  const written: string[] = []
+  for (const unit of all) {
+    const localFloored = localStamped[unit]
+      ? undefined
+      : floorAgainst(localFloor, remoteStamped[unit] ?? remoteFloor)
+    const remoteFloored = remoteStamped[unit]
+      ? undefined
+      : floorAgainst(remoteFloor, localStamped[unit] ?? localFloor)
+    const localClock = localStamped[unit] ?? localFloored
+    const remoteClock = remoteStamped[unit] ?? remoteFloored
+    if (localClock !== undefined) localClocks[unit] = localClock
+    if (remoteClock !== undefined) remoteClocks[unit] = remoteClock
+    const wrote =
+      localStamped[unit] !== undefined || (trusted(remote) && remoteStamped[unit] !== undefined)
+    if (wrote && !localFloored && !remoteFloored) written.push(unit)
+  }
   const { merged, mergedFieldClocks } = mergeFields(
     Object.fromEntries(localUnits),
     Object.fromEntries(remoteUnits),
@@ -140,10 +192,16 @@ export function mergeJournalFields(
     }
   }
 
+  // Every unit neither side names reads as absent on both, so the merged
+  // payload supersedes what either floor did.
+  const floor = mergeClock(localFloor ?? {}, remoteFloor ?? {})
+  const fieldClocks: FieldClocks = {}
+  for (const unit of written) fieldClocks[unit] = mergedFieldClocks[unit]
   return {
     tags,
     properties,
-    fieldClocks: mergedFieldClocks,
+    fieldClocks,
+    ...(Object.keys(floor).length > 0 ? { fieldClocksFloor: floor } : {}),
     requeue: all.some((unit) => {
       const unitOrder = compareClock(localClocks[unit] ?? {}, remoteClocks[unit] ?? {})
       return unitOrder === 'concurrent' || unitOrder === 'after'

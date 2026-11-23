@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   journalFieldClocksForEdit,
+  journalFieldClocksForWholesale,
   mergeJournalFields,
   type JournalFields
 } from '../../../sync-client/src/journal-merge.ts'
@@ -21,18 +22,25 @@ type Next = JournalFields & { clock: VectorClock }
 const vectors = loadVectorFile<{
   meta: { caseCount: number }
   edits: Array<{ name: string; base: JournalFields | null; next: Next; expected: unknown }>
+  wholesales: Array<{ name: string; remote: JournalFields; expected: unknown }>
   merges: Array<{ name: string; local: JournalFields; remote: JournalFields; expected: unknown }>
 }>('journal-merge.json')
 
 describe('journal-merge vectors', () => {
   it('carries the recorded case count', () => {
-    expect(vectors.edits.length + vectors.merges.length).toBe(vectors.meta.caseCount)
+    expect(vectors.edits.length + vectors.wholesales.length + vectors.merges.length).toBe(
+      vectors.meta.caseCount
+    )
   })
 
   it.each(vectors.edits.map((c) => [c.name, c] as const))('edit %s', (_name, c) => {
     expect(journalFieldClocksForEdit(structuredClone(c.base), structuredClone(c.next))).toEqual(
       c.expected
     )
+  })
+
+  it.each(vectors.wholesales.map((c) => [c.name, c] as const))('wholesale %s', (_name, c) => {
+    expect(journalFieldClocksForWholesale(structuredClone(c.remote))).toEqual(c.expected)
   })
 
   it.each(vectors.merges.map((c) => [c.name, c] as const))('merge %s', (_name, c) => {

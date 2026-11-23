@@ -177,3 +177,69 @@ fn an_untrusted_local_day_does_not_outrank_an_older_builds_removal() {
         assert_eq!(view(&phone), (json!([]), json!({})), "{ticks} ticks");
     }
 }
+
+/// #5572: an older build removed `gone` at `{X:1,O:1}`. A new build applies
+/// that record whole, edits and pushes; a device that never pulled the record
+/// still holds `gone` and concurrently set `q`. The removal holds whether or
+/// not the relaying device ever held the tag, and `q`, which the older build
+/// never saw, survives.
+#[test]
+fn an_older_builds_removal_relayed_by_a_new_build_stays_removed() {
+    let legacy = json!({
+        "date": DAY, "content": "", "tags": ["gone"], "properties": { "p": 1 },
+        "clock": { "X": 1 }
+    })
+    .to_string();
+    let old_build = json!({
+        "date": DAY, "content": "", "tags": [], "properties": { "p": 1 },
+        "clock": { "X": 1, "O": 1 }
+    })
+    .to_string();
+    for held in [true, false] {
+        let relay = open(&format!("relay-{held}"));
+        if held {
+            pull(&relay, &legacy);
+        }
+        pull(&relay, &old_build);
+        tag(&relay, &["added"], "dev-d");
+
+        let stale = open(&format!("stale-{held}"));
+        pull(&stale, &legacy);
+        property(&stale, "q", json!(1), "dev-c");
+        pull(&stale, &pushed(&relay));
+        assert_eq!(
+            view(&stale),
+            (json!(["added"]), json!({ "p": 1, "q": 1 })),
+            "held {held}"
+        );
+    }
+}
+
+/// §6.5.2 P4: an older build's record this device already applied whole, and
+/// stamped, is the identical equal-clock row on a re-pull.
+#[test]
+fn re_pulling_an_older_builds_record_is_skipped() {
+    let phone = open("re-pull");
+    let old_build = json!({
+        "date": DAY, "content": "", "tags": ["T"], "properties": {},
+        "clock": { "X": 1, "O": 1 }
+    })
+    .to_string();
+    pull(&phone, &old_build);
+    let stored = pushed(&phone);
+
+    let record = InboundRecord {
+        item_type: "journal".to_owned(),
+        item_id: ID.to_owned(),
+        payload_json: old_build,
+        server_cursor: None,
+        signer_device_id: None,
+        updated_at: NOW,
+        deleted_at: None,
+    };
+    let outcome = phone
+        .call_blocking(|conn| apply_inbound(conn, &record, NOW))
+        .expect("apply");
+    assert!(matches!(outcome, ApplyOutcome::Skipped), "{outcome:?}");
+    assert_eq!(pushed(&phone), stored);
+}
