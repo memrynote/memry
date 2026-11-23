@@ -323,6 +323,10 @@ export class PushCoordinator {
             vaultKey,
             signingKeys.secretKey,
             signingKeys.deviceId,
+            // Delete attestations stay v1 (no vault) until production servers
+            // verify v2 (#5247, chapter 04 §4.8.4): an older server rejects a
+            // v2 delete as a bad signature. The flip passes getSyncVaultId().
+            null,
             {
               workerBridge: this.ctx.deps.workerBridge,
               queue: this.ctx.deps.queue,

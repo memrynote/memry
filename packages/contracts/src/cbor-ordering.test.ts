@@ -78,10 +78,11 @@ describe('CBOR_FIELD_ORDER', () => {
     ])
   })
 
-  // #2408: the delete attestation's signed fields (protocol 04 §4.8.4).
+  // #2408, #5247: the delete attestation's signed fields (protocol 04 §4.8.4).
   it('pins the DELETE_ATTESTATION field order', () => {
     expect(CBOR_FIELD_ORDER.DELETE_ATTESTATION).toEqual([
       'purpose',
+      'vaultId',
       'id',
       'type',
       'deletedAt',

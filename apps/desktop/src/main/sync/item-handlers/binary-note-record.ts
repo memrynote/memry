@@ -3,13 +3,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { syncState } from '@memry/db-schema/schema/sync-state'
-import {
-  getExtension,
-  getFileType,
-  getMimeType,
-  isBinaryNoteRow,
-  type FileType
-} from '@memry/shared/file-types'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from '../../lib/logger'
 
@@ -17,30 +11,6 @@ const log = createLogger('BinaryNoteRecord')
 
 /** One `sync_state` row per markdown record this device answered with its binary record (#5419). */
 const HEALED_PREFIX = 'sync.binaryNoteRecordHeal:'
-
-type BinaryFileType = Exclude<FileType, 'markdown'>
-
-function binaryType(type: FileType | null | undefined): BinaryFileType | null {
-  return type && type !== 'markdown' ? type : null
-}
-
-/**
- * The file type and MIME type of a binary note (`isBinaryNoteRow`), or `null`
- * for a markdown note. A row a shipped write-back retyped to markdown (#5412)
- * still sits at its `.png`/`.pdf`/... path, so its type and MIME type come
- * from the path. Pushing such a row as markdown drops the attachment link for
- * every device that has not seen the note yet (#5419).
- */
-export function binaryRecordFields(
-  row: Pick<NoteMetadata, 'path' | 'fileType' | 'mimeType'>
-): { fileType: BinaryFileType; mimeType: string | null } | null {
-  if (!isBinaryNoteRow(row)) return null
-  const rowType = binaryType(row.fileType)
-  if (rowType) return { fileType: rowType, mimeType: row.mimeType }
-  const ext = getExtension(row.path)
-  const pathType = binaryType(getFileType(ext))
-  return pathType && { fileType: pathType, mimeType: getMimeType(ext) ?? row.mimeType }
-}
 
 /**
  * A markdown record with no attachment for a note this device holds as a

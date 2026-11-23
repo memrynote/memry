@@ -17,6 +17,7 @@ import {
   type VerifiedAttestation
 } from '../delete-attestation'
 import type { DrizzleDb } from '../item-handlers'
+import { getSyncVaultId } from '../sync-vault-id'
 import type { ItemRef, ResolveDeviceKey } from './corrupt-item-tracker'
 import {
   localTombstoneRefusal,
@@ -218,13 +219,21 @@ export async function applicablePurgedTombstones(
     }
   }
 
+  // The vault this device's pulls are routed to; a v2 attestation names it (#5247).
+  const vaultId = keys.size > 0 ? await getSyncVaultId() : null
+  // A v1-only check would refuse a valid v2 marker for good once the cursor
+  // moves on; like a key that cannot be fetched, this holds the page.
+  if (keys.size > 0 && vaultId === null) {
+    throw new Error('Pull: the vault id is unreadable, so delete attestations cannot be checked')
+  }
   const unverified: Array<PurgedTombstone & { reason: AttestationRefusal }> = []
   const attested: AttestedTombstone[] = []
   for (const tombstone of candidates) {
     const signer = tombstone.attestation?.signerDeviceId
     const verified = verifyTombstoneAttestation(
       tombstone,
-      signer ? (keys.get(signer) ?? null) : null
+      signer ? (keys.get(signer) ?? null) : null,
+      vaultId
     )
     if (typeof verified === 'string') unverified.push({ ...tombstone, reason: verified })
     else attested.push({ ...tombstone, verified })

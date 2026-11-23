@@ -77,8 +77,21 @@ fn signer() -> (Vec<u8>, Vec<u8>) {
 }
 
 /// The purged marker of `key` at `cursor` (chapter 05 §5.12.3), attested by
-/// `device-a` over its own claim unless `forged`.
+/// `device-a` over its own claim unless `forged`, in the vault the run syncs.
 fn marker(key: &str, cursor: i64, forged: bool) -> Json {
+    marker_in(VAULT, key, cursor, forged)
+}
+
+/// The vault every run here syncs (`X-Memry-Vault-Id`).
+const VAULT: &str = "vault-a";
+
+/// [`marker`], attested in `vault_id` (`None`: v1, before #5247).
+fn marker_in(
+    vault_id: impl Into<Option<&'static str>>,
+    key: &str,
+    cursor: i64,
+    forged: bool,
+) -> Json {
     let (item_type, id) = typed(key);
     let clock: memry_core::sync::clock::VectorClock = [("device-a".to_owned(), 2)].into();
     let deleted_at = 1_700_000_000_000i64;
@@ -89,7 +102,8 @@ fn marker(key: &str, cursor: i64, forged: bool) -> Json {
         deleted_at: if forged { deleted_at + 1 } else { deleted_at },
     };
     let attestation =
-        memry_core::protocol::delete_attestation::sign(&claim, &signer().1).expect("signed");
+        memry_core::protocol::delete_attestation::sign(&claim, vault_id.into(), &signer().1)
+            .expect("signed");
     json!({"id": id, "type": item_type, "deletedAt": deleted_at, "clock": clock,
            "serverCursor": cursor, "signerDeviceId": "device-a",
            "deleteAttestation": attestation})
@@ -566,12 +580,15 @@ fn first_sync_observed(
         "https://sync.example",
         ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
     ));
-    let pull = Arc::new(PullLoop::new(
-        Arc::clone(&http),
-        db.clone(),
-        Declaration::subscribed(),
-        Arc::new(Cipher(forged.iter().map(|id| (*id).to_owned()).collect())),
-    ));
+    let pull = Arc::new(
+        PullLoop::new(
+            Arc::clone(&http),
+            db.clone(),
+            Declaration::subscribed(),
+            Arc::new(Cipher(forged.iter().map(|id| (*id).to_owned()).collect())),
+        )
+        .with_vault(VAULT),
+    );
     let bodies = Arc::new(BodyPull::new(
         Arc::clone(&http),
         db.clone(),
@@ -1084,6 +1101,30 @@ async fn an_omitted_row_the_pull_answers_with_an_attested_marker_is_removed() {
     })
     .await;
     assert!(!notes(&db)["n3"].0, "the attested marker removes n3");
+    assert_eq!(report.reconcile_removed, 1);
+}
+
+/// #5247: the server replays a delete of the same id attested in another
+/// vault of the account. v2 binds the vault, so it deletes nothing.
+#[tokio::test]
+async fn an_omitted_row_with_a_marker_attested_in_another_vault_is_kept() {
+    let (db, report) = omitted_n3("omitted-other-vault", |server| {
+        server.markers.push(marker_in("vault-b", "n3", 7, false));
+    })
+    .await;
+    assert!(notes(&db)["n3"].0, "a delete from vault-b keeps n3");
+    assert_eq!(report.reconcile_removed, 0);
+}
+
+/// #5247 compatibility: a v1 attestation from a build before #5247 still
+/// removes the row.
+#[tokio::test]
+async fn an_omitted_row_the_pull_answers_with_a_v1_marker_is_removed() {
+    let (db, report) = omitted_n3("omitted-v1-marker", |server| {
+        server.markers.push(marker_in(None, "n3", 7, false));
+    })
+    .await;
+    assert!(!notes(&db)["n3"].0, "the v1 marker removes n3");
     assert_eq!(report.reconcile_removed, 1);
 }
 

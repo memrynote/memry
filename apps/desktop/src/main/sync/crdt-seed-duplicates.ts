@@ -191,11 +191,12 @@ async function repairNote(
   }
 }
 
-export async function repairSeedDuplicates(host: SeedRepairHost): Promise<void> {
+/** Resolves `false` when the store changed under the run, so nothing more of it was repaired. */
+export async function repairSeedDuplicates(host: SeedRepairHost): Promise<boolean> {
   const store = host.readOnlyStore()
   if (!store) {
     log.info('Seed duplicate repair skipped: no CRDT store')
-    return
+    return true
   }
   const storeId = host.storeId
   const started = performance.now()
@@ -236,6 +237,7 @@ export async function repairSeedDuplicates(host: SeedRepairHost): Promise<void> 
   } catch (error) {
     log.warn('Seed duplicate repair failed', { error })
   }
+  return host.storeId === storeId
 }
 
 let scheduled = false
@@ -244,7 +246,8 @@ let scheduled = false
  * Once per process, from a full sync that delivered its pull and left no note
  * body owed. When the timer fires, the store must still be the one that sync
  * settled and `settled()` must still hold; otherwise nothing is read, and the
- * next settled sync schedules again.
+ * next settled sync schedules again. A run the store change stopped also lets
+ * the next settled sync schedule again.
  */
 export function scheduleSeedDuplicateRepair(host: SeedRepairHost, settled: () => boolean): void {
   if (scheduled) return
@@ -256,6 +259,8 @@ export function scheduleSeedDuplicateRepair(host: SeedRepairHost, settled: () =>
       log.info('Seed duplicate repair deferred: the store changed or note bodies are owed')
       return
     }
-    void repairSeedDuplicates(host)
+    void repairSeedDuplicates(host).then((ranOnItsStore) => {
+      if (!ranOnItsStore) scheduled = false
+    })
   }, SCAN_DELAY_MS).unref()
 }
