@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import {
@@ -14,7 +14,7 @@ import {
   type CriticMarkupMark
 } from '@memry/shared'
 import { createLogger } from '@/lib/logger'
-import type { ReviewSelection } from '../content-area'
+import type { ReviewDocBinding, ReviewSelection } from '../content-area'
 import {
   editorOffsetToMarkdownSourceOffset,
   editorOffsetToProseMirrorDocPos,
@@ -24,6 +24,11 @@ import {
 } from '../content-area/critic-markup-offset-map'
 
 interface UseCriticMarkupReviewParams {
+  /**
+   * The note or journal day the review state belongs to. A new key starts the
+   * state over from `markdown`, so nothing of one note reaches the next.
+   */
+  documentKey: string | undefined
   markdown: string
   onMarkdownChange: (markdown: string) => void
 }
@@ -72,7 +77,6 @@ export interface CriticMarkupReviewController {
   hoveredMarkId: string | null
   markPositions: Record<string, number>
   handlePlainMarkdownChange: (plainMarkdown: string) => string
-  persistCurrentMarkdown: () => void
   handleEditorReady: (editor: unknown) => void
   openCommentComposer: (selection: ReviewSelection) => void
   cancelCommentDraft: () => void
@@ -88,10 +92,11 @@ export interface CriticMarkupReviewController {
   setHoveredMarkId: (id: string | null) => void
   setMarkPositions: (positions: Record<string, number>) => void
   replaceMarksFromYjs: (marks: CriticMarkupMark[]) => void
-  setDocBodyReader: (read: (() => Promise<string>) | null) => void
+  setDocBinding: (binding: ReviewDocBinding | null) => void
 }
 
 export function useCriticMarkupReview({
+  documentKey,
   markdown,
   onMarkdownChange
 }: UseCriticMarkupReviewParams): CriticMarkupReviewController {
@@ -113,11 +118,44 @@ export function useCriticMarkupReview({
   // below from dropping a just-added comment when a refetch/sync delivers stale
   // note content during note.tsx's save debounce window (issue #797).
   const pendingMarkIdsRef = useRef<Set<string>>(new Set())
-  // Reads the editor's markdown while the editor is bound to the note's CRDT
-  // doc (`ContentArea`), which then owns the body. Null otherwise.
-  const readDocBodyRef = useRef<(() => Promise<string>) | null>(null)
+  // The note's CRDT doc while the editor is bound to it (`ContentArea`). It
+  // then owns the body and the marks. Null otherwise.
+  const docBindingRef = useRef<ReviewDocBinding | null>(null)
+  const unsubscribeBodyRef = useRef<(() => void) | null>(null)
+  // Bound, the text copy above trails the doc until it is read again, and a
+  // read converts the whole note. Only marks and a comment draft count in that
+  // text, so it is read while one of them is there: at once when the first
+  // comes, and 150ms after each change to the body.
+  const bodyChangesRef = useRef(0)
+  const textReadAtRef = useRef(0)
+  const bodyReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const documentKeyRef = useRef(documentKey)
+
+  // Before any effect of the editor below: its binding then loads the next
+  // note's marks into state that no longer holds this note's.
+  useLayoutEffect(() => {
+    if (documentKeyRef.current === documentKey) return
+    documentKeyRef.current = documentKey
+    pendingMarkIdsRef.current.clear()
+    undoStackRef.current = []
+    emittedMarkdownsRef.current = []
+    plainMarkdownRef.current = parsed.plainText
+    marksRef.current = parsed.marks
+    activeDraftRef.current = null
+    /* oxlint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- a new note resets the review state before the editor's effects bind it to the new note's doc; deriving it during render would leave the refs above on the old note */
+    setPlainMarkdown(parsed.plainText)
+    setMarks(parsed.marks)
+    setActiveDraft(null)
+    setHoveredMarkId(null)
+    setMarkPositions({})
+    /* oxlint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
+  }, [documentKey, parsed])
 
   useEffect(() => {
+    // Bound to the doc, the doc owns the marks and the editor the text. The
+    // markdown here is the file, which trails both: it can lack a comment the
+    // file cannot place, or one the write-back has not written yet.
+    if (docBindingRef.current) return
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
     // No-op resync: the incoming markdown matches what the current marks
     // serialize to. Keep the in-memory marks — re-parsing would drop fields the
@@ -153,8 +191,29 @@ export function useCriticMarkupReview({
     /* oxlint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   }, [markdown, parsed.plainText, parsed.marks, parsedMarkIds])
 
+  const catchUpWithBody = useCallback(() => {
+    if (bodyReadTimerRef.current) clearTimeout(bodyReadTimerRef.current)
+    bodyReadTimerRef.current = null
+    const binding = docBindingRef.current
+    if (!binding || textReadAtRef.current === bodyChangesRef.current) return
+    if (marksRef.current.length === 0 && !activeDraftRef.current) return
+    const readAt = bodyChangesRef.current
+    const key = documentKeyRef.current
+    void binding.readBody().then(
+      (plain) => {
+        if (docBindingRef.current !== binding || documentKeyRef.current !== key) return
+        if (readAt < textReadAtRef.current) return
+        textReadAtRef.current = readAt
+        plainMarkdownRef.current = plain
+        setPlainMarkdown(plain)
+      },
+      (error: unknown) => log.error('Could not read the note text for its comments', error)
+    )
+  }, [])
+
   const persist = useCallback(
     (nextPlainMarkdown: string, nextMarks: CriticMarkupMark[]) => {
+      const previousMarks = marksRef.current
       const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
       plainMarkdownRef.current = nextPlainMarkdown
       marksRef.current = nextMarks
@@ -169,13 +228,18 @@ export function useCriticMarkupReview({
           if (!nextIds.has(id)) pendingMarkIdsRef.current.delete(id)
         }
       }
-      // The doc owns the body, and typing never reaches this hook, so the text
-      // here can be older than the doc. Saving it would erase what was typed
-      // since (#5568). The marks reach the doc through `ContentArea`.
-      if (readDocBodyRef.current) return
+      // The doc owns the body, so saving this copy of it would erase what was
+      // typed since (#5568). Only this change reaches the doc's marks: the
+      // others there may have moved with the text since this state read them.
+      const binding = docBindingRef.current
+      if (binding) {
+        binding.updateMarks(markChanges(previousMarks, nextMarks))
+        catchUpWithBody()
+        return
+      }
       onMarkdownChange(serialized)
     },
-    [onMarkdownChange]
+    [catchUpWithBody, onMarkdownChange]
   )
 
   const handlePlainMarkdownChange = useCallback((nextPlainMarkdown: string): string => {
@@ -189,28 +253,26 @@ export function useCriticMarkupReview({
     return serialized
   }, [])
 
-  const persistCurrentMarkdown = useCallback(() => {
-    const serialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
-    rememberEmittedMarkdown(emittedMarkdownsRef.current, serialized)
-    onMarkdownChange(serialized)
-  }, [onMarkdownChange])
-
   const handleEditorReady = useCallback((editor: unknown) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     editorRef.current = editor as BlockNoteHost | null
   }, [])
 
-  const openCommentComposer = useCallback((selection: ReviewSelection) => {
-    if (selection.isEmpty || !selection.text.trim()) return
-    const nextDraft: CommentDraft = {
-      text: selection.text.trim(),
-      ...(selection.top !== undefined ? { top: selection.top } : {}),
-      ...(selection.from !== undefined ? { from: selection.from } : {}),
-      ...(selection.to !== undefined ? { to: selection.to } : {})
-    }
-    activeDraftRef.current = nextDraft
-    setActiveDraft(nextDraft)
-  }, [])
+  const openCommentComposer = useCallback(
+    (selection: ReviewSelection) => {
+      if (selection.isEmpty || !selection.text.trim()) return
+      const nextDraft: CommentDraft = {
+        text: selection.text.trim(),
+        ...(selection.top !== undefined ? { top: selection.top } : {}),
+        ...(selection.from !== undefined ? { from: selection.from } : {}),
+        ...(selection.to !== undefined ? { to: selection.to } : {})
+      }
+      activeDraftRef.current = nextDraft
+      setActiveDraft(nextDraft)
+      catchUpWithBody()
+    },
+    [catchUpWithBody]
+  )
 
   const getActiveDraftSelectionRect = useCallback((): DraftSelectionRect | null => {
     const draft = activeDraftRef.current
@@ -253,17 +315,10 @@ export function useCriticMarkupReview({
 
   const addComment = useCallback(
     (draft: CommentDraft, input: SubmitCommentInput, trimmedBody: string, plain: string) => {
-      let start: number
-      const doc = editorRef.current?._tiptapEditor?.state?.doc
-      if (draft.from !== undefined && doc) {
-        const editorOffset = proseMirrorDocPosToEditorOffset(doc, draft.from)
-        const sourceOffset =
-          editorOffset !== null ? editorOffsetToMarkdownSourceOffset(plain, editorOffset) : null
-        start = sourceOffset ?? findTextStart(plain, draft.text, marksRef.current)
-      } else {
-        start = findTextStart(plain, draft.text, marksRef.current)
-      }
-      if (start === -1) return
+      const range =
+        selectedSourceRange(plain, draft, editorRef.current?._tiptapEditor?.state?.doc) ??
+        textRange(plain, draft.text, marksRef.current)
+      if (!range) return
 
       const id = createCriticMarkId('comment')
       const createdAt = Date.now()
@@ -274,15 +329,17 @@ export function useCriticMarkupReview({
         {
           id,
           kind: 'comment' as const,
-          visibleText: draft.text,
+          // The markdown the selection covers, `**` and all: the text the
+          // file holds, so the write-back finds it where the offsets say.
+          visibleText: plain.slice(range.start, range.end),
           body: trimmedBody,
           metadata: `id=${id};type=comment;createdAt=${createdAt}`,
           createdAt,
           ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
           ...(input.attachments.length > 0 ? { attachments: input.attachments } : {}),
           ...(formatRanges.length > 0 ? { formatRanges } : {}),
-          start,
-          end: start + draft.text.length
+          start: range.start,
+          end: range.end
         }
       ]
       pushReviewUndoEntry(
@@ -305,15 +362,15 @@ export function useCriticMarkupReview({
       const trimmedBody = input.body.trim()
       if (!draft || !trimmedBody) return
 
-      const readDocBody = readDocBodyRef.current
-      if (!readDocBody) {
+      const binding = docBindingRef.current
+      if (!binding) {
         addComment(draft, input, trimmedBody, plainMarkdownRef.current)
         return
       }
       // This hook's copy of the text can trail the doc, which would put the
       // comment in the wrong place or drop it when its words are new. The
       // editor's text is the doc's.
-      void readDocBody().then(
+      void binding.readBody().then(
         (plain) => {
           if (activeDraftRef.current === draft) addComment(draft, input, trimmedBody, plain)
         },
@@ -404,6 +461,8 @@ export function useCriticMarkupReview({
     const entry = undoStackRef.current.at(-1)
     if (!entry) return false
 
+    // A copy behind the body cannot tell whether the text changed since.
+    if (docBindingRef.current && textReadAtRef.current !== bodyChangesRef.current) return false
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
     if (currentSerialized !== entry.afterSerialized) return false
 
@@ -449,17 +508,37 @@ export function useCriticMarkupReview({
     })
   }, [])
 
-  const setDocBodyReader = useCallback((read: (() => Promise<string>) | null) => {
-    readDocBodyRef.current = read
-  }, [])
+  const setDocBinding = useCallback(
+    (binding: ReviewDocBinding | null) => {
+      unsubscribeBodyRef.current?.()
+      unsubscribeBodyRef.current = null
+      if (bodyReadTimerRef.current) clearTimeout(bodyReadTimerRef.current)
+      bodyReadTimerRef.current = null
+      docBindingRef.current = binding
+      if (!binding) return
+      // The copy is the file's, or another doc's.
+      bodyChangesRef.current++
+      unsubscribeBodyRef.current = binding.onBodyChange(() => {
+        bodyChangesRef.current++
+        if (bodyReadTimerRef.current) clearTimeout(bodyReadTimerRef.current)
+        bodyReadTimerRef.current = setTimeout(catchUpWithBody, 150)
+      })
+      catchUpWithBody()
+    },
+    [catchUpWithBody]
+  )
 
-  const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
-    if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
-    marksRef.current = nextMarks
-    setMarks(nextMarks)
-    setHoveredMarkId(null)
-    setMarkPositions({})
-  }, [])
+  const replaceMarksFromYjs = useCallback(
+    (nextMarks: CriticMarkupMark[]) => {
+      if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
+      marksRef.current = nextMarks
+      setMarks(nextMarks)
+      setHoveredMarkId(null)
+      setMarkPositions({})
+      catchUpWithBody()
+    },
+    [catchUpWithBody]
+  )
 
   return {
     editorInitialContent: parsed.plainText,
@@ -469,7 +548,6 @@ export function useCriticMarkupReview({
     hoveredMarkId,
     markPositions,
     handlePlainMarkdownChange,
-    persistCurrentMarkdown,
     handleEditorReady,
     openCommentComposer,
     cancelCommentDraft,
@@ -485,8 +563,59 @@ export function useCriticMarkupReview({
     setHoveredMarkId,
     setMarkPositions: updateMarkPositions,
     replaceMarksFromYjs,
-    setDocBodyReader
+    setDocBinding
   }
+}
+
+/** What turns `before` into `after`, by mark id. */
+function markChanges(
+  before: CriticMarkupMark[],
+  after: CriticMarkupMark[]
+): { upsert: CriticMarkupMark[]; remove: string[] } {
+  const beforeById = new Map(before.map((mark) => [mark.id, mark]))
+  const afterIds = new Set(after.map((mark) => mark.id))
+  return {
+    upsert: after.filter(
+      (mark) => JSON.stringify(mark) !== JSON.stringify(beforeById.get(mark.id))
+    ),
+    remove: before.filter((mark) => !afterIds.has(mark.id)).map((mark) => mark.id)
+  }
+}
+
+/**
+ * The markdown the editor selection covers, as offsets into `plain`: from the
+ * first selected character to just after the last, so markers the selection
+ * ends beside stay out (`**bold**` selected as `bold` is `bold`). Null when the
+ * selection does not map.
+ */
+function selectedSourceRange(
+  plain: string,
+  draft: CommentDraft,
+  doc: EditorState['doc'] | undefined
+): { start: number; end: number } | null {
+  if (draft.from === undefined || draft.to === undefined || !doc) return null
+  const from = proseMirrorDocPosToEditorOffset(doc, draft.from)
+  const to = proseMirrorDocPosToEditorOffset(doc, draft.to)
+  if (from === null || to === null || to <= from) return null
+  const first = editorOffsetToMarkdownSourceOffset(plain, from)
+  const last = editorOffsetToMarkdownSourceOffset(plain, to - 1)
+  if (first === null || last === null) return null
+  // The draft's text is the selection trimmed, and so is the range.
+  let start = first
+  let end = last + 1
+  while (start < end && /\s/.test(plain[start])) start++
+  while (end > start && /\s/.test(plain[end - 1])) end--
+  return end > start ? { start, end } : null
+}
+
+/** `text` where it first stands in `plain` and no mark already covers it exactly. */
+function textRange(
+  plain: string,
+  text: string,
+  existingMarks: CriticMarkupMark[]
+): { start: number; end: number } | null {
+  const start = findTextStart(plain, text, existingMarks)
+  return start === -1 ? null : { start, end: start + text.length }
 }
 
 function snapshotReviewState(plainMarkdown: string, marks: CriticMarkupMark[]): ReviewUndoSnapshot {

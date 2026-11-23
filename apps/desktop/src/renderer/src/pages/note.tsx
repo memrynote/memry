@@ -941,6 +941,7 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [])
 
   const review = useCriticMarkupReview({
+    documentKey: noteId,
     markdown: editorInitialContent,
     onMarkdownChange: handleMarkdownChange
   })
@@ -2120,12 +2121,11 @@ export function NotePage({ noteId }: NotePageProps) {
                         review.getMarkdownSourceOffsetForEditorOffset,
                       getEditorOffsetForMarkdownSourceOffset:
                         review.getEditorOffsetForMarkdownSourceOffset,
-                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
                       onPlainMarkdownChange: review.handlePlainMarkdownChange,
                       onHoveredMarkChange: review.setHoveredMarkId,
                       onMarkPositionsChange: review.setMarkPositions,
                       onReplaceMarksFromYjs: review.replaceMarksFromYjs,
-                      onDocBodyReaderChange: review.setDocBodyReader
+                      onDocBindingChange: review.setDocBinding
                     }}
                   />
                 </div>

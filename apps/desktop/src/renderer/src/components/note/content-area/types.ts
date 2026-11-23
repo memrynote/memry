@@ -61,6 +61,20 @@ export interface SelectionInfo {
   isEmpty: boolean
 }
 
+/**
+ * The note's CRDT doc, while the editor is bound to it. The doc then owns the
+ * body and the review marks: the review state reads the one and writes only
+ * its own changes to the other.
+ */
+export interface ReviewDocBinding {
+  /** The editor's body as markdown now. */
+  readBody: () => Promise<string>
+  /** Calls `listener` after each change to the body, local or remote. Returns the unsubscribe. */
+  onBodyChange: (listener: () => void) => () => void
+  /** Adds or replaces `upsert` and removes `remove` in the doc's marks; leaves the rest. */
+  updateMarks: (changes: { upsert: CriticMarkupMark[]; remove: string[] }) => void
+}
+
 export interface ReviewSelection {
   /** Selected text visible in the editor */
   text: string
@@ -201,16 +215,12 @@ export interface ContentAreaProps {
     onAddComment?: (selection: ReviewSelection) => void
     getMarkdownSourceOffsetForEditorOffset?: (editorOffset: number) => number | null
     getEditorOffsetForMarkdownSourceOffset?: (sourceOffset: number) => number | null
-    onPersistCurrentMarkdown?: () => void
     onPlainMarkdownChange?: (markdown: string) => string
     onHoveredMarkChange?: (id: string | null) => void
     onMarkPositionsChange?: (positions: Record<string, number>) => void
     onReplaceMarksFromYjs?: (marks: CriticMarkupMark[]) => void
-    /**
-     * Gets the editor's markdown reader while the editor is bound to the note's
-     * CRDT doc, which then owns the body, and null when it is not.
-     */
-    onDocBodyReaderChange?: (read: (() => Promise<string>) | null) => void
+    /** Gets the note's CRDT doc while the editor is bound to it, and null when it is not. */
+    onDocBindingChange?: (binding: ReviewDocBinding | null) => void
   }
   /**
    * The note page's writing tools (alternatives, ghosts, overflow). When

@@ -647,30 +647,66 @@ editor fell back to ProseMirror's `history`, whose state survives a view rebuild
 ## Comments Change Marks, Never the Body
 
 A comment lives in two places: the doc's `criticMarkupMarks` array, and the file, where
-the write-back serializes it inline as `{==text==}{>>…<<}`. The review state in the
-renderer (`use-critic-markup-review.ts`) keeps its own copy of the note's text, because a
-mark's `start` and `end` are offsets into that text.
+the write-back serializes it inline as `{==text==}{>>…<<}`. A mark's `start` and `end` are
+offsets into the note's markdown text with the CriticMarkup taken out, and its
+`visibleText` is the markdown they cover: `start **bold` for a comment on "start bold".
 
-Typing never reaches that copy while the editor is bound to the doc: `useEditorSync`
-saves no markdown then. The copy follows the note's file instead, and it can trail the
-doc. It trails by about a second after typing, and indefinitely after an outside change to
-the file until the note is reopened (the note page holds the changed content as an
-override). A comment action used to save the whole body from that copy. Main took it as an
-edit and replaced the doc's body. For example: the file changes outside the app, you type
-a paragraph, then you add a comment. The paragraph is gone from the editor, the file and
-every device, and only the version history still has it (#5568).
+While the editor is bound to the doc, the doc owns the marks and the editor owns the text.
+The review state in the renderer (`use-critic-markup-review.ts`) follows both and saves
+neither:
 
-So while the editor is bound to the doc, `ContentArea` hands the review state a reader of
-the editor's markdown (`onDocBodyReaderChange`):
+- `ContentArea` observes `criticMarkupMarks` and hands the review state what it holds, on
+  open and after every change, whoever made it. It never writes the review state's copy
+  back. That copy can be the last note's (the note page keeps one review state across
+  notes), or older than a move the write-back made, so writing it put one note's comments
+  into another and undid moves.
+- An add, edit, resolve, delete or undo writes only that change to the array, through the
+  binding `ContentArea` hands over (`ReviewDocBinding`). The write-back puts it in the file.
+- The review state's copy of the text is the editor's markdown, never the file. The file
+  trails the doc: by about a second after typing, and indefinitely after an outside change
+  until the note is reopened. A comment action used to save the whole body from that copy,
+  and main took it as an edit: a paragraph typed after an outside change was gone from
+  every device (#5568). A file refetch used to replace the marks too, and dropped each
+  comment the file had left out.
+- Reading that copy converts the whole note, about 10 ms for 8,000 words, and only marks
+  and a comment draft count in it. So the review state reads it only while the note has a
+  mark or a draft: at once when the first arrives or the draft opens, then 150 ms after
+  each change to the body (`ReviewDocBinding.onBodyChange`, local and remote). While the
+  copy trails the body, Cmd+Z goes to the editor, because the copy cannot tell whether the
+  text changed since the comment action.
+- A new comment takes its range from the editor selection mapped into the editor's
+  markdown, read at that moment, so a comment on words typed a moment ago lands on them.
+- A new note starts the review state over from that note's text before its editor binds.
 
-- An add, edit, resolve, delete or undo changes the marks only. `ContentArea` writes them
-  into `criticMarkupMarks`, and the write-back puts them in the file. The review state
-  saves no body.
-- A new comment takes its place from the editor's text at that moment, read through the
-  reader, so a comment on words typed a moment ago is placed on them rather than dropped.
+When the editor is not bound to a doc, it saves markdown itself, and a comment saves the
+body with its marks as before.
 
-When the editor is not bound to a doc, it saves markdown itself, so the copy follows every
-keystroke, and a comment saves the body with its marks as before.
+### Marks follow the text at write-back
+
+The write-back is the one place that moves marks. It sees both the text the marks were
+placed in, the file it wrote last time, and the text they belong in now, the doc's, for
+this device's edits and every other device's. `critic-mark-anchors.ts` diffs the two and
+carries each mark through the diff before `serializeCriticMarkup` writes it:
+
+- Text typed before a mark shifts it. Text typed inside it grows it, and text deleted
+  inside it shrinks it. Text typed right at either end stays outside it.
+- Two comments on the same word stay on their own copies of it.
+- A comment whose words are all deleted stays as a point where they were, and the pass
+  logs it.
+- A comment added after the last write is not in the file yet. Its offsets count in the
+  file's text when it covers its own words there, and it moves from there.
+
+The device whose edit the pass wrote then puts the moved offsets into the doc, once the
+file holds them, and only for a mark the doc still holds as the pass read it. Every other
+device places the same marks in its own file from the same text and leaves the doc alone.
+If two devices move one mark at once, each replaces its element and the array keeps both;
+every reader takes the first in array order, so all devices show the same one, and the
+next write that touches the array deletes the other. A mark the file cannot hold, because
+its text is gone or another mark covers it, stays in the doc and the rail, and the
+write-back logs it once.
+
+A comment made by an older build holds the words the editor showed (`start bold`). The
+renderer still draws it. The file places it only where its text appears unformatted.
 
 ## Open Doc Lifecycle
 

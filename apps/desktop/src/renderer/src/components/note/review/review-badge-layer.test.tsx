@@ -85,7 +85,6 @@ function createReview(
     hoveredMarkId: null,
     markPositions: {},
     handlePlainMarkdownChange: vi.fn((markdown: string) => markdown),
-    persistCurrentMarkdown: vi.fn(),
     handleEditorReady: vi.fn(),
     openCommentComposer: vi.fn(),
     cancelCommentDraft: vi.fn(),
@@ -101,7 +100,7 @@ function createReview(
     setHoveredMarkId: vi.fn(),
     setMarkPositions: vi.fn(),
     replaceMarksFromYjs: vi.fn(),
-    setDocBodyReader: vi.fn(),
+    setDocBinding: vi.fn(),
     ...overrides
   }
 }
