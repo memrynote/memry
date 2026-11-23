@@ -13,6 +13,7 @@ import Testing
 /// Scripts the Inbox file calls and records what the shell asked for.
 private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
     private let state = Mutex(State())
+    let changes = Changes()
 
     struct State {
         var summaries: [InboxAttachmentSyncSummary] = []
@@ -61,6 +62,7 @@ private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
 
     func syncNow() async throws -> SyncPassSummary {
         state.withLock { $0.passes += 1 }
+        changes.changed()
         return SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)
     }
 
@@ -170,7 +172,7 @@ struct InboxFileRedriveTests {
         let filler = InboxFilesFiller(summaries: [InboxFilesFiller.summary(uploaded: 1)])
         let tasks = try TasksTestVault(filler: filler)
         await tasks.store.sync()
-        try await wait { filler.passes >= 2 }
+        await filler.changes.until { filler.passes >= 2 }
         #expect(filler.passes == 2)
         try await Task.sleep(for: .milliseconds(1200))
         #expect(filler.passes == 2, "the extra pass asked for another")
