@@ -248,10 +248,7 @@ struct NotePageLoad: ViewModifier {
             }
             // On open and after each sync pass: another device's edits reach this
             // page only through a body pull and a re-read.
-            .task(id: vaultSyncPasses) {
-                await model.loadIfNeeded()
-                await model.refreshFromRemote()
-            }
+            .task(id: vaultSyncPasses) { await model.refreshFromRemote() }
             // Opened, or restored at launch, before the first sync brought
             // its record in (`VaultFillView`): read again as records land.
             .onChange(of: firstSyncLanded) {
