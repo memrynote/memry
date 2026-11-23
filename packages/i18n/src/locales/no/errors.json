@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Kunne ikke bruke malen",
     "appendBlocksFailed": "Kunne ikke flytte blokken til det notatet",
     "appendIntoCaseTwin": "Det notatet deler fil med et notat der navnet bare skiller seg ut med store og små bokstaver. Gi nytt navn til ett av dem, og flytt deretter blokken på nytt.",
+    "caseTwinMoveRefused": "Dette notatet deler fil med et notat der navnet bare skiller seg ved store og små bokstaver, så det kan ikke flyttes på denne måten. Gi det andre notatet nytt navn eller flytt det, eller slett kopien du ikke trenger.",
     "exportPdfFailed": "Kunne ikke eksportere PDF",
     "exportHtmlFailed": "Kunne ikke eksportere HTML",
     "restoreVersionFailed": "Kunne ikke gjenopprette versjonen",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Kunne ikke opprette mappen",
     "renameFailed": "Kunne ikke gi mappen nytt navn",
+    "renameCaseTwins": "Denne mappen inneholder notater som deler fil med et notat der mappenavnet bare skiller seg ved store og små bokstaver. Gi disse notatene nytt navn eller flytt dem først, og gi deretter mappen nytt navn.",
     "deleteFailed": "Kunne ikke slette mappen",
     "setConfigFailed": "Kunne ikke lagre mappeoppsettet"
   },

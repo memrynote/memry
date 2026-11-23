@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Kunne ikke anvende skabelonen",
     "appendBlocksFailed": "Kunne ikke flytte blokken til den note",
     "appendIntoCaseTwin": "Den note deler fil med en note, hvis navn kun adskiller sig ved store og små bogstaver. Omdøb en af dem, og flyt derefter blokken igen.",
+    "caseTwinMoveRefused": "Denne note deler fil med en note, hvis navn kun adskiller sig ved store og små bogstaver, så den kan ikke flyttes på denne måde. Omdøb eller flyt den anden note, eller slet den kopi, du ikke har brug for.",
     "exportPdfFailed": "Kunne ikke eksportere til PDF",
     "exportHtmlFailed": "Kunne ikke eksportere til HTML",
     "restoreVersionFailed": "Kunne ikke gendanne versionen",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Kunne ikke oprette mappen",
     "renameFailed": "Kunne ikke omdøbe mappen",
+    "renameCaseTwins": "Denne mappe indeholder noter, der deler fil med en note, hvis mappenavn kun adskiller sig ved store og små bogstaver. Omdøb eller flyt de noter først, og omdøb derefter mappen.",
     "deleteFailed": "Kunne ikke slette mappen",
     "setConfigFailed": "Kunne ikke gemme mappeindstillingerne"
   },

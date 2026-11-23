@@ -211,6 +211,11 @@ struct AttachingVaultRegistry: VaultRegistry {
         }
         return rows
     }
+
+    func named(_ row: VaultSummary) -> VaultSummary {
+        if let local = attach.store.summary, local.id == row.id { return local }
+        return inner.named(row)
+    }
 }
 
 /// The sync mint for an account, which hands the attached local vault's

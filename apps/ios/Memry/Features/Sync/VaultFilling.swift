@@ -192,6 +192,8 @@ struct CoreVaultFiller: VaultFilling {
         do {
             let pass = try await sync.syncNow()
             SyncTelemetry.passCompleted(pass, since: start)
+            await AttachmentRefusals.shared.absorb(pass.attachments, vaultId: vaultId)
+            NotificationCenter.default.post(name: .vaultSyncPassSucceeded, object: nil)
             return pass
         } catch {
             SyncTelemetry.passFailed(error, since: start)
@@ -213,10 +215,13 @@ struct CoreVaultFiller: VaultFilling {
     private let executor: CoreExecutor
     /// What the user calls this vault, so a refusal can say which one.
     private let vaultName: String
+    /// Tags this vault's attachment refusals, so another vault never shows them.
+    private let vaultId: String
 
-    init(sync: VaultSync, executor: CoreExecutor, vaultName: String) {
+    init(sync: VaultSync, executor: CoreExecutor, vaultId: String, vaultName: String) {
         self.sync = sync
         self.executor = executor
+        self.vaultId = vaultId
         self.vaultName = vaultName
     }
 
@@ -383,6 +388,6 @@ struct CoreVaultFillerMint: VaultFillerMinting {
     func filler(for vault: Vault, named name: String) async throws -> any VaultFilling {
         let session = session
         let sync = try await executor.run { vault.sync(session: session) }
-        return CoreVaultFiller(sync: sync, executor: executor, vaultName: name)
+        return CoreVaultFiller(sync: sync, executor: executor, vaultId: vault.id(), vaultName: name)
     }
 }

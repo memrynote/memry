@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Gagal menggunakan templat",
     "appendBlocksFailed": "Gagal mengalihkan blok ke nota itu",
     "appendIntoCaseTwin": "Nota itu berkongsi failnya dengan nota yang namanya hanya berbeza pada huruf besar dan kecil. Namakan semula salah satu daripadanya, kemudian alihkan blok sekali lagi.",
+    "caseTwinMoveRefused": "Nota ini berkongsi failnya dengan nota yang namanya hanya berbeza dari segi huruf besar dan kecil, jadi nota ini tidak boleh dipindahkan dengan cara ini. Namakan semula atau pindahkan nota yang satu lagi, atau padamkan salinan yang anda tidak perlukan.",
     "exportPdfFailed": "Gagal mengeksport PDF",
     "exportHtmlFailed": "Gagal mengeksport HTML",
     "restoreVersionFailed": "Gagal memulihkan versi",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Gagal membuat folder",
     "renameFailed": "Gagal menamakan semula folder",
+    "renameCaseTwins": "Folder ini mengandungi nota yang berkongsi fail dengan nota yang nama foldernya hanya berbeza dari segi huruf besar dan kecil. Namakan semula atau pindahkan nota tersebut dahulu, kemudian namakan semula folder.",
     "deleteFailed": "Gagal memadamkan folder",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },

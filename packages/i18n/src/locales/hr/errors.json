@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Primjena predloška nije uspjela",
     "appendBlocksFailed": "Premještanje bloka u tu bilješku nije uspjelo",
     "appendIntoCaseTwin": "Ta bilješka dijeli datoteku s bilješkom čiji se naziv razlikuje samo po velikim i malim slovima. Preimenuj jednu od njih, a zatim ponovno premjesti blok.",
+    "caseTwinMoveRefused": "Ova bilješka dijeli datoteku s bilješkom čiji se naziv razlikuje samo po velikim i malim slovima, pa se ne može premjestiti na ovaj način. Preimenujte ili premjestite drugu bilješku ili izbrišite kopiju koja vam ne treba.",
     "exportPdfFailed": "Izvoz u PDF nije uspio",
     "exportHtmlFailed": "Izvoz u HTML nije uspio",
     "restoreVersionFailed": "Vraćanje verzije nije uspjelo",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Stvaranje mape nije uspjelo",
     "renameFailed": "Preimenovanje mape nije uspjelo",
+    "renameCaseTwins": "Ova mapa sadrži bilješke koje dijele datoteku s bilješkom čiji se naziv mape razlikuje samo po velikim i malim slovima. Najprije preimenujte ili premjestite te bilješke, a zatim preimenujte mapu.",
     "deleteFailed": "Brisanje mape nije uspjelo",
     "setConfigFailed": "Postavljanje konfiguracije mape nije uspjelo"
   },

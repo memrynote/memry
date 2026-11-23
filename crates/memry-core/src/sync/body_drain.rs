@@ -14,12 +14,16 @@
 //! [`pull_one`]: settled when the pull reached the server's head, backed off
 //! after a failure, and a `429` or a lost network ends the round with every
 //! document not reached still owed. Only a local storage failure is an error.
+//! A `429` anywhere in the round, the probe's included, holds the next round
+//! back until its `Retry-After` ([`DrainReport::resume_at`]).
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use tokio::task::JoinSet;
+use tokio::time::Instant;
 
 use crate::api::errors::StorageError;
 use crate::storage::Db;
@@ -32,6 +36,25 @@ use super::{body_debt, body_heal};
 /// Due documents one round pulls at most. About a minute and a half at one
 /// stream and ~200 ms a request, a third of that at four.
 pub const DRAIN_ROUND_DOCUMENTS: usize = 400;
+
+/// The longest a `429`'s `Retry-After` holds the drain back. The server's
+/// windows are a minute; a larger answer is capped rather than parking the
+/// drain for the life of the process or overflowing the clock.
+const MAX_DRAIN_PAUSE_S: u64 = 600;
+
+/// When the drain may send again after a `429` that asked for `wait_s`.
+///
+/// Measured on tokio's monotonic clock, which on Darwin does not advance
+/// while the device sleeps, so a pause that spans a sleep resumes up to
+/// `wait_s` of awake time after the wake, never earlier than the server
+/// asked: the safe side of a wall-clock window. A sleep-inclusive clock would
+/// shave that off but can step backwards with the wall clock and cannot be
+/// driven by tests' paused time. The cost stays bounded: the pause lives in
+/// memory for one process, at most [`MAX_DRAIN_PAUSE_S`] of awake time, and
+/// it gates only the drain, not a pass's body step.
+pub fn resume_after(wait_s: u64) -> Instant {
+    Instant::now() + Duration::from_secs(wait_s.min(MAX_DRAIN_PAUSE_S))
+}
 
 /// A chunk's owed documents, each with its probe answer when it had one.
 type Queue = VecDeque<(String, Option<Probed>)>;
@@ -46,8 +69,9 @@ pub struct DrainReport {
     pub requests: usize,
     /// Live documents still owed after the round, backed-off ones included.
     pub remaining: usize,
-    /// The wait a `429` that ended the round asked for, in seconds.
-    pub rate_limit_s: Option<u64>,
+    /// When the next round may send: the latest [`resume_after`] of the
+    /// `429`s this round met, `None` when it met none.
+    pub resume_at: Option<Instant>,
 }
 
 /// The documents due now, at most one round of them. Local only: runs the
@@ -88,15 +112,20 @@ pub async fn run(
 
     let mut report = DrainReport::default();
     let ended = Arc::new(AtomicBool::new(false));
-    let rate_limit_s = Arc::new(AtomicU64::new(0));
+    let resume_at = Arc::new(Mutex::new(None));
     for chunk in due.chunks(PROBE_CHUNK) {
-        let mut probed: HashMap<String, Probed> =
-            match bodies.probe(chunk, &mut report.requests).await {
+        let (mut probed, probe_wait_s): (HashMap<String, Probed>, _) =
+            match bodies.probe_paced(chunk, &mut report.requests).await {
                 Ok(probed) => probed,
                 Err(BodyPullError::Storage { source }) => return Err(source),
                 // Each document then pulls through the ordinary §7.8 path.
-                Err(BodyPullError::Api { .. }) => HashMap::new(),
+                Err(BodyPullError::Api { .. }) => (HashMap::new(), None),
             };
+        // The batch route has its own limit: the round goes on through each
+        // document's routes, and only the next one waits.
+        if let Some(wait_s) = probe_wait_s {
+            hold_back(&resume_at, wait_s);
+        }
         let queue: Queue = chunk
             .iter()
             .map(|doc_id| (doc_id.clone(), probed.remove(doc_id)))
@@ -109,7 +138,7 @@ pub async fn run(
                 Arc::clone(bodies),
                 Arc::clone(&queue),
                 Arc::clone(&ended),
-                Arc::clone(&rate_limit_s),
+                Arc::clone(&resume_at),
                 Arc::clone(&tally),
             ));
         }
@@ -133,8 +162,20 @@ pub async fn run(
         }
     }
     report.remaining = remaining(db).await?;
-    report.rate_limit_s = Some(rate_limit_s.load(Ordering::SeqCst)).filter(|&wait_s| wait_s > 0);
+    report.resume_at = *lock(&resume_at);
     Ok(report)
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Moves the round's resume time out to [`resume_after`] `wait_s`, never in.
+fn hold_back(resume_at: &Mutex<Option<Instant>>, wait_s: u64) {
+    let mut held = lock(resume_at);
+    *held = (*held).max(Some(resume_after(wait_s)));
 }
 
 /// One stream: owed documents off the chunk's queue until it is empty or the
@@ -144,7 +185,7 @@ async fn worker(
     bodies: Arc<BodyPull>,
     queue: Arc<Mutex<Queue>>,
     ended: Arc<AtomicBool>,
-    rate_limit_s: Arc<AtomicU64>,
+    resume_at: Arc<Mutex<Option<Instant>>>,
     tally: Arc<Tally>,
 ) -> Result<(BodyPullReport, usize), StorageError> {
     let mut part = BodyPullReport::default();
@@ -165,7 +206,7 @@ async fn worker(
                 rate_limit_s: wait_s,
             } => {
                 if let Some(wait_s) = wait_s {
-                    rate_limit_s.fetch_max(wait_s, Ordering::SeqCst);
+                    hold_back(&resume_at, wait_s);
                 }
                 ended.store(true, Ordering::SeqCst);
             }

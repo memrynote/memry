@@ -112,13 +112,14 @@ struct NoteTextPreview: View {
     let text: String
 
     var body: some View {
+        let shown = Self.shown(text)
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            Text(Self.shown(text))
+            Text(shown)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(text.count > Self.limit ? Self.caption + " " + Self.shortened : Self.caption)
+            Text(shown.endIndex < text.endIndex ? Self.caption + " " + Self.shortened : Self.caption)
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,8 +136,10 @@ struct NoteTextPreview: View {
 
     static let shortened = "Only the start of this note is shown."
 
-    static func shown(_ text: String) -> String {
-        text.count > limit ? String(text.prefix(limit)) : text
+    /// Walks at most `limit` characters: counting a whole large body on
+    /// every redraw is the cost the cap is there to avoid.
+    static func shown(_ text: String) -> Substring {
+        text.prefix(limit)
     }
 
     /// True of every note this view can show text for, and of no other screen
@@ -232,8 +235,11 @@ struct NotePageLoad: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .task {
-                await model.loadIfNeeded()
+            // On open and after each sync pass: another device's edits reach this
+            // page only through a body pull and a re-read. One task, so the open
+            // reads and walks the note once (REVIEW-5567).
+            .task(id: vaultSyncPasses) {
+                await model.refreshFromRemote()
                 if !reportedOpen, case .ready = model.phase {
                     reportedOpen = true
                     Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
@@ -242,12 +248,6 @@ struct NotePageLoad: ViewModifier {
                 // placeholders are what FR-045 asks to be visible first, and a
                 // fetch that finished early would still only re-render them.
                 await model.fetchWaitingAttachments()
-            }
-            // On open and after each sync pass: another device's edits reach this
-            // page only through a body pull and a re-read.
-            .task(id: vaultSyncPasses) {
-                await model.loadIfNeeded()
-                await model.refreshFromRemote()
             }
             // Opened, or restored at launch, before the first sync brought
             // its record in (`VaultFillView`): read again as records land.

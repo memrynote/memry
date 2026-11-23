@@ -696,6 +696,26 @@ describe('previous release lookup', () => {
     )
   })
 
+  it('skips prereleases such as the ort-pod CI build-input release', () => {
+    const releases = [
+      {
+        createdAt: '2026-11-23T13:34:03Z',
+        isDraft: false,
+        isPrerelease: false,
+        tagName: 'v2026-11-23'
+      },
+      { createdAt: '2026-11-23T15:09:40Z', isDraft: true, isPrerelease: false, tagName: 'vnext' },
+      {
+        createdAt: '2026-11-23T16:05:56Z',
+        isDraft: false,
+        isPrerelease: true,
+        tagName: 'ort-pod-1.30.0'
+      }
+    ]
+
+    assert.equal(selectPreviousPublishedRelease(releases, { excludeTag: 'vnext' }), 'v2026-11-23')
+  })
+
   it('sorts releases without a creation date last', () => {
     assert.equal(
       selectPreviousPublishedRelease([

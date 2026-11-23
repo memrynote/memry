@@ -8,6 +8,7 @@ import { createLogger } from '../lib/logger'
 import { openVaultFileSync, resolveVaultFileSync } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { getCurrentVaultPath } from '../store'
+import { holdsBinaryUpload } from '../vault/case-twin-bytes'
 import { queueUploadIfAbsent } from './attachment-outbox'
 import {
   countNoteFiles,
@@ -134,6 +135,8 @@ function queueUnsentFileNotes(
     }
     const file = path.join(deps.vaultPath, note.path)
     if (existingFiles([file]).length === 0) continue
+    // A file a case twin shares may hold the twin's bytes (#5585).
+    if (holdsBinaryUpload(deps.db, deps.vaultPath, note.path, note.id)) continue
     try {
       if (queueUploadIfAbsent(deps.db, note.id, file)) queued++
     } catch (error) {

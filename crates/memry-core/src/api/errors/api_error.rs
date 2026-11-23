@@ -126,6 +126,22 @@ pub enum ApiError {
     NoMasterKey,
 }
 
+impl ApiError {
+    /// The seconds a [`Self::RateLimited`] asks the caller to wait, at least
+    /// one: every 429 but `BOOTSTRAP_SESSION_LIMIT`, whatever its code, and a
+    /// token refresh inside its [`AuthError::RefreshBlocked`] window. A 429
+    /// without `Retry-After` still means "not now", and one second is the
+    /// server's own floor (`Math.max(retryAfter, 1)`). `None` for any other
+    /// error, `BOOTSTRAP_SESSION_LIMIT` included: that 429 is a concurrency
+    /// cap, not a window.
+    pub(crate) fn rate_limit_wait_s(&self) -> Option<u64> {
+        match self {
+            Self::RateLimited { retry_after_s, .. } => Some(retry_after_s.unwrap_or(1).max(1)),
+            _ => None,
+        }
+    }
+}
+
 /// Failures of the authentication and session machine (chapter 02,
 /// data-model §C.1).
 #[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]

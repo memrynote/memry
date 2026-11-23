@@ -1,5 +1,5 @@
 const defaultReleaseTimeZone = 'Europe/Istanbul'
-const releaseListFields = ['tagName', 'name', 'isDraft', 'createdAt']
+const releaseListFields = ['tagName', 'name', 'isDraft', 'isPrerelease', 'createdAt']
 
 export function buildDateReleaseVersion({
   date = new Date(),

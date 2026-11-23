@@ -3,6 +3,9 @@ import sodium, {
   to_base64 as sodiumToBase64,
   base64_variants as sodiumBase64Variants
 } from 'libsodium-wrappers-sumo'
+import { promises as fs } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -10,7 +13,9 @@ import type { PackSummary } from '@memry/contracts/sync-api'
 
 import { encryptCrdtUpdate } from '../crdt-encrypt'
 import type { DocumentPlan } from '../packs/body-plan'
+import type * as PackBootstrapModule from '../packs/pack-bootstrap'
 import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
+import { buildTestPack } from '../packs/test-pack-builder'
 import { downloadPacks } from '../packs/pack-downloads'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
@@ -154,7 +159,9 @@ const createHarness = (
       db: {
         select: () => ({
           from: () => ({
-            all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key }))
+            all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key })),
+            // The pack-seed settle markers (pack-seeded-docs.ts): none listed.
+            where: () => ({ all: () => [] })
           })
         })
       },
@@ -466,6 +473,142 @@ describe('FullSyncRunner pack bootstrap seam', () => {
         snapshotRevision: 'r4'
       })
     })
+  })
+
+  it('#given a pause and resume during the pack phase #then the pull gets every record and re-requests only unapplied bodies', async () => {
+    // VERIFY-5450 #7. pause() aborts the pack phase (engine.ts); resume()'s
+    // sync is dropped while this run holds fullSyncActive, so this run pulls,
+    // with whatever the aborted phase handed back. The real pack runner and
+    // body applier run here; only the network is scripted.
+    await sodiumReady
+    const vaultKey = new Uint8Array(32)
+    const peer = sodium.crypto_sign_keypair('uint8array')
+    const harness = createHarness()
+    harness.deviceKeys.push(sodiumToBase64(peer.publicKey, sodiumBase64Variants.ORIGINAL))
+    const notes = ['note-1', 'note-2', 'note-3', 'note-4']
+    const snapshots = buildTestPack(
+      notes.map((id) => ({
+        id,
+        bytes: encryptCrdtUpdate(new TextEncoder().encode(id), vaultKey, id, peer.privateKey),
+        meta: { sequenceNum: 4, revision: `r-${id}` }
+      }))
+    ).bytes
+    const blob = { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+    const records = buildTestPack(
+      notes.map((id, index) => ({
+        kind: 'record' as const,
+        id: `note:${id}`,
+        sortKey: 10 + index,
+        meta: { operation: 'update', signature: 'sig', signerDeviceId: 'device-0' },
+        bytes: new TextEncoder().encode(JSON.stringify(blob))
+      }))
+    ).bytes
+    const files = new Map([
+      ['p-snap', snapshots],
+      ['p-rec', records]
+    ])
+    const summary = (id: string, itemKind: PackSummary['itemKind'], extra = {}): PackSummary => ({
+      id,
+      itemKind,
+      packKey: `packs/${id}`,
+      minCursor: 1,
+      maxCursor: 100,
+      itemCount: 4,
+      byteSize: 128,
+      createdAt: 1_700_000_000,
+      url: `https://r2.example/${id}`,
+      expiresAt: 1_800_000_000,
+      ...extra
+    })
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'memry-pack-pause-'))
+    const { runPackBootstrap } =
+      await vi.importActual<typeof PackBootstrapModule>('../packs/pack-bootstrap')
+    mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
+      const result = await runPackBootstrap({
+        ...deps,
+        tempDir,
+        now: () => 1_700_000_100_000,
+        pageEntries: 2,
+        maxParallelDownloads: 1,
+        recordBytes: () => {},
+        fetchPackPage: async () => ({
+          packs: [
+            summary('p-snap', 'crdt_snapshot'),
+            summary('p-rec', 'record', { coverFrom: 0, coverThrough: 100 })
+          ],
+          coverage: [{ itemKind: 'record', packedThrough: 100, coveredThrough: 100 }],
+          serverTime: 1_700_000_100
+        }),
+        download: async ({ url, destPath }) => {
+          const bytes = files.get(url.split('/').pop()!)!
+          await fs.mkdir(path.dirname(destPath), { recursive: true })
+          await fs.writeFile(destPath, bytes)
+          return { bytes: bytes.length, resumed: false }
+        },
+        readManifest: async () =>
+          new Map(
+            notes.map((noteId) => [
+              noteId,
+              {
+                noteId,
+                floor: 0,
+                maxSequenceNum: 4,
+                snapshot: { revision: `r-${noteId}`, sequenceNum: 4 }
+              }
+            ])
+          ),
+        readRecordManifest: async () => ({
+          items: notes.map((id, index) => ({
+            id,
+            type: 'note',
+            version: 1,
+            modifiedAt: 1,
+            size: 1,
+            serverCursor: 10 + index
+          })),
+          complete: true
+        }),
+        beginPage: () => ({
+          db: {} as never,
+          transacted: true,
+          afterCommit: () => {},
+          commit: () => {},
+          rollback: () => {},
+          flushFiles: async () => {},
+          savepoint: (apply) => apply(),
+          flushFilesSync: () => {}
+        }),
+        // The pause lands once the first page of two documents committed.
+        emit: (_channel, data) => {
+          if ((data as { processedItems: number }).processedItems >= 2) {
+            vi.mocked(harness.stateManager.isPaused).mockReturnValue(true)
+            harness.runner.abortPackPhase('pause')
+          }
+        }
+      })
+      // And the resume, before the run reads the pause again.
+      vi.mocked(harness.stateManager.isPaused).mockReturnValue(false)
+      return result
+    })
+
+    try {
+      await expect(harness.runner.run()).resolves.toEqual(DELIVERED)
+    } finally {
+      await fs.rm(tempDir, { recursive: true, force: true })
+    }
+
+    expect(harness.provider!.putSnapshotWatermark.mock.calls.map(([id]) => id)).toEqual([
+      'note-1',
+      'note-2'
+    ])
+    expect(harness.actions.pull).toHaveBeenCalledTimes(1)
+    const packed = vi.mocked(harness.actions.pull).mock.calls[0][1]
+    // No item lost: every packed record reaches the pull, and the bodies the
+    // pause cut off stay owed to their item routes.
+    expect(packed?.apply.map(({ item }) => item.id)).toEqual(notes)
+    expect(packed?.pullById).toEqual([])
+    // Nothing applied is asked for again.
+    expect([...(packed?.settledBodies ?? [])]).toEqual(['note-1', 'note-2'])
   })
 
   it('#given packs are unusable #then the run is byte-for-byte the pre-pack path', async () => {

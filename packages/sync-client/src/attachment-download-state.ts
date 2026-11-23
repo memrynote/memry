@@ -147,6 +147,15 @@ export function shouldAttemptDownload(
   return Date.now() >= row.nextAttemptAt
 }
 
+/**
+ * Whether the server has answered this download as gone on MISSING_PROBE_LIMIT
+ * separate occasions: it is never asked for again.
+ */
+export function isDownloadAbandoned(db: DrizzleDb, ownerId: string, attachmentId: string): boolean {
+  const row = readFailure(db, ownerId, attachmentId)
+  return row?.reason === 'missing' && row.nextAttemptAt === null
+}
+
 /** Claim the attempt so concurrent pulls of the same note do not fan out twice. */
 export function markDownloadRequested(ownerId: string, attachmentId: string): void {
   inFlight.add(keyOf(ownerId, attachmentId))
@@ -159,6 +168,32 @@ export function markDownloadRequested(ownerId: string, attachmentId: string): vo
  */
 export function releaseDownloadAttempt(ownerId: string, attachmentId: string): void {
   inFlight.delete(keyOf(ownerId, attachmentId))
+}
+
+/**
+ * The file for this attachment no longer holds its bytes (a binary case twin
+ * moved off a shared file, #5560). Forget a session success, and record a
+ * download owed now, so the re-driver asks for it until one lands even when
+ * this request never reaches a downloader (no token, auto-download off, no
+ * listener). A failure already recorded keeps its own retry window.
+ */
+export function markDownloadOwed(db: DrizzleDb, ownerId: string, attachmentId: string): void {
+  const key = keyOf(ownerId, attachmentId)
+  succeeded.delete(key)
+  const now = Date.now()
+  db.insert(attachmentDownloadFailures)
+    .values({
+      id: key,
+      ownerId,
+      attachmentId,
+      reason: 'transient',
+      attempts: 0,
+      lastError: 'Not downloaded yet',
+      nextAttemptAt: now,
+      updatedAt: now
+    })
+    .onConflictDoNothing()
+    .run()
 }
 
 /** The bytes are on disk. Forget every failure recorded for this attachment. */

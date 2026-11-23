@@ -69,6 +69,7 @@ describe('isDocsRelevantPath', () => {
     // Only a whole __tests__ directory is skipped, not a name that contains it.
     assert.equal(isDocsRelevantPath('apps/sync-server/src/tests-util/a.ts'), true)
     assert.equal(isDocsRelevantPath('apps/sync-server/src/my__tests__x/a.ts'), true)
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/x__tests__/a.ts'), true)
   })
 })
 

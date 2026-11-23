@@ -11,6 +11,7 @@ mod body_pack_server;
 use std::future::Future;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use body_pack_server::{
@@ -19,6 +20,7 @@ use body_pack_server::{
     snapshot_items, update_item, update_items, update_seqs,
 };
 use memry_core::storage::Db;
+use memry_core::sync::body_pull::MANIFEST_READ_DEADLINE;
 use memry_core::sync::first_sync::META_FIRST_SYNC_BODY_PACKS;
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::BodyPackReport;
@@ -303,6 +305,38 @@ async fn a_rate_limited_manifest_page_waits_out_the_window_and_keeps_the_held_pa
     // One listing page, two downloads, 17 manifest pages, and page 15 again.
     assert_eq!(routes.count("/sync/crdt/manifest"), 18);
     assert_eq!(routes.calls().len(), 1 + 2 + 18, "{:?}", routes.calls());
+}
+
+/// #5352 L1: a server that rate-limits every page would hold the walk for
+/// one window per page. The whole read stops at its deadline instead, and
+/// the held packs are checked through the batch route (§8.4.3).
+#[tokio::test(start_paused = true)]
+async fn a_manifest_read_rate_limited_on_every_page_stops_at_its_deadline() {
+    let (db, dir) = body_pack_server::scratch("manifest-deadline");
+    let (docs, packs, ids) = seventeen_pages();
+    seed_records(
+        &db,
+        &ids.iter().map(String::as_str).collect::<Vec<_>>(),
+        &[],
+    );
+    let mut server = Server::new(docs, packs);
+    server.manifest_page = 1;
+    server.manifest_window = Some(1);
+    let routes = Routes::new(server);
+    routes.clocked.store(true, Ordering::Relaxed);
+    let started = tokio::time::Instant::now();
+
+    let report = run_bodies(&db, &routes, &dir).await;
+
+    assert_eq!(started.elapsed(), MANIFEST_READ_DEADLINE);
+    assert!(report.ran && !report.manifest, "{report:?}");
+    assert!(
+        report.fallback_reasons[0].contains("deadline"),
+        "{report:?}"
+    );
+    // 16 waits of 45 s would take 720 s; 300 s holds 6 of them.
+    assert_eq!(routes.slept().len(), 7);
+    assert_eq!(routes.count("/sync/crdt/updates/batch"), 1);
 }
 
 #[tokio::test]

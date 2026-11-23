@@ -88,6 +88,18 @@ export function getNoteTags(db: IndexDb, noteId: string): string[] {
   return results.map((r) => r.tag)
 }
 
+/** The note's `tags:` header, in order. A tag not yet resolved (null) counts as one. */
+export function getNoteHeaderTags(db: IndexDb, noteId: string): string[] {
+  return db
+    .select({ tag: noteTags.tag, inHeader: noteTags.inHeader })
+    .from(noteTags)
+    .where(eq(noteTags.noteId, noteId))
+    .orderBy(noteTags.position)
+    .all()
+    .filter((row) => row.inHeader !== false)
+    .map((row) => row.tag)
+}
+
 export function getTagsForNotes(db: IndexDb, noteIds: string[]): Map<string, string[]> {
   if (noteIds.length === 0) {
     return new Map()

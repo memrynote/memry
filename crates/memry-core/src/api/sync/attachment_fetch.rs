@@ -9,8 +9,11 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use tokio::sync::Semaphore;
+
+use crate::protocol::attachment_manifest::EncryptedAttachmentManifest;
 
 #[allow(unused_imports)]
 use super::*;
@@ -21,6 +24,15 @@ const MAX_CONCURRENT_DOWNLOADS: usize = 3;
 /// Desktop's `REDRIVE_BATCH_LIMIT`: one re-drive call asks for at most this
 /// many, so a vault with thousands missing spreads them over several calls.
 const REDRIVE_BATCH_LIMIT: usize = 25;
+
+/// Desktop's `UNSUPPORTED_COOLDOWN_MS`: a server that answered the manifest
+/// batch route 404 is not asked again for this long (§14.5.2).
+const MANIFEST_BATCH_COOLDOWN: Duration = Duration::from_secs(10 * 60);
+
+/// When each vault's server last answered the manifest batch route 404, keyed
+/// like [`DOWNLOAD_GATES`] so every `VaultSync` of the vault shares it.
+static MANIFEST_BATCH_UNSUPPORTED: LazyLock<Mutex<HashMap<String, Instant>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// One queue per vault, shared by every `VaultSync` the shell mints for it.
 static DOWNLOAD_GATES: LazyLock<Mutex<HashMap<String, Arc<Semaphore>>>> =
@@ -76,16 +88,68 @@ impl VaultSync {
         attachment_id: String,
         reachable: Reachable,
     ) -> Result<AttachmentFetchSummary, SyncError> {
-        // The row carries the user's override, and its absence means the
-        // default: FR-045 starts every attachment unmetered-only.
+        self.fetch_with_manifest(attachment_id, reachable, None)
+            .await
+    }
+
+    /// Retries every attachment a note references whose bytes are not here
+    /// (#1829's re-driver). The shell calls it on reconnect and after a sync
+    /// pass; each attachment goes through [`Self::fetch_attachment`], so the
+    /// metered policy and the bounded queue apply unchanged and large
+    /// prefetch on cellular stays opt-in per item.
+    ///
+    /// One failure never stops the walk: it is counted and the row stays
+    /// missing for the next call.
+    pub async fn redrive_attachments(
+        &self,
+        reachable: Reachable,
+    ) -> Result<AttachmentRedriveSummary, SyncError> {
+        let missing = self
+            .db
+            .call(|conn| Ok(attachments::missing_downloads(conn)))
+            .await??;
+        let mut summary = AttachmentRedriveSummary {
+            downloaded: 0,
+            deferred: 0,
+            failed: 0,
+            remaining: count(missing.len().saturating_sub(REDRIVE_BATCH_LIMIT)),
+        };
+        // The manifests of this call's downloads are read in one batch first
+        // (§14.5.2). The doc comments above feed the UniFFI checksums.
+        let window: Vec<String> = missing.into_iter().take(REDRIVE_BATCH_LIMIT).collect();
+        let mut prefetched = self.prefetch_manifests(&window, reachable).await?;
+        for attachment_id in window {
+            let manifest = prefetched.remove(&attachment_id);
+            match self
+                .fetch_with_manifest(attachment_id, reachable, manifest)
+                .await
+            {
+                Ok(fetch) if fetch.downloaded => summary.downloaded += 1,
+                Ok(_) => summary.deferred += 1,
+                // A locked device fails every row the same way; say so once.
+                Err(SyncError::Locked) => return Err(SyncError::Locked),
+                Err(_) => summary.failed += 1,
+            }
+        }
+        Ok(summary)
+    }
+}
+
+impl VaultSync {
+    /// [`Self::fetch_attachment`], opening `prefetched` when a batch already
+    /// read this attachment's manifest instead of fetching it alone.
+    async fn fetch_with_manifest(
+        &self,
+        attachment_id: String,
+        reachable: Reachable,
+        prefetched: Option<EncryptedAttachmentManifest>,
+    ) -> Result<AttachmentFetchSummary, SyncError> {
         let wanted = attachment_id.clone();
         let cached = self
             .db
             .call(move |conn| Ok(attachments::get(conn, &wanted)))
             .await??;
-        let unmetered_only = cached.as_ref().is_none_or(|row| row.unmetered_only);
-
-        if !attachments::may_download_with(unmetered_only, reachable) {
+        if !may_download(cached.as_ref(), reachable) {
             return Ok(AttachmentFetchSummary {
                 downloaded: false,
                 deferred: true,
@@ -110,14 +174,20 @@ impl VaultSync {
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
         let directory = account::device_directory(&self.session.http()).await?;
 
-        let (manifest, file_key) = protocol_attachments::fetch_manifest(
-            &self.session.http(),
-            &self.vault_id,
-            &attachment_id,
-            &vault_key,
-            &DirectorySigners(directory),
-        )
-        .await
+        let signers = DirectorySigners(directory);
+        let (manifest, file_key) = match prefetched {
+            Some(envelope) => protocol_attachments::open_manifest(&envelope, &vault_key, &signers),
+            None => {
+                protocol_attachments::fetch_manifest(
+                    &self.session.http(),
+                    &self.vault_id,
+                    &attachment_id,
+                    &vault_key,
+                    &signers,
+                )
+                .await
+            }
+        }
         .map_err(attachment_error)?;
 
         let bytes = self
@@ -170,37 +240,68 @@ impl VaultSync {
         })
     }
 
-    /// Retries every attachment a note references whose bytes are not here
-    /// (#1829's re-driver). The shell calls it on reconnect and after a sync
-    /// pass; each attachment goes through [`Self::fetch_attachment`], so the
-    /// metered policy and the bounded queue apply unchanged and large
-    /// prefetch on cellular stays opt-in per item.
-    ///
-    /// One failure never stops the walk: it is counted and the row stays
-    /// missing for the next call.
-    pub async fn redrive_attachments(
+    /// The manifests of `window`'s downloads in one batch call (§14.5.2),
+    /// leaving out ids the metered policy defers. Empty when fewer than two
+    /// would download, when the device is locked, or when the server has no
+    /// batch route; each download then fetches its own manifest, and a
+    /// failed batch is reported by those single fetches.
+    async fn prefetch_manifests(
         &self,
+        window: &[String],
         reachable: Reachable,
-    ) -> Result<AttachmentRedriveSummary, SyncError> {
-        let missing = self
+    ) -> Result<HashMap<String, EncryptedAttachmentManifest>, SyncError> {
+        let wanted = window.to_vec();
+        let rows = self
             .db
-            .call(|conn| Ok(attachments::missing_downloads(conn)))
+            .call(move |conn| {
+                Ok(wanted
+                    .iter()
+                    .map(|id| attachments::get(conn, id))
+                    .collect::<Result<Vec<_>, _>>())
+            })
             .await??;
-        let mut summary = AttachmentRedriveSummary {
-            downloaded: 0,
-            deferred: 0,
-            failed: 0,
-            remaining: count(missing.len().saturating_sub(REDRIVE_BATCH_LIMIT)),
-        };
-        for attachment_id in missing.into_iter().take(REDRIVE_BATCH_LIMIT) {
-            match self.fetch_attachment(attachment_id, reachable).await {
-                Ok(fetch) if fetch.downloaded => summary.downloaded += 1,
-                Ok(_) => summary.deferred += 1,
-                // A locked device fails every row the same way; say so once.
-                Err(SyncError::Locked) => return Err(SyncError::Locked),
-                Err(_) => summary.failed += 1,
+        let ids: Vec<String> = window
+            .iter()
+            .zip(&rows)
+            .filter(|(_, row)| may_download(row.as_ref(), reachable))
+            .map(|(id, _)| id.clone())
+            .collect();
+        let unsupported = MANIFEST_BATCH_UNSUPPORTED
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&self.vault_id)
+            .is_some_and(|at| at.elapsed() < MANIFEST_BATCH_COOLDOWN);
+        // A key that cannot be read fails each row on its own, as before.
+        let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
+        if ids.len() < 2 || unsupported || !unlocked {
+            return Ok(HashMap::new());
+        }
+        let mut manifests = HashMap::new();
+        for chunk in ids.chunks(protocol_attachments::MANIFEST_BATCH_CAP) {
+            match protocol_attachments::fetch_manifests_batch(
+                &self.session.http(),
+                &self.vault_id,
+                chunk,
+            )
+            .await
+            {
+                Ok(Some(batch)) => manifests.extend(batch),
+                Ok(None) => {
+                    MANIFEST_BATCH_UNSUPPORTED
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .insert(self.vault_id.clone(), Instant::now());
+                    break;
+                }
+                Err(_) => break,
             }
         }
-        Ok(summary)
+        Ok(manifests)
     }
+}
+
+/// FR-045: the row carries the user's override, and its absence means the
+/// default, unmetered-only.
+fn may_download(row: Option<&attachments::CachedAttachment>, reachable: Reachable) -> bool {
+    attachments::may_download_with(row.is_none_or(|row| row.unmetered_only), reachable)
 }

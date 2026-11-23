@@ -205,13 +205,14 @@ describe('syncReleaseDownloadCounts', () => {
     ])
   })
 
-  it('ignores the ort-static CI prerelease, whose archives are build inputs (#4447)', async () => {
-    // #given baselines for an app installer and for the CPU-only ONNX Runtime archives
-    // that every rust-ci leg downloads from the `ort-static-*` prerelease
+  it('ignores the ort-static and ort-pod CI prereleases, whose archives are build inputs (#4447)', async () => {
+    // #given baselines for an app installer and for the ONNX Runtime archives that every
+    // rust-ci leg and iOS build downloads from the `ort-static-*` and `ort-pod-*` prereleases
     const { db, binds } = createDb([
       { asset_id: '1', download_count: 10 },
       { asset_id: '50', download_count: 100 },
-      { asset_id: '51', download_count: 100 }
+      { asset_id: '51', download_count: 100 },
+      { asset_id: '52', download_count: 100 }
     ])
     const githubFetch = githubResponse(
       releasesPayload([
@@ -225,6 +226,10 @@ describe('syncReleaseDownloadCounts', () => {
               download_count: 160
             }
           ]
+        },
+        {
+          tag_name: 'ort-pod-1.30.0',
+          assets: [{ id: 52, name: 'pod-archive-onnxruntime-c-1.30.0.zip', download_count: 150 }]
         },
         {
           tag_name: 'v2026-08-06',

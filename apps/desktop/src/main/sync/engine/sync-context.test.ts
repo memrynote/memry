@@ -105,7 +105,12 @@ describe('SYNC_STATE_KEYS', () => {
         // install from before it runs the vault sweep once.
         CRDT_STORE_EPOCH: 'crdtStoreEpoch',
         // Additive (#5415): absent means no server blob was found to be text.
-        BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs'
+        BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
+        // Additive (#5522, #5560): absent means no held change and no hold.
+        CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
+        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+        // Additive (#5585): absent means no landing recorded on a shared file.
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
       })
     })
 

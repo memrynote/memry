@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Impossible d'appliquer le modèle",
     "appendBlocksFailed": "Impossible de déplacer le bloc vers cette note",
     "appendIntoCaseTwin": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse. Renommez l’une des deux, puis déplacez à nouveau le bloc.",
+    "caseTwinMoveRefused": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse : elle ne peut donc pas être déplacée ainsi. Renommez ou déplacez l’autre note, ou supprimez la copie dont vous n’avez pas besoin.",
     "exportPdfFailed": "Impossible d'exporter en PDF",
     "exportHtmlFailed": "Impossible d'exporter en HTML",
     "restoreVersionFailed": "Impossible de restaurer la version",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Impossible de créer le dossier",
     "renameFailed": "Impossible de renommer le dossier",
+    "renameCaseTwins": "Ce dossier contient des notes qui partagent un fichier avec une note dont le nom de dossier ne diffère que par la casse. Renommez ou déplacez d’abord ces notes, puis renommez le dossier.",
     "deleteFailed": "Impossible de supprimer le dossier",
     "setConfigFailed": "Impossible d'enregistrer la configuration du dossier"
   },

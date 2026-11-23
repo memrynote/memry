@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Pohjan käyttäminen epäonnistui",
     "appendBlocksFailed": "Lohkon siirtäminen kyseiseen muistiinpanoon epäonnistui",
     "appendIntoCaseTwin": "Muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta. Nimeä toinen niistä uudelleen ja siirrä lohko sitten uudelleen.",
+    "caseTwinMoveRefused": "Tämä muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta, joten sitä ei voi siirtää näin. Nimeä toinen muistiinpano uudelleen tai siirrä se, tai poista kopio, jota et tarvitse.",
     "exportPdfFailed": "PDF-tiedoston vieminen epäonnistui",
     "exportHtmlFailed": "HTML-tiedoston vieminen epäonnistui",
     "restoreVersionFailed": "Version palauttaminen epäonnistui",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Kansion luominen epäonnistui",
     "renameFailed": "Kansion uudelleennimeäminen epäonnistui",
+    "renameCaseTwins": "Tässä kansiossa on muistiinpanoja, jotka jakavat tiedoston sellaisen muistiinpanon kanssa, jonka kansion nimi eroaa vain kirjainkoon osalta. Nimeä nämä muistiinpanot uudelleen tai siirrä ne ensin ja nimeä sitten kansio uudelleen.",
     "deleteFailed": "Kansion poistaminen epäonnistui",
     "setConfigFailed": "Kansion asetusten tallentaminen epäonnistui"
   },

@@ -59,6 +59,7 @@ use crate::api::diagnostics::run_diagnostics;
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::crypto::sodium;
+use crate::domain::attachment_uploads;
 use crate::domain::attachments;
 use crate::domain::notes;
 use crate::domain::reads;
@@ -66,6 +67,7 @@ use crate::protocol;
 use crate::protocol::account::{self, AccountCipher};
 use crate::protocol::attachment_upload;
 use crate::protocol::attachments as protocol_attachments;
+use crate::protocol::http::RetryPolicy;
 use crate::protocol::types::Declaration;
 use crate::seams::reachability::Reachable;
 use crate::storage::Db;
@@ -84,16 +86,19 @@ mod attachment_fetch;
 mod attachments_io;
 mod drain;
 mod inbox_attachments;
+mod note_uploads;
 mod pass;
 mod realtime;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
 pub use drain::BodyDrainSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
+pub use note_uploads::{AttachmentRefusal, QueuedAttachmentNews, QueuedUploadSummary};
 pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
 
 use attachments_io::*;
+use note_uploads::*;
 
 impl From<FirstSyncError> for SyncError {
     fn from(error: FirstSyncError) -> Self {
@@ -312,8 +317,9 @@ pub struct VaultSync {
     /// §9.9's 4004/4009 latch, here rather than on the socket because the
     /// shell mints a socket per foreground (#2798).
     realtime_latch: Arc<TerminalLatch>,
-    /// When the foreground drain may send its next request: set when a
-    /// `429` ended a round, for the wait the server asked for (#5247).
+    /// When the foreground drain may send its next request: set by a `429`
+    /// a round or the first sync's bodies pass met, for the wait the server
+    /// asked for (#5247).
     drain_resume_at: std::sync::Mutex<Option<tokio::time::Instant>>,
 }
 
@@ -467,7 +473,17 @@ impl VaultSync {
         if let Some(listener) = progress {
             run = run.with_progress(Arc::new(ForeignProgress(listener)));
         }
-        Ok(run.run(now_ms()).await?.into())
+        let ran = run.run(now_ms()).await;
+        // A bodies pass that gave up on a 429 left its window open; the
+        // drain the shell starts next waits it out (#5247).
+        if let Err(FirstSyncError::Body {
+            source: BodyPullError::Api { source },
+        }) = &ran
+            && let Some(wait_s) = source.rate_limit_wait_s()
+        {
+            self.hold_drain_back(wait_s);
+        }
+        Ok(ran?.into())
     }
 
     /// One note's body, on demand (chapter 07 §7.8 – §7.11).

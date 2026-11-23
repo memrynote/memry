@@ -25,7 +25,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 use zeroize::Zeroizing;
 
-use super::VaultSync;
+use super::{QueuedAttachmentNews, VaultSync};
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
@@ -56,6 +56,10 @@ pub struct SyncPassSummary {
     pub rejected: u32,
     /// Rows still queued after the pass.
     pub pending: u32,
+    /// Attachment refusals the user was not told of yet, and landed uploads
+    /// they were (#5532).
+    #[uniffi(default = [])]
+    pub attachments: Vec<QueuedAttachmentNews>,
 }
 
 fn count(value: usize) -> u32 {
@@ -143,6 +147,9 @@ impl VaultSync {
         // A document re-created on a build before #5351 re-pushes its full
         // state once when the server holds its body pending (#5354).
         revive_heal::run(&self.db, &body_pull).await?;
+        // Attachments kept while offline go up before the push, so the note's
+        // new reference leaves with it (#5510).
+        let attachments = self.upload_queued_attachments().await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -181,13 +188,18 @@ impl VaultSync {
             })
             .await?;
 
+        // Last, so a pass that failed above tells its refusals next time.
+        self.remember_told(&attachments.news).await?;
         Ok(SyncPassSummary {
             pulled: count(pulled.applied),
             deleted: count(pulled.deleted),
             bodies: count(bodies.documents),
             pushed: count(report.accepted),
-            rejected: count(report.rejected),
+            // A refused attachment upload counts too: it is the only failure
+            // of this pass the shell would otherwise never see (#5510).
+            rejected: count(report.rejected).saturating_add(attachments.refused),
             pending: u32::try_from(pending).unwrap_or(u32::MAX),
+            attachments: attachments.news,
         })
     }
 }

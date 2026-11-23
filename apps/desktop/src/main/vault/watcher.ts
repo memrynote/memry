@@ -9,7 +9,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync, type Stats } from 'fs'
+import { existsSync, statSync, type Stats } from 'fs'
 import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -56,9 +56,12 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
+  buildFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
+import { RecentFileIdentities } from './recent-file-identities'
+import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
   followJournalFolder,
@@ -103,6 +106,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { holdsBinaryChange } from './case-twin-bytes'
 
 const logger = createLogger('Watcher')
 
@@ -247,6 +251,9 @@ export class VaultWatcher {
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
+  private recentIdentities = new RecentFileIdentities()
+  private rawWrites = new Set<string>()
+  private rawWritesFlush: NodeJS.Immediate | null = null
 
   /**
    * Start watching the vault for file changes.
@@ -263,6 +270,7 @@ export class VaultWatcher {
     this.excludePatterns = excludePatterns
     this.onError = onError
     this.isReady = false
+    void probeBirthtime()
 
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
     // (.memry, .obsidian, .git) and excluded dirs, and the root attachments folder so
@@ -270,7 +278,14 @@ export class VaultWatcher {
     const watchPaths = [vaultPath]
 
     // Create debounced handlers
-    this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
+    this.debouncedChange = createPathDebouncer(async (filePath) => {
+      const release = this.recentIdentities.changeRan(filePath)
+      try {
+        await this.handleFileChange(filePath)
+      } finally {
+        release()
+      }
+    }, 100)
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
@@ -345,7 +360,11 @@ export class VaultWatcher {
     // Set up event handlers
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
-      .on('change', (filePath) => this.debouncedChange?.(filePath))
+      .on('change', (filePath, stats?: Stats) => {
+        this.recentIdentities.recordChange(filePath, stats)
+        this.debouncedChange?.(filePath)
+      })
+      .on('raw', (_event, eventPath, details) => this.recordRawWrite(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -390,7 +409,48 @@ export class VaultWatcher {
     }
     this.vaultPath = null
     this.debouncedChange = null
+    if (this.rawWritesFlush) clearImmediate(this.rawWritesFlush)
+    this.rawWritesFlush = null
+    this.rawWrites.clear()
+    this.recentIdentities.clear()
     this.isReady = false
+  }
+
+  /**
+   * A raw fs event arrives before chokidar's write-finish wait ends, so the
+   * file's identity is recorded while it is still at its path: an outside
+   * rename inside that wait gets no `change`, and its unlink needs the key
+   * (#5549). One write reports several raw events, so each file is stat'ed
+   * once per event-loop turn, right after the turn's fs events; a rename that
+   * beats the stat keeps the hash-only match.
+   */
+  private recordRawWrite(eventPath: string, details: unknown): void {
+    if (!this.isReady || typeof details !== 'object' || details === null) return
+    const watchedPath = 'watchedPath' in details ? details.watchedPath : null
+    if (typeof watchedPath !== 'string') return
+    // A file's own fs.watch names the file; a folder's names the child.
+    const filePath =
+      !eventPath || path.basename(watchedPath) === eventPath
+        ? watchedPath
+        : path.join(watchedPath, eventPath)
+    if (path.basename(filePath).startsWith('.') || !isSupportedPath(filePath)) return
+    this.rawWrites.add(filePath)
+    this.rawWritesFlush ??= setImmediate(() => {
+      this.rawWritesFlush = null
+      for (const written of this.rawWrites) this.recordIdentity(written)
+      this.rawWrites.clear()
+    })
+  }
+
+  private recordIdentity(filePath: string): void {
+    let stats: Stats | undefined
+    try {
+      stats = statSync(filePath, { throwIfNoEntry: false })
+    } catch (error) {
+      logger.debug(`No identity for ${filePath}: ${String(error)}`)
+      return
+    }
+    if (stats?.isFile()) this.recentIdentities.recordWrite(filePath, stats)
   }
 
   /**
@@ -681,18 +741,18 @@ export class VaultWatcher {
     claimed: CanonicalNoteRef,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) return
     // A size other than the row's is a file replaced before adoption: a local
-    // change, stamped and pushed as `handleNonMarkdownFileChange` does. A pull
-    // writes the row with size 0 and records the size once the download lands,
-    // so 0 says nothing about the file, and neither does a file other rows
-    // share.
+    // change, stamped and pushed as `handleNonMarkdownFileChange` does, and
+    // held as it holds it. A pull writes the row with size 0 and records the
+    // size once the download lands, so 0 says nothing about the file.
     const replaced =
       fileType !== 'markdown' &&
-      !claimed.sharesFile &&
       !!claimed.fileSize &&
-      claimed.fileSize !== stats.size
+      claimed.fileSize !== stats.size &&
+      !holdsBinaryChange(this.vaultPath, relativePath, claimed.id)
     if (fileType === 'markdown') {
       syncNoteStatToCache(
         db,
@@ -915,19 +975,25 @@ export class VaultWatcher {
    * paste pays nothing for it, and it is computed by streaming, so even a file
    * past V8's string ceiling is hashable. A pending delete whose own row was
    * never backfilled has no cached hash to compare against; that one matches on
-   * size and mtime instead, which a rename leaves untouched.
+   * size and mtime instead, which a rename leaves untouched. The match carries
+   * the new file's hash, so the rename can tell an edit it carries along.
    */
   private async matchPendingRename(
     absolutePath: string,
     relativePath: string,
     stats: Stats
-  ): Promise<RenameMatch | null> {
+  ): Promise<(RenameMatch & { contentHash: string | null }) | null> {
     if (!hasPendingDeletes()) return null
 
     const scan = await scanMarkdownFile(absolutePath, 0)
-    const statKey = buildStatRenameKey(stats.size, stats.mtime.toISOString())
+    const contentHash = scan?.contentHash ?? null
+    const statKeys = [
+      buildFileIdentityKey(stats),
+      buildStatRenameKey(stats.size, stats.mtime.toISOString())
+    ]
 
-    return checkForRename(scan?.contentHash ?? null, relativePath, statKey)
+    const match = checkForRename(contentHash, relativePath, statKeys)
+    return match && { ...match, contentHash }
   }
 
   /**
@@ -964,7 +1030,7 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     relativePath: string,
     stats: Stats,
-    renameMatch: RenameMatch
+    renameMatch: RenameMatch & { contentHash: string | null }
   ): Promise<void> {
     const { id, oldPath } = renameMatch
     const cached = getNoteCacheById(db, id)
@@ -993,6 +1059,20 @@ export class VaultWatcher {
 
     recordActivity({ kind: 'renamed', source: 'watcher', path: relativePath, oldPath })
 
+    // An outside edit made just before the rename and not yet taken matched
+    // by file identity, and its change may have found the file gone: the
+    // renamed note takes the edit here, under its own id (#5518). A row the
+    // index never read has no hash to differ from, and its body stays unread.
+    const renamed = getNoteCacheById(db, id)
+    if (
+      renamed &&
+      cached?.contentHash &&
+      renameMatch.contentHash !== null &&
+      cached.contentHash !== renameMatch.contentHash
+    ) {
+      await this.handleMarkdownFileChange(relativePath, renamed, db)
+    }
+
     if (this.vaultPath) {
       enqueueIngestBackfill({
         noteId: id,
@@ -1015,8 +1095,11 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     claimedId: string | null
   ): Promise<void> {
+    if (!this.vaultPath) return
     // Get file stats for metadata
     const stats = await fs.stat(absolutePath)
+    // A claimed row's file may be a case twin's: its change is held, not pushed.
+    const held = claimedId !== null && holdsBinaryChange(this.vaultPath, relativePath, claimedId)
 
     // Generate a new ID for this file, unless the path already has one
     const id = claimedId ?? generateNoteId()
@@ -1052,7 +1135,7 @@ export class VaultWatcher {
       wordCount: 0
     }
 
-    syncNoteCreate(id, title, [])
+    if (!held) syncNoteCreate(id, title, [])
 
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
@@ -1062,7 +1145,7 @@ export class VaultWatcher {
       fileType // Include file type so renderer knows this is not markdown
     })
 
-    attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
+    if (!held) attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
 
     if (claimedId === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
@@ -1272,6 +1355,10 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    // Pushed, bytes that may be a case twin's land on every device as this
+    // row's attachment (#5522, #5560).
+    if (holdsBinaryChange(this.vaultPath, relativePath, cached.id)) return
     // Get file stats for updated metadata
     const stats = await fs.stat(absolutePath)
 
@@ -1318,6 +1405,7 @@ export class VaultWatcher {
       deferred = null
     }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
+    const lastChangeKey = this.recentIdentities.take(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1359,11 +1447,15 @@ export class VaultWatcher {
       // event with the same content hash). A row the tier-1 backfill has not
       // reached yet has no hash, so it carries size + mtime instead; without
       // that, renaming a just-pasted file would read as a delete plus a new
-      // note. A row with neither never matches and degrades to a real delete
-      // after the window.
-      const statKey = cached.contentHash
-        ? null
-        : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt))
+      // note. A file whose outside change has not run yet carries that change's
+      // identity key, since the row's hash and stat both trail the edit
+      // (#5518). A row with neither never matches and degrades to a real
+      // delete after the window.
+      const statKey =
+        lastChangeKey ??
+        (cached.contentHash
+          ? null
+          : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
 
       trackPendingDelete(
         cached.id,

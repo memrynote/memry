@@ -12,7 +12,11 @@ import {
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
 import type * as PromisesModule from 'node:fs/promises'
 
 let tmpDir: string
@@ -738,6 +742,42 @@ describe('AttachmentSyncService', () => {
 
       expect(path.dirname(result.filePath)).toBe(dir)
       expect(result.filePath.includes('..')).toBe(false)
+    })
+
+    it('lands the file where beforeFileLands says, and reports that path', async () => {
+      const { deps, plaintext } = buildDownloadFixture('moved.pdf')
+      const asked = path.join(tmpDir, 'old', 'moved.pdf')
+      const landAt = path.join(tmpDir, 'moved.pdf')
+      const beforeFileLands = vi.fn(
+        (_filePath: string, _attachmentId: string, _sha256: string, _fileOwnerId?: string) => landAt
+      )
+      const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+      const result = await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+
+      // The manifest's checksum of the verified bytes (#5585).
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+      const sha256 = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', sha256, 'note-3')
+      expect(result.filePath).toBe(landAt)
+      const fsp = await import('node:fs/promises')
+      expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+    })
+
+    it('lands nothing when beforeFileLands drops a superseded download', async () => {
+      const { deps } = buildDownloadFixture('p.png')
+      const asked = path.join(tmpDir, 'p.png')
+      const beforeFileLands = vi.fn((): string => {
+        throw new SupersededDownloadError('note-3', 'att-dir')
+      })
+      const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+      await expect(
+        service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+      ).rejects.toBeInstanceOf(SupersededDownloadError)
+      const fsp = await import('node:fs/promises')
+      await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
     })
 
     it('reports progress to the per-call callback instead of the shared slot', async () => {
