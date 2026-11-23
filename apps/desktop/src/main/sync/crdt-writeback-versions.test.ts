@@ -230,10 +230,10 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
     expect(versionsKept(NOTE)).toEqual([first])
   })
 
-  // A note's file owns its `tags:` list; a journal still takes the doc's array.
+  // The file owns its `tags:` list, a note's and a journal's (#5476).
   const NOTE_AFTER = '---\nid: x\n---\nThe slow red fox jumps over the lazy cat\n'
   const JOURNAL_AFTER =
-    "---\nid: x\ndate: '2026-01-03'\ntags:\n  - a\n---\nThe slow red fox jumps over the lazy cat\n"
+    "---\nid: x\ndate: '2026-01-03'\n---\nThe slow red fox jumps over the lazy cat\n"
 
   it.each([
     ['note, remote pass', NOTE, 'remote', NOTE_AFTER],
