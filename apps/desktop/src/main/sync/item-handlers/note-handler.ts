@@ -96,6 +96,7 @@ import {
   noteBinaryRecordForMarkdownRow
 } from './binary-note-record'
 import { pulledRowSyncedAt } from './pulled-row-synced-at'
+import { planPeerBinaryReplace } from './peer-binary-replace'
 import {
   forgetBaselineOfRemotelyDeletedNote,
   settleRemoteNoteFileSync,
@@ -268,6 +269,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
 
       const binary = binaryRecordFields(existing)
       if (binary) {
+        const replaceBytes = planPeerBinaryReplace(
+          ctx.db,
+          existing,
+          data.attachmentId,
+          resolution.action === 'merge'
+        )
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title
         const localFolder = extractFolderFromPath(existing.path)
@@ -361,6 +368,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           syncedAt,
           modifiedAt
         })
+        replaceBytes?.(toAbsolutePath(updateFields.path ?? existing.path))
         askForCaseTwinOwnBytes(ctx.db, itemId)
         if (isMarkdownRecordOverBinaryNote(existing, data)) {
           healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
