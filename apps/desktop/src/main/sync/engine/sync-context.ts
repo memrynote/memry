@@ -254,6 +254,14 @@ export const SYNC_STATE_KEYS = {
    */
   CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
   /**
+   * JSON object from the absolute path of a file the attachment uploader
+   * refused for good (`UnsendableAttachmentError`) to its `{size, mtimeMs}`
+   * at the time (#5606). The upload backfill does not offer a file whose
+   * size and mtime still match; a write changes them and offers it again.
+   * Missing reads as empty.
+   */
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
+  /**
    * JSON object from the folded vault path of a binary file case twins share
    * to `{sha256, copy}`: the bytes a landing last kept from it as a conflict
    * copy, and the vault path of that copy (REVIEW-5602). A landing retried

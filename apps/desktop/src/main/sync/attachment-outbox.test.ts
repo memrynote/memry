@@ -17,9 +17,12 @@ import {
   isLocalOnlyNote,
   registerOutboxUploader
 } from './attachment-outbox'
-import { EmptyAttachmentError } from './attachment-errors'
+import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
 import { SyncServerError } from './http-client'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+
+const logged = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+vi.mock('../lib/logger', () => ({ createLogger: () => logged }))
 
 describe('attachment outbox', () => {
   let rootDir: string
@@ -180,6 +183,33 @@ describe('attachment outbox', () => {
       dropped: 1
     })
     expect(listPendingUploads(db)).toEqual([])
+  })
+
+  // #5606: a summary of `dropped: 14` on every pass did not say why.
+  it('names why each row was dropped in the drain summary', async () => {
+    const empty = path.join(tempDir, 'empty.png')
+    const textInPng = path.join(tempDir, 'text.png')
+    fs.writeFileSync(empty, '')
+    fs.writeFileSync(textInPng, 'markdown')
+    enqueueUpload(db, 'note-1', empty)
+    enqueueUpload(db, 'note-1', textInPng)
+    enqueueUpload(db, 'note-1', path.join(tempDir, 'deleted.png'))
+    const upload = vi.fn(async (_noteId: string, diskPath: string) => {
+      throw diskPath === empty
+        ? new EmptyAttachmentError('Cannot upload empty file')
+        : new TextInMediaFileError('Holds text')
+    })
+    logged.info.mockClear()
+
+    await drainOutboxWith({ db, vaultPath: tempDir, upload })
+
+    expect(logged.info).toHaveBeenCalledWith('Attachment outbox drained', {
+      pending: 3,
+      uploaded: 0,
+      failed: 0,
+      dropped: 3,
+      droppedBy: { deleted: 1, EmptyAttachmentError: 1, TextInMediaFileError: 1 }
+    })
   })
 
   // #3414: a revoked device kept retrying every row, burning an attempt each.

@@ -44,7 +44,9 @@ export interface AttachmentBackfillDeps {
  * from before the record is counted rather than uploaded again.
  *
  * Idempotent: a queued file is recorded once it uploads, and a file that
- * already has a row keeps it untouched, retry window included.
+ * already has a row keeps it untouched, retry window included. A file the
+ * uploader would refuse as it is (empty, or refused before and not written
+ * since) is not offered at all; see `queueUploadIfAbsent` (#5606).
  */
 export function backfillUnsyncedAttachmentsWith(deps: AttachmentBackfillDeps): {
   scanned: number

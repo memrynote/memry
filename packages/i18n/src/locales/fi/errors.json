@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Tiedosto on liian suuri: {size} ylittää rajan {limit}",
     "exceedsPlanLimit": "Tiedosto on suurempi kuin tilauksesi sallii: {size} ylittää rajan {limit}",
     "emptyFile": "Tyhjää tiedostoa ei voi lähettää",
+    "emptyNotAttached": "Tämä tiedosto on tyhjä, joten sitä ei liitetty. Jos liitit kuvan, kopioi se uudelleen ja liitä se.",
     "textInMediaFile": "Tämä tiedosto sisältää tekstiä nimensä mukaisen median sijaan"
   },
   "crdt": {
