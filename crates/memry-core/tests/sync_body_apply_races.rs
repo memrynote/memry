@@ -155,7 +155,7 @@ async fn a_document_deleted_mid_chunk_is_not_seeded() {
         }),
     )
     .await;
-    assert_ne!(seeded, PackSeed::Applied);
+    assert_eq!(seeded, PackSeed::Deleted, "counted as deleted, not stale");
     assert_eq!(snapshot(&db), None, "no body for a deleted document");
     assert_eq!(cursor(&db, DOC), None);
 }

@@ -87,13 +87,7 @@ impl BodyPull {
             .call(move |conn| {
                 keys.iter()
                     .map(|(doc_id, sequence_num, revision)| {
-                        pack_freshness(conn, *sequence_num, doc_id, revision).map(|fresh| {
-                            match fresh {
-                                Freshness::Fresh { .. } => PackSeed::Applied,
-                                Freshness::Stale => PackSeed::Stale,
-                                Freshness::Deleted => PackSeed::Deleted,
-                            }
-                        })
+                        pack_freshness(conn, *sequence_num, doc_id, revision).map(seed_of)
                     })
                     .collect::<Result<_, StorageError>>()
             })
@@ -125,11 +119,17 @@ impl BodyPull {
         }
         let stored = self.store_baselines(baselines, epochs).await?;
         for (at, stored) in placed.into_iter().zip(stored) {
-            if !stored {
-                outcome[at] = PackSeed::Stale;
-            }
+            outcome[at] = seed_of(stored);
         }
         Ok(outcome)
+    }
+}
+
+fn seed_of(fresh: Freshness) -> PackSeed {
+    match fresh {
+        Freshness::Fresh { .. } => PackSeed::Applied,
+        Freshness::Stale => PackSeed::Stale,
+        Freshness::Deleted => PackSeed::Deleted,
     }
 }
 
