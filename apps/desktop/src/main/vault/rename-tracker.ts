@@ -328,13 +328,15 @@ export function buildStatRenameKey(
  * where the filesystem hands a freed inode to the next file (ext4), another
  * birthtime. Null when the filesystem reports no inode or no birthtime (0 on
  * some Windows, Linux and network filesystems), so such a file never falls
- * back to size + mtime alone.
+ * back to size + mtime alone. A birthtime equal to the ctime counts as none:
+ * libuv reports the ctime as birthtime where Linux has no statx, and with 1 s
+ * timestamps an unrelated file written the same second would share it.
  */
 export function buildFileIdentityKey(
-  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'size' | 'mtime'>
+  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'>
 ): string | null {
   const born = stats.birthtime.getTime()
-  if (!stats.ino || !born) return null
+  if (!stats.ino || !born || stats.birthtimeMs === stats.ctimeMs) return null
   return `ino:${stats.dev}:${stats.ino}:${born}:${stats.size}:${stats.mtime.getTime()}`
 }
 
