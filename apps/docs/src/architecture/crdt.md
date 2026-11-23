@@ -644,6 +644,34 @@ ghost, and the hash-tag inline plugin — and any new one must take the same pat
 This only became reachable once every note got a local Y.Doc: before that, a signed-out
 editor fell back to ProseMirror's `history`, whose state survives a view rebuild.
 
+## Comments Change Marks, Never the Body
+
+A comment lives in two places: the doc's `criticMarkupMarks` array, and the file, where
+the write-back serializes it inline as `{==text==}{>>…<<}`. The review state in the
+renderer (`use-critic-markup-review.ts`) keeps its own copy of the note's text, because a
+mark's `start` and `end` are offsets into that text.
+
+Typing never reaches that copy while the editor is bound to the doc: `useEditorSync`
+saves no markdown then. The copy follows the note's file instead, and it can trail the
+doc. It trails by about a second after typing, and indefinitely after an outside change to
+the file until the note is reopened (the note page holds the changed content as an
+override). A comment action used to save the whole body from that copy. Main took it as an
+edit and replaced the doc's body. For example: the file changes outside the app, you type
+a paragraph, then you add a comment. The paragraph is gone from the editor, the file and
+every device, and only the version history still has it (#5568).
+
+So while the editor is bound to the doc, `ContentArea` hands the review state a reader of
+the editor's markdown (`onDocBodyReaderChange`):
+
+- An add, edit, resolve, delete or undo changes the marks only. `ContentArea` writes them
+  into `criticMarkupMarks`, and the write-back puts them in the file. The review state
+  saves no body.
+- A new comment takes its place from the editor's text at that moment, read through the
+  reader, so a comment on words typed a moment ago is placed on them rather than dropped.
+
+When the editor is not bound to a doc, it saves markdown itself, so the copy follows every
+keystroke, and a comment saves the body with its marks as before.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also

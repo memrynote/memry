@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as path from 'path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
@@ -96,6 +97,70 @@ test.describe('CriticMarkup review flows', () => {
     await expect(page.locator('.critic-review-card-comment')).toHaveCount(1)
     await expect(rail).toContainText('Remove only the review card.')
     await expect(inlineMark(page, 'comment')).toBeVisible()
+  })
+
+  // An outside change to the file left the review state holding the body from
+  // that moment. The next comment saved that copy over the note and erased
+  // everything typed after the outside change, and a comment on words typed
+  // after it found no place and was dropped (#5568).
+  test('a comment keeps text typed after the file changed outside the app', async ({ page }) => {
+    const note = await createNoteWithBody(
+      page,
+      `Review Keeps Typing ${Date.now()}`,
+      'first line comment anchor'
+    )
+    const file = await page.evaluate(async (id) => {
+      const vault = (await window.api.vault.getStatus())?.path
+      const notePath = (await window.api.notes.get(id))?.path
+      return vault && notePath ? { vault, notePath } : null
+    }, note.id)
+    if (!file) throw new Error('the note has no file')
+    // The watcher skips a file for 5 s after the app writes it
+    // (`IGNORED_WRITE_TTL_MS`), so the outside change waits that out.
+    await page.waitForTimeout(5500)
+    fs.appendFileSync(path.join(file.vault, file.notePath), '\n\noutside line\n')
+    const editor = page.locator(EDITOR_SELECTOR).first()
+    await expect(editor).toContainText('outside line', { timeout: 15000 })
+
+    await editor.click()
+    await page.keyboard.press('ControlOrMeta+End')
+    await page.keyboard.type(' typed after')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('typed after')
+
+    await selectEditorText(page, 'comment anchor')
+    await page.locator('[data-test="review-comment"]').last().click()
+    await submitComment(page, 'Keep the typing.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('Keep the typing.')
+    // The lost write came from the note page's 1000 ms save debounce, so the
+    // body has to stay whole past it.
+    await page.waitForTimeout(2500)
+
+    const body = await getNoteFileBodyById(page, note.id)
+    expect(body).toContain('typed after')
+    expect(body).toContain('Keep the typing.')
+    await expect(editor).toContainText('typed after')
+
+    await selectEditorText(page, 'typed after')
+    await page.locator('[data-test="review-comment"]').last().click()
+    await submitComment(page, 'On new words.')
+    await expect(reviewRail(page)).toContainText('On new words.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('{==typed after==}')
+
+    await clickCardAction(
+      page,
+      '.critic-review-card-comment:has-text("Keep the typing.")',
+      'Resolve'
+    )
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .not.toContain('Keep the typing.')
+    expect(await getNoteFileBodyById(page, note.id)).toContain('On new words.')
   })
 
   // FIXME(e2e-residual #4): the rail-hosted comment composer shows the mention +

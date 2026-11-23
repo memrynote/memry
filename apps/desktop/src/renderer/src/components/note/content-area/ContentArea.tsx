@@ -513,6 +513,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const isReviewEnabled = Boolean(review)
   const onReviewEditorReady = review?.onEditorReady
   const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
+  const onDocBodyReaderChange = review?.onDocBodyReaderChange
 
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
@@ -735,7 +736,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
 
   // Hook #2: Content sync (initial load + debounced change handler)
-  const { handleChange, flushPendingMarkdown } = useEditorSync({
+  const { handleChange, flushPendingMarkdown, readMarkdown } = useEditorSync({
     editor,
     noteId,
     notePath,
@@ -818,6 +819,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
     writeCriticMarkupMarksToYDoc(yjsDoc, review?.marks ?? [])
   }, [isReviewEnabled, review?.marks, yjsDoc])
+
+  // Bound to the doc, the editor saves no markdown (`useEditorSync`). The review
+  // state then saves no body either, and reads the editor's text when it needs it.
+  useEffect(() => {
+    if (!onDocBodyReaderChange || !yjsFragment) return undefined
+    onDocBodyReaderChange(readMarkdown)
+    return () => onDocBodyReaderChange(null)
+  }, [onDocBodyReaderChange, readMarkdown, yjsFragment])
 
   useEffect(() => {
     if (!isReviewEnabled) return undefined

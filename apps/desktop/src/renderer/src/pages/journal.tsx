@@ -1491,7 +1491,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                       onPlainMarkdownChange: review.handlePlainMarkdownChange,
                                       onHoveredMarkChange: review.setHoveredMarkId,
                                       onMarkPositionsChange: review.setMarkPositions,
-                                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                                      onReplaceMarksFromYjs: review.replaceMarksFromYjs,
+                                      onDocBodyReaderChange: review.setDocBodyReader
                                     }}
                                   />
                                 </div>

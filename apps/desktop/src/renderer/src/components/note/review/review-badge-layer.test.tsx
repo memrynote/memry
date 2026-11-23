@@ -101,6 +101,7 @@ function createReview(
     setHoveredMarkId: vi.fn(),
     setMarkPositions: vi.fn(),
     replaceMarksFromYjs: vi.fn(),
+    setDocBodyReader: vi.fn(),
     ...overrides
   }
 }

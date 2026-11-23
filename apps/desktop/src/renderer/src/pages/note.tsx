@@ -2124,7 +2124,8 @@ export function NotePage({ noteId }: NotePageProps) {
                       onPlainMarkdownChange: review.handlePlainMarkdownChange,
                       onHoveredMarkChange: review.setHoveredMarkId,
                       onMarkPositionsChange: review.setMarkPositions,
-                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                      onReplaceMarksFromYjs: review.replaceMarksFromYjs,
+                      onDocBodyReaderChange: review.setDocBodyReader
                     }}
                   />
                 </div>

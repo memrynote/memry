@@ -13,6 +13,7 @@ import {
   type CriticMarkupKind,
   type CriticMarkupMark
 } from '@memry/shared'
+import { createLogger } from '@/lib/logger'
 import type { ReviewSelection } from '../content-area'
 import {
   editorOffsetToMarkdownSourceOffset,
@@ -26,6 +27,8 @@ interface UseCriticMarkupReviewParams {
   markdown: string
   onMarkdownChange: (markdown: string) => void
 }
+
+const log = createLogger('Hook:CriticMarkupReview')
 
 type TiptapEditor = { state: EditorState; view: EditorView }
 type BlockNoteHost = { _tiptapEditor?: TiptapEditor }
@@ -85,6 +88,7 @@ export interface CriticMarkupReviewController {
   setHoveredMarkId: (id: string | null) => void
   setMarkPositions: (positions: Record<string, number>) => void
   replaceMarksFromYjs: (marks: CriticMarkupMark[]) => void
+  setDocBodyReader: (read: (() => Promise<string>) | null) => void
 }
 
 export function useCriticMarkupReview({
@@ -109,6 +113,9 @@ export function useCriticMarkupReview({
   // below from dropping a just-added comment when a refetch/sync delivers stale
   // note content during note.tsx's save debounce window (issue #797).
   const pendingMarkIdsRef = useRef<Set<string>>(new Set())
+  // Reads the editor's markdown while the editor is bound to the note's CRDT
+  // doc (`ContentArea`), which then owns the body. Null otherwise.
+  const readDocBodyRef = useRef<(() => Promise<string>) | null>(null)
 
   useEffect(() => {
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
@@ -162,6 +169,10 @@ export function useCriticMarkupReview({
           if (!nextIds.has(id)) pendingMarkIdsRef.current.delete(id)
         }
       }
+      // The doc owns the body, and typing never reaches this hook, so the text
+      // here can be older than the doc. Saving it would erase what was typed
+      // since (#5568). The marks reach the doc through `ContentArea`.
+      if (readDocBodyRef.current) return
       onMarkdownChange(serialized)
     },
     [onMarkdownChange]
@@ -240,24 +251,17 @@ export function useCriticMarkupReview({
     setActiveDraft(null)
   }, [])
 
-  const submitComment = useCallback(
-    (input: SubmitCommentInput) => {
-      const draft = activeDraftRef.current
-      const trimmedBody = input.body.trim()
-      if (!draft || !trimmedBody) return
-
+  const addComment = useCallback(
+    (draft: CommentDraft, input: SubmitCommentInput, trimmedBody: string, plain: string) => {
       let start: number
       const doc = editorRef.current?._tiptapEditor?.state?.doc
       if (draft.from !== undefined && doc) {
         const editorOffset = proseMirrorDocPosToEditorOffset(doc, draft.from)
         const sourceOffset =
-          editorOffset !== null
-            ? editorOffsetToMarkdownSourceOffset(plainMarkdownRef.current, editorOffset)
-            : null
-        start =
-          sourceOffset ?? findTextStart(plainMarkdownRef.current, draft.text, marksRef.current)
+          editorOffset !== null ? editorOffsetToMarkdownSourceOffset(plain, editorOffset) : null
+        start = sourceOffset ?? findTextStart(plain, draft.text, marksRef.current)
       } else {
-        start = findTextStart(plainMarkdownRef.current, draft.text, marksRef.current)
+        start = findTextStart(plain, draft.text, marksRef.current)
       }
       if (start === -1) return
 
@@ -283,16 +287,48 @@ export function useCriticMarkupReview({
       ]
       pushReviewUndoEntry(
         undoStackRef.current,
-        snapshotReviewState(plainMarkdownRef.current, marksRef.current),
-        plainMarkdownRef.current,
+        snapshotReviewState(plain, marksRef.current),
+        plain,
         nextMarks
       )
       activeDraftRef.current = null
       setActiveDraft(null)
       pendingMarkIdsRef.current.add(id)
-      persist(plainMarkdownRef.current, nextMarks)
+      persist(plain, nextMarks)
     },
     [persist]
+  )
+
+  const submitComment = useCallback(
+    (input: SubmitCommentInput) => {
+      const draft = activeDraftRef.current
+      const trimmedBody = input.body.trim()
+      if (!draft || !trimmedBody) return
+
+      const readDocBody = readDocBodyRef.current
+      if (!readDocBody) {
+        addComment(draft, input, trimmedBody, plainMarkdownRef.current)
+        return
+      }
+      // This hook's copy of the text can trail the doc, which would put the
+      // comment in the wrong place or drop it when its words are new. The
+      // editor's text is the doc's.
+      void readDocBody().then(
+        (plain) => {
+          if (activeDraftRef.current === draft) addComment(draft, input, trimmedBody, plain)
+        },
+        (error: unknown) => {
+          log.error(
+            'Could not read the note text; placing the comment in the last known text',
+            error
+          )
+          if (activeDraftRef.current === draft) {
+            addComment(draft, input, trimmedBody, plainMarkdownRef.current)
+          }
+        }
+      )
+    },
+    [addComment]
   )
 
   const updateComment = useCallback(
@@ -413,6 +449,10 @@ export function useCriticMarkupReview({
     })
   }, [])
 
+  const setDocBodyReader = useCallback((read: (() => Promise<string>) | null) => {
+    readDocBodyRef.current = read
+  }, [])
+
   const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
     if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
     marksRef.current = nextMarks
@@ -444,7 +484,8 @@ export function useCriticMarkupReview({
     undoLastReviewAction,
     setHoveredMarkId,
     setMarkPositions: updateMarkPositions,
-    replaceMarksFromYjs
+    replaceMarksFromYjs,
+    setDocBodyReader
   }
 }
 

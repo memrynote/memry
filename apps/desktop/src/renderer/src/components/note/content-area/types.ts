@@ -206,6 +206,11 @@ export interface ContentAreaProps {
     onHoveredMarkChange?: (id: string | null) => void
     onMarkPositionsChange?: (positions: Record<string, number>) => void
     onReplaceMarksFromYjs?: (marks: CriticMarkupMark[]) => void
+    /**
+     * Gets the editor's markdown reader while the editor is bound to the note's
+     * CRDT doc, which then owns the body, and null when it is not.
+     */
+    onDocBodyReaderChange?: (read: (() => Promise<string>) | null) => void
   }
   /**
    * The note page's writing tools (alternatives, ghosts, overflow). When
