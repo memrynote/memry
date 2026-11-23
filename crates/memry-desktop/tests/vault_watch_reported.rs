@@ -532,6 +532,33 @@ fn a_respell_on_a_case_sensitive_volume_is_one_rename_and_never_also_a_removal()
 
 #[cfg(not(windows))]
 #[test]
+fn naming_one_of_two_files_whose_names_fold_together_leaves_the_other_alone() {
+    // `Note.md` and `note.md` dropped in together on a case-sensitive volume. The consumer
+    // gives `Note.md` the note n1: an edit or a delete of `note.md` must never touch n1.
+    let f = fixture_in(Some(CaseSensitiveVolume::new()));
+    let mut r = f.reconciler();
+    f.write("Note.md", "one");
+    f.write("note.md", "two");
+    f.touch(&mut r, &["Note.md", "note.md"], 1);
+    f.take();
+    f.index("n1", "Note.md", "one");
+    r.named("Note.md", "n1");
+    f.write("note.md", "two edited");
+    f.touch(&mut r, &["note.md"], 2);
+    fs::remove_file(f.root.join("note.md")).unwrap();
+    f.touch(&mut r, &["note.md"], 3);
+    let events = f.take();
+    assert!(
+        !events.iter().any(|e| matches!(e,
+            VaultEvent::Changed { note_id, .. }
+            | VaultEvent::Removed { note_id, .. }
+            | VaultEvent::Renamed { note_id, .. } if note_id == "n1")),
+        "note.md's edit or delete reached n1: {events:?}"
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
 fn a_respell_seen_before_its_old_name_is_gone_is_not_a_removal_either() {
     let f = fixture_in(Some(CaseSensitiveVolume::new()));
     let mut r = f.reconciler();

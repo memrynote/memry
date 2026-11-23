@@ -146,9 +146,13 @@ impl Reported {
 
     /// A consumer gave the file reported new at `path` a note: the entry names it from now on, so
     /// the note's row going makes the file there new again (#5579). An entry that names a note
-    /// already, or none at all, is left as it is.
+    /// already, or none at all, is left as it is, and so is an entry of another spelling: on a
+    /// case-sensitive volume the folded key of `path` can belong to a different file.
     pub fn name(&mut self, path: &str, note_id: &str) {
-        if let Some(seen) = self.get(path).filter(|seen| seen.note_id.is_none()) {
+        if let Some(seen) = self
+            .get(path)
+            .filter(|seen| seen.note_id.is_none() && seen.path == path)
+        {
             let named = Seen {
                 note_id: Some(note_id.to_owned()),
                 ..seen.clone()
