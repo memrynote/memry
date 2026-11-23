@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nepodarilo sa použiť šablónu",
     "appendBlocksFailed": "Nepodarilo sa presunúť blok do cieľovej poznámky",
     "appendIntoCaseTwin": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen. Jednu z nich premenujte a potom blok presuňte znova.",
+    "caseTwinMoveRefused": "Táto poznámka zdieľa súbor s poznámkou, ktorej názov sa líši len veľkosťou písmen, takže ju týmto spôsobom nemožno presunúť. Premenujte alebo presuňte druhú poznámku, alebo odstráňte kópiu, ktorú nepotrebujete.",
     "exportPdfFailed": "Nepodarilo sa exportovať PDF",
     "exportHtmlFailed": "Nepodarilo sa exportovať HTML",
     "restoreVersionFailed": "Nepodarilo sa obnoviť verziu",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Nepodarilo sa vytvoriť priečinok",
     "renameFailed": "Nepodarilo sa premenovať priečinok",
+    "renameCaseTwins": "Tento priečinok obsahuje poznámky, ktoré zdieľajú súbor s poznámkou, ktorej názov priečinka sa líši len veľkosťou písmen. Najprv tieto poznámky premenujte alebo presuňte a potom premenujte priečinok.",
     "deleteFailed": "Nepodarilo sa odstrániť priečinok",
     "setConfigFailed": "Nepodarilo sa nastaviť konfiguráciu priečinka"
   },
