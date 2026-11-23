@@ -30,6 +30,7 @@
     "applyTemplateFailed": "無法套用範本",
     "appendBlocksFailed": "無法將區塊移至該筆記",
     "appendIntoCaseTwin": "該筆記與另一則名稱僅大小寫不同的筆記共用同一個檔案。請重新命名其中一則，然後再次移動區塊。",
+    "appendIntoBinary": "只能將區塊移至筆記，無法移至圖片、PDF、音訊或影片檔案。",
     "caseTwinMoveRefused": "此筆記與另一則僅名稱大小寫不同的筆記共用一個檔案，因此無法以這種方式移動。請重新命名或移動另一則筆記，或刪除不需要的副本。",
     "exportPdfFailed": "無法匯出 PDF",
     "exportHtmlFailed": "無法匯出 HTML",

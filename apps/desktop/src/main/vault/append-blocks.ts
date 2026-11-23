@@ -31,11 +31,13 @@ import { landBodyEdit } from '../sync/writeback-baseline'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { refusesCaseTwinFile, syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
 import { readVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
+import { NoteError, NoteErrorCode } from '../lib/errors'
 
 const log = createLogger('AppendBlocks')
 
@@ -68,6 +70,12 @@ export async function appendBlocksToNote(
   if (!target) throw new Error(`Target note not found: ${targetNoteId}`)
   const source = getNoteCacheById(db, sourceNoteId)
   if (!source) throw new Error(`Source note not found: ${sourceNoteId}`)
+
+  // An image, PDF, audio or video file is its own bytes: markdown appended to
+  // it would overwrite the file. The block stays in the source.
+  if (isBinaryNoteRow(target)) {
+    throw new NoteError('errors:note.appendIntoBinary', NoteErrorCode.NOT_MARKDOWN, targetNoteId)
+  }
 
   // The file may hold a case twin's body (#5297); the block stays in the source.
   if (refusesCaseTwinFile(getVaultRoot(), target.path, targetNoteId)) {

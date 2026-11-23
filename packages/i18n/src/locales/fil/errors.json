@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Hindi magamit ang template",
     "appendBlocksFailed": "Hindi mailipat ang block sa talang iyon",
     "appendIntoCaseTwin": "Kahati ng talang iyon ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik. Palitan ang pangalan ng isa sa mga ito, pagkatapos ay ilipat muli ang block.",
+    "appendIntoBinary": "Sa isang tala lamang maaaring ilipat ang block, hindi sa isang larawan, PDF, audio o video file.",
     "caseTwinMoveRefused": "Kahati ng talang ito ang file nito sa isang tala na ang pangalan ay naiiba lamang sa malaki at maliit na titik, kaya hindi ito mailipat sa ganitong paraan. Palitan ang pangalan o ilipat ang kabilang tala, o burahin ang kopyang hindi mo kailangan.",
     "exportPdfFailed": "Hindi ma-export ang PDF",
     "exportHtmlFailed": "Hindi ma-export ang HTML",

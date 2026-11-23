@@ -92,6 +92,7 @@ import { getFileType, getExtension, isBinaryNoteRow } from '@memry/shared/file-t
 import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
+import { isAttachmentStoreRow } from './attachments'
 import {
   assertFolderTreeWritable,
   assertFolderWritable,
@@ -924,7 +925,8 @@ export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promis
         id
       )
     }
-    await deleteFile(toAbsolutePath(cached.path))
+    // A stray row's file is the attachment store's, not this row's (#5607).
+    if (!isAttachmentStoreRow(cached)) await deleteFile(toAbsolutePath(cached.path))
     dropRows()
   }
 

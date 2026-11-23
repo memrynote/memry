@@ -41,6 +41,7 @@ import { ASSET_RELEASE_GRACE_MS } from '../canvas/assets/asset-store'
 import { contentHashFromRef, extractSceneFileRefs } from '../canvas/assets/memry-assets'
 import { readCanvasScene } from '../canvas/store'
 import { createLogger } from '../lib/logger'
+import { isAttachmentStoreRow } from '../vault/attachments'
 
 const log = createLogger('DeletedAssetRelease')
 
@@ -79,10 +80,18 @@ export function recordDeletedItemAssets(
     attachmentIds = [item.id]
   } else if (itemType === 'note') {
     const note = db
-      .select({ refs: noteMetadata.attachmentReferences, own: noteMetadata.attachmentId })
+      .select({
+        refs: noteMetadata.attachmentReferences,
+        own: noteMetadata.attachmentId,
+        path: noteMetadata.path,
+        fileType: noteMetadata.fileType
+      })
       .from(noteMetadata)
       .where(eq(noteMetadata.id, itemId))
       .get()
+    // A stray's delete never syncs (#5607): its record stays on the server for
+    // the peers that still hold it, and so does its blob.
+    if (note && isAttachmentStoreRow(note)) return
     attachmentIds = [...new Set([...(note?.refs ?? []), ...(note?.own ? [note.own] : [])])]
     if (attachmentIds.length === 0) return
   } else {

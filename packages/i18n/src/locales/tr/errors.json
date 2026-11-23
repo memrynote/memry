@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Şablon uygulanamadı",
     "appendBlocksFailed": "Blok bu nota taşınamadı",
     "appendIntoCaseTwin": "Bu not, adı yalnızca büyük/küçük harf bakımından farklı olan bir notla aynı dosyayı paylaşıyor. Birini yeniden adlandırın, ardından bloğu tekrar taşıyın.",
+    "appendIntoBinary": "Bir blok yalnızca bir nota taşınabilir; görsel, PDF, ses veya video dosyasına taşınamaz.",
     "caseTwinMoveRefused": "Bu not, adı yalnızca büyük/küçük harf farkıyla ayrılan bir notla aynı dosyayı paylaşıyor, bu yüzden bu şekilde taşınamaz. Diğer notu yeniden adlandırın ya da taşıyın veya ihtiyacınız olmayan kopyayı silin.",
     "exportPdfFailed": "PDF olarak dışa aktarılamadı",
     "exportHtmlFailed": "HTML olarak dışa aktarılamadı",

@@ -100,7 +100,7 @@ import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
-import { ATTACHMENTS_DIR } from './attachments'
+import { isInAttachmentStore } from './attachments'
 import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
@@ -289,7 +289,6 @@ export class VaultWatcher {
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
-    const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
@@ -302,10 +301,9 @@ export class VaultWatcher {
         // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
 
-        // Only the root attachments folder is the app's; nested ones hold notes (#3161).
-        if (filePath === attachmentsRoot || filePath.startsWith(attachmentsRoot + path.sep)) {
-          return true
-        }
+        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+        if (isInAttachmentStore(relativePath)) return true
 
         // Check user-defined exclude patterns
         for (const pattern of userExcludePatterns) {
@@ -319,9 +317,7 @@ export class VaultWatcher {
         if (stats?.isFile()) {
           // Canvas documents are watched only so a removal outside the app
           // becomes a canvas delete (#2938); the note index never takes them.
-          const supported =
-            isSupportedPath(filePath) ||
-            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
+          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -659,7 +655,14 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
+      // `ignored` keeps the attachment store out. An event that gets past it
+      // anyway (a change to a path with no row lands here) must not make a
+      // note of another note's attachment either (#5607).
+      if (
+        !fileType ||
+        isInAttachmentStore(relativePath) ||
+        isAppMoveEcho(this.vaultPath, relativePath)
+      ) {
         return
       }
 

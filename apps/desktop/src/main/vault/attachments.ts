@@ -10,7 +10,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { customAlphabet } from 'nanoid'
 import { ensureDirectory, sanitizeFilename } from './file-ops'
-import { noteRelativeRef, toMemryFileUrl } from '../lib/paths'
+import { normalizeRelativePath, noteRelativeRef, toMemryFileUrl } from '../lib/paths'
 import { getIndexDatabase } from '../database'
 import { getNoteCacheById } from '../database/queries/notes/note-crud'
 import { getStatus } from './status'
@@ -20,6 +20,9 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { findNotesReferencingAttachment } from './attachment-reference-scan'
 import { assertNoteWritable, isNoteLocked, isLockedWriteAllowed } from '../vault-locks/registry'
 import { VAULT_LOCKED_NOTE_MESSAGE } from '@memry/contracts/vault-locks-api'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
+import { getNoteMetadataById } from '@memry/storage-data'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const logger = createLogger('VaultAttachments')
 
@@ -280,6 +283,37 @@ export const ATTACHMENTS_DIR = 'attachments'
 
 export function getAttachmentsRoot(vaultPath: string): string {
   return path.join(vaultPath, ATTACHMENTS_DIR)
+}
+
+/**
+ * Whether a vault-relative path is the vault root's attachments folder or
+ * inside it. No note lives there: the indexer and the watcher skip it. Only
+ * the root folder is the app's; a nested `attachments` folder holds the user's
+ * notes (#3161). Either separator: on Windows chokidar hands its `ignored`
+ * matcher forward slashes, and a check against the native absolute path never
+ * matched there, so every pasted attachment became a note (#5607).
+ */
+export function isInAttachmentStore(relativePath: string): boolean {
+  const normalized = normalizeRelativePath(relativePath)
+  return normalized === ATTACHMENTS_DIR || normalized.startsWith(`${ATTACHMENTS_DIR}/`)
+}
+
+/**
+ * Whether a note row names a file in the attachment store. Such a binary row
+ * is a stray, one an older Windows build made of a pasted attachment (#5607),
+ * and its file is still embedded by the note in `attachments/<noteId>/`.
+ * Vault files on disk are a contract every build shares: the attachment store
+ * owns its files, and a note row never does. So deleting a row this answers
+ * true for, here or applied from a peer, drops the row and keeps the file.
+ */
+export function isAttachmentStoreRow(row: { fileType?: string | null; path: string }): boolean {
+  return isBinaryNoteRow(row) && isInAttachmentStore(row.path)
+}
+
+/** `isAttachmentStoreRow` of the note's canonical row; false when it has none. */
+export function isStrayAttachmentNote(db: DrizzleDb, noteId: string): boolean {
+  const row = getNoteMetadataById(db, noteId)
+  return row !== undefined && isAttachmentStoreRow(row)
 }
 
 /**
