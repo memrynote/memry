@@ -537,7 +537,9 @@ touch.
    snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET. The
    decrypt and signature checks run on the sync crypto worker, one batch per document (the
    snapshot under the device key that verified the last one, then every update under its named
-   signer's key), and on the main thread only when the worker is not running or rejects.
+   signer's key), and on the main thread only when the worker is not running or rejects. Each entry
+   is read into a buffer of its own size: a post to the worker clones a view's whole buffer, and a
+   small read from Node's shared Buffer pool would send the 8 KiB pool with every update.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
 6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are
