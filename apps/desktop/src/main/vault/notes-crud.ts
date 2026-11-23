@@ -891,9 +891,10 @@ export async function deleteNote(id: string): Promise<void> {
   const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), cached.path)
   if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
 
-  deleteNoteFromCache(db, id)
-  // Same step as the row drop: no await between (case-twin-file.ts).
+  // Every fallible step of the leave, then the row drop, with no await between
+  // (case-twin-file.ts): a throw here aborts the delete with both rows.
   const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), cached.path, id) : null
+  deleteNoteFromCache(db, id)
   deleteNotePosition(getDatabase(), cached.path)
   await keepSurvivorFile(claim)
 

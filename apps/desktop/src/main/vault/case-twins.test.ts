@@ -21,7 +21,13 @@ import {
   createTestIndexDb,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
-import { getInboundLinkSourceIds, insertNoteCache } from '@main/database/queries/notes'
+import {
+  getInboundLinkSourceIds,
+  getNoteTags,
+  insertNoteCache,
+  setNoteProperties,
+  setNoteTags
+} from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 
 vi.mock('electron', () => ({
@@ -78,6 +84,10 @@ vi.mock('../sync/crdt-provider', () => {
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
 })
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
+vi.mock('../sync/writeback-baseline', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, recordBaseline: vi.fn(real.recordBaseline as never) }
+})
 vi.mock('../sync/crdt-external-feed', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
   return { ...real, feedExternalEditToCrdt: vi.fn(real.feedExternalEditToCrdt as never) }
@@ -102,6 +112,7 @@ import { getStatus } from './index'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { owesFileBody, recordOwedFileBody } from '../sync/crdt-owed-file-body'
+import { recordBaseline } from '../sync/writeback-baseline'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -438,26 +449,10 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
     await deleteNoteCommand('upper')
 
-    expect(shared()).toBe(UPPER)
+    expect(shared()).not.toContain('upper')
     unavailable.clear()
     expect(await afterDelete('lower')).toEqual({
       file: LOWER,
-      rows: ['lower'],
-      crossed: [],
-      deletes: [['note', 'upper']]
-    })
-  }, 30_000)
-
-  it('a survivor with an empty doc never takes the deleted twin body', async () => {
-    await twins()
-    docs.set('lower', new Y.Doc())
-
-    await deleteNoteCommand('upper')
-
-    expect({ file: shared(), crossed: crossed() }).toEqual({ file: '', crossed: [] })
-    expect(await afterDelete('lower')).toEqual({
-      // Written into an empty file, the body keeps no final newline.
-      file: LOWER.trimEnd(),
       rows: ['lower'],
       crossed: [],
       deletes: [['note', 'upper']]
@@ -478,4 +473,107 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       deletes: [['note', 'upper']]
     })
   }, 30_000)
+
+  const LOWER_HEAD = '---\ntags:\n  - lowertag\nstatus: low\n---\n'
+  const UPPER_HEAD = '---\ntags:\n  - uppersecret\nstatus: secret\n---\n'
+
+  /** The twins with headers, each indexed from its own, the upper file last on disk. */
+  async function headerTwins(): Promise<void> {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('lower', 'SuperNotes/a.md', LOWER_HEAD + LOWER)
+    seed('upper', 'SUPERNOTES/a.md', UPPER_HEAD + UPPER)
+    await openVault()
+    for (const [id, tag, status] of [
+      ['lower', 'lowertag', 'low'],
+      ['upper', 'uppersecret', 'secret']
+    ] as const) {
+      setNoteTags(index.db, id, { header: [tag], inline: [] })
+      setNoteProperties(index.db, id, { status }, () => 'text')
+    }
+    docs.set('lower', await docOf(LOWER))
+    docs.set('upper', await docOf(UPPER))
+  }
+
+  /** What the shared file and the index say about the survivor's header. */
+  const lowerHeader = () => ({
+    file: shared(),
+    upperInFile: shared().includes('upper'),
+    lowerTags: getNoteTags(index.db, 'lower')
+  })
+
+  it("a deleted twin's header never lands on the survivor", async () => {
+    await headerTwins()
+
+    await deleteNoteCommand('upper')
+    await afterDelete('lower')
+    await flushProjectionEvents()
+
+    expect(lowerHeader()).toEqual({
+      file: expect.stringMatching(
+        /^---\ntags:\n {2}- lowertag\nstatus: low\n---\n[\s\S]*lower \[\[x\]\]\n$/
+      ),
+      upperInFile: false,
+      lowerTags: ['lowertag']
+    })
+  }, 30_000)
+
+  it("a peer's delete of a twin never lands its header on the survivor", async () => {
+    await headerTwins()
+
+    expect(applyPeerDelete('upper')).toBe('applied')
+    await vi.waitFor(() => expect(shared()).toContain('lower [[x]]'))
+    await afterDelete('lower')
+    await flushProjectionEvents()
+
+    expect(lowerHeader()).toEqual({
+      file: expect.stringMatching(
+        /^---\ntags:\n {2}- lowertag\nstatus: low\n---\n[\s\S]*lower \[\[x\]\]\n$/
+      ),
+      upperInFile: false,
+      lowerTags: ['lowertag']
+    })
+  }, 30_000)
+
+  it('a survivor with an empty doc keeps its own header and never the deleted twin body', async () => {
+    await headerTwins()
+    docs.set('lower', new Y.Doc())
+
+    await deleteNoteCommand('upper')
+
+    expect({ file: shared(), crossed: crossed() }).toEqual({ file: LOWER_HEAD, crossed: [] })
+  }, 30_000)
+
+  // Every fallible step of the leave runs before the row drop: a failure there
+  // aborts the delete with both rows and the file as they were.
+  for (const [failure, fail] of [
+    [
+      'an unreadable shared file',
+      () => fs.chmodSync(path.join(vault.path, 'Supernotes/a.md'), 0o000)
+    ],
+    [
+      'a baseline that cannot be recorded',
+      () =>
+        vi.mocked(recordBaseline).mockImplementationOnce(() => {
+          throw new Error('index gone')
+        })
+    ]
+  ] as const) {
+    it(`${failure} aborts a twin delete with both rows intact`, async () => {
+      await twins()
+      fail()
+
+      await expect(deleteNoteCommand('upper')).rejects.toThrow(/EACCES|index gone/)
+
+      fs.chmodSync(path.join(vault.path, 'Supernotes/a.md'), 0o644)
+      expect(rowIds()).toEqual(['lower', 'upper'])
+      await stopWatcher()
+      await openVault()
+      await writeBack('lower', LOWER)
+      expect({ file: shared(), rows: rowIds(), crossed: crossed() }).toEqual({
+        file: UPPER,
+        rows: ['lower', 'upper'],
+        crossed: []
+      })
+    }, 30_000)
+  }
 })

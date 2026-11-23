@@ -8,18 +8,21 @@
  * leaving twin's body, and the survivor must never read them in.
  *
  * 1. `sharesCaseTwinFile`, while the leaving row still names the file.
- * 2. `claimSharedFile`, in the same synchronous step as the leaving row's
- *    drop, with no await between. Bytes that are not the survivor's own are
- *    named its baseline, so from then on no pass reads them into its doc as an
- *    outside edit: a write-back writes the doc over them. An owed file body
+ * 2. `claimSharedFile`, right before the leaving row's drop, with no await
+ *    between. It does every fallible step of the leave, so a throw aborts the
+ *    delete with both rows and the file as they were. Bytes that are not the
+ *    survivor's own are named its baseline, so from then on no pass reads them
+ *    into its doc as an outside edit, and an owed file body
  *    (`crdt-owed-file-body.ts`) is cleared with them: the bytes it owed are
- *    gone, and a take would read the leaving twin's body. A crash after this
- *    step leaves bytes only a doc-to-file pass touches.
- * 3. `keepSurvivorFile`, after the step: writes the survivor's doc over the
- *    claimed bytes. A survivor with an empty doc has no body here to write,
- *    and its next open would seed the doc from the file, so the claimed bytes
- *    are kept as one of its versions and the file is emptied; its body comes
- *    with its next server merge.
+ *    gone, and a take would read the leaving twin's body. The survivor's own
+ *    header is read from its index rows (header tags, properties). Its cover
+ *    marker is cleared, so its next push omits a cover the file lost instead of
+ *    removing it on peers.
+ * 3. `keepSurvivorFile`, after the drop: writes the survivor's own header over
+ *    the claimed bytes (kept as one of its versions), then its doc's body. A
+ *    survivor with an empty doc keeps the header alone; its body comes with
+ *    its next server merge. A crash between steps leaves bytes that only a
+ *    doc-to-file pass touches.
  *
  * @module vault/case-twin-file
  */
@@ -30,15 +33,22 @@ import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline, writeWithBaseline } from '../sync/writeback-baseline'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
-import { getNoteCacheById } from '@main/database/queries/notes'
-import { getIndexDatabase } from '../database'
+import {
+  getNoteCacheById,
+  getNoteHeaderTags,
+  getNotePropertiesAsRecord
+} from '@main/database/queries/notes'
+import { getNoteMetadataById } from '@memry/storage-data'
+import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
+import { clearNoteCoverMarker } from '../sync/item-handlers/note-cover-sync'
+import { getDatabase, getIndexDatabase } from '../database'
 import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf } from './disk-case'
 import { atomicWrite } from './file-ops'
-import { generateContentHash } from './frontmatter'
-import { findCanonicalNoteForFile } from './note-sync'
+import { generateContentHash, serializeNote, type NoteFrontmatter } from './frontmatter'
+import { findCanonicalNoteForFile, listCaseTwinIds } from './note-sync'
 import { toAbsolutePath } from './notes-io'
 import { createSnapshot } from './notes-versions'
 
@@ -49,9 +59,10 @@ export interface SurvivorClaim {
   leavingId: string
   survivorId: string
   survivorPath: string
-  title: string
   /** Null when the bytes on disk are the survivor's own. */
   claimed: string | null
+  /** The survivor's own frontmatter, from its index rows. */
+  header: NoteFrontmatter
 }
 
 /** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
@@ -61,8 +72,9 @@ export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boo
 }
 
 /**
- * Call in the step that drops twin `leavingId`'s row from `relativePath`, with
- * no await since. Null when no single row is left on the file.
+ * Call right before twin `leavingId`'s row leaves `relativePath`, with no await
+ * between. Throws, with nothing changed that the leave depends on, when the
+ * file cannot be read. Null when the leave leaves no single row on the file.
  */
 export function claimSharedFile(
   vaultPath: string,
@@ -70,32 +82,45 @@ export function claimSharedFile(
   leavingId: string
 ): SurvivorClaim | null {
   const onDisk = diskCaseOf(vaultPath, relativePath)
-  const survivor = onDisk === null ? null : findCanonicalNoteForFile(vaultPath, onDisk)
-  if (!survivor || survivor.sharesFile) return null
-  const claim = {
-    leavingId,
-    survivorId: survivor.id,
-    survivorPath: survivor.path,
-    title: survivor.title,
-    claimed: null as string | null
-  }
+  const twins = onDisk === null ? [] : listCaseTwinIds(vaultPath, onDisk, leavingId)
+  if (twins.length !== 1) return null
+  const survivorId = twins[0]
+  const dataDb = getDatabase()
+  const survivor = getNoteMetadataById(dataDb, survivorId)
+  if (!survivor) return null
   const indexDb = getIndexDatabase()
   const raw = readVaultFileSync(vaultPath, survivor.path)
+  const claim: SurvivorClaim = {
+    leavingId,
+    survivorId,
+    survivorPath: survivor.path,
+    claimed: null,
+    header: {}
+  }
   if (
     raw === null ||
-    generateContentHash(raw) === getNoteCacheById(indexDb, survivor.id)?.contentHash
+    generateContentHash(raw) === getNoteCacheById(indexDb, survivorId)?.contentHash
   )
     return claim
-  recordBaseline(indexDb, survivor.id, raw)
-  if (owesFileBody(survivor.id)) clearOwedFileBody(survivor.id)
-  log.info('A case twin left a shared file holding bytes that are not the survivor’s', {
+  const header = applyRemoteFrontmatter(
+    {},
+    {
+      tags: getNoteHeaderTags(indexDb, survivorId),
+      properties: getNotePropertiesAsRecord(indexDb, survivorId),
+      title: survivor.title
+    }
+  )
+  recordBaseline(indexDb, survivorId, raw)
+  if (owesFileBody(survivorId)) clearOwedFileBody(survivorId)
+  clearNoteCoverMarker(dataDb, survivorId)
+  log.info('A case twin leaves a shared file holding bytes that are not the survivor’s', {
     leavingId,
-    survivorId: survivor.id
+    survivorId
   })
-  return { ...claim, claimed: raw }
+  return { ...claim, claimed: raw, header }
 }
 
-export type SurvivorFileOutcome = 'already-own' | 'written' | 'emptied' | 'failed'
+export type SurvivorFileOutcome = 'already-own' | 'written' | 'header-only' | 'failed'
 
 /**
  * Write the survivor's doc over the bytes `claimSharedFile` claimed. Never
@@ -106,26 +131,34 @@ export async function keepSurvivorFile(claim: SurvivorClaim | null): Promise<Sur
   if (!claim || claim.claimed === null) return 'already-own'
   const { survivorId, claimed } = claim
   try {
+    const title = getNoteMetadataById(getDatabase(), survivorId)?.title ?? ''
+    createSnapshot(survivorId, claimed, title, SnapshotReasons.SIGNIFICANT)
+    // The survivor's own header first: the write-back keeps the file's
+    // frontmatter, so it must not find the leaving twin's there.
+    // Ending in a newline, so the body written under it keeps its final one.
+    const header = serializeNote(claim.header, '')
+    const headerOnly = header.endsWith('\n') ? header : `${header}\n`
+    const absolutePath = toAbsolutePath(claim.survivorPath)
+    markWritebackIgnored(absolutePath)
+    await writeWithBaseline(getIndexDatabase(), survivorId, headerOnly, () =>
+      atomicWrite(absolutePath, headerOnly)
+    )
     const provider = getCrdtProvider()
     const live = provider.getDoc(survivorId)
     const doc = live ?? (await provider.open(survivorId, undefined, { skipSeed: true }))
     try {
-      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) {
-        await writebackNow(survivorId, doc)
-        return 'written'
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
+        log.warn('The case twin left on a shared file has no doc body; it keeps its header', {
+          leavingId: claim.leavingId,
+          survivorId
+        })
+        return 'header-only'
       }
+      await writebackNow(survivorId, doc)
+      return 'written'
     } finally {
       if (!live) await provider.closeIfInactive(survivorId)
     }
-    createSnapshot(survivorId, claimed, claim.title, SnapshotReasons.SIGNIFICANT)
-    const absolutePath = toAbsolutePath(claim.survivorPath)
-    markWritebackIgnored(absolutePath)
-    await writeWithBaseline(getIndexDatabase(), survivorId, '', () => atomicWrite(absolutePath, ''))
-    log.warn('The case twin left on a shared file has no doc body; the file was emptied', {
-      leavingId: claim.leavingId,
-      survivorId
-    })
-    return 'emptied'
   } catch (error) {
     log.error('Could not write the surviving case twin into the shared file', {
       leavingId: claim.leavingId,

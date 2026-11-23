@@ -771,8 +771,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     }
 
     const absolutePath = toAbsolutePath(existing.path)
-    // Asked while this row still names the file (#5495).
+    // Asked while this row still names the file (#5495). The claim does every
+    // fallible step of the leave before anything else here (case-twin-file.ts):
+    // a throw fails the item with both rows, the doc and the file intact.
+    // `applyDelete` is synchronous, so nothing runs between it and the drop.
     const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), existing.path)
+    const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), existing.path, itemId) : null
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -812,8 +816,6 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
     deleteNoteFromCache(indexDb, itemId)
-    // Same step as the row drop, inside the page (case-twin-file.ts).
-    const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), existing.path, itemId) : null
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
     void flushProjectionEvents()
