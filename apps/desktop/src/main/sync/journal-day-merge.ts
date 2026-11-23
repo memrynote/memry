@@ -30,7 +30,7 @@ import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
-import { updateJournalEntry } from '../journal/update-entry'
+import { addJournalTags } from '../journal/update-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
@@ -61,11 +61,20 @@ export interface OwedJournalDayMerge {
   /** The foreign id's tombstone arrived: another device merged it already. */
   deleted?: boolean
   /**
-   * The foreign entry's tags: its record's, or the file of the local row that
-   * gave the day up. The fold carries the doc's `tags` array, but the day file
-   * owns its tags (#5476), so the merge adds these to the file.
+   * The day file tags of the local row that gave the day up: this device's,
+   * added like `fallbackMarkdown`, even when the id was deleted elsewhere. The
+   * fold carries the doc's `tags` array, but the day file owns its tags
+   * (#5476), so the merge adds these to the file. Owed merges written before
+   * `recordTags` kept the record's tags here too; they are added as this
+   * device's, since dropping them could drop a tag only this device held.
    */
   tags?: string[]
+  /**
+   * The foreign record's `tags`. Skipped like `recordMarkdown` when the id was
+   * deleted elsewhere: the deleting device merged them, and a tag removed
+   * since must not come back.
+   */
+  recordTags?: string[]
 }
 
 /**
@@ -85,13 +94,15 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
   const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
+  const recordTags = unionTags(kept?.recordTags ?? [], merge.recordTags ?? [])
   const value = JSON.stringify({
     ...merge,
     clock,
     ...(fallbackMarkdown ? { fallbackMarkdown } : {}),
     ...(recordMarkdown ? { recordMarkdown } : {}),
     ...(deleted ? { deleted: true } : {}),
-    tags: tags.length > 0 ? tags : undefined
+    tags: tags.length > 0 ? tags : undefined,
+    recordTags: recordTags.length > 0 ? recordTags : undefined
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -248,7 +259,10 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
-    if (merge.tags?.length) await deps.addDayTags(merge.date, merge.tags)
+    const tags = merge.deleted
+      ? (merge.tags ?? [])
+      : unionTags(merge.tags ?? [], merge.recordTags ?? [])
+    if (tags.length > 0) await deps.addDayTags(merge.date, tags)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -322,14 +336,6 @@ function unionTags(kept: string[], added: string[]): string[] {
   return [...new Set([...kept, ...added])]
 }
 
-/** `addDayTags` against the real day file: a tags-only update, in the day's write-back turn. */
-async function addJournalDayTags(date: string, tags: string[]): Promise<void> {
-  const kept = readDayTags(date)
-  const next = unionTags(kept, tags)
-  if (next.length === kept.length) return
-  await updateJournalEntry({ date, tags: next })
-}
-
 /**
  * Removes a journal row from the index DB, then the data DB. The two are
  * separate databases: a kill in between leaves the data row, which the next
@@ -399,7 +405,7 @@ export async function runJournalDayMerges(
         fallbackMarkdown,
         fallbackClientId(foreignId, deviceId)
       ),
-    addDayTags: addJournalDayTags,
+    addDayTags: addJournalTags,
     purgeDoc: (id) => provider.purge(id),
     removeRow: (id) => removeJournalRow(db, id),
     enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)

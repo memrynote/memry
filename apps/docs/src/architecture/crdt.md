@@ -847,7 +847,9 @@ document to its vault `.md` file and re-indexes it for search.
   devices in the note or journal record, so the doc's array can be stale: a journal day
   created with `[a]` and retagged `[b]` got `[a]` back on the next keystroke (#5476).
   A foreign journal entry folded into its day brings its tags through the day merge instead
-  (protocol §1.9.1).
+  (protocol §1.9.1). The merge reads the day file's tags in the day's write-back turn
+  (`addJournalTags`), so a tag edit queued behind a running pass is not written over, and a
+  foreign id deleted elsewhere adds only this device's holder tags, not its record's.
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise

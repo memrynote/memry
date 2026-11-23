@@ -432,11 +432,16 @@ pass settles them. The decision is a pure function of five facts
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:262`).
    Desktop then adds `F`'s tags to the day file, keeping the ones it has (a
    set union): the day file owns its tags, so `F`'s doc `tags` array never
-   reaches it (#5476). The owed merge keeps them: the foreign record's `tags`,
-   or a foreign holder's day file tags read before `j<D>` writes over it
-   (`apps/desktop/src/main/sync/journal-day-merge.ts:251`,
-   `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`). The core
-   does not carry them yet (#5483).
+   reaches it (#5476). The owed merge keeps them apart: the foreign record's
+   `tags` (`recordTags`), and a foreign holder's day file tags read before
+   `j<D>` writes over it (`tags`). A deleted `F` adds only the holder's, as
+   it skips the record text: the deleting device merged the record's tags
+   (`apps/desktop/src/main/sync/journal-day-merge.ts:262`,
+   `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`). The day
+   file's tags are read in the day's write-back turn, so a tag edit queued
+   behind a running pass keeps its tags
+   (`apps/desktop/src/main/journal/update-entry.ts:70`). The core does not
+   carry them yet (#5483).
 7. Only here, after the merge, and when `F` is live and its clock is
    non-empty, queue its tombstone with clock
    `increment(F.clock, self)` and payload `{"clock": ...}`, and record that

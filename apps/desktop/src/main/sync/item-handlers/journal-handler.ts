@@ -85,7 +85,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
           date,
           clock: remoteClock,
           recordMarkdown: data.content || null,
-          tags: data.tags
+          recordTags: data.tags
         })
         continue
       }

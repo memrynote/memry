@@ -323,6 +323,46 @@ describe('runJournalDayMerges', () => {
     expect(textOf(DAY)).toBe('minted here')
   })
 
+  // The deleting device merged the record's tags; one removed since must not
+  // come back from the record this device kept.
+  it('adds no record tags of a foreign id deleted elsewhere while it waited for its body', async () => {
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['x'] },
+      { b: 1 }
+    )
+    typed(FOREIGN, 'typed here, never pushed')
+    pullBody.mockResolvedValue(false)
+    await drain()
+    expect(listOwedJournalDayMerges(ctx.db)).toHaveLength(1)
+
+    journalHandler.applyDelete(ctx, FOREIGN, { b: 1, other: 1 })
+    journalHandler.applyUpsert(
+      ctx,
+      DAY,
+      { date: DATE, content: 'canonical\n', tags: [] },
+      { other: 1 }
+    )
+    await drain()
+
+    expect(textOf(DAY)).toBe('typed here, never pushed')
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags ?? []).toEqual([])
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  // An owed merge written before `recordTags` kept both kinds in `tags`.
+  it('adds the tags of an owed merge written before record tags were kept apart, even deleted', async () => {
+    journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: 'canonical\n', tags: [] }, { c: 1 })
+    oweJournalDayMerge(ctx.db, { foreignId: FOREIGN, date: DATE, clock: { b: 1 }, tags: ['x'] })
+    journalHandler.applyDelete(ctx, FOREIGN, { b: 1, other: 1 })
+    typed(FOREIGN, 'typed here, never pushed')
+
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['x'])
+  })
+
   it('leaves a live foreign id with neither body nor text live, creating no day', async () => {
     // An update record carries `content: null`: the text may live only in an
     // old build's day file, which a tombstone would make it delete.

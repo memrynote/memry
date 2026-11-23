@@ -63,6 +63,19 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
 }
 
 /**
+ * Adds `tags` to `date`'s entry file, keeping the ones it has. The file is read
+ * in the entry's turn, so a tag edit queued ahead of this keeps its tags.
+ * Never call from inside a turn of the entry: it waits for that turn.
+ */
+export function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
+  return takeWritebackTurn(resolveJournalEntryId(date), async () => {
+    const kept = (await readJournalEntry(date))?.tags ?? []
+    const next = applyHeaderTagEdit(kept, { add: [...tags] })
+    if (next.length > kept.length) await writeJournalUpdate({ date, tags: next })
+  })
+}
+
+/**
  * Writes the tag edit and `properties` over the entry's file body, when its
  * file lacks them. The edit, not the whole list, so a tags save queued ahead
  * of this turn keeps its tags.
