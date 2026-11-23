@@ -76,7 +76,13 @@ function isMarkedFile(value: unknown): value is MarkedFile {
 /** Each note whose file may hold a case twin's bytes, with the file it was marked at. */
 export function readCaseTwinForeignBytes(db: DrizzleDb): Map<string, MarkedFile> {
   const marks = readValue(db, SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES)
-  if (typeof marks !== 'object' || marks === null || Array.isArray(marks)) return new Map()
+  if (marks === undefined) return new Map()
+  if (typeof marks !== 'object' || marks === null || Array.isArray(marks)) {
+    log.warn('Case twin foreign bytes are not an object; reading them as empty', {
+      type: Array.isArray(marks) ? 'array' : typeof marks
+    })
+    return new Map()
+  }
   return new Map(
     Object.entries(marks).filter((entry): entry is [string, MarkedFile] => isMarkedFile(entry[1]))
   )
