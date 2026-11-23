@@ -52,8 +52,8 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, Storag
             if total.requests >= BODY_REQUEST_BUDGET {
                 break 'step;
             }
-            if pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await?
-                == Step::Ended
+            if let Step::Ended { .. } =
+                pull_one(db, body_pull, doc_id, probed.remove(doc_id), &mut total).await?
             {
                 break 'step;
             }
@@ -70,7 +70,9 @@ pub(super) enum Step {
     /// The document stays owed, backed off or as it was.
     Owed,
     /// A failure every later request would repeat: the step ends here.
-    Ended,
+    /// `rate_limit_s` is the wait a `429` asked for, at least a second, and
+    /// `None` for any other ending.
+    Ended { rate_limit_s: Option<u64> },
 }
 
 /// One owed document: settled, re-owed, or backed off.
@@ -107,7 +109,16 @@ pub(super) async fn pull_one(
             Ok(if merged { Step::Settled } else { Step::Owed })
         }
         Err(BodyPullError::Storage { source }) => Err(source),
-        Err(BodyPullError::Api { source }) if ends_the_step(&source) => Ok(Step::Ended),
+        Err(BodyPullError::Api { source }) if ends_the_step(&source) => Ok(Step::Ended {
+            // A 429 without `Retry-After` still means "not now"; one second
+            // is the server's own floor (`Math.max(retryAfter, 1)`).
+            rate_limit_s: match source {
+                ApiError::RateLimited { retry_after_s, .. } => {
+                    Some(retry_after_s.unwrap_or(1).max(1))
+                }
+                _ => None,
+            },
+        }),
         Err(BodyPullError::Api { .. }) => {
             db.call(move |conn| body_debt::owe_after_failure(conn, &doc))
                 .await?;
