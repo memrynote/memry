@@ -332,7 +332,7 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   0024, whose `documents` is NULL, the server cannot tell which packs hold the
   document, so the same batch drops every `crdt_update` pack of the vault and
   resets that kind's pack watermark (`packKindReset`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:32`, called at
+  `apps/sync-server/src/services/pack-replaced-objects.ts:47`, called at
   `apps/sync-server/src/services/document-body-purge.ts:155-158`); without the
   reset, compaction never packs the other documents of a dropped pack again.
   Keying that drop on update rows alone is not enough: a snapshot that claims
@@ -702,7 +702,7 @@ pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISAB
   writer makes. The deletion pass deletes the object later, and only while no
   row lists its key: it reads `pack_index` again right before the R2 delete
   and keeps every key listed by then
-  (`apps/sync-server/src/services/pack-replaced-objects.ts:155-178`). A commit
+  (`apps/sync-server/src/services/pack-replaced-objects.ts:170-187`). A commit
   that lands between that read and the delete still loses its object, and a
   reader meets a 404 (§8.12). Unless such a late commit lists it, the object
   was never listed, so no reader holds a URL to it and it waits for no grace
@@ -953,7 +953,7 @@ coverage ranges chain, and writes one pack that replaces them:
   the object expires before the object goes. A server MUST NOT raise the
   presign lifetime above half the grace period. The deletion pass
   (`deleteReplacedPackObjects`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:124`) deletes the
+  `apps/sync-server/src/services/pack-replaced-objects.ts:139`) deletes the
   objects of replaced packs and of purged ones (§8.13). It runs for every vault
   at the start of every backfill tick
   (`apps/sync-server/src/services/pack-backfill.ts:187`), and for one vault at
@@ -1024,7 +1024,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   `crdt_update`, any body row, §8.4.3), the purge batch drops every pack of
   that kind in the vault, makes their objects due at once and resets the
   kind's watermark, as every purge did before step 06b (`packKindReset`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:32`). The rebuild
+  `apps/sync-server/src/services/pack-replaced-objects.ts:47`). The rebuild
   records `documents`, so the next purge of that kind is scoped.
 - **Out of the listing at once.** The purge batch that deletes the body rows
   also deletes the listing row of each pack whose `documents` names the
@@ -1037,7 +1037,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   (§8.12): the same kind, `minCursor` and `maxCursor`, a new key, and every
   entry whose row is still current. The purged document has no rows left, so
   none of its entries is kept (`rewritePurgedPacks`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:185`). The commit is
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:289`). The commit is
   guarded on the rewrite still pending, on every kept entry still current
   (the recheck of chapter 07 §7.15) and on the listing cap (§8.14). The same
   batch makes the old object due at once. A pack left with no current entry
@@ -1068,7 +1068,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   its rewrite committed and listed nothing, because no entry of the pack
   stayed current: the rewrite lists a row only when `kept.length > 0` and
   otherwise only settles the pending row
-  (`apps/sync-server/src/services/pack-purge-rewrite.ts:110`, `:145`, `:152`).
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:135`, `:175`, `:191`).
   No guard fails then, and the swap may commit, which is harmless because the
   run's range holds only current entries. A purge after the listing read that
   takes out an input of the run makes `replacePacks` record nothing: it
@@ -1092,7 +1092,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   old resets that kind of the vault (`packKindReset`) before it selects the
   due objects, so it deletes that object and every object the reset made due
   in the same pass (`resetUnrewritten`,
-  `apps/sync-server/src/services/pack-replaced-objects.ts:211`). A deletion
+  `apps/sync-server/src/services/pack-replaced-objects.ts:217`). A deletion
   never waits for a rewrite past the grace, and the range of a rewrite that
   never ran is rebuilt from source rows instead of staying unpacked.
 - **The 900 s bound.** For a purge that commits at `T`:
@@ -1155,8 +1155,15 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   the `record` pack whose `cover_from` is `through` takes `cover_from = from`,
   else the one whose `cover_through` is `from` takes `cover_through =
   through` (`absorbCoverage`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:222`). With neither, the
-  rewrite resets the kind. Either way the chain keeps tiling (§8.10). A
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:228`). With neither, the
+  rewrite stays pending, and the pass runs it again after its other rewrites,
+  for as long as each round settles one: a neighbour that was itself a pending
+  rewrite has by then listed its new pack or handed its coverage on
+  (`rewritePurgedPacks`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:289`). When a round
+  settles none, the pass resets the kind
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:315`). Either way the
+  chain keeps tiling (§8.10). A
   rollup's swap is guarded on its run's first `cover_from` and last
   `cover_through` still being the values it planned with, so a neighbour that
   took coverage meanwhile fails the swap. The same batch makes

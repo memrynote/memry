@@ -53,6 +53,11 @@ export const PURGE_REWRITES_PER_PASS = 4
 // its read and its commit; a second loss resets the kind.
 const REWRITE_ATTEMPTS = 2
 
+/** Outcome of an emptied record pack that no listed record pack borders yet. */
+const NO_NEIGHBOUR = 'no listed record pack adjacent to take its coverage'
+
+type PendingRewrite = { pack_key: string; cover_from: number | null; cover_through: number | null }
+
 /**
  * The entries a rewrite keeps: pack-rollup.ts liveJoin, less a record whose
  * row is a tombstone past retention (§8.13, purged-tombstone markers).
@@ -208,7 +213,7 @@ const rewriteOne = async (
       })
       return true
     }
-    if (absorbs) return 'no listed record pack adjacent to take its coverage'
+    if (absorbs) return NO_NEIGHBOUR
   }
   return 'lost the commit to a concurrent prune, purge or listing'
 }
@@ -217,7 +222,8 @@ const rewriteOne = async (
  * Statements that hand an emptied record pack's coverage `(from, through]` to
  * the listed pack that starts where it ended, else to the one that ends where
  * it started, while its rewrite is still pending. No row matching leaves the
- * rewrite pending, and the caller resets the kind.
+ * rewrite pending, and rewritePurgedPacks retries it after the pass's other
+ * rewrites.
  */
 const absorbCoverage = (
   db: D1Database,
@@ -244,6 +250,39 @@ const absorbCoverage = (
 }
 
 /**
+ * Rewrite one recorded object; a rewrite that fails resets its kind. False
+ * for an emptied record pack that no listed record pack borders: its rewrite
+ * is still pending.
+ */
+const rewriteRow = async (
+  db: D1Database,
+  storage: R2Bucket,
+  scope: VaultScope,
+  row: PendingRewrite
+): Promise<boolean> => {
+  const packKey = row.pack_key
+  const range = packKeyRange(packKey)
+  if (!range) {
+    await markDue(db, packKey, 'unparsed key')
+    return true
+  }
+  // A record pack keeps its coverage, so the record chain keeps tiling (§8.10).
+  const coverage =
+    row.cover_from !== null && row.cover_through !== null
+      ? { from: row.cover_from, through: row.cover_through }
+      : null
+  let outcome: true | string
+  try {
+    outcome = await rewriteOne(db, storage, scope, range.kind, range, coverage, packKey)
+  } catch (error) {
+    outcome = error instanceof Error ? error.message : String(error)
+  }
+  if (outcome === NO_NEIGHBOUR) return false
+  if (outcome !== true) await resetKind(db, scope, range.kind, packKey, outcome)
+  return true
+}
+
+/**
  * Rewrite up to PURGE_REWRITES_PER_PASS objects of the vault a purge took out
  * of the listing, oldest first. `pending` is true when more are waiting.
  */
@@ -262,27 +301,24 @@ export const rewritePurgedPacks = async (
            LIMIT ?`
         )
         .bind(scope.userId, scope.vaultId, PURGE_REWRITES_PER_PASS + 1)
-        .all<{ pack_key: string; cover_from: number | null; cover_through: number | null }>()
+        .all<PendingRewrite>()
     ).results ?? []
-  for (const row of rows.slice(0, PURGE_REWRITES_PER_PASS)) {
-    const packKey = row.pack_key
-    const range = packKeyRange(packKey)
-    if (!range) {
-      await markDue(db, packKey, 'unparsed key')
-      continue
+  // An emptied record pack whose neighbour still waits for its own rewrite
+  // takes its turn again once that rewrite lists or hands on coverage, for as
+  // long as each round settles another row (VERIFY-5452 #3).
+  let round = rows.slice(0, PURGE_REWRITES_PER_PASS)
+  while (round.length > 0) {
+    const waiting: PendingRewrite[] = []
+    for (const row of round) {
+      if (!(await rewriteRow(db, storage, scope, row))) waiting.push(row)
     }
-    // A record pack keeps its coverage, so the record chain keeps tiling (§8.10).
-    const coverage =
-      row.cover_from !== null && row.cover_through !== null
-        ? { from: row.cover_from, through: row.cover_through }
-        : null
-    let outcome: true | string
-    try {
-      outcome = await rewriteOne(db, storage, scope, range.kind, range, coverage, packKey)
-    } catch (error) {
-      outcome = error instanceof Error ? error.message : String(error)
+    if (waiting.length === round.length) {
+      // No rewrite of this pass can border them. The reset settles every
+      // pending rewrite of the kind.
+      await resetKind(db, scope, 'record', waiting[0].pack_key, NO_NEIGHBOUR)
+      break
     }
-    if (outcome !== true) await resetKind(db, scope, range.kind, packKey, outcome)
+    round = waiting
   }
   return { pending: rows.length > PURGE_REWRITES_PER_PASS }
 }

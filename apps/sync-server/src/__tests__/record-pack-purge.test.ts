@@ -369,6 +369,30 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
     ).toEqual({ n: 0 })
   })
 
+  // VERIFY-5452 #3: the first emptied pack found no listed neighbour, because
+  // the second still waited for its rewrite, so the pass reset the record kind.
+  it('two emptied record packs at the start of the chain hand their coverage to the pack after them', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    await compactAll()
+    const firstVersion = blobKey('note-a')
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'update' })
+    await compactAll()
+    const secondVersion = blobKey('note-a')
+    await push(app, { id: 'task-keep', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(3)
+
+    await push(app, { id: 'note-a', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(await heldBy(firstVersion)).toEqual([])
+    expect(await heldBy(secondVersion)).toEqual([])
+    expect(listedRecordPacks()).toEqual([
+      { pack_key: before[2].pack_key, cover_from: 0, cover_through: before[2].cover_through }
+    ])
+  })
+
   it('a rollup whose input coverage changed after its plan does not swap', async () => {
     const app = buildApp()
     // One more pack than the bound of a tiny vault (packCountBound), so the rollup runs.
