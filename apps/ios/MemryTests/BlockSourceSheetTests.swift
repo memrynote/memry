@@ -4,6 +4,7 @@ import Synchronization
 import SwiftUI
 import Testing
 import UIKit
+import WebKit
 
 @testable import Memry
 
@@ -171,6 +172,33 @@ struct BlockWebRendererTests {
             #expect(message.hasPrefix("KaTeX parse error"))
             #expect(renderer.cached(request("\\frac{a}{b}")) == .image(image))
         }
+    }
+
+    /// The app's renderer is built on whichever window is key, and that window
+    /// can go away while a picture is drawn. A web view taken out of its window
+    /// is suspended, so the picture, and every one queued behind it, never came.
+    @Test func theWindowGoingAwayMidPictureDoesNotHoldTheNextOne() async throws {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        var first: UIWindow? = UIWindow(windowScene: scene)
+        first?.rootViewController = UIViewController()
+        first?.isHidden = false
+        let next = UIWindow(windowScene: scene)
+        next.rootViewController = UIViewController()
+        next.isHidden = false
+        defer { next.isHidden = true }
+        let renderer = BlockWebRenderer { [weak first] in first ?? next }
+        let pending = Task { await renderer.render(request("x^2")) }
+        // The web view is in the first window and loading its page.
+        try await wait(30) { first?.subviews.contains { $0 is WKWebView } == true }
+        first?.isHidden = true
+        first = nil
+
+        _ = await pending.value
+        guard case let .image(image) = await renderer.render(request("y^2")) else {
+            Issue.record("expected a picture once the renderer moved to the next window")
+            return
+        }
+        #expect(inkedPixels(image) > 20, "the glyphs are painted")
     }
 }
 

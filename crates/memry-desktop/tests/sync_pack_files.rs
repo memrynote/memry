@@ -97,6 +97,43 @@ async fn a_first_sync_from_body_packs_writes_every_settled_notes_file() {
     }
 }
 
+/// Red before #5570: the bodies pass settled a note whose server body is empty with nothing
+/// stored, so nothing told the write-back and its file came only at the next open's reconcile.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_first_sync_files_a_note_whose_server_body_is_empty() {
+    let mut e = env(|store| Some(creates(store)));
+    e.open();
+    e.facts_until(indexed);
+    let core = e.core();
+    let (mut docs, packs) = three_shapes();
+    let empty = "emptydoc0001";
+    docs.push(ServerDoc::new(empty, 0));
+    let mut server = Server::new(docs, packs);
+    server.records = true;
+    let routes = Routes::new(server);
+    let observers = Arc::new(Observers::default());
+    observers.register(Arc::new(DiskObserver::new(
+        e.tier.clone(),
+        e.vault.clone(),
+        core.clone(),
+    )));
+    let spill = tempfile::tempdir().unwrap();
+
+    first_sync_observed(&core.db_handle(), &routes, spill.path(), observers)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert!(e.tier.flush(WAIT), "the write-back flushed");
+    let rows = e.rows();
+    for id in SHAPES.iter().map(|(id, _)| *id).chain([empty]) {
+        assert!(
+            rows.iter().any(|(row, _)| row == id),
+            "{id} has no file: {rows:?}"
+        );
+    }
+}
+
 /// Red before #5410: a note whose write-back kept its file while its server body was owed was
 /// never scheduled again when the body settled without a tell of its own, so a fresh device's
 /// vault never got its file. The body step's settle (`bodies_settled`) now re-drives it.

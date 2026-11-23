@@ -379,6 +379,11 @@ pub struct Server {
     listings: usize,
     /// Rewrites each batch answer, to send a malformed one.
     pub batch_rewrite: Option<fn(&mut Json)>,
+    /// The next this many batch requests answer 429 with `Retry-After: 1`.
+    pub batch_rate_limits: usize,
+    /// The manifest pages after the first answer 429 with `Retry-After: 1`
+    /// this many times.
+    pub manifest_rate_limits: usize,
     /// Runs once before the first request whose URL holds the key, so a test
     /// can change the server between two requests of one pull.
     pub before: Vec<(String, ServerHook)>,
@@ -400,6 +405,8 @@ impl Server {
             listing_missing_from: None,
             listings: 0,
             batch_rewrite: None,
+            batch_rate_limits: 0,
+            manifest_rate_limits: 0,
             before: Vec::new(),
         }
     }
@@ -560,9 +567,17 @@ impl Server {
             return Some(response(200, &self.listing(offset).to_string()));
         }
         if url.contains("/sync/crdt/manifest") {
+            if url.contains("cursor=") && self.manifest_rate_limits > 0 {
+                self.manifest_rate_limits -= 1;
+                return Some(rate_limited());
+            }
             return Some(self.body_manifest(url));
         }
         if url.contains("/sync/crdt/updates/batch") {
+            if self.batch_rate_limits > 0 {
+                self.batch_rate_limits -= 1;
+                return Some(rate_limited());
+            }
             let asked = serde_json::from_slice::<Json>(request.body.as_deref().unwrap_or(b"{}"))
                 .expect("a JSON body");
             let limit = asked["limit"].as_u64().unwrap_or(100) as usize;
@@ -642,6 +657,14 @@ fn response(status: u16, body: &str) -> Result<HttpResponse, TransportError> {
         status,
         headers: Default::default(),
         body: body.as_bytes().to_vec(),
+    })
+}
+
+fn rate_limited() -> Result<HttpResponse, TransportError> {
+    Ok(HttpResponse {
+        status: 429,
+        headers: [("retry-after".to_owned(), "1".to_owned())].into(),
+        body: br#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#.to_vec(),
     })
 }
 

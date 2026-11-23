@@ -82,15 +82,16 @@ final class BlockWebRenderer: NSObject {
 
     private let cache = NSCache<NSString, CachedOutput>()
     /// The window the web view sits in. WebKit suspends a web view that
-    /// leaves its window, and a call into it then never returns, so the host
-    /// must outlive the renderer's use of it.
+    /// leaves its window, and a call into it then never returns, so every
+    /// call ends when the web view leaves (`whileHosted`).
     private let host: @MainActor () -> UIWindow?
-    private var web: WKWebView?
+    private var web: HostedWebView?
     private var loaded: CheckedContinuation<Bool, Never>?
     private var waiting: [Request: [CheckedContinuation<Output, Never>]] = [:]
     private var queue: [Request] = []
     private var flushing = false
 
+    /// Tests only, with a window of their own; the app uses `.shared`.
     init(host: @escaping @MainActor () -> UIWindow? = PresentingWindow.resolve) {
         self.host = host
         cache.countLimit = 300
@@ -156,9 +157,11 @@ final class BlockWebRenderer: NSObject {
             ["source": $0.source, "ink": $0.ink, "size": $0.size, "dark": $0.dark] as [String: Any]
         }
         let function = batch.first?.kind == .diagram ? "renderDiagram" : "renderMath"
-        let answer = try? await web.callAsyncJavaScript(
-            "return await \(function)(items)", arguments: ["items": items], in: nil, contentWorld: .page
-        )
+        let answer: Any? = await whileHosted(web) { done in
+            web.callAsyncJavaScript(
+                "return await \(function)(items)", arguments: ["items": items], in: nil, in: .page
+            ) { done(try? $0.get()) }
+        }
         guard let boxes = answer as? [[String: Any]], boxes.count == batch.count else {
             return batch.map { _ in .unavailable }
         }
@@ -174,7 +177,9 @@ final class BlockWebRenderer: NSObject {
         configuration.rect = CGRect(x: 0, y: 0, width: union.maxX, height: union.maxY)
             .intersection(CGRect(x: 0, y: 0, width: Self.viewport.width, height: Self.snapshotHeight))
         configuration.afterScreenUpdates = true
-        let snapshot = try? await web.takeSnapshot(configuration: configuration)
+        let snapshot: UIImage? = await whileHosted(web) { done in
+            web.takeSnapshot(with: configuration) { image, _ in done(image) }
+        }
         return zip(boxes, rects).map { box, rect in
             if let error = box["error"] as? String { return .invalid(error) }
             // Alone and still unmeasured or off the page: drawing it again
@@ -202,7 +207,22 @@ final class BlockWebRenderer: NSObject {
 
     // MARK: The web view
 
-    private func loadedWebView() async -> WKWebView? {
+    /// Runs `call` against `web`, or answers `nil` as soon as `web` leaves its
+    /// window: a suspended web view never answers, and `flushing` would then
+    /// hold every later picture (#5484).
+    private func whileHosted<T>(
+        _ web: HostedWebView, _ call: (@escaping @MainActor (T?) -> Void) -> Void
+    ) async -> T? {
+        guard web.window != nil else { return nil }
+        let pending = Pending<T>()
+        return await withCheckedContinuation { continuation in
+            pending.continuation = continuation
+            web.leftWindow = { pending.finish(nil) }
+            call { pending.finish($0) }
+        }
+    }
+
+    private func loadedWebView() async -> HostedWebView? {
         if let web, web.window != nil { return web }
         web?.removeFromSuperview()
         web = nil
@@ -214,7 +234,7 @@ final class BlockWebRenderer: NSObject {
         }
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
-        let view = WKWebView(
+        let view = HostedWebView(
             frame: CGRect(origin: CGPoint(x: -Self.viewport.width * 4, y: 0), size: Self.viewport),
             configuration: configuration
         )
@@ -230,6 +250,7 @@ final class BlockWebRenderer: NSObject {
         window.insertSubview(view, at: 0)
         let ready = await withCheckedContinuation { continuation in
             loaded = continuation
+            view.leftWindow = { [weak self] in self?.finishLoading(false) }
             view.loadFileURL(base.appendingPathComponent("render.html"), allowingReadAccessTo: base)
         }
         guard ready else {
@@ -280,6 +301,30 @@ extension BlockWebRenderer: WKNavigationDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         webView.removeFromSuperview()
         if web === webView { web = nil }
+    }
+}
+
+/// A web view that says when it leaves its window.
+private final class HostedWebView: WKWebView {
+    var leftWindow: (@MainActor () -> Void)?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil { leftWindow?() }
+    }
+}
+
+/// One call's answer, given once: by the call or by the web view leaving.
+@MainActor
+private final class Pending<T> {
+    var continuation: CheckedContinuation<T?, Never>?
+
+    func finish(_ value: T?) {
+        // WebKit's answer (`Any`) is not Sendable; it is made, handed over and
+        // read on the main actor, which the awaiting `whileHosted` runs on.
+        nonisolated(unsafe) let value = value
+        continuation?.resume(returning: value)
+        continuation = nil
     }
 }
 

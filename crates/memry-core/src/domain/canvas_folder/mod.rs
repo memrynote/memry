@@ -25,6 +25,7 @@ use crate::domain::recreate::write_over_tombstone;
 use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
+use crate::sync::server_vault::RecordVault;
 
 /// The sync type of a folder record.
 pub const ITEM_TYPE: &str = "canvas_folder";
@@ -106,11 +107,12 @@ pub(crate) fn upsert_in(
         }
         desktop_records::edit(tx, ITEM_TYPE, &id, &stored, changes, device_id, now_ms)?;
     } else {
+        let vault = RecordVault::read(tx, vault_id)?;
         write_over_tombstone(
             tx,
             ITEM_TYPE,
             &id,
-            new_payload(&id, vault_id, path, icon.flatten()),
+            new_payload(&id, vault.stamp(), path, icon.flatten()),
             device_id,
             now_ms,
         )?;
@@ -134,11 +136,12 @@ pub(crate) fn insert_if_absent_in(
     if sync_items::load(tx, ITEM_TYPE, &id)?.is_some() {
         return Ok(false);
     }
+    let vault = RecordVault::read(tx, vault_id)?;
     write_over_tombstone(
         tx,
         ITEM_TYPE,
         &id,
-        new_payload(&id, vault_id, path, None),
+        new_payload(&id, vault.stamp(), path, None),
         device_id,
         now_ms,
     )?;
