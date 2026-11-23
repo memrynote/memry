@@ -36,7 +36,6 @@
 use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
-use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
@@ -196,15 +195,13 @@ pub fn day(conn: &Connection, date: &str) -> Result<Option<JournalDay>, CrdtErro
 }
 
 /// What desktop reads of a live day besides its file (`findStoredJournalEntry`): the record's
-/// id, tags, properties and instants, and the path of the day's file when a row names it.
+/// id, tags and instants, and the path of the day's file when a row names it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DayStamp {
     pub id: String,
     /// Vault-relative; `None` for a day with no file yet.
     pub path: Option<String>,
     pub tags: Vec<String>,
-    /// The record's property values, a pulled one included before the file has it (#5509).
-    pub properties: Map<String, Value>,
     pub created_at: Option<i64>,
     pub modified_at: Option<i64>,
 }
@@ -234,7 +231,6 @@ pub fn stamp(conn: &Connection, date: &str) -> Result<Option<DayStamp>, StorageE
     };
     Ok(Some(DayStamp {
         tags: tags::list(conn, ITEM_TYPE, &id)?,
-        properties: properties::values(conn, ITEM_TYPE, &id)?,
         id,
         path,
         created_at,

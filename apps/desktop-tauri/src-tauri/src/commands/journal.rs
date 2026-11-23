@@ -8,6 +8,7 @@
 
 use std::sync::Arc;
 
+use memry_desktop::journal::JournalEntryView;
 use memry_desktop::journal::calendar::{
     self, HeatmapEntryView, MonthEntryView, MonthStatsView, StreakView,
 };
@@ -16,7 +17,6 @@ use memry_desktop::journal::property_rows::PropertyRowsView;
 use memry_desktop::journal::same_day::{self, SameDayEntryView};
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
-use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::time::now_ms;
@@ -151,10 +151,11 @@ pub async fn journal_get_entry<R: Runtime>(
 ) -> Result<Option<JournalEntryView>, CommandError> {
     blocking("journal_get_entry", move || {
         let open = notes::open_vault(&app)?;
-        let day = notes::service(&app)?
-            .journal(&open)
+        let service = notes::service(&app)?;
+        let day = service.journal(&open).map_err(|error| failed(&error))?;
+        let entry = service
+            .day_entry(&open, &day, &date)
             .map_err(|error| failed(&error))?;
-        let entry = journal::entry(&open, &day, &date).map_err(|error| failed(&error))?;
         let found = entry.is_some();
         announce(&app, Landed::Read { found });
         Ok(entry)

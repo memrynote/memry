@@ -210,7 +210,8 @@ impl Pass {
         // move counted it.
         let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
         let wait = |waiting: Option<Mark>, outcome: Outcome| {
-            if let Some(mark) = waiting {
+            // A deleted note's mark goes: one that comes back is pulled again.
+            if let Some(mark) = waiting.filter(|_| outcome != Outcome::Kept(Keep::NoNote)) {
                 self.pulled.put_back(note_id, mark);
             }
             outcome
