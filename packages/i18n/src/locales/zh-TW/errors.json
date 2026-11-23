@@ -30,6 +30,7 @@
     "applyTemplateFailed": "無法套用範本",
     "appendBlocksFailed": "無法將區塊移至該筆記",
     "appendIntoCaseTwin": "該筆記與另一則名稱僅大小寫不同的筆記共用同一個檔案。請重新命名其中一則，然後再次移動區塊。",
+    "caseTwinMoveRefused": "此筆記與另一則僅名稱大小寫不同的筆記共用一個檔案，因此無法以這種方式移動。請重新命名或移動另一則筆記，或刪除不需要的副本。",
     "exportPdfFailed": "無法匯出 PDF",
     "exportHtmlFailed": "無法匯出 HTML",
     "restoreVersionFailed": "無法還原版本",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "無法建立資料夾",
     "renameFailed": "無法重新命名資料夾",
+    "renameCaseTwins": "此資料夾中有筆記與另一則僅資料夾名稱大小寫不同的筆記共用一個檔案。請先重新命名或移動這些筆記，再重新命名資料夾。",
     "deleteFailed": "無法刪除資料夾",
     "setConfigFailed": "無法設定資料夾組態"
   },

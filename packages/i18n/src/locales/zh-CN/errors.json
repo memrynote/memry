@@ -30,6 +30,7 @@
     "applyTemplateFailed": "应用模板失败",
     "appendBlocksFailed": "无法将此块移到该笔记",
     "appendIntoCaseTwin": "该笔记与另一篇仅名称大小写不同的笔记共用同一个文件。请重命名其中一篇，然后再次移动此块。",
+    "caseTwinMoveRefused": "此笔记与另一篇仅名称大小写不同的笔记共用一个文件，因此无法以这种方式移动。请重命名或移动另一篇笔记，或删除不需要的副本。",
     "exportPdfFailed": "导出 PDF 失败",
     "exportHtmlFailed": "导出 HTML 失败",
     "restoreVersionFailed": "恢复版本失败",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "创建文件夹失败",
     "renameFailed": "重命名文件夹失败",
+    "renameCaseTwins": "此文件夹中有笔记与另一篇仅文件夹名称大小写不同的笔记共用一个文件。请先重命名或移动这些笔记，然后再重命名文件夹。",
     "deleteFailed": "删除文件夹失败",
     "setConfigFailed": "保存文件夹配置失败"
   },

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "No se pudo aplicar la plantilla",
     "appendBlocksFailed": "No se pudo mover el bloque a esa nota",
     "appendIntoCaseTwin": "Esa nota comparte su archivo con una nota cuyo nombre solo difiere en mayúsculas y minúsculas. Cambia el nombre de una de ellas y vuelve a mover el bloque.",
+    "caseTwinMoveRefused": "Esta nota comparte su archivo con una nota cuyo nombre solo difiere en mayúsculas y minúsculas, así que no se puede mover de esta forma. Cambia el nombre de la otra nota o muévela, o elimina la copia que no necesites.",
     "exportPdfFailed": "No se pudo exportar el PDF",
     "exportHtmlFailed": "No se pudo exportar el HTML",
     "restoreVersionFailed": "No se pudo restaurar la versión",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "No se pudo crear la carpeta",
     "renameFailed": "No se pudo renombrar la carpeta",
+    "renameCaseTwins": "Esta carpeta contiene notas que comparten un archivo con una nota cuyo nombre de carpeta solo difiere en mayúsculas y minúsculas. Cambia el nombre de esas notas o muévelas primero y, después, cambia el nombre de la carpeta.",
     "deleteFailed": "No se pudo eliminar la carpeta",
     "setConfigFailed": "No se pudo guardar la configuración de la carpeta"
   },

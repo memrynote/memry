@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nepodařilo se použít šablonu",
     "appendBlocksFailed": "Blok se nepodařilo přesunout do této poznámky",
     "appendIntoCaseTwin": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen. Jednu z nich přejmenujte a pak blok přesuňte znovu.",
+    "caseTwinMoveRefused": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen, takže ji tímto způsobem nelze přesunout. Přejmenujte nebo přesuňte druhou poznámku, nebo smažte kopii, kterou nepotřebujete.",
     "exportPdfFailed": "Nepodařilo se exportovat PDF",
     "exportHtmlFailed": "Nepodařilo se exportovat HTML",
     "restoreVersionFailed": "Nepodařilo se obnovit verzi",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Nepodařilo se vytvořit složku",
     "renameFailed": "Nepodařilo se přejmenovat složku",
+    "renameCaseTwins": "Tato složka obsahuje poznámky, které sdílejí soubor s poznámkou, jejíž název složky se liší jen velikostí písmen. Nejprve tyto poznámky přejmenujte nebo přesuňte a pak složku přejmenujte.",
     "deleteFailed": "Nepodařilo se smazat složku",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
