@@ -235,8 +235,11 @@ struct NotePageLoad: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .task {
-                await model.loadIfNeeded()
+            // On open and after each sync pass: another device's edits reach this
+            // page only through a body pull and a re-read. One task, so the open
+            // reads and walks the note once (REVIEW-5567).
+            .task(id: vaultSyncPasses) {
+                await model.refreshFromRemote()
                 if !reportedOpen, case .ready = model.phase {
                     reportedOpen = true
                     Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
@@ -246,9 +249,6 @@ struct NotePageLoad: ViewModifier {
                 // fetch that finished early would still only re-render them.
                 await model.fetchWaitingAttachments()
             }
-            // On open and after each sync pass: another device's edits reach this
-            // page only through a body pull and a re-read.
-            .task(id: vaultSyncPasses) { await model.refreshFromRemote() }
             // Opened, or restored at launch, before the first sync brought
             // its record in (`VaultFillView`): read again as records land.
             .onChange(of: firstSyncLanded) {

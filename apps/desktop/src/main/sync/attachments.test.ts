@@ -740,6 +740,22 @@ describe('AttachmentSyncService', () => {
       expect(result.filePath.includes('..')).toBe(false)
     })
 
+    it('lands the file where beforeFileLands says, and reports that path', async () => {
+      const { deps, plaintext } = buildDownloadFixture('moved.pdf')
+      const asked = path.join(tmpDir, 'old', 'moved.pdf')
+      const landAt = path.join(tmpDir, 'moved.pdf')
+      const beforeFileLands = vi.fn((_filePath: string, _attachmentId: string) => landAt)
+      const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+      const result = await service.downloadAttachment('att-dir', asked)
+
+      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir')
+      expect(result.filePath).toBe(landAt)
+      const fsp = await import('node:fs/promises')
+      expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+    })
+
     it('reports progress to the per-call callback instead of the shared slot', async () => {
       // #given a transfer that passes its own callback while the shared slot is set
       const { deps } = buildDownloadFixture('per-call.pdf')

@@ -231,7 +231,20 @@ export const SYNC_STATE_KEYS = {
    * binary note restore downloaded it and the file still held text, so the
    * restore never asks for it again. Missing reads as an empty list.
    */
-  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs'
+  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
+  /**
+   * JSON list of folded vault paths of binary files two case twins share
+   * whose outside change the watcher held (#5522). The split of the twins
+   * reads it to keep the change instead of downloading over it. Missing
+   * reads as an empty list.
+   */
+  CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
+  /**
+   * JSON list of binary note ids whose file may hold a case twin's bytes
+   * after the twins split (#5560). The watcher pushes no change to them
+   * until the note's own download lands. Missing reads as an empty list.
+   */
+  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */
