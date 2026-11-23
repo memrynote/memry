@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Primjena predloška nije uspjela",
     "appendBlocksFailed": "Premještanje bloka u tu bilješku nije uspjelo",
     "appendIntoCaseTwin": "Ta bilješka dijeli datoteku s bilješkom čiji se naziv razlikuje samo po velikim i malim slovima. Preimenuj jednu od njih, a zatim ponovno premjesti blok.",
+    "appendIntoBinary": "Blok se može premjestiti samo u bilješku, a ne u sliku, PDF, audio ili video datoteku.",
     "caseTwinMoveRefused": "Ova bilješka dijeli datoteku s bilješkom čiji se naziv razlikuje samo po velikim i malim slovima, pa se ne može premjestiti na ovaj način. Preimenujte ili premjestite drugu bilješku ili izbrišite kopiju koja vam ne treba.",
     "exportPdfFailed": "Izvoz u PDF nije uspio",
     "exportHtmlFailed": "Izvoz u HTML nije uspio",

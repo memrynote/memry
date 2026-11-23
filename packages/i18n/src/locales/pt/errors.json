@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Não foi possível aplicar o modelo",
     "appendBlocksFailed": "Não foi possível mover o bloco para essa nota",
     "appendIntoCaseTwin": "Essa nota partilha o ficheiro com uma nota cujo nome difere apenas em maiúsculas e minúsculas. Mude o nome de uma delas e, em seguida, mova o bloco novamente.",
+    "appendIntoBinary": "Só é possível mover um bloco para uma nota, não para uma imagem, um PDF ou um ficheiro de áudio ou vídeo.",
     "caseTwinMoveRefused": "Esta nota partilha o arquivo com uma nota cujo nome difere apenas em maiúsculas e minúsculas, por isso não pode ser movida desta forma. Renomeie ou mova a outra nota, ou exclua a cópia de que não precisa.",
     "exportPdfFailed": "Não foi possível exportar o PDF",
     "exportHtmlFailed": "Não foi possível exportar o HTML",
