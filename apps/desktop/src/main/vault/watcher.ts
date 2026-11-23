@@ -56,6 +56,7 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
+  buildFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
@@ -124,6 +125,13 @@ const MASS_REMOVAL_MIN_SHARE = 0.25
  * them. The app's own rename and delete are skipped by isAppFolderChange.
  */
 const DIR_UNLINK_SETTLE_MS = 1000
+
+/**
+ * How long a change's identity key outlives its debounced change. chokidar's
+ * `atomic` holds an unlink 100 ms, so a rename made while the change ran
+ * reports its unlink after it; past that, the row's hash has caught up.
+ */
+const CHANGE_KEY_GRACE_MS = 500
 
 // ============================================================================
 // Types
@@ -248,13 +256,14 @@ export class VaultWatcher {
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
   /**
-   * Size + mtime each file's last change reported, by event path, until its
-   * unlink takes it. The index row's hash can trail an outside edit: the
-   * change debounce has not run, or the row keeps the baseline until the doc
-   * takes the edit. An unlink gives its pending delete this key, so a rename
-   * (same size and mtime) still matches its add (#5518).
+   * Identity key (device, inode, size, mtime) of each file's last change, by
+   * event path, until its unlink takes it or CHANGE_KEY_GRACE_MS after its debounced change ran.
+   * The index row's hash trails an outside edit until that change runs, so an
+   * unlink gives its pending delete this key and a rename (same inode, size
+   * and mtime) still matches its add (#5518). The inode keeps an unrelated
+   * same-size same-mtime file from taking over a deleted note.
    */
-  private lastChangeStats = new Map<string, string>()
+  private lastChangeKeys = new Map<string, string>()
 
   /**
    * Start watching the vault for file changes.
@@ -278,7 +287,17 @@ export class VaultWatcher {
     const watchPaths = [vaultPath]
 
     // Create debounced handlers
-    this.debouncedChange = createPathDebouncer((filePath) => this.handleFileChange(filePath), 100)
+    this.debouncedChange = createPathDebouncer(async (filePath) => {
+      const key = this.lastChangeKeys.get(filePath)
+      try {
+        await this.handleFileChange(filePath)
+      } finally {
+        // A newer change re-armed the debounce and keeps its own key.
+        setTimeout(() => {
+          if (this.lastChangeKeys.get(filePath) === key) this.lastChangeKeys.delete(filePath)
+        }, CHANGE_KEY_GRACE_MS)
+      }
+    }, 100)
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
@@ -354,8 +373,9 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath, stats?: Stats) => {
-        const statKey = stats ? buildStatRenameKey(stats.size, stats.mtime.toISOString()) : null
-        if (statKey !== null) this.lastChangeStats.set(filePath, statKey)
+        const key = stats ? buildFileIdentityKey(stats) : null
+        if (key !== null) this.lastChangeKeys.set(filePath, key)
+        else this.lastChangeKeys.delete(filePath)
         this.debouncedChange?.(filePath)
       })
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
@@ -402,7 +422,7 @@ export class VaultWatcher {
     }
     this.vaultPath = null
     this.debouncedChange = null
-    this.lastChangeStats.clear()
+    this.lastChangeKeys.clear()
     this.isReady = false
   }
 
@@ -940,9 +960,12 @@ export class VaultWatcher {
 
     const scan = await scanMarkdownFile(absolutePath, 0)
     const contentHash = scan?.contentHash ?? null
-    const statKey = buildStatRenameKey(stats.size, stats.mtime.toISOString())
+    const statKeys = [
+      buildFileIdentityKey(stats),
+      buildStatRenameKey(stats.size, stats.mtime.toISOString())
+    ]
 
-    const match = checkForRename(contentHash, relativePath, statKey)
+    const match = checkForRename(contentHash, relativePath, statKeys)
     return match && { ...match, contentHash }
   }
 
@@ -1010,13 +1033,15 @@ export class VaultWatcher {
     recordActivity({ kind: 'renamed', source: 'watcher', path: relativePath, oldPath })
 
     // An outside edit made just before the rename and not yet taken matched
-    // by size + mtime, and its change may have found the file gone: the
-    // renamed note takes the edit here, under its own id (#5518).
+    // by file identity, and its change may have found the file gone: the
+    // renamed note takes the edit here, under its own id (#5518). A row the
+    // index never read has no hash to differ from, and its body stays unread.
     const renamed = getNoteCacheById(db, id)
     if (
       renamed &&
+      cached?.contentHash &&
       renameMatch.contentHash !== null &&
-      renamed.contentHash !== renameMatch.contentHash
+      cached.contentHash !== renameMatch.contentHash
     ) {
       await this.handleMarkdownFileChange(relativePath, renamed, db)
     }
@@ -1346,8 +1371,8 @@ export class VaultWatcher {
       deferred = null
     }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
-    const lastChangeStat = this.lastChangeStats.get(absolutePath) ?? null
-    this.lastChangeStats.delete(absolutePath)
+    const lastChangeKey = this.lastChangeKeys.get(absolutePath) ?? null
+    this.lastChangeKeys.delete(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {
@@ -1389,12 +1414,12 @@ export class VaultWatcher {
       // event with the same content hash). A row the tier-1 backfill has not
       // reached yet has no hash, so it carries size + mtime instead; without
       // that, renaming a just-pasted file would read as a delete plus a new
-      // note. A file changed outside since it was read carries the size + mtime
-      // its last change reported, since the row's hash and stat can both trail
-      // the edit (#5518). A row with neither never matches and degrades to a
-      // real delete after the window.
+      // note. A file whose outside change has not run yet carries that change's
+      // identity key, since the row's hash and stat both trail the edit
+      // (#5518). A row with neither never matches and degrades to a real
+      // delete after the window.
       const statKey =
-        lastChangeStat ??
+        lastChangeKey ??
         (cached.contentHash
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))

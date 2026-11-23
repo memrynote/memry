@@ -2,8 +2,8 @@
  * An outside edit, then a rename while the watcher still holds the edit's
  * change: the index row carries the hash from before the edit, and the renamed
  * file has the edited hash. The rename keeps the note's id and syncs no delete
- * (#5518). A delete of the edited file plus an unrelated new file stays a
- * delete and a create.
+ * (#5518). A delete of the edited file plus an unrelated new file of the same
+ * size and mtime stays a delete and a create.
  *
  * @module vault/watcher-edit-then-rename.test
  */
@@ -12,7 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -290,20 +292,63 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     20_000
   )
 
-  // Same size as the edited body, so only the file's identity tells them apart.
-  it('a delete right after an outside edit, plus an unrelated new file, stays a delete and a create', async () => {
-    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
-    await watch()
-    await editThen('Docs/apple.md', '# apple\n\nbody edited\n', () => {
-      fs.unlinkSync(path.join(vault.path, 'Docs/apple.md'))
-      fs.writeFileSync(path.join(vault.path, 'Docs/pear.md'), '# pear!\n\nbody edited\n')
-    })
+  /**
+   * Deletes the edited file and writes an unrelated file of the same size,
+   * whose mtime is pinned to the deleted file's: same-mtime files are common
+   * (1-2 s mtime filesystems, `cp -p`, `rsync -t`, unzip, sync clients).
+   */
+  function deleteAndWriteLookalike(relativePath: string, lookalikePath: string, body: string) {
+    const absolutePath = path.join(vault.path, relativePath)
+    const { atime, mtime } = fs.statSync(absolutePath)
+    fs.unlinkSync(absolutePath)
+    const lookalike = path.join(vault.path, lookalikePath)
+    fs.writeFileSync(lookalike, body)
+    fs.utimesSync(lookalike, atime, mtime)
+  }
+
+  async function expectDeleteAndCreate(): Promise<void> {
     await settleOn(() => {
       expect(enqueueLocalSyncDelete).toHaveBeenCalledWith('note', 'n1')
       expect(metadataRows().map((row) => row.path)).toEqual(['Docs/pear.md'])
     })
-
     expect(metadataRows()[0]?.id).not.toBe('n1')
     expect(renameSynced).not.toHaveBeenCalled()
+  }
+
+  // Same size and mtime as the edited body, so only the file's identity tells them apart.
+  it('a delete right after an outside edit, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThen('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+      deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
+    )
+    await expectDeleteAndCreate()
+  }, 20_000)
+
+  it('a delete long after an outside edit settled, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThen('Docs/apple.md', '# apple\n\nbody edited\n', () => {})
+    await settleOn(() => expect(editFedTo('n1')).toBe(true))
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+
+    deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
+    await expectDeleteAndCreate()
+  }, 25_000)
+
+  // The index has not read the body yet, so the rename matches by size + mtime;
+  // there is no earlier hash for the renamed file to differ from.
+  it('a rename of a note the index has not read does not read its body', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
+    const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
+    fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
+    await watch()
+
+    fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
+    await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+    expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+    expect(feedExternalEditToCrdt).not.toHaveBeenCalled()
   }, 20_000)
 })
