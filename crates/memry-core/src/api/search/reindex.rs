@@ -72,6 +72,9 @@ impl Search {
                             }
                         }
                     });
+                // Let go of index.db before the rest: a save takes data.db then index.db, and
+                // would wait on this writer while holding data.db (REVIEW-5503).
+                drop(index_writer);
                 let (step, rest) = match batch {
                     Ok(batch) => batch,
                     Err(error) => {

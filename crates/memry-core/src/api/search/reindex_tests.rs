@@ -160,6 +160,93 @@ fn a_data_writer_does_not_wait_on_a_batch_index_commit() {
     );
 }
 
+/// Runs once, on the reindex thread, when the `data.db` connection starts its next COMMIT.
+static ON_DATA_COMMIT: std::sync::Mutex<Option<Box<dyn FnOnce() + Send>>> =
+    std::sync::Mutex::new(None);
+
+fn on_data_commit(event: rusqlite::trace::TraceEvent<'_>) {
+    if let rusqlite::trace::TraceEvent::Stmt(_, sql) = event
+        && sql == "COMMIT"
+        && let Some(hook) = ON_DATA_COMMIT.lock().expect("the hook").take()
+    {
+        hook();
+    }
+}
+
+/// REVIEW-5503 finding 1: the batch's `index.db` writer stayed held through the rest between
+/// batches, so a write that takes `data.db` then `index.db` (an editor save, a file-text
+/// refresh) got `data.db` in the rest and then waited on `index.db` while holding it. A writer
+/// that queues behind a batch's `data.db` commit now finishes during the rest.
+#[test]
+fn a_data_then_index_writer_finishes_during_the_rest_between_batches() {
+    let search = search_over(BATCH_NOTES * 2);
+    search
+        .data
+        .call_blocking(|data| {
+            data.trace_v2(
+                rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+                Some(on_data_commit),
+            );
+            Ok(())
+        })
+        .expect("trace data.db");
+    let (finished, writer_done) = mpsc::channel::<()>();
+    let writer = Arc::new(std::sync::Mutex::new(None));
+    let queued = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let result = Arc::new(std::sync::Mutex::new(None));
+    let hook = {
+        let (data, index) = (search.data.clone(), search.index.clone());
+        let (writer, queued) = (Arc::clone(&writer), Arc::clone(&queued));
+        move || {
+            let waiting = data.clone();
+            *writer.lock().expect("writer slot") = Some(std::thread::spawn(move || {
+                data.call_blocking(|_| index.call_blocking(|_| Ok(())))
+                    .expect("the save");
+                let _ = finished.send(());
+            }));
+            // The save queues on data.db before the batch lets go, so the batch rests after.
+            while waiting.writers_waiting() == 0 {
+                std::thread::yield_now();
+            }
+            queued.store(true, Ordering::SeqCst);
+        }
+    };
+    let hook = std::sync::Mutex::new(Some(hook));
+    let stop = || {
+        // The first stop is at the first row, after the names were settled: arm the hook
+        // for the batch's data.db commit. No row runs between that commit and the rest.
+        if let Some(hook) = hook.lock().expect("the hook").take() {
+            *ON_DATA_COMMIT.lock().expect("the hook") = Some(Box::new(hook));
+        } else if queued.swap(false, Ordering::SeqCst) {
+            // In the rest. Expiry fails the test: the save is blocked on index.db.
+            *result.lock().expect("result slot") =
+                Some(writer_done.recv_timeout(Duration::from_secs(10)).is_ok());
+        }
+        false
+    };
+    assert!(
+        search
+            .reindex_until(&stop, &mut LinkChanges::default())
+            .expect("reindex"),
+        "not stopped"
+    );
+    search
+        .data
+        .call_blocking(|data| {
+            data.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+            Ok(())
+        })
+        .expect("untrace");
+    if let Some(writer) = writer.lock().expect("writer slot").take() {
+        writer.join().expect("the save thread");
+    }
+    assert_eq!(
+        *result.lock().expect("result slot"),
+        Some(true),
+        "a data.db -> index.db writer waited on the index.db writer through the rest"
+    );
+}
+
 static INTERRUPT_INDEX_COMMIT: std::sync::Mutex<Option<(usize, rusqlite::InterruptHandle)>> =
     std::sync::Mutex::new(None);
 
