@@ -672,16 +672,32 @@ export async function getNoteByPath(notePath: string): Promise<Note | null> {
 // ============================================================================
 
 /**
- * An update without a body writes only frontmatter, so it also takes the
- * note's write-back turn: a pass never writes back the frontmatter it read
- * before it (#5472). A body update feeds the doc first (`landBodyEdit`).
+ * Frontmatter is written in the note's write-back turn, so a pass never
+ * writes back the frontmatter it read before it (#5472). A body update feeds
+ * the doc first (`landBodyEdit`) outside the turn, since the feed can wait on
+ * the store; the re-arm after a pass restores its body but not the
+ * frontmatter written beside it, so its frontmatter is written again in the
+ * turn (#5479). A rewrite with identical bytes writes nothing.
  */
 export function updateNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
-  return writeNoteInOrder(input.id, () =>
-    input.content === undefined
-      ? takeWritebackTurn(input.id, () => writeNote(input))
-      : writeNote(input)
-  )
+  return writeNoteInOrder(input.id, async () => {
+    if (input.content === undefined) return takeWritebackTurn(input.id, () => writeNote(input))
+    const outcome = await writeNote(input)
+    const { frontmatter, properties, propertyPatch, aliases } = input
+    const tagChange = outcome.headerTagChange
+    if (!tagChange && !frontmatter && !properties && !propertyPatch && !aliases) return outcome
+    await takeWritebackTurn(input.id, () =>
+      writeNote({
+        id: input.id,
+        headerTags: tagChange ? { add: tagChange.added, remove: tagChange.removed } : undefined,
+        frontmatter,
+        properties,
+        propertyPatch,
+        aliases
+      })
+    )
+    return outcome
+  })
 }
 
 async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
