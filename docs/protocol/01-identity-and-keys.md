@@ -402,7 +402,7 @@ pass settles them. The decision is a pure function of five facts
    from, see below), `F` is forgotten without creating `j<D>`: its local
    projection and doc go, and it is not tombstoned
    (`apps/desktop/src/main/sync/journal-day-merge.ts:251`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:166`, `:317`). A local
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:167`, `:318`). A local
    row left holding the day would take the user's typing into a dead id. A
    device that holds `F`'s text may never have pushed it, as when an old
    build's update record carries `content: null`; a tombstone would make that
@@ -418,7 +418,7 @@ pass settles them. The decision is a pure function of five facts
    re-created (#2986). `F` is dropped: only the owed merge goes. `F` is not
    tombstoned, and its row and local doc stay
    (`apps/desktop/src/main/sync/journal-day-merge.ts:270`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:177`).
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:178`).
 4. Otherwise make `j<D>` hold the day. A foreign local row gives the day up
    (desktop keeps its file text first), and `j<D>` is created empty through
    the normal create path. Desktop removes a row from the index database
@@ -431,12 +431,12 @@ pass settles them. The decision is a pure function of five facts
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:210`).
 5. Point task links at `F` to `j<D>`
    (`apps/desktop/src/main/notes/runtime-effects.ts:125`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:252`).
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:253`).
 6. If `F`'s doc holds no Yjs state, build it from text first (below). Apply
    `F`'s whole Yjs state to `j<D>`'s doc as a local edit, so it is
    stored, written back and pushed as a CRDT update for `j<D>`. `j<D>` is
    opened unseeded (`apps/desktop/src/main/sync/crdt-provider.ts:1654`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:270`).
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:271`).
    Then add `F`'s tags to `j<D>`'s tags as a set union, keeping the tags
    `j<D>` has and their order, and push the change when the union adds a
    tag. Tags compare by tag key (case-insensitive), so a tag `j<D>` holds in
@@ -453,7 +453,7 @@ pass settles them. The decision is a pure function of five facts
    record replaces the record tags kept, for the same reason
    (`apps/desktop/src/main/sync/journal-day-merge.ts:99`,
    `:264`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`;
-   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:280`). `j<D>`'s
+   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:283`). `j<D>`'s
    current tags are read at the moment they are written, in the same
    transaction or write-back turn, never earlier. Desktop owed merges written
    before the record tags were kept apart hold one list, which is added as
@@ -464,7 +464,7 @@ pass settles them. The decision is a pure function of five facts
    clock. An empty clock means the server never saw `F`, so no tombstone is
    owed. The tombstone and dropping the owed merge commit together, then
    `F`'s local doc is purged (`apps/desktop/src/main/sync/journal-day-merge.ts:239`;
-   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:294`, `:317`).
+   core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:295`, `:318`).
    The plan owes a tombstone for the merge action only, so steps 2 and 3
    never delete `F` on any device.
 
@@ -479,10 +479,10 @@ field merge converges.
 text: on desktop the day file's body when `F` was the local holder, else the
 record's `content`
 (`apps/desktop/src/main/sync/journal-day-merge.ts:210`; core:
-`crates/memry-core/src/sync/journal_day_merge/mod.rs:243`). The text is
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:244`). The text is
 parsed into a fresh doc under a client id fixed per foreign id and device
 (`apps/desktop/src/main/sync/journal-day-merge.ts:268`; core:
-`crates/memry-core/src/sync/journal_day_merge/mod.rs:340`), so a rebuild after
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:341`), so a rebuild after
 a crash on the same device mints the same Yjs items and folds nothing twice.
 Desktop stores the built doc before folding it
 (`apps/desktop/src/main/sync/crdt-provider.ts:1666`), so a retry reuses those
@@ -494,7 +494,7 @@ it already merged that. What this device holds still folds, because it may
 never have been pushed (#2984): its local Yjs state, and on desktop the day
 file text of a local holder `F`. The core keeps no day file; a holder's text
 there lives only in its Yjs state
-(`crates/memry-core/src/sync/journal_day_merge/mod.rs:329`).
+(`crates/memry-core/src/sync/journal_day_merge/mod.rs:330`).
 
 **Known limits.**
 
