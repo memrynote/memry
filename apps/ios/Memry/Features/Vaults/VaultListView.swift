@@ -202,22 +202,32 @@ struct VaultListView: View {
 }
 
 /// The registry could not be read, and the vault opened from this device.
-/// Above the vault, never in its way; it goes once the account answers again
-/// after the network path changes (#5524).
+/// Above the vault, never in its way. It goes once the account answers: on
+/// Try again, in the foreground, after a network path change, or after a sync
+/// pass that got through (#5524).
 private struct RegistryNotice: View {
     let error: UserFacingError
-    let pathChanged: () -> Void
+    let recheck: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        ErrorNotice(error: error, code: nil)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Tokens.Space.screenInline)
-            .padding(.vertical, Tokens.Space.inset)
-            .background(Tokens.Canvas.background.color)
-            .onReceive(
-                NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged)
-                    .receive(on: DispatchQueue.main)
-            ) { _ in pathChanged() }
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            ErrorNotice(error: error, code: nil)
+            Button("Try again", action: recheck)
+                .memrySecondaryAction()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Tokens.Space.screenInline)
+        .padding(.vertical, Tokens.Space.inset)
+        .background(Tokens.Canvas.background.color)
+        .onReceive(
+            NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged)
+                .merge(with: NotificationCenter.default.publisher(for: .vaultSyncPassSucceeded))
+                .receive(on: DispatchQueue.main)
+        ) { _ in recheck() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { recheck() }
+        }
     }
 }
 

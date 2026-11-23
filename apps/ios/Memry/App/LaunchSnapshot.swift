@@ -75,12 +75,8 @@ final class LaunchSnapshot: @unchecked Sendable {
     }
 
     /// A vault was opened: it becomes the one to reopen, and the scope for
-    /// everything below.
-    func vaultOpened(_ id: String) {
-        vaultOpened(VaultSummary(id: id, name: nil))
-    }
-
-    /// Records the row's sealed name too, never its opened `name`.
+    /// everything below. Records the row's sealed name too, never its opened
+    /// `name`.
     func vaultOpened(_ summary: VaultSummary) {
         lock.withLock {
             current = summary.id

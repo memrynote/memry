@@ -179,7 +179,7 @@ struct VaultSelectionTests {
     @Test("the vault open last time reopens without asking, and switching forgets it")
     func theLastVaultReopensUntilSwitched() async {
         let snapshot = isolatedSnapshot()
-        snapshot.vaultOpened("b")
+        snapshot.vaultOpened(VaultSummary(id: "b", name: nil))
         let opener = ScriptedOpener()
         let vaults = [summary("a", "Work"), summary("b", "Personal")]
         let selection = model(.success(vaults), opener: opener, snapshot: snapshot)
@@ -294,6 +294,157 @@ struct OfflineLaunchTests {
         #expect(selection.vault == nil)
         #expect(selection.registryNotice == nil)
         #expect(opener.openedVaultIds.isEmpty)
+    }
+
+    private func relaunch(
+        _ registry: any VaultRegistry,
+        snapshot: LaunchSnapshot = isolatedSnapshot(),
+        opener: ScriptedOpener = ScriptedOpener()
+    ) -> VaultSelectionViewModel {
+        snapshot.vaultOpened(personal)
+        return VaultSelectionViewModel(registry: registry, opener: opener, snapshot: snapshot)
+    }
+
+    @Test("only a network or server fault opens the vault; a refusal keeps its own screen")
+    func onlyTransportAndServerFaultsFallBack() async {
+        let faults: [any Error] = [
+            offline,
+            ApiError.Transport(source: .Timeout(elapsedMs: 30_000)),
+            ApiError.Transport(source: .Failed(what: "x")),
+            ApiError.Status(status: 503, code: nil, message: "x"),
+        ]
+        for fault in faults {
+            let opener = ScriptedOpener()
+            let selection = relaunch(SwitchableRegistry(.failure(fault)), opener: opener)
+            await selection.load()
+            #expect(opener.openedVaultIds == ["b"], "\(ErrorMapping.userFacing(fault).code)")
+            #expect(selection.registryNotice != nil)
+        }
+        let refusals: [any Error] = [
+            ApiError.Unauthorized(code: "x", message: "x"),
+            ApiError.DeviceRevoked(message: "x"),
+            ApiError.DeviceLimitReached(message: "x"),
+            ApiError.UpgradeRequired(minVersion: "9", message: "x"),
+            ApiError.Transport(source: .Tls(what: "x")),
+        ]
+        for refusal in refusals {
+            let opener = ScriptedOpener()
+            let selection = relaunch(SwitchableRegistry(.failure(refusal)), opener: opener)
+            await selection.load()
+            let code = ErrorMapping.userFacing(refusal).code
+            #expect(selection.phase == .unreadable(ErrorMapping.userFacing(refusal)), "\(code)")
+            #expect(opener.openedVaultIds.isEmpty, "\(code)")
+            #expect(selection.vault == nil)
+        }
+    }
+
+    @Test("Try again while the server is still away keeps the vault and updates the notice")
+    func retryWhileStillAway() async {
+        let registry = SwitchableRegistry(.failure(offline))
+        let selection = relaunch(registry)
+        await selection.load()
+        registry.answer(.failure(ApiError.Status(status: 503, code: nil, message: "x")))
+        await selection.registryReachable()
+        #expect(selection.registryNotice?.code == "api.statusServerFault")
+        #expect(selection.phase == .opened(VaultSummary(
+            id: "b", name: "Personal", encryptedName: "sealed-personal", nameNonce: "nonce"
+        )))
+        registry.answer(.success([personal]))
+        await selection.registryReachable()
+        #expect(selection.registryNotice == nil)
+    }
+
+    @Test("reconnecting prunes the snapshot and refreshes the vault's name")
+    func reconnectReconciles() async {
+        let snapshot = isolatedSnapshot()
+        snapshot.vaultOpened(VaultSummary(id: "gone", name: nil))
+        snapshot.setStack("k", Data([1]))
+        let registry = SwitchableRegistry(.failure(offline))
+        let selection = relaunch(registry, snapshot: snapshot)
+        await selection.load()
+        #expect(VaultLabel(VaultSummary(id: "b", name: nil)) == .unnamed)
+
+        let renamed = VaultSummary(id: "b", name: "Renamed", encryptedName: "sealed-2", nameNonce: "n2")
+        registry.answer(.success([summary("a", "Work"), renamed]))
+        await selection.registryReachable()
+
+        #expect(selection.phase == .opened(renamed))
+        #expect(snapshot.lastVaultSummary?.encryptedName == "sealed-2")
+        snapshot.vaultOpened(VaultSummary(id: "gone", name: nil))
+        #expect(snapshot.stack("k") == nil)
+    }
+
+    @Test("reconnecting to an account that no longer lists the open vault shows the list flow")
+    func reconnectAfterTheVaultWasRemoved() async {
+        let registry = SwitchableRegistry(.failure(offline))
+        let opener = ScriptedOpener()
+        let selection = relaunch(registry, opener: opener)
+        await selection.load()
+
+        registry.answer(.success([summary("a", "Work")]))
+        await selection.registryReachable()
+
+        #expect(selection.phase == .opened(summary("a", "Work")))
+        #expect(selection.registryNotice == nil)
+        #expect(opener.openedVaultIds == ["b", "a"])
+    }
+
+    /// The ABA: a read started for one screen must not touch the screen a
+    /// reload put in its place, even one that looks the same afterwards.
+    @Test("a stale read does not clear the notice of a screen that replaced it")
+    func aStaleReadIsDropped() async {
+        let registry = GatedRegistry()
+        let opener = ScriptedOpener()
+        let selection = relaunch(registry, opener: opener)
+        let launch = Task { await selection.load() }
+        await registry.nextCall()
+        registry.release(.failure(offline))
+        await launch.value
+        #expect(selection.registryNotice != nil)
+
+        let stale = Task { await selection.registryReachable() }
+        await registry.nextCall()
+        let reload = Task { await selection.load() }
+        registry.release(.success([personal]))
+        await stale.value
+
+        #expect(selection.phase == .loading)
+        #expect(selection.registryNotice != nil)
+
+        await registry.nextCall()
+        registry.release(.failure(offline))
+        await reload.value
+        #expect(selection.registryNotice != nil)
+        #expect(opener.openedVaultIds == ["b", "b"])
+    }
+}
+
+/// A registry whose reads wait to be answered, one at a time in the order
+/// they started, so a test decides which read ends when.
+private final class GatedRegistry: VaultRegistry, @unchecked Sendable {
+    private let waiting = Mutex<[CheckedContinuation<Result<[VaultSummary], any Error>, Never>]>([])
+    private let arrivals: AsyncStream<Void>
+    private let arrive: AsyncStream<Void>.Continuation
+    private var arrivalIterator: AsyncStream<Void>.AsyncIterator
+
+    init() {
+        (arrivals, arrive) = AsyncStream.makeStream(of: Void.self)
+        arrivalIterator = arrivals.makeAsyncIterator()
+    }
+
+    func vaults() async throws -> [VaultSummary] {
+        let answer = await withCheckedContinuation { continuation in
+            waiting.withLock { $0.append(continuation) }
+            arrive.yield()
+        }
+        return try answer.get()
+    }
+
+    /// Returns once a read is waiting.
+    func nextCall() async { _ = await arrivalIterator.next() }
+
+    func release(_ answer: Result<[VaultSummary], any Error>) {
+        waiting.withLock { $0.removeFirst() }.resume(returning: answer)
     }
 }
 

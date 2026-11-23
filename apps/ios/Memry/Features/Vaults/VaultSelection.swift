@@ -66,6 +66,12 @@ enum VaultLabel: Equatable, Sendable {
     }
 }
 
+extension Notification.Name {
+    /// A vault's sync pass got through, so the server answered. The vault
+    /// screen re-reads the registry when it is showing an offline notice.
+    static let vaultSyncPassSucceeded = Notification.Name("memry.vaultSyncPassSucceeded")
+}
+
 @MainActor
 @Observable
 final class VaultSelectionViewModel {
@@ -92,6 +98,18 @@ final class VaultSelectionViewModel {
     /// Why the registry could not be read while the last vault opened from
     /// this device anyway. Shown over the vault, never instead of it (#5524).
     private(set) var registryNotice: UserFacingError?
+
+    /// Bumped by every ``load()`` and ``open(_:source:)``. A registry read
+    /// that started under an older value belongs to a screen that has since
+    /// been replaced, so its answer is dropped. The phase cannot say this: a
+    /// reload that ends where it started (the same vault, offline again) has
+    /// the same phase and notice as the screen the stale read was for.
+    private var loadGeneration = 0
+
+    /// The latest registry read. ``readRegistry()`` runs the next one after
+    /// it, because the signed-in registry writes (it creates and registers
+    /// the local vault) and two overlapping calls would race those writes.
+    private var registryReads: Task<Void, Never>?
 
     /// The open handle, for the screens that read it (T156, T157).
     ///
@@ -167,7 +185,7 @@ final class VaultSelectionViewModel {
 
     /// Every vault on the account, for Settings › Vaults.
     func accountVaults() async throws -> [VaultSummary] {
-        try await registry.vaults()
+        try await readRegistry()
     }
 
     /// Whether a second vault exists to switch to. The switch is offered only
@@ -182,18 +200,22 @@ final class VaultSelectionViewModel {
     /// it cannot be cancelled (spec-defect 108), so the screen shows what is
     /// happening and offers no button that would lie about stopping it.
     func load() async {
+        loadGeneration += 1
         phase = .loading
         vault = nil
         filler = nil
         let summaries: [VaultSummary]
         do {
-            summaries = try await registry.vaults()
+            summaries = try await readRegistry()
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("the vault registry could not be read", .code(mapped.code))
             // Local first: the vault this device last opened is on disk, and
-            // its sync waits for the network (#5524).
-            if let last = snapshot.lastVaultSummary {
+            // its sync waits for the network (#5524). Only a transport or
+            // server fault says nothing about the account. A refusal (signed
+            // out, revoked, too old, too many devices) keeps its own screen:
+            // opening the vault over it would hide the action it asks for.
+            if Self.localFirstCodes.contains(mapped.code), let last = snapshot.lastVaultSummary {
                 await open(registry.named(last), source: "auto")
                 if case .opened = phase { registryNotice = mapped }
                 return
@@ -227,21 +249,58 @@ final class VaultSelectionViewModel {
 
     private static let offlineCode: ErrorCode = "transport.offline"
 
-    /// The network path changed while a vault is open without the registry:
-    /// one quiet read, which clears the notice once the account answers.
+    /// A registry failure that is the network or the server being away, not
+    /// an answer about the account (`ErrorMapping`: offline, timeout, failed,
+    /// 5xx and 408).
+    private static let localFirstCodes: Set<ErrorCode> = [
+        offlineCode, "transport.timeout", "transport.failed", "api.statusServerFault",
+    ]
+
+    /// A vault is open without the registry: one read, from the notice's
+    /// Try again, the foreground, a network path change, or a sync pass that
+    /// got through. Once the account answers it reconciles the open vault
+    /// with the list: pruned snapshot, refreshed name, notice gone. A vault
+    /// the account no longer lists goes through ``load()``, the screen a
+    /// launch with the registry reachable shows for that. Its files stay on
+    /// disk, so nothing written offline is deleted.
     func registryReachable() async {
-        guard registryNotice != nil, case .opened = phase else { return }
+        guard registryNotice != nil, case let .opened(open) = phase else { return }
+        let generation = loadGeneration
         let summaries: [VaultSummary]
         do {
-            summaries = try await registry.vaults()
+            summaries = try await readRegistry()
         } catch {
-            Log.sync.info("the vault registry is still unreachable", .code(ErrorMapping.userFacing(error).code))
+            guard generation == loadGeneration else { return }
+            // The reason may have changed since the notice was raised.
+            registryNotice = ErrorMapping.userFacing(error)
+            Log.sync.info("the vault registry is still unreachable", .code(registryNotice?.code ?? Self.offlineCode))
             return
         }
         // A switch or a reload while the read was out decided the screen anew.
-        guard registryNotice != nil, case .opened = phase else { return }
+        guard generation == loadGeneration else { return }
+        snapshot.prune(keeping: Set(summaries.map(\.id)))
+        guard let row = summaries.first(where: { $0.id == open.id }) else {
+            await load()
+            return
+        }
         registryNotice = nil
         isSwitchable = summaries.count > 1
+        if row != open {
+            snapshot.vaultOpened(row)
+            phase = .opened(row)
+        }
+    }
+
+    /// `registry.vaults()`, one call at a time and in the order asked.
+    private func readRegistry() async throws -> [VaultSummary] {
+        let previous = registryReads
+        let registry = registry
+        let read = Task {
+            await previous?.value
+            return try await registry.vaults()
+        }
+        registryReads = Task { _ = await read.result }
+        return try await read.value
     }
 
     // MARK: - The open
@@ -249,6 +308,7 @@ final class VaultSelectionViewModel {
     /// Opens one vault through `VaultFiles.openingVault`, which is the whole
     /// security half of this task. See `VaultOpening.swift`.
     func open(_ summary: VaultSummary, source: StaticString = "select") async {
+        loadGeneration += 1
         phase = .opening(summary)
         do {
             let opened = try await opener.open(summary.id)
