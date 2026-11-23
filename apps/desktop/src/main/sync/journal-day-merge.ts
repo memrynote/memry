@@ -30,6 +30,7 @@ import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
 import { createJournalEntry } from '../journal/create-entry'
+import { updateJournalEntry } from '../journal/update-entry'
 import { getJournalRelativePath, parseJournalEntry, readJournalTextSync } from '../vault/journal'
 import { deleteNoteFromCache } from '../vault/note-sync'
 import { relinkTasksToMergedNote } from '../notes/runtime-effects'
@@ -59,6 +60,12 @@ export interface OwedJournalDayMerge {
   recordMarkdown?: string | null
   /** The foreign id's tombstone arrived: another device merged it already. */
   deleted?: boolean
+  /**
+   * The foreign entry's tags: its record's, or the file of the local row that
+   * gave the day up. The fold carries the doc's `tags` array, but the day file
+   * owns its tags (#5476), so the merge adds these to the file.
+   */
+  tags?: string[]
 }
 
 /**
@@ -77,12 +84,14 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const fallbackMarkdown = merge.fallbackMarkdown ?? kept?.fallbackMarkdown
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
+  const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
   const value = JSON.stringify({
     ...merge,
     clock,
     ...(fallbackMarkdown ? { fallbackMarkdown } : {}),
     ...(recordMarkdown ? { recordMarkdown } : {}),
-    ...(deleted ? { deleted: true } : {})
+    ...(deleted ? { deleted: true } : {}),
+    tags: tags.length > 0 ? tags : undefined
   })
   db.insert(syncState)
     .values({ key: KEY_PREFIX + merge.foreignId, value, updatedAt: new Date() })
@@ -172,6 +181,8 @@ export interface JournalDayMergeDeps {
     foreignId: string,
     fallbackMarkdown: string | null
   ) => Promise<boolean>
+  /** Adds `tags` to `date`'s day file, keeping the ones it has. */
+  addDayTags: (date: string, tags: string[]) => Promise<void>
   purgeDoc: (id: string) => Promise<void>
   /** Removes `id`'s local row, if any, from both databases. */
   removeRow: (id: string) => void
@@ -237,6 +248,7 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
       log.warn('Foreign journal had nothing to fold; it stays owed', describe(merge))
       return false
     }
+    if (merge.tags?.length) await deps.addDayTags(merge.date, merge.tags)
   }
 
   // A forgotten id goes from this device, as in the core: a row a pre-fix
@@ -288,13 +300,34 @@ export function fallbackClientId(foreignId: string, deviceId: string): number {
 }
 
 export function readDayBody(date: string): string | null {
+  return readDay(date)?.content ?? null
+}
+
+export function readDayTags(date: string): string[] {
+  const tags: unknown = readDay(date)?.frontmatter.tags
+  return Array.isArray(tags) ? tags.map(String) : []
+}
+
+function readDay(date: string): ReturnType<typeof parseJournalEntry> | null {
   try {
     const raw = readJournalTextSync(date)
-    return raw === null ? null : parseJournalEntry(raw, date).content
+    return raw === null ? null : parseJournalEntry(raw, date)
   } catch (error) {
     log.warn('Could not read a journal day file', { date, error })
     return null
   }
+}
+
+function unionTags(kept: string[], added: string[]): string[] {
+  return [...new Set([...kept, ...added])]
+}
+
+/** `addDayTags` against the real day file: a tags-only update, in the day's write-back turn. */
+async function addJournalDayTags(date: string, tags: string[]): Promise<void> {
+  const kept = readDayTags(date)
+  const next = unionTags(kept, tags)
+  if (next.length === kept.length) return
+  await updateJournalEntry({ date, tags: next })
 }
 
 /**
@@ -322,7 +355,8 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       foreignId: holder.id,
       date,
       clock: row?.clock ?? null,
-      fallbackMarkdown: readDayBody(date)
+      fallbackMarkdown: readDayBody(date),
+      tags: readDayTags(date)
     })
     removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {
@@ -365,6 +399,7 @@ export async function runJournalDayMerges(
         fallbackMarkdown,
         fallbackClientId(foreignId, deviceId)
       ),
+    addDayTags: addJournalDayTags,
     purgeDoc: (id) => provider.purge(id),
     removeRow: (id) => removeJournalRow(db, id),
     enqueueDelete: (id, payload) => journalSync.enqueueRecoveredDelete(id, payload)

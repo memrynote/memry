@@ -167,7 +167,7 @@ fn marker(id: &str, cursor: i64, forged: bool) -> Json {
         clock: &clock,
         deleted_at: if forged { deleted_at + 1 } else { deleted_at },
     };
-    let attestation = delete_attestation::sign(&claim, &signer().1).expect("signed");
+    let attestation = delete_attestation::sign(&claim, None, &signer().1).expect("signed");
     json!({"id": id, "type": "task", "deletedAt": deleted_at, "clock": clock,
            "serverCursor": cursor, "signerDeviceId": "device-a",
            "deleteAttestation": attestation})

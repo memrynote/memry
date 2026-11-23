@@ -16,13 +16,17 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
+use memry_core::api::projects::ProjectDraft;
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::epoch::HeldBody;
 use memry_core::crypto::{keys, sodium};
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::delete_attestation::{self, DeleteClaim};
 use memry_core::protocol::envelope::{self, RecordMaterial, RecordRequest, SyncOperation};
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::sync::body_debt;
+use memry_core::sync::clock::VectorClock;
 use serde_json::json;
 
 const BASE: &str = "https://sync.example.com";
@@ -859,4 +863,112 @@ async fn the_body_step_stops_at_its_request_budget() {
         budget - pulled
     );
     assert_eq!(owed(&side).len(), budget + 3 - pulled);
+}
+
+/// #5247: a server before v2 rejects a v2 delete attestation as a bad
+/// signature, so the pass signs a delete v1, with no vault id, until the
+/// writers flip (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_pushed_delete_is_attested_v1_until_the_v2_flip() {
+    let (public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
+    let device_id = "server-device-1";
+    let store = FakeSecureStore::new();
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({"sub": "user-1", "device_id": device_id, "type": "access", "exp": 9_999_999_999u64})),
+    );
+    store
+        .set(SecureStoreKey::MasterKey, MASTER_KEY.to_vec())
+        .expect("plant the master key");
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .expect("plant the signing key");
+
+    let vault = scratch_vault();
+    let tasks = vault.tasks(store.clone()).expect("the task surface");
+    let project_id = tasks
+        .create_project(ProjectDraft {
+            name: "Inbox".to_string(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .expect("create project");
+    let task_id = tasks
+        .create(NewTaskInput {
+            title: "Gone".to_string(),
+            project_id,
+            status_id: None,
+            parent_id: None,
+            priority: 0,
+            description: None,
+            due_date: None,
+            due_time: None,
+            start_date: None,
+            repeat: None,
+            repeat_from: None,
+            tags: Vec::new(),
+            linked_note_ids: Vec::new(),
+            linked_canvas_ids: Vec::new(),
+            source_note_id: None,
+            position: None,
+        })
+        .expect("create task")
+        .created
+        .remove(0);
+    tasks.delete(task_id.clone(), false).expect("delete task");
+
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"devices": [{"id": device_id, "signingPublicKey": BASE64.encode(&public)}]})
+                .to_string(),
+        ),
+        response(
+            200,
+            &json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"accepted": [], "rejected": [], "serverTime": 1, "maxCursor": 1}).to_string(),
+        ),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
+    let session = Arc::new(
+        AuthSession::new(
+            transport.clone(),
+            store,
+            BASE.to_string(),
+            "ios".to_string(),
+            DeviceDescriptor {
+                name: "Phone".to_string(),
+                platform: DevicePlatform::Ios,
+                form_factor: None,
+                os_version: None,
+                app_version: "1.0.0".to_string(),
+                vault_id: None,
+            },
+        )
+        .expect("a session"),
+    );
+    vault.sync(session).sync_now().await.expect("the pass");
+
+    let pushed = body_json(&transport.calls_to("/sync/push")[0]);
+    let item = pushed["items"]
+        .as_array()
+        .expect("items")
+        .iter()
+        .find(|item| item["id"] == json!(task_id) && item["operation"] == json!("delete"))
+        .unwrap_or_else(|| panic!("the task delete: {pushed}"));
+    let clock: VectorClock = serde_json::from_value(item["clock"].clone()).expect("a clock");
+    let claim = DeleteClaim {
+        item_type: "task",
+        item_id: &task_id,
+        clock: &clock,
+        deleted_at: item["deletedAt"].as_i64().expect("deletedAt"),
+    };
+    let attestation = item["deleteAttestation"].as_str().expect("an attestation");
+    // With no vault the check is v1 only, which a v2 signature fails.
+    delete_attestation::verify(&claim, None, attestation, &public).expect("signed v1");
 }

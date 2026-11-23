@@ -15,6 +15,7 @@ import {
 } from './pull-envelope'
 import { localTombstoneRefusal } from './purged-tombstone-guard'
 
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
 vi.mock('./purged-tombstone-guard', () => ({
   readKnownDeviceIds: vi.fn(() => null),
   localTombstoneRefusal: vi.fn(() => null)
@@ -31,16 +32,22 @@ const keys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(3))
 const resolveKey = vi.fn(async (deviceId: string) =>
   deviceId === 'device-a' ? keys.publicKey : null
 )
-/** device-a's #2408 attestation over task-t's served claim. */
-const attestation = (id = 'task-t') =>
+/** The vault this device syncs, as the getSyncVaultId mock names it (#5247). */
+const VAULT = 'vault-a'
+
+/** device-a's #2408 attestation over task-t's served claim, signed in `vaultId`. */
+const attestation = (id = 'task-t', vaultId: string | null = VAULT) =>
   sodiumToBase64(
     signPayload(
-      deleteAttestationPayload({
-        id,
-        type: 'task',
-        deletedAt: 1_700_000_000,
-        clock: { 'device-a': 2 }
-      }),
+      deleteAttestationPayload(
+        {
+          id,
+          type: 'task',
+          deletedAt: 1_700_000_000,
+          clock: { 'device-a': 2 }
+        },
+        vaultId
+      ),
       CBOR_FIELD_ORDER.DELETE_ATTESTATION,
       keys.privateKey
     ),
@@ -242,6 +249,33 @@ describe('parsePullItems purged tombstones (#2302)', () => {
       ['task-v', 'attestation_invalid']
     ])
     expect(localTombstoneRefusal).not.toHaveBeenCalled()
+  })
+
+  // #5247: a hostile server replays a delete attested in another vault of the
+  // account. v2 binds the vault, so it is refused; v1 from an old build applies.
+  it('refuses a v2 attestation signed in another vault and accepts v1', async () => {
+    const parsed = parse(
+      [
+        tombstone({
+          id: 'task-t',
+          signerDeviceId: 'device-a',
+          deleteAttestation: attestation('task-t', 'vault-b')
+        }),
+        tombstone({
+          id: 'task-u',
+          signerDeviceId: 'device-a',
+          deleteAttestation: attestation('task-u', null)
+        })
+      ],
+      ['task-t', 'task-u']
+    )
+
+    const result = await applicablePurgedTombstones(db, parsed.purgedTombstones, resolveKey)
+
+    expect(result.unverified.map(({ id, reason }) => [id, reason])).toEqual([
+      ['task-t', 'attestation_invalid']
+    ])
+    expect(result.apply.map(({ id }) => id)).toEqual(['task-u'])
   })
 
   // #2408: the signer's key is resolved once per signer, and a failure is thrown, not refused.

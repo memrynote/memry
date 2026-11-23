@@ -112,6 +112,7 @@ function handleEncryptBatch(msg: Extract<MainToWorkerMessage, { type: 'encrypt-b
           vaultKey: msg.vaultKey,
           signingSecretKey: msg.signingSecretKey,
           signerDeviceId: msg.signerDeviceId,
+          vaultId: msg.vaultId,
           clock: item.clock,
           stateVector: item.stateVector,
           deletedAt: item.deletedAt

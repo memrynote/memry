@@ -28,6 +28,8 @@ vi.mock('../http-client', () => ({
   postToServer: vi.fn()
 }))
 
+vi.mock('../sync-vault-id', () => ({ getSyncVaultId: async () => 'vault-a' }))
+
 vi.mock('@memry/sync-client/retry', () => ({
   withRetry: vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 }))
@@ -62,7 +64,7 @@ const purged = (
         signerDeviceId: 'device-a',
         deleteAttestation: sodiumToBase64(
           signPayload(
-            deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }),
+            deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }, 'vault-a'),
             CBOR_FIELD_ORDER.DELETE_ATTESTATION,
             signer.privateKey
           ),

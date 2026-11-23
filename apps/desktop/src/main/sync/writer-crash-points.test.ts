@@ -153,7 +153,7 @@ vi.mock('../vault/file-ops', () => ({
 }))
 vi.mock('../vault/journal', async () => {
   const fileOps = await import('../vault/file-ops')
-  const { parseNote, serializeNote } = await import('../vault/frontmatter')
+  const { parseNote, serializeNote, serializeParsedNote } = await import('../vault/frontmatter')
   const at = (date: string): string => `/vault/Journal/${date}.md`
   const entryOf = (date: string, raw: string) => {
     const { content, frontmatter } = parseNote(raw)
@@ -181,13 +181,22 @@ vi.mock('../vault/journal', async () => {
     properties: Record<string, unknown> = {}
   ) => {
     const frontmatter = { ...(tags.length > 0 ? { tags } : {}), ...properties }
+    const previousFile = h.files.get(at(date)) ?? null
+    const previous = previousFile === null ? null : parseNote(previousFile)
+    // Like `editJournalFile`: an unchanged body keeps its bytes.
     const fileContent =
-      Object.keys(frontmatter).length > 0 ? serializeNote(frontmatter, content) : content
+      previous && previous.content.trim() === content.trim()
+        ? serializeParsedNote({ ...previous, frontmatter }, previous.content, {
+            frontmatterEdited: true
+          })
+        : Object.keys(frontmatter).length > 0
+          ? serializeNote(frontmatter, content)
+          : content
     return {
       entry: entryOf(date, fileContent),
       fileContent,
       frontmatter: { date, ...frontmatter },
-      previousFile: h.files.get(at(date)) ?? null,
+      previousFile,
       write: () => fileOps.atomicWrite(at(date), fileContent)
     }
   }
@@ -275,7 +284,12 @@ vi.mock('./local-mutations', () => ({
 }))
 
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
-import { hasPendingWriteback, resetWritebackState, writebackNow } from './crdt-writeback'
+import {
+  flushPendingWritebacks,
+  hasPendingWriteback,
+  resetWritebackState,
+  writebackNow
+} from './crdt-writeback'
 import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
 import { generateContentHash } from '../vault/frontmatter'
 import { appendBlocksToNote } from '../vault/append-blocks'
@@ -797,5 +811,126 @@ describe('a tags or properties update between a journal write-back read and writ
       expect.soft(h.files.get(`/vault/${notePath}`)).toContain(kept)
       expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed.')
     })
+  })
+})
+
+// A body update that also sets tags writes its frontmatter beside the body.
+// The re-arm after a pass restores the body, not the frontmatter the pass put
+// back, so the update writes its frontmatter again in the entry's turn (#5479).
+describe('a body update with tags beside a journal write-back (#5479)', () => {
+  beforeAll(registerJournalHandlers)
+  beforeEach(disarm)
+  const viaIpc = (input: UpdateEntryInput): unknown =>
+    h.ipc.get(JournalChannels.invoke.UPDATE_ENTRY)!({}, input)
+  const agent = (): ReturnType<typeof createJournalHandles> =>
+    createJournalHandles(h.indexDb as never)
+  const writers: Array<[string, (date: string) => unknown]> = [
+    [
+      'IPC journal:updateEntry content+tags',
+      (date) => viaIpc({ date, content: 'Morning. Typed. Agent.', tags: ['focus'] })
+    ],
+    [
+      'agent journal.update content+tags',
+      (date) =>
+        agent().update({ date, content_markdown: 'Morning. Typed. Agent.', tags: ['focus'] })
+    ]
+  ]
+  const orders = ['pass held at its write', 'update held at its write'] as const
+  writers.forEach(([name, apply], i) => {
+    orders.forEach((order, j) => {
+      it(`${name}, ${order}: the file keeps the tag and the body`, async () => {
+        const date = `2026-06-${i}${j + 1}`
+        const id = `j${date}`
+        const notePath = `Journal/${date}.md`
+        await seedNote(id, notePath, 'Morning.')
+        const doc = await restart(id)
+        Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+        let release = (): void => {}
+        const reached = new Promise<void>((resolve) => {
+          h.holdWrite = {
+            reached: resolve,
+            release: new Promise<void>((r) => {
+              release = r
+            })
+          }
+        })
+        const first = order === orders[0] ? writebackNow(id, doc) : Promise.resolve(apply(date))
+        await reached
+        const second = order === orders[0] ? Promise.resolve(apply(date)) : writebackNow(id, doc)
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        release()
+        await Promise.all([first, second])
+        await settle(id)
+        const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
+        expect.soft(md).toContain('Morning. Typed. Agent.')
+        expect.soft(h.files.get(`/vault/${notePath}`)).toContain('focus')
+        expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed. Agent.')
+      })
+    })
+  })
+
+  // The body update's frontmatter turn writes the tags it added, not its whole
+  // list, so a tags save queued ahead of it is kept (REVIEW-5482).
+  it('agent content+tags racing an IPC tags save keeps both tags', async () => {
+    const date = '2026-06-29'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    await seedNote(id, notePath, 'Morning.')
+    const doc = await restart(id)
+    Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+    let release = (): void => {}
+    const reached = new Promise<void>((resolve) => {
+      h.holdWrite = {
+        reached: resolve,
+        release: new Promise<void>((r) => {
+          release = r
+        })
+      }
+    })
+    const writeback = writebackNow(id, doc)
+    await reached
+    const body = agent().update({
+      date,
+      content_markdown: 'Morning. Typed. Agent.',
+      tags: ['focus']
+    })
+    const tags = viaIpc({ date, tags: ['other'] })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    release()
+    await Promise.all([writeback, body, tags])
+    await settle(id)
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('other')
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('focus')
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed. Agent.')
+  })
+
+  // The update's frontmatter turn waits behind the held pass and holds no
+  // store wait itself, so a quit flush started meanwhile settles.
+  it('a quit flush started while the turn waits behind a pass settles', async () => {
+    const date = '2026-06-30'
+    const id = `j${date}`
+    const notePath = `Journal/${date}.md`
+    await seedNote(id, notePath, 'Morning.')
+    const doc = await restart(id)
+    Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
+    let release = (): void => {}
+    const reached = new Promise<void>((resolve) => {
+      h.holdWrite = {
+        reached: resolve,
+        release: new Promise<void>((r) => {
+          release = r
+        })
+      }
+    })
+    const writeback = writebackNow(id, doc)
+    await reached
+    const update = viaIpc({ date, content: 'Morning. Typed. Agent.', tags: ['focus'] })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const flush = flushPendingWritebacks()
+    release()
+    await Promise.all([writeback, update, flush])
+    await settle(id)
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('focus')
+    expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed. Agent.')
   })
 })
