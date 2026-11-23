@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as path from 'path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import {
@@ -9,7 +10,13 @@ import {
   waitForAppReady,
   waitForVaultReady
 } from './utils/electron-helpers'
-import { createNoteWithBody, getNoteFileBodyById } from './utils/note-sync-helpers'
+import { ready } from './utils/desktop-test-helpers'
+import { destroyLaunchedElectron, launchElectronWithWindow } from './utils/electron-lifecycle'
+import {
+  createNoteWithBody,
+  getNoteFileBodyById,
+  openNoteByHandle
+} from './utils/note-sync-helpers'
 
 const EDITOR_SELECTOR =
   '[aria-label="Rich text editor"] [contenteditable="true"], .bn-editor[contenteditable="true"], .bn-editor'
@@ -98,13 +105,102 @@ test.describe('CriticMarkup review flows', () => {
     await expect(inlineMark(page, 'comment')).toBeVisible()
   })
 
-  // FIXME(e2e-residual #4): the rail-hosted comment composer shows the mention +
-  // attachment in the rail but does not persist mentions=/attachments= to the note
-  // markdown/file (getNoteFileBodyById never sees them). Pre-existing review-UI
-  // gap exposed once the rail expands; see docs/eng/e2e-residual-failures.md.
-  test.fixme('note comments persist mention and attachment metadata', async ({
-    page
-  }, testInfo) => {
+  // An outside change to the file left the review state holding the body from
+  // that moment. The next comment saved that copy over the note and erased
+  // everything typed after the outside change, and a comment on words typed
+  // after it found no place and was dropped (#5568).
+  test('a comment keeps text typed after the file changed outside the app', async ({ page }) => {
+    const note = await createNoteWithBody(
+      page,
+      `Review Keeps Typing ${Date.now()}`,
+      'first line comment anchor'
+    )
+    const file = await page.evaluate(async (id) => {
+      const vault = (await window.api.vault.getStatus())?.path
+      const notePath = (await window.api.notes.get(id))?.path
+      return vault && notePath ? { vault, notePath } : null
+    }, note.id)
+    if (!file) throw new Error('the note has no file')
+    // The watcher skips a file for 5 s after the app writes it
+    // (`IGNORED_WRITE_TTL_MS`), so the outside change waits that out.
+    await page.waitForTimeout(5500)
+    fs.appendFileSync(path.join(file.vault, file.notePath), '\n\noutside line\n')
+    const editor = page.locator(EDITOR_SELECTOR).first()
+    await expect(editor).toContainText('outside line', { timeout: 15000 })
+
+    await editor.click()
+    await page.keyboard.press('ControlOrMeta+End')
+    await page.keyboard.type(' typed after')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('typed after')
+
+    await selectEditorText(page, 'comment anchor')
+    await page.locator('[data-test="review-comment"]').last().click()
+    await submitComment(page, 'Keep the typing.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('Keep the typing.')
+    // The lost write came from the note page's 1000 ms save debounce, so the
+    // body has to stay whole past it.
+    await page.waitForTimeout(2500)
+
+    const body = await getNoteFileBodyById(page, note.id)
+    expect(body).toContain('typed after')
+    expect(body).toContain('Keep the typing.')
+    await expect(editor).toContainText('typed after')
+
+    await selectEditorText(page, 'typed after')
+    await page.locator('[data-test="review-comment"]').last().click()
+    await submitComment(page, 'On new words.')
+    await expect(reviewRail(page)).toContainText('On new words.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('{==typed after==}')
+
+    await clickCardAction(
+      page,
+      '.critic-review-card-comment:has-text("Keep the typing.")',
+      'Resolve'
+    )
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .not.toContain('Keep the typing.')
+    expect(await getNoteFileBodyById(page, note.id)).toContain('On new words.')
+  })
+
+  // Resolving the last comment empties the doc's marks. The review state already
+  // held that empty list, so ContentArea's flag that skips writing back what the
+  // doc just sent stayed set, and swallowed the next comment: it showed in the
+  // rail, never reached the doc or the file, and was gone after a note switch.
+  test('a comment added after resolving the last one is saved', async ({ page }) => {
+    const note = await createNoteWithBody(
+      page,
+      `Review Resolve Then Add ${Date.now()}`,
+      'alpha target one\nbeta target two'
+    )
+    const other = await createNoteWithBody(page, `Review Other ${Date.now()}`, 'other note')
+    await openNoteByHandle(page, note)
+
+    await addComment(page, 'alpha target', 'First comment.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('First comment.')
+    await clickCardAction(page, '.critic-review-card-comment', 'Resolve')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .not.toContain('First comment.')
+
+    await addComment(page, 'beta target', 'Second comment.')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('Second comment.')
+    await openNoteByHandle(page, other)
+    await openNoteByHandle(page, note)
+    await expect(reviewRail(page)).toContainText('Second comment.')
+  })
+
+  test('note comments persist mention and attachment metadata', async ({ page }, testInfo) => {
     const mentionTarget = await createNoteWithBody(
       page,
       `Review Mention Target ${Date.now()}`,
@@ -138,11 +234,7 @@ test.describe('CriticMarkup review flows', () => {
       .toContain('attachments=')
   })
 
-  // FIXME(e2e-residual #4): same rail-hosted composer mention/attachment persistence
-  // gap as the note case above. See docs/eng/e2e-residual-failures.md.
-  test.fixme('journal comments persist mention and attachment metadata', async ({
-    page
-  }, testInfo) => {
+  test('journal comments persist mention and attachment metadata', async ({ page }, testInfo) => {
     const mentionTarget = await createNoteWithBody(
       page,
       `Journal Mention Target ${Date.now()}`,
@@ -241,45 +333,269 @@ test.describe('CriticMarkup review flows', () => {
   })
 })
 
-async function selectEditorText(page: Page, targetText: string): Promise<void> {
+// The doc's `criticMarkupMarks` owns the comments while the note is open. The
+// write-back placed each one in the file by its old offsets and text. One whose
+// words were edited, or whose word another comment took once the text above
+// moved, was left out of the file, came back missing from its refetch, and the
+// review state deleted it from the doc. A comment across formatting was never
+// placed at all: it held the rendered words, not the markdown (`start **bold`).
+// It launches the app twice itself, so it runs outside the describe's fixture app.
+test('comments follow edits to their words and survive a restart', async ({ testVaultPath }) => {
+  test.setTimeout(240000)
+  const comments = [
+    'On formatting.',
+    'On edited words.',
+    'On the second TODO.',
+    'On the first TODO.'
+  ]
+  const first = await launchElectronWithWindow({ testVaultPath })
+  let note: Awaited<ReturnType<typeof createNoteWithBody>>
+  try {
+    const page = await openReviewWindow(first.page)
+    note = await createNoteWithBody(page, `Review Marks Restart ${Date.now()}`, 'draft')
+    await page.evaluate(() => {
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+      const paragraph = (text: string) => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text, styles: {} }]
+      })
+      editor.replaceBlocks(editor.document, [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'plain start ', styles: {} },
+            { type: 'text', text: 'bold middle', styles: { bold: true } },
+            { type: 'text', text: ' plain end', styles: {} }
+          ]
+        },
+        paragraph('alpha target one'),
+        paragraph('first TODO item'),
+        paragraph('second TODO item')
+      ])
+    })
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('**bold middle**')
+
+    await addComment(page, 'start ', comments[0], { through: 'bold' })
+    await addComment(page, 'alpha target', comments[1])
+    await addComment(page, 'TODO', comments[2], { nth: 1 })
+    await addComment(page, 'TODO', comments[3])
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('{==start **bold==}')
+
+    // Inside `alpha target`, and above both TODO comments.
+    await putCursorInBlock(page, 1, 'start')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('X')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('{==alXpha target==}')
+    await page.waitForTimeout(2000)
+    for (const body of comments) await expect(reviewRail(page)).toContainText(body)
+  } finally {
+    await destroyLaunchedElectron(first)
+  }
+
+  const second = await launchElectronWithWindow({ testVaultPath })
+  try {
+    const page = await openReviewWindow(second.page)
+    await openNoteByHandle(page, note)
+    for (const body of comments) await expect(reviewRail(page)).toContainText(body)
+
+    // The first edit writes the file back, and the review state refetches it.
+    await putCursorInBlock(page, 3, 'end')
+    await page.keyboard.type(' typed after restart')
+    await expect
+      .poll(async () => getNoteFileBodyById(page, note.id), { timeout: 10000 })
+      .toContain('typed after restart')
+    await page.waitForTimeout(2000)
+    for (const body of comments) await expect(reviewRail(page)).toContainText(body)
+    expect((await docCommentBodies(page)).toSorted()).toEqual(comments.toSorted())
+    const file = await getNoteFileBodyById(page, note.id)
+    expect(file).toMatch(/plain \{==start \*\*bold==\}\{>>[^<]*On formatting\.<<\} middle\*\*/)
+    expect(file).toMatch(/\{==alXpha target==\}\{>>[^<]*On edited words\.<<\} one/)
+    expect(file).toMatch(/first \{==TODO==\}\{>>[^<]*On the first TODO\.<<\} item/)
+    expect(file).toMatch(/second \{==TODO==\}\{>>[^<]*On the second TODO\.<<\} item/)
+    await expect
+      .poll(async () => highlightedTexts(page))
+      .toEqual(['TODO', 'TODO', 'alXpha target', 'start bold'])
+  } finally {
+    await destroyLaunchedElectron(second)
+  }
+})
+
+// The journal page binds its review state to the day's doc as the note page
+// does, and the day's file has its own write-back.
+test('journal comments follow edits, resolve, and survive a restart', async ({ testVaultPath }) => {
+  test.setTimeout(240000)
+  const first = await launchElectronWithWindow({ testVaultPath })
+  try {
+    const page = await openJournal(
+      first.page,
+      'journal start **bold middle** end\n\njournal target words'
+    )
+    await addComment(page, 'start ', 'On journal formatting.', { through: 'bold' })
+    await addComment(page, 'target words', 'Resolve me.')
+    await expect.poll(async () => currentJournalEntryContent(page)).toContain('Resolve me.')
+    await clickCardAction(page, '.critic-review-card-comment:has-text("Resolve me.")', 'Resolve')
+    await expect.poll(async () => currentJournalEntryContent(page)).not.toContain('Resolve me.')
+    await addComment(page, 'journal target', 'On the journal target.')
+
+    await putCursorInBlock(page, 1, 'start')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('X')
+    await expect
+      .poll(async () => currentJournalEntryContent(page), { timeout: 10000 })
+      .toContain('{==joXurnal target==}')
+  } finally {
+    await destroyLaunchedElectron(first)
+  }
+
+  const second = await launchElectronWithWindow({ testVaultPath })
+  try {
+    const page = await openJournal(second.page, null)
+    await putCursorInBlock(page, 1, 'end')
+    await page.keyboard.type(' after restart')
+    await expect
+      .poll(async () => currentJournalEntryContent(page), { timeout: 10000 })
+      .toContain('after restart')
+    await page.waitForTimeout(2000)
+    const rail = reviewRail(page)
+    await expect(rail).toContainText('On journal formatting.')
+    await expect(rail).toContainText('On the journal target.')
+    await expect(rail).not.toContainText('Resolve me.')
+    const file = await currentJournalEntryContent(page)
+    expect(file).toMatch(
+      /journal \{==start \*\*bold==\}\{>>[^<]*On journal formatting\.<<\} middle/
+    )
+    expect(file).toMatch(/\{==joXurnal target==\}\{>>[^<]*On the journal target\.<<\} words/)
+    await expect.poll(async () => highlightedTexts(page)).toEqual(['joXurnal target', 'start bold'])
+  } finally {
+    await destroyLaunchedElectron(second)
+  }
+})
+
+/** Today's journal page, after writing `content` to it unless null. */
+async function openJournal(window: Page, content: string | null): Promise<Page> {
+  const page = await openReviewWindow(window)
+  if (content !== null) await writeCurrentJournalEntry(page, content)
+  await navigateTo(page, 'journal')
+  await expect(page.locator(EDITOR_SELECTOR).first()).toContainText('target words')
+  return page
+}
+
+/** The window the describe's `beforeEach` prepares, for a test that launches its own app. */
+async function openReviewWindow(page: Page): Promise<Page> {
+  await page.setViewportSize({ width: 1440, height: 960 })
+  await ready(page)
+  await ensureDayPanelClosed(page)
+  return page
+}
+
+/**
+ * Selects `targetText` in the `nth` text node holding it, or from its start to
+ * the end of `through` in a later text node.
+ */
+async function selectEditorText(
+  page: Page,
+  targetText: string,
+  { nth = 0, through }: { nth?: number; through?: string } = {}
+): Promise<void> {
   const editor = page.locator(EDITOR_SELECTOR).first()
   await editor.waitFor({ state: 'visible', timeout: 10000 })
   await editor.click()
 
   const didSelect = await page.evaluate(
-    ({ editorSelector, text }) => {
+    ({ editorSelector, text, occurrence, endText }) => {
       const root = document.querySelector(editorSelector)
       if (!root) return false
 
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      let start: { node: Node; offset: number } | null = null
+      let end: { node: Node; offset: number } | null = null
+      let seen = 0
       let node: Node | null
-      while ((node = walker.nextNode())) {
+      while (!end && (node = walker.nextNode())) {
         const value = node.textContent ?? ''
-        const index = value.indexOf(text)
-        if (index === -1) continue
-
-        if (root instanceof HTMLElement) root.focus()
-
-        const range = document.createRange()
-        range.setStart(node, index)
-        range.setEnd(node, index + text.length)
-
-        const selection = window.getSelection()
-        selection?.removeAllRanges()
-        selection?.addRange(range)
-
-        root.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
-        root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-        document.dispatchEvent(new Event('selectionchange', { bubbles: true }))
-        return true
+        if (!start) {
+          const index = value.indexOf(text)
+          if (index === -1 || seen++ < occurrence) continue
+          start = { node, offset: index }
+          if (endText === null) end = { node, offset: index + text.length }
+          continue
+        }
+        const index = value.indexOf(endText ?? '')
+        if (index !== -1) end = { node, offset: index + (endText ?? '').length }
       }
-      return false
+      if (!start || !end) return false
+
+      if (root instanceof HTMLElement) root.focus()
+
+      const range = document.createRange()
+      range.setStart(start.node, start.offset)
+      range.setEnd(end.node, end.offset)
+
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+
+      root.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+      root.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      document.dispatchEvent(new Event('selectionchange', { bubbles: true }))
+      return true
     },
-    { editorSelector: EDITOR_SELECTOR, text: targetText }
+    { editorSelector: EDITOR_SELECTOR, text: targetText, occurrence: nth, endText: through ?? null }
   )
 
   expect(didSelect).toBe(true)
   await expect(page.locator('[data-test="review-comment"]').last()).toBeVisible()
+}
+
+async function addComment(
+  page: Page,
+  targetText: string,
+  body: string,
+  options?: { nth?: number; through?: string }
+): Promise<void> {
+  await selectEditorText(page, targetText, options)
+  await page.locator('[data-test="review-comment"]').last().click()
+  await submitComment(page, body)
+  await expect(reviewRail(page)).toContainText(body)
+}
+
+async function putCursorInBlock(page: Page, index: number, at: 'start' | 'end'): Promise<void> {
+  await page.evaluate(
+    ({ blockIndex, placement }) => {
+      const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+      editor.setTextCursorPosition(editor.document[blockIndex], placement)
+      editor.focus()
+    },
+    { blockIndex: index, placement: at }
+  )
+}
+
+/** Comment bodies in the `criticMarkupMarks` array of the doc the open editor is bound to. */
+async function docCommentBodies(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const editor = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+    const state = editor?._tiptapEditor?.state
+    if (!state) throw new Error('no active editor')
+    for (const plugin of state.plugins) {
+      const pluginState = plugin.getState?.(state)
+      if (pluginState?.doc?.getArray && pluginState.type) {
+        const marks = pluginState.doc.getArray('criticMarkupMarks').toJSON() as Array<{
+          kind: string
+          body?: string
+        }>
+        return marks.filter((mark) => mark.kind === 'comment').map((mark) => mark.body ?? '')
+      }
+    }
+    throw new Error('the editor is not bound to a Y.Doc')
+  })
 }
 
 async function selectedTextTop(page: Page): Promise<number> {
@@ -447,6 +763,20 @@ async function expectComposerNearSelectedTop(page: Page, selectedTop: number): P
       }, selectedTop)
     })
     .toBeLessThan(120)
+}
+
+/** The words each review mark highlights in the editor, sorted. */
+async function highlightedTexts(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const texts = new Map<string, string>()
+    for (const element of document.querySelectorAll<HTMLElement>(
+      '.critic-mark-inline[data-critic-mark-id]'
+    )) {
+      const id = element.dataset.criticMarkId ?? ''
+      texts.set(id, (texts.get(id) ?? '') + element.textContent)
+    }
+    return [...texts.values()].toSorted()
+  })
 }
 
 function inlineMark(page: Page, kind: 'addition' | 'deletion' | 'substitution' | 'comment') {

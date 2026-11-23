@@ -1303,6 +1303,31 @@ fn a_malformed_mark_is_dropped_exactly_as_the_reference_drops_it() {
     assert_eq!(ids, ["keep"], "only the well-formed mark survives");
 }
 
+/// Two devices that move the same mark at once leave two elements with its id.
+/// The reference reads the first well-formed one; reading both would show the
+/// comment twice here and once on desktop.
+#[test]
+fn a_mark_replaced_on_two_devices_at_once_reads_once_as_the_reference_reads_it() {
+    let copy = |start: f64| {
+        mark(&[
+            ("id", Any::String("c1".into())),
+            ("kind", Any::String("comment".into())),
+            ("visibleText", Any::String("x".into())),
+            ("start", Any::Number(start)),
+            ("end", Any::Number(start + 1.0)),
+        ])
+    };
+    let malformed = mark(&[("id", Any::String("c1".into()))]);
+    let document = opened(&comments_doc(vec![malformed, copy(2.0), copy(5.0)]));
+
+    let comments = memry_core::crdt::comments::extract_comments(&document).expect("comments");
+    let read: Vec<(&str, u32)> = comments
+        .iter()
+        .map(|comment| (comment.id.as_str(), comment.start))
+        .collect();
+    assert_eq!(read, [("c1", 2)]);
+}
+
 /// All four kinds the reference accepts, and nothing invented alongside them.
 #[test]
 fn the_four_kinds_are_the_four_the_reference_accepts() {
