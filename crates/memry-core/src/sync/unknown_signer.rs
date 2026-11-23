@@ -22,10 +22,12 @@
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
 //! refusal of `synced_settings`, so the server copy is re-pulled and merged
 //! before the edit pushes. A settings hold is re-pulled on its own, and only a
-//! re-pull that finished with no record counts toward [`MAX_RETRIES`]: a failed
-//! or unverifiable one would release a seeded one-key edit over live server
-//! settings, so those count toward [`MAX_SETTINGS_FAILURES`] instead, which
-//! still bounds the hold.
+//! well-formed answer that leaves the id out counts toward [`MAX_RETRIES`]:
+//! anything else would release a seeded one-key edit over live server
+//! settings. An unusable answer about the request (a dropped page, an
+//! unverifiable record, a malformed body, a 4xx) counts toward
+//! [`MAX_SETTINGS_FAILURES`], which still bounds the hold; an answer about the
+//! network or the server's health (transport, 5xx, 429) counts nothing.
 //!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
@@ -46,7 +48,7 @@ use crate::storage::repositories::sync_items;
 
 use super::apply::Pending;
 use super::first_sync_store::{read_meta, write_meta};
-use super::pull::{PullError, PullLoop};
+use super::pull::{PullError, PullLoop, PullReport};
 
 /// Passes that re-pull one refusal. A signer still missing after this many
 /// fresh directories is not a device of the account; the row stays as it is,
@@ -164,35 +166,63 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
     .await
 }
 
-/// Re-pulls the settings hold alone, so its outcome is its own: a transport
-/// failure counts nothing, another failure or an unverifiable record counts a
-/// failure, and a finished re-pull that left the hold counts an attempt.
+/// What one settings re-pull counts toward (VERIFY-5447 r3).
+enum Counted {
+    /// Says nothing about the server copy, or about this request.
+    Nothing,
+    /// A well-formed answer that left the id out: the server holds no copy.
+    Attempt,
+    /// An answer about this request that cannot be used, which may persist.
+    Failure,
+}
+
+/// Classifies a settings re-pull. Only a page that decoded, held no
+/// unverifiable record and left the id out shows the server has no copy; a
+/// record that resolved the hold has already dropped its `meta` row.
+fn counted(result: &Result<PullReport, PullError>) -> Counted {
+    match result {
+        Ok(report)
+            if report.uncovered > 0
+                && report.corrupt == 0
+                && report.dropped_pages == 0
+                && !report.refused =>
+        {
+            Counted::Attempt
+        }
+        Ok(_) => Counted::Failure,
+        Err(PullError::Api {
+            source: ApiError::MalformedResponse { .. },
+        }) => Counted::Failure,
+        Err(PullError::Api {
+            source: ApiError::Status { status, .. },
+        }) if (400..500).contains(status) && *status != 429 => Counted::Failure,
+        Err(_) => Counted::Nothing,
+    }
+}
+
+/// Re-pulls the settings hold alone, so its outcome is its own (see
+/// [`counted`]): an attempt toward [`MAX_RETRIES`], a failure toward
+/// [`MAX_SETTINGS_FAILURES`], or nothing.
 async fn retry_settings(
     db: &Db,
     pull: &PullLoop,
     id: String,
     value: String,
 ) -> Result<(), StorageError> {
-    let failed = match pull.fetch_ids(std::slice::from_ref(&id)).await {
-        Ok(report) => report.refused || report.corrupt > 0,
-        Err(error) => {
-            eprintln!("memry-core: re-pulling the held settings {id} failed: {error}");
-            if is_transport(&error) {
-                return Ok(());
-            }
-            true
-        }
-    };
+    let result = pull.fetch_ids(std::slice::from_ref(&id)).await;
+    if let Err(error) = &result {
+        eprintln!("memry-core: re-pulling the held settings {id} failed: {error}");
+    }
+    let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
+    match counted(&result) {
+        Counted::Nothing => return Ok(()),
+        Counted::Attempt => attempts += 1,
+        Counted::Failure => failures += 1,
+    }
     db.call(move |conn| {
         let key = key(SETTINGS_ITEM_TYPE, &id);
         if read_meta(conn, &key)?.is_none() {
             return Ok(());
-        }
-        let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
-        if failed {
-            failures += 1;
-        } else {
-            attempts += 1;
         }
         if attempts >= MAX_RETRIES || failures >= MAX_SETTINGS_FAILURES {
             eprintln!(
