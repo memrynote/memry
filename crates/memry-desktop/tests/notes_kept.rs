@@ -1233,3 +1233,38 @@ fn a_kept_notes_delete_whose_trash_took_its_folder_brings_back_no_folder() {
     assert!(!e.vault.join("f").exists(), "the deleted folder is back");
     assert!(record(&e, &id).0);
 }
+
+/// A file dropped into the open vault gets its note from the watcher's report. Its folder,
+/// deleted in the app with the note's row and put back from the trash before the watcher looked,
+/// is new again: the report named no note, and the bytes it holds are the ones reported (#5579).
+#[test]
+fn a_dropped_in_note_put_back_from_the_trash_with_its_folder_gets_its_row_back() {
+    let notices = VaultNotices::new();
+    let board = notices.clone();
+    let mut kept = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::noticing(store, board))
+    });
+    e.write("b.md", "Control\n");
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+    e.write("f/a.md", "Dropped in\n");
+    e.facts_until(|f| {
+        matches!(f, Applied::Added { path, source: ChangeSource::Watcher, .. } if path == "f/a.md")
+    });
+    let notes = NotesService::with_trash(e.tier.clone(), kept.expect("the store"), bin_beside);
+    let open = e.session.current().unwrap();
+    notes.delete_folder(&open, "f").unwrap();
+    assert!(!e.rows().iter().any(|(_, path)| path == "f/a.md"));
+
+    fs::rename(
+        e.vault.with_extension("trashed").join("f"),
+        e.vault.join("f"),
+    )
+    .unwrap();
+    until("the dropped-in file has a row again", || {
+        e.rows().iter().any(|(_, path)| path == "f/a.md")
+    });
+}

@@ -270,13 +270,13 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
+        self.report_found(path, &note_id, created, scan);
         lane.publish(Applied::Added {
             note_id,
             path: path.to_owned(),
             created,
             source,
         });
-        self.report_found(path, created, scan);
         Step::Done
     }
 

@@ -333,6 +333,51 @@ fn a_file_back_after_its_notes_row_went_is_new_whatever_was_reported_for_it() {
 }
 
 #[test]
+fn a_file_reported_new_and_given_a_note_is_new_again_once_that_notes_row_went() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("f/a.md", "body");
+    f.touch(&mut r, &["f/a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["added"]);
+    // The consumer gives the file its note and tells the watcher (#5579).
+    f.index("n1", "f/a.md", "body");
+    r.named("f/a.md", "n1");
+    f.rename("f", "trash/f");
+    f.files().remove("n1").unwrap();
+    f.rename("trash/f", "f");
+    f.touch(&mut r, &["f"], 2);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Added { path, .. }] if path == "f/a.md"),
+        "the file of a deleted note read as unchanged: {events:?}"
+    );
+}
+
+#[test]
+fn a_file_reported_new_and_given_a_note_reads_its_edit_as_a_change_of_that_note() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.touch(&mut r, &["a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["added"]);
+    f.index("n1", "a.md", "body");
+    r.named("a.md", "n1");
+    f.touch(&mut r, &["a.md"], 2);
+    assert_eq!(
+        kinds(&f.take()),
+        Vec::<&str>::new(),
+        "an untouched file was reported"
+    );
+    f.write("a.md", "edited");
+    f.touch(&mut r, &["a.md"], 3);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Changed { note_id, .. }] if note_id == "n1"),
+        "{events:?}"
+    );
+}
+
+#[test]
 fn a_note_edited_outside_and_then_moved_keeps_its_id() {
     let f = fixture();
     let mut r = f.reconciler();

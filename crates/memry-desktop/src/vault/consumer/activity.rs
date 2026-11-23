@@ -40,18 +40,28 @@ impl Applier {
     }
 
     /// A file that got its note. Only a new one is `added`, as Electron records an add no note
-    /// claimed: a watched file's at once, a walked file's in the walk's `scan`.
-    pub(super) fn report_found(&self, path: &str, created: bool, scan: Option<&mut ScanActivity>) {
-        if !created {
-            return;
-        }
+    /// claimed: a watched file's at once, a walked file's in the walk's `scan`. The watcher is
+    /// told a watched file's note, since its report of the file named none (#5579).
+    pub(super) fn report_found(
+        &self,
+        path: &str,
+        note_id: &str,
+        created: bool,
+        scan: Option<&mut ScanActivity>,
+    ) {
         match scan {
-            Some(scan) => scan.add(path),
+            Some(scan) if created => scan.add(path),
+            Some(_) => {}
             None => {
-                self.activity.record(
-                    &self.root,
-                    ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path),
-                );
+                if let Some(watch) = &self.watch {
+                    watch.named(path.to_owned(), note_id.to_owned());
+                }
+                if created {
+                    self.activity.record(
+                        &self.root,
+                        ActivityInput::new(ActivityKind::Added, ActivitySource::Watcher).path(path),
+                    );
+                }
             }
         }
     }
