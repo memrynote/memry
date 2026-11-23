@@ -291,6 +291,13 @@ describe('proxy', () => {
     })
     await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve))
     const port = upstream.address().port
+    // An absolute request target names this decoy; the proxy must never reach it.
+    const decoyHits = []
+    const decoy = http.createServer((req, res) => {
+      decoyHits.push(req.url)
+      res.end(JSON.stringify({ packs: [] }))
+    })
+    await new Promise((resolve) => decoy.listen(0, '127.0.0.1', resolve))
     const proxy = await startProxy({ upstream: `http://127.0.0.1:${port}` })
     try {
       const listed = await (await fetch(`${proxy.url}/sync/packs?limit=50`)).json()
@@ -311,7 +318,7 @@ describe('proxy', () => {
           {
             host: '127.0.0.1',
             port: new URL(proxy.url).port,
-            path: 'http://203.0.113.1/sync/packs?limit=50'
+            path: `http://127.0.0.1:${decoy.address().port}/sync/packs?limit=50`
           },
           (res) => {
             const chunks = []
@@ -322,10 +329,12 @@ describe('proxy', () => {
         req.on('error', reject)
         req.end()
       })
+      assert.deepEqual(decoyHits, [])
       assert.ok(absolute.packs[0].url.startsWith(`${proxy.url}/__r2/`))
     } finally {
       await proxy.close()
       upstream.close()
+      decoy.close()
     }
   })
 })
