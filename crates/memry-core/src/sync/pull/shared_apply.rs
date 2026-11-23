@@ -50,6 +50,9 @@ impl PullLoop {
         markers: bool,
     ) -> Result<(PullReport, Vec<Json>), PullError> {
         let mut dropped_pages = 0;
+        // A chunk with no envelope is a server fault counted in
+        // `dropped_pages`, so only the answered chunks' ids can be uncovered.
+        let mut answered: Vec<String> = Vec::with_capacity(ids.len());
         let mut entries = Vec::new();
         let decoder = self.decoder();
         let mut decoding = Vec::with_capacity(ids.len().div_ceil(MAX_PULL_IDS));
@@ -72,11 +75,12 @@ impl PullLoop {
                 continue;
             };
             decoding.push(decoder.spawn(std::mem::take(items)));
+            answered.extend_from_slice(chunk);
             if let Some(Json::Array(marked)) = body.get_mut("purgedTombstones") {
                 entries.append(marked);
             }
         }
-        let (mut report, failed) = self.apply_decoded(decoding, ids).await?;
+        let (mut report, failed) = self.apply_decoded(decoding, &answered).await?;
         report.dropped_pages = dropped_pages;
         for (item, reason) in failed {
             report.corrupt += 1;

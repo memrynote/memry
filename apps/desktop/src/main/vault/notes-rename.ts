@@ -39,7 +39,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
-import { binaryRecordFields } from '../sync/item-handlers/binary-note-record'
+import { binaryRecordFields } from '@memry/shared/file-types'
 import { updateNoteMetadata } from '@memry/storage-data'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'

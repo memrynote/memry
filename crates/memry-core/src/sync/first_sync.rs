@@ -466,10 +466,10 @@ impl FirstSync {
                 false
             } else {
                 let pulled = self.pull.fetch_ids(&page.deleted).await?;
-                if pulled.uncovered > 0 {
+                if pulled.uncovered > 0 || pulled.dropped_pages > 0 {
                     eprintln!(
-                        "memry-core: first sync: {} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored",
-                        pulled.uncovered
+                        "memry-core: first sync: page at cursor {cursor:?}: {} deleted id(s) had no verified delete, ignored; {} pull(s) got no envelope, the feed re-read retries them",
+                        pulled.uncovered, pulled.dropped_pages
                     );
                 }
                 pulled.dropped_pages > 0
