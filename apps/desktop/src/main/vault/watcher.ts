@@ -61,6 +61,7 @@ import {
   type RenameMatch
 } from './rename-tracker'
 import { RecentFileIdentities } from './recent-file-identities'
+import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
   followJournalFolder,
@@ -251,6 +252,8 @@ export class VaultWatcher {
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
   private recentIdentities = new RecentFileIdentities()
+  private rawWrites = new Set<string>()
+  private rawWritesFlush: NodeJS.Immediate | null = null
 
   /**
    * Start watching the vault for file changes.
@@ -267,6 +270,7 @@ export class VaultWatcher {
     this.excludePatterns = excludePatterns
     this.onError = onError
     this.isReady = false
+    void probeBirthtime()
 
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
     // (.memry, .obsidian, .git) and excluded dirs, and the root attachments folder so
@@ -405,6 +409,9 @@ export class VaultWatcher {
     }
     this.vaultPath = null
     this.debouncedChange = null
+    if (this.rawWritesFlush) clearImmediate(this.rawWritesFlush)
+    this.rawWritesFlush = null
+    this.rawWrites.clear()
     this.recentIdentities.clear()
     this.isReady = false
   }
@@ -413,8 +420,9 @@ export class VaultWatcher {
    * A raw fs event arrives before chokidar's write-finish wait ends, so the
    * file's identity is recorded while it is still at its path: an outside
    * rename inside that wait gets no `change`, and its unlink needs the key
-   * (#5549). The stat runs in the event's own tick, so a rename has only the
-   * event's latency to beat it; one that does keeps the hash-only match.
+   * (#5549). One write reports several raw events, so each file is stat'ed
+   * once per event-loop turn, right after the turn's fs events; a rename that
+   * beats the stat keeps the hash-only match.
    */
   private recordRawWrite(eventPath: string, details: unknown): void {
     if (!this.isReady || typeof details !== 'object' || details === null) return
@@ -426,6 +434,15 @@ export class VaultWatcher {
         ? watchedPath
         : path.join(watchedPath, eventPath)
     if (path.basename(filePath).startsWith('.') || !isSupportedPath(filePath)) return
+    this.rawWrites.add(filePath)
+    this.rawWritesFlush ??= setImmediate(() => {
+      this.rawWritesFlush = null
+      for (const written of this.rawWrites) this.recordIdentity(written)
+      this.rawWrites.clear()
+    })
+  }
+
+  private recordIdentity(filePath: string): void {
     let stats: Stats | undefined
     try {
       stats = statSync(filePath, { throwIfNoEntry: false })
