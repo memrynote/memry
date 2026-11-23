@@ -21,6 +21,7 @@
 //! | an edit queued over a verified delete never undeletes        | §5.8, #5413      |
 //! | a queued edit of a deleted row is never sent                  | §5.8, #5413      |
 //! | a re-create whose clock is after the delete is still sent     | §5.8 client rule |
+//! | a settings edit over a deleted payload-less row pushes merged | #5433            |
 
 mod http_fakes;
 
@@ -304,6 +305,8 @@ async fn a_delete_whose_signature_fails_for_another_reason_is_never_re_pulled() 
     assert!(second.iter().all(|url| url != "/sync/pull"), "{second:?}");
 }
 
+/// A record still unverifiable is an unusable answer, not the server's
+/// absence (#5502): it counts toward [`MAX_FAILURES`], not [`MAX_RETRIES`].
 #[tokio::test]
 async fn a_signer_that_never_appears_stops_being_re_pulled() {
     let [page, pulled] = deleted_page(
@@ -316,11 +319,11 @@ async fn a_signer_that_never_appears_stops_being_re_pulled() {
     let sync = vault.sync(session);
     sync.sync_now().await.expect("the refusing pass");
 
-    // Five passes re-pull it; after that the row is left as it is.
-    for pass in 0..7 {
+    // Fifty passes re-pull it; after that the row is left as it is.
+    for pass in 0..52 {
         let before = transport.call_count();
         transport.push(devices(false));
-        if pass < 5 {
+        if pass < 50 {
             transport.push(response(
                 200,
                 &json!({"items": [delete_by_new_device("note", "deadnotexxxx")]}).to_string(),
@@ -329,7 +332,7 @@ async fn a_signer_that_never_appears_stops_being_re_pulled() {
         transport.push(empty_changes());
         sync.sync_now().await.expect("a pass");
         let urls = &urls(&transport)[before..];
-        assert_eq!(urls[1] == "/sync/pull", pass < 5, "pass {pass}: {urls:?}");
+        assert_eq!(urls[1] == "/sync/pull", pass < 50, "pass {pass}: {urls:?}");
     }
 
     assert!(
@@ -496,7 +499,7 @@ async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
     sync.sync_now().await.expect("the refusing pass");
     for _ in 0..5 {
         transport.push(devices(false));
-        transport.push(re_pulled("note", "deadnotexxxx"));
+        transport.push(response(200, r#"{"items":[]}"#));
         transport.push(empty_changes());
         sync.sync_now().await.expect("a re-pulling pass");
     }
@@ -523,8 +526,11 @@ async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
     assert!(deleted(&side, "note", "deadnotexxxx"));
 }
 
+/// #5502: a re-pull that failed says nothing about the record. Five `{}`
+/// pages and five server errors later it still waits, and once its signer is
+/// listed the next re-pull applies it.
 #[tokio::test]
-async fn a_failed_re_pull_counts_unless_the_transport_failed() {
+async fn re_pulls_without_an_answer_keep_the_record_waiting() {
     let [page, pulled] = deleted_page(
         &["deadnotexxxx"],
         vec![delete_by_new_device("note", "deadnotexxxx")],
@@ -535,19 +541,56 @@ async fn a_failed_re_pull_counts_unless_the_transport_failed() {
     let sync = vault.sync(session);
     sync.sync_now().await.expect("the refusing pass");
 
-    // A transport failure counts nothing: six of them, and the budget is whole.
-    for _ in 0..6 {
-        transport.push(devices(false));
-        transport.push(Err(TransportError::Cancelled));
-        transport.push(empty_changes());
-        sync.sync_now().await.expect("an offline re-pull");
+    let answers: [fn() -> Scripted; 4] = [
+        || Err(TransportError::Cancelled),
+        || response(200, "{}"),
+        || response(200, "not json"),
+        || {
+            response(
+                504,
+                r#"{"error":{"code":"GATEWAY_TIMEOUT","message":"down"}}"#,
+            )
+        },
+    ];
+    for answer in answers {
+        for _ in 0..5 {
+            transport.push(devices(false));
+            transport.push(answer());
+            transport.push(empty_changes());
+            sync.sync_now().await.expect("a failed re-pull");
+        }
     }
-    // An answer that will not parse counts: five, then no more re-pulls.
-    for pass in 0..6 {
+
+    let before = transport.call_count();
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "deadnotexxxx"));
+    transport.push(empty_changes());
+    sync.sync_now()
+        .await
+        .expect("a pass with the new device listed");
+    assert_eq!(urls(&transport)[before + 1], "/sync/pull");
+    assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+/// #5502: only a well-formed page that leaves the id out counts an attempt;
+/// five of them and the record is no longer re-pulled.
+#[tokio::test]
+async fn well_formed_re_pulls_without_the_record_give_up() {
+    let [page, pulled] = deleted_page(
+        &["deadnotexxxx"],
+        vec![delete_by_new_device("note", "deadnotexxxx")],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("absent-re-pull", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    for pass in 0..7 {
         let before = transport.call_count();
         transport.push(devices(false));
         if pass < 5 {
-            transport.push(response(200, "not json"));
+            transport.push(response(200, r#"{"items":[]}"#));
         }
         transport.push(empty_changes());
         sync.sync_now().await.expect("a pass");
@@ -795,4 +838,182 @@ async fn a_re_create_whose_clock_is_after_the_delete_is_still_sent() {
     assert_eq!(item["operation"], "update", "{item}");
     assert!(item.get("deletedAt").is_none_or(Json::is_null), "{item}");
     assert_eq!(summary.pending, 0, "{summary:?}");
+}
+
+/// `synced_settings`, live on the server, sealed by the listed new device.
+fn live_settings_by_new_device(payload: &Json, cursor: i64) -> Json {
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let (_public, secret) = sodium::sign_seed_keypair(&NEW_DEVICE_SEED).expect("a keypair");
+    let content = payload.to_string();
+    let sealed = envelope::encrypt(
+        &RecordRequest {
+            id: "synced_settings",
+            item_type: "settings",
+            operation: SyncOperation::Update,
+            content: content.as_bytes(),
+            vault_key: &vault_key[..],
+            signing_secret_key: &secret[..],
+            signer_device_id: NEW_DEVICE,
+            clock: None,
+            state_vector: None,
+            deleted_at: None,
+        },
+        &RecordMaterial::random(),
+    )
+    .expect("sealed");
+    let mut json = envelope::to_json(&sealed.envelope);
+    json["serverCursor"] = json!(cursor);
+    json
+}
+
+/// REVIEW-5447 #1 (#5433): a build before #5434 marked the settings row deleted
+/// with no payload while the server copy stayed live below the cursor. A local
+/// edit seeds the row, but its push waits for a re-pull that merges the
+/// server's settings: the pushed payload carries every server key plus the
+/// edit, never a one-key object that would replace the account's settings.
+#[tokio::test]
+async fn a_settings_edit_over_a_deleted_payloadless_row_pushes_the_merged_settings() {
+    let server = json!({
+        "settings": {"general": {"theme": "dark"}, "editor": {"font": "serif"}},
+        "fieldClocks": {"general.theme": {NEW_DEVICE: 3}, "editor.font": {NEW_DEVICE: 2}},
+    });
+    let transport = FakeTransport::new(vec![
+        devices(true),
+        response(
+            200,
+            &json!({"items": [live_settings_by_new_device(&server, 5)]}).to_string(),
+        ),
+        empty_changes(),
+        accepted("synced_settings"),
+    ]);
+    let (vault, side, session) = vault("settings-refetch", transport.clone());
+    seed_settings_edit(&side);
+
+    let summary = vault.sync(session).sync_now().await.expect("the pass");
+
+    let sent = sent_settings(&transport);
+    assert_eq!(
+        sent["settings"],
+        json!({"general": {"theme": "dark"}, "editor": {"font": "serif", "zoom": 120}}),
+        "{sent}"
+    );
+    assert_eq!(summary.pending, 0, "{summary:?}");
+}
+
+/// A build before #5434 left the settings row deleted with no payload; a
+/// local edit over it seeds the row and is held for a re-pull (#5433).
+fn seed_settings_edit(side: &Db) {
+    side.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, server_cursor,
+                                     updated_at, deleted_at)
+             VALUES ('settings', 'synced_settings', NULL, 'metadata-only', 10, 2, 2)",
+            [],
+        )
+        .map_err(failed)?;
+        memry_core::domain::settings::set(conn, "editor.zoom", json!(120), "device-a", 3)
+            .map(|_| ())
+    })
+    .expect("an edit over the deleted payload-less row");
+}
+
+/// The settings payload of the one push sent, decrypted.
+fn sent_settings(transport: &FakeTransport) -> Json {
+    let pushes = transport.calls_to("/sync/push");
+    assert_eq!(pushes.len(), 1, "one push");
+    let body: Json =
+        serde_json::from_slice(pushes[0].body.as_deref().expect("a body")).expect("json");
+    let item = &body["items"][0];
+    assert_eq!(item["id"], "synced_settings");
+    let (public, _secret) = sodium::sign_seed_keypair(&THIS_DEVICE_SEED).expect("a keypair");
+    let vault_key = keys::derive_vault_key(&MASTER_KEY).expect("the vault key");
+    let sent = envelope::decrypt(
+        &envelope::from_json(item).expect("an envelope"),
+        &vault_key[..],
+        &public,
+    )
+    .expect("decrypt the push");
+    serde_json::from_slice(&sent).expect("json")
+}
+
+/// Runs passes whose settings re-pull gets `re_pull`. The scripts answer no
+/// `/sync/push`, so a released edit panics the transport.
+async fn held_passes(label: &str, passes: usize, listed: bool, re_pull: impl Fn() -> Scripted) {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault(label, transport.clone());
+    seed_settings_edit(&side);
+    let sync = vault.sync(session);
+    for pass in 0..passes {
+        transport.push(devices(listed));
+        transport.push(re_pull());
+        transport.push(empty_changes());
+        push_due(&side);
+        let summary = sync.sync_now().await.expect("a pass");
+        assert_eq!(summary.pending, 1, "pass {pass}: {summary:?}");
+    }
+    assert!(transport.calls_to("/sync/push").is_empty());
+}
+
+/// VERIFY-5447 r3 #1: a 200 page with no `items` is not an answer about the
+/// server copy. Passes past [`MAX_RETRIES`] of it keep the one-key edit held.
+#[tokio::test]
+async fn settings_re_pulls_answered_without_items_keep_the_seeded_edit_held() {
+    held_passes("settings-refetch-no-items", 7, true, || response(200, "{}")).await;
+}
+
+/// VERIFY-5447 r3 #4: a server error says nothing about the server copy, so
+/// it counts toward no bound. Passes up to [`MAX_FAILURES`] of it
+/// keep the one-key edit held (504 is not retried within a pass).
+#[tokio::test]
+async fn settings_re_pulls_failing_with_a_server_error_keep_the_seeded_edit_held() {
+    held_passes("settings-refetch-5xx", 52, true, || {
+        response(
+            504,
+            r#"{"error":{"code":"GATEWAY_TIMEOUT","message":"down"}}"#,
+        )
+    })
+    .await;
+}
+
+/// The server answers well-formed pages that leave `synced_settings` out: it
+/// holds no copy. The fifth such pass releases the seeded edit, and the push
+/// carries the seed plus the edit.
+#[tokio::test]
+async fn well_formed_re_pulls_without_the_settings_release_the_seeded_edit() {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault("settings-refetch-absent", transport.clone());
+    seed_settings_edit(&side);
+    let sync = vault.sync(session);
+    for pass in 0..5 {
+        transport.push(devices(true));
+        transport.push(response(200, r#"{"items":[]}"#));
+        transport.push(empty_changes());
+        if pass == 4 {
+            transport.push(accepted("synced_settings"));
+        }
+        push_due(&side);
+        let summary = sync.sync_now().await.expect("a pass");
+        let pending = if pass == 4 { 0 } else { 1 };
+        assert_eq!(summary.pending, pending, "pass {pass}: {summary:?}");
+    }
+    let sent = sent_settings(&transport);
+    assert_eq!(sent["settings"], json!({"editor": {"zoom": 120}}), "{sent}");
+}
+
+/// VERIFY-5447 #2: the server copy is sealed by a device the list does not
+/// hold yet, so every re-pull comes back unverifiable. That is a copy, not its
+/// absence: passes past [`MAX_RETRIES`] of it keep the one-key edit held.
+#[tokio::test]
+async fn unverifiable_settings_re_pulls_keep_the_seeded_edit_held() {
+    let server = json!({
+        "settings": {"general": {"theme": "dark"}},
+        "fieldClocks": {"general.theme": {NEW_DEVICE: 3}},
+    });
+    held_passes("settings-refetch-unverifiable", 7, false, || {
+        response(
+            200,
+            &json!({"items": [live_settings_by_new_device(&server, 5)]}).to_string(),
+        )
+    })
+    .await;
 }

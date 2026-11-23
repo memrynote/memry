@@ -312,6 +312,10 @@ pub struct VaultSync {
     /// §9.9's 4004/4009 latch, here rather than on the socket because the
     /// shell mints a socket per foreground (#2798).
     realtime_latch: Arc<TerminalLatch>,
+    /// When the foreground drain may send its next request: set by a `429`
+    /// a round or the first sync's bodies pass met, for the wait the server
+    /// asked for (#5247).
+    drain_resume_at: std::sync::Mutex<Option<tokio::time::Instant>>,
 }
 
 impl VaultSync {
@@ -327,6 +331,7 @@ impl VaultSync {
             session,
             directory,
             realtime_latch: Arc::default(),
+            drain_resume_at: std::sync::Mutex::default(),
         }
     }
 
@@ -463,7 +468,17 @@ impl VaultSync {
         if let Some(listener) = progress {
             run = run.with_progress(Arc::new(ForeignProgress(listener)));
         }
-        Ok(run.run(now_ms()).await?.into())
+        let ran = run.run(now_ms()).await;
+        // A bodies pass that gave up on a 429 left its window open; the
+        // drain the shell starts next waits it out (#5247).
+        if let Err(FirstSyncError::Body {
+            source: BodyPullError::Api { source },
+        }) = &ran
+            && let Some(wait_s) = source.rate_limit_wait_s()
+        {
+            self.hold_drain_back(wait_s);
+        }
+        Ok(ran?.into())
     }
 
     /// One note's body, on demand (chapter 07 §7.8 – §7.11).

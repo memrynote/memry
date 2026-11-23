@@ -3,6 +3,8 @@
 
 use std::sync::Arc;
 
+use tokio::time::Instant;
+
 use super::{ForeignProgress, SyncProgressListener, VaultSync, count, now_ms, pass};
 use crate::api::diagnostics::run_diagnostics;
 use crate::api::errors::SyncError;
@@ -22,8 +24,8 @@ pub struct BodyDrainSummary {
     pub documents: u32,
     pub requests: u32,
     /// Live documents still owed a body. Some may be backing off after a
-    /// failure, so a round that pulled nothing ends the drain even when this
-    /// is above 0.
+    /// failure, so a round that pulled nothing pauses the drain even when
+    /// this is above 0.
     pub remaining: u32,
     /// Whether a bootstrap session widened the round (chapter 10 §10.7).
     pub elevated: bool,
@@ -38,9 +40,11 @@ impl VaultSync {
     ///
     /// Bounded so a write's [`Self::sync_now`] waits for at most one round:
     /// rounds and passes take the same pass gate. A round with nothing due
-    /// makes no request. It opens a bootstrap session for the round and
-    /// pulls four documents at a time when the server grants one (a device's
-    /// first day, §10.9), one at a time otherwise.
+    /// makes no request, and so does a round before the `Retry-After` of a
+    /// `429` that ended the last one: it pulls nothing, which pauses the
+    /// shell's drain until the next foreground. It opens a bootstrap session
+    /// for the round and pulls four documents at a time when the server
+    /// grants one (a device's first day, §10.9), one at a time otherwise.
     ///
     /// `progress` gets `Bodies` ticks in live documents of the vault, so a
     /// shell continues the first sync's bar where it stopped.
@@ -50,8 +54,9 @@ impl VaultSync {
     ) -> Result<BodyDrainSummary, SyncError> {
         let gate = pass::pass_gate(&self.vault_id);
         let _held = gate.lock().await;
+        let resume_at = *self.drain_resume_at();
         let due = body_drain::take_due(&self.db).await?;
-        if due.is_empty() {
+        if due.is_empty() || resume_at.is_some_and(|at| Instant::now() < at) {
             return Ok(BodyDrainSummary {
                 documents: 0,
                 requests: 0,
@@ -69,7 +74,11 @@ impl VaultSync {
                 .with_diagnostics(Arc::clone(&diagnostics)),
         );
         let _close = bootstrap.close_on_drop();
-        let elevated = bootstrap.open(now_ms() / 1_000).await.elevated();
+        let opened = bootstrap.open(now_ms() / 1_000).await;
+        // A 429 on the open holds back the next round, whose open would meet
+        // it again; this one still runs, at one stream.
+        let open_resume_at = opened.rate_limit_s.map(body_drain::resume_after);
+        let elevated = opened.elevated();
         let bodies = Arc::new(
             BodyPull::new(
                 diagnostics.observe(&http),
@@ -103,6 +112,7 @@ impl VaultSync {
             .await;
         bootstrap.close().await;
         let round = round?;
+        *self.drain_resume_at() = round.resume_at.max(open_resume_at);
         Ok(BodyDrainSummary {
             documents: count(round.documents),
             // The open is a request too, and so is the close of a granted one.
@@ -110,5 +120,21 @@ impl VaultSync {
             remaining: count(round.remaining),
             elevated,
         })
+    }
+}
+
+impl VaultSync {
+    /// Holds the drain back after a `429` that asked for `wait_s`, met
+    /// outside a round: by the first sync's bodies pass, which gave up on it.
+    pub(super) fn hold_drain_back(&self, wait_s: u64) {
+        let resume_at = body_drain::resume_after(wait_s);
+        let mut held = self.drain_resume_at();
+        *held = (*held).max(Some(resume_at));
+    }
+
+    fn drain_resume_at(&self) -> std::sync::MutexGuard<'_, Option<Instant>> {
+        self.drain_resume_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }

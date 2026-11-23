@@ -201,6 +201,21 @@ describe('openPackFile', () => {
     await handle.close()
   })
 
+  // A post to the crypto worker clones a view's whole buffer. A small entry read
+  // into Node's shared Buffer pool sent the 8 KiB pool with every update.
+  it('reads a small entry into a buffer of its own size', async () => {
+    const pack = buildTestPack([
+      { id: 'note-a', bytes: bodyOf('a', 200), meta: { sequenceNum: 2, revision: 'r' } }
+    ])
+    const file = path.join(dir, 'small.pack')
+    await fs.writeFile(file, pack.bytes)
+
+    const handle = await openPackFile(file)
+    const bytes = await handle.readEntry(handle.entries[0])
+    expect(structuredClone(bytes).buffer.byteLength).toBe(bytes.byteLength)
+    await handle.close()
+  })
+
   // A fresh device can hold hundreds of packs at once; one fd each ran into
   // macOS's 256-fd soft limit and dropped every pack past it to the routes.
   it.skipIf(process.platform === 'win32')(

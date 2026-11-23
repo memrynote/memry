@@ -362,6 +362,24 @@ struct VaultFillTests {
         #expect(fill.banner == .incomplete(sentence))
     }
 
+    /// #5247: an item the device could not open may be one the reconcile kept
+    /// and never pulls again, so its sentence promises no retry. A stopped
+    /// body pull keeps its cursor, so the next sync does retry it.
+    @Test("only a stopped body pull is promised a retry")
+    func onlyStoppedBodiesArePromisedARetry() async throws {
+        let corrupt = StoreFiller(store: VaultStore(), fills: 2, summary: .applied(2, corrupt: 1, stopped: 1))
+        let corruptFill = VaultFillViewModel(filler: corrupt)
+        await corruptFill.begin()
+        let unopened = try #require(corruptFill.incomplete)
+        #expect(!unopened.contains("try those again"))
+
+        let stopped = StoreFiller(store: VaultStore(), fills: 2, summary: .applied(2, stopped: 1))
+        let stoppedFill = VaultFillViewModel(filler: stopped)
+        await stoppedFill.begin()
+        let retried = try #require(stoppedFill.incomplete)
+        #expect(retried.contains("try those again"))
+    }
+
     /// The incident this exists for: a first sync that ran for a day showed a
     /// bar and never the notes already on the phone. While the run is still
     /// going, the screen holds a strip rather than a replacement, and the

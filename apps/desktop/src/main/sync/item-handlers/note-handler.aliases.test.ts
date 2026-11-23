@@ -31,6 +31,8 @@ vi.mock('../../vault/notes', () => ({
 vi.mock('../../vault/status', async () => await import('../../vault/index'))
 vi.mock('../../vault/index', () => ({ getStatus: vi.fn(() => ({ path: VAULT_ROOT })) }))
 vi.mock('../../vault/note-sync', () => ({
+  // No case twin shares a file here (#5498).
+  findCanonicalNoteForFile: () => null,
   syncNoteToCache: vi.fn(),
   syncFileToCache: vi.fn(),
   deleteNoteFromCache: vi.fn()

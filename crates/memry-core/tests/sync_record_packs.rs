@@ -216,8 +216,8 @@ struct Server {
     snapshots: usize,
     /// The live items: `type:id` ([`typed`]) and current `server_cursor`.
     live: Vec<(String, i64)>,
-    /// Deleted ids the feed reports.
-    deleted: Vec<String>,
+    /// Deleted ids the feed reports, with the cursor of the delete.
+    deleted: Vec<(String, i64)>,
     /// Ids `POST /sync/pull` answers with a signed delete.
     signed_deletes: Vec<String>,
     /// Purged markers `POST /sync/pull` serves for the ids it is asked, only
@@ -248,6 +248,8 @@ struct Server {
     /// Presigned URLs live this long on the test clock, and a GET on an
     /// expired one answers 403. Unset, every URL lives past the run.
     presign: Option<Presign>,
+    /// Once re-listed, every record pack GET answers 403, live URL or not.
+    resigned_refused: bool,
 }
 
 /// What the network answers while it is down.
@@ -362,6 +364,9 @@ impl Server {
             {
                 return Some(response(403, "{}"));
             }
+            if self.resigned_refused && self.listings.load(Ordering::Relaxed) > 1 {
+                return Some(response(403, "{}"));
+            }
             if let Some(timer) = self.pack_timeout {
                 let elapsed_ms = match timer {
                     Timer::Deadline => request.timeout_ms,
@@ -415,15 +420,17 @@ impl Server {
             let head = self
                 .live
                 .iter()
+                .chain(&self.deleted)
                 .map(|(_, c)| *c)
                 .max()
                 .unwrap_or(0)
                 .max(from);
-            let deleted = if from == 0 {
-                self.deleted.clone()
-            } else {
-                Vec::new()
-            };
+            let deleted: Vec<&str> = self
+                .deleted
+                .iter()
+                .filter(|(_, cursor)| *cursor > from)
+                .map(|(id, _)| id.as_str())
+                .collect();
             return Some(response(
                 200,
                 &json!({"items": items, "deleted": deleted, "hasMore": false, "nextCursor": head})
@@ -797,6 +804,11 @@ async fn a_pack_get_past_its_deadline_is_not_retried_but_an_idle_one_is() {
             .filter(|url| url.starts_with("https://r2.example/packs/"))
             .count();
         assert_eq!(packs, sends, "{calls:?}");
+        assert_eq!(
+            live_ids(&db).len(),
+            40,
+            "the records land after {sends} pack sends"
+        );
     }
 }
 
@@ -855,6 +867,38 @@ async fn a_retry_past_the_url_lifetime_re_lists_before_it_downloads() {
     assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
     assert_eq!(report.reconcile_pulled, 0);
     assert_eq!(routes.count("/sync/packs"), 2, "{:?}", routes.calls());
+    assert_eq!(live_ids(&db).len(), 70);
+}
+
+/// #5247: a re-signed pack keeps the expiry the re-list gave it, so a 403 on
+/// its URL while that URL is live is final. The pack becomes a gap at once,
+/// and the phase neither pauses for it nor re-lists again.
+#[tokio::test(start_paused = true)]
+async fn a_403_on_a_live_re_signed_url_is_final() {
+    let db = scratch_db("drop-relist-refused");
+    // The URLs expire during the first pause, so the re-list comes with
+    // pauses still left to take.
+    let mut server = dropped_server(30, Some(60));
+    server.resigned_refused = true;
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 0, "{report:?}");
+    assert_eq!(report.record_packs.fallback_reasons.len(), 7, "{report:?}");
+    let calls = routes.calls();
+    let relist = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, url)| url.contains("/sync/packs"))
+        .map(|(at, _)| at)
+        .nth(1)
+        .expect("the drop outlived the URLs, so the phase re-listed");
+    let gets_after = calls[relist..]
+        .iter()
+        .filter(|url| url.contains("https://r2.example/packs/"))
+        .count();
+    assert_eq!(gets_after, 7, "one GET per re-signed pack: {calls:?}");
+    assert_eq!(routes.count("/sync/packs"), 2, "{calls:?}");
     assert_eq!(live_ids(&db).len(), 70);
 }
 
@@ -1048,6 +1092,25 @@ async fn the_manifest_pulls_what_the_packs_did_not_hold_at_its_cursor_and_drops_
     assert_eq!(report.reconcile_removed, 1);
 }
 
+/// #5405: while the reconcile is due the refs pass sends no pull for a
+/// `deleted` id. n3 was deleted after the packs (cursor 6), so the feed tail
+/// lists it and the manifest omits it; n2 was rewritten (cursor 9). The
+/// reconcile pulls both in one request, and n3's signed delete removes it.
+#[tokio::test]
+async fn a_pack_held_row_the_feed_reports_deleted_is_removed_by_the_reconciles_one_pull() {
+    let db = scratch_db("feed-deleted");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    server.live[1].1 = 9;
+    server.deleted.push(("n3".into(), 6));
+    server.signed_deletes.push("n3".into());
+    let routes = Routes::new(server);
+    run(&db, &routes, &[]).await;
+    assert_eq!(routes.count("/sync/pull"), 1, "{:?}", routes.calls());
+    assert!(!notes(&db)["n3"].0, "the signed delete removes n3");
+    assert!(notes(&db)["n2"].0);
+}
+
 /// `covered_vault(4, 10)` whose manifest omits n3, set up by `stage`.
 async fn omitted_n3(label: &str, stage: impl FnOnce(&mut Server)) -> (Db, FirstSyncReport) {
     let db = scratch_db(label);
@@ -1080,6 +1143,52 @@ async fn an_omitted_row_whose_pull_is_not_an_envelope_is_kept() {
     .await;
     assert!(notes(&db)["n3"].0);
     assert_eq!(report.reconcile_removed, 0);
+}
+
+/// #5247: a kept stale row reaches the shell's log as counts and the cursor,
+/// not only stderr, which iOS does not keep.
+#[tokio::test]
+async fn a_kept_stale_row_is_told_to_the_diagnostics_sink() {
+    #[derive(Default)]
+    struct Captured(Mutex<Vec<CoreDiagnostic>>);
+    impl DiagnosticsSink for Captured {
+        fn record(&self, event: CoreDiagnostic) {
+            self.0.lock().unwrap().push(event);
+        }
+    }
+
+    let db = scratch_db("omitted-told");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    let mut clockless = marker("n3", 7, false);
+    let fields = clockless.as_object_mut().expect("an object");
+    fields.insert("clock".into(), Json::Null);
+    fields.remove("deleteAttestation");
+    server.markers.push(clockless);
+    let routes = Routes::new(server);
+    let sink = Arc::new(Captured::default());
+    first_sync_observed(&db, &routes, &[], &RunDiagnostics::new(sink.clone()))
+        .run(1_800_000_000_000)
+        .await
+        .expect("the first sync finishes");
+
+    let told: Vec<CoreDiagnostic> = sink
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|event| matches!(event, CoreDiagnostic::ReconcileKept { .. }))
+        .copied()
+        .collect();
+    assert_eq!(
+        told,
+        vec![CoreDiagnostic::ReconcileKept {
+            kept: 1,
+            remembered: 1,
+            non_envelope: 0,
+            cursor: Some(4),
+        }]
+    );
 }
 
 /// A tombstone the server still holds arrives signed and deletes.

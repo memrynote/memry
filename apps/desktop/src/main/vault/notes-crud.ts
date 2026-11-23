@@ -22,7 +22,12 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import { assertFolderRenameKeepsCaseTwins } from './case-twin-split'
+import {
+  assertFolderRenameKeepsCaseTwins,
+  planCaseTwinLeave,
+  prepareCaseTwinLeave,
+  sharesCaseTwinFile
+} from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -878,7 +883,14 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 // Delete
 // ============================================================================
 
-export async function deleteNote(id: string): Promise<void> {
+/**
+ * Queues the note's sync delete (`syncNoteDelete`). `inStep` is the delete's
+ * own step: it queues the tombstone with `enqueueTombstone`, and a throw there
+ * queues none.
+ */
+export type SyncNoteDelete = (inStep?: (enqueueTombstone: () => void) => void) => Promise<void>
+
+export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promise<void> {
   const db = getIndexDatabase()
 
   const cached = getNoteCacheById(db, id)
@@ -887,11 +899,34 @@ export async function deleteNote(id: string): Promise<void> {
   }
   assertNoteWritable(id, cached.path)
 
-  const absolutePath = toAbsolutePath(cached.path)
-  await deleteFile(absolutePath)
-
-  deleteNoteFromCache(db, id)
-  deleteNotePosition(getDatabase(), cached.path)
+  const vaultPath = getVaultRoot()
+  const dropRows = (): void => {
+    deleteNoteFromCache(db, id)
+    deleteNotePosition(getDatabase(), cached.path)
+  }
+  if (sharesCaseTwinFile(vaultPath, cached.path)) {
+    // A case twin's file is the other twin's too (#5495): only this row goes,
+    // and the file becomes the survivor's own in the step that drops it and
+    // queues the tombstone. Nothing before the step changes anything.
+    await prepareCaseTwinLeave(vaultPath, cached.path, id)
+    await syncDelete((enqueueTombstone) => {
+      planCaseTwinLeave(vaultPath, cached.path, id)()
+      enqueueTombstone()
+      dropRows()
+    })
+  } else {
+    await syncDelete()
+    // A twin that arrived while the delete awaited has its body in this file.
+    if (sharesCaseTwinFile(vaultPath, cached.path)) {
+      throw new NoteError(
+        'Another note now shares this file; try the delete again',
+        NoteErrorCode.DELETE_FAILED,
+        id
+      )
+    }
+    await deleteFile(toAbsolutePath(cached.path))
+    dropRows()
+  }
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,

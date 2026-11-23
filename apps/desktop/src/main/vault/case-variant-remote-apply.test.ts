@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { watch as chokidarWatch } from 'chokidar'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -62,7 +63,9 @@ vi.mock('../sync/crdt-provider', () => ({
     updateMeta: vi.fn(),
     getDoc: () => undefined,
     recordOwedFullState: vi.fn(),
-    hasPersistence: () => true
+    hasPersistence: () => true,
+    awaitPendingInit: async () => {},
+    readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] })
   }))
 }))
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
@@ -88,7 +91,11 @@ import {
 } from '../database/client'
 import { oweUnsyncedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { getStatus } from './index'
-import { enqueueLocalSyncCreate, enqueueLocalSyncUpdate } from '../sync/local-mutations'
+import {
+  enqueueLocalSyncCreate,
+  enqueueLocalSyncDelete,
+  enqueueLocalSyncUpdate
+} from '../sync/local-mutations'
 import { feedExternalEditToCrdt, takeOwedFile } from '../sync/crdt-external-feed'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
@@ -498,6 +505,36 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
       .where(eq(noteMetadata.id, 'n1'))
       .get()
     expect(row?.title).toBe('Apple')
+  }, 20_000)
+
+  // An outside save, then a case-only rename while the watcher still holds the
+  // save's change: the change lands after the rename under the old spelling.
+  // It stays a change of the note, so the rename keeps the id and syncs no
+  // delete (#5247). fsevents replaying the seed write as a change made the
+  // test above flaky the same way.
+  it('a case-only rename right after an outside save keeps the note id', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n', { remote: false })
+    await watch()
+    const oldPath = path.join(vault.path, 'Docs/apple.md')
+    // Hears the save when the app's watcher does: same write-finish window.
+    const observer = chokidarWatch(oldPath, {
+      ignoreInitial: true,
+      awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
+    })
+    try {
+      await new Promise<void>((resolve) => observer.on('ready', resolve))
+      const changed = new Promise((resolve) => observer.on('change', resolve))
+      fs.writeFileSync(oldPath, '# apple\n\nbody\n')
+      await changed
+      fs.renameSync(oldPath, path.join(vault.path, 'Docs/Apple.md'))
+    } finally {
+      await observer.close()
+    }
+    await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+    expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+    expect(cacheRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+    expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
   }, 20_000)
 
   // The same rename made while the app is closed: vault open sees only the

@@ -124,6 +124,35 @@ export interface CanonicalNoteRef {
 }
 
 /**
+ * The rows that name the file at `relativePath` (the disk's spelling) on a
+ * disk that ignores case; empty on one that does not.
+ */
+function listRowsOnFile(
+  dataDb: NonNullable<ReturnType<typeof getCanonicalDb>>,
+  vaultPath: string,
+  relativePath: string
+) {
+  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
+  const candidates = volumeIgnoresCase(vaultPath)
+    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
+    : []
+  // The fold finds candidates; the disk proves which of them name this file. On
+  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
+  return candidates.filter((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+}
+
+/**
+ * The ids of the case twins sharing the file at `relativePath` (the disk's
+ * spelling) other than `noteId`. Empty when the file is not shared.
+ */
+export function listCaseTwinIds(vaultPath: string, relativePath: string, noteId: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return []
+  const rows = listRowsOnFile(dataDb, vaultPath, relativePath)
+  return rows.length > 1 ? rows.map((row) => row.id).filter((id) => id !== noteId) : []
+}
+
+/**
  * The identity the vault already holds for the file at `relativePath`, given
  * in the disk's spelling, if it holds one.
  *
@@ -145,15 +174,7 @@ export function findCanonicalNoteForFile(
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
   const exact = getNoteMetadataByPath(dataDb, relativePath)
-  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
-  const candidates = volumeIgnoresCase(vaultPath)
-    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
-    : []
-  // The fold finds candidates; the disk proves which of them name this file. On
-  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
-  const onThisFile = candidates.filter(
-    (candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath
-  )
+  const onThisFile = listRowsOnFile(dataDb, vaultPath, relativePath)
   const row = exact ?? onThisFile[0]
   return row
     ? {
@@ -188,16 +209,6 @@ export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: s
 const log = createLogger('NoteSync')
 
 /**
- * Whether the file the row at `relativePath` names is also another row's: a
- * case twin's (#5263). Callers name the file by the row's spelling; the rows
- * are matched to the disk's. A file that is not there is no one's.
- */
-export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  return onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
-}
-
-/**
  * Whether the file at `relativePath` is shared by case twins: distinct rows
  * whose paths fold to it on a case-insensitive disk (#5263). The file holds
  * one twin's body, so its bytes never enter note `noteId`'s doc. Taking them
@@ -210,7 +221,10 @@ export function refusesCaseTwinFile(
   relativePath: string,
   noteId: string
 ): boolean {
-  if (!sharesCaseTwinFile(vaultPath, relativePath)) return false
+  // Callers name the file by the row's spelling; the rows are matched to
+  // the disk's. A file that is not there holds no body to take.
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  if (onDisk === null || !findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile) return false
   log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
   return true
 }

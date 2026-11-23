@@ -141,11 +141,12 @@ struct NotePageContent<EmptyBody: View>: View {
         if let metadata = model.metadata, !inspectorShown {
             NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
-        if model.blocks.isEmpty || keepsEmptyBody {
+        let preview = NoteBodyPreview.of(detail.body)
+        if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
             // No blocks to draw. Which of the three reasons it is — never
             // pulled, genuinely empty, or a walk that failed — is the
             // caller's to say.
-            emptyBody(NoteBodyPreview.of(detail.body))
+            emptyBody(preview)
         }
         if !model.blocks.isEmpty {
             // With no stack to push onto (`open` is nil) the links are still
@@ -164,7 +165,8 @@ struct NotePageContent<EmptyBody: View>: View {
                 editing: editing,
                 tableEditing: editorModel.canEdit
                     ? NoteTableEditing(editor: editorModel) { await model.reload() }
-                    : nil
+                    : nil,
+                lazy: true
             )
             .environment(\.openNote, open)
             .environment(\.portalHostNote, detail.summary.id)

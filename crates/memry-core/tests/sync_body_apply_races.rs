@@ -155,7 +155,7 @@ async fn a_document_deleted_mid_chunk_is_not_seeded() {
         }),
     )
     .await;
-    assert_ne!(seeded, PackSeed::Applied);
+    assert_eq!(seeded, PackSeed::Deleted, "counted as deleted, not stale");
     assert_eq!(snapshot(&db), None, "no body for a deleted document");
     assert_eq!(cursor(&db, DOC), None);
 }
@@ -353,6 +353,11 @@ async fn a_bulk_applied_body_converges_with_a_desktop_edit() {
     assert_eq!(txn.state_vector().encode_v1(), field("sv"));
     let before = txn.encode_state_as_update_v1(&StateVector::default());
     drop(txn);
+    assert_eq!(
+        before,
+        field("state"),
+        "the core's state is desktop's, byte for byte"
+    );
     let desktop = Update::decode_v1(&field("state")).expect("desktop's state");
     ydoc.transact_mut()
         .apply_update(desktop)

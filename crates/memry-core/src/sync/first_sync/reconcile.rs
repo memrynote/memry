@@ -31,12 +31,13 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 
+use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
 
 use super::super::apply::{self, Pending};
 use super::super::delete_wins;
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
-use super::super::pull::{MAX_PULL_IDS, PullLoop};
+use super::super::pull::{MAX_PULL_IDS, PullLoop, still_open};
 use super::super::purged_markers as markers;
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
 use super::{FirstSync, FirstSyncError, FirstSyncReport};
@@ -119,6 +120,12 @@ impl FirstSync {
             eprintln!(
                 "memry-core: first sync reconcile: kept {kept} stale id(s) at cursor {cursor:?} with no verified delete or attested marker, {remembered} of them against a remembered unattested marker ({dropped_pages} non-envelope answer(s))"
             );
+            self.diagnostics.emit(CoreDiagnostic::ReconcileKept {
+                kept: CoreDiagnostic::count(kept),
+                remembered: CoreDiagnostic::count(remembered),
+                non_envelope: dropped_pages,
+                cursor: CoreDiagnostic::cursor(cursor.as_deref()),
+            });
         }
         self.db
             .call(|conn| write_meta(conn, META_FIRST_SYNC_RECONCILED, "1"))
@@ -173,6 +180,7 @@ impl FirstSync {
                     })
                     .collect();
                 let totals = apply::apply_page(&txn, gone, now, None)?;
+                still_open(&txn)?;
                 let mut remembered = HashSet::new();
                 for (item_type, item_id, marker) in &verdicts.unattested {
                     let key = (item_type.clone(), item_id.clone());
@@ -181,6 +189,7 @@ impl FirstSync {
                         remembered.insert(key);
                     }
                 }
+                still_open(&txn)?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok((
                     totals.deleted,

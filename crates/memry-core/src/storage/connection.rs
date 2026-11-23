@@ -104,10 +104,23 @@ impl Db {
     }
 }
 
+/// Every transaction borrows the guard of the call that opened it, so a call
+/// that finds one open finds a dead one: its drop could not roll it back. A
+/// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
+/// it is rolled back first, and the call fails when that fails too.
 fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    conn.lock().map_err(|_| StorageError::Failed {
+    let guard = conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
-    })
+    })?;
+    if !guard.is_autocommit() {
+        eprintln!("memry-core: rolling back a transaction an earlier call left open");
+        guard
+            .execute_batch("ROLLBACK")
+            .map_err(|err| StorageError::Failed {
+                what: format!("could not roll back a transaction left open: {err}"),
+            })?;
+    }
+    Ok(guard)
 }
 
 /// The pragmas every core-owned database runs under (research R4, §A.0).

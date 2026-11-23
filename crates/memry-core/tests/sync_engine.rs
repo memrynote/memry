@@ -27,7 +27,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use http_fakes::{FakeTransport, response};
+use http_fakes::{FakeTransport, body_json, response};
 use memry_core::api::errors::ApiError;
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::settings;
@@ -41,6 +41,7 @@ use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::engine::{PassReport, PushWave, SyncEngine};
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
+use memry_core::sync::push::{PendingRecord, PushCoordinator, PushSealer};
 use memry_core::sync::state::{PassTrigger, SyncState, WriteGate, is_drawn};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -1560,11 +1561,11 @@ async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
     );
     let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "61").await;
 
-    // §5.14: a skip is work, so the page yielded and the cursor advances.
-    assert_eq!(report.skipped, 1);
-    assert_eq!(report.applied, 0);
+    // §6.9.0 (#5506): the server lacks the local tick, so the merge re-queues
+    // the local payload, which is an apply rather than a skip.
+    assert_eq!(report.skipped, 0);
+    assert_eq!(report.applied, 1);
     assert_eq!(report.corrupt, 0);
-    assert!(!report.refused, "a skip is not nothing");
     assert_eq!(report.cursor.as_deref(), Some("61"));
 
     let parsed = stored_payload(&db, "settings", SETTINGS_ID);
@@ -1576,7 +1577,7 @@ async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
     assert_eq!(
         parsed["fieldClocks"]["general.theme"],
         json!({"device-a": 2}),
-        "nothing was written, so the local path clock is untouched"
+        "the merge kept the local path clock"
     );
     assert_eq!(
         projected_settings(&db),
@@ -1586,8 +1587,9 @@ async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
             "\"light\"".to_owned()
         )]
     );
-    // §6.5.2 P3: an inbound apply never enqueues, and neither does a skip.
-    assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
+    // The re-queue supersedes the still-queued local edit: one row, one push.
+    assert_eq!(queued_before, 1);
+    assert_eq!(outbox_rows(&db, SETTINGS_ID), 1);
 }
 
 /// **FR-059's §6.9 equivalent**: two devices changed two different paths, and
@@ -1689,6 +1691,134 @@ async fn an_unmodelled_settings_group_rides_along_through_the_merge() {
     assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
 }
 
+/// Seals a record as its live plaintext, so a test can read what a push sent.
+/// The envelope's bytes are chapter 04's, pinned by the `record-envelope`
+/// vector class.
+struct PlainSealer;
+
+impl PushSealer for PlainSealer {
+    fn seal_record(&self, item: &PendingRecord) -> Result<Json, EnvelopeError> {
+        Ok(json!({
+            "id": item.row.item_id,
+            "type": item.row.item_type,
+            "operation": item.operation.as_str(),
+            "encryptedData": item.row.payload.clone().unwrap_or_default(),
+        }))
+    }
+
+    fn seal_crdt_update(&self, _doc_id: &str, update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(update.to_vec())
+    }
+}
+
+/// One real push wave from `db` to a server that accepts `id`. Returns the
+/// payloads the wave sent; the server's ack deletes their outbox rows.
+async fn push_wave(db: &Db, id: &str) -> Vec<Json> {
+    let accepted = json!({"accepted": [id], "rejected": [], "serverTime": 1, "maxCursor": 1});
+    let transport = FakeTransport::new(vec![response(200, &accepted.to_string())]);
+    let http = HttpClient::new(
+        transport.clone(),
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    PushCoordinator::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(PlainSealer),
+        "device-a",
+    )
+    .drain_wave()
+    .await
+    .expect("the wave");
+    transport
+        .calls_to("/sync/push")
+        .iter()
+        .flat_map(|call| {
+            body_json(call)["items"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+        })
+        .map(|item| {
+            serde_json::from_str(item["encryptedData"].as_str().expect("the plaintext"))
+                .expect("valid JSON")
+        })
+        .collect()
+}
+
+/// #5506 through the real pull: phone and desk start from weekStartDay
+/// {desk: 1}. Offline, desk sets the theme and phone sets weekStartDay. Desk's
+/// push, built before it pulled phone's, lands last, so the server holds
+/// weekStartDay {desk: 1}. Phone's clock dominates it and keeps `monday`; the
+/// merge must re-queue, or no other device ever sees it. Then every device
+/// and the server hold one payload, and an echo pushes nothing.
+#[tokio::test]
+async fn a_settings_merge_that_keeps_a_tick_the_server_lacks_pushes_it_back() {
+    let synced = settings_payload(
+        json!({"calendar": {"weekStartDay": "sunday"}}),
+        json!({"calendar.weekStartDay": {"desk": 1}}),
+    );
+    let stale = settings_payload(
+        json!({"general": {"theme": "light"}, "calendar": {"weekStartDay": "sunday"}}),
+        json!({"general.theme": {"desk": 1}, "calendar.weekStartDay": {"desk": 1}}),
+    );
+    let phone = scratch_db("pull-settings-5506-phone");
+    let desk = scratch_db("pull-settings-5506-desk");
+    pull_one(&phone, SETTINGS_ID, "settings", &synced, "70").await;
+    pull_one(&desk, SETTINGS_ID, "settings", &stale, "71").await;
+    phone
+        .call_blocking(|conn| {
+            settings::set(
+                conn,
+                "calendar.weekStartDay",
+                json!("monday"),
+                "phone",
+                MERGE_NOW,
+            )?;
+            Ok(())
+        })
+        .expect("the offline edit");
+    assert_eq!(
+        push_wave(&phone, SETTINGS_ID).await.len(),
+        1,
+        "the edit was pushed"
+    );
+    assert!(push_wave(&desk, SETTINGS_ID).await.is_empty());
+
+    let report = pull_one(&phone, SETTINGS_ID, "settings", &stale, "71").await;
+    assert_eq!(report.applied, 1);
+    assert_eq!(outbox_rows(&phone, SETTINGS_ID), 1, "phone re-pushes");
+    let pushed = push_wave(&phone, SETTINGS_ID).await;
+    assert_eq!(
+        pushed,
+        vec![stored_payload(&phone, "settings", SETTINGS_ID)]
+    );
+    assert_eq!(outbox_rows(&phone, SETTINGS_ID), 0, "the server acked it");
+    let server = pushed[0].clone();
+    assert_eq!(
+        server["settings"]["calendar"]["weekStartDay"],
+        json!("monday")
+    );
+    assert_eq!(server["settings"]["general"]["theme"], json!("light"));
+    assert_eq!(
+        server["fieldClocks"]["calendar.weekStartDay"],
+        json!({"desk": 1, "phone": 1})
+    );
+
+    let server = server.to_string();
+    let report = pull_one(&desk, SETTINGS_ID, "settings", &server, "72").await;
+    assert_eq!(report.applied, 1);
+    assert_eq!(outbox_rows(&desk, SETTINGS_ID), 0, "desk was behind");
+    let report = pull_one(&phone, SETTINGS_ID, "settings", &server, "72").await;
+    assert_eq!(report.skipped, 1, "an echo of its own push is no write");
+    assert_eq!(outbox_rows(&phone, SETTINGS_ID), 0, "and no push loop");
+    assert_eq!(
+        stored_payload(&desk, "settings", SETTINGS_ID),
+        stored_payload(&phone, "settings", SETTINGS_ID)
+    );
+}
+
 /// §6.9.1's removal rule, from the seat that made the removal: a local clear
 /// that **ticked** beats a peer still holding the old value, rather than the
 /// setting resurrecting on the next pull.
@@ -1711,8 +1841,9 @@ async fn a_local_settings_removal_that_ticked_beats_a_stale_remote_value() {
     );
     let report = pull_one(&db, SETTINGS_ID, "settings", &remote, "64").await;
 
-    assert_eq!(report.skipped, 1);
-    assert_eq!(report.applied, 0);
+    // §6.9.0 (#5506): the server lacks the removal tick, so it re-queues.
+    assert_eq!(report.skipped, 0);
+    assert_eq!(report.applied, 1);
     assert_eq!(report.corrupt, 0);
     assert_eq!(report.cursor.as_deref(), Some("64"));
 

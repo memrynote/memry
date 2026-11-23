@@ -573,7 +573,7 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:171`,
+(`packages/sync-client/src/settings-sync.ts:185`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The settings item is never deleted.** A receiver MUST skip a pulled
@@ -581,7 +581,39 @@ blob is **one sync item** with `itemId = 'synced_settings'`
 later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
 `crates/memry-core/src/sync/apply.rs:250-258`, #5433). A core that marked it
 deleted on an earlier build clears that delete on the item's next merged write
-(`crates/memry-core/src/domain/settings.rs:217-225`).
+(`crates/memry-core/src/domain/settings.rs:233-241`). When that earlier build
+left the row with no payload, a local edit seeds an empty payload, and its push
+waits until a by-id re-pull merges the server's copy, so the edit cannot
+replace the account's settings with one key
+(`crates/memry-core/src/domain/settings.rs:148-156`,
+`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`).
+
+**Every unknown-signer hold follows one rule, settings or not.** A pulled
+record refused only because its signer is missing from the pass's device
+directory records a hold on its `(type, id)`, and a queued edit of that row
+stays out of the push while the hold waits
+(`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`). Each pass
+re-pulls every waiting hold by id over that pass's fresh directory: each
+settings hold on its own, so another record's answer never counts toward it,
+and every other hold in one batch (`:122-140`). A verified record for the id
+ends the hold (`:96-105`). Otherwise the hold gives up after 5 attempts or 50
+failures, whichever comes first, and the queued edit then pushes
+(`:59`, `:64`, `:224-226`). One re-pull counts as follows
+(`:155-174`, `:180-221`):
+
+- **Attempt**: only a well-formed page that leaves the id out, with no dropped
+  page and no record still unverifiable.
+- **Failure**: a dropped page, a record still unverifiable, a malformed body, or
+  a 4xx other than 429.
+- **Never counts**: a transport failure, a 5xx, or a 429.
+
+**Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
+record whose signer has no public key as a decrypt failure that is not a crypto
+error, and applies the rest of the page
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`, `:240-250`;
+`apps/desktop/src/main/sync/engine-pull.test.ts:306`). The page's corrupt
+re-fetch takes only crypto and parse failures, so it never retries that record
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:1041`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
@@ -663,15 +695,22 @@ nothing.** §6.9 already requires a key outside the modelled set to ride along
 rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
-**A merge in which any path compared `concurrent` MUST re-queue the merged
-settings** (`packages/sync-client/src/settings-sync.ts:112`; the Rust core
-enqueues in the merge's own transaction,
-`crates/memry-core/src/sync/settings_merge.rs`, #2399). This is §6.5.2 P3
-for settings, which reach it without the pull coordinator's conflict re-queue:
-the handler reports `applied`, and settings have no `buildPushPayload`, so the
-queued payload is what gets pushed. Without it, a device that kept its own value
-on a concurrent pair is the only one holding it; the server keeps the peer's row
-and the two devices stay on different values (#2287).
+**A merge in which any path's local clock compared `concurrent` with or
+`after` the remote's MUST re-queue the merged settings**
+(`packages/sync-client/src/settings-merge.ts:62-65`,
+`packages/sync-client/src/settings-sync.ts:124`; the Rust core enqueues in the
+merge's own transaction, `crates/memry-core/src/sync/settings_merge.rs`, #2399,
+#5506). This is §6.5.2 P3 for settings, which reach it without the pull
+coordinator's conflict re-queue: the handler reports `applied`, and settings
+have no `buildPushPayload`, so the queued payload is what gets pushed. Without
+it, a device that kept a value the server lacks is the only one holding it, and
+the devices stay on different values. Two shapes reach that state: a concurrent
+pair, where the server keeps the peer's row (#2287); and a local clock that
+dominates, because a peer pushed a payload it built before pulling this
+device's tick on another path. Settings carry no record clock, so the server
+takes that stale payload whole (#5506). A merge where every local clock is
+`equal` or `before` re-queues nothing, so a device that pulls its own push back
+does not push again.
 
 **A mixed pair converges through that re-queue, not through the rule.** A #2287
 build (tick max, local keeps a tie) and a #2383 build can pick different winners

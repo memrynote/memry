@@ -66,6 +66,10 @@ describe('isDocsRelevantPath', () => {
     assert.equal(isDocsRelevantPath('apps/desktop/src/main/__tests__/helpers.ts'), false)
     assert.equal(isDocsRelevantPath('packages/sync-core/src/__tests__/fixture-builder.ts'), false)
     assert.equal(isDocsRelevantPath('apps/sync-server/src/services/pack-list.ts'), true)
+    // Only a whole __tests__ directory is skipped, not a name that contains it.
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/tests-util/a.ts'), true)
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/my__tests__x/a.ts'), true)
+    assert.equal(isDocsRelevantPath('apps/sync-server/src/x__tests__/a.ts'), true)
   })
 })
 

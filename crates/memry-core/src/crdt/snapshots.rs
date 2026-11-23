@@ -50,7 +50,7 @@ use crate::storage::Db;
 use crate::storage::nested_tx;
 use crate::sync::{body_debt, note_body_feed};
 
-use super::epoch::{self, HeldBody};
+use super::epoch::{self, Epoch, HeldBody};
 use super::errors::CrdtError;
 use super::registry::Document;
 use super::update_log::{self, Namespace};
@@ -210,8 +210,8 @@ pub enum SnapshotError {
 /// entry built.
 pub(super) struct Prepared {
     pub(super) doc_id: String,
-    /// The body's epoch before the request (#5356).
-    epoch: i64,
+    /// The body's epoch when `document` loaded (#5356).
+    epoch: Epoch,
     state: Vec<u8>,
     pub(super) payload: Json,
 }
@@ -256,13 +256,19 @@ impl SnapshotPusher {
     /// refused document never pays for one, and the store runs before the
     /// prune so a kill between them leaves rows that are merely redundant
     /// rather than rows the snapshot never absorbed.
+    ///
+    /// `opened_at` is the document's [`Epoch`], captured before its log loaded
+    /// into `document` (#5356). A purge since then left `document` holding
+    /// the purged body, which is refused [`Refusal::Purged`] before the
+    /// endpoint, since a stored snapshot deletes the server's rows.
     pub async fn push(
         &self,
         document: &Document,
+        opened_at: Epoch,
         gate: SnapshotGate,
         now_ms: i64,
     ) -> Result<SnapshotOutcome, SnapshotError> {
-        let prepared = match self.prepare(document, gate).await? {
+        let prepared = match self.prepare(document, opened_at, gate).await? {
             Ok(prepared) => prepared,
             Err(refusal) => return Ok(SnapshotOutcome::Refused(refusal)),
         };
@@ -303,6 +309,7 @@ impl SnapshotPusher {
     pub(super) async fn prepare(
         &self,
         document: &Document,
+        opened_at: Epoch,
         gate: SnapshotGate,
     ) -> Result<Result<Prepared, Refusal>, SnapshotError> {
         // §7.13.2 condition 1, from the durable side: a document owed a
@@ -311,7 +318,7 @@ impl SnapshotPusher {
         // The claim is read before the log check and the encode (#2299): the
         // log only grows, so the state then holds every body at or below it.
         let owed_id = document.id().to_owned();
-        let (owed, covers_through, base_revision, epoch) = self
+        let (owed, covers_through, base_revision, now_at) = self
             .db
             .call(move |conn| {
                 let base = update_log::snapshot(conn, Namespace::Server, &owed_id)
@@ -321,10 +328,14 @@ impl SnapshotPusher {
                     body_debt::is_owed(conn, &owed_id)?,
                     note_body_feed::covers_through(conn, &owed_id)?,
                     base,
-                    epoch::read(conn, &owed_id).map_err(crdt_to_storage)?,
+                    epoch::capture(conn, &owed_id).map_err(crdt_to_storage)?,
                 ))
             })
             .await?;
+        // #5356: purged since `document` loaded, so it holds the purged body.
+        if now_at != opened_at {
+            return Ok(Err(Refusal::Purged));
+        }
         if owed {
             return Ok(Err(Refusal::UnmergedRemoteState));
         }
@@ -362,7 +373,7 @@ impl SnapshotPusher {
         }
         Ok(Ok(Prepared {
             doc_id,
-            epoch,
+            epoch: opened_at,
             state,
             payload,
         }))
@@ -494,7 +505,7 @@ pub fn stable_watermark(existing: Option<i64>, answered: Option<i64>) -> i64 {
 /// storing nothing and owing a pull, when the body moved off `epoch`.
 /// What the push response answered for the bytes it stored.
 struct PushedSnapshot<'a> {
-    epoch: i64,
+    epoch: Epoch,
     state: &'a [u8],
     answered: Option<i64>,
     revision: Option<&'a str>,

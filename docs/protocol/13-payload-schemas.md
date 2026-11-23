@@ -184,7 +184,7 @@ A conforming client MUST accept both shapes and MUST emit the string shape.
 - `tag_definition` ids are **tag names**;
 - `folder_config` ids are **folder paths**;
 - `settings` has exactly **one** item, `synced_settings`
-  (`packages/sync-client/src/settings-sync.ts:171`,
+  (`packages/sync-client/src/settings-sync.ts:185`,
   `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The sync bookkeeping key MUST therefore be `(type, id)` and never `id`
@@ -745,7 +745,7 @@ unknown `error` code as a generic "needs attention".
 **Normative, `readwise` (compat).** A build that predates the group, or the
 `status` object inside it, strips what it does not know on parse and echoes the
 field clocks it received, so the merge keeps the pulling device's values
-(§6.9.0, `packages/sync-client/src/settings-merge.ts:22-26`). A client that does
+(§6.9.0, `packages/sync-client/src/settings-merge.ts:25-29`). A client that does
 not model `readwise` keeps it byte for byte through §13.2
 (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:158-166`).
 
@@ -759,7 +759,7 @@ that path.
 **Normative, `features` (compat).** A build that predates the group strips its
 values on parse and echoes the clocks it received, so the merge keeps the
 newer device's values (§6.9.0,
-`packages/sync-client/src/settings-merge.ts:22-26`). A device that has stored
+`packages/sync-client/src/settings-merge.ts:25-29`). A device that has stored
 `features` flags locally seeds a flag that differs from its default only while
 no device has clocked that path and no value is present
 (`apps/desktop/src/main/settings/features-settings-sync.ts`,

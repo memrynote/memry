@@ -2,10 +2,8 @@ import { parentPort } from 'worker_threads'
 import sodium from 'libsodium-wrappers-sumo'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
-import { decryptCrdtUpdate } from './crdt-encrypt'
-import { SignatureVerificationError } from './decrypt'
+import { openCrdtBatch } from './crdt-batch-open'
 import { ItemTooLargeError } from '@memry/sync-client/note-size'
-import { base64ToBytes } from '@memry/sync-client/worker-protocol'
 import { secureCleanup } from '../crypto/primitives'
 import { createLogger } from '../lib/logger'
 import type {
@@ -13,8 +11,7 @@ import type {
   WorkerToMainMessage,
   EncryptedPushResult,
   DecryptedPullItem,
-  DecryptionFailure,
-  CrdtDecryptFailure
+  DecryptionFailure
 } from '@memry/sync-client/worker-protocol'
 if (!parentPort) {
   throw new Error('worker.ts must be run as a worker_threads Worker')
@@ -190,54 +187,15 @@ init().catch((err: unknown) => {
   process.exit(1)
 })
 
-/**
- * Decrypt a page of CRDT snapshot/update payloads off the main thread — the
- * same `decryptCrdtUpdate` the main-thread fallback runs, so a verdict cannot
- * differ by thread. Exactly one of `data` / `dataB64` is set per item; the
- * base64 decode of server payloads (the `atob` + charCode loop) happens here.
- */
+/** Decrypt a page of CRDT payloads off the main thread (`openCrdtBatch`). */
 function handleDecryptCrdtBatch(
   msg: Extract<MainToWorkerMessage, { type: 'decrypt-crdt-batch' }>
 ): void {
-  const results: Array<{ index: number; update: Uint8Array }> = []
-  const failures: CrdtDecryptFailure[] = []
-
   try {
-    for (const item of msg.items) {
-      const signerKeyB64 = msg.signerKeys[item.signerDeviceId]
-      if (!signerKeyB64) {
-        failures.push({
-          index: item.index,
-          noteId: item.noteId,
-          error: `No public key for signer device ${item.signerDeviceId}`,
-          isSignatureError: false
-        })
-        continue
-      }
-
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- item.data and item.dataB64 are alternatives; one is always present for a well-formed item
-      const packed = item.data ?? base64ToBytes(item.dataB64 as string)
-      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
-      const signerPublicKey = sodium.from_base64(signerKeyB64, sodium.base64_variants.ORIGINAL)
-
-      try {
-        const update = decryptCrdtUpdate(packed, msg.vaultKey, item.noteId, signerPublicKey)
-        results.push({ index: item.index, update })
-      } catch (err) {
-        failures.push({
-          index: item.index,
-          noteId: item.noteId,
-          error: err instanceof Error ? err.message : String(err),
-          isSignatureError: err instanceof SignatureVerificationError
-        })
-      }
-    }
-
     port.postMessage({
       type: 'decrypt-crdt-batch-result',
       requestId: msg.requestId,
-      results,
-      failures
+      ...openCrdtBatch(msg)
     } satisfies WorkerToMainMessage)
   } finally {
     secureCleanup(msg.vaultKey)
