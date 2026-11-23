@@ -142,6 +142,16 @@ describe('pack body applier', () => {
     read: async () => bytes
   })
 
+  /** Eleven keys with `a`, the snapshot's signer, sixth: five refuse before it, five follow it. */
+  const signerInTheMiddle = (): Map<string, Uint8Array> => {
+    const keys = new Map<string, Uint8Array>()
+    for (let i = 0; i < 10; i++) {
+      if (i === 5) keys.set('a', deviceA.publicKey)
+      keys.set(`old-${i}`, sodium.crypto_sign_keypair('uint8array').publicKey)
+    }
+    return keys
+  }
+
   describe('signature verification', () => {
     it('seeds the doc when the snapshot verifies under one of several registered keys', async () => {
       const packed = sealed('note-1', 'a real yjs update would go here', deviceB)
@@ -233,10 +243,7 @@ describe('pack body applier', () => {
 
     // On this thread every verify is a full Ed25519 pass over up to 8 MiB.
     it('stops walking the keys at the first one that verifies the snapshot', async () => {
-      const keys = new Map([['a', deviceA.publicKey]])
-      for (let i = 0; i < 10; i++) {
-        keys.set(`old-${i}`, sodium.crypto_sign_keypair('uint8array').publicKey)
-      }
+      const keys = signerInTheMiddle()
       const decrypt = vi.fn(decryptCrdtUpdate)
       const sut = createPackBodyApplier({
         store,
@@ -251,7 +258,8 @@ describe('pack body applier', () => {
       )
 
       expect(reached).toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
-      expect(decrypt).toHaveBeenCalledOnce()
+      // The five keys before `a` refuse and never stop the walk; the five after it are never tried.
+      expect(decrypt).toHaveBeenCalledTimes(6)
     })
 
     it('reads and opens no update when the snapshot verifies under no registered key', async () => {
@@ -392,6 +400,9 @@ describe('pack body applier', () => {
   describe('on the crypto worker', () => {
     const plain = (text: string) => new TextEncoder().encode(text)
 
+    /** Items the fake worker ran `decryptCrdtUpdate` on: one Ed25519 verify each. */
+    let workerAttempts = 0
+
     /** `worker.ts` handleDecryptCrdtBatch: per-item verdicts in-band. */
     const fakeWorker = () => ({
       isRunning: true,
@@ -404,7 +415,8 @@ describe('pack body applier', () => {
             signerDeviceId: string
           }>,
           key: Uint8Array,
-          signers: Record<string, string>
+          signers: Record<string, string>,
+          options?: { stopAtFirstOpen?: boolean }
         ) => {
           const results: Array<{ index: number; update: Uint8Array }> = []
           const failures: Array<{
@@ -414,12 +426,14 @@ describe('pack body applier', () => {
             isSignatureError: boolean
           }> = []
           for (const item of items) {
+            workerAttempts++
             try {
               const publicKey = new Uint8Array(Buffer.from(signers[item.signerDeviceId], 'base64'))
               results.push({
                 index: item.index,
                 update: decryptCrdtUpdate(item.data!, key, item.noteId, publicKey)
               })
+              if (options?.stopAtFirstOpen) break
             } catch (error) {
               failures.push({
                 index: item.index,
@@ -537,6 +551,52 @@ describe('pack body applier', () => {
       ])
       expect(applied.filter((row) => row.noteId === 'note-3')).toEqual([])
       expect(watermarks.has('note-3')).toBe(false)
+    })
+
+    // A pass over every remaining key after one verified cost a full Ed25519
+    // verify per linked device per snapshot (REVIEW-5487).
+    it('stops the worker key walk at the first key that verifies the snapshot', async () => {
+      const worker = fakeWorker()
+      workerAttempts = 0
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => signerInTheMiddle(),
+        workerBridge: worker
+      })
+
+      await expect(
+        sut.applyDocument(
+          'note-1',
+          snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 1, 'r')
+        )
+      ).resolves.toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
+
+      expect(applied.map((row) => row.update)).toEqual([plain('body')])
+      expect(workerAttempts).toBe(6)
+    })
+
+    it('stops the fallback key walk at the signer in the middle when the worker rejects', async () => {
+      const worker = fakeWorker()
+      worker.decryptCrdtBatch.mockRejectedValue(new Error('worker gone'))
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => signerInTheMiddle(),
+        workerBridge: worker,
+        decrypt
+      })
+
+      await expect(
+        sut.applyDocument(
+          'note-1',
+          snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 1, 'r')
+        )
+      ).resolves.toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
+
+      expect(applied.map((row) => row.update)).toEqual([plain('body')])
+      expect(decrypt).toHaveBeenCalledTimes(6)
     })
 
     // A refusal is a non-empty reason, not a falsy hole: the key walk on this

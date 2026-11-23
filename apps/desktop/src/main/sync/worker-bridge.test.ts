@@ -1128,6 +1128,20 @@ describe('SyncWorkerBridge', () => {
       })
     })
 
+    it('#then forwards stopAtFirstOpen to the worker', async () => {
+      // #given
+      await startReady()
+
+      // #when
+      void bridge.decryptCrdtBatch([], new Uint8Array(32), {}, { stopAtFirstOpen: true })
+
+      // #then
+      expect(mockWorkerInstance.postMessage.mock.calls.at(-1)![0]).toMatchObject({
+        type: 'decrypt-crdt-batch',
+        stopAtFirstOpen: true
+      })
+    })
+
     it('#then a reply of the wrong kind rejects instead of being read as a result', async () => {
       // #given
       await startReady()

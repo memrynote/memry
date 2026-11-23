@@ -111,6 +111,12 @@ export type MainToWorkerMessage =
       items: CrdtPayloadForDecrypt[]
       vaultKey: Uint8Array
       signerKeys: Record<string, string>
+      /**
+       * Stop after the first item that opens; items after it get neither a
+       * result nor a failure. A refusal never stops the batch. Absent (or a
+       * worker that predates it) walks every item.
+       */
+      stopAtFirstOpen?: boolean
     }
   | { type: 'shutdown' }
 

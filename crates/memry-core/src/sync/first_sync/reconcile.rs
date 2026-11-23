@@ -37,7 +37,7 @@ use crate::storage::nested_tx;
 use super::super::apply::{self, Pending};
 use super::super::delete_wins;
 use super::super::first_sync_store::{HeldRow, forget_cursors, held_rows, read_meta, write_meta};
-use super::super::pull::{MAX_PULL_IDS, PullLoop};
+use super::super::pull::{MAX_PULL_IDS, PullLoop, still_open};
 use super::super::purged_markers as markers;
 use super::super::store::{self, RECORD_CURSOR_SCOPE};
 use super::{FirstSync, FirstSyncError, FirstSyncReport};
@@ -180,6 +180,7 @@ impl FirstSync {
                     })
                     .collect();
                 let totals = apply::apply_page(&txn, gone, now, None)?;
+                still_open(&txn)?;
                 let mut remembered = HashSet::new();
                 for (item_type, item_id, marker) in &verdicts.unattested {
                     let key = (item_type.clone(), item_id.clone());
@@ -188,6 +189,7 @@ impl FirstSync {
                         remembered.insert(key);
                     }
                 }
+                still_open(&txn)?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok((
                     totals.deleted,
