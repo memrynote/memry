@@ -103,6 +103,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { sharesCaseTwinFile } from './case-twin-file'
 
 const logger = createLogger('Watcher')
 
@@ -1272,6 +1273,17 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    // The file holds one twin's bytes, whichever row the event names: pushed,
+    // they land on every device as this row's attachment (#5522). The change
+    // is held until one twin leaves the file, and a later change pushes it.
+    if (sharesCaseTwinFile(this.vaultPath, relativePath)) {
+      logger.warn('A change to a file shared with a case twin is not pushed', {
+        noteId: cached.id,
+        path: relativePath
+      })
+      return
+    }
     // Get file stats for updated metadata
     const stats = await fs.stat(absolutePath)
 

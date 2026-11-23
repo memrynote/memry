@@ -26,12 +26,18 @@
  * push leaves the cover out until it changes here (`recordRebuiltNoteCover`):
  * peers keep the framing.
  *
+ * A binary twin has no doc to rebuild a file from: a peer's rename or move
+ * of one plans with `planBinaryCaseTwinMove` (#5560).
+ *
  * @module vault/case-twin-file
  */
 
+import fs from 'fs'
+import path from 'path'
 import * as Y from 'yjs'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { scheduleWriteback } from '../sync/crdt-writeback'
+import { markWritebackIgnored, scheduleWriteback } from '../sync/crdt-writeback'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
@@ -252,6 +258,57 @@ export function planCaseTwinLeave(
     const live = getCrdtProvider().getDoc(survivorId)
     if (live && !sameStateVector(Y.encodeStateVector(live), prepared.converted)) {
       scheduleWriteback(survivorId, live, 'remote')
+    }
+  }
+}
+
+/**
+ * A peer's rename or move of binary note `movingId` off a file it shares with
+ * a case twin (#5560). The file stays where it is for the other twin. The
+ * moving twin gets a copy at `newAbsolutePath`, so its row never lacks a file,
+ * and its own attachment is asked for there: the bytes on disk may be the
+ * other twin's. Call right before the step that moves the row, with no await
+ * between. Throws, with nothing changed, when the file is no longer shared;
+ * the step never awaits, and a copy that fails throws before anything moves.
+ */
+export function planBinaryCaseTwinMove(
+  vaultPath: string,
+  relativePath: string,
+  movingId: string,
+  newAbsolutePath: string,
+  attachmentId: string | null
+): () => void {
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  if (onDisk === null || twinsOnFile(vaultPath, relativePath, movingId) === null) {
+    throw new NoteError(
+      'The note no longer shares its file; try the rename or move again',
+      NoteErrorCode.WRITE_FAILED,
+      movingId
+    )
+  }
+  const sharedPath = path.join(vaultPath, onDisk)
+  // A new path that differs only in case names the same file: the twins still share it.
+  const target = fs.statSync(newAbsolutePath, { throwIfNoEntry: false })
+  const shared = fs.statSync(sharedPath)
+  if (target && target.ino === shared.ino && target.dev === shared.dev) return () => {}
+  return () => {
+    markWritebackIgnored(newAbsolutePath)
+    fs.mkdirSync(path.dirname(newAbsolutePath), { recursive: true })
+    fs.copyFileSync(sharedPath, newAbsolutePath)
+    log.info('A binary case twin moved off a shared file; the file stays with the other twin', {
+      movingId,
+      attachmentId
+    })
+    if (attachmentId) {
+      attachmentEvents.emitDownloadNeeded({
+        noteId: movingId,
+        attachmentId,
+        diskPath: newAbsolutePath
+      })
+    } else {
+      log.warn('A binary case twin with no attachment keeps a copy of the shared file', {
+        movingId
+      })
     }
   }
 }
