@@ -573,7 +573,7 @@ arbitrary depth** — `general.theme`, `journal.weekdayTemplates.3`,
 `sidebar.sortModes.collections`
 (`packages/contracts/src/settings-sync.ts:78-93`, `:111-116`). The whole settings
 blob is **one sync item** with `itemId = 'synced_settings'`
-(`packages/sync-client/src/settings-sync.ts:171`,
+(`packages/sync-client/src/settings-sync.ts:185`,
 `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The settings item is never deleted.** A receiver MUST skip a pulled
