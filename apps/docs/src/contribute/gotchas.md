@@ -313,6 +313,10 @@ engine.start()                      # pull from server FIRST
 
 Reversing the order causes split brain. See [CRDT & Notes Sync](/architecture/crdt) for full reasoning.
 
+## Journal Properties Are One Record
+
+`updateJournalEntry` (`src/main/journal/update-entry.ts`), behind IPC `journal:updateEntry` and the agent's `journal.update`, takes `properties` as the entry's whole record and writes it over the file's. It does not merge keys. A body update that also sets tags or properties writes them again in the entry's write-back turn (#5479): the tags as the edit it made, the properties as the whole record. A tags save that lands while the update waits for that turn keeps its tags, but a properties save in the same spot loses the keys the update's record lacks. This is accepted (#5247): the later writer's record wins whole. To change single keys, call `patchJournalProperties` (`src/main/journal/properties.ts`, behind `mergeEntityProperties`). It sets them on the record the file holds, in the entry's turn.
+
 ## Logging
 
 Log through `createLogger('Scope')`, from `src/main/lib/logger.ts` in main and `@/lib/logger` in the renderer. Both wrap electron-log. Never call `console.*`; the pre-commit renderer guard rejects it in renderer files.

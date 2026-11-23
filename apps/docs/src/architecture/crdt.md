@@ -849,7 +849,9 @@ document to its vault `.md` file and re-indexes it for search.
   A foreign journal entry folded into its day brings its tags through the day merge instead
   (protocol §1.9.1). The merge reads the day file's tags in the day's write-back turn
   (`addJournalTags`), so a tag edit queued behind a running pass is not written over, and a
-  foreign id deleted elsewhere adds only this device's holder tags, not its record's.
+  foreign id deleted elsewhere adds only this device's holder tags, not its record's. It
+  writes one spelling per tag key, the first the file holds, as core `set_tags` does: a file
+  holding `Work` and `work` is written with `Work`.
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
@@ -874,7 +876,11 @@ document to its vault `.md` file and re-indexes it for search.
   A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
   so one that landed between a pass's read and its write was lost with nothing left to re-arm
   the pass (#5472). A body update feeds the doc before its file outside the queue, because the
-  feed can wait on the store and a pass queued behind it could hang the quit flush. The re-arm
+  feed can wait on the store and a pass queued behind it could hang the quit flush. An update
+  that creates a journal day (a tags save or the day merge's tags, for a day with no file)
+  writes the file and its index row in the queue, since a pass writes a day file that does
+  not exist yet (`materialize`). It seeds the doc and queues the create for sync after its
+  turn (`finishJournalEntryCreate`), because seeding reads the store. The re-arm
   restores its body but not the tags or properties written beside it, so a body update that
   sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
   properties) then writes them again over the file's body in the queue: the tags it added and
