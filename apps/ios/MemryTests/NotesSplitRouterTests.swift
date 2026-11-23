@@ -10,7 +10,7 @@ import Testing
 
 private func snapshot() -> LaunchSnapshot {
     let snapshot = LaunchSnapshot(defaults: UserDefaults(suiteName: "notes-split-\(UUID().uuidString)")!)
-    snapshot.vaultOpened("vault")
+    snapshot.vaultOpened(VaultSummary(id: "vault", name: nil))
     return snapshot
 }
 

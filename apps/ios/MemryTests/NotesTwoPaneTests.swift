@@ -1,4 +1,5 @@
 import Foundation
+import MemryCore
 import SwiftUI
 import Testing
 
@@ -9,7 +10,7 @@ import Testing
 
 private func snapshot() -> LaunchSnapshot {
     let snapshot = LaunchSnapshot(defaults: UserDefaults(suiteName: "notes-two-pane-\(UUID().uuidString)")!)
-    snapshot.vaultOpened("vault")
+    snapshot.vaultOpened(VaultSummary(id: "vault", name: nil))
     return snapshot
 }
 

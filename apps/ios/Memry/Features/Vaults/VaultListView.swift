@@ -49,13 +49,27 @@ struct VaultListView: View {
     /// With no filler — a caller that supplied no `VaultFillerMinting` — the
     /// old path is what runs. That is deliberate: browsing what is already on
     /// the phone is still correct, it is simply not the whole story.
-    @ViewBuilder
     private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
-        if let filler = model.filler {
-            VaultFillView(filler: filler) { browse(vault, summary, filler) }
-        } else {
-            browse(vault, summary, nil)
+        VStack(spacing: 0) {
+            if model.openVaultRemoved {
+                RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+                    .padding(.horizontal, Tokens.Space.screenInline)
+                    .padding(.vertical, Tokens.Space.inset)
+            }
+            if let notice = model.registryNotice {
+                RegistryNotice(error: notice, isRechecking: model.isRecheckingRegistry) {
+                    Task { await model.registryReachable() }
+                }
+                .transition(.opacity)
+            }
+            if let filler = model.filler {
+                VaultFillView(filler: filler) { browse(vault, summary, filler) }
+            } else {
+                browse(vault, summary, nil)
+            }
         }
+        .calmAnimation(.normal, value: model.registryNotice == nil)
+        .task { await model.watchRegistryTriggers() }
     }
 
     private func browse(
@@ -110,6 +124,9 @@ struct VaultListView: View {
     private var selection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                if model.openVaultRemoved {
+                    RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+                }
                 switch model.phase {
                 case .loading:
                     working("Looking for your vaults")
@@ -126,6 +143,12 @@ struct VaultListView: View {
                     // local vault, which the signed-in one creates for an
                     // empty account. A retry reads the registry again.
                     header("Your vault could not be opened", nil)
+                    retry("Try again")
+                case .offline:
+                    header(
+                        "Connect to the internet to load your vaults",
+                        "This \(ThisDevice.noun) has no vault yet. Memry needs a connection to download one the first time."
+                    )
                     retry("Try again")
                 case let .unreadable(error):
                     header("Your vaults could not be loaded", nil)
@@ -185,6 +208,46 @@ struct VaultListView: View {
     private func retry(_ title: String) -> some View {
         Button(title) { Task { await model.chooseAgain() } }
             .memrySecondaryAction()
+    }
+}
+
+/// The registry could not be read, and the vault opened from this device.
+/// Above the vault, never in its way. It goes once the account answers: on
+/// Try again, or on a trigger the model watches (#5524).
+private struct RegistryNotice: View {
+    let error: UserFacingError
+    let isRechecking: Bool
+    let recheck: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            ErrorNotice(error: error, code: nil)
+            Button(isRechecking ? "Checking…" : "Try again", action: recheck)
+                .memrySecondaryAction()
+                .disabled(isRechecking)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Tokens.Space.screenInline)
+        .padding(.vertical, Tokens.Space.inset)
+        .background(Tokens.Canvas.background.color)
+    }
+}
+
+/// The vault open offline was removed from the account while this device was
+/// away. Its files are still here; nothing on this screen deletes them.
+private struct RemovedVaultNotice: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            Text("That vault was removed from your account. Its copy stays on this \(ThisDevice.noun).")
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .multilineTextAlignment(.leading)
+            Button("Dismiss", action: dismiss)
+                .memrySecondaryAction()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
