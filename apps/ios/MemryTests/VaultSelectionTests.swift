@@ -2,6 +2,7 @@ import Foundation
 import MemryCore
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -312,6 +313,7 @@ struct OfflineLaunchTests {
             ApiError.Transport(source: .Timeout(elapsedMs: 30_000)),
             ApiError.Transport(source: .Failed(what: "x")),
             ApiError.Status(status: 503, code: nil, message: "x"),
+            ApiError.Status(status: 408, code: nil, message: "x"),
         ]
         for fault in faults {
             let opener = ScriptedOpener()
@@ -362,7 +364,6 @@ struct OfflineLaunchTests {
         let registry = SwitchableRegistry(.failure(offline))
         let selection = relaunch(registry, snapshot: snapshot)
         await selection.load()
-        #expect(VaultLabel(VaultSummary(id: "b", name: nil)) == .unnamed)
 
         let renamed = VaultSummary(id: "b", name: "Renamed", encryptedName: "sealed-2", nameNonce: "n2")
         registry.answer(.success([summary("a", "Work"), renamed]))
@@ -387,6 +388,96 @@ struct OfflineLaunchTests {
         #expect(selection.phase == .opened(summary("a", "Work")))
         #expect(selection.registryNotice == nil)
         #expect(opener.openedVaultIds == ["b", "a"])
+        #expect(selection.openVaultRemoved)
+
+        selection.dismissRemovedVaultNotice()
+        #expect(!selection.openVaultRemoved)
+    }
+
+    @Test("a refusal during a re-read keeps the vault and the offline notice")
+    func aRefusalDuringAReRead() async {
+        let registry = SwitchableRegistry(.failure(offline))
+        let selection = relaunch(registry)
+        await selection.load()
+        let notice = selection.registryNotice
+        for refusal: any Error in [
+            ApiError.Unauthorized(code: "x", message: "x"),
+            ApiError.UpgradeRequired(minVersion: "9", message: "x"),
+            ApiError.Transport(source: .Tls(what: "x")),
+        ] {
+            registry.answer(.failure(refusal))
+            await selection.registryReachable()
+            #expect(selection.registryNotice == notice, "\(ErrorMapping.userFacing(refusal).code)")
+            #expect(selection.vault != nil)
+        }
+    }
+
+    @Test("a vault that joins the account during the re-read starts syncing")
+    func aVaultThatAttachesGetsAFiller() async {
+        let attached = Mutex(false)
+        let mint = CountingMint()
+        let snapshot = isolatedSnapshot()
+        snapshot.vaultOpened(personal)
+        let registry = SwitchableRegistry(.failure(offline))
+        let selection = VaultSelectionViewModel(
+            registry: registry, opener: ScriptedOpener(), mint: mint, snapshot: snapshot,
+            syncable: { _ in attached.withLock { $0 } }
+        )
+        await selection.load()
+        #expect(selection.filler == nil)
+
+        attached.withLock { $0 = true }
+        registry.answer(.success([personal]))
+        await selection.registryReachable()
+        #expect(selection.filler != nil)
+        #expect(mint.minted.withLock { $0 } == 1)
+    }
+
+    @Test("a trigger while a re-read is out waits for it instead of reading again")
+    func reReadsCoalesce() async {
+        let registry = GatedRegistry()
+        let selection = relaunch(registry)
+        let launch = Task { await selection.load() }
+        await registry.nextCall()
+        registry.release(.failure(offline))
+        await launch.value
+
+        let first = Task { await selection.registryReachable() }
+        await registry.nextCall()
+        #expect(selection.isRecheckingRegistry)
+        await selection.registryReachable()
+        #expect(registry.pending == 1)
+        registry.release(.success([personal]))
+        await first.value
+        #expect(!selection.isRecheckingRegistry)
+        #expect(selection.registryNotice == nil)
+    }
+
+    @Test(
+        "the foreground and a sync pass that got through re-read the registry",
+        .timeLimit(.minutes(1)),
+        arguments: [UIApplication.didBecomeActiveNotification, Notification.Name.vaultSyncPassSucceeded]
+    )
+    func triggersReRead(_ trigger: Notification.Name) async throws {
+        let registry = GatedRegistry()
+        let selection = relaunch(registry)
+        let launch = Task { await selection.load() }
+        await registry.nextCall()
+        registry.release(.failure(offline))
+        await launch.value
+
+        let center = NotificationCenter()
+        let watch = Task { await selection.watchRegistryTriggers(center) }
+        // The watch subscribes on its own task; post until it hears one.
+        while registry.pending == 0 {
+            center.post(name: trigger, object: nil)
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        registry.release(.success([personal]))
+        while selection.registryNotice != nil { await Task.yield() }
+        watch.cancel()
+        await watch.value
+        #expect(selection.phase == .opened(personal))
     }
 
     /// The ABA: a read started for one screen must not touch the screen a
@@ -440,11 +531,32 @@ private final class GatedRegistry: VaultRegistry, @unchecked Sendable {
         return try answer.get()
     }
 
+    var pending: Int { waiting.withLock { $0.count } }
+
     /// Returns once a read is waiting.
     func nextCall() async { _ = await arrivalIterator.next() }
 
     func release(_ answer: Result<[VaultSummary], any Error>) {
         waiting.withLock { $0.removeFirst() }.resume(returning: answer)
+    }
+}
+
+private final class CountingMint: VaultFillerMinting, @unchecked Sendable {
+    let minted = Mutex(0)
+
+    func filler(for vault: Vault, named name: String) async throws -> any VaultFilling {
+        minted.withLock { $0 += 1 }
+        return IdleFiller()
+    }
+}
+
+private final class IdleFiller: VaultFilling, @unchecked Sendable {
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary { .none }
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
 }
 

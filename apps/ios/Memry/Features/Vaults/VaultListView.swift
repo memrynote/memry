@@ -1,4 +1,3 @@
-import Combine
 import MemryCore
 import SwiftUI
 
@@ -52,9 +51,16 @@ struct VaultListView: View {
     /// the phone is still correct, it is simply not the whole story.
     private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
         VStack(spacing: 0) {
+            if model.openVaultRemoved {
+                RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+                    .padding(.horizontal, Tokens.Space.screenInline)
+                    .padding(.vertical, Tokens.Space.inset)
+            }
             if let notice = model.registryNotice {
-                RegistryNotice(error: notice) { Task { await model.registryReachable() } }
-                    .transition(.opacity)
+                RegistryNotice(error: notice, isRechecking: model.isRecheckingRegistry) {
+                    Task { await model.registryReachable() }
+                }
+                .transition(.opacity)
             }
             if let filler = model.filler {
                 VaultFillView(filler: filler) { browse(vault, summary, filler) }
@@ -63,6 +69,7 @@ struct VaultListView: View {
             }
         }
         .calmAnimation(.normal, value: model.registryNotice == nil)
+        .task { await model.watchRegistryTriggers() }
     }
 
     private func browse(
@@ -117,6 +124,9 @@ struct VaultListView: View {
     private var selection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                if model.openVaultRemoved {
+                    RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+                }
                 switch model.phase {
                 case .loading:
                     working("Looking for your vaults")
@@ -203,31 +213,41 @@ struct VaultListView: View {
 
 /// The registry could not be read, and the vault opened from this device.
 /// Above the vault, never in its way. It goes once the account answers: on
-/// Try again, in the foreground, after a network path change, or after a sync
-/// pass that got through (#5524).
+/// Try again, or on a trigger the model watches (#5524).
 private struct RegistryNotice: View {
     let error: UserFacingError
+    let isRechecking: Bool
     let recheck: () -> Void
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
             ErrorNotice(error: error, code: nil)
-            Button("Try again", action: recheck)
+            Button(isRechecking ? "Checking…" : "Try again", action: recheck)
                 .memrySecondaryAction()
+                .disabled(isRechecking)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.inset)
         .background(Tokens.Canvas.background.color)
-        .onReceive(
-            NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged)
-                .merge(with: NotificationCenter.default.publisher(for: .vaultSyncPassSucceeded))
-                .receive(on: DispatchQueue.main)
-        ) { _ in recheck() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { recheck() }
+    }
+}
+
+/// The vault open offline was removed from the account while this device was
+/// away. Its files are still here; nothing on this screen deletes them.
+private struct RemovedVaultNotice: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.small) {
+            Text("That vault was removed from your account. Its copy stays on this \(ThisDevice.noun).")
+                .font(Tokens.Typography.body.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .multilineTextAlignment(.leading)
+            Button("Dismiss", action: dismiss)
+                .memrySecondaryAction()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
