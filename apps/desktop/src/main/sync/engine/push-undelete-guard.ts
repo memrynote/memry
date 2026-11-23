@@ -72,7 +72,10 @@ export function fetchLocalRow(
  * which replaces a queued edit, so such a row under a queued edit is a pulled
  * delete.
  * An edit whose clock happens after the delete is a re-create (§5.8) and is
- * still sent. A missing row with no recorded tombstone is left as before.
+ * still sent. For a soft-deleted row no shipped apply path reaches that case,
+ * since `applyDelete` keeps a clock at or after the queued edit's; it covers a
+ * row written otherwise. A missing row with no recorded tombstone is left as
+ * before.
  */
 function undeletesTombstone(
   db: DrizzleDb,
