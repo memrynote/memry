@@ -259,6 +259,62 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     then()
   }
 
+  /**
+   * Writes `body` to the file outside the app and runs `then` 20 ms later,
+   * inside chokidar's write-finish wait, so the app never hears the edit as a
+   * change (#5549).
+   */
+  async function editThenBeforeChange(
+    relativePath: string,
+    body: string,
+    then: () => void
+  ): Promise<void> {
+    const absolutePath = path.join(vault.path, relativePath)
+    let heard = false
+    changeHeard.path = absolutePath
+    changeHeard.resolve = () => {
+      heard = true
+    }
+    fs.writeFileSync(absolutePath, body)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    then()
+    changeHeard.path = ''
+    expect(heard).toBe(false)
+  }
+
+  it('a rename inside the write-finish wait after an outside edit keeps the note id', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
+    )
+    await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+    await settleOn(() => expect(editFedTo('n1')).toBe(true))
+    expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+    expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+  }, 20_000)
+
+  it.runIf(fileSystemIgnoresCase())(
+    'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+        fs.renameSync(
+          path.join(vault.path, 'Docs/apple.md'),
+          path.join(vault.path, 'Docs/Apple.md')
+        )
+      )
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      await settleOn(() => expect(editFedTo('n1')).toBe(true))
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    20_000
+  )
+
   it('a rename right after an outside edit keeps the note id', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
     await watch()
@@ -325,6 +381,15 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await expectDeleteAndCreate()
   }, 20_000)
 
+  it('a delete inside the write-finish wait after an outside edit, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+      deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
+    )
+    await expectDeleteAndCreate()
+  }, 20_000)
+
   it('a delete long after an outside edit settled, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
     await watch()
@@ -340,13 +405,14 @@ describe('an outside edit followed by a rename inside the change debounce', () =
   // there is no earlier hash for the renamed file to differ from.
   it('a rename of a note the index has not read does not read its body', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
-    index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
     const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
     fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
     await watch()
-    // fsevents can replay the seed's write as a change, which reads the body.
+    // fsevents can replay the seed's write as a change, which reads the body
+    // and fills the hash, so the hash is taken away after that settles.
     await new Promise((resolve) => setTimeout(resolve, 500))
     await flushProjectionEvents()
+    index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
     vi.mocked(feedExternalEditToCrdt).mockClear()
 
     fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
