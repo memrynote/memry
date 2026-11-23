@@ -27,7 +27,8 @@
  * #5610).
  *
  * A peer's frontmatter update of a twin whose bytes are not on the file goes
- * to its index rows only (`updateCaseTwinOffFile`, #5561).
+ * to its index rows only, with the body tags of its own doc
+ * (`updateCaseTwinOffFile`, #5561).
  *
  * The survivor's header is rebuilt from its index rows: header tags,
  * properties, aliases, and the cover ref. An image cover's framing and credit
@@ -79,6 +80,7 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
+import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
 import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
 import {
   getAliasesForNotes,
@@ -86,8 +88,8 @@ import {
   getNoteCacheByPath,
   getNoteFileProperties,
   getNoteHeaderTags,
-  getNoteTags,
-  updateNoteCache
+  updateNoteCache,
+  type NoteTagSet
 } from '@main/database/queries/notes'
 import { foldNotePath, getNoteMetadataById } from '@memry/storage-data'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
@@ -141,6 +143,9 @@ interface PreparedBody {
 /** A twin's doc as file body, by note id, for its next `planCaseTwinLeave` or `planCaseTwinMove`. */
 const preparedBodies = new Map<string, PreparedBody>()
 const preparing = new Map<string, Promise<void>>()
+/** A twin's doc as file body, by note id, for its next off-file tag update; taken once. */
+const offFileBodies = new Map<string, PreparedBody>()
+const convertingOffFile = new Set<string>()
 
 /** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
 export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
@@ -186,14 +191,17 @@ function prepareOnce(id: string): Promise<void> {
 }
 
 async function prepareBody(noteId: string): Promise<void> {
+  preparedBodies.set(noteId, await convertBody(noteId))
+}
+
+async function convertBody(noteId: string): Promise<PreparedBody> {
   const provider = getCrdtProvider()
   const live = provider.getDoc(noteId)
   try {
     const doc = live ?? (await provider.open(noteId, undefined, { skipSeed: true }))
     try {
       if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-        preparedBodies.set(noteId, { body: null, converted: Y.encodeStateVector(doc) })
-        return
+        return { body: null, converted: Y.encodeStateVector(doc) }
       }
       const convert = await readyWritebackConverter()
       const converted = Y.encodeStateVector(doc)
@@ -203,7 +211,7 @@ async function prepareBody(noteId: string): Promise<void> {
       if (conversion.kind === 'unrepresentable' || conversion.body === null) {
         throw new Error(`The doc cannot be written as markdown (${conversion.kind})`)
       }
-      preparedBodies.set(noteId, { body: conversion.body, converted })
+      return { body: conversion.body, converted }
     } finally {
       if (!live) await provider.closeIfInactive(noteId)
     }
@@ -252,9 +260,12 @@ export interface MovedTwinFile {
  * write-back turn of the moving twin would put its body over the survivor's
  * file after the step, and its row back on the shared file (#5610).
  *
- * The step's `moveRow` moves the caller's row to the new path. A throw after
- * the moving twin's file is written removes that file: no row would name it,
- * and the next vault open would list it as a new note.
+ * The step's `moveRow` moves the caller's row to the new path, in one
+ * data-DB transaction: a throw in it leaves the row on the shared file, and
+ * must come before anything outside that database (the local move publishes
+ * its index row last). A throw after the moving twin's file is written
+ * removes that file: no row names it, and the next vault open would list it
+ * as a new note.
  */
 export function planCaseTwinMove(
   vaultPath: string,
@@ -284,7 +295,7 @@ export function planCaseTwinMove(
     try {
       recordBaseline(indexDb, leavingId, own.content)
       if (own.cover !== undefined) recordRebuiltNoteCover(dataDb, leavingId, own.cover)
-      moveRow(moved)
+      dataDb.transaction(() => moveRow(moved))
     } catch (error) {
       fs.rmSync(absolutePath, { force: true })
       throw error
@@ -425,8 +436,11 @@ export interface OffFileTwinUpdate {
   frontmatter: NoteFrontmatter
   /** The cover ref of that header, for the twin's index row. */
   cover: string | null
-  /** The body tags its index rows hold: the body on the file is the other twin's. */
-  inlineTags: string[]
+  /**
+   * Its tag rows when the update changes its tags: the header's, and the body
+   * tags of its own doc, as the body on the file is the other twin's.
+   */
+  tags?: NoteTagSet
 }
 
 /**
@@ -437,6 +451,8 @@ export interface OffFileTwinUpdate {
  * update goes to the header the note's index rows hold, which a split writes
  * to its own file (`ownFile`). Returns that update, or null when the file
  * takes it in place: the file is not shared, or holds the note's own bytes.
+ * An update of its tags throws `PendingSyncIntentError` until its doc's body
+ * is converted, for the body tags; the pull retries it.
  */
 export function updateCaseTwinOffFile(
   vaultPath: string,
@@ -455,13 +471,46 @@ export function updateCaseTwinOffFile(
     indexedHeader(indexDb, noteId, patch.title, cover),
     patch
   )
-  const header = new Set(getNoteHeaderTags(indexDb, noteId))
   const patchedCover = frontmatter[COVER_FRONTMATTER_KEY]
+  const tags = patch.tags
   return {
     frontmatter,
     cover: isCoverValue(patchedCover) ? patchedCover : null,
-    inlineTags: getNoteTags(indexDb, noteId).filter((tag) => !header.has(tag))
+    tags: tags && {
+      header: tags,
+      inline: extractInlineTagsFromMarkdown(takeOffFileBody(noteId).body?.markdown ?? '')
+    }
   }
+}
+
+/**
+ * Twin `noteId`'s own body, converted from its doc for this call. Throws
+ * `PendingSyncIntentError` while it converts, and when the live doc changed
+ * since; a doc that cannot convert is logged and tried again on the retry.
+ */
+function takeOffFileBody(noteId: string): PreparedBody {
+  const prepared = offFileBodies.get(noteId)
+  offFileBodies.delete(noteId)
+  const live = getCrdtProvider().getDoc(noteId)
+  if (prepared && (!live || sameStateVector(Y.encodeStateVector(live), prepared.converted))) {
+    return prepared
+  }
+  if (!convertingOffFile.has(noteId)) {
+    convertingOffFile.add(noteId)
+    convertBody(noteId)
+      .then(
+        (converted) => offFileBodies.set(noteId, converted),
+        (error: unknown) => {
+          log.error('Could not read the own body of a case twin off its shared file', {
+            noteId,
+            error
+          })
+          trackMainError('notes', 'case_twin_off_file_body', error)
+        }
+      )
+      .finally(() => convertingOffFile.delete(noteId))
+  }
+  throw new PendingSyncIntentError('note', noteId)
 }
 
 /** A note's own file: its prepared doc body under a header rebuilt from its index rows. */

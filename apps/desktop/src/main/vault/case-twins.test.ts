@@ -116,6 +116,10 @@ vi.mock('./note-sync', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
   return { ...real, syncNoteToCache: vi.fn(real.syncNoteToCache as never) }
 })
+vi.mock('../projections', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, publishProjectionEvent: vi.fn(real.publishProjectionEvent as never) }
+})
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
 }))
@@ -142,6 +146,7 @@ import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
+  publishProjectionEvent,
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
@@ -515,6 +520,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     "---\ntags:\n  - lowertag\nstatus: low\ncover: 'wash:sage'\naliases:\n  - lowalias\n---\n"
   const UPPER_HEAD =
     "---\ntags:\n  - uppersecret\nstatus: secret\ncover: 'wash:clay'\naliases:\n  - upalias\n---\n"
+  const LOWER_TAGGED = '# a\n\nlower [[x]] #lowertag #lowinline\n'
   const LOWER_HEAD_RE =
     /^---\ntags:\n {2}- lowertag\nstatus: low\ncover: 'wash:sage'\naliases:\n {2}- lowalias\n---\n[\s\S]*lower \[\[x\]\]\n$/
 
@@ -775,8 +781,14 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
-  function holdUpperWrite() {
+  /**
+   * Holds twin upper's next file write until `release`; resolves `reached`
+   * when it gets there. The watcher is stopped first: it reads a file before
+   * it asks whether twins share it, so a leave step in between crosses the
+   * bodies whatever this fence does (#5624).
+   */
+  async function holdUpperWrite() {
+    await stopWatcher()
     let release = (): void => {}
     let reached = (): void => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
@@ -803,7 +815,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   // checks would land its body on the survivor's file and re-create its row.
   it("a twin delete waits for the twin's write-back in flight, and the tombstone wins", async () => {
     await twins()
-    const held = holdUpperWrite()
+    const held = await holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     await held.atWrite
 
@@ -824,7 +836,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // The survivor's file is ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper')
-    const held = holdUpperWrite()
+    const held = await holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1137,7 +1149,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   ] as const) {
     it(`a twin ${how} waits for the twin's write-back in flight`, async () => {
       await twins()
-      const held = holdUpperWrite()
+      const held = await holdUpperWrite()
       const pass = writeBack('upper', UPPER_EDITED)
       await held.atWrite
 
@@ -1179,7 +1191,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await twins()
     // Both files are ready, as on a pull's retry.
     await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper', true)
-    const held = holdUpperWrite()
+    const held = await holdUpperWrite()
     const pass = writeBack('upper', UPPER_EDITED)
     try {
       await held.atWrite
@@ -1247,24 +1259,63 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  it('a twin move whose row cannot move leaves no file at the new path', async () => {
-    await twins()
+  /** Fails twin upper's row move to Other/a.md before its canonical row moves. */
+  function failUpperRowSave(): () => void {
     const real = vi.mocked(syncNoteToCache).getMockImplementation()!
     vi.mocked(syncNoteToCache).mockImplementation((...args: Parameters<typeof syncNoteToCache>) => {
       if (args[1].id === 'upper' && args[1].path === 'Other/a.md') throw new Error('index gone')
       return real(...args)
     })
-    try {
-      await expect(moveNoteCommand('upper', 'Other')).rejects.toThrow('index gone')
-    } finally {
-      vi.mocked(syncNoteToCache).mockImplementation(real)
-    }
+    return () => vi.mocked(syncNoteToCache).mockImplementation(real)
+  }
 
-    expect({ row: pathOf('upper'), moved: read('Other/a.md') }).toEqual({
-      row: 'SUPERNOTES/a.md',
-      moved: null
+  /** Fails twin upper's row move to Other/a.md after its canonical row moved (`saveCanonicalNote`). */
+  function failUpperRowPublish(): () => void {
+    const real = vi.mocked(publishProjectionEvent).getMockImplementation()!
+    vi.mocked(publishProjectionEvent).mockImplementation((event) => {
+      if (event.type === 'note.upserted' && event.note.noteId === 'upper') {
+        if (event.note.path === 'Other/a.md') throw new Error('index gone')
+      }
+      real(event)
     })
-  }, 30_000)
+    return () => vi.mocked(publishProjectionEvent).mockImplementation(real)
+  }
+
+  // REVIEW-5618 (1): a throw after the canonical row moved left the row on a
+  // file the step then removed, with the index still on the shared file.
+  for (const [when, fail] of [
+    ['before', failUpperRowSave],
+    ['after', failUpperRowPublish]
+  ] as const) {
+    it(`a twin move whose row move throws ${when} the canonical row moves leaves the row and no new file`, async () => {
+      await twins()
+      const restore = fail()
+      try {
+        await expect(moveNoteCommand('upper', 'Other')).rejects.toThrow('index gone')
+      } finally {
+        restore()
+      }
+      await flushProjectionEvents()
+
+      expect({ row: pathOf('upper'), moved: read('Other/a.md') }).toEqual({
+        row: 'SUPERNOTES/a.md',
+        moved: null
+      })
+      // Neither twin takes the other's body, and a retry lands the move.
+      await writeBack('upper', UPPER)
+      expect({ file: shared(), crossed: crossed() }).toEqual({
+        file: expect.stringContaining('lower [[x]]'),
+        crossed: []
+      })
+      expect(await survivorKeepsOwn('lower')).toEqual([])
+      await moveNoteCommand('upper', 'Other')
+      expect({ row: pathOf('upper'), moved: read('Other/a.md'), rows: rowIds() }).toEqual({
+        row: 'Other/a.md',
+        moved: expect.stringContaining('upper [[x]]'),
+        rows: ['lower', 'upper']
+      })
+    }, 30_000)
+  }
 
   /** A peer's update of a twin's header tags and cover, as a pull applies it. */
   const applyPeerHeader = (id: 'lower' | 'upper', tags: string[], cover: string) =>
@@ -1284,11 +1335,17 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   // VERIFY-5501 (15, #5561): the shared file holds upper's bytes. Patching
   // them for lower put upper's body under lower's tags, and upper's aliases
   // and body tags into lower's index rows.
+  // REVIEW-5618 (3): its body tags come from its own body, so one also in
+  // its header stays when the update drops it from the header.
   it("a peer's header update of the twin off the shared file lands on its own header only", async () => {
     await headerTwins()
-    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowinline'] })
+    docs.set('lower', await docOf(LOWER_TAGGED))
+    // As the index holds lower's own file: a tag in both is one header row.
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowertag', 'lowinline'] })
 
-    expect(applyPeerHeader('lower', ['newtag'], 'wash:moss')).toBe('applied')
+    await vi.waitFor(() =>
+      expect(applyPeerHeader('lower', ['newtag'], 'wash:moss')).toBe('applied')
+    )
     await flushProjectionEvents()
 
     expect({
@@ -1298,14 +1355,14 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       cover: getNoteCacheById(index.db, 'lower')?.cover
     }).toEqual({
       file: UPPER_HEAD + UPPER,
-      tags: ['newtag', 'lowinline'],
+      tags: ['newtag', 'lowertag', 'lowinline'],
       aliases: ['lowalias'],
       cover: 'wash:moss'
     })
     // A split gives lower its own file, with the update.
     await moveNoteCommand('lower', 'Other')
     expect(read('Other/a.md')).toMatch(
-      /^---\ntags:\n {2}- newtag\nstatus: low\ncover: 'wash:moss'\naliases:\n {2}- lowalias\n---\n[\s\S]*lower \[\[x\]\]\n$/
+      /^---\ntags:\n {2}- newtag\nstatus: low\ncover: 'wash:moss'\naliases:\n {2}- lowalias\n---\n[\s\S]*lower \[\[x\]\] #lowertag #lowinline\n$/
     )
     expect(await survivorKeepsOwn('upper')).toEqual([])
   }, 30_000)

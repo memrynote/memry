@@ -584,7 +584,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexTags =
         indexed && tagsChanged && remoteTags
           ? offFile
-            ? { header: remoteTags, inline: offFile.inlineTags }
+            ? offFile.tags
             : withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
