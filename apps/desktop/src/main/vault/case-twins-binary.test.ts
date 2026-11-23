@@ -712,6 +712,36 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(conflictCopies('Supernotes')).toEqual([])
   })
 
+  // REVIEW-5591 #10: a twin's new attachment landing on the file while it is still shared.
+  for (const [how, landedBefore] of [
+    ['after its last landing', true],
+    ['with no landing recorded', false]
+  ] as const) {
+    it(`an offline edit to a still-shared file is kept as a conflict copy when a twin's new bytes land ${how}`, () => {
+      twins('Supernotes')
+      if (landedBefore) land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+      fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+      expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
+
+      land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
+
+      expect(read('Supernotes/p.png')).toBe('b-new')
+      expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+      expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+    })
+  }
+
+  it("a twin's new bytes landing on a still-shared file with no change since its last landing keep no conflict copy", () => {
+    twins('Supernotes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+    expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
+
+    land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
+
+    expect(read('Supernotes/p.png')).toBe('b-new')
+    expect(conflictCopies('Supernotes')).toEqual([])
+  })
+
   it('a landing whose rename keeps failing keeps one conflict copy', () => {
     twins('Supernotes')
     fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')

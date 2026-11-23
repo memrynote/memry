@@ -168,6 +168,11 @@ export function recordLandedCaseTwinHash(db: DrizzleDb, diskPath: string, sha256
   writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, Object.fromEntries(hashes))
 }
 
+/** The sha256 a download last landed on this shared file. */
+export function readLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
+  return readLandedHashes(db).get(foldNotePath(diskPath))
+}
+
 /** The sha256 a download last landed on this shared file, forgetting it. */
 export function takeLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
   const hashes = readLandedHashes(db)
