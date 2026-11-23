@@ -1128,9 +1128,29 @@ across devices:
   dropped before the online and token gate, so that happens offline too.
 - **Files that can never upload** — an empty file, and a media file that
   holds text instead of media, fail the same way on every retry, so the upload
-  refuses them before any request and its caller drops the queued row. An
-  empty file drops silently. A media file that holds text is reported: a
-  vault-activity failure and an upload-failed toast that says why.
+  refuses them before any request and its caller drops the queued row
+  (`refuseUpload`). Dropping the row alone was not enough: the next re-drive's
+  backfill found the file on disk with no record and no row, queued it, and
+  the drain dropped it again, every five minutes (#5606). So the drop also
+  remembers the file's size and mtime in `sync_state.attachmentUploadRefusals`,
+  keyed by its absolute path, and `queueUploadIfAbsent`, which both backfill
+  routes, the write-time hook and a revived note's re-upload (#3054) go
+  through, offers no empty file and no file whose size and mtime still match
+  a refusal. A write changes them, and the
+  next pass offers the file again. A refusal whose file changed or is gone is
+  let go at the next refusal. Sign-out clears `sync_state`, so after the next
+  sign-in each refused file is offered and refused once more. An empty file
+  drops silently. A media file that holds text is reported: a vault-activity
+  failure and an upload-failed toast that says why, once per refusal rather
+  than on every re-drive. The drain's summary log counts dropped rows by
+  reason (`droppedBy`: `deleted`, `EmptyAttachmentError`,
+  `TextInMediaFileError`). `saveAttachment` never writes an empty attachment
+  in the first place: it returns an error the editor shows as a toast, and
+  the editor takes back out the block that the paste or drop put in the note
+  before the upload (`removeFailedUploadBlock`), as it does for any failed
+  upload. On Windows, Chromium hands a paste `image.png` with no bytes when it cannot
+  open the clipboard or decode the image on it, and the editor used to write
+  that and embed a broken image.
   "Text instead of media" means the extension has a known signature (SVG and
   unknown types are never judged), the leading bytes do not match it, and the
   file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the

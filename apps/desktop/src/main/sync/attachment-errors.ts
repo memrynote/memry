@@ -1,7 +1,8 @@
 /**
  * An upload that fails identically on every retry, so callers drop its queued
- * row instead of backing off and retrying. A later write re-queues the path
- * through the body-save or backfill route.
+ * row instead of backing off and retrying, and remember the file's size and
+ * mtime (`refuseUpload`). The backfill offers the file again only after a
+ * write changes them (#5606).
  */
 export class UnsendableAttachmentError extends Error {
   constructor(message: string) {

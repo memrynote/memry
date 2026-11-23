@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Datoteka je prevelika: {size} premašuje ograničenje od {limit}",
     "exceedsPlanLimit": "Datoteka je veća nego što vaš plan dopušta: {size} premašuje {limit}",
     "emptyFile": "Nije moguće prenijeti praznu datoteku",
+    "emptyNotAttached": "Ova datoteka je prazna pa nije priložena. Ako ste zalijepili sliku, kopirajte je ponovno i zalijepite.",
     "textInMediaFile": "Ova datoteka sadrži tekst umjesto medija koji navodi njezin naziv"
   },
   "crdt": {
