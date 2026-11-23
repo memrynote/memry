@@ -3,6 +3,7 @@ import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
@@ -13,7 +14,7 @@ import {
 } from '../vault/case-twin-bytes'
 import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
-import { recordSyncedBinaryHash } from './binary-synced-hash'
+import { recordLandedBinaryHash, recordUploadedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('NoteAttachmentMetadata')
 
@@ -55,6 +56,10 @@ export function recordUploadedAttachment(
   // lands here separately — replacing the list dropped every id but the last.
   const existing = note?.attachmentReferences ?? []
   const merged = existing.includes(attachmentId) ? existing : [...existing, attachmentId]
+  // The bytes reach a peer only in a push of this device's queued from here
+  // on, below: its tick on this device is past the row's.
+  const deviceId = getCurrentDeviceId(db)
+  const push = deviceId ? { deviceId, tick: (note?.clock?.[deviceId] ?? 0) + 1 } : null
   // Data DB FIRST. It is the sync source of truth (`buildNotePushPayload` reads
   // `attachmentReferences` from it) while the index DB is a rebuildable cache.
   // These are two SQLite files with no shared transaction, so if one write has
@@ -65,7 +70,7 @@ export function recordUploadedAttachment(
     attachmentReferences: merged
   })
   updateNoteCache(getIndexDatabase(), noteId, { attachmentId })
-  if (binary && updated) recordSyncedBinaryHash(db, noteId, sha256)
+  if (binary && updated) recordUploadedBinaryHash(db, noteId, sha256, push)
 
   // The way back out of a recorded "the server does not have this" verdict: the
   // server demonstrably has it now, so any stale failure row must not keep this
@@ -116,7 +121,7 @@ export function recordDownloadedFileSize(
   const db = getDatabase()
   updateNoteCache(getIndexDatabase(), noteId, { fileSize })
   updateNoteMetadata(db, noteId, { fileSize })
-  recordSyncedBinaryHash(db, noteId, sha256)
+  recordLandedBinaryHash(db, noteId, sha256)
   if (getNoteMetadataById(db, noteId)?.attachmentId === attachmentId) {
     clearCaseTwinForeignBytes(db, noteId)
   }

@@ -39,7 +39,7 @@ import {
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
 import { onBootstrapElevationChange } from '../sync/bootstrap-session'
 import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
-import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
+import { downloadsInBackground } from '../sync/attachment-download-settings'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   clearAttachmentDownloadFailure,
@@ -671,10 +671,11 @@ export function registerAttachmentHandlers(): void {
         if (!token) return releaseDownloadAttempt(noteId, attachmentId)
 
         // On-demand-only mode: background downloads (pull fan-out and re-drive
-        // both arrive through this event) are suppressed. Releasing the claim —
-        // not recording an outcome — keeps the attachment requestable the moment
-        // the toggle flips back or an explicit IPC download asks for it.
-        if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
+        // both arrive through this event) are suppressed, except the bytes a
+        // held binary note file waits for. Releasing the claim — not recording
+        // an outcome — keeps the attachment requestable the moment the toggle
+        // flips back or an explicit IPC download asks for it.
+        if (isDatabaseInitialized() && !downloadsInBackground(getDatabase(), noteId, !!intoDir)) {
           return releaseDownloadAttempt(noteId, attachmentId)
         }
 

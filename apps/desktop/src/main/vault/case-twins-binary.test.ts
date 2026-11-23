@@ -528,13 +528,13 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p.png')).toBe('a-bytes')
   })
 
-  const foreignMarks = (): unknown =>
+  const foreignMark = (noteId: string): unknown =>
     JSON.parse(
       data.db
         .select({ value: syncState.value })
         .from(syncState)
-        .where(eq(syncState.key, 'caseTwinForeignBytes'))
-        .get()?.value ?? '{}'
+        .where(eq(syncState.key, `caseTwinForeignBytes:${noteId}`))
+        .get()?.value ?? '"no mark"'
     )
 
   it('a change whose event arrives after the split is kept as a conflict copy', async () => {
@@ -547,7 +547,7 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
       // The size both twins recorded, and its event still on the way at the split.
       fs.writeFileSync(abs('Supernotes/p.png'), 'h-bytes')
       expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
-      expect(foreignMarks()).toMatchObject({ 'twin-a': null })
+      expect(foreignMark('twin-a')).toBeNull()
     } finally {
       vi.useRealTimers()
     }
