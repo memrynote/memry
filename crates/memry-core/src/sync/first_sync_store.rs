@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
-use crate::crdt::update_log::Namespace;
+use crate::crdt::update_log;
 use crate::storage::nested_tx;
 
 use super::body_debt;
@@ -210,16 +210,7 @@ pub(super) fn body_states(
 fn body_state(conn: &Connection, doc_id: &str) -> Result<BodyState, StorageError> {
     let cursor = store::read_cursor(conn, &crdt_cursor_scope(doc_id))?
         .and_then(|text| text.parse::<i64>().ok());
-    let revision: Option<String> = conn
-        .prepare_cached("SELECT server_revision FROM yjs_snapshots WHERE doc_id = ?1")
-        .and_then(|mut statement| {
-            statement
-                .query_row(params![Namespace::Server.row_id(doc_id)], |row| row.get(0))
-                .optional()
-        })
-        .map_err(sqlite_failed)?
-        .flatten();
-    Ok((cursor, revision))
+    Ok((cursor, update_log::server_revision(conn, doc_id)?))
 }
 
 /// The body pack phase's last step (chapter 08 §8.10, #5232), in one
