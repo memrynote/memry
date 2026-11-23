@@ -538,12 +538,18 @@ export function registerAttachmentHandlers(): void {
       }
     }
   )
-  registerManifestChecksumReader(async (attachmentId) => {
-    const service = getOrCreateAttachmentService()
-    const queue = getOrCreateDownloadQueue()
-    if (!service || !queue) throw new Error('Sync not initialized')
+  registerManifestChecksumReader({
+    checksumOf: async (attachmentId, net) => {
+      const service = getOrCreateAttachmentService()
+      if (!service) throw new Error('Sync not initialized')
+      return service.checksumOf(attachmentId, net)
+    },
     // The read spends the server's blob_download budget, which the downloads pace.
-    return service.checksumOf(attachmentId, { pace: () => queue.pace() })
+    pace: async () => {
+      const queue = getOrCreateDownloadQueue()
+      if (!queue) throw new Error('Sync not initialized')
+      await queue.pace()
+    }
   })
 
   attachmentEvents.onSaved(({ noteId, diskPath }) => {

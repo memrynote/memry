@@ -1,6 +1,5 @@
 import { stat } from 'fs/promises'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
-import type { NoteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
@@ -12,7 +11,7 @@ import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/c
 import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
-import { recordSyncedBinaryHash } from './binary-synced-hash'
+import { readSyncedBinaryHash, recordSyncedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('NoteAttachmentMetadata')
 
@@ -33,7 +32,7 @@ export async function recordUploadedFile(
 ): Promise<boolean> {
   const note = getNoteMetadataById(getDatabase(), noteId)
   const binary = note !== undefined && isBinaryNoteRow(note)
-  if (binary && !(await fileHoldsUpload(note, sha256))) {
+  if (binary && !(await fileHoldsUpload(noteId, sha256))) {
     log.warn('An upload of bytes its file no longer holds is kept off the note', {
       noteId,
       attachmentId
@@ -50,17 +49,38 @@ export async function recordUploadedFile(
  * bytes as a conflict copy, a note of its own (#5595). A landing inside the
  * hash renames its bytes over the file the hash reads, so the hash still
  * matches and the landing clears the mark: the mark is read before the hash,
- * and the file must be the same one after it (#5617). A change made during the
- * hash keeps this upload off too, and its own upload records it.
+ * and after it the file where the row names it, moved or not, must be the same
+ * one, and the bytes last landed or uploaded the same (#5617): a landing
+ * records its bytes, which shows it where the identity cannot, as on a
+ * filesystem with no inode numbers. A change made during the hash keeps this
+ * upload off too, and its own upload records it.
  */
-async function fileHoldsUpload(note: NoteMetadata, sha256: string): Promise<boolean> {
-  if (holdsCaseTwinForeignBytes(getDatabase(), note.id)) return false
-  const filePath = toAbsolutePath(note.path)
-  const before = await fileIdentity(filePath)
+async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean> {
+  const db = getDatabase()
+  if (holdsCaseTwinForeignBytes(db, noteId)) return false
+  const synced = readSyncedBinaryHash(db, noteId)
+  const before = await fileAtRowPath(db, noteId)
+  if (!before) return false
   // Hashed off the main thread: a vault's first upload hashes every file (#5608).
-  const onDisk = await hashFileOffThread(filePath)
+  const onDisk = await hashFileOffThread(before.filePath)
   if (onDisk !== null && onDisk !== sha256) return false
-  return (await fileIdentity(filePath)) === before
+  const after = await fileAtRowPath(db, noteId)
+  return after?.identity === before.identity && readSyncedBinaryHash(db, noteId) === synced
+}
+
+/** Note `noteId`'s file where its row names it. Undefined once the row is gone. */
+async function fileAtRowPath(
+  db: DrizzleDb,
+  noteId: string
+): Promise<{ filePath: string; identity: string | null } | undefined> {
+  for (;;) {
+    const relativePath = getNoteMetadataById(db, noteId)?.path
+    if (relativePath === undefined) return undefined
+    const filePath = toAbsolutePath(relativePath)
+    const identity = await fileIdentity(filePath)
+    // A rename moves the file before the row: stat again where the row names it now.
+    if (getNoteMetadataById(db, noteId)?.path === relativePath) return { filePath, identity }
+  }
 }
 
 /** Changes with a write to the file or a rename over it. Null when nothing is there. */

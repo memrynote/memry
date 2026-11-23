@@ -19,6 +19,7 @@ import { createLogger } from '../lib/logger'
 import { markHeldFileOnServer } from '../vault/case-twin-bytes'
 import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
+import type { DownloadNetOptions } from './attachments'
 import { recordSyncedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('BinaryHashCheck')
@@ -27,19 +28,26 @@ const log = createLogger('BinaryHashCheck')
  * How long a landing waits for its check, from the replace that started it:
  * the landing holds a download slot meanwhile, so checks queued ahead of it
  * share the wait instead of adding theirs (#5617). A check whose deadline
- * passed in the queue reads no manifest.
+ * passed in the queue reads no manifest, and one that runs out aborts its read.
+ * Waits for the downloads' pacer are not counted: they pace the downloads too.
  */
 const CHECK_DEADLINE_MS = 30_000
 
-type ChecksumReader = (attachmentId: string) => Promise<string>
+export interface ManifestChecksumReader {
+  checksumOf(attachmentId: string, net: DownloadNetOptions): Promise<string>
+  /** A token from the downloads' pacer: a read spends the server's blob_download budget. */
+  pace(): Promise<void>
+}
 
-let readChecksum: ChecksumReader | null = null
+let readChecksum: ManifestChecksumReader | null = null
 /** One check at a time: a pull that replaces many notes asks for one manifest at a time. */
 let tail: Promise<void> = Promise.resolve()
 const checks = new Map<string, Promise<void>>()
+/** Time checks waited for the pacer, which no deadline counts. */
+let pacedMs = 0
 
 /** The attachment service's manifest reader. Null while sync is down: no check runs. */
-export function registerManifestChecksumReader(reader: ChecksumReader | null): void {
+export function registerManifestChecksumReader(reader: ManifestChecksumReader | null): void {
   readChecksum = reader
 }
 
@@ -52,9 +60,9 @@ export function checkUnhashedBinaryFile(
 ): void {
   const reader = readChecksum
   if (!reader) return
-  const expiresAt = performance.now() + CHECK_DEADLINE_MS
+  const spent = deadlineClock()
   const check = tail
-    .then(() => compare(db, noteId, attachmentId, filePath, reader, expiresAt))
+    .then(() => compare(db, noteId, attachmentId, filePath, reader, spent))
     .catch((error: unknown) => {
       log.warn(
         'A binary note file was not compared with its attachment; it stays a conflict copy',
@@ -82,11 +90,11 @@ async function compare(
   noteId: string,
   attachmentId: string,
   filePath: string,
-  reader: ChecksumReader,
-  expiresAt: number
+  reader: ManifestChecksumReader,
+  spent: () => number
 ): Promise<void> {
-  const onServer = await withinDeadline(expiresAt, async () => {
-    const checksum = await reader(attachmentId)
+  const onServer = await withinDeadline(spent, reader, async (net) => {
+    const checksum = await reader.checksumOf(attachmentId, net)
     const onDisk = await hashFileOffThread(filePath)
     return onDisk === checksum ? onDisk : null
   })
@@ -97,13 +105,43 @@ async function compare(
   if (markHeldFileOnServer(db, noteId, onServer)) recordSyncedBinaryHash(db, noteId, onServer)
 }
 
-function withinDeadline<T>(expiresAt: number, work: () => Promise<T>): Promise<T> {
-  const left = expiresAt - performance.now()
+/** The time since the replace that counts against its check's deadline. */
+function deadlineClock(): () => number {
+  const start = performance.now()
+  const pacedAtStart = pacedMs
+  return () => performance.now() - start - (pacedMs - pacedAtStart)
+}
+
+async function withinDeadline<T>(
+  spent: () => number,
+  reader: ManifestChecksumReader,
+  work: (net: DownloadNetOptions) => Promise<T>
+): Promise<T> {
   const timedOut = new Error(`No answer within ${CHECK_DEADLINE_MS} ms`)
-  if (left <= 0) return Promise.reject(timedOut)
+  if (spent() >= CHECK_DEADLINE_MS) throw timedOut
+  const controller = new AbortController()
+  const { signal } = controller
   let timer: ReturnType<typeof setTimeout> | undefined
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(timedOut), left)
+  const arm = (): void => {
+    timer = setTimeout(() => controller.abort(timedOut), CHECK_DEADLINE_MS - spent())
+  }
+  const pace = async (): Promise<void> => {
+    clearTimeout(timer)
+    const from = performance.now()
+    try {
+      await reader.pace()
+    } finally {
+      pacedMs += performance.now() - from
+      if (!signal.aborted) arm()
+    }
+  }
+  const aborted = new Promise<never>((_, reject) => {
+    signal.addEventListener('abort', () => reject(timedOut), { once: true })
   })
-  return Promise.race([work(), deadline]).finally(() => clearTimeout(timer))
+  arm()
+  try {
+    return await Promise.race([work({ signal, pace }), aborted])
+  } finally {
+    clearTimeout(timer)
+  }
 }

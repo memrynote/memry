@@ -292,7 +292,8 @@ async function binaryFetch(
   url: string,
   token: string,
   body?: Uint8Array | string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  signal?: AbortSignal
 ): Promise<Response> {
   const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
@@ -314,7 +315,8 @@ async function binaryFetch(
     response = await fetchImpl(url, {
       method,
       headers,
-      body: fetchBody
+      body: fetchBody,
+      ...(signal ? { signal } : {})
     })
   } catch (err) {
     log.warn('fetch failed', { method, url, err })
@@ -1345,7 +1347,14 @@ export class AttachmentSyncService {
     // which is what keeps the permanent-failure classification exact.
     return this.retryingRequest(
       async () => {
-        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        const resp = await binaryFetch(
+          'GET',
+          url,
+          token,
+          undefined,
+          this.deps.fetchFn,
+          netOpts?.signal
+        )
         if (!resp.ok) {
           throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
         }

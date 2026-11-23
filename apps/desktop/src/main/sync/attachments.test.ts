@@ -487,6 +487,27 @@ describe('AttachmentSyncService', () => {
     })
   })
 
+  // A binary note's check abandons a read past its deadline (#5617).
+  it('abandons a manifest read in flight when its signal aborts', async () => {
+    const mockFetch = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('This operation was aborted', 'AbortError'))
+          )
+        })
+    )
+    const service = new AttachmentSyncService(createTestDeps(mockFetch))
+    const controller = new AbortController()
+
+    const read = service.checksumOf('att-1', { signal: controller.signal })
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+    controller.abort()
+
+    await expect(read).rejects.toThrow('The operation was aborted.')
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
   describe('downloadAttachment', () => {
     it('should download, decrypt, and verify a file', async () => {
       const vaultKey = generateFileKey()

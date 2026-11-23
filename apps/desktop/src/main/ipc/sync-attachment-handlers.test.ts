@@ -1130,11 +1130,11 @@ describe('sync-attachment-handlers', () => {
     // The check reads a manifest through the shared attachment service.
     attachmentMocks.service.checksumOf.mockResolvedValueOnce('sha-old')
     const reader = vi.mocked(registerManifestChecksumReader).mock.calls.at(-1)?.[0]
-    await expect(reader?.('att-old')).resolves.toBe('sha-old')
+    const net = { signal: new AbortController().signal, pace: vi.fn(async () => {}) }
+    await expect(reader?.checksumOf('att-old', net)).resolves.toBe('sha-old')
+    expect(attachmentMocks.service.checksumOf).toHaveBeenCalledWith('att-old', net)
     // It spends the downloads' pacing budget (#5617).
-    expect(attachmentMocks.service.checksumOf).toHaveBeenCalledWith('att-old', {
-      pace: expect.any(Function)
-    })
+    await expect(reader?.pace()).resolves.toBeUndefined()
 
     let answer = (): void => {}
     vi.mocked(settleBinaryHashCheck).mockReturnValueOnce(
