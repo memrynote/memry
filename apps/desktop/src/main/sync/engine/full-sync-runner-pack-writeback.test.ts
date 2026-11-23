@@ -395,7 +395,12 @@ async function runSync(
   mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
     for (const [index, { id, body }] of options.packed.entries()) {
       const meta = { sequenceNum: index + 1, revision: `r${index + 1}` }
-      const snapshot = { entry: packEntry(id), meta, read: async () => packedUpdate(id, body) }
+      const snapshot = {
+        entry: packEntry(id),
+        packId: 'p1',
+        meta,
+        read: async () => packedUpdate(id, body)
+      }
       const plan = planDocument(id, await deps.bodies.localWatermark(id), snapshot, [], null)
       if (plan) await deps.bodies.applyDocument(id, plan)
     }

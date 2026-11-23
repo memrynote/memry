@@ -45,7 +45,9 @@ export const openFileByteSource = async (filePath: string): Promise<PackByteSour
   try {
     size = (await handle.stat()).size
   } catch (err) {
-    await handle.close()
+    await handle.close().catch(() => {
+      /* the stat failure is the interesting one */
+    })
     throw err
   }
   return {
@@ -170,34 +172,97 @@ const readVerifiedEntry = async (
 }
 
 /**
- * Open a pack straight from a temp file path. The file descriptor is released
- * once the pack is verified and each entry read opens the file again: a fresh
- * device holds every pack until the manifest is read, and one fd per pack ran
- * past macOS's 256-fd soft limit (EMFILE dropped those packs to the routes).
+ * Pack files held open at once, across every opened pack. A fresh device holds
+ * every pack until the manifest is read, and one fd per pack ran past macOS's
+ * 256-fd soft limit (EMFILE dropped those packs to the routes). Opening the
+ * file again for every entry read cost an open, stat and close per document.
+ */
+export const MAX_OPEN_PACK_FILES = 16
+
+interface PackFile {
+  readonly filePath: string
+  source: Promise<PackByteSource> | null
+  reads: number
+}
+
+// Pack files holding an fd, least recently read first.
+const openFiles = new Set<PackFile>()
+
+/** Close the file's fd. A close failure is logged, never thrown over a read's result. */
+const closeFile = async (file: PackFile): Promise<void> => {
+  const source = file.source
+  if (!source) return
+  file.source = null
+  openFiles.delete(file)
+  try {
+    await (await source).close()
+  } catch (error) {
+    log.debug('Could not close a pack file', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
+const withSource = async <T>(
+  file: PackFile,
+  read: (source: PackByteSource) => Promise<T>
+): Promise<T> => {
+  file.reads++
+  try {
+    const opening = (file.source ??= openFileByteSource(file.filePath))
+    openFiles.delete(file)
+    openFiles.add(file)
+    let source: PackByteSource
+    try {
+      source = await opening
+    } catch (error) {
+      // Not cached: an EMFILE or a racing unlink may not last.
+      if (file.source === opening) {
+        file.source = null
+        openFiles.delete(file)
+      }
+      throw error
+    }
+    return await read(source)
+  } finally {
+    file.reads--
+    // Over budget, the least recently read idle files close. A file with a
+    // read in flight never does.
+    for (const held of openFiles) {
+      if (openFiles.size <= MAX_OPEN_PACK_FILES) break
+      if (held.reads === 0) await closeFile(held)
+    }
+  }
+}
+
+/**
+ * Open a pack straight from a temp file path. The file stays open for entry
+ * reads within the `MAX_OPEN_PACK_FILES` budget, which every opened pack
+ * shares; past it, the least recently read pack's file closes and opens again
+ * on its next read.
  */
 export const openPackFile = async (
   filePath: string,
   options: OpenPackOptions = {}
 ): Promise<PackFileHandle> => {
-  const source = await openFileByteSource(filePath)
+  const file: PackFile = { filePath, source: null, reads: 0 }
   let entries: PackIndexEntry[]
   try {
-    entries = (await openPack(source, options)).entries
-  } finally {
-    await source.close().catch(() => {
-      /* the open result or failure is the interesting one */
-    })
+    entries = (await withSource(file, (source) => openPack(source, options))).entries
+  } catch (error) {
+    await closeFile(file)
+    throw error
   }
+  let closed = false
   return {
     entries,
     readEntry: async (entry) => {
-      const reopened = await openFileByteSource(filePath)
-      try {
-        return await readVerifiedEntry(reopened, entry)
-      } finally {
-        await reopened.close()
-      }
+      if (closed) throw new Error('pack closed')
+      return withSource(file, (source) => readVerifiedEntry(source, entry))
     },
-    close: async () => {}
+    close: async () => {
+      closed = true
+      await closeFile(file)
+    }
   }
 }

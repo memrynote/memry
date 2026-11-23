@@ -16,12 +16,16 @@ export interface BodyWatermark {
 
 export interface PackedSnapshot {
   entry: PackIndexEntry
+  /** The pack the entry came from, for its refusal count. */
+  packId: string
   meta: PackSnapshotMeta
   read: () => Promise<Uint8Array>
 }
 
 export interface PackedUpdate {
   entry: PackIndexEntry
+  /** The pack the entry came from, for its refusal count. */
+  packId: string
   sequenceNum: number
   signerDeviceId: string
   /** Server time, epoch seconds: the edit time the write-back stamps. */
