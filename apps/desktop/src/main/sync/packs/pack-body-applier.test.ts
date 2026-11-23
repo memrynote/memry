@@ -13,6 +13,16 @@ import type { DocumentPlan, PackedUpdate } from './body-plan'
 import { createPackBodyApplier, decodeSignerPublicKeys } from './pack-body-applier'
 import type { BodySeedStore } from './pack-body-applier'
 
+const logDebug = vi.hoisted(() => vi.fn())
+vi.mock('../../lib/logger', () => ({
+  createLogger: () => ({ debug: logDebug, info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
+
+const refusalReasons = () =>
+  logDebug.mock.calls
+    .filter(([message]) => String(message).startsWith('Packed update unusable'))
+    .map(([, context]) => (context as { reason?: string }).reason)
+
 interface SignKeyPair {
   publicKey: Uint8Array
   privateKey: Uint8Array
@@ -51,6 +61,7 @@ describe('pack body applier', () => {
    * regardless would make a silently empty vault look like a green test.
    */
   beforeEach(() => {
+    logDebug.mockClear()
     watermarks = new Map()
     applied = []
     opened = new Set()
@@ -268,30 +279,34 @@ describe('pack body applier', () => {
     })
 
     it.each([
-      ['its named signer is not registered', 'c'],
-      ['it verifies only under another registered key', 'a']
-    ])('stops at an update when %s, vouching only for what applied', async (_label, signer) => {
-      const plan: DocumentPlan = {
-        ...snapshotPlan('note-1', sealed('note-1', 'base', deviceA), 4, 'r4'),
-        updates: [
-          update('note-1', 5, 'a', sealed('note-1', 'u5', deviceA)),
-          // Signed by device b, but named as `signer`: chapter 07 §7.14 checks
-          // the named device's key only.
-          update('note-1', 6, signer, sealed('note-1', 'u6', deviceB)),
-          update('note-1', 7, 'a', sealed('note-1', 'u7', deviceA))
-        ],
-        watermark: { appliedSequence: 7, snapshotRevision: 'r4' }
+      ['its named signer is not registered', 'c', 'signer c is not registered'],
+      ['it verifies only under another registered key', 'a', 'Signature verification failed']
+    ])(
+      'stops at an update when %s, vouching only for what applied',
+      async (_label, signer, reason) => {
+        const plan: DocumentPlan = {
+          ...snapshotPlan('note-1', sealed('note-1', 'base', deviceA), 4, 'r4'),
+          updates: [
+            update('note-1', 5, 'a', sealed('note-1', 'u5', deviceA)),
+            // Signed by device b, but named as `signer`: chapter 07 §7.14 checks
+            // the named device's key only.
+            update('note-1', 6, signer, sealed('note-1', 'u6', deviceB)),
+            update('note-1', 7, 'a', sealed('note-1', 'u7', deviceA))
+          ],
+          watermark: { appliedSequence: 7, snapshotRevision: 'r4' }
+        }
+
+        const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
+          'note-1',
+          plan
+        )
+
+        expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
+        expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+        expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+        expect(refusalReasons()).toEqual([expect.stringContaining(reason)])
       }
-
-      const reached = await applier({ a: deviceA.publicKey, b: deviceB.publicKey }).applyDocument(
-        'note-1',
-        plan
-      )
-
-      expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
-      expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
-      expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
-    })
+    )
 
     it('continues an update-only document from its local watermark without a revision', async () => {
       const plan: DocumentPlan = {
@@ -416,7 +431,10 @@ describe('pack body applier', () => {
       ])
     })
 
+    // A refusal is a verdict, not a transport failure: this thread never
+    // re-opens it, and the log says why the walk stopped.
     it('stops at the first update the worker refuses, vouching only for what applied', async () => {
+      const decrypt = vi.fn(decryptCrdtUpdate)
       const sut = createPackBodyApplier({
         store,
         getVaultKey: async () => vaultKey,
@@ -425,7 +443,8 @@ describe('pack body applier', () => {
             ['a', deviceA.publicKey],
             ['b', deviceB.publicKey]
           ]),
-        workerBridge: fakeWorker()
+        workerBridge: fakeWorker(),
+        decrypt
       })
 
       const reached = await sut.applyDocument('note-1', plan('note-1', deviceA, 'b'))
@@ -433,6 +452,41 @@ describe('pack body applier', () => {
       expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
       expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
       expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
+      expect(decrypt).not.toHaveBeenCalled()
+      expect(refusalReasons()).toEqual([expect.stringContaining('Signature verification failed')])
+    })
+
+    it('finds a new snapshot signer on the worker and refuses a snapshot no key verifies', async () => {
+      const worker = fakeWorker()
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        workerBridge: worker,
+        decrypt
+      })
+      await sut.applyDocument('note-1', plan('note-1', deviceA))
+
+      await expect(sut.applyDocument('note-2', plan('note-2', deviceB))).resolves.toEqual({
+        appliedSequence: 7,
+        snapshotRevision: 'r4'
+      })
+      await expect(sut.applyDocument('note-3', plan('note-3', stranger))).resolves.toBeNull()
+
+      expect(decrypt).not.toHaveBeenCalled()
+      expect(applied.filter((row) => row.noteId === 'note-2').map((row) => row.update)).toEqual([
+        plain('base'),
+        plain('u5'),
+        plain('u6'),
+        plain('u7')
+      ])
+      expect(applied.filter((row) => row.noteId === 'note-3')).toEqual([])
+      expect(watermarks.has('note-3')).toBe(false)
     })
 
     it('falls back to this thread when the worker rejects', async () => {

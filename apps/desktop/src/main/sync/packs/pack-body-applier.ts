@@ -54,6 +54,9 @@ interface Sealed {
   signerDeviceId: string
 }
 
+/** A sealed blob's plaintext, or why it was refused. */
+type Opened = Uint8Array | string
+
 export interface PackBodyApplier {
   localWatermark(noteId: string): Promise<BodyWatermark | null>
   /**
@@ -118,8 +121,8 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
   }
 
   /**
-   * Opens every blob, aligned with `sealed`; `undefined` where it does not
-   * verify or decrypt. Thousands of packed updates go through here, so the
+   * Opens every blob, aligned with `sealed`; the refusal reason where it does
+   * not verify or decrypt. Thousands of packed updates go through here, so the
    * crypto runs on the worker like the route path's, and on this thread only
    * when the worker is not running or rejects (transport, not a verdict).
    */
@@ -128,7 +131,7 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     vaultKey: Uint8Array,
     noteId: string,
     candidates: SignerKeys
-  ): Promise<Array<Uint8Array | undefined>> => {
+  ): Promise<Opened[]> => {
     if (sealed.length === 0) return []
     const bridge = deps.workerBridge
     if (bridge?.isRunning) {
@@ -139,9 +142,10 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         signerDeviceId: s.signerDeviceId
       }))
       try {
-        const { results } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
-        const byIndex = new Map(results.map((r) => [r.index, r.update]))
-        return sealed.map((_s, index) => byIndex.get(index))
+        const { results, failures } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
+        const byIndex = new Map<number, Opened>(failures.map((f) => [f.index, f.error]))
+        for (const r of results) byIndex.set(r.index, r.update)
+        return sealed.map((_s, index) => byIndex.get(index) ?? 'no worker result')
       } catch (error) {
         log.warn('Pack body worker decrypt unavailable — falling back to main thread', {
           error: error instanceof Error ? error.message : String(error)
@@ -150,11 +154,11 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     }
     return sealed.map((s) => {
       const publicKey = candidates.get(s.signerDeviceId)
-      if (!publicKey) return undefined
+      if (!publicKey) return `signer ${s.signerDeviceId} is not registered`
       try {
         return decrypt(s.bytes, vaultKey, noteId, publicKey)
-      } catch {
-        return undefined
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error)
       }
     })
   }
@@ -165,9 +169,9 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     vaultKey: Uint8Array,
     noteId: string,
     candidates: SignerKeys,
-    first: Uint8Array | undefined
+    first: Opened | undefined
   ): Promise<Uint8Array | null> => {
-    if (first) return first
+    if (first instanceof Uint8Array) return first
     const rest = [...candidates.keys()].filter((id) => id !== lastSignerId)
     const opened = await openAll(
       rest.map((signerDeviceId) => ({ bytes, signerDeviceId })),
@@ -175,10 +179,13 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       noteId,
       candidates
     )
-    const hit = opened.findIndex((plain) => plain !== undefined)
-    if (hit < 0) return null
-    lastSignerId = rest[hit]
-    return opened[hit] ?? null
+    for (const [i, plain] of opened.entries()) {
+      if (plain instanceof Uint8Array) {
+        lastSignerId = rest[i]
+        return plain
+      }
+    }
+    return null
   }
 
   return {
@@ -253,12 +260,13 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         }
         for (const [i, update] of plan.updates.entries()) {
           const plain = updatePlains[i]
-          if (!plain) {
-            if (i < updateBytes.length) {
+          if (!(plain instanceof Uint8Array)) {
+            if (plain !== undefined) {
               log.debug('Packed update unusable — the rest of the document stays on the routes', {
                 noteId,
                 sequenceNum: update.sequenceNum,
-                signerDeviceId: update.signerDeviceId
+                signerDeviceId: update.signerDeviceId,
+                reason: plain
               })
             }
             break
