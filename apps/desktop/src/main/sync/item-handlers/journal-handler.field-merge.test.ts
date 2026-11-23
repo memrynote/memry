@@ -292,12 +292,40 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     expect(payload.properties).toEqual({ p: 1, q: 1 })
   })
 
+  it('keeps the removal across a second device that applied the relay’s push whole (#5572)', () => {
+    apply(oldBuildRemovesGone)
+    editLocally(['added'], { p: 1 }, { X: 1, O: 1, D: 1 })
+    const relay = pushed()
+
+    testDb.close()
+    freshDevice()
+    apply(legacyDay)
+    expect(apply(relay)).toBe('applied')
+    editLocally(['added', 'e'], { p: 1 }, { X: 1, O: 1, D: 1, E: 1 })
+    const secondHop = pushed()
+
+    testDb.close()
+    freshDevice()
+    apply(legacyDay)
+    editLocally(['gone'], { p: 1, q: 1 }, { X: 1, C: 1 })
+    expect(apply(secondHop)).toBe('conflict')
+
+    const payload = pushed()
+    expect(payload.tags).toEqual(['added', 'e'])
+    expect(payload.properties).toEqual({ p: 1, q: 1 })
+  })
+
   // REVIEW-5529 finding 2: re-pulling the legacy row this device already holds
   // is the identical equal-clock skip of §6.5.2 P4, and writes no base.
   it('skips an equal-clock legacy row identical to the local day', () => {
     apply(base)
     // The row an older build of this device pushed: the same day, no unit clocks.
-    const { fieldClocks: _clocks, fieldClocksAt: _at, ...legacy } = pushed()
+    const {
+      fieldClocks: _clocks,
+      fieldClocksAt: _at,
+      fieldClocksFloor: _floor,
+      ...legacy
+    } = pushed()
     const before = readJournalFieldsBase(ctx.db, DAY)
 
     expect(apply(legacy)).toBe('skipped')

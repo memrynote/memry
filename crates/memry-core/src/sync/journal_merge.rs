@@ -15,8 +15,10 @@
 //!   no unit clock, so the remote wins each of its units.
 //! - `fieldClocksFloor` covers every unit `fieldClocks` does not name: the
 //!   payload supersedes each write to it at or before the floor. A record
-//!   applied whole while untrusted is stored stamped, with its clock as the
-//!   floor, so the next edit pushes its removals (#5572).
+//!   applied whole while untrusted is stored stamped with no unit clock and
+//!   its clock as the floor, so the next edit pushes its removals (#5572). A
+//!   record clock never becomes a unit clock: only a trusted side's stamped
+//!   units are writes.
 //! - A merge whose local unit clock is concurrent with or ahead of the
 //!   remote's re-queues the merged payload in the same transaction
 //!   (§6.5.2 P3), as `settings_merge` does.
@@ -99,25 +101,19 @@ fn named(side: &Map<String, Value>) -> Vec<String> {
         Some(Value::Object(clocks)) => clocks.keys().cloned().collect(),
         _ => Vec::new(),
     };
-    units(side).into_iter().map(|(unit, _)| unit).chain(clocked).collect()
+    units(side)
+        .into_iter()
+        .map(|(unit, _)| unit)
+        .chain(clocked)
+        .collect()
 }
 
-/// §6.12.1: a side's unit clocks and floor. An untrusted side was written
-/// whole at its clock: every unit in `union`, and every unit it names, takes
-/// that clock, so a unit it lacks is a removal rather than an unclocked
-/// absence, and the clock is its floor.
-fn side_clocks(
+/// A trusted side's stamped unit clocks and floor (§6.12.1), or `None`.
+fn trusted_clocks(
     side: &Map<String, Value>,
-    union: &BTreeSet<String>,
-) -> Result<(UnitClocks, Option<VectorClock>), StorageError> {
+) -> Result<Option<(UnitClocks, Option<VectorClock>)>, StorageError> {
     let clock = doc_clock(side)?;
-    Ok(match trusted_map(side, &clock) {
-        Some(map) => (map, stamped_floor(side)),
-        None => {
-            let whole = union.iter().cloned().chain(named(side));
-            (whole.map(|unit| (unit, clock.clone())).collect(), Some(clock))
-        }
-    })
+    Ok(trusted_map(side, &clock).map(|map| (map, stamped_floor(side))))
 }
 
 /// The `fieldClocks`, `fieldClocksAt` and `fieldClocksFloor` keys; an empty
@@ -140,7 +136,12 @@ fn stamp(
 fn stamp_changes(stamp: &Map<String, Value>) -> Vec<(&'static str, Change)> {
     ["fieldClocks", "fieldClocksAt", "fieldClocksFloor"]
         .into_iter()
-        .map(|key| (key, stamp.get(key).cloned().map_or(Change::Remove, Change::Set)))
+        .map(|key| {
+            (
+                key,
+                stamp.get(key).cloned().map_or(Change::Remove, Change::Set),
+            )
+        })
         .collect()
 }
 
@@ -160,7 +161,12 @@ fn edit_stamp(
     next: &Map<String, Value>,
 ) -> Result<Map<String, Value>, StorageError> {
     let clock = doc_clock(next)?;
-    let (mut clocks, floor) = side_clocks(base, &BTreeSet::new())?;
+    // An untrusted base was written whole at its clock: it clocks no unit,
+    // and its clock is the floor.
+    let (mut clocks, floor) = match trusted_clocks(base)? {
+        Some(trusted) => trusted,
+        None => (UnitClocks::new(), Some(doc_clock(base)?)),
+    };
     let before = units(base);
     let after = units(next);
     let all: BTreeSet<&String> = before.iter().chain(after.iter()).map(|(u, _)| u).collect();
@@ -176,29 +182,23 @@ fn edit_stamp(
 
 /// §6.12.1: the unit clocks a device keeps with `remote` applied whole
 /// (§6.3.1 `before` or `equal`, or a first sighting). A trusted remote keeps
-/// its own (`None`). An untrusted one was written whole at its clock: every
-/// unit `held`, this device's previous payload, names, and every unit the
-/// remote names, takes that clock, and the clock is the floor.
+/// its own (`None`). An untrusted one was written whole at its clock, so it
+/// clocks no unit and its clock is the floor: the next edit from it carries
+/// its removals, and none of its units outranks a concurrent write.
 pub fn field_clocks_for_wholesale(
-    held: Option<&Map<String, Value>>,
     remote: &Map<String, Value>,
 ) -> Result<Option<Map<String, Value>>, StorageError> {
     let clock = doc_clock(remote)?;
     if trusted_map(remote, &clock).is_some() {
         return Ok(None);
     }
-    let union = held.map(named).unwrap_or_default().into_iter().collect();
-    let (clocks, _) = side_clocks(remote, &union)?;
-    stamp(&clocks, &clock, Some(&clock)).map(Some)
+    stamp(&UnitClocks::new(), &clock, Some(&clock)).map(Some)
 }
 
 /// §6.12.1: a floor supersedes a write it has seen, so it reads at its clock
 /// against a unit clock it strictly dominates, or a side with no clock for the
 /// unit. A write concurrent with it is one the floor's writer never saw.
-fn floor_against(
-    floor: Option<&VectorClock>,
-    other: Option<&VectorClock>,
-) -> Option<VectorClock> {
+fn floor_against(floor: Option<&VectorClock>, other: Option<&VectorClock>) -> Option<VectorClock> {
     let floor = floor?;
     match other {
         Some(other) if compare(other, floor) != ClockOrder::Before => None,
@@ -216,25 +216,43 @@ pub fn merge_journal_fields(
     let local_units = units(local);
     let remote_units = units(remote);
     let all: BTreeSet<String> = named(local).into_iter().chain(named(remote)).collect();
-    // §6.12.1: an untrusted local side proves no unit clock and no floor. Its
-    // `clock` carries this device's ticks since it last synced, so every unit
-    // reads as the empty clock and the remote wins it, as the document rule
-    // applies a concurrent remote whole.
-    let (local_stamped, local_floor) = match trusted_map(local, &doc_clock(local)?) {
-        Some(map) => (map, stamped_floor(local)),
-        None => (UnitClocks::new(), None),
+    // §6.12.1: an untrusted local side proves nothing. Its `clock` carries
+    // this device's ticks since it last synced, body-only saves included, so
+    // the remote wins each unit, as the document rule applies a concurrent
+    // remote whole. An untrusted remote reads at its clock on every unit, the
+    // document rule it ran.
+    let (local_stamped, local_floor) = trusted_clocks(local)?.unwrap_or_default();
+    let remote_trusted = trusted_clocks(remote)?;
+    let remote_wrote = remote_trusted.is_some();
+    let (remote_stamped, remote_floor) = match remote_trusted {
+        Some(trusted) => trusted,
+        None => {
+            let clock = doc_clock(remote)?;
+            let whole = all.iter().map(|unit| (unit.clone(), clock.clone()));
+            (whole.collect(), Some(clock))
+        }
     };
-    let (remote_stamped, remote_floor) = side_clocks(remote, &all)?;
     let mut local_clocks = UnitClocks::new();
     let mut remote_clocks = UnitClocks::new();
+    // Units a trusted side wrote and no floor superseded: only these keep a
+    // clock, so a record's clock never turns into a write.
+    let mut written = Vec::new();
     for unit in &all {
         let (local_unit, remote_unit) = (local_stamped.get(unit), remote_stamped.get(unit));
-        let local_clock = local_unit
-            .cloned()
-            .or_else(|| floor_against(local_floor.as_ref(), remote_unit));
-        let remote_clock = remote_unit
-            .cloned()
-            .or_else(|| floor_against(remote_floor.as_ref(), local_unit));
+        let local_floored = match local_unit {
+            Some(_) => None,
+            None => floor_against(local_floor.as_ref(), remote_unit.or(remote_floor.as_ref())),
+        };
+        let remote_floored = match remote_unit {
+            Some(_) => None,
+            None => floor_against(remote_floor.as_ref(), local_unit.or(local_floor.as_ref())),
+        };
+        let wrote = local_unit.is_some() || (remote_wrote && remote_unit.is_some());
+        if wrote && local_floored.is_none() && remote_floored.is_none() {
+            written.push(unit);
+        }
+        let local_clock = local_unit.cloned().or(local_floored);
+        let remote_clock = remote_unit.cloned().or(remote_floored);
         local_clocks.extend(local_clock.map(|clock| (unit.clone(), clock)));
         remote_clocks.extend(remote_clock.map(|clock| (unit.clone(), clock)));
     }
@@ -282,10 +300,17 @@ pub fn merge_journal_fields(
         &local_floor.unwrap_or_default(),
         &remote_floor.unwrap_or_default(),
     );
+    let field_clocks = written
+        .into_iter()
+        .filter_map(|unit| {
+            let clock = result.merged_field_clocks.get(unit)?;
+            Some((unit.clone(), clock.clone()))
+        })
+        .collect();
     Ok(JournalMerge {
         tags,
         properties,
-        field_clocks: result.merged_field_clocks,
+        field_clocks,
         field_clocks_floor: (!floor.is_empty()).then_some(floor),
         requeue,
     })
@@ -351,7 +376,7 @@ pub(crate) fn apply_remote(
 }
 
 /// §6.3.1's apply branch, stamped by §6.12.1: an untrusted remote is stored
-/// with [`field_clocks_for_wholesale`]'s unit clocks (#5572). A tombstone, a
+/// with [`field_clocks_for_wholesale`]'s stamp (#5572). A tombstone, a
 /// remote that will not parse, or one whose clock will not read goes through
 /// as it arrived, for the wholesale path to store and diagnose (§13.2 rule 5).
 fn apply_whole(
@@ -363,14 +388,12 @@ fn apply_whole(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
-    let held = task_merge::live_payload(conn, record)?;
-    let held_object = held.as_ref().map(|(payload, _)| payload.object());
-    let Ok(Some(stamped)) = field_clocks_for_wholesale(held_object, remote.object()) else {
+    let Ok(Some(stamped)) = field_clocks_for_wholesale(remote.object()) else {
         return task_merge::wholesale(conn, record, now_ms);
     };
     let payload_json = remote.merge(&stamp_changes(&stamped));
     // §6.5.2 P4: the record this device already applied whole, re-pulled.
-    if let Some((local, true)) = &held
+    if let Some((local, true)) = &task_merge::live_payload(conn, record)?
         && StoredPayload::parse(&payload_json)
             .is_ok_and(|stamped| payloads_identical(local.object(), stamped.object()))
     {

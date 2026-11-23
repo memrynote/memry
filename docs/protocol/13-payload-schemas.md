@@ -297,11 +297,14 @@ short-circuits `operation === 'delete'` and reads only the optional
 #3037). Both schemas list `bodyStateVector` as an optional string; it appears
 only on a delete.
 
-A `journal` also carries `fieldClocks` and `fieldClocksAt`
-(`packages/contracts/src/sync-payloads.ts:384-388`, #5508): one clock per
-`tags.<tagKey>` and `properties.<key>` unit, stamped at the payload's `clock`.
-Both are optional, and a payload without them is read whole at its clock
-(chapter 06 §6.12.1).
+A `journal` also carries `fieldClocks`, `fieldClocksAt` and `fieldClocksFloor`
+(`packages/contracts/src/sync-payloads.ts:384-391`, #5508, #5572): one clock per
+`tags.<tagKey>` and `properties.<key>` unit, stamped at the payload's `clock`,
+and one floor clock for every unit `fieldClocks` does not name. All three are
+optional, and a payload without a matching stamp is read whole at its clock
+(chapter 06 §6.12.1). `fieldClocksFloor` is an additive key: an older desktop
+keeps it in its §13.2.1 remainder and an older core verbatim, and both push it
+back under a ticked `clock`, where it is not trusted.
 
 **An inbound `journal` record whose id is not `j<date>` is never projected** (§1.9.1). Its
 body is merged into the day's `j<date>` item and its id is tombstoned.

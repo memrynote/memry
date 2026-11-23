@@ -386,6 +386,9 @@ export const JournalSyncPayloadSchema = z.object({
   // An older build keeps both keys but ticks `clock` past the stamp.
   fieldClocks: FieldClocksSchema.optional(),
   fieldClocksAt: VectorClockSchema.optional(),
+  // §6.12.1 (#5572): every unit `fieldClocks` does not name is superseded at or
+  // before this clock. Trusted with the stamp, so an older build's copy is not.
+  fieldClocksFloor: VectorClockSchema.optional(),
   createdAt: SyncTimestampSchema.optional(),
   modifiedAt: SyncTimestampSchema.optional(),
   // Delete tombstones only, as on notes (chapter 05 §5.8, #3037).

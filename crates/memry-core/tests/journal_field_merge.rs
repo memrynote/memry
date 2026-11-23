@@ -215,6 +215,35 @@ fn an_older_builds_removal_relayed_by_a_new_build_stays_removed() {
     }
 }
 
+/// #5572: a device that applied an older build's removal whole and edited
+/// nothing since pulls a concurrent edit built before that removal. The stored
+/// record is stamped with its clock as the floor, so the removal holds and the
+/// concurrent `q` survives.
+#[test]
+fn a_record_applied_whole_keeps_its_removal_against_an_older_concurrent_edit() {
+    let legacy = json!({
+        "date": DAY, "content": "", "tags": ["gone"], "properties": { "p": 1 },
+        "clock": { "X": 1 }
+    })
+    .to_string();
+    let relay = open("applied-whole");
+    pull(&relay, &legacy);
+    pull(
+        &relay,
+        &json!({
+            "date": DAY, "content": "", "tags": [], "properties": { "p": 1 },
+            "clock": { "X": 1, "O": 1 }
+        })
+        .to_string(),
+    );
+
+    let stale = open("applied-whole-stale");
+    pull(&stale, &legacy);
+    property(&stale, "q", json!(1), "dev-c");
+    pull(&relay, &pushed(&stale));
+    assert_eq!(view(&relay), (json!([]), json!({ "p": 1, "q": 1 })));
+}
+
 /// §6.5.2 P4: an older build's record this device already applied whole, and
 /// stamped, is the identical equal-clock row on a re-pull.
 #[test]

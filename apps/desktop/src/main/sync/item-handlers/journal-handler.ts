@@ -43,7 +43,11 @@ import {
 } from '../journal-day-merge'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import { keepUnseenText } from '../keep-unseen-text'
-import { mergeJournalFields, type JournalFields } from '@memry/sync-client/journal-merge'
+import {
+  journalFieldClocksForWholesale,
+  mergeJournalFields,
+  type JournalFields
+} from '@memry/sync-client/journal-merge'
 import { valuesEqual } from '@memry/sync-client/field-merge'
 import {
   forgetJournalFieldsBase,
@@ -120,10 +124,16 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let tags = data.tags
     let properties = data.properties ?? undefined
     // The fields as synced: the remote's, or the merge's under the union clock.
+    // An untrusted remote applied whole is stamped with its clock as the floor,
+    // so this device's next edit carries its removals (§6.12.1, #5572).
+    const remoteWithClock = { ...data, clock: data.clock ?? remoteClock }
     let synced: Omit<JournalFields, 'tags' | 'properties'> = {
-      clock: data.clock ?? remoteClock,
-      fieldClocks: data.fieldClocks,
-      fieldClocksAt: data.fieldClocksAt
+      clock: remoteWithClock.clock,
+      ...(journalFieldClocksForWholesale(remoteWithClock) ?? {
+        fieldClocks: data.fieldClocks,
+        fieldClocksAt: data.fieldClocksAt,
+        fieldClocksFloor: data.fieldClocksFloor
+      })
     }
     if (existing) {
       const resolution = this.resolveUpsertClock(ctx, itemId, existing.clock, remoteClock, data)
@@ -138,13 +148,14 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         const day = readDayFields(date)
         if (day) {
           const local = localJournalFields(ctx.db, itemId, day, existing.clock ?? {})
-          const merged = mergeJournalFields(local, { ...data, clock: data.clock ?? remoteClock })
+          const merged = mergeJournalFields(local, remoteWithClock)
           tags = merged.tags
           properties = merged.properties
           synced = {
             clock: mergedClock,
             fieldClocks: merged.fieldClocks,
-            fieldClocksAt: mergedClock
+            fieldClocksAt: mergedClock,
+            fieldClocksFloor: merged.fieldClocksFloor
           }
         } else {
           log.warn('Concurrent journal edit with no readable day file; remote fields apply', {
@@ -317,7 +328,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     itemId: string,
     remote: JournalSyncPayload
   ): boolean {
-    const { fieldClocks: _clocks, fieldClocksAt: _at, ...fields } = remote
+    const { fieldClocks: _clocks, fieldClocksAt: _at, fieldClocksFloor: _floor, ...fields } = remote
     try {
       const local = this.buildPayload(db, itemId, 'update', false)
       if (local == null) return false
@@ -342,7 +353,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     let tags: string[] = []
     let properties: Record<string, unknown> | null = null
     let aliases: string[] | undefined
-    let unitClocks: Pick<JournalFields, 'fieldClocks' | 'fieldClocksAt'> = {}
+    let unitClocks: Pick<JournalFields, 'fieldClocks' | 'fieldClocksAt' | 'fieldClocksFloor'> = {}
     try {
       const raw = readJournalTextSync(cached.journalDate)
       if (raw === null) throw new Error(`Journal file is missing: ${cached.journalDate}`)
@@ -363,7 +374,11 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         )
         if (fields.fieldClocks) {
           writeJournalFieldsBase(db, cached.id, fields)
-          unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
+          unitClocks = {
+            fieldClocks: fields.fieldClocks,
+            fieldClocksAt: fields.fieldClocksAt,
+            fieldClocksFloor: fields.fieldClocksFloor
+          }
         }
       }
     } catch {

@@ -934,42 +934,55 @@ production map functions.
 
 ## 6.12 Journal tags and properties merge per unit (#5508)
 
-**Normative, amended 2026-11-23 (#5508).** Before this section a `journal`
+**Normative, amended 2026-11-23 (#5508, #5572).** Before this section a `journal`
 took §6.3.1 alone: on `concurrent` the remote payload applied whole, and P2
 rebuilt the outbox row from that live row. Four devices that each added a tag,
 removed one, or set a property kept only the last pusher's edit, and a removed
 tag came back. Every other journal key still takes §6.3.1; the body is the
 CRDT's (chapter 07).
 
-### 6.12.1 Units, and when a side's unit clocks are trusted
+### 6.12.1 Units, the floor, and when a side's unit clocks are trusted
 
 A unit is `tags.<tagKey>`, the trimmed, folded tag of §1.9.1 step 6, or
 `properties.<key>`, the raw key after the prefix, never split on `.`
-(`packages/sync-client/src/journal-merge.ts:28-42`,
-`crates/memry-core/src/sync/journal_merge.rs:49-66`). `fieldClocks` maps a unit
+(`packages/sync-client/src/journal-merge.ts:38-52`,
+`crates/memry-core/src/sync/journal_merge.rs:41-77`). `fieldClocks` maps a unit
 to the **document clock at which a device last wrote it**, so a unit clock never
 exceeds the `clock` of the payload carrying it. A unit clocked but absent from
 the value is a removal; its clock is what stops a stale copy re-adding it.
 
-`fieldClocksAt` is the `clock` the writer stamped the units at
-(`packages/contracts/src/sync-payloads.ts:384-388`). **A side's unit clocks are
-trusted only when `fieldClocks` is present and `fieldClocksAt` equals its
-`clock`** under §6.4.2 (`packages/sync-client/src/journal-merge.ts:44-70`,
-`crates/memry-core/src/sync/journal_merge.rs:79-114`). An untrusted side is read
-by the document rule, which applies a concurrent remote whole (§6.3.1):
+**`fieldClocksFloor` covers every unit `fieldClocks` does not name** (#5572):
+the payload supersedes every write to such a unit at or before the floor, so a
+unit under the floor and absent from the value is a removal there. The floor
+is a dominance claim, not a unit clock. Against the other side's claim on a
+unit, its stamped unit clock or else its floor, a floor reads at its clock only
+when it **strictly dominates** that claim (§6.3.1 `before`), or when the other
+side has no claim (`packages/sync-client/src/journal-merge.ts:107-119`,
+`crates/memry-core/src/sync/journal_merge.rs:198-207`). A write concurrent with
+the floor is one its writer never saw, so the floor does not decide it. Read
+under §6.3's tick sum instead, a floor would beat such a write on a tie (`q` in
+`issue-5572-relay`), and a local floor would outrank a concurrent remote add.
 
-- **An untrusted remote** clocks **every unit in the union of both sides**
-  (§6.12.3), named by either side's value or either side's `fieldClocks`, at
-  its `clock`, and a union unit absent from its value is a removal at that
-  clock: the remote was written whole at its clock, which is the rule its
-  writer ran. Clocking only the units it names would read an older build's
-  removal as an unclocked absence, so the local copy would win and be
-  re-pushed (`packages/contracts/test-vectors/journal-merge.json`,
+`fieldClocksAt` is the `clock` the writer stamped the units at
+(`packages/contracts/src/sync-payloads.ts:384-391`). **A side's `fieldClocks`
+and `fieldClocksFloor` are trusted only when `fieldClocks` is present and
+`fieldClocksAt` equals its `clock`** under §6.4.2
+(`packages/sync-client/src/journal-merge.ts:54-65`,
+`crates/memry-core/src/sync/journal_merge.rs:86-117`). An untrusted side is
+read by the document rule, which applies a concurrent remote whole (§6.3.1):
+
+- **An untrusted remote** reads at its `clock` on every unit in the union of
+  both sides (§6.12.3), named by either side's value or either side's
+  `fieldClocks`, and its `clock` is its floor. A union unit absent from its
+  value is a removal at that clock: the remote was written whole at its clock,
+  which is the rule its writer ran. Clocking only the units it names would read
+  an older build's removal as an unclocked absence, so the local copy would win
+  and be re-pushed (`packages/contracts/test-vectors/journal-merge.json`,
   `old-build-removes-tag-and-property`).
-- **An untrusted local side proves no unit clock**: every unit reads as the
-  empty clock, so the remote wins it
-  (`packages/sync-client/src/journal-merge.ts:112-116`,
-  `crates/memry-core/src/sync/journal_merge.rs:160-164`). Its `clock` cannot
+- **An untrusted local side proves no unit clock and no floor**: every unit
+  reads as the empty clock, so the remote wins it
+  (`packages/sync-client/src/journal-merge.ts:140-145`,
+  `crates/memry-core/src/sync/journal_merge.rs:219-224`). Its `clock` cannot
   stand in. It carries this device's ticks since it last synced, body-only
   saves included, and two of them outrank an older build's concurrent removal
   on units the device never edited (`no-base-2-saves-old-build-removes`).
@@ -977,65 +990,116 @@ by the document rule, which applies a concurrent remote whole (§6.3.1):
   reads a stored payload that is not trusted this way, such as one an older
   core build edited.
 
+**A record's clock never becomes a unit clock.** A document clock is not a
+write clock. Stored as a unit clock, an untrusted record's clock would let the
+local side outrank a concurrent removal on units it never edited, the pattern
+of `no-base-2-saves-old-build-removes`. Only a trusted side's stamped unit
+clocks are writes, and everything an untrusted record proves goes into the
+floor:
+
+- **Applied whole** (§6.3.1 `before` or `equal`, or a first sighting), an
+  untrusted remote is kept as `fieldClocks: {}`, `fieldClocksAt: C` and
+  `fieldClocksFloor: C`, where C is its `clock`. A trusted remote is kept as
+  received (`packages/sync-client/src/journal-merge.ts:95-105`,
+  `crates/memry-core/src/sync/journal_merge.rs:183-195`; `wholesales`). Every
+  unit the device held and the record lacks reads at C through the floor, so a
+  concurrent merge keeps the record's removals, and so does the next edit,
+  which carries the floor (§6.12.2). The device needs no list of the units it
+  held: the floor also covers units it never held but the record's writer saw
+  removed (`issue-5572-relay`, `issue-5572-relay-pulls-stale-copy`). The core
+  stores the stamped payload
+  (`crates/memry-core/src/sync/journal_merge.rs:378-407`), and desktop keeps it
+  as the synced base
+  (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:126-137`). An
+  equal-clock re-pull of the same record compares against the stamped payload,
+  so it is still §6.5.2 P4's skip.
+
 That is the version gate. No version byte covers a JSON record payload
 (chapter 00 §0.2), and moving `CRYPTO_VERSION` would make an older build refuse
-the record. An older build keeps both keys (the core stores the payload verbatim,
-§13.2; desktop keeps them in its remainder, §13.2.1) but ticks `clock` past the
+the record. An older build keeps all three keys but ticks `clock` past the
 stamp, so its edit is read whole at its clock: a mixed-version pair merges by
-today's rule and never below it, and needs no client floor. A payload with no
-`fieldClocks` is the same case. Every unit clock is at most the document clock
-that saw it, so a side read at its clock dominates every unit it saw.
+today's rule and never below it, and needs no client version floor. For
+`fieldClocksFloor`, added after `fieldClocks` with no released build between
+them:
+
+- An older desktop parses with a plain `z.object`, which strips the key into
+  the `sync_unknown_fields` remainder (§13.2.1,
+  `apps/desktop/src/main/sync/apply-item.ts:209`), and pushes it back under its
+  own payload with its own ticked `clock`. The stamp no longer matches, so a
+  newer build ignores the stale floor with the stale `fieldClocks` and reads the
+  push whole at its clock.
+- An older core stores the payload verbatim (§13.2). Its edits tick `clock` the
+  same way.
+
+No migration is needed: desktop keeps the floor in the `sync_state` base it
+already writes, and the core keeps it in the stored payload. A payload with no
+`fieldClocks` is read the same way. Every unit clock is at most the document
+clock that saw it, so a side read at its clock dominates every unit it saw.
 
 ### 6.12.2 A local edit clocks the units it changed
 
 A writer diffs the fields it pushes against the last synced ones: each unit
 whose value differs (§6.4.2; a new spelling of the same tag key differs) takes
 the new `clock`, the rest keep theirs, and `fieldClocksAt` is set to `clock`
-(`packages/sync-client/src/journal-merge.ts:72-91`). **With no synced base an
-edit carries no unit clocks**, because the writer cannot tell which units it
-wrote since it last synced (`journal-merge.json`, `no-base`). The core restamps
-on every journal write, in the one function every local edit goes through
+(`packages/sync-client/src/journal-merge.ts:73-93`,
+`crates/memry-core/src/sync/journal_merge.rs:147-181`). **A trusted base keeps
+its floor. An untrusted base clocks no unit, and its `clock` becomes the
+floor**, because it was written whole at that clock
+(`trusted-base-carries-its-floor`, `untrusted-base-edit-then-concurrent-removal`).
+**With no synced base an edit carries no unit clocks**, because the writer
+cannot tell which units it wrote since it last synced (`journal-merge.json`,
+`no-base`). The core restamps on every journal write, in the one function every
+local edit goes through
 (`crates/memry-core/src/storage/repositories/sync_items.rs:245-250`,
-`crates/memry-core/src/sync/journal_merge.rs:212-224`). Desktop reads tags and
+`crates/memry-core/src/sync/journal_merge.rs:319-327`). Desktop reads tags and
 properties from the day file, so it diffs against a base kept in `sync_state`
 under `journal.fields:<id>`, written on every apply and on every push build
 that has a base (`apps/desktop/src/main/sync/journal-fields.ts:19`,
-`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:206`, `:357-368`).
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:217`, `:368-383`).
 A day last synced by an older build has no base. Desktop pushes it without
-`fieldClocks` and `fieldClocksAt`, so peers read it whole at its clock as they
-read an older build's push, and writes no base
-(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:364-367`). A
+`fieldClocks`, `fieldClocksAt` and `fieldClocksFloor`, so peers read it whole
+at its clock as they read an older build's push, and writes no base
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:375-383`). A
 concurrent pull reads its local side untrusted (§6.12.1), and the next pull
 that applies writes the base.
 The §6.5.2 P4 identity check builds the same payload without unit clocks and
-compares it to the remote with `fieldClocks` and `fieldClocksAt` removed, so an
-identical legacy row still skips and the check writes no base
-(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:310-329`).
+compares it to the remote with `fieldClocks`, `fieldClocksAt` and
+`fieldClocksFloor` removed, so an identical legacy row still skips and the
+check writes no base
+(`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:321-340`).
 
 ### 6.12.3 The merge
 
 `before` and `equal` apply wholesale and `after` skips, as §6.3.1 has it. On
 `concurrent` the units are the union of both sides' unit clocks and value units,
 each arbitrated by §6.3's rule (`mergeFields`: tick sum, the asymmetric
-`_offline` test, remote wins ties). **A winner with no value removes the unit**;
-§6.9.0's keep-on-absent does not apply, because `tags` is an array and
+`_offline` test, remote wins ties) over each side's stamped unit clock, or its
+floor where §6.12.1 lets the floor read. **A winner with no value removes the
+unit**; §6.9.0's keep-on-absent does not apply, because `tags` is an array and
 `properties` an open record, which no build strips. Local survivors keep local
 order and local spelling, then remote-only survivors follow in remote order
-(`packages/sync-client/src/journal-merge.ts:93-152`,
-`crates/memry-core/src/sync/journal_merge.rs:145-210`). The stored row carries
-the union `clock`, the merged unit clocks and `fieldClocksAt` equal to the union
-clock; every other key is the remote's (`crates/memry-core/src/sync/journal_merge.rs:226-272`,
-`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:135-155`).
+(`packages/sync-client/src/journal-merge.ts:121-210`,
+`crates/memry-core/src/sync/journal_merge.rs:212-317`).
+
+**The merged payload keeps a unit clock only for a unit a trusted side stamped
+and no floor superseded.** Every other unit stays under the merged floor,
+`merge(localFloor, remoteFloor)`, where an untrusted remote's floor is its
+`clock`. A unit neither side names reads as absent on both, so the merged
+payload supersedes what either floor did. The stored row carries the union
+`clock`, those unit clocks, the merged floor and `fieldClocksAt` equal to the
+union clock; every other key is the remote's
+(`crates/memry-core/src/sync/journal_merge.rs:333-376`,
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:145-160`).
 
 **A merge in which any unit's local clock is `concurrent` with or `after` the
 remote's MUST re-queue the merged journal** (§6.5.2 P3). The core enqueues in
 the apply's transaction, as settings do
-(`crates/memry-core/src/sync/journal_merge.rs:196-203`, `:263-269`); desktop's
+(`crates/memry-core/src/sync/journal_merge.rs:290-296`, `:367-373`); desktop's
 `'conflict'` return re-queues every concurrent journal.
 
 **Tombstones are never collected.** A removed unit keeps its clock in
-`fieldClocks` for the life of the day, because dropping it would let a stale
-copy re-add the value. The cost is bounded: a day carries at most one unit per
+`fieldClocks` for the life of the day, or stays under the floor, because
+dropping it would let a stale copy re-add the value. The cost is bounded: a day carries at most one unit per
 distinct tag key and property key ever written to it, and each unit clock has
 at most one entry per device that wrote the day, the same bound as the
 document `clock`. No pruning rule exists, so a peer MUST NOT drop a clocked

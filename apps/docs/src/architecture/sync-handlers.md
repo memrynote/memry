@@ -100,7 +100,12 @@ side's unit clocks count only while `fieldClocksAt` equals its `clock`; an older
 but ticks the clock past the stamp, so its payload is read whole at its clock: every unit either
 side names takes that clock, and a unit missing from its value is a removal. An untrusted local side
 proves no unit clock, so the remote wins each of its units: its clock carries this device's own
-ticks since it last synced, which would otherwise outrank an older build's removal. Desktop diffs
+ticks since it last synced, which would otherwise outrank an older build's removal. A record's clock
+never becomes a unit clock: a day applied whole from an untrusted record is kept with no unit clocks
+and the record's clock as `fieldClocksFloor`, which covers every unit `fieldClocks` does not name.
+The next edit carries that floor, so a device that still holds a tag the older build removed drops
+it too (#5572). A floor beats only a claim it strictly dominates, so a concurrent write the older
+build never saw survives. Desktop diffs
 the day file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); a day
 with no such base, last synced by an older build, is pushed whole without unit clocks until a pull
 writes the base. The Rust core restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
