@@ -789,10 +789,21 @@ fn a_kept_note_put_back_from_the_trash_with_its_folder_gets_its_row_back() {
     )
     .unwrap();
     e.write("f/b.md", "Control\n");
-    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "f/b.md"));
-    until("the kept note's file has a row again", || {
-        e.rows().iter().any(|(_, path)| path == "f/g/a.md")
+    // Both files are fed, in either order: the kept note's file, the folder's own report, is
+    // one even when the watcher saw the folder only once it was back (#5565).
+    let fed = std::cell::RefCell::new(Vec::new());
+    e.facts_until(|f| {
+        if let Applied::Added { path, .. } = f {
+            fed.borrow_mut().push(path.clone());
+        }
+        ["f/g/a.md", "f/b.md"]
+            .iter()
+            .all(|path| fed.borrow().iter().any(|fed| fed == path))
     });
+    assert!(
+        e.rows().iter().any(|(_, path)| path == "f/g/a.md"),
+        "the kept note's file has no row again"
+    );
 }
 
 #[test]
