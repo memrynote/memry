@@ -65,7 +65,7 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../sync/crdt-writeback', () => ({}))
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
 
 import { moveNote, renameNote } from './notes-rename'

@@ -57,7 +57,7 @@ import {
   registerOutboxUploader,
   uploadFileState
 } from '../sync/attachment-outbox'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import { fileTextNoteChanged } from '../file-text'
@@ -229,7 +229,9 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
       const landAt = isDatabaseInitialized()
         ? landCaseTwinDownload(filePath, attachmentId, sha256, fileOwnerId)
         : filePath
-      markWritebackIgnored(landAt)
+      // The downloader renames the verified file in after this returns and
+      // reports no landing, so the record stays in flight until it expires.
+      recordAppWrite(landAt, { sha256 })
       return landAt
     },
     getMaxFileSize: () => getCachedMaxFileSize(),
