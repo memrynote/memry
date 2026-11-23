@@ -3,7 +3,8 @@
 //! vault does not open, and one it could not read. What the open walk found goes into its
 //! [`ScanActivity`], which the walk records as `recordScanActivity` does once it ended.
 
-use super::apply::Applier;
+use super::apply::{Applier, Step};
+use super::rows::Lane;
 use crate::vault::activity::{
     ActivityInput, ActivityKind, ActivitySource, ScanActivity, UNREADABLE_REPORT_MS, failure_key,
 };
@@ -64,6 +65,26 @@ impl Applier {
                 }
             }
         }
+    }
+
+    /// A watched file at its row's path: the watcher's report of it names the row's note from
+    /// now on. A file put back where a kept note's row stayed was reported new, naming no note,
+    /// so the row going with the file's folder left it reported, never new again (#5579).
+    pub(super) fn found_at_row(
+        &self,
+        lane: &mut Lane<'_>,
+        note_id: &str,
+        path: &str,
+        size: u64,
+        modified_ms: i64,
+        scan: Option<&mut ScanActivity>,
+    ) -> Step {
+        if scan.is_none()
+            && let Some(watch) = &self.watch
+        {
+            watch.named(path.to_owned(), note_id.to_owned());
+        }
+        self.changed(lane, note_id, path, size, modified_ms, scan)
     }
 
     /// What the open walk found (`recordScanActivity`), but in a vault the identity leaves as
