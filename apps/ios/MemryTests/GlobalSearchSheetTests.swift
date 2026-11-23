@@ -56,7 +56,9 @@ struct GlobalSearchSheetTests {
         defer { window.isHidden = true }
 
         var bar: UISearchBar?
-        try await wait { bar = searchBar(in: window); return bar != nil }
+        // Generous: SwiftUI lays the bar out on the main actor, which a full
+        // parallel Unit run keeps busy for seconds (#5484).
+        try await wait(30) { bar = searchBar(in: window); return bar != nil }
         let field = try #require(bar)
         field.text = "dune"
         field.delegate?.searchBar?(field, textDidChange: "dune")

@@ -81,13 +81,18 @@ final class BlockWebRenderer: NSObject {
     private static let batchLimit = 24
 
     private let cache = NSCache<NSString, CachedOutput>()
+    /// The window the web view sits in. WebKit suspends a web view that
+    /// leaves its window, and a call into it then never returns, so the host
+    /// must outlive the renderer's use of it.
+    private let host: @MainActor () -> UIWindow?
     private var web: WKWebView?
     private var loaded: CheckedContinuation<Bool, Never>?
     private var waiting: [Request: [CheckedContinuation<Output, Never>]] = [:]
     private var queue: [Request] = []
     private var flushing = false
 
-    private override init() {
+    init(host: @escaping @MainActor () -> UIWindow? = PresentingWindow.resolve) {
+        self.host = host
         cache.countLimit = 300
         super.init()
         NotificationCenter.default.addObserver(
@@ -201,7 +206,7 @@ final class BlockWebRenderer: NSObject {
         if let web, web.window != nil { return web }
         web?.removeFromSuperview()
         web = nil
-        guard let window = PresentingWindow.resolve(),
+        guard let window = host(),
               let base = Bundle.main.url(forResource: "BlockRender", withExtension: "bundle")
         else {
             Log.interface.error("block renderer has no window or bundle")

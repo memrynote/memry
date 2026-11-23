@@ -130,8 +130,23 @@ struct SourceTextInputTests {
     }
 }
 
-/// The bundled page loads in the shared web view and KaTeX answers through
-/// it: a picture for a formula, KaTeX's own message for a broken one.
+/// Runs `body` against a renderer of its own, in a window that lives until
+/// `body` returns. The shared renderer sits in whichever window was key when it
+/// loaded, often another test's. When that test ended, its window went away
+/// with the web view in it, WebKit suspended the web view, and a call into it
+/// never returned (#5484).
+@MainActor
+private func withRenderer(_ body: (BlockWebRenderer) async throws -> Void) async throws {
+    let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+    let window = UIWindow(windowScene: scene)
+    window.rootViewController = UIViewController()
+    window.isHidden = false
+    defer { window.isHidden = true }
+    try await body(BlockWebRenderer { window })
+}
+
+/// The bundled page loads in the web view and KaTeX answers through it: a
+/// picture for a formula, KaTeX's own message for a broken one.
 @MainActor
 struct BlockWebRendererTests {
     private func request(_ source: String) -> BlockWebRenderer.Request {
@@ -139,21 +154,23 @@ struct BlockWebRendererTests {
     }
 
     @Test func aFormulaBecomesAPictureAndBrokenLatexItsMessage() async throws {
-        async let fraction = BlockWebRenderer.shared.render(request("\\frac{a}{b}"))
-        async let broken = BlockWebRenderer.shared.render(request("\\frac{a"))
-        guard case let .image(image) = await fraction else {
-            Issue.record("expected a picture, got \(await fraction)")
-            return
+        try await withRenderer { renderer in
+            async let fraction = renderer.render(request("\\frac{a}{b}"))
+            async let broken = renderer.render(request("\\frac{a"))
+            guard case let .image(image) = await fraction else {
+                Issue.record("expected a picture, got \(await fraction)")
+                return
+            }
+            #expect(image.size.width > 10, "a fraction has width")
+            #expect(image.size.height > image.size.width / 2, "and is about as tall as it is wide")
+            #expect(inkedPixels(image) > 50, "the glyphs are painted, not a transparent box")
+            guard case let .invalid(message) = await broken else {
+                Issue.record("expected KaTeX's message, got \(await broken)")
+                return
+            }
+            #expect(message.hasPrefix("KaTeX parse error"))
+            #expect(renderer.cached(request("\\frac{a}{b}")) == .image(image))
         }
-        #expect(image.size.width > 10, "a fraction has width")
-        #expect(image.size.height > image.size.width / 2, "and is about as tall as it is wide")
-        #expect(inkedPixels(image) > 50, "the glyphs are painted, not a transparent box")
-        guard case let .invalid(message) = await broken else {
-            Issue.record("expected KaTeX's message, got \(await broken)")
-            return
-        }
-        #expect(message.hasPrefix("KaTeX parse error"))
-        #expect(BlockWebRenderer.shared.cached(request("\\frac{a}{b}")) == .image(image))
     }
 }
 
@@ -176,34 +193,38 @@ struct BlockRenderCacheKeyTests {
     }
 }
 
-/// Mermaid answers through the same web view: a picture for a flowchart,
-/// its message for broken source.
+/// Mermaid answers through the same page: a picture for a flowchart, its
+/// message for broken source.
 @MainActor
 struct BlockWebRendererDiagramTests {
-    @Test func aFlowchartBecomesAPictureAndBrokenMermaidItsMessage() async {
-        async let flow = BlockWebRenderer.shared.render(.diagram("graph TD; A-->B", dark: false))
-        async let broken = BlockWebRenderer.shared.render(.diagram("graph TD; A-->", dark: false))
-        guard case let .image(image) = await flow else {
-            Issue.record("expected a picture, got \(await flow)")
-            return
-        }
-        #expect(image.size.height > 40, "two stacked nodes")
-        #expect(inkedPixels(image) > 200, "the nodes are painted")
-        guard case .invalid = await broken else {
-            Issue.record("expected mermaid's message, got \(await broken)")
-            return
+    @Test func aFlowchartBecomesAPictureAndBrokenMermaidItsMessage() async throws {
+        try await withRenderer { renderer in
+            async let flow = renderer.render(.diagram("graph TD; A-->B", dark: false))
+            async let broken = renderer.render(.diagram("graph TD; A-->", dark: false))
+            guard case let .image(image) = await flow else {
+                Issue.record("expected a picture, got \(await flow)")
+                return
+            }
+            #expect(image.size.height > 40, "two stacked nodes")
+            #expect(inkedPixels(image) > 200, "the nodes are painted")
+            guard case .invalid = await broken else {
+                Issue.record("expected mermaid's message, got \(await broken)")
+                return
+            }
         }
     }
 
-    @Test func aSixtyNodeGraphIsPaintedTopToBottom() async {
-        let edges = (0..<59).map { "N\($0)-->N\($0 + 1)" }.joined(separator: "; ")
-        let output = await BlockWebRenderer.shared.render(.diagram("graph TD; " + edges, dark: false))
-        guard case let .image(image) = output else {
-            Issue.record("expected a picture, got \(output)")
-            return
+    @Test func aSixtyNodeGraphIsPaintedTopToBottom() async throws {
+        try await withRenderer { renderer in
+            let edges = (0..<59).map { "N\($0)-->N\($0 + 1)" }.joined(separator: "; ")
+            let output = await renderer.render(.diagram("graph TD; " + edges, dark: false))
+            guard case let .image(image) = output else {
+                Issue.record("expected a picture, got \(output)")
+                return
+            }
+            #expect(image.size.height > image.size.width, "a top-down chain is tall")
+            #expect(inkedPixels(image) > 2000, "its nodes are painted, not a blank box")
         }
-        #expect(image.size.height > image.size.width, "a top-down chain is tall")
-        #expect(inkedPixels(image) > 2000, "its nodes are painted, not a blank box")
     }
 }
 
