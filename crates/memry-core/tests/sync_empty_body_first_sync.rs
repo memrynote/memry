@@ -11,6 +11,8 @@ use body_pack_server::{
     BodyPack, NOW_MS, Routes, Server, ServerDoc, cursor_of, first_sync, is_owed, scratch,
     update_items,
 };
+use memry_core::sync::body_pull::MAX_RATE_LIMIT_PAUSES;
+use memry_core::sync::first_sync::FirstSyncLimits;
 
 /// More than one probe chunk (100), so the bodies pass sends two probes.
 const EMPTY: usize = 150;
@@ -79,6 +81,64 @@ async fn a_rate_limited_manifest_page_is_waited_out_and_nothing_is_route_pulled(
     let packs = report.body_packs;
     assert!(packs.manifest, "the manifest was read whole: {packs:?}");
     assert_eq!((packs.settled, packs.owed), (3, 0), "{packs:?}");
+    assert_eq!(routes.count("/sync/crdt/snapshot/"), 0, "no snapshot GET");
+    assert_eq!(routes.count("/sync/crdt/updates?"), 0, "no updates GET");
+}
+
+/// `n` documents whose server body is empty.
+fn empty_docs(n: usize) -> Vec<ServerDoc> {
+    (0..n)
+        .map(|n| ServerDoc::new(&format!("empty{n:07}"), 0))
+        .collect()
+}
+
+/// A server refusing every body read holds the bodies pass for one budget of
+/// [`MAX_RATE_LIMIT_PAUSES`] waits, the probes and the document pulls together
+/// (#5423). Red before: each probe chunk waited out two 429s of its own,
+/// outside the pass's eight, so a window of `n` chunks waited `2n + 8` times.
+#[tokio::test(start_paused = true)]
+async fn a_server_refusing_every_body_read_holds_the_pass_for_one_pause_budget() {
+    let (db, dir) = scratch("first-sync-refused-bodies");
+    let mut server = Server::new(empty_docs(EMPTY), Vec::new());
+    server.records = true;
+    server.batch_rate_limits = usize::MAX;
+    server.snapshot_rate_limits = usize::MAX;
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .run(NOW_MS)
+        .await
+        .expect_err("every body read is refused");
+
+    // Three reads give up, each on one refused request: the two probe chunks
+    // and the one document pull. Every other request followed a wait.
+    let refused = routes.count("/sync/crdt/updates/batch") + routes.count("/sync/crdt/snapshot/");
+    assert!(
+        refused <= 3 + MAX_RATE_LIMIT_PAUSES as usize,
+        "{refused} refused requests"
+    );
+}
+
+/// A bucket that refills is waited out however many windows the probes take
+/// (#5423): the budget counts 429s in a row, so pacing like the unelevated
+/// thirty batch requests a minute never runs it out, and no chunk falls back
+/// to a route pull per document.
+#[tokio::test(start_paused = true)]
+async fn a_refilling_bucket_is_waited_out_past_the_pause_budget() {
+    let chunks = MAX_RATE_LIMIT_PAUSES as usize + 1;
+    let (db, dir) = scratch("first-sync-refilling-bucket");
+    let mut server = Server::new(empty_docs(chunks * 100), Vec::new());
+    server.records = true;
+    server.batch_refused_once_each = true;
+    let routes = Routes::new(server);
+
+    first_sync(&db, &routes, &dir)
+        .with_limits(FirstSyncLimits::ALL)
+        .run(NOW_MS)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(routes.count("/sync/crdt/updates/batch"), 2 * chunks);
     assert_eq!(routes.count("/sync/crdt/snapshot/"), 0, "no snapshot GET");
     assert_eq!(routes.count("/sync/crdt/updates?"), 0, "no updates GET");
 }

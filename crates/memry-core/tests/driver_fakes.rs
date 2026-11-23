@@ -58,6 +58,8 @@ pub struct FakeServer {
     devices_garbled: AtomicBool,
     /// Routes whose requests are recorded and never answered.
     hung: Mutex<Vec<&'static str>>,
+    /// Path prefixes answered 429 with this `Retry-After`, in seconds.
+    rate_limited: Mutex<Vec<(&'static str, u64)>>,
 }
 
 impl FakeServer {
@@ -74,7 +76,17 @@ impl FakeServer {
             devices_down: AtomicBool::new(false),
             devices_garbled: AtomicBool::new(false),
             hung: Mutex::default(),
+            rate_limited: Mutex::default(),
         })
+    }
+
+    /// Answers every request whose path starts with `route` with a 429 asking
+    /// for `retry_after_s`.
+    pub fn rate_limit(&self, route: &'static str, retry_after_s: u64) {
+        self.rate_limited
+            .lock()
+            .unwrap()
+            .push((route, retry_after_s));
     }
 
     /// Holds `payload` live as the peer's `item_type` record `id`.
@@ -322,6 +334,9 @@ impl FakeServer {
                 json!({ "devices": devices }).to_string()
             }
             "/sync/status" => "{}".to_owned(),
+            // An answer naming no document, as an older server's: each one is
+            // pulled through its own routes.
+            "/sync/crdt/updates/batch" => "{}".to_owned(),
             "/sync/changes" => self.pages.lock().unwrap().pop_front().unwrap_or_else(|| {
                 json!({"items": [], "deleted": [], "hasMore": false, "nextCursor": null})
                     .to_string()
@@ -424,6 +439,21 @@ impl Transport for Routes {
             .contains(&route_of(&request.url));
         if hung {
             std::future::pending::<()>().await;
+        }
+        let limited = self
+            .0
+            .rate_limited
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|(route, _)| route_of(&request.url).starts_with(route))
+            .map(|(_, retry_after_s)| *retry_after_s);
+        if let Some(retry_after_s) = limited {
+            return Ok(HttpResponse {
+                status: 429,
+                headers: [("retry-after".to_owned(), retry_after_s.to_string())].into(),
+                body: br#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#.to_vec(),
+            });
         }
         let (status, body) = self.0.answer(&request);
         Ok(HttpResponse {
