@@ -537,15 +537,28 @@ async fn a_detach_after_a_crashed_upload_still_releases_its_chunks() {
     assert!(app.transport.calls_to("/upload/initiate").is_empty());
 }
 
-/// The 30-day grace a purged note's picture waits for a revive, the same span
-/// desktop holds a deleted note's assets (§14.8.2).
-const GRACE_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+/// A year, far past the 30-day grace #5573 gave a purged note's picture.
+const A_YEAR_MS: i64 = 365 * 24 * 60 * 60 * 1000;
 
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("a clock after 1970")
-        .as_millis() as i64
+/// Moves the purge this device recorded for `id` (#5573's
+/// `attachment_upload.purged_at:<id>`) `ms` into the past, as if the drain ran
+/// that long after the pulled delete.
+fn age_the_purge(app: &Launch, id: &str, ms: i64) {
+    let key = format!("attachment_upload.purged_at:{id}");
+    let changed = app
+        .vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "UPDATE meta SET value = CAST(value AS INTEGER) - ?2 WHERE key = ?1",
+                rusqlite::params![key, ms],
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("age the purge");
+    assert_eq!(changed, 1, "the pulled delete recorded its purge");
 }
 
 fn count(app: &Launch, sql: &'static str, id: &str) -> i64 {
@@ -577,23 +590,24 @@ fn attachment_rows(app: &Launch, id: &str) -> i64 {
     )
 }
 
-/// Another device's delete, pulled here, purges the note's body. The delete
-/// can still be undone by a revive (§14.8.2), so the picture's bytes and row
-/// stay for the grace and nothing goes up; once the grace ends they go.
+/// Another device's delete, pulled here, purges the note's body. A note can
+/// come back under its id at any age (§5.12.3: the server keeps its row, and a
+/// create over the marker is accepted), and these bytes are the only copy, so
+/// they, the row and the owed upload stay however long the note stays gone.
 #[tokio::test]
-async fn a_purged_notes_picture_waits_out_the_grace_then_goes() {
+async fn a_purged_notes_picture_is_kept_however_long_the_note_stays_gone() {
     let (dir, store) = (scratch_dir(), store());
     let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
     let note = app.note(&store);
     let id = app.attach(&note).await.expect("kept for later");
 
     deliver_a_delete(&app.vault.db_handle(), &note).await;
-    let applied = now_ms();
+    age_the_purge(&app, &id, A_YEAR_MS);
     let drained = app
         .sync
-        .upload_queued_attachments_at(applied + GRACE_MS - 60_000)
+        .upload_queued_attachments()
         .await
-        .expect("drain within the grace");
+        .expect("drain a year after the purge");
 
     assert_eq!(drained, Default::default());
     assert_eq!(app.transport.call_count(), 1, "nothing went up");
@@ -602,33 +616,21 @@ async fn a_purged_notes_picture_waits_out_the_grace_then_goes() {
         BYTES
     );
     assert_eq!(attachment_rows(&app, &id), 1, "the row stays");
-
-    let drained = app
-        .sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS + 60_000)
-        .await
-        .expect("drain after the grace");
-    assert_eq!(drained, Default::default());
-    assert_eq!(app.transport.call_count(), 1, "nothing went up");
-    assert!(
-        !dir.join("images").join(&id).exists(),
-        "the bytes go once the grace ends"
-    );
-    assert_eq!(attachment_rows(&app, &id), 0);
-    assert_eq!(owed(&app, &id), 0);
+    assert_eq!(owed(&app, &id), 1, "the upload stays owed");
 }
 
-/// A purged note that another device revives under the same id (§14.8.2)
-/// gets its picture back: the next pass uploads the kept bytes once, under
-/// the attachment's id, and references it.
+/// A purged note that another device revives under the same id (§14.8.2),
+/// even long after the purge, gets its picture back: the next pass uploads
+/// the kept bytes once, under the attachment's id, and references it.
 #[tokio::test]
-async fn a_revived_note_uploads_its_kept_picture_once() {
+async fn a_note_revived_long_after_its_purge_uploads_its_kept_picture_once() {
     let (dir, store) = (scratch_dir(), store());
     let (note, id) = {
         let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
         let note = app.note(&store);
         let id = app.attach(&note).await.expect("kept for later");
         deliver_a_delete(&app.vault.db_handle(), &note).await;
+        age_the_purge(&app, &id, A_YEAR_MS);
         app.sync.upload_queued_attachments().await.expect("drain");
         assert_eq!(
             app.transport.call_count(),
@@ -655,10 +657,7 @@ async fn a_revived_note_uploads_its_kept_picture_once() {
     assert_eq!(owed(&app, &id), 0);
 
     let calls = app.transport.call_count();
-    app.sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
-        .await
-        .expect("again");
+    app.sync.upload_queued_attachments().await.expect("again");
     assert_eq!(app.transport.call_count(), calls, "uploaded once");
     assert_eq!(attachment_rows(&app, &id), 1, "a referenced picture stays");
 }
@@ -708,11 +707,7 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         .expect("a writer")
         .delete(note.clone())
         .expect("delete");
-    let drained = app
-        .sync
-        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
-        .await
-        .expect("drain");
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
 
     assert_eq!(drained, Default::default());
     assert_eq!(
@@ -720,7 +715,7 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         1,
         "a deleted note uploads nothing"
     );
-    assert_eq!(owed(&app, &id), 1, "still owed, past any grace");
+    assert_eq!(owed(&app, &id), 1, "still owed");
     assert_eq!(
         std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
         BYTES
