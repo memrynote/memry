@@ -948,8 +948,8 @@ every item sharing a chunk with one bad row.
 - **A refused delete MUST NOT delete through its id.** When the server also
   lists a refused item's id in `deleted`, the id deletes nothing (§5.12.1):
   the corrupt count is the item's only outcome. Rust core:
-  `crates/memry-core/src/sync/pull.rs:416-419` counts such an id as bare and `:434` leaves it out of the
-  apply.
+  `crates/memry-core/src/sync/pull.rs:430-434` counts such an id as bare and
+  `:436-439` logs it as ignored.
 - `purgedTombstones` and `blobMissing` entries are validated one by one, like
   items: a malformed entry is refused on its own and never costs its siblings or
   the page (#2302).
@@ -1126,7 +1126,7 @@ the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`
 (`purged.rs:312`), then the signed-tombstone apply. An id a
 `purgedTombstones` entry names deletes only through that entry's attested
 marker, never as a bare `deleted` id (§5.12.1;
-`crates/memry-core/src/sync/pull.rs:420`, `:427-433`). A run that started from cursor 0
+`crates/memry-core/src/sync/pull.rs:420`, `:426-434`). A run that started from cursor 0
 applies none until a page lands at the head, a refused one included, since the
 cursor moves past it (`crates/memry-core/src/sync/pull/items.rs:92-94`). The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page

@@ -115,8 +115,12 @@ cooldown. Nothing is lost by that: the server has no payload to send, the local
 row stays, and only an accepted push of the item refills the server row, at a
 new cursor that the feed delivers, where a refusal is ledgered again. A
 returned record that does not decode keeps its entry under the older build and
-the cooldown, and its local row is not flagged corrupt
-(`crates/memry-core/src/sync/pull/apply_step.rs:183-197`). One that decodes but
+the cooldown (`crates/memry-core/src/sync/pull/apply_step.rs:183-198`). Its
+local row is not flagged corrupt, except in the hardened pull of desktop's
+`SyncDriver` (`crates/memry-core/src/sync/pull.rs:166-169`), which flags it on
+a bad signature or when the corrupt ledger also asked for the pair
+(`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:206-220`).
+One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
 row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:228`).
 
