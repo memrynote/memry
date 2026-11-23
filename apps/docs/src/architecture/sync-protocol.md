@@ -1210,6 +1210,23 @@ across devices:
   successes) is still in memory and still cleared on runtime teardown, because
   the file is on disk and a re-request is cheap; the verdicts deliberately are
   not, since surviving a sync stop/start is the whole point.
+- **Downloads on open** — with attachment auto-download off
+  (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
+  no file, so opening a note or a file asks instead: the note page and the file
+  page call `sync:download-note-files` with the note id
+  (`apps/desktop/src/main/ipc/sync-attachment-handlers.ts`). Main lists what
+  this device lacks from local state only (`owed-note-downloads.ts`): a binary
+  note's own file when it is not on disk, and each referenced attachment with
+  no recorded file on disk. A note that lacks nothing sends no request. Each
+  file goes through the download queue as `interactive`, so it jumps queued
+  background work, and lands with the same steps as a pull's download (record,
+  rename to the body's name, `ATTACHMENT_MATERIALIZED`). The call resolves when
+  every file has landed or failed. An open does not wait out a transient
+  failure's backoff, because the user asked now, but a file the server has
+  answered as gone three times is reported and not requested. With
+  auto-download on, the call does nothing. Opening a binary note whose file has
+  not downloaded keeps its row: `getFileById` drops a row with a missing file
+  only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a
   reference to a blob that is genuinely gone would otherwise live in the note's
   payload forever and be handed to every device that ever pulls it. On the pull

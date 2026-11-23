@@ -38,6 +38,14 @@ On the free plan sync stays local-only, so the status shows **Local only** and t
 toggle for an upgrade card with an **Unlock Sync** button that opens the plan picker in your
 browser.
 
+**Auto-download attachments** is on by default: images, PDFs and other files from your other devices
+download in the background as notes sync. Turn it off to save disk space and bandwidth. Then a file
+downloads only when you open the note that holds it, or the file itself. The note shows
+**Downloading this note's files…** while it waits. If a download fails, the note says why and
+offers **Try again**. A file page shows the error with a retry button.
+Known limits: while the device is offline the message stays until it is back online,
+and opening a journal day does not download its files.
+
 When some notes have changes the server has not stored yet, the group adds **Notes with unsent
 changes**. Expand it to see each note, why it is listed (**Text**, **Details**, **File not merged
 yet**, or **Refused by the server**) and how long its changes have waited. See
