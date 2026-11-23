@@ -22,6 +22,9 @@ native-transport = []
 # iOS xcframework (build-xcframework.sh), off for host builds, which then link
 # no ONNX Runtime and `semantic::load` answers `Unavailable`.
 semantic = ["dep:ort", "dep:tokenizers"]
+# Test fixtures that seed a body without a fetch (`HeldBody::never_purged`).
+# Off in every shipped build: production rows need a captured epoch (#5356).
+test-support = []
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -59,6 +62,7 @@ ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "
 tokenizers = { version = "=0.23.2", default-features = false, features = ["onig"], optional = true }
 
 [dev-dependencies]
+memry-core = { path = ".", features = ["test-support"] }
 dryoc = "1.0.0"
 # `test-util` only: the auth tier's own backoff ladder sleeps on tokio's
 # timer, and a paused clock is what keeps asserting it from costing seven

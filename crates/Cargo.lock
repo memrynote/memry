@@ -1591,6 +1591,7 @@ dependencies = [
  "hex",
  "insta",
  "libsodium-sys-stable",
+ "memry-core",
  "ort",
  "proptest",
  "rusqlite",

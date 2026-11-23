@@ -50,6 +50,7 @@ serde_json = { workspace = true }
 yrs = { workspace = true }
 
 [dev-dependencies]
+memry-core = { path = "../memry-core", features = ["test-support"] }
 # `test-util` for a paused clock: the slow-pack tests run minutes of transfer
 # in virtual time.
 tokio = { workspace = true, features = ["test-util"] }
