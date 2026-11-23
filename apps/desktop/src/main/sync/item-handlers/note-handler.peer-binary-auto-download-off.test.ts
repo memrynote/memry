@@ -139,7 +139,7 @@ import {
 } from '../../database/client'
 import { getStatus } from '../../vault/index'
 import { setSetting } from '../../database/queries/settings'
-import { markWritebackIgnored } from '../crdt-writeback'
+import { recordAppWrite } from '../../vault/app-writes'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { noteHandler } from './note-handler'
@@ -215,8 +215,9 @@ describe("a peer's replacement of a binary note with attachment auto-download of
     upsertNoteMetadata(asClientDb(data.db), fields)
     insertNoteCache(index.db, { ...fields, contentHash: null })
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
-    markWritebackIgnored(abs(relativePath))
+    const written = recordAppWrite(abs(relativePath), bytes)
     fs.writeFileSync(abs(relativePath), bytes)
+    written()
     recordDownloadedFileSize(id, `att-${id}`, bytes.length, sha256(bytes))
   }
 
