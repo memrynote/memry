@@ -42,11 +42,6 @@ test.describe('outside edit right after a write-back (#5605)', () => {
   test.beforeEach(async ({ page }) => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
-    // The iPhone beta launch prompt opens on a fresh profile and covers the window.
-    const betaPrompt = page.getByRole('dialog').filter({ hasText: 'Memry for iPhone' })
-    await betaPrompt.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
-    if (await betaPrompt.isVisible()) await page.keyboard.press('Escape')
-    await expect(betaPrompt).toBeHidden()
     await ensureDayPanelClosed(page)
   })
 
