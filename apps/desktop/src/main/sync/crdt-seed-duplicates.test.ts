@@ -421,6 +421,34 @@ describe('scheduleSeedDuplicateRepair', () => {
     await vi.waitFor(() => expect(liveRoots(doc)).toBe(1))
   })
 
+  it('schedules again after a run the store change stopped', async () => {
+    vi.useFakeTimers()
+    const doc = await seedOverServerBody(BODY)
+    const host = memoryHost(new Map([['note-dup', doc]]))
+    const open = host.open
+    let switched = false
+    host.open = async (noteId, windowId, options) => {
+      if (!switched) {
+        switched = true
+        host.storeId = 'store-b'
+      }
+      return open(noteId, windowId, options)
+    }
+
+    log.info.mockClear()
+    schedule(host, () => true)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+    await vi.waitFor(() =>
+      expect(log.info).toHaveBeenCalledWith('Seed duplicate repair finished', expect.anything())
+    )
+    expect(liveRoots(doc)).toBe(2)
+
+    schedule(host, () => true)
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+    await vi.waitFor(() => expect(host.marked.has('note-dup')).toBe(true))
+    expect(liveRoots(doc)).toBe(1)
+  })
+
   it('repairs ten minutes after the call, once per process', async () => {
     vi.useFakeTimers()
     const doc = await seedOverServerBody(BODY)
