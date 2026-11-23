@@ -298,9 +298,13 @@ fn write_refs(conn: &Connection, attachment_id: &str, refs: &[String]) -> Result
 /// `attachmentReferences` names the row. The second is what an upload from
 /// this device writes (`add_attachment_reference`), and nothing copies it
 /// into `note_refs`, so without it a picture this phone just put into a note
-/// would never bind to its block.
+/// would never bind to its block. An attachment still waiting for its upload
+/// counts too: the note gains its reference only after the upload (#5510).
 pub fn for_note(conn: &Connection, note_id: &str) -> Result<Vec<CachedAttachment>, StorageError> {
-    let referenced = crate::domain::notes::read_attachment_references(conn, note_id)?;
+    let mut referenced = crate::domain::notes::read_attachment_references(conn, note_id)?;
+    referenced.extend(crate::domain::attachment_uploads::ids_for_note(
+        conn, note_id,
+    )?);
     let rows = conn
         .prepare(&format!("SELECT {COLUMNS} FROM attachments"))
         .map_err(failed)?
@@ -483,12 +487,15 @@ pub struct Eviction {
 /// **Never removes a row and never touches a pinned one.** A pinned row that
 /// alone exceeds the budget is left alone and the pass returns under-budget
 /// rather than breaking the promise; a cache cannot both honour a pin and
-/// guarantee a ceiling, and the pin is the explicit instruction.
+/// guarantee a ceiling, and the pin is the explicit instruction. Bytes still
+/// waiting for their upload are the only copy anywhere, so they are never
+/// evicted either (#5510).
 pub fn evict_to_budget(conn: &Connection, budget_bytes: i64) -> Result<Eviction, StorageError> {
     let mut rows = conn
         .prepare(&format!(
             "SELECT {COLUMNS} FROM attachments \
              WHERE local_path IS NOT NULL \
+               AND attachment_id NOT IN (SELECT attachment_id FROM note_attachment_uploads) \
              ORDER BY downloaded_at IS NULL DESC, downloaded_at ASC"
         ))
         .map_err(failed)?

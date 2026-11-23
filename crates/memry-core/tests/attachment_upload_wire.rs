@@ -27,7 +27,7 @@ use memry_core::protocol::attachments::{
     SignerResolver, fetch_chunk_proxied, fetch_manifest, presign_batch,
 };
 use memry_core::protocol::http::{
-    AUTHORIZATION_HEADER, ClientIdentity, HttpClient, TokenProvider, VAULT_ID_HEADER,
+    AUTHORIZATION_HEADER, ClientIdentity, HttpClient, RetryPolicy, TokenProvider, VAULT_ID_HEADER,
 };
 
 const FILE_KEY: [u8; 32] = [7u8; 32];
@@ -66,6 +66,7 @@ async fn initiate_declares_the_chunks_that_are_about_to_be_sent() {
         "picture.png",
         plaintext.len() as u64,
         &chunks,
+        RetryPolicy::polled(),
     )
     .await
     .expect("initiate");
@@ -228,9 +229,17 @@ async fn worker_routes_carry_the_session_and_presigned_urls_do_not() {
     ]));
     let signed_in = client(Arc::clone(&transport)).with_tokens(Arc::new(SignedIn));
 
-    initiate(&signed_in, VAULT, "att-1", "p.png", 4, &chunks)
-        .await
-        .expect("initiate");
+    initiate(
+        &signed_in,
+        VAULT,
+        "att-1",
+        "p.png",
+        4,
+        &chunks,
+        RetryPolicy::polled(),
+    )
+    .await
+    .expect("initiate");
     put_chunk(&signed_in, VAULT, "s1", &chunks[0])
         .await
         .expect("put");
@@ -311,9 +320,17 @@ async fn worker_routes_name_the_vault_and_presigned_urls_do_not() {
         signer_device_id: String::new(),
     };
 
-    initiate(&http, VAULT, "att-1", "p.png", 4, &chunks)
-        .await
-        .expect("initiate");
+    initiate(
+        &http,
+        VAULT,
+        "att-1",
+        "p.png",
+        4,
+        &chunks,
+        RetryPolicy::polled(),
+    )
+    .await
+    .expect("initiate");
     put_chunk(&http, VAULT, "s1", &chunks[0])
         .await
         .expect("put");

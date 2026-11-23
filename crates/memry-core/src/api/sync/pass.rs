@@ -143,6 +143,9 @@ impl VaultSync {
         // A document re-created on a build before #5351 re-pushes its full
         // state once when the server holds its body pending (#5354).
         revive_heal::run(&self.db, &body_pull).await?;
+        // Attachments kept while offline go up before the push, so the note's
+        // new reference leaves with it (#5510).
+        self.upload_queued_attachments().await?;
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());

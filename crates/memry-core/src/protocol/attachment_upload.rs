@@ -193,6 +193,9 @@ pub struct UploadStatus {
 /// The chunk hashes go up front because the client finishes encrypting
 /// **before** initiating, so it knows them; a deployment that presigns answers
 /// with one PUT url per chunk and the bytes go direct to R2.
+///
+/// `retry` is the caller's: a note attach tries once and leaves the rest to
+/// the sync pass, so an offline phone inserts the picture at once (#5510).
 pub async fn initiate(
     client: &HttpClient,
     vault_id: &str,
@@ -200,6 +203,7 @@ pub async fn initiate(
     filename: &str,
     plaintext_len: u64,
     chunks: &[FramedChunk],
+    retry: RetryPolicy,
 ) -> Result<UploadSession, AttachmentError> {
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -238,7 +242,7 @@ pub async fn initiate(
                         .map(|chunk| chunk.reference.encrypted_hash.clone())
                         .collect(),
                 })
-                .retry(RetryPolicy::polled()),
+                .retry(retry),
         )
         .await?;
 

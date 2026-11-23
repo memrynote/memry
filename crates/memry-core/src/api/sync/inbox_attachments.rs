@@ -231,7 +231,13 @@ impl VaultSync {
         };
 
         let uploaded = match self
-            .upload_blob(&target.filename, &target.mime_type, &bytes)
+            .upload_blob(
+                hex_id(),
+                &target.filename,
+                &target.mime_type,
+                &bytes,
+                RetryPolicy::polled(),
+            )
             .await
         {
             Ok(uploaded) => uploaded,

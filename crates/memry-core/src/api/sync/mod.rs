@@ -59,6 +59,7 @@ use crate::api::diagnostics::run_diagnostics;
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::crypto::sodium;
+use crate::domain::attachment_uploads;
 use crate::domain::attachments;
 use crate::domain::notes;
 use crate::domain::reads;
@@ -66,6 +67,7 @@ use crate::protocol;
 use crate::protocol::account::{self, AccountCipher};
 use crate::protocol::attachment_upload;
 use crate::protocol::attachments as protocol_attachments;
+use crate::protocol::http::RetryPolicy;
 use crate::protocol::types::Declaration;
 use crate::seams::reachability::Reachable;
 use crate::storage::Db;
@@ -84,6 +86,7 @@ mod attachment_fetch;
 mod attachments_io;
 mod drain;
 mod inbox_attachments;
+mod note_uploads;
 mod pass;
 mod realtime;
 
@@ -94,6 +97,7 @@ pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
 
 use attachments_io::*;
+use note_uploads::*;
 
 impl From<FirstSyncError> for SyncError {
     fn from(error: FirstSyncError) -> Self {
