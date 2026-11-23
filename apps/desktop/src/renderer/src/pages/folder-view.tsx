@@ -66,6 +66,7 @@ import { TagTableProvider } from '@/features/tag-fields/tag-table'
 import { useTagScopeActions } from '@/components/folder-view/use-tag-scope-actions'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { getTagSegments } from '@/lib/tag-utils'
+import { sortNotes } from '@/lib/sort-notes'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import {
@@ -201,6 +202,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
   // Active view render mode (table / list / grid) — persisted via the view config.
   const viewType = activeView?.type ?? 'table'
+
+  // The tables sort themselves through TanStack; list and gallery get the rows
+  // pre-sorted by the same view order.
+  const sortedNotes = useMemo(() => sortNotes(notes, activeView?.order), [notes, activeView?.order])
 
   // The chart layout, when on. Tab state, not the view config: see
   // FOLDER_VIEW_STATE_KEYS.chart for why `.folder.md` must not hold it.
@@ -1280,7 +1285,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             />
           ) : viewType === 'list' ? (
             <FolderListView
-              notes={notes}
+              notes={sortedNotes}
               searchQuery={debouncedSearchQuery}
               scrollKey={activeScrollKey}
               density="compact"
@@ -1295,7 +1300,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             />
           ) : viewType === 'grid' ? (
             <FolderGalleryView
-              notes={notes}
+              notes={sortedNotes}
               searchQuery={debouncedSearchQuery}
               scrollKey={activeScrollKey}
               tagMetaMap={tagMetaMap}
