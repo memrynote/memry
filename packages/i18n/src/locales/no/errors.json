@@ -66,6 +66,7 @@
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grensen på {limit}",
     "exceedsPlanLimit": "Filen er større enn abonnementet ditt tillater: {size} overskrider {limit}",
     "emptyFile": "Kan ikke laste opp en tom fil",
+    "emptyNotAttached": "Denne filen er tom, så den ble ikke lagt ved. Hvis du limte inn et bilde, kopierer du det på nytt og limer det inn.",
     "textInMediaFile": "Denne filen inneholder tekst i stedet for mediet navnet angir"
   },
   "crdt": {

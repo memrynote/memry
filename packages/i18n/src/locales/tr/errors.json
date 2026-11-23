@@ -66,6 +66,7 @@
     "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
     "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor",
     "emptyFile": "Boş dosya yüklenemez",
+    "emptyNotAttached": "Bu dosya boş olduğu için eklenmedi. Bir görsel yapıştırdıysanız görseli tekrar kopyalayıp yapıştırın.",
     "textInMediaFile": "Bu dosya, adının belirttiği medya yerine metin içeriyor"
   },
   "crdt": {

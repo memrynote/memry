@@ -66,6 +66,7 @@
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
     "emptyFile": "Cannot upload empty file",
+    "emptyNotAttached": "This file is empty, so it was not attached. If you pasted an image, copy it again and paste it.",
     "textInMediaFile": "This file holds text instead of the media its name says"
   },
   "crdt": {

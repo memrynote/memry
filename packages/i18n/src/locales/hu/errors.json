@@ -66,6 +66,7 @@
     "exceedsMaxSize": "A fájl túl nagy: {size} meghaladja a(z) {limit} korlátot",
     "exceedsPlanLimit": "A fájl nagyobb, mint amit a csomagja megenged: {size} meghaladja a(z) {limit} méretet",
     "emptyFile": "Üres fájl nem tölthető fel",
+    "emptyNotAttached": "Ez a fájl üres, ezért nem lett csatolva. Ha képet illesztett be, másolja ki újra, és illessze be.",
     "textInMediaFile": "Ez a fájl szöveget tartalmaz a nevében jelzett média helyett"
   },
   "crdt": {

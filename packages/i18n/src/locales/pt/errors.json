@@ -66,6 +66,7 @@
     "exceedsMaxSize": "Arquivo muito grande: {size} excede o limite de {limit}",
     "exceedsPlanLimit": "O arquivo é maior do que seu plano permite: {size} excede {limit}",
     "emptyFile": "Não é possível enviar um arquivo vazio",
+    "emptyNotAttached": "Este arquivo está vazio, por isso não foi anexado. Se você colou uma imagem, copie-a novamente e cole.",
     "textInMediaFile": "Este arquivo contém texto em vez da mídia indicada pelo nome"
   },
   "crdt": {

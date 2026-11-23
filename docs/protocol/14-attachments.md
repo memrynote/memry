@@ -493,9 +493,12 @@ references, in the next upload re-drive
 - For each attachment that is gone, the device drops the id from the note's
   `attachmentReferences`, so the upload's dedup cannot reuse its still-present
   manifest, and queues its local file in the upload outbox
-  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-99`). The upload
+  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-100`). The upload
   adds the new id and pushes the note, as any upload does
-  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`).
+  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`). An empty
+  file, or one the uploader refused and nobody has written since, is not
+  queued, because it would be refused again
+  (`apps/desktop/src/main/sync/attachment-outbox.ts:136-150`).
 
 Chunk holds are not used for this: a hold ends with the grace period, so a
 peer offline for longer than that would still revive a note whose chunks are

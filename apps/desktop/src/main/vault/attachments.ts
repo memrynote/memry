@@ -16,6 +16,7 @@ import { getNoteCacheById } from '../database/queries/notes/note-crud'
 import { getStatus } from './status'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { trackMainError } from '../telemetry/diagnostics'
 import { findNotesReferencingAttachment } from './attachment-reference-scan'
 import { assertNoteWritable, isNoteLocked, isLockedWriteAllowed } from '../vault-locks/registry'
@@ -484,6 +485,15 @@ export async function saveAttachment(
       return { success: false, error: error.message }
     }
     throw error
+  }
+
+  // A paste can hand over an image with no bytes: on Windows, Chromium reads
+  // the clipboard image as nothing when it cannot open the clipboard or decode
+  // what is on it, and still names it `image.png`. Written, the empty file
+  // embedded as a broken image and could never upload (#5606).
+  if (data.length === 0) {
+    logger.warn('Refused to save an empty attachment', { noteId, extension: ext })
+    return { success: false, error: getMainI18n().t('errors:attachment.emptyNotAttached') }
   }
 
   try {

@@ -66,6 +66,7 @@
     "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
     "exceedsPlanLimit": "Plik jest większy, niż pozwala twój plan: {size} przekracza {limit}",
     "emptyFile": "Nie można przesłać pustego pliku",
+    "emptyNotAttached": "Ten plik jest pusty, więc nie został dołączony. Jeśli wklejono obraz, skopiuj go ponownie i wklej.",
     "textInMediaFile": "Ten plik zawiera tekst zamiast multimediów wskazanych w jego nazwie"
   },
   "crdt": {

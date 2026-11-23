@@ -66,6 +66,7 @@
     "exceedsMaxSize": "Súbor je príliš veľký: {size} prekračuje limit {limit}",
     "exceedsPlanLimit": "Súbor je väčší, než umožňuje váš plán: {size} prekračuje {limit}",
     "emptyFile": "Prázdny súbor sa nedá nahrať",
+    "emptyNotAttached": "Tento súbor je prázdny, preto nebol priložený. Ak ste vložili obrázok, skopírujte ho znova a vložte.",
     "textInMediaFile": "Tento súbor obsahuje text namiesto média, ktoré uvádza jeho názov"
   },
   "crdt": {

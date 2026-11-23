@@ -66,6 +66,7 @@
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
     "emptyFile": "Impossibile caricare un file vuoto",
+    "emptyNotAttached": "Questo file è vuoto, quindi non è stato allegato. Se hai incollato un'immagine, copiala di nuovo e incollala.",
     "textInMediaFile": "Questo file contiene testo invece del contenuto multimediale indicato dal nome"
   },
   "crdt": {
