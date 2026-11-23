@@ -41,9 +41,7 @@ impl PullLoop {
     ) -> Result<PullReport, PullError> {
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
-        let (outcomes, _) = self
-            .apply_all(pending, Vec::new(), true, None, &mut feed)
-            .await?;
+        let (outcomes, _) = self.apply_all(pending, true, None, &mut feed).await?;
         self.tell(feed).await;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
@@ -105,9 +103,7 @@ impl PullLoop {
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
-        let (outcomes, _) = self
-            .apply_all(pending, Vec::new(), true, None, &mut feed)
-            .await?;
+        let (outcomes, _) = self.apply_all(pending, true, None, &mut feed).await?;
         self.tell(feed).await;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
