@@ -29,7 +29,7 @@ import { CRDT_BODY_DEBT_MAX_BACKOFF_MS, convertUnmergedDebtMirror } from './crdt
 import { getAllCrdtNoteIds, getAllSyncableNoteMetadataIds } from '../../database/queries/notes'
 import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/client'
 import { markPullCompleted, markRecordsPulled } from '@memry/sync-client/sync-eligibility'
-import { isKnownNote } from '../note-body-apply'
+import { isBinaryNote, isKnownNote } from '../note-body-apply'
 import { listPackSeeded, packSeededKey } from './pack-seeded-docs'
 
 const log = createLogger('SyncEngine')
@@ -818,7 +818,10 @@ export class FullSyncRunner {
           // apply server state into: seeding from local markdown first would
           // give the doc a fresh client id and a history the packed baseline
           // never saw. Without an open doc the provider drops the update.
+          // A binary note has no body (#5607): its packed one stays on the
+          // item routes, which drop it.
           openDoc: async (noteId) => {
+            if (isBinaryNote(this.ctx.deps.db, noteId)) throw new Error('A binary note has no body')
             await provider.open(noteId, undefined, { skipSeed: true })
           },
           applyRemoteUpdate: (noteId, update, editedAtMs) =>
@@ -900,7 +903,8 @@ export class FullSyncRunner {
    * Packed bodies land before any record exists, so the write-back each of
    * them armed found no row and wrote nothing. After a delivered pull, a note
    * it created gets its body from the doc, and a doc whose id still has no
-   * row is dropped: the pull tombstoned it, or it never had a record.
+   * row is dropped: the pull tombstoned it, or it never had a record. So is
+   * the doc of a binary note, whose file is its blob (#5607).
    *
    * Driven by the durable markers rather than by this run's applies, and each
    * marker is cleared only once its doc is settled, so a run killed anywhere
@@ -921,7 +925,7 @@ export class FullSyncRunner {
     let owed = 0
     const settleOne = async (noteId: string): Promise<void> => {
       try {
-        if (!isKnownNote(db, noteId)) {
+        if (!isKnownNote(db, noteId) || isBinaryNote(db, noteId)) {
           await provider.purge(noteId)
           purged++
         } else if (await provider.materialize(noteId)) {

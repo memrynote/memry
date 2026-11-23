@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Pohjan käyttäminen epäonnistui",
     "appendBlocksFailed": "Lohkon siirtäminen kyseiseen muistiinpanoon epäonnistui",
     "appendIntoCaseTwin": "Muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta. Nimeä toinen niistä uudelleen ja siirrä lohko sitten uudelleen.",
+    "appendIntoBinary": "Lohkon voi siirtää vain muistiinpanoon, ei kuvaan, PDF-tiedostoon tai ääni- tai videotiedostoon.",
     "caseTwinMoveRefused": "Tämä muistiinpano jakaa tiedostonsa sellaisen muistiinpanon kanssa, jonka nimi eroaa vain kirjainkoon osalta, joten sitä ei voi siirtää näin. Nimeä toinen muistiinpano uudelleen tai siirrä se, tai poista kopio, jota et tarvitse.",
     "exportPdfFailed": "PDF-tiedoston vieminen epäonnistui",
     "exportHtmlFailed": "HTML-tiedoston vieminen epäonnistui",

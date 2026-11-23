@@ -1,4 +1,5 @@
 import { getNoteMetadataById } from '@memry/storage-data'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { createLogger } from '../lib/logger'
 import { getNoteCacheById } from '../database/queries/notes'
@@ -86,4 +87,15 @@ export async function landNoteBody(
 export function isKnownNote(db: DrizzleDb, noteId: string): boolean {
   if (getNoteMetadataById(db, noteId)) return true
   return isIndexDatabaseInitialized() && getNoteCacheById(getIndexDatabase(), noteId) != null
+}
+
+/**
+ * A binary note (image, PDF, audio, video) has no CRDT body: its file is the
+ * blob (#5412). No doc is opened for one, and no body of one is pushed or
+ * pulled (#5607). Read from the canonical row, which a create writes before
+ * the projection brings the index row.
+ */
+export function isBinaryNote(db: DrizzleDb, noteId: string): boolean {
+  const row = getNoteMetadataById(db, noteId)
+  return row !== undefined && isBinaryNoteRow(row)
 }
