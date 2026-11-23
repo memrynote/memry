@@ -110,14 +110,7 @@ pub(super) async fn pull_one(
         }
         Err(BodyPullError::Storage { source }) => Err(source),
         Err(BodyPullError::Api { source }) if ends_the_step(&source) => Ok(Step::Ended {
-            // A 429 without `Retry-After` still means "not now"; one second
-            // is the server's own floor (`Math.max(retryAfter, 1)`).
-            rate_limit_s: match source {
-                ApiError::RateLimited { retry_after_s, .. } => {
-                    Some(retry_after_s.unwrap_or(1).max(1))
-                }
-                _ => None,
-            },
+            rate_limit_s: source.rate_limit_wait_s(),
         }),
         Err(BodyPullError::Api { .. }) => {
             db.call(move |conn| body_debt::owe_after_failure(conn, &doc))

@@ -9,6 +9,7 @@
 //! | the deleted note leaves the bodies window     | §7.15, §A.2                 |
 //! | a purge that cannot run takes the delete with it | §7.15                    |
 //! | a delete drops the body's queued updates      | §7.15, #5379                |
+//! | ...and only its own type's                    | §7.15, #5247                |
 //!
 //! Real `rusqlite` on disk and the real `PullLoop`; the transport and the
 //! record cipher are the two seams the core does not own. **Nothing here
@@ -309,6 +310,42 @@ async fn a_typed_delete_drops_the_bodys_queued_updates() {
     assert_eq!(report.deleted, 1);
     assert_eq!(body_rows(&db), 0);
     assert_eq!(queued_body_updates(&db), 0, "the queued update goes too");
+}
+
+/// The drop is scoped to the deleted document's type (`apply.rs`): a
+/// journal's unsent update queued under the same id stays queued.
+#[tokio::test]
+async fn a_typed_delete_keeps_another_types_queued_update_under_the_same_id() {
+    let db = scratch_db("queued-shared-id");
+    seed_note(&db);
+    let registry = registry();
+    edit_the_body(&db, &registry.get_or_open(NOTE).expect("open"));
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
+             VALUES ('journal', ?1, ?2, x'01', ?3)",
+            rusqlite::params![NOTE, outbox::OP_CRDT_UPDATE, NOW],
+        )
+        .map_err(storage_failure)
+    })
+    .expect("queue the journal's update");
+
+    deliver_typed_delete(&db, "note").await.expect("the page");
+
+    let queued: Vec<String> = db
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare("SELECT item_type FROM outbox WHERE item_id = ?1 AND op = ?2")
+                .map_err(storage_failure)?;
+            statement
+                .query_map(rusqlite::params![NOTE, outbox::OP_CRDT_UPDATE], |row| {
+                    row.get(0)
+                })
+                .and_then(Iterator::collect)
+                .map_err(storage_failure)
+        })
+        .expect("the queue");
+    assert_eq!(queued, vec!["journal".to_owned()]);
 }
 
 /// A **typed** delete for a type that is not a document leaves the document's
