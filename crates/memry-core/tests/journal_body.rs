@@ -4,6 +4,7 @@
 //! | ------------------------------------------------- | --------------------------- |
 //! | the first edit creates `j<date>` in one commit     | D2, FR-030                  |
 //! | a tombstoned day revives under its own id          | D5, `date` UNIQUE           |
+//! | a revive drops only the journal's queued updates   | §7.15, #5384                |
 //! | a day desktop created is edited under its id       | D5, §7.1                    |
 //! | a failing edit creates nothing                     | D2                          |
 //! | a no-op edit writes and creates nothing            | no-op writes push nothing   |
@@ -20,7 +21,7 @@ use memry_core::domain::journal;
 use memry_core::domain::journal_ops::body::{self, EditDayOutcome};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 use serde_json::json;
 use yrs::{
     Doc, ReadTxn as _, Transact as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim,
@@ -187,6 +188,44 @@ fn a_tombstoned_day_revives_under_its_own_id() {
         );
         assert!(sync_items::load(conn, "journal", "j2026-04-16")?.is_none());
         assert_eq!(text_of(conn, "legacy-journal-id"), "Back again");
+        Ok(())
+    })
+    .expect("revive");
+}
+
+/// The revive drops the deleted day's queued updates (§7.15). The drop is
+/// scoped to the journal: a note's unsent text under the same id stays queued.
+#[test]
+fn a_revive_drops_the_days_queued_updates_and_keeps_a_notes_under_the_same_id() {
+    let db = open("revive-shared-id");
+    db.call_blocking(|conn| {
+        sync_items::apply_remote(conn, &remote_day("shared-id", DAY), NOW)?;
+        let mut tombstone = remote_day("shared-id", DAY);
+        tombstone.deleted_at = Some(NOW + 1);
+        sync_items::apply_remote(conn, &tombstone, NOW + 1)?;
+        conn.execute(
+            "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
+             VALUES ('journal', ?1, 'crdt-update', x'01', ?2),
+                    ('note', ?1, 'crdt-update', x'02', ?2)",
+            params!["shared-id", NOW + 1],
+        )
+        .expect("queue the updates");
+
+        let outcome = body::edit_day(conn, DAY, &append("Back again", "b1"), DEVICE, NOW + 2)
+            .expect("the edit");
+        assert!(outcome.revived);
+        let mut statement = conn
+            .prepare(
+                "SELECT item_type, payload FROM outbox
+                 WHERE op = 'crdt-update' AND length(payload) = 1 ORDER BY id",
+            )
+            .expect("prepare");
+        let queued: Vec<(String, Vec<u8>)> = statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .expect("query")
+            .collect::<Result<_, _>>()
+            .expect("rows");
+        assert_eq!(queued, vec![("note".to_owned(), vec![2])]);
         Ok(())
     })
     .expect("revive");
