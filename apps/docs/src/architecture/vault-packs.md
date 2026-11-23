@@ -584,11 +584,11 @@ Every packed snapshot was signed by some other device, so the applier refreshes 
 cache lazily — once per bootstrap, and only once an entry is actually up for apply, so a vault with
 no usable packs pays nothing.
 
-The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:224-225`).
+The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:230-231`).
 An account keeps a key for every device it ever linked, and most snapshots come from the few
 devices that compacted last. Trying every key per snapshot cost 126 s of a 270 s pack phase on
-17k notes. The order does not change which key verifies. On the main thread the walk stops at
-the first key that verifies.
+17k notes. The order does not change which key verifies. On the worker and on the main thread
+the walk stops at the first key that verifies; a key that refuses never stops it.
 
 ### `PACKS_APPLIED_THROUGH_CURSOR`
 

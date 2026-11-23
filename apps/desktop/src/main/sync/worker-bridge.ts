@@ -506,7 +506,8 @@ export class SyncWorkerBridge {
   async decryptCrdtBatch(
     items: CrdtPayloadForDecrypt[],
     vaultKey: Uint8Array,
-    signerKeys: Record<string, string>
+    signerKeys: Record<string, string>,
+    options: { stopAtFirstOpen?: boolean } = {}
   ): Promise<{
     results: Array<{ index: number; update: Uint8Array }>
     failures: CrdtDecryptFailure[]
@@ -518,7 +519,8 @@ export class SyncWorkerBridge {
         requestId,
         items,
         vaultKey: new Uint8Array(vaultKey),
-        signerKeys
+        signerKeys,
+        ...options
       })
 
       if (response.type === 'error') {
