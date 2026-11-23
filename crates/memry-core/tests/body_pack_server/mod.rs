@@ -11,7 +11,7 @@
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use base64::Engine as _;
@@ -683,6 +683,8 @@ pub struct Routes {
     calls: Mutex<Vec<String>>,
     pub hung: Notify,
     slept: Mutex<Vec<u64>>,
+    /// Retry waits also advance tokio's clock, for a test on a paused one.
+    pub clocked: AtomicBool,
 }
 
 impl Routes {
@@ -692,6 +694,7 @@ impl Routes {
             calls: Mutex::new(Vec::new()),
             hung: Notify::new(),
             slept: Mutex::new(Vec::new()),
+            clocked: AtomicBool::new(false),
         })
     }
 
@@ -741,11 +744,15 @@ impl Transport for Routes {
     }
 }
 
-/// The client's retry waits take no time and end the rate-limit window.
+/// The client's retry waits end the rate-limit window. They take no time
+/// unless `clocked`, which spends them on tokio's (paused) clock.
 #[async_trait::async_trait]
 impl Sleeper for Routes {
     async fn sleep_ms(&self, ms: u64) {
         self.slept.lock().unwrap().push(ms);
+        if self.clocked.load(Ordering::Relaxed) {
+            tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+        }
         self.server.lock().unwrap().manifest_in_window = 0;
     }
 }
