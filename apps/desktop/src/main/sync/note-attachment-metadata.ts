@@ -4,6 +4,7 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
+import { clearCaseTwinForeignBytes } from '../vault/case-twin-bytes'
 
 const log = createLogger('NoteAttachmentMetadata')
 
@@ -61,4 +62,5 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
 export function recordDownloadedFileSize(noteId: string, fileSize: number): void {
   updateNoteCache(getIndexDatabase(), noteId, { fileSize })
   updateNoteMetadata(getDatabase(), noteId, { fileSize })
+  clearCaseTwinForeignBytes(getDatabase(), noteId)
 }
