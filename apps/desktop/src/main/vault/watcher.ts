@@ -9,7 +9,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync, type Stats } from 'fs'
+import { existsSync, statSync, type Stats } from 'fs'
 import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -60,6 +60,7 @@ import {
   processRename,
   type RenameMatch
 } from './rename-tracker'
+import { RecentFileIdentities } from './recent-file-identities'
 import {
   folderExistsExactCase,
   followJournalFolder,
@@ -125,13 +126,6 @@ const MASS_REMOVAL_MIN_SHARE = 0.25
  * them. The app's own rename and delete are skipped by isAppFolderChange.
  */
 const DIR_UNLINK_SETTLE_MS = 1000
-
-/**
- * How long a change's identity key outlives its debounced change. chokidar's
- * `atomic` holds an unlink 100 ms, so a rename made while the change ran
- * reports its unlink after it; past that, the row's hash has caught up.
- */
-const CHANGE_KEY_GRACE_MS = 500
 
 // ============================================================================
 // Types
@@ -255,15 +249,7 @@ export class VaultWatcher {
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
-  /**
-   * Identity key (device, inode, birthtime, size, mtime) of each file's last change, by
-   * event path, until its unlink takes it or CHANGE_KEY_GRACE_MS after its debounced change ran.
-   * The index row's hash trails an outside edit until that change runs, so an
-   * unlink gives its pending delete this key and a rename (same inode,
-   * birthtime, size and mtime) still matches its add (#5518). Inode and birthtime keep an unrelated
-   * same-size same-mtime file from taking over a deleted note.
-   */
-  private lastChangeKeys = new Map<string, string>()
+  private recentIdentities = new RecentFileIdentities()
 
   /**
    * Start watching the vault for file changes.
@@ -288,14 +274,11 @@ export class VaultWatcher {
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer(async (filePath) => {
-      const key = this.lastChangeKeys.get(filePath)
+      const release = this.recentIdentities.changeRan(filePath)
       try {
         await this.handleFileChange(filePath)
       } finally {
-        // A newer change re-armed the debounce and keeps its own key.
-        setTimeout(() => {
-          if (this.lastChangeKeys.get(filePath) === key) this.lastChangeKeys.delete(filePath)
-        }, CHANGE_KEY_GRACE_MS)
+        release()
       }
     }, 100)
 
@@ -373,11 +356,10 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath, stats?: Stats) => {
-        const key = stats ? buildFileIdentityKey(stats) : null
-        if (key !== null) this.lastChangeKeys.set(filePath, key)
-        else this.lastChangeKeys.delete(filePath)
+        this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
       })
+      .on('raw', (_event, eventPath, details) => this.recordRawWrite(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -422,8 +404,35 @@ export class VaultWatcher {
     }
     this.vaultPath = null
     this.debouncedChange = null
-    this.lastChangeKeys.clear()
+    this.recentIdentities.clear()
     this.isReady = false
+  }
+
+  /**
+   * A raw fs event arrives before chokidar's write-finish wait ends, so the
+   * file's identity is recorded while it is still at its path: an outside
+   * rename inside that wait gets no `change`, and its unlink needs the key
+   * (#5549). The stat runs in the event's own tick, so a rename has only the
+   * event's latency to beat it; one that does keeps the hash-only match.
+   */
+  private recordRawWrite(eventPath: string, details: unknown): void {
+    if (!this.isReady || typeof details !== 'object' || details === null) return
+    const watchedPath = 'watchedPath' in details ? details.watchedPath : null
+    if (typeof watchedPath !== 'string') return
+    // A file's own fs.watch names the file; a folder's names the child.
+    const filePath =
+      !eventPath || path.basename(watchedPath) === eventPath
+        ? watchedPath
+        : path.join(watchedPath, eventPath)
+    if (path.basename(filePath).startsWith('.') || !isSupportedPath(filePath)) return
+    let stats: Stats | undefined
+    try {
+      stats = statSync(filePath, { throwIfNoEntry: false })
+    } catch (error) {
+      logger.debug(`No identity for ${filePath}: ${String(error)}`)
+      return
+    }
+    if (stats?.isFile()) this.recentIdentities.recordWrite(filePath, stats)
   }
 
   /**
@@ -1371,8 +1380,7 @@ export class VaultWatcher {
       deferred = null
     }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
-    const lastChangeKey = this.lastChangeKeys.get(absolutePath) ?? null
-    this.lastChangeKeys.delete(absolutePath)
+    const lastChangeKey = this.recentIdentities.take(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {

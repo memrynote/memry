@@ -137,6 +137,8 @@ describe('rename-tracker', () => {
       dev: 1,
       ino: 42,
       birthtime: new Date('2026-01-10T00:00:00.000Z'),
+      birthtimeMs: Date.parse('2026-01-10T00:00:00.000Z'),
+      ctimeMs: mtime.getTime(),
       size: 20,
       mtime
     }
@@ -149,7 +151,12 @@ describe('rename-tracker', () => {
     ]
     expect(checkForRename('new-hash', 'notes/other.md', lookalikeKeys)).toBeNull()
     // ext4 hands the freed inode to the next file, which has its own birthtime.
-    const reusedInode = buildFileIdentityKey({ ...changed, birthtime: new Date() })
+    const reborn = new Date()
+    const reusedInode = buildFileIdentityKey({
+      ...changed,
+      birthtime: reborn,
+      birthtimeMs: reborn.getTime()
+    })
     expect(checkForRename('new-hash', 'notes/other.md', [reusedInode])).toBeNull()
     expect(
       checkForRename('new-hash', 'notes/c-renamed.md', [buildFileIdentityKey(changed)])
@@ -157,6 +164,8 @@ describe('rename-tracker', () => {
     // Some filesystems report no inode or no birthtime: no identity key.
     expect(buildFileIdentityKey({ ...changed, ino: 0 })).toBeNull()
     expect(buildFileIdentityKey({ ...changed, birthtime: new Date(0) })).toBeNull()
+    // Linux without statx reports the ctime as birthtime.
+    expect(buildFileIdentityKey({ ...changed, birthtimeMs: changed.ctimeMs })).toBeNull()
   })
 
   it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {
