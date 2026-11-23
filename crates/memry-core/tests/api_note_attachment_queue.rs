@@ -537,38 +537,161 @@ async fn a_detach_after_a_crashed_upload_still_releases_its_chunks() {
     assert!(app.transport.calls_to("/upload/initiate").is_empty());
 }
 
-/// Another device's delete, pulled here, purges the note's body: the block
-/// that showed the picture is gone, so the upload is no longer owed and its
-/// bytes go with it.
+/// The 30-day grace a purged note's picture waits for a revive, the same span
+/// desktop holds a deleted note's assets (§14.8.2).
+const GRACE_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("a clock after 1970")
+        .as_millis() as i64
+}
+
+fn count(app: &Launch, sql: &'static str, id: &str) -> i64 {
+    let id = id.to_owned();
+    app.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.query_row(sql, [&id], |row| row.get::<_, i64>(0))
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("count")
+}
+
+fn owed(app: &Launch, id: &str) -> i64 {
+    count(
+        app,
+        "SELECT COUNT(*) FROM note_attachment_uploads WHERE attachment_id = ?1",
+        id,
+    )
+}
+
+fn attachment_rows(app: &Launch, id: &str) -> i64 {
+    count(
+        app,
+        "SELECT COUNT(*) FROM attachments WHERE attachment_id = ?1",
+        id,
+    )
+}
+
+/// Another device's delete, pulled here, purges the note's body. The delete
+/// can still be undone by a revive (§14.8.2), so the picture's bytes and row
+/// stay for the grace and nothing goes up; once the grace ends they go.
 #[tokio::test]
-async fn a_purged_note_drops_its_owed_upload_and_its_bytes() {
+async fn a_purged_notes_picture_waits_out_the_grace_then_goes() {
     let (dir, store) = (scratch_dir(), store());
     let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
     let note = app.note(&store);
     let id = app.attach(&note).await.expect("kept for later");
 
     deliver_a_delete(&app.vault.db_handle(), &note).await;
-    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+    let applied = now_ms();
+    let drained = app
+        .sync
+        .upload_queued_attachments_at(applied + GRACE_MS - 60_000)
+        .await
+        .expect("drain within the grace");
 
+    assert_eq!(drained, Default::default());
+    assert_eq!(app.transport.call_count(), 1, "nothing went up");
+    assert_eq!(
+        std::fs::read(dir.join("images").join(&id)).expect("the bytes stay"),
+        BYTES
+    );
+    assert_eq!(attachment_rows(&app, &id), 1, "the row stays");
+
+    let drained = app
+        .sync
+        .upload_queued_attachments_at(now_ms() + GRACE_MS + 60_000)
+        .await
+        .expect("drain after the grace");
     assert_eq!(drained, Default::default());
     assert_eq!(app.transport.call_count(), 1, "nothing went up");
     assert!(
         !dir.join("images").join(&id).exists(),
-        "the bytes of a purged note's picture go"
+        "the bytes go once the grace ends"
     );
-    let owed = app
-        .vault
-        .db_handle()
-        .call_blocking(|conn| {
-            conn.query_row("SELECT COUNT(*) FROM note_attachment_uploads", [], |row| {
-                row.get::<_, i64>(0)
+    assert_eq!(attachment_rows(&app, &id), 0);
+    assert_eq!(owed(&app, &id), 0);
+}
+
+/// A purged note that another device revives under the same id (§14.8.2)
+/// gets its picture back: the next pass uploads the kept bytes once, under
+/// the attachment's id, and references it.
+#[tokio::test]
+async fn a_revived_note_uploads_its_kept_picture_once() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        deliver_a_delete(&app.vault.db_handle(), &note).await;
+        app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            app.transport.call_count(),
+            1,
+            "a purged note uploads nothing"
+        );
+        deliver_a_revive(&app.vault.db_handle(), &note).await;
+        (note, id)
+    };
+
+    let app = launch(&dir, &store, upload_script());
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained.uploaded, 1);
+    assert_eq!(app.manifest_ids(), vec![id.clone()]);
+    assert_eq!(app.references(&note), vec![id.clone()]);
+    let initiate = body_json(&app.transport.calls_to("/upload/initiate")[0]);
+    assert_eq!(initiate["attachmentId"], json!(id));
+    assert_eq!(initiate["totalSize"], json!(BYTES.len()), "{initiate}");
+    assert_eq!(
+        std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
+        BYTES
+    );
+    assert_eq!(owed(&app, &id), 0);
+
+    let calls = app.transport.call_count();
+    app.sync
+        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
+        .await
+        .expect("again");
+    assert_eq!(app.transport.call_count(), calls, "uploaded once");
+    assert_eq!(attachment_rows(&app, &id), 1, "a referenced picture stays");
+}
+
+/// A recorded chunk set that will not parse is logged and skipped: it never
+/// blocks another attachment's upload.
+#[tokio::test]
+async fn an_unreadable_chunk_set_does_not_block_another_upload() {
+    let (dir, store) = (scratch_dir(), store());
+    let (note, id) = {
+        let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+        let note = app.note(&store);
+        let id = app.attach(&note).await.expect("kept for later");
+        app.vault
+            .db_handle()
+            .call_blocking(|conn| {
+                conn.execute(
+                    "INSERT INTO meta (key, value) VALUES ('attachment_upload.chunks:elsewhere', 'not json')",
+                    [],
+                )
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
             })
-            .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                what: error.to_string(),
-            })
-        })
-        .expect("count");
-    assert_eq!(owed, 0, "no upload owed for a purged note");
+            .expect("plant");
+        (note, id)
+    };
+
+    let app = launch(&dir, &store, upload_script());
+    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+
+    assert_eq!(drained.uploaded, 1);
+    assert_eq!(app.references(&note), vec![id]);
 }
 
 /// A note deleted on this device only, with its body still here, keeps its
@@ -585,7 +708,11 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         .expect("a writer")
         .delete(note.clone())
         .expect("delete");
-    let drained = app.sync.upload_queued_attachments().await.expect("drain");
+    let drained = app
+        .sync
+        .upload_queued_attachments_at(now_ms() + GRACE_MS * 2)
+        .await
+        .expect("drain");
 
     assert_eq!(drained, Default::default());
     assert_eq!(
@@ -593,6 +720,7 @@ async fn a_deleted_note_whose_body_is_kept_keeps_its_owed_upload() {
         1,
         "a deleted note uploads nothing"
     );
+    assert_eq!(owed(&app, &id), 1, "still owed, past any grace");
     assert_eq!(
         std::fs::read(dir.join("images").join(&id)).expect("the bytes"),
         BYTES
@@ -652,6 +780,71 @@ async fn deliver_a_delete(db: &memry_core::storage::Db, note_id: &str) {
     .expect("the page");
     assert!(!report.refused);
     assert_eq!(report.deleted, 1, "{report:?}");
+}
+
+/// One real pull page carrying another device's live copy of the note, which
+/// revives it under the same id (§14.8.2).
+async fn deliver_a_revive(db: &memry_core::storage::Db, note_id: &str) {
+    use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+    use memry_core::protocol::http::{ClientIdentity, HttpClient};
+    use memry_core::protocol::types::Declaration;
+    use memry_core::sync::pull::{PullLoop, RecordCipher};
+
+    struct OpensTheNote;
+    impl RecordCipher for OpensTheNote {
+        fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+            // Its clock has seen everything this device wrote.
+            Ok(
+                json!({"title": "Back", "clock": {DEVICE: 1_000, "device-desktop": 3}})
+                    .to_string()
+                    .into_bytes(),
+            )
+        }
+    }
+
+    let item = json!({
+        "id": note_id,
+        "type": "note",
+        "operation": "update",
+        "clientUpdatedAt": 9,
+        "encryptedKey": "AAAA",
+        "keyNonce": "AAAA",
+        "encryptedData": "AAAA",
+        "dataNonce": "AAAA",
+        "signature": "AAAA",
+        "signerDeviceId": "device-desktop",
+    });
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &json!({"items": [{"id": note_id, "type": "note"}], "deleted": [], "hasMore": false, "nextCursor": "10"})
+                .to_string(),
+        ),
+        response(200, &json!({ "items": [item] }).to_string()),
+    ]);
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    let report = PullLoop::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(OpensTheNote),
+    )
+    .with_clock_device(DEVICE)
+    .pull_page()
+    .await
+    .expect("the page");
+    assert!(!report.refused, "{report:?}");
+    let note = note_id.to_owned();
+    let live = db
+        .call_blocking(move |conn| {
+            memry_core::domain::attachment_uploads::note_is_live(conn, &note)
+        })
+        .expect("read");
+    assert!(live, "revived: {report:?}");
 }
 
 /// A detach while the bytes go up, and the dereference that follows fails:

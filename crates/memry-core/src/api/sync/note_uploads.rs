@@ -22,9 +22,13 @@
 //! references names it, because every try draws a fresh file key and nonces.
 //! It is dereferenced once, then forgotten; a replay lowers nothing twice.
 //!
-//! **A purged note drops its upload.** Once another device's delete purged
-//! the note's body here, no block shows the picture, so the row and the bytes
-//! go. A note deleted only here keeps both, as its delete can be undone.
+//! **A purged note's upload waits out a grace.** Once another device's delete
+//! purged the note's body here, nothing goes up, but a same-id revive can
+//! still bring the block back (§14.8.2), and these bytes are the only copy.
+//! The row and the bytes stay, so the revive's next pass uploads them once.
+//! They go only after [`attachment_uploads::PURGE_GRACE_MS`] from the purge,
+//! desktop's grace for a deleted note's assets. A note deleted only here keeps
+//! both, as its delete can be undone.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -42,8 +46,8 @@ static UPLOAD_GATES: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>
 enum Owed {
     Nothing,
     Upload(PendingUpload),
-    /// Dropped with its note's purge: the bytes' path under `images/`, which
-    /// go next.
+    /// Dropped once its purged note's grace ended: the bytes' path under
+    /// `images/`, which go next.
     Purged(String),
 }
 
@@ -88,6 +92,17 @@ impl VaultSync {
     /// it up. Any other failure ends the walk and keeps the rest for the next
     /// pass.
     pub async fn upload_queued_attachments(&self) -> Result<QueuedUploadSummary, SyncError> {
+        self.upload_queued_attachments_at(now_ms()).await
+    }
+
+    /// [`Self::upload_queued_attachments`] at `now_ms`, the clock a purged
+    /// note's grace is measured against. Not on the FFI surface; tests drive
+    /// the grace with it.
+    #[doc(hidden)]
+    pub async fn upload_queued_attachments_at(
+        &self,
+        now_ms: i64,
+    ) -> Result<QueuedUploadSummary, SyncError> {
         {
             let _gate = upload_gate(&self.vault_id).lock_owned().await;
             // Best effort: an upload releases its own set before it tries
@@ -103,7 +118,7 @@ impl VaultSync {
         let mut summary = QueuedUploadSummary::default();
         for attachment_id in ids {
             match self
-                .upload_queued(&attachment_id, RetryPolicy::polled())
+                .upload_queued(&attachment_id, RetryPolicy::polled(), now_ms)
                 .await
             {
                 Ok(true) => summary.uploaded += 1,
@@ -170,11 +185,13 @@ impl VaultSync {
     ///
     /// - Returns: `false` when nothing was owed (another caller uploaded it,
     ///   or it was detached, before or during the upload) or the note is
-    ///   deleted here, which keeps it owed.
+    ///   deleted here, which keeps it owed. A purged note's upload is
+    ///   discarded once its grace ended at `at_ms`.
     pub(super) async fn upload_queued(
         &self,
         attachment_id: &str,
         initiate: RetryPolicy,
+        at_ms: i64,
     ) -> Result<bool, SyncError> {
         let _gate = upload_gate(&self.vault_id).lock_owned().await;
         let id = attachment_id.to_owned();
@@ -187,6 +204,10 @@ impl VaultSync {
                     return Ok(Owed::Nothing);
                 };
                 if attachment_uploads::note_is_purged(conn, &upload.note_id)? {
+                    // A revive within the grace uploads it after all.
+                    if !attachment_uploads::purge_grace_ended(conn, &id, at_ms)? {
+                        return Ok(Owed::Nothing);
+                    }
                     attachment_uploads::discard(conn, &id)?;
                     return Ok(Owed::Purged(upload.local_path));
                 }
@@ -274,14 +295,12 @@ impl VaultSync {
     /// answered: `only`'s, or every one. Runs under the upload gate, where a
     /// recorded set belongs to no upload in flight.
     async fn release_recorded(&self, only: Option<&str>) -> Result<(), SyncError> {
+        let only = only.map(str::to_owned);
         let sets = self
             .db
-            .call(|conn| attachment_uploads::recorded_chunks(conn))
+            .call(move |conn| attachment_uploads::recorded_chunks(conn, only.as_deref()))
             .await?;
         for (id, hashes) in sets {
-            if only.is_some_and(|only| only != id) {
-                continue;
-            }
             attachment_upload::dereference(&self.session.http(), &self.vault_id, &hashes)
                 .await
                 .map_err(attachment_error)?;

@@ -42,7 +42,7 @@ impl VaultSync {
             .queue_note_attachment(note_id, filename, mime_type, &bytes)
             .await?;
         match self
-            .upload_queued(&attachment_id, RetryPolicy::never())
+            .upload_queued(&attachment_id, RetryPolicy::never(), now_ms())
             .await
         {
             Err(error) if is_refused(&error) => {
