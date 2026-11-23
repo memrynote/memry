@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nem sikerült alkalmazni a sablont",
     "appendBlocksFailed": "Nem sikerült áthelyezni a blokkot abba a jegyzetbe",
     "appendIntoCaseTwin": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek neve csak a kis- és nagybetűkben tér el. Nevezd át az egyiket, majd helyezd át újra a blokkot.",
+    "appendIntoBinary": "Blokkot csak jegyzetbe lehet áthelyezni, képbe, PDF-be, hang- vagy videofájlba nem.",
     "caseTwinMoveRefused": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek a neve csak kis- és nagybetűkben tér el, ezért így nem helyezhető át. Nevezd át vagy helyezd át a másik jegyzetet, vagy töröld azt a példányt, amelyre nincs szükséged.",
     "exportPdfFailed": "Nem sikerült exportálni PDF-be",
     "exportHtmlFailed": "Nem sikerült exportálni HTML-be",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "A fájl túl nagy: {size} meghaladja a(z) {limit} korlátot",
     "exceedsPlanLimit": "A fájl nagyobb, mint amit a csomagja megenged: {size} meghaladja a(z) {limit} méretet",
     "emptyFile": "Üres fájl nem tölthető fel",
+    "emptyNotAttached": "Ez a fájl üres, ezért nem lett csatolva. Ha képet illesztett be, másolja ki újra, és illessze be.",
     "textInMediaFile": "Ez a fájl szöveget tartalmaz a nevében jelzett média helyett"
   },
   "crdt": {

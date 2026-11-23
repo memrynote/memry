@@ -114,6 +114,108 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
+/// The note's title, empty when it has none, so a refusal can name it.
+pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1",
+        params![note_id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|title| title.flatten().unwrap_or_default())
+    .map_err(failed)
+}
+
+/// Compat: the `meta` key under which #5573 and #5604 builds dated the purge
+/// of an owed upload's note. A #5573 build discards the upload 30 days after
+/// that date, so this build writes none: a downgrade keeps the only copy of
+/// the bytes (#5578). Nothing reads it; a key an older build left goes with
+/// its upload.
+const PURGED_KEY: &str = "attachment_upload.purged_at:";
+
+fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{PURGED_KEY}{attachment_id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Where an upload's chunk addresses wait in `meta` until a reference names
+/// them (#5533). No migration: `meta` is the baseline key-value table, and an
+/// older build ignores the key.
+const CHUNKS_KEY: &str = "attachment_upload.chunks:";
+
+/// Records the chunks an upload is about to put. The server counts each one
+/// from its put (§14.8), and a crash before the reference would otherwise
+/// leave them named by nothing on this device.
+pub fn record_chunks(
+    conn: &Connection,
+    attachment_id: &str,
+    hashes: &[String],
+) -> Result<(), StorageError> {
+    let value = serde_json::to_string(hashes).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![format!("{CHUNKS_KEY}{attachment_id}"), value],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Every recorded chunk set, by attachment id, or `only`'s. A set that will
+/// not parse is logged and skipped, so it never blocks another upload; its
+/// chunks cannot be named, so their quota stays held.
+pub fn recorded_chunks(
+    conn: &Connection,
+    only: Option<&str>,
+) -> Result<Vec<(String, Vec<String>)>, StorageError> {
+    let rows = conn
+        .prepare(
+            "SELECT substr(key, ?1), value FROM meta \
+             WHERE substr(key, 1, ?2) = ?3 AND (?4 IS NULL OR key = ?3 || ?4)",
+        )
+        .map_err(failed)?
+        .query_map(
+            params![
+                CHUNKS_KEY.len() as i64 + 1,
+                CHUNKS_KEY.len() as i64,
+                CHUNKS_KEY,
+                only
+            ],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(id, value)| match serde_json::from_str(&value) {
+            Ok(hashes) => Some((id, hashes)),
+            Err(error) => {
+                eprintln!(
+                    "memry-core: attachment uploads: the recorded chunks of {id} do not parse, skipped: {error}"
+                );
+                None
+            }
+        })
+        .collect())
+}
+
+/// The recorded chunks are referenced or released.
+pub fn forget_chunks(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{CHUNKS_KEY}{attachment_id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// The upload is no longer owed: it landed, the server refused it for good,
 /// or the user detached the picture. The `attachments` row and the bytes stay.
 pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
@@ -122,11 +224,65 @@ pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError>
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(conn, attachment_id)?;
+    forget_purge(conn, attachment_id)
+}
+
+/// The `meta` key holding the refusal status the shell was last told about
+/// for one owed upload (#5532). A `meta` row rather than a table: the core's
+/// numbered migrations stay frozen until the Tauri branch merges. An older
+/// build never reads the key; a row it leaves behind once its upload lands
+/// names a random id that no new attach reuses, so it is never read again.
+fn refusal_key(attachment_id: &str) -> String {
+    format!("attachment_upload.refusal_seen:{attachment_id}")
+}
+
+/// The refusal status the shell was last told about for this upload.
+pub fn told_refusal(conn: &Connection, attachment_id: &str) -> Result<Option<u16>, StorageError> {
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![refusal_key(attachment_id)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(stored.and_then(|status| status.parse().ok()))
+}
+
+/// Records that the shell was told the upload was refused with `status`.
+/// An upload no longer owed records nothing.
+pub fn remember_refusal(
+    conn: &Connection,
+    attachment_id: &str,
+    status: u16,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO meta (key, value) \
+         SELECT ?1, ?2 WHERE EXISTS \
+           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?3) \
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        params![
+            refusal_key(attachment_id),
+            status.to_string(),
+            attachment_id
+        ],
+    )
+    .map_err(failed)?;
     Ok(())
 }
 
-/// Takes back an attach the server refused at once: no block was inserted, so
-/// nothing may keep the row.
+fn forget_refusal(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![refusal_key(attachment_id)],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Takes back an attach the server refused at once, where no block was
+/// inserted: nothing may keep the row.
 pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     let tx = crate::storage::nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
@@ -139,5 +295,7 @@ pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageErro
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(&tx, attachment_id)?;
+    forget_purge(&tx, attachment_id)?;
     tx.commit().map_err(failed)
 }

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nie udało się zastosować szablonu",
     "appendBlocksFailed": "Nie udało się przenieść bloku do tej notatki",
     "appendIntoCaseTwin": "Ta notatka współdzieli plik z notatką, której nazwa różni się tylko wielkością liter. Zmień nazwę jednej z nich, a następnie ponownie przenieś blok.",
+    "appendIntoBinary": "Blok można przenieść tylko do notatki, a nie do obrazu, pliku PDF ani pliku audio lub wideo.",
     "caseTwinMoveRefused": "Ta notatka współdzieli plik z notatką, której nazwa różni się tylko wielkością liter, więc nie można jej przenieść w ten sposób. Zmień nazwę drugiej notatki lub ją przenieś albo usuń kopię, której nie potrzebujesz.",
     "exportPdfFailed": "Nie udało się wyeksportować pliku PDF",
     "exportHtmlFailed": "Nie udało się wyeksportować pliku HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
     "exceedsPlanLimit": "Plik jest większy, niż pozwala twój plan: {size} przekracza {limit}",
     "emptyFile": "Nie można przesłać pustego pliku",
+    "emptyNotAttached": "Ten plik jest pusty, więc nie został dołączony. Jeśli wklejono obraz, skopiuj go ponownie i wklej.",
     "textInMediaFile": "Ten plik zawiera tekst zamiast multimediów wskazanych w jego nazwie"
   },
   "crdt": {

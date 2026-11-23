@@ -13,6 +13,24 @@
 //! caller then finds no row and uploads nothing. A crash between the manifest
 //! PUT and that transaction uploads again under the same id, which replaces
 //! the manifest and never mints a second id.
+//!
+//! **Chunks nothing references go back (#5533).** The server counts a chunk
+//! from its put (§14.8), so each try records its chunk addresses before the
+//! first put, and the transaction that references the upload forgets them.
+//! A set still recorded under the gate belongs to no running upload: a crash,
+//! a failure, a detach or a refusal left it, and no manifest that a note
+//! references names it, because every try draws a fresh file key and nonces.
+//! It is dereferenced once, then forgotten; a replay lowers nothing twice.
+//!
+//! **A purged note's upload waits for a revive, however long (#5578).** Once
+//! another device's delete purged the note's body here, nothing goes up, but
+//! a same-id revive can still bring the block back (§14.8.2), and these bytes
+//! are the only copy. Nothing tells this device the note is gone for good:
+//! the server keeps its row and accepts a create over its marker at any age
+//! (§5.12.3). So the row and the bytes stay, and the revive's next pass
+//! uploads them once. They go only with an upload or a detach, so the disk
+//! they hold is the owed rows' bytes. A note deleted only here keeps both,
+//! as its delete can be undone.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -36,7 +54,9 @@ fn upload_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
 /// Whether the server refused the upload in a way no retry changes: a 4xx
 /// other than an expired session (401), a timeout (408) or a rate limit (429),
 /// or bytes that would not frame. Everything else, the network above all,
-/// keeps the upload owed.
+/// keeps the upload owed. The client gate's 403 `PLATFORM_WRITES_DISABLED` and
+/// 426 `CLIENT_UPGRADE_REQUIRED` arrive as `WritesDisabled` and
+/// `UpgradeRequired`, not as a `Status`, so they keep it owed too.
 pub(super) fn is_refused(error: &SyncError) -> bool {
     match error {
         SyncError::Api {
@@ -47,13 +67,76 @@ pub(super) fn is_refused(error: &SyncError) -> bool {
     }
 }
 
+/// Why the server refused an owed upload (#5532).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AttachmentRefusal {
+    /// The `STORAGE_QUOTA_EXCEEDED` code: the plan's storage is full.
+    StorageFull,
+    /// `STORAGE_FILE_TOO_LARGE` or `VALIDATION_BODY_TOO_LARGE`: the file is
+    /// past the plan's or the server's per-file limit, which freeing space
+    /// never changes.
+    TooLarge,
+    /// 403: the account may not upload it.
+    NotAllowed,
+    /// Any other refusal: a 4xx such as a 400 or a 413 with another code, or
+    /// bytes that would not frame.
+    Rejected,
+}
+
+/// What a walk over the owed uploads has to tell the user (#5532).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum QueuedAttachmentNews {
+    /// The server refused the upload, and the user was not told of this
+    /// refusal yet. It stays owed. `status` is the HTTP status, 0 for bytes
+    /// that would not frame. `note_title` is empty for an untitled note.
+    Refused {
+        attachment_id: String,
+        note_id: String,
+        note_title: String,
+        refusal: AttachmentRefusal,
+        status: u16,
+    },
+    /// An upload the user was told was refused has landed.
+    Uploaded {
+        attachment_id: String,
+        note_id: String,
+    },
+}
+
+/// The refusal in `error` and its status, when no retry changes it.
+fn refusal(error: &SyncError) -> Option<(AttachmentRefusal, u16)> {
+    if !is_refused(error) {
+        return None;
+    }
+    let SyncError::Api {
+        source: ApiError::Status { status, code, .. },
+    } = error
+    else {
+        return Some((AttachmentRefusal::Rejected, 0));
+    };
+    // The codes `apps/sync-server` answers an upload with: the quota
+    // (`services/quota.ts`), and the per-file limits of the plan
+    // (`services/entitlements.ts`) and of the server (`routes/blob.ts`).
+    let refusal = match (status, code.as_deref()) {
+        (_, Some("STORAGE_QUOTA_EXCEEDED")) => AttachmentRefusal::StorageFull,
+        (_, Some("STORAGE_FILE_TOO_LARGE" | "VALIDATION_BODY_TOO_LARGE")) => {
+            AttachmentRefusal::TooLarge
+        }
+        (403, _) => AttachmentRefusal::NotAllowed,
+        _ => AttachmentRefusal::Rejected,
+    };
+    Some((refusal, *status))
+}
+
 /// What one walk over the owed uploads did.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct QueuedUploadSummary {
     pub uploaded: u32,
     /// Refused by the server this time and still owed. The sync pass counts
-    /// them as rejected, which is the shell's visible outcome.
+    /// them as rejected.
     pub refused: u32,
+    /// Refusals the user was not told of yet, and landed uploads they were.
+    pub news: Vec<QueuedAttachmentNews>,
 }
 
 impl VaultSync {
@@ -65,26 +148,129 @@ impl VaultSync {
     /// the block unbind and the cache evict them. The next pass tries again,
     /// as desktop's attachment outbox does, so space freed later still gets
     /// it up. Any other failure ends the walk and keeps the rest for the next
-    /// pass.
+    /// pass. A refusal is news until the pass that returns it records it as
+    /// told ([`Self::remember_told`]), and its later upload is news too, so
+    /// the shell can take back what it showed.
     pub async fn upload_queued_attachments(&self) -> Result<QueuedUploadSummary, SyncError> {
+        {
+            let _gate = upload_gate(&self.vault_id).lock_owned().await;
+            // Best effort: an upload releases its own set before it tries
+            // again, so a set kept here only waits for the next pass.
+            if let Err(error) = self.release_recorded(None).await {
+                eprintln!("memry-core: attachment uploads: chunk release deferred: {error}");
+            }
+        }
         let ids = self
             .db
             .call(|conn| attachment_uploads::pending_ids(conn))
             .await?;
         let mut summary = QueuedUploadSummary::default();
         for attachment_id in ids {
+            let id = attachment_id.clone();
+            let told = self
+                .db
+                .call(move |conn| {
+                    let Some(upload) = attachment_uploads::get(conn, &id)? else {
+                        return Ok(None);
+                    };
+                    let told = attachment_uploads::told_refusal(conn, &id)?;
+                    Ok(told.map(|_| upload.note_id))
+                })
+                .await?;
             match self
                 .upload_queued(&attachment_id, RetryPolicy::polled())
                 .await
             {
-                Ok(true) => summary.uploaded += 1,
+                Ok(true) => {
+                    summary.uploaded += 1;
+                    if let Some(note_id) = told {
+                        summary.news.push(QueuedAttachmentNews::Uploaded {
+                            attachment_id,
+                            note_id,
+                        });
+                    }
+                }
                 Ok(false) => {}
-                Err(error) if is_refused(&error) => summary.refused += 1,
-                Err(SyncError::Locked) => return Err(SyncError::Locked),
-                Err(_) => break,
+                Err(error) => match refusal(&error) {
+                    Some((refusal, status)) => {
+                        summary.refused += 1;
+                        if let Some(news) = self.refused(attachment_id, refusal, status).await? {
+                            summary.news.push(news);
+                        }
+                    }
+                    None if matches!(error, SyncError::Locked) => return Err(SyncError::Locked),
+                    None => {
+                        // Owed rows and recorded chunk sets stay, so the next
+                        // pass tries both again.
+                        eprintln!(
+                            "memry-core: attachment uploads: {attachment_id} waits for the next pass: {error}"
+                        );
+                        break;
+                    }
+                },
             }
         }
         Ok(summary)
+    }
+
+    /// The refusal as news, unless the user was told of it with this status.
+    async fn refused(
+        &self,
+        attachment_id: String,
+        refusal: AttachmentRefusal,
+        status: u16,
+    ) -> Result<Option<QueuedAttachmentNews>, SyncError> {
+        Ok(self
+            .db
+            .call(move |conn| {
+                let Some(upload) = attachment_uploads::get(conn, &attachment_id)? else {
+                    return Ok(None);
+                };
+                if attachment_uploads::told_refusal(conn, &attachment_id)? == Some(status) {
+                    return Ok(None);
+                }
+                let note_title = attachment_uploads::note_title(conn, &upload.note_id)?;
+                Ok(Some(QueuedAttachmentNews::Refused {
+                    attachment_id,
+                    note_id: upload.note_id,
+                    note_title,
+                    refusal,
+                    status,
+                }))
+            })
+            .await?)
+    }
+
+    /// Records the refusals in `news` as told. The sync pass calls it last,
+    /// once nothing can fail before the shell gets its summary: a pass that
+    /// fails after the walk leaves them to be told by the next one.
+    pub(super) async fn remember_told(
+        &self,
+        news: &[QueuedAttachmentNews],
+    ) -> Result<(), SyncError> {
+        let told: Vec<(String, u16)> = news
+            .iter()
+            .filter_map(|item| match item {
+                QueuedAttachmentNews::Refused {
+                    attachment_id,
+                    status,
+                    ..
+                } => Some((attachment_id.clone(), *status)),
+                QueuedAttachmentNews::Uploaded { .. } => None,
+            })
+            .collect();
+        if told.is_empty() {
+            return Ok(());
+        }
+        self.db
+            .call(move |conn| {
+                for (attachment_id, status) in &told {
+                    attachment_uploads::remember_refusal(conn, attachment_id, *status)?;
+                }
+                Ok(())
+            })
+            .await?;
+        Ok(())
     }
 
     /// Keeps the bytes under `images/` and records them as owed an upload,
@@ -134,7 +320,7 @@ impl VaultSync {
     ///
     /// - Returns: `false` when nothing was owed (another caller uploaded it,
     ///   or it was detached, before or during the upload) or the note is
-    ///   deleted here, which keeps it owed.
+    ///   deleted or purged here, which keeps it owed.
     pub(super) async fn upload_queued(
         &self,
         attachment_id: &str,
@@ -142,7 +328,9 @@ impl VaultSync {
     ) -> Result<bool, SyncError> {
         let _gate = upload_gate(&self.vault_id).lock_owned().await;
         let id = attachment_id.to_owned();
-        let pending = self
+        // An earlier try's chunks: this try puts new ones under a new key.
+        self.release_recorded(Some(attachment_id)).await?;
+        let owed = self
             .db
             .call(move |conn| {
                 let Some(upload) = attachment_uploads::get(conn, &id)? else {
@@ -152,7 +340,7 @@ impl VaultSync {
                 Ok(live.then_some(upload))
             })
             .await?;
-        let Some(upload) = pending else {
+        let Some(upload) = owed else {
             return Ok(false);
         };
         let device_id = self.session.device_id()?;
@@ -168,11 +356,17 @@ impl VaultSync {
                 &upload.mime_type,
                 &bytes,
                 initiate,
+                async |hashes| {
+                    let id = upload.attachment_id.clone();
+                    Ok(self
+                        .db
+                        .call(move |conn| attachment_uploads::record_chunks(conn, &id, &hashes))
+                        .await?)
+                },
             )
             .await?;
 
         let now = now_ms();
-        let hashes = uploaded.encrypted_hashes.clone();
         let referenced = self
             .db
             .call(move |conn| {
@@ -191,16 +385,35 @@ impl VaultSync {
                     now,
                 )?;
                 attachment_uploads::clear(&tx, &upload.attachment_id)?;
+                attachment_uploads::forget_chunks(&tx, &upload.attachment_id)?;
                 tx.commit().map_err(notes::failed)?;
                 Ok(true)
             })
             .await?;
         if !referenced {
             // Nothing will name these chunks, so their quota goes back (§14.8).
+            self.release_recorded(Some(attachment_id)).await?;
+        }
+        Ok(referenced)
+    }
+
+    /// Dereferences recorded chunk sets and forgets each once the server
+    /// answered: `only`'s, or every one. Runs under the upload gate, where a
+    /// recorded set belongs to no upload in flight.
+    async fn release_recorded(&self, only: Option<&str>) -> Result<(), SyncError> {
+        let only = only.map(str::to_owned);
+        let sets = self
+            .db
+            .call(move |conn| attachment_uploads::recorded_chunks(conn, only.as_deref()))
+            .await?;
+        for (id, hashes) in sets {
             attachment_upload::dereference(&self.session.http(), &self.vault_id, &hashes)
                 .await
                 .map_err(attachment_error)?;
+            self.db
+                .call(move |conn| attachment_uploads::forget_chunks(conn, &id))
+                .await?;
         }
-        Ok(referenced)
+        Ok(())
     }
 }

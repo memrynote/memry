@@ -26,8 +26,6 @@ vi.mock('../vault/status', async (importOriginal) => {
   return { ...actual, getStatus: () => ({ ...actual.getStatus(), path: vaultRoot }) }
 })
 
-vi.mock('./crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
-
 vi.mock('../lib/logger', () => ({
   createLogger: () => ({ ...logged, error: vi.fn(), debug: vi.fn() })
 }))

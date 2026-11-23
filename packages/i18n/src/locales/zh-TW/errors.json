@@ -30,6 +30,7 @@
     "applyTemplateFailed": "無法套用範本",
     "appendBlocksFailed": "無法將區塊移至該筆記",
     "appendIntoCaseTwin": "該筆記與另一則名稱僅大小寫不同的筆記共用同一個檔案。請重新命名其中一則，然後再次移動區塊。",
+    "appendIntoBinary": "只能將區塊移至筆記，無法移至圖片、PDF、音訊或影片檔案。",
     "caseTwinMoveRefused": "此筆記與另一則僅名稱大小寫不同的筆記共用一個檔案，因此無法以這種方式移動。請重新命名或移動另一則筆記，或刪除不需要的副本。",
     "exportPdfFailed": "無法匯出 PDF",
     "exportHtmlFailed": "無法匯出 HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "檔案過大：{size} 超過 {limit} 的上限",
     "exceedsPlanLimit": "檔案超過你的方案允許的大小：{size} 超過 {limit}",
     "emptyFile": "無法上傳空白檔案",
+    "emptyNotAttached": "此檔案是空的，因此未附加。如果你貼上的是圖片，請重新複製後再貼上。",
     "textInMediaFile": "此檔案包含文字，而非其名稱所示的媒體"
   },
   "crdt": {

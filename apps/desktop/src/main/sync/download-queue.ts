@@ -97,6 +97,8 @@ export interface DownloadRequest {
   attachmentId: string
   targetPath: string
   targetIsDir?: boolean
+  /** The binary note whose own file `targetPath` is: a landing it no longer names is dropped (#5580). */
+  fileOwnerId?: string
   onProgress?: ProgressCallback
   /**
    * 'interactive' (a user or renderer is waiting) jumps the queue; 'eager'
@@ -119,6 +121,7 @@ export type DownloadFn = (
     pace?: () => Promise<void>
     isOnline?: () => boolean
     upcoming?: () => string[]
+    fileOwnerId?: string
   }
 ) => Promise<DownloadResult>
 
@@ -364,6 +367,7 @@ export class DownloadQueue {
     try {
       const result = await this.downloadFn(request.attachmentId, request.targetPath, {
         ...(request.targetIsDir ? { targetIsDir: true } : {}),
+        ...(request.fileOwnerId ? { fileOwnerId: request.fileOwnerId } : {}),
         ...(request.onProgress ? { onProgress: request.onProgress } : {}),
         pace: () => this.pacer.acquire(),
         upcoming: () => this.upcomingAttachmentIds(),

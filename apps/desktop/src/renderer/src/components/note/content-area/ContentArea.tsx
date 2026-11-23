@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { removeFailedUploadBlock } from './failed-upload-block'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -606,6 +607,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // BlockNote's upload tab only shows a generic "upload failed" line, so
         // the real reason (too large, type not allowed) never reached the user.
         toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        removeFailedUploadBlock(editorRef.current, blockId)
         throw error
       }
     },

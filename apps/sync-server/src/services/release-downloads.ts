@@ -75,10 +75,10 @@ interface AssetSnapshot {
   downloadCount: number
 }
 
-// `ort-static-*` prereleases hold the static ONNX Runtime archives that CI downloads on
-// every memry-ml build. They are build inputs, not app releases, and their names contain
+// `ort-static-*` and `ort-pod-*` prereleases hold the ONNX Runtime archives that CI downloads
+// on every memry-ml and iOS build. They are build inputs, not app releases, and their names contain
 // `darwin`/`win`/`linux`, so counting them would report CI runs as installer downloads (#4447).
-const CI_ARTIFACT_RELEASE = /^ort-static-/
+const CI_ARTIFACT_RELEASE = /^ort-(?:static|pod)-/
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null

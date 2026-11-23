@@ -576,8 +576,7 @@ describe('deleted note attachment release against the real sync-server', () => {
             getSyncServerUrl: () => baseUrl,
             getVaultId: () => 'default',
             fetchFn: (input, init) => fetch(input, init)
-          }),
-        markWritebackIgnored: () => {}
+          })
       })
 
     now += 29 * 24 * 60 * 60 * 1000
@@ -778,7 +777,13 @@ describe('a fresh device downloading many attachments through the download queue
     const landed = new Map<string, boolean>()
 
     await downloadAll(
-      { ...deps, beforeFileLands: (filePath) => landed.set(filePath, existsSync(filePath)) },
+      {
+        ...deps,
+        beforeFileLands: (filePath) => {
+          landed.set(filePath, existsSync(filePath))
+          return filePath
+        }
+      },
       originals
     )
 

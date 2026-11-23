@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import fs from 'fs'
+import fs, { statSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { eq } from 'drizzle-orm'
@@ -25,6 +25,7 @@ import {
 import { insertNoteCache } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import type * as Chokidar from 'chokidar'
+import type * as Fs from 'fs'
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
@@ -82,16 +83,27 @@ vi.mock('../inbox/suggestions', () => ({ updateNoteEmbedding: vi.fn() }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))
 // Tells the test when the app's watcher hears a change: a listener on its own
 // chokidar watcher, added before the app's, so the app's runs in the same emit.
-const changeHeard = vi.hoisted(() => ({ path: '', resolve: () => {} }))
+const changeHeard = vi.hoisted(() => ({
+  path: '',
+  resolve: () => {},
+  watcher: null as Chokidar.FSWatcher | null
+}))
 vi.mock('chokidar', async (importOriginal) => {
   const actual = await importOriginal<typeof Chokidar>()
   return {
     ...actual,
-    watch: (...args: Parameters<typeof actual.watch>) =>
-      actual.watch(...args).on('change', (filePath: string) => {
+    watch: (...args: Parameters<typeof actual.watch>) => {
+      changeHeard.watcher = actual.watch(...args).on('change', (filePath: string) => {
         if (filePath === changeHeard.path) changeHeard.resolve()
       })
+      return changeHeard.watcher
+    }
   }
+})
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof Fs>()
+  const spied = vi.fn(actual.statSync)
+  return { ...actual, statSync: spied, default: { ...actual, statSync: spied } }
 })
 vi.mock('../database/client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -259,6 +271,77 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     then()
   }
 
+  /**
+   * Writes `body` to the file outside the app and runs `then` 20 ms later,
+   * inside chokidar's write-finish wait, so the app never hears the edit as a
+   * change (#5549).
+   */
+  async function editThenBeforeChange(
+    relativePath: string,
+    body: string,
+    then: () => void
+  ): Promise<void> {
+    const absolutePath = path.join(vault.path, relativePath)
+    let heard = false
+    changeHeard.path = absolutePath
+    changeHeard.resolve = () => {
+      heard = true
+    }
+    fs.writeFileSync(absolutePath, body)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    then()
+    changeHeard.path = ''
+    expect(heard).toBe(false)
+  }
+
+  it('a rename inside the write-finish wait after an outside edit keeps the note id', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+      fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
+    )
+    await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+    await settleOn(() => expect(editFedTo('n1')).toBe(true))
+    expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/pear.md' }])
+    expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+  }, 20_000)
+
+  it.runIf(fileSystemIgnoresCase())(
+    'a case-only rename inside the write-finish wait after an outside edit keeps the note id',
+    async () => {
+      seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+      await watch()
+      await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+        fs.renameSync(
+          path.join(vault.path, 'Docs/apple.md'),
+          path.join(vault.path, 'Docs/Apple.md')
+        )
+      )
+      await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))
+
+      await settleOn(() => expect(editFedTo('n1')).toBe(true))
+      expect(metadataRows()).toEqual([{ id: 'n1', path: 'Docs/Apple.md' }])
+      expect(enqueueLocalSyncDelete).not.toHaveBeenCalled()
+    },
+    20_000
+  )
+
+  it('raw events on one file in one event-loop turn stat it once', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    const absolutePath = path.join(vault.path, 'Docs/apple.md')
+    vi.mocked(statSync).mockClear()
+    // One write reports about three raw events on its file.
+    for (let i = 0; i < 5; i++) {
+      changeHeard.watcher?.emit('raw', 'change', 'apple.md', {
+        watchedPath: path.dirname(absolutePath)
+      })
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(vi.mocked(statSync).mock.calls.filter(([p]) => p === absolutePath)).toHaveLength(1)
+  })
+
   it('a rename right after an outside edit keeps the note id', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
     await watch()
@@ -325,6 +408,15 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     await expectDeleteAndCreate()
   }, 20_000)
 
+  it('a delete inside the write-finish wait after an outside edit, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
+    seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
+    await watch()
+    await editThenBeforeChange('Docs/apple.md', '# apple\n\nbody edited\n', () =>
+      deleteAndWriteLookalike('Docs/apple.md', 'Docs/pear.md', '# pear!\n\nbody edited\n')
+    )
+    await expectDeleteAndCreate()
+  }, 20_000)
+
   it('a delete long after an outside edit settled, plus an unrelated same-size same-mtime file, stays a delete and a create', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
     await watch()
@@ -340,13 +432,14 @@ describe('an outside edit followed by a rename inside the change debounce', () =
   // there is no earlier hash for the renamed file to differ from.
   it('a rename of a note the index has not read does not read its body', async () => {
     seed('n1', 'Docs/apple.md', '# apple\n\nbody\n')
-    index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
     const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
     fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
     await watch()
-    // fsevents can replay the seed's write as a change, which reads the body.
+    // fsevents can replay the seed's write as a change, which reads the body
+    // and fills the hash, so the hash is taken away after that settles.
     await new Promise((resolve) => setTimeout(resolve, 500))
     await flushProjectionEvents()
+    index.db.update(noteCache).set({ contentHash: null }).where(eq(noteCache.id, 'n1')).run()
     vi.mocked(feedExternalEditToCrdt).mockClear()
 
     fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))

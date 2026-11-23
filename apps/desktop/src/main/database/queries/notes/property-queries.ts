@@ -11,7 +11,7 @@ import {
 } from '@memry/db-schema/schema/notes-cache'
 import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
 import type { IndexDb } from '../../types'
-import { serializeValue, deserializeValue } from './query-helpers'
+import { serializeValue, deserializeValue, fileValueOf } from './query-helpers'
 import { setPropertyRefs } from './property-ref-queries'
 import { resolvePropertyType, valueFitsType } from '@main/vault/property-type'
 
@@ -80,21 +80,38 @@ export function setNotePropertyType(
     .run()
 }
 
-export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
-  const results = db
+function notePropertyRows(db: IndexDb, noteId: string) {
+  return db
     .select()
     .from(noteProperties)
     .where(eq(noteProperties.noteId, noteId))
     .orderBy(sql`rowid`)
     .all()
+}
 
-  return results.map((row) => ({
+export function getNoteProperties(db: IndexDb, noteId: string): PropertyValue[] {
+  return notePropertyRows(db, noteId).map((row) => ({
     name: row.name,
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     value: deserializeValue(row.value, row.type as PropertyType),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     type: row.type as PropertyType
   }))
+}
+
+/**
+ * A note's properties as its file holds them, for a header rebuilt from the
+ * index alone (#5558). `getNoteProperties` keeps the text the properties
+ * panel shows instead.
+ */
+export function getNoteFileProperties(db: IndexDb, noteId: string): Record<string, unknown> {
+  return Object.fromEntries(
+    notePropertyRows(db, noteId).map((row) => [
+      row.name,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
+      fileValueOf(row.value, row.type as PropertyType)
+    ])
+  )
 }
 
 export function getNotePropertiesAsRecord(db: IndexDb, noteId: string): Record<string, unknown> {

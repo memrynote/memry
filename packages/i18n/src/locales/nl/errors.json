@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Kan het sjabloon niet toepassen",
     "appendBlocksFailed": "Kan het blok niet naar die notitie verplaatsen",
     "appendIntoCaseTwin": "Die notitie deelt haar bestand met een notitie waarvan de naam alleen in hoofdletters en kleine letters verschilt. Wijzig de naam van een van beide en verplaats het blok daarna opnieuw.",
+    "appendIntoBinary": "Een blok kan alleen naar een notitie worden verplaatst, niet naar een afbeelding, PDF of audio- of videobestand.",
     "caseTwinMoveRefused": "Deze notitie deelt haar bestand met een notitie waarvan de naam alleen in hoofdletters en kleine letters verschilt, dus ze kan niet op deze manier worden verplaatst. Wijzig de naam van de andere notitie of verplaats die, of verwijder de kopie die je niet nodig hebt.",
     "exportPdfFailed": "Kan niet naar PDF exporteren",
     "exportHtmlFailed": "Kan niet naar HTML exporteren",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Bestand te groot: {size} overschrijdt de limiet van {limit}",
     "exceedsPlanLimit": "Bestand is groter dan je abonnement toestaat: {size} overschrijdt {limit}",
     "emptyFile": "Kan geen leeg bestand uploaden",
+    "emptyNotAttached": "Dit bestand is leeg en is daarom niet bijgevoegd. Als je een afbeelding hebt geplakt, kopieer die dan opnieuw en plak hem.",
     "textInMediaFile": "Dit bestand bevat tekst in plaats van de media die de naam aangeeft"
   },
   "crdt": {

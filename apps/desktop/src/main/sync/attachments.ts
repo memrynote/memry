@@ -14,7 +14,11 @@ import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
 import { mediaFileHoldsText } from './media-signature'
 import {
   NetworkError,
@@ -219,9 +223,18 @@ export interface AttachmentSyncDeps {
    * Called right before a downloaded file appears at its path. The vault
    * watcher must read that write as this download, not as an edit: a binary
    * note's file read as an edit ticks the note's clock and uploads the bytes
-   * the server already holds (#5255).
+   * the server already holds (#5255). Returns the path the file lands at: a
+   * case twin's download asked for at a path its note has since left lands at
+   * the note's file now (#5560). `sha256` is the manifest's checksum of the
+   * bytes, already verified. `fileOwnerId` is the note whose own file the
+   * download lands on; throwing `SupersededDownloadError` drops the landing.
    */
-  beforeFileLands?: (filePath: string) => void
+  beforeFileLands?: (
+    filePath: string,
+    attachmentId: string,
+    sha256: string,
+    fileOwnerId?: string
+  ) => string
   fetchFn?: FetchFn
 }
 
@@ -745,6 +758,8 @@ export class AttachmentSyncService {
       onProgress?: ProgressCallback
       /** Attachment ids queued to download next; their manifests share one call. */
       upcoming?: () => string[]
+      /** The note whose own file `targetPath` is (#5580). */
+      fileOwnerId?: string
     } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
@@ -860,6 +875,7 @@ export class AttachmentSyncService {
       }
 
       let bytesDownloaded = resumeFrom.bytesWritten
+      let landedAt = destPath
       let handle: Awaited<ReturnType<typeof open>> | null = null
       // Direct-to-R2 state for THIS transfer (#1836): URLs arm lazily over the
       // remaining chunks and degrade to the proxied path on any presign
@@ -927,9 +943,16 @@ export class AttachmentSyncService {
         }
 
         try {
-          this.deps.beforeFileLands?.(destPath)
-          await rename(partialPath, destPath)
+          landedAt =
+            this.deps.beforeFileLands?.(
+              destPath,
+              attachmentId,
+              manifest.checksum,
+              opts?.fileOwnerId
+            ) ?? destPath
+          await rename(partialPath, landedAt)
         } catch (renameErr) {
+          if (renameErr instanceof SupersededDownloadError) throw renameErr
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
           if (isDiskSpaceError(renameErr)) {
             throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })
@@ -963,12 +986,12 @@ export class AttachmentSyncService {
         throw err
       }
 
-      log.info('download complete', { attachmentId, path: destPath })
+      log.info('download complete', { attachmentId, path: landedAt })
       emitTerminal('completed')
       // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
       recordBootstrapBytes('attachments', bytesDownloaded)
 
-      return { filePath: destPath, manifest }
+      return { filePath: landedAt, manifest }
     } catch (err) {
       // Chunk fetch/decrypt failures, integrity mismatches and write failures
       // all reach here. The already-materialized early return above is silent by

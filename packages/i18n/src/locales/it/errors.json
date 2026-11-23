@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Impossibile applicare il modello",
     "appendBlocksFailed": "Impossibile spostare il blocco in quella nota",
     "appendIntoCaseTwin": "Quella nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole. Rinomina una delle due, quindi sposta di nuovo il blocco.",
+    "appendIntoBinary": "Un blocco può essere spostato solo in una nota, non in un'immagine, un PDF o un file audio o video.",
     "caseTwinMoveRefused": "Questa nota condivide il file con una nota il cui nome differisce solo per maiuscole e minuscole, quindi non può essere spostata in questo modo. Rinomina o sposta l’altra nota, oppure elimina la copia che non ti serve.",
     "exportPdfFailed": "Impossibile esportare in PDF",
     "exportHtmlFailed": "Impossibile esportare in HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",
     "emptyFile": "Impossibile caricare un file vuoto",
+    "emptyNotAttached": "Questo file è vuoto, quindi non è stato allegato. Se hai incollato un'immagine, copiala di nuovo e incollala.",
     "textInMediaFile": "Questo file contiene testo invece del contenuto multimediale indicato dal nome"
   },
   "crdt": {

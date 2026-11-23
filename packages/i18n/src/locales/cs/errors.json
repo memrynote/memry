@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nepodařilo se použít šablonu",
     "appendBlocksFailed": "Blok se nepodařilo přesunout do této poznámky",
     "appendIntoCaseTwin": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen. Jednu z nich přejmenujte a pak blok přesuňte znovu.",
+    "appendIntoBinary": "Blok lze přesunout jen do poznámky, ne do obrázku, PDF, zvukového nebo video souboru.",
     "caseTwinMoveRefused": "Tato poznámka sdílí soubor s poznámkou, jejíž název se liší jen velikostí písmen, takže ji tímto způsobem nelze přesunout. Přejmenujte nebo přesuňte druhou poznámku, nebo smažte kopii, kterou nepotřebujete.",
     "exportPdfFailed": "Nepodařilo se exportovat PDF",
     "exportHtmlFailed": "Nepodařilo se exportovat HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Soubor je příliš velký: {size} překračuje limit {limit}",
     "exceedsPlanLimit": "Soubor je větší, než váš plán dovoluje: {size} překračuje {limit}",
     "emptyFile": "Prázdný soubor nelze nahrát",
+    "emptyNotAttached": "Tento soubor je prázdný, proto nebyl přiložen. Pokud jste vložili obrázek, zkopírujte ho znovu a vložte.",
     "textInMediaFile": "Tento soubor obsahuje text místo média, které uvádí jeho název"
   },
   "crdt": {

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Không thể áp dụng mẫu",
     "appendBlocksFailed": "Không thể di chuyển khối sang ghi chú đó",
     "appendIntoCaseTwin": "Ghi chú đó dùng chung tệp với một ghi chú có tên chỉ khác nhau ở chữ hoa và chữ thường. Hãy đổi tên một trong hai ghi chú, rồi di chuyển lại khối.",
+    "appendIntoBinary": "Chỉ có thể di chuyển khối sang ghi chú, không thể di chuyển sang tệp hình ảnh, PDF, âm thanh hoặc video.",
     "caseTwinMoveRefused": "Ghi chú này dùng chung tệp với một ghi chú có tên chỉ khác nhau về chữ hoa và chữ thường, nên không thể di chuyển theo cách này. Hãy đổi tên hoặc di chuyển ghi chú kia, hoặc xóa bản sao bạn không cần.",
     "exportPdfFailed": "Không thể xuất PDF",
     "exportHtmlFailed": "Không thể xuất HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
     "emptyFile": "Không thể tải lên tệp rỗng",
+    "emptyNotAttached": "Tệp này trống nên không được đính kèm. Nếu bạn đã dán một hình ảnh, hãy sao chép lại rồi dán.",
     "textInMediaFile": "Tệp này chứa văn bản thay vì nội dung đa phương tiện như tên tệp cho biết"
   },
   "crdt": {

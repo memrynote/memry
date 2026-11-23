@@ -69,7 +69,7 @@ The Velopack set is what new installs and the Velopack updater use:
 
 - `MemryNote-Setup-win-x64.exe`
 - `MemryNote-<version>-full.nupkg`
-- a `-delta.nupkg`, written only when the previous release's full package was available
+- a `-delta.nupkg`, written only when the previous release's full package was available. The previous release is the newest published release that is not a prerelease, so build-input prereleases such as `ort-pod-*` are skipped
 - `releases.win.json`
 - `RELEASES`
 

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "应用模板失败",
     "appendBlocksFailed": "无法将此块移到该笔记",
     "appendIntoCaseTwin": "该笔记与另一篇仅名称大小写不同的笔记共用同一个文件。请重命名其中一篇，然后再次移动此块。",
+    "appendIntoBinary": "只能将块移到笔记中，不能移到图片、PDF、音频或视频文件。",
     "caseTwinMoveRefused": "此笔记与另一篇仅名称大小写不同的笔记共用一个文件，因此无法以这种方式移动。请重命名或移动另一篇笔记，或删除不需要的副本。",
     "exportPdfFailed": "导出 PDF 失败",
     "exportHtmlFailed": "导出 HTML 失败",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "文件太大：{size} 超过 {limit} 的上限",
     "exceedsPlanLimit": "文件超出你的套餐允许的大小：{size} 超过 {limit}",
     "emptyFile": "无法上传空文件",
+    "emptyNotAttached": "此文件为空，因此未附加。如果你粘贴的是图片，请重新复制后再粘贴。",
     "textInMediaFile": "此文件包含文本，而不是其名称所示的媒体"
   },
   "crdt": {

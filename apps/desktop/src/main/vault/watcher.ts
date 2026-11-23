@@ -9,17 +9,12 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { existsSync, type Stats } from 'fs'
+import { existsSync, statSync, type Stats } from 'fs'
 import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './status'
-import {
-  parseNote,
-  generateContentHash,
-  extractProperties,
-  extractTitleFromPath
-} from './frontmatter'
+import { parseNote, extractProperties, extractTitleFromPath } from './frontmatter'
 import { scanMarkdownFile } from './file-scan'
 import { enqueueIngestBackfill, clearIngestBackfill } from './ingest-backfill'
 import { generateNoteId } from '../lib/id'
@@ -60,6 +55,8 @@ import {
   processRename,
   type RenameMatch
 } from './rename-tracker'
+import { RecentFileIdentities } from './recent-file-identities'
+import { probeBirthtime } from './birthtime-probe'
 import {
   folderExistsExactCase,
   followJournalFolder,
@@ -69,12 +66,12 @@ import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { isWatchEnvironmentError, markExpectedCondition } from '../telemetry/expected-conditions'
-import { isWritebackIgnored } from '../sync/crdt-writeback'
+import { appWriteCheck, fileHoldsAppWrite } from './app-writes'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { baselineBeforeFeed, ingestOutsideEdit } from '../sync/writeback-baseline'
-import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { baselineBeforeFeed, ingestOutsideEdit, isOutsideEdit } from '../sync/writeback-baseline'
+import { isNoteLocked } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
@@ -93,17 +90,18 @@ import {
   syncFolderConfigDelete,
   syncFolderConfigDiscovered
 } from '../notes/folder-config-effects'
-import { normalizeRelativePath, openVaultFile, readVaultFile } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
-import { ATTACHMENTS_DIR } from './attachments'
+import { isInAttachmentStore } from './attachments'
 import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { holdsBinaryChange } from './case-twin-bytes'
 
 const logger = createLogger('Watcher')
 
@@ -125,13 +123,6 @@ const MASS_REMOVAL_MIN_SHARE = 0.25
  * them. The app's own rename and delete are skipped by isAppFolderChange.
  */
 const DIR_UNLINK_SETTLE_MS = 1000
-
-/**
- * How long a change's identity key outlives its debounced change. chokidar's
- * `atomic` holds an unlink 100 ms, so a rename made while the change ran
- * reports its unlink after it; past that, the row's hash has caught up.
- */
-const CHANGE_KEY_GRACE_MS = 500
 
 // ============================================================================
 // Types
@@ -255,15 +246,9 @@ export class VaultWatcher {
 
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
-  /**
-   * Identity key (device, inode, birthtime, size, mtime) of each file's last change, by
-   * event path, until its unlink takes it or CHANGE_KEY_GRACE_MS after its debounced change ran.
-   * The index row's hash trails an outside edit until that change runs, so an
-   * unlink gives its pending delete this key and a rename (same inode,
-   * birthtime, size and mtime) still matches its add (#5518). Inode and birthtime keep an unrelated
-   * same-size same-mtime file from taking over a deleted note.
-   */
-  private lastChangeKeys = new Map<string, string>()
+  private recentIdentities = new RecentFileIdentities()
+  private rawWrites = new Set<string>()
+  private rawWritesFlush: NodeJS.Immediate | null = null
 
   /**
    * Start watching the vault for file changes.
@@ -280,6 +265,7 @@ export class VaultWatcher {
     this.excludePatterns = excludePatterns
     this.onError = onError
     this.isReady = false
+    void probeBirthtime()
 
     // Watch the entire vault root. The `ignored` filter below drops dotfolders
     // (.memry, .obsidian, .git) and excluded dirs, and the root attachments folder so
@@ -288,20 +274,16 @@ export class VaultWatcher {
 
     // Create debounced handlers
     this.debouncedChange = createPathDebouncer(async (filePath) => {
-      const key = this.lastChangeKeys.get(filePath)
+      const release = this.recentIdentities.changeRan(filePath)
       try {
         await this.handleFileChange(filePath)
       } finally {
-        // A newer change re-armed the debounce and keeps its own key.
-        setTimeout(() => {
-          if (this.lastChangeKeys.get(filePath) === key) this.lastChangeKeys.delete(filePath)
-        }, CHANGE_KEY_GRACE_MS)
+        release()
       }
     }, 100)
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
-    const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
@@ -314,10 +296,9 @@ export class VaultWatcher {
         // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
 
-        // Only the root attachments folder is the app's; nested ones hold notes (#3161).
-        if (filePath === attachmentsRoot || filePath.startsWith(attachmentsRoot + path.sep)) {
-          return true
-        }
+        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+        if (isInAttachmentStore(relativePath)) return true
 
         // Check user-defined exclude patterns
         for (const pattern of userExcludePatterns) {
@@ -331,9 +312,7 @@ export class VaultWatcher {
         if (stats?.isFile()) {
           // Canvas documents are watched only so a removal outside the app
           // becomes a canvas delete (#2938); the note index never takes them.
-          const supported =
-            isSupportedPath(filePath) ||
-            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
+          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -373,11 +352,10 @@ export class VaultWatcher {
     this.watcher
       .on('add', (filePath) => void this.handleFileAdd(filePath))
       .on('change', (filePath, stats?: Stats) => {
-        const key = stats ? buildFileIdentityKey(stats) : null
-        if (key !== null) this.lastChangeKeys.set(filePath, key)
-        else this.lastChangeKeys.delete(filePath)
+        this.recentIdentities.recordChange(filePath, stats)
         this.debouncedChange?.(filePath)
       })
+      .on('raw', (_event, eventPath, details) => this.recordRawWrite(eventPath, details))
       .on('unlink', (filePath) => this.handleFileDelete(filePath))
       .on('addDir', (dirPath) => this.handleDirAdd(dirPath))
       .on('unlinkDir', (dirPath) => this.handleDirUnlink(dirPath))
@@ -422,8 +400,48 @@ export class VaultWatcher {
     }
     this.vaultPath = null
     this.debouncedChange = null
-    this.lastChangeKeys.clear()
+    if (this.rawWritesFlush) clearImmediate(this.rawWritesFlush)
+    this.rawWritesFlush = null
+    this.rawWrites.clear()
+    this.recentIdentities.clear()
     this.isReady = false
+  }
+
+  /**
+   * A raw fs event arrives before chokidar's write-finish wait ends, so the
+   * file's identity is recorded while it is still at its path: an outside
+   * rename inside that wait gets no `change`, and its unlink needs the key
+   * (#5549). One write reports several raw events, so each file is stat'ed
+   * once per event-loop turn, right after the turn's fs events; a rename that
+   * beats the stat keeps the hash-only match.
+   */
+  private recordRawWrite(eventPath: string, details: unknown): void {
+    if (!this.isReady || typeof details !== 'object' || details === null) return
+    const watchedPath = 'watchedPath' in details ? details.watchedPath : null
+    if (typeof watchedPath !== 'string') return
+    // A file's own fs.watch names the file; a folder's names the child.
+    const filePath =
+      !eventPath || path.basename(watchedPath) === eventPath
+        ? watchedPath
+        : path.join(watchedPath, eventPath)
+    if (path.basename(filePath).startsWith('.') || !isSupportedPath(filePath)) return
+    this.rawWrites.add(filePath)
+    this.rawWritesFlush ??= setImmediate(() => {
+      this.rawWritesFlush = null
+      for (const written of this.rawWrites) this.recordIdentity(written)
+      this.rawWrites.clear()
+    })
+  }
+
+  private recordIdentity(filePath: string): void {
+    let stats: Stats | undefined
+    try {
+      stats = statSync(filePath, { throwIfNoEntry: false })
+    } catch (error) {
+      logger.debug(`No identity for ${filePath}: ${String(error)}`)
+      return
+    }
+    if (stats?.isFile()) this.recentIdentities.recordWrite(filePath, stats)
   }
 
   /**
@@ -623,16 +641,22 @@ export class VaultWatcher {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
 
-    if (isWritebackIgnored(absolutePath)) {
-      await this.checkLockedFileInWritebackWindow(absolutePath)
-      return
-    }
+    // The echo of the app's own write. Other bytes are an edit, however soon
+    // after an app write they land (#5605).
+    if (await fileHoldsAppWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
+      // `ignored` keeps the attachment store out. An event that gets past it
+      // anyway (a change to a path with no row lands here) must not make a
+      // note of another note's attachment either (#5607).
+      if (
+        !fileType ||
+        isInAttachmentStore(relativePath) ||
+        isAppMoveEcho(this.vaultPath, relativePath)
+      ) {
         return
       }
 
@@ -714,18 +738,18 @@ export class VaultWatcher {
     claimed: CanonicalNoteRef,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) return
     // A size other than the row's is a file replaced before adoption: a local
-    // change, stamped and pushed as `handleNonMarkdownFileChange` does. A pull
-    // writes the row with size 0 and records the size once the download lands,
-    // so 0 says nothing about the file, and neither does a file other rows
-    // share.
+    // change, stamped and pushed as `handleNonMarkdownFileChange` does, and
+    // held as it holds it. A pull writes the row with size 0 and records the
+    // size once the download lands, so 0 says nothing about the file.
     const replaced =
       fileType !== 'markdown' &&
-      !claimed.sharesFile &&
       !!claimed.fileSize &&
-      claimed.fileSize !== stats.size
+      claimed.fileSize !== stats.size &&
+      !holdsBinaryChange(this.vaultPath, relativePath, claimed.id)
     if (fileType === 'markdown') {
       syncNoteStatToCache(
         db,
@@ -1068,8 +1092,11 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     claimedId: string | null
   ): Promise<void> {
+    if (!this.vaultPath) return
     // Get file stats for metadata
     const stats = await fs.stat(absolutePath)
+    // A claimed row's file may be a case twin's: its change is held, not pushed.
+    const held = claimedId !== null && holdsBinaryChange(this.vaultPath, relativePath, claimedId)
 
     // Generate a new ID for this file, unless the path already has one
     const id = claimedId ?? generateNoteId()
@@ -1105,7 +1132,7 @@ export class VaultWatcher {
       wordCount: 0
     }
 
-    syncNoteCreate(id, title, [])
+    if (!held) syncNoteCreate(id, title, [])
 
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
@@ -1115,7 +1142,7 @@ export class VaultWatcher {
       fileType // Include file type so renderer knows this is not markdown
     })
 
-    attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
+    if (!held) attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
 
     if (claimedId === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
@@ -1128,10 +1155,8 @@ export class VaultWatcher {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
 
-    if (isWritebackIgnored(absolutePath)) {
-      await this.checkLockedFileInWritebackWindow(absolutePath)
-      return
-    }
+    // The echo of the app's own write (see `handleFileAdd`).
+    if (await fileHoldsAppWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -1171,32 +1196,13 @@ export class VaultWatcher {
     }
   }
 
-  /**
-   * The app's own write-back is dropped for a few seconds after it lands, but
-   * an outside edit to a locked note inside that window still gets the locked
-   * text back (#2606). The write-back itself matches the locked baseline it
-   * just recorded, so it is left alone.
-   */
-  private async checkLockedFileInWritebackWindow(absolutePath: string): Promise<void> {
-    if (!this.vaultPath || !hasAnyVaultLock()) return
-    try {
-      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
-      if (getFileType(getExtension(absolutePath)) !== 'markdown') return
-      const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
-      if (!cached || !isNoteLocked(cached.id, relativePath)) return
-      const content = await readVaultFile(this.vaultPath, relativePath)
-      if (content !== null) await restoreLockedNoteFile(cached.id, content)
-    } catch (err) {
-      this.onError?.(err instanceof Error ? err : new Error(String(err)))
-    }
-  }
-
   private async handleMarkdownFileChange(
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
     if (!this.vaultPath) return
+    const ownWrite = appWriteCheck(path.join(this.vaultPath, relativePath))
     const file = await openVaultFile(this.vaultPath, relativePath)
     if (file === null) return
     let content: string
@@ -1210,12 +1216,16 @@ export class VaultWatcher {
     if (!content) {
       return
     }
+    // Checked again on the bytes read here: a writer may have recorded them
+    // after the event's own check, and only `writeWithBaseline` writers leave
+    // a pending hash in the row for the check below.
+    if (ownWrite?.(content)) return
 
     const parsed = parseNote(content, relativePath, stats)
 
-    const contentHash = generateContentHash(content)
-
-    if (cached.contentHash === contentHash) {
+    // `cached` was read before the file. A write-back that recorded its bytes
+    // since, or is recording them, wrote no edit to feed back (#5605).
+    if (!isOutsideEdit(db, cached.id, getNoteCacheById(db, cached.id) ?? cached, content)) {
       return
     }
 
@@ -1325,6 +1335,10 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    // Pushed, bytes that may be a case twin's land on every device as this
+    // row's attachment (#5522, #5560).
+    if (holdsBinaryChange(this.vaultPath, relativePath, cached.id)) return
     // Get file stats for updated metadata
     const stats = await fs.stat(absolutePath)
 
@@ -1371,8 +1385,7 @@ export class VaultWatcher {
       deferred = null
     }: { keepUnpaired?: boolean; deferred?: DeferredDeletes | null } = {}
   ): void {
-    const lastChangeKey = this.lastChangeKeys.get(absolutePath) ?? null
-    this.lastChangeKeys.delete(absolutePath)
+    const lastChangeKey = this.recentIdentities.take(absolutePath)
     const vaultPath = this.vaultPath
     if (!vaultPath) return
     if (!isVaultReachable(vaultPath)) {

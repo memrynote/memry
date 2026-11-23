@@ -104,6 +104,7 @@ export {
 export {
   setNoteProperties,
   getNoteProperties,
+  getNoteFileProperties,
   getNotePropertiesAsRecord,
   getPropertiesForNotes,
   deleteNoteProperties,

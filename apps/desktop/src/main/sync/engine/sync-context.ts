@@ -231,7 +231,36 @@ export const SYNC_STATE_KEYS = {
    * binary note restore downloaded it and the file still held text, so the
    * restore never asks for it again. Missing reads as an empty list.
    */
-  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs'
+  BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
+  /**
+   * JSON list of folded vault paths of binary files two case twins share
+   * whose outside change the watcher held (#5522). The split of the twins
+   * reads it to keep the change instead of downloading over it. Missing
+   * reads as an empty list.
+   */
+  CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
+  /**
+   * JSON object from binary note id to `{sha256}` of its file, or null,
+   * for each note whose file may hold a case twin's bytes after the twins
+   * split (#5560, #5585). The watcher pushes no change to them until the
+   * note's own download lands. Missing reads as empty.
+   */
+  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share
+   * to the sha256 of the bytes a download last landed there (#5585). The
+   * split compares the file with it to find a change the watcher never saw.
+   * Missing reads as empty: the split then keeps the file's bytes.
+   */
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+  /**
+   * JSON object from the absolute path of a file the attachment uploader
+   * refused for good (`UnsendableAttachmentError`) to its `{size, mtimeMs}`
+   * at the time (#5606). The upload backfill does not offer a file whose
+   * size and mtime still match; a write changes them and offers it again.
+   * Missing reads as empty.
+   */
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

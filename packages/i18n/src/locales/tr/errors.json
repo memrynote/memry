@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Şablon uygulanamadı",
     "appendBlocksFailed": "Blok bu nota taşınamadı",
     "appendIntoCaseTwin": "Bu not, adı yalnızca büyük/küçük harf bakımından farklı olan bir notla aynı dosyayı paylaşıyor. Birini yeniden adlandırın, ardından bloğu tekrar taşıyın.",
+    "appendIntoBinary": "Bir blok yalnızca bir nota taşınabilir; görsel, PDF, ses veya video dosyasına taşınamaz.",
     "caseTwinMoveRefused": "Bu not, adı yalnızca büyük/küçük harf farkıyla ayrılan bir notla aynı dosyayı paylaşıyor, bu yüzden bu şekilde taşınamaz. Diğer notu yeniden adlandırın ya da taşıyın veya ihtiyacınız olmayan kopyayı silin.",
     "exportPdfFailed": "PDF olarak dışa aktarılamadı",
     "exportHtmlFailed": "HTML olarak dışa aktarılamadı",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
     "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor",
     "emptyFile": "Boş dosya yüklenemez",
+    "emptyNotAttached": "Bu dosya boş olduğu için eklenmedi. Bir görsel yapıştırdıysanız görseli tekrar kopyalayıp yapıştırın.",
     "textInMediaFile": "Bu dosya, adının belirttiği medya yerine metin içeriyor"
   },
   "crdt": {

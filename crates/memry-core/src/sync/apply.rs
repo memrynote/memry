@@ -47,7 +47,9 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{calendar_items, canvas, inbox, journal, projects, settings, tasks};
+use crate::domain::{
+    attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects, settings, tasks,
+};
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
@@ -297,7 +299,17 @@ fn apply_tombstone(
         // After `delete_keep::keep`, which reads the queue to decide what text
         // this device never pushed (#5379).
         outbox::drop_body_updates(&txn, item_type, item_id)?;
-        update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
+        let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
+        // A same-id revive can still want the note's unsent pictures (§14.8.2).
+        if item_type == notes::ITEM_TYPE {
+            let kept = attachment_uploads::ids_for_note(&txn, item_id)?.len();
+            if kept > 0 {
+                eprintln!(
+                    "memry-core: attachment uploads: note {item_id} was deleted elsewhere; its {kept} unsent picture(s) stay here until it is revived or they are detached"
+                );
+            }
+        }
+        purged
     } else {
         0
     };

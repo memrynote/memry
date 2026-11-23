@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Det gick inte att använda mallen",
     "appendBlocksFailed": "Det gick inte att flytta blocket till den anteckningen",
     "appendIntoCaseTwin": "Den anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener. Byt namn på en av dem och flytta sedan blocket igen.",
+    "appendIntoBinary": "Ett block kan bara flyttas till en anteckning, inte till en bild, en PDF eller en ljud- eller videofil.",
     "caseTwinMoveRefused": "Den här anteckningen delar fil med en anteckning vars namn bara skiljer sig i versaler och gemener, så den kan inte flyttas på det här sättet. Byt namn på eller flytta den andra anteckningen, eller ta bort kopian du inte behöver.",
     "exportPdfFailed": "Det gick inte att exportera till PDF",
     "exportHtmlFailed": "Det gick inte att exportera till HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Filen är för stor: {size} överskrider gränsen på {limit}",
     "exceedsPlanLimit": "Filen är större än din plan tillåter: {size} överskrider {limit}",
     "emptyFile": "Det går inte att ladda upp en tom fil",
+    "emptyNotAttached": "Den här filen är tom, så den bifogades inte. Om du klistrade in en bild kopierar du den igen och klistrar in den.",
     "textInMediaFile": "Den här filen innehåller text i stället för det medium som namnet anger"
   },
   "crdt": {
