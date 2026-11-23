@@ -110,9 +110,10 @@ describe('a note tags or properties edit between a write-back read and write (#5
 
   /** A pass holds at its file write; `edit` runs meanwhile. Resolves the file once both settle. */
   async function raceWithPass(
-    edit: (note: { id: string; path: string }) => unknown
+    edit: (note: { id: string; path: string }) => unknown,
+    tags: string[] = []
   ): Promise<string> {
-    const note = await createNote({ title: 'Race', content: 'Morning.' })
+    const note = await createNote({ title: 'Race', content: 'Morning.', tags })
     const doc = new Y.Doc()
     await markdownToYFragment('Morning. Typed.', doc.getXmlFragment(CRDT_FRAGMENT_NAME), note.path)
     let release = (): void => {}
@@ -175,14 +176,14 @@ describe('a note tags or properties edit between a write-back read and write (#5
   // The remote patch lands right after the pass that put the old frontmatter
   // back, ahead of a local edit queued behind that pass, so the file holds the
   // remote record and the local edit on top of it, in either order (REVIEW-5482).
-  const remoteTags = (note: { id: string; path: string }): void => {
+  const remoteTags = (note: { id: string; path: string }, tags = ['focus']): void => {
     const ctx: ApplyContext = { db: dataDb.db as unknown as DrizzleDb, emit: vi.fn() }
     const clock = { 'device-remote': 1 }
     expect(
       noteHandler.applyUpsert(
         ctx,
         note.id,
-        { tags: ['focus'], folderPath: extractFolderFromPath(note.path), clock },
+        { tags, folderPath: extractFolderFromPath(note.path), clock },
         clock
       )
     ).toBe('applied')
@@ -209,4 +210,42 @@ describe('a note tags or properties edit between a write-back read and write (#5
     expect.soft(onDisk).toContain('- mine')
     expect.soft(onDisk).toContain('- focus')
   })
+
+  // A body update writes its tag edit again in the note's turn, after the
+  // remote patch. The edit, not the list it wrote outside the turn, so the tag
+  // the remote removed stays removed (VERIFY-5482). Accepted limit: a remote
+  // removal of the very tag the queued edit adds is undone; that needs the
+  // add's push, the remote removal and its pull all inside one held pass.
+  it.each([
+    ['queued before', true],
+    ['queued after', false]
+  ])(
+    'a body update with a tag add %s a remote tag removal keeps both edits',
+    async (_n, localFirst) => {
+      const onDisk = await raceWithPass(
+        async (note) => {
+          const local = (): Promise<unknown> =>
+            updateNote({
+              id: note.id,
+              content: 'Morning. Typed. More.',
+              headerTags: { add: ['mine'] }
+            })
+          if (localFirst) {
+            const queued = local()
+            await gap()
+            remoteTags(note, ['keep'])
+            await queued
+          } else {
+            remoteTags(note, ['keep'])
+            await gap()
+            await local()
+          }
+        },
+        ['keep', 'stale']
+      )
+      expect.soft(onDisk).toContain('- mine')
+      expect.soft(onDisk).toContain('- keep')
+      expect.soft(onDisk).not.toContain('- stale')
+    }
+  )
 })
