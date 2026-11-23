@@ -237,6 +237,7 @@ impl VaultSync {
                 &target.mime_type,
                 &bytes,
                 RetryPolicy::polled(),
+                async |_| Ok(()),
             )
             .await
         {
