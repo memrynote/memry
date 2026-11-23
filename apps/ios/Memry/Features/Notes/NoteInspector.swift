@@ -91,7 +91,7 @@ struct NoteInspectorRail: View {
                         NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
                     }
                 }
-                ReviewCommentsSection(comments: model.comments)
+                ReviewCommentsSection(comments: model.shownComments)
                 if let open {
                     BacklinksSection(model: backlinks, open: open)
                 }

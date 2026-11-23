@@ -9,9 +9,9 @@ import Observation
 // drawn by `NoteBlocksView`, and this preview remains for a note whose blocks
 // are not on this phone. `NoteBody.text` is `extract_text` output (chapter 12
 // §12.1.3), so a heading arrives as `# `, a bullet as `- `, and bold, links and
-// code fences arrive as nothing at all. Nothing here parses or serialises
-// markdown: §12.1.2 forbids a non-desktop client from doing either outside two
-// core writes (§12.1.0).
+// code fences arrive as nothing at all. Nothing here parses or serialises a
+// body's markdown: §12.1.2 forbids a non-desktop client from doing either
+// outside two core writes (§12.1.0).
 //
 // The four outcomes of a read, and why no two share a screen, are in
 // `NoteReadParts.swift` beside the types that carry them.
@@ -94,8 +94,15 @@ final class NoteReadViewModel {
     /// nothing because the answer has not arrived, the second draws nothing
     /// because there is nothing — and only the first may change on its own.
     private(set) var metadata: NoteMetadata?
-    /// The note's review comments and suggestions (N604), read only.
-    private(set) var comments: [ReviewComment] = []
+    /// The note's review comments and suggestions (N604), read only, as the
+    /// core read them. Private, so every screen shows `shownComments`.
+    private var comments: [ReviewComment] = []
+    /// The review marks as this note shows them, each `visibleText` resolved
+    /// against its text (`ReviewMarkStyle.resolved`): what the Review list
+    /// lists and the body draws.
+    var shownComments: [ReviewComment] {
+        ReviewMarkStyle.resolved(comments, in: exportText)
+    }
     /// Each task block's task, by task id, for the row desktop draws.
     private(set) var taskCards: [String: TaskCard] = [:]
     private var hasLoaded = false
