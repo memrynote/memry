@@ -143,8 +143,11 @@ describe('StickyCapture', () => {
     )
     expect(await screen.findByText('sticky.sent.note')).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: 'z', metaKey: true })
-    await waitFor(() => expect(sticky.undoSend).toHaveBeenCalledWith('undo-1'))
+    // The text can be in the DOM before StickySent's effect adds its key listener.
+    await waitFor(() => {
+      fireEvent.keyDown(window, { key: 'z', metaKey: true })
+      expect(sticky.undoSend).toHaveBeenCalledWith('undo-1')
+    })
     expect(await screen.findByLabelText(INPUT)).toHaveValue('Buy oat milk')
   })
 
@@ -163,8 +166,11 @@ describe('StickyCapture', () => {
     await screen.findByText('sticky.sent.journal')
     expect(screen.queryByText(/sticky\.undo/)).not.toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: 'o', metaKey: true })
-    expect(sticky.openTarget).toHaveBeenCalledWith({ kind: 'journal', targetId: '2026-05-01' })
+    // The text can be in the DOM before StickySent's effect adds its key listener.
+    await waitFor(() => {
+      fireEvent.keyDown(window, { key: 'o', metaKey: true })
+      expect(sticky.openTarget).toHaveBeenCalledWith({ kind: 'journal', targetId: '2026-05-01' })
+    })
   })
 
   it('keeps the draft and shows the error when a send fails', async () => {

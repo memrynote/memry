@@ -996,7 +996,10 @@ describe('ContentArea', () => {
     )
   })
 
-  it('persists review marks into Yjs metadata while collaboration is active', async () => {
+  // The doc owns the marks while the editor is bound to it. The review state
+  // can still hold the previous note's marks when the next note's editor binds,
+  // and copying them into the doc put one note's comments into another.
+  it("shows the doc's review marks, and only the user's own change reaches the doc", async () => {
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment('blocks')
     contentAreaMocks.useSyncState = { status: 'idle' }
@@ -1007,37 +1010,36 @@ describe('ContentArea', () => {
       isReady: true,
       isRemoteUpdateRef: { current: false }
     }
+    const onReplaceMarksFromYjs = vi.fn()
+    const onDocBindingChange = vi.fn()
+    const comment = (id: string) => ({
+      id,
+      kind: 'comment' as const,
+      visibleText: 'words',
+      start: 0,
+      end: 5
+    })
 
     render(
       <ContentArea
         noteId="note-1"
         review={{
           plainMarkdown: '',
-          marks: [
-            {
-              id: 'add-1',
-              kind: 'addition',
-              visibleText: 'added',
-              start: 5,
-              end: 10
-            }
-          ],
-          hoveredMarkId: null
+          marks: [comment('previous-note')],
+          hoveredMarkId: null,
+          onReplaceMarksFromYjs,
+          onDocBindingChange
         }}
       />
     )
 
-    await waitFor(() =>
-      expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([
-        expect.objectContaining({
-          id: 'add-1',
-          kind: 'addition',
-          visibleText: 'added',
-          start: 5,
-          end: 10
-        })
-      ])
-    )
+    await waitFor(() => expect(onReplaceMarksFromYjs).toHaveBeenCalledWith([]))
+    expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([])
+
+    const binding = onDocBindingChange.mock.calls.at(-1)?.[0]
+    binding.updateMarks({ upsert: [comment('added-here')], remove: [] })
+    expect(doc.getArray('criticMarkupMarks').toArray()).toEqual([comment('added-here')])
+    expect(onReplaceMarksFromYjs).toHaveBeenLastCalledWith([comment('added-here')])
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the
