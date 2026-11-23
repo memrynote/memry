@@ -103,7 +103,7 @@ import {
 } from '../projections'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
-import { startWatcher, stopWatcher } from './watcher'
+import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from './case-twin-file'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
@@ -512,6 +512,24 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
     await copyPushed('Supernotes/p (conflict copy).png')
   }, 60_000)
+
+  // #5624: a landing is marked by the twin's spelling, and the watcher asks by
+  // the disk's. Taken as an outside change, the landing was held, and the next
+  // split kept the landed bytes as a conflict copy.
+  it("a download landing under a twin's spelling is not held as a change to the shared file", async () => {
+    twins('SUPERNOTES')
+    await startWatcher(vault.path)
+    // Past the window of the seeds' own writes.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+    try {
+      land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a2-bytes')
+      await getWatcher()['handleFileChange'](abs('SUPERNOTES/p.png'))
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(heldChanges()).toEqual([])
+  }, 30_000)
 
   it('a change the watcher has not seen is kept as a conflict copy when the bytes land', () => {
     twins('Supernotes')

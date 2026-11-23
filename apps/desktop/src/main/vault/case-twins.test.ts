@@ -96,6 +96,10 @@ vi.mock('../sync/crdt-provider', () => {
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
 })
 vi.mock('../sync/attachment-backfill', () => ({ queueEmbeddedVaultFiles: vi.fn() }))
+vi.mock('../lib/paths', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, openVaultFile: vi.fn(real.openVaultFile as never) }
+})
 vi.mock('../sync/writeback-baseline', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
   return { ...real, recordBaseline: vi.fn(real.recordBaseline as never) }
@@ -173,6 +177,7 @@ import { noteHandler } from '../sync/item-handlers/note-handler'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import { NoteError } from '../lib/errors'
+import { openVaultFile } from '../lib/paths'
 import { beginPageApply, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
@@ -995,6 +1000,76 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       expect(shared()).not.toContain('upper')
       expect(await survivorKeepsOwn('lower')).toEqual([])
     }, 30_000)
+  }
+
+  /** Runs `leave` right after the watcher's next file read, before it checks for twins. */
+  function leaveAfterRead(leave: () => Promise<unknown>): () => boolean {
+    let left = false
+    const real = vi.mocked(openVaultFile).getMockImplementation()!
+    vi.mocked(openVaultFile).mockImplementationOnce(async (...args) => {
+      const file = await real(...args)
+      if (file === null) return null
+      const close = file.close.bind(file)
+      file.close = async () => {
+        await close()
+        await leave()
+        left = true
+      }
+      return file
+    })
+    return () => left
+  }
+
+  const leaves = (id: 'lower' | 'upper') => {
+    const folder = id === 'lower' ? 'Supernotes' : 'SUPERNOTES'
+    return [
+      ['local delete', () => deleteNoteCommand(id), null],
+      ["peer's delete", () => applyPeerDeleteWhenReady(id), null],
+      ['local rename', () => renameNoteCommand(id, 'b'), `${folder}/b.md`],
+      ["peer's rename", () => applyPeerMoveWhenReady(id, 'b', folder), `${folder}/b.md`],
+      ['local move', () => moveNoteCommand(id, 'Other'), 'Other/a.md'],
+      ["peer's move", () => applyPeerMoveWhenReady(id, 'a', 'Other'), 'Other/a.md']
+    ] as const
+  }
+
+  // #5624: the watcher read the shared file and only then asked whether a twin
+  // shares it. A twin that left in between made the file unshared, and the
+  // bytes read went into the other twin's index and doc.
+  for (const [leaver, survivor] of [
+    ['upper', 'lower'],
+    ['lower', 'upper']
+  ] as const) {
+    for (const [how, leave, leftAt] of leaves(leaver)) {
+      it(`a ${how} of twin ${leaver} while the watcher reads the shared file feeds neither twin`, async () => {
+        await twins()
+        const left = leaveAfterRead(leave)
+        // Past the window of the seeds' own writes: an outside change.
+        vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+        try {
+          await getWatcher()['handleFileChange'](path.join(vault.path, 'Supernotes/a.md'))
+          await flushProjectionEvents()
+        } finally {
+          vi.useRealTimers()
+        }
+        // The feed into the doc runs once the projection queue drains.
+        await new Promise((resolve) => setImmediate(resolve))
+
+        expect({
+          left: left(),
+          crossed: crossed(),
+          leaver: {
+            row: pathOf(leaver) ?? null,
+            indexed: getNoteCacheById(index.db, leaver)?.path ?? null
+          },
+          survivorOwn: ownBaseline(survivor)
+        }).toEqual({
+          left: true,
+          crossed: [],
+          leaver: { row: leftAt, indexed: leftAt },
+          survivorOwn: true
+        })
+      }, 30_000)
+    }
   }
 
   // REVIEW-5501 (3): each twin keeps its own header across the move.

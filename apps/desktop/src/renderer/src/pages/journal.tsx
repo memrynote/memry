@@ -784,6 +784,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [updateContent]
   )
   const review = useCriticMarkupReview({
+    documentKey: selectedDate,
     markdown: editorState.content,
     onMarkdownChange: handleMarkdownChange
   })
@@ -1487,11 +1488,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                         review.getMarkdownSourceOffsetForEditorOffset,
                                       getEditorOffsetForMarkdownSourceOffset:
                                         review.getEditorOffsetForMarkdownSourceOffset,
-                                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
                                       onPlainMarkdownChange: review.handlePlainMarkdownChange,
                                       onHoveredMarkChange: review.setHoveredMarkId,
                                       onMarkPositionsChange: review.setMarkPositions,
-                                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                                      onReplaceMarksFromYjs: review.replaceMarksFromYjs,
+                                      onDocBindingChange: review.setDocBinding
                                     }}
                                   />
                                 </div>
