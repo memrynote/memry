@@ -196,9 +196,9 @@ At-least-once queue delivery means every step has to tolerate re-running:
    deletion pass deletes it later, only while no row lists its key (`listingBatch` in
    `services/pack-replaced-objects.ts`). The pass reads `pack_index` again right before the R2
    delete, so a late commit that lands after its first read keeps its object. A commit that lands
-   between that second read and the delete still loses it: the row stays listed with no object, a
-   reader meets a 404 and takes that range from the item routes as a gap, and a rollup cannot read
-   the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
+   after that second read, before or after the delete, still loses it: the row stays listed with
+   no object, a reader meets a 404 and takes that range from the item routes as a gap, and a rollup
+   cannot read the pack, so it skips it and leaves it listed (protocol 08 §8.12, §8.14).
 
 A build that crashed in the PUT-to-row window leaves an object no row points at, and the retry
 writes a new key, so that object is never listed. The 6-hourly cleanup cron deletes it
