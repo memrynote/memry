@@ -23,6 +23,7 @@ use serde_json::{Value as Json, json};
 use crate::api::errors::ApiError;
 use crate::protocol::http::RetryPolicy;
 
+use super::epoch::Epoch;
 use super::registry::Document;
 use super::snapshots::{
     CRDT_SNAPSHOT_NOT_COVERED, Prepared, SnapshotError, SnapshotGate, SnapshotOutcome,
@@ -43,15 +44,15 @@ impl SnapshotPusher {
     /// order. A failure for one document never fails the others.
     pub async fn push_batch(
         &self,
-        documents: &[(&Document, SnapshotGate)],
+        documents: &[(&Document, Epoch, SnapshotGate)],
         now_ms: i64,
     ) -> Vec<BatchOutcome> {
         // `None` until the request carrying the document answers.
         let mut outcomes: Vec<(String, Option<Result<SnapshotOutcome, SnapshotError>>)> =
             Vec::with_capacity(documents.len());
         let mut ready = Vec::new();
-        for (document, gate) in documents {
-            let early = match self.prepare(document, *gate).await {
+        for (document, opened_at, gate) in documents {
+            let early = match self.prepare(document, *opened_at, *gate).await {
                 Ok(Ok(prepared)) => {
                     ready.push((outcomes.len(), prepared));
                     None

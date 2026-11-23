@@ -72,7 +72,7 @@ final class NoteReadViewModel {
     @ObservationIgnored private(set) var blocksGeneration = 0
     /// The first walk of the blocks has finished, whatever it found.
     private(set) var blocksRead = false
-    /// A walk of the blocks has answered, present body or not (#5507).
+    /// A walk of the body on screen has answered, present or not (#5507).
     private(set) var blocksWalked = false
     /// Each table in the body, by the block id of its `table` block.
     ///
@@ -191,7 +191,8 @@ final class NoteReadViewModel {
             blocks = read
         } catch {
             // Cancelled, not failed: keep the blocks being edited on screen.
-            if Task.isCancelled { return }
+            // With no walk answered yet, the next open walks again (#5247).
+            if Task.isCancelled { hasLoaded = blocksWalked; return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocksGeneration = generation
@@ -318,7 +319,7 @@ final class NoteReadViewModel {
     /// apply for an answer the screen already holds.
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
-        await load()
+        await reload()
     }
 
     /// What the retry button and every post-edit refresh call. A note already
@@ -335,7 +336,11 @@ final class NoteReadViewModel {
     /// `quietly` keeps the page on screen, so a post-sync refresh does not flash.
     private func load(quietly: Bool = false) async {
         hasLoaded = true
-        if !quietly { phase = .loading }
+        if !quietly {
+            phase = .loading
+            // A body that just downloaded waits for its own walk (#5247).
+            blocksWalked = false
+        }
         let detail: NoteDetail?
         do {
             detail = try await reader.read(id: route.id)
