@@ -1991,7 +1991,7 @@ describe('vault watcher', () => {
         uploadAttachment: vi.fn(),
         downloadAttachment: vi.fn(),
         dereference,
-        markWritebackIgnored: vi.fn(),
+        recordAppWrite: vi.fn(() => () => {}),
         trackEvent: vi.fn()
       })
       recordAsset(db, {

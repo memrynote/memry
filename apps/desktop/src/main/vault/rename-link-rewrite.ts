@@ -14,8 +14,9 @@
  *  1. the note's CRDT body via `feedExternalEditToCrdt`, which reaches an open
  *     doc, a closed-but-persisted doc, and correctly leaves a note with no
  *     CRDT body alone. This is also what carries the rewrite to other devices,
- *  2. the vault file (`markWritebackIgnored` first, so the watcher does not
- *     re-ingest our own write), written through the outside-edit baseline,
+ *  2. the vault file (its bytes recorded with `recordAppWrite`, so the watcher
+ *     does not re-ingest our own write), written through the outside-edit
+ *     baseline,
  *  3. the index/canonical rows via `syncNoteToCache` — the re-projection is
  *     what refreshes `note_links.target_title`, so backlinks and the graph
  *     survive without a rebuild,
@@ -43,7 +44,7 @@ import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { landBodyEdit } from '../sync/writeback-baseline'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
@@ -182,15 +183,18 @@ export async function landSourceRewrite(
   const { path: sourcePath, content: rewritten } = source
   const absolutePath = toAbsolutePath(sourcePath)
 
-  // Same guard the sync note handler and `moveNote` use before touching a file
-  // the watcher is also watching: this write is already being reconciled here.
   const parsed = parseNote(rewritten, sourcePath)
-  markWritebackIgnored(absolutePath)
   const contentHash = await landBodyEdit(db, sourceId, rewritten, {
     notePath: sourcePath,
     feed: () =>
       feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter)),
-    write: () => atomicWrite(absolutePath, rewritten)
+    // Recorded as the sync note handler and `moveNote` record theirs: the
+    // watcher drops this write's echo, which is already being reconciled here.
+    write: async () => {
+      const landed = recordAppWrite(absolutePath, rewritten)
+      await atomicWrite(absolutePath, rewritten)
+      landed()
+    }
   })
 
   const now = new Date().toISOString()

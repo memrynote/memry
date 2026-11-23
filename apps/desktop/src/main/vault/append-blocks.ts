@@ -8,13 +8,13 @@
  * Memry body writer uses (`landBodyEdit`, sync/writeback-baseline.ts):
  *
  *  1. feed the note's CRDT body and wait for the store to hold it,
- *  2. `markWritebackIgnored`, then write the file through the outside-edit
- *     baseline, so a crash at any point leaves the doc or the pending hash
- *     naming the appended text,
+ *  2. write the file through the outside-edit baseline, its bytes recorded
+ *     with `recordAppWrite`, so a crash at any point leaves the doc or the
+ *     pending hash naming the appended text,
  *  3. `syncNoteToCache` to re-project the index rows,
  *  4. `notes:updated` with `source: 'external'` for the renderer.
  *
- * The feed is not optional. The watcher ignores this write, so when the
+ * The feed is not optional. The watcher drops this write's echo, so when the
  * target note IS open, its Y.Doc would keep the pre-append body and the next
  * write-back would overwrite the appended text.
  *
@@ -28,7 +28,7 @@ import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { landBodyEdit } from '../sync/writeback-baseline'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { parseNote, serializeParsedNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
@@ -101,7 +101,6 @@ export async function appendBlocksToNote(
   const nextFile = serializeParsedNote(parsedOriginal, nextContent, { frontmatterEdited: false })
 
   const parsed = parseNote(nextFile, target.path)
-  markWritebackIgnored(absolutePath)
   // A caller's retry would append twice: a failed file write resolves.
   const contentHash = await landBodyEdit(db, targetNoteId, nextFile, {
     notePath: target.path,
@@ -112,7 +111,11 @@ export async function appendBlocksToNote(
         parsed.content,
         writingFrontmatterOf(parsed.frontmatter)
       ),
-    write: () => atomicWrite(absolutePath, nextFile)
+    write: async () => {
+      const landed = recordAppWrite(absolutePath, nextFile)
+      await atomicWrite(absolutePath, nextFile)
+      landed()
+    }
   })
 
   const now = new Date().toISOString()

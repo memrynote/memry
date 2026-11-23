@@ -94,7 +94,7 @@ import {
 } from '../database/client'
 import { getStatus } from './index'
 import { enqueueLocalSyncUpdate } from '../sync/local-mutations'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -203,8 +203,9 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     insertNoteCache(index.db, { ...fields, contentHash: null })
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    markWritebackIgnored(absolutePath)
+    const landed = recordAppWrite(absolutePath, bytes)
     fs.writeFileSync(absolutePath, bytes)
+    landed()
   }
 
   const rows = () =>
@@ -267,7 +268,8 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
   /** A download of note `id`'s attachment, asked for at `requestedPath`, as the downloader lands it. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): string {
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
-    markWritebackIgnored(at)
+    // The downloader records the verified file's hash and never reports it landed.
+    recordAppWrite(at, { sha256: sha256(bytes) })
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
     return at
