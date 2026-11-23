@@ -344,6 +344,10 @@ describe('an outside edit followed by a rename inside the change debounce', () =
     const modifiedAt = new Date('2026-01-12T00:00:00.000Z')
     fs.utimesSync(path.join(vault.path, 'Docs/apple.md'), modifiedAt, modifiedAt)
     await watch()
+    // fsevents can replay the seed's write as a change, which reads the body.
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await flushProjectionEvents()
+    vi.mocked(feedExternalEditToCrdt).mockClear()
 
     fs.renameSync(path.join(vault.path, 'Docs/apple.md'), path.join(vault.path, 'Docs/pear.md'))
     await settleOn(() => expect(renameSynced).toHaveBeenCalledWith('n1'))

@@ -256,11 +256,11 @@ export class VaultWatcher {
   // Debounced handlers
   private debouncedChange: ((path: string) => void) | null = null
   /**
-   * Identity key (device, inode, size, mtime) of each file's last change, by
+   * Identity key (device, inode, birthtime, size, mtime) of each file's last change, by
    * event path, until its unlink takes it or CHANGE_KEY_GRACE_MS after its debounced change ran.
    * The index row's hash trails an outside edit until that change runs, so an
-   * unlink gives its pending delete this key and a rename (same inode, size
-   * and mtime) still matches its add (#5518). The inode keeps an unrelated
+   * unlink gives its pending delete this key and a rename (same inode,
+   * birthtime, size and mtime) still matches its add (#5518). Inode and birthtime keep an unrelated
    * same-size same-mtime file from taking over a deleted note.
    */
   private lastChangeKeys = new Map<string, string>()

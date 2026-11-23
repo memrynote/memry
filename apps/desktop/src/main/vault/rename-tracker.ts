@@ -323,16 +323,19 @@ export function buildStatRenameKey(
 
 /**
  * Rename key for a file the watcher saw change but whose index row may trail
- * the change. Device + inode tie it to that file: an unrelated file of the same
- * size and mtime has another inode. Null when the filesystem reports no inode
- * (0 on some Windows and network filesystems), so such a file never falls back
- * to size + mtime alone.
+ * the change. Device + inode + birthtime tie it to that file, which a rename
+ * keeps: an unrelated file of the same size and mtime has another inode, or,
+ * where the filesystem hands a freed inode to the next file (ext4), another
+ * birthtime. Null when the filesystem reports no inode or no birthtime (0 on
+ * some Windows, Linux and network filesystems), so such a file never falls
+ * back to size + mtime alone.
  */
 export function buildFileIdentityKey(
-  stats: Pick<Stats, 'dev' | 'ino' | 'size' | 'mtime'>
+  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'size' | 'mtime'>
 ): string | null {
-  if (!stats.ino) return null
-  return `ino:${stats.dev}:${stats.ino}:${stats.size}:${stats.mtime.getTime()}`
+  const born = stats.birthtime.getTime()
+  if (!stats.ino || !born) return null
+  return `ino:${stats.dev}:${stats.ino}:${born}:${stats.size}:${stats.mtime.getTime()}`
 }
 
 /**

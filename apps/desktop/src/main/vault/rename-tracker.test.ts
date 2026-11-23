@@ -131,9 +131,15 @@ describe('rename-tracker', () => {
     clearPendingDelete('note-x')
   })
 
-  it('matches a changed file only by its own inode, never by size + mtime alone', () => {
+  it('matches a changed file only by its own inode and birthtime, never by size + mtime alone', () => {
     const mtime = new Date('2026-01-12T00:00:00.000Z')
-    const changed = { dev: 1, ino: 42, size: 20, mtime }
+    const changed = {
+      dev: 1,
+      ino: 42,
+      birthtime: new Date('2026-01-10T00:00:00.000Z'),
+      size: 20,
+      mtime
+    }
     trackPendingDelete('note-c', 'stale-hash', 'notes/c.md', vi.fn(), buildFileIdentityKey(changed))
 
     const lookalike = { ...changed, ino: 43 }
@@ -142,11 +148,15 @@ describe('rename-tracker', () => {
       buildStatRenameKey(20, mtime.toISOString())
     ]
     expect(checkForRename('new-hash', 'notes/other.md', lookalikeKeys)).toBeNull()
+    // ext4 hands the freed inode to the next file, which has its own birthtime.
+    const reusedInode = buildFileIdentityKey({ ...changed, birthtime: new Date() })
+    expect(checkForRename('new-hash', 'notes/other.md', [reusedInode])).toBeNull()
     expect(
       checkForRename('new-hash', 'notes/c-renamed.md', [buildFileIdentityKey(changed)])
     ).toMatchObject({ id: 'note-c' })
-    // Some Windows and network filesystems report no inode: no identity key.
+    // Some filesystems report no inode or no birthtime: no identity key.
     expect(buildFileIdentityKey({ ...changed, ino: 0 })).toBeNull()
+    expect(buildFileIdentityKey({ ...changed, birthtime: new Date(0) })).toBeNull()
   })
 
   it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {
