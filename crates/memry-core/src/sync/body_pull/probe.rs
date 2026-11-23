@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
+use crate::crdt::epoch::Epoch;
 use crate::protocol::http::{HttpClient, RetryPolicy};
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 
@@ -32,7 +33,7 @@ pub(in crate::sync) struct Probed {
 pub(in crate::sync) struct ProbeAnswer {
     pub(in crate::sync) since: i64,
     /// The body's epoch when the page was asked for (#5356).
-    pub(in crate::sync) epoch: i64,
+    pub(in crate::sync) epoch: Epoch,
     pub(in crate::sync) page: UpdatePage,
 }
 

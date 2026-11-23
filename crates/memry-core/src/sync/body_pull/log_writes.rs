@@ -5,12 +5,10 @@
 //! Every write first checks, in its own transaction, that the body it fetched
 //! for is still the document's body ([`HeldBody`], #5356).
 
-use std::collections::HashMap;
-
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
-use crate::crdt::epoch::{self, HeldBody};
+use crate::crdt::epoch::{self, Epoch, Epochs, HeldBody};
 use crate::crdt::update_log::Namespace;
 use crate::storage::nested_tx;
 use crate::sync::store;
@@ -31,12 +29,12 @@ pub(super) struct Baseline {
 /// Every document's epoch (§7.16) before a pack bootstrap fetched anything,
 /// for the [`HeldBody`] check at each seed (#5356). Read
 /// with [`BodyPull::body_epochs`].
-#[derive(Debug, Clone, Default)]
-pub struct BodyEpochs(HashMap<String, i64>);
+#[derive(Debug, Clone)]
+pub struct BodyEpochs(Epochs);
 
 impl BodyEpochs {
-    fn of(&self, doc_id: &str) -> i64 {
-        self.0.get(doc_id).copied().unwrap_or(0)
+    fn of(&self, doc_id: &str) -> Epoch {
+        self.0.of(doc_id)
     }
 }
 
@@ -57,7 +55,7 @@ impl BodyPull {
     pub(super) async fn store_updates(
         &self,
         doc_id: &str,
-        epoch: i64,
+        epoch: Epoch,
         updates: Vec<(i64, Vec<u8>)>,
     ) -> Result<bool, BodyPullError> {
         let Some(&(last, _)) = updates.last() else {
@@ -91,7 +89,7 @@ impl BodyPull {
     pub(super) async fn store_baseline(
         &self,
         doc_id: &str,
-        epoch: i64,
+        epoch: Epoch,
         snapshot: Vec<u8>,
         sequence_num: i64,
         revision: Option<String>,
@@ -131,7 +129,7 @@ impl BodyPull {
         baselines: Vec<Baseline>,
         epochs: &BodyEpochs,
     ) -> Result<Vec<Freshness>, BodyPullError> {
-        let epochs: Vec<i64> = baselines.iter().map(|b| epochs.of(&b.doc_id)).collect();
+        let epochs: Vec<Epoch> = baselines.iter().map(|b| epochs.of(&b.doc_id)).collect();
         let now = now_ms();
         let stored = self
             .db
@@ -180,7 +178,7 @@ impl BodyPull {
         runs: Vec<PackRun>,
         epochs: &BodyEpochs,
     ) -> Result<Vec<usize>, BodyPullError> {
-        let epochs: Vec<i64> = runs.iter().map(|(doc_id, _)| epochs.of(doc_id)).collect();
+        let epochs: Vec<Epoch> = runs.iter().map(|(doc_id, _)| epochs.of(doc_id)).collect();
         let now = now_ms();
         let stored = self
             .db
@@ -224,7 +222,7 @@ impl BodyPull {
     pub(super) async fn hold_empty_body(
         &self,
         doc_id: &str,
-        epoch: i64,
+        epoch: Epoch,
     ) -> Result<(), BodyPullError> {
         let doc = doc_id.to_owned();
         let scope = crdt_cursor_scope(doc_id);
@@ -257,11 +255,11 @@ impl BodyPull {
     }
 
     /// `doc_id`'s epoch, read before a pull fetches anything for it.
-    pub(super) async fn body_epoch(&self, doc_id: &str) -> Result<i64, BodyPullError> {
+    pub(super) async fn body_epoch(&self, doc_id: &str) -> Result<Epoch, BodyPullError> {
         let doc = doc_id.to_owned();
         let epoch = self
             .db
-            .call(move |conn| epoch::read(conn, &doc).map_err(crdt_failed))
+            .call(move |conn| epoch::capture(conn, &doc).map_err(crdt_failed))
             .await?;
         Ok(epoch)
     }
@@ -270,7 +268,7 @@ impl BodyPull {
     pub async fn body_epochs(&self) -> Result<BodyEpochs, BodyPullError> {
         let epochs = self
             .db
-            .call(|conn| epoch::read_all(conn).map_err(crdt_failed))
+            .call(|conn| epoch::capture_all(conn).map_err(crdt_failed))
             .await?;
         Ok(BodyEpochs(epochs))
     }
@@ -282,7 +280,7 @@ impl BodyPull {
 fn held<'c>(
     conn: &'c Connection,
     doc_id: &'c str,
-    epoch: i64,
+    epoch: Epoch,
 ) -> Result<Option<HeldBody<'c>>, StorageError> {
     HeldBody::check(conn, doc_id, epoch).map_err(crdt_failed)
 }
