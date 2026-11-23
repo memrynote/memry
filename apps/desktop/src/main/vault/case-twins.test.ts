@@ -24,6 +24,7 @@ import {
 import {
   getAliasesForNotes,
   getInboundLinkSourceIds,
+  getNoteCacheById,
   getNoteTags,
   insertNoteCache,
   reindexNoteNames,
@@ -65,7 +66,7 @@ vi.mock('../sync/local-mutations', () => ({
   removePendingNoteSyncItems: vi.fn()
 }))
 const docs = vi.hoisted(() => new Map<string, unknown>())
-/** A survivor whose doc the provider cannot hand out: `open` waits on, or rejects with, this. */
+/** A doc the provider cannot hand out yet: `open` and `withDocLoaded` wait on this. */
 const unavailable = vi.hoisted(() => new Map<string, Promise<never>>())
 vi.mock('../sync/crdt-provider', () => {
   const stub = {
@@ -78,8 +79,14 @@ vi.mock('../sync/crdt-provider', () => {
     readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
-    open: async (id: string) => (unavailable.has(id) ? unavailable.get(id) : docs.get(id)),
-    withDocLoaded: async (_id: string, run: () => void) => run(),
+    open: vi.fn(async (id: string) => {
+      if (unavailable.has(id)) await unavailable.get(id)
+      return docs.get(id)
+    }),
+    withDocLoaded: vi.fn(async (id: string, run: () => void) => {
+      if (unavailable.has(id)) await unavailable.get(id)
+      run()
+    }),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
     purge: vi.fn(async () => {})
@@ -137,6 +144,11 @@ import { deleteNoteCommand } from '../notes/domain'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
+import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
+import { NoteError } from '../lib/errors'
+import { beginPageApply, writeSyncedVaultFile } from '../sync/bulk-apply'
+import { prepareCaseTwinLeave } from './case-twin-file'
+import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -383,6 +395,30 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   const applyPeerDelete = (id: string) =>
     noteHandler.applyDelete({ db: asClientDb(data.db), emit: vi.fn() }, id)
 
+  /**
+   * A peer's delete as a pull applies it: retried until the survivor's file is
+   * ready. Answers the shared file and the rows as the apply left them, read
+   * before anything else runs.
+   */
+  async function applyPeerDeleteWhenReady(id: string) {
+    let applied = { file: '', rows: [] as string[] }
+    await vi.waitFor(() => {
+      expect(applyPeerDelete(id)).toBe('applied')
+      applied = { file: shared(), rows: rowIds() }
+    })
+    return applied
+  }
+
+  /** A doc store that hangs until the test fails it. */
+  function stall(): { promise: Promise<never>; fail: () => void } {
+    let fail = (): void => {}
+    const promise = new Promise<never>((_resolve, reject) => {
+      fail = () => reject(new Error('store gone'))
+    })
+    promise.catch(() => {})
+    return { promise, fail }
+  }
+
   for (const [deleted, survivor, body] of [
     ['lower', 'upper', UPPER],
     ['upper', 'lower', LOWER]
@@ -404,9 +440,8 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     it(`a peer's delete of twin ${deleted} keeps the shared file with ${survivor}'s body`, async () => {
       await twins()
 
-      expect(applyPeerDelete(deleted)).toBe('applied')
-
-      await vi.waitFor(() => expect(shared()).toBe(body))
+      // The survivor's file is written in the delete's own step.
+      expect(await applyPeerDeleteWhenReady(deleted)).toEqual({ file: body, rows: [survivor] })
       expect(await afterDelete(survivor)).toEqual({
         file: body,
         rows: [survivor],
@@ -428,39 +463,16 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }).toEqual({ exists: false, rows: ['lower', 'upper'] })
   }, 30_000)
 
-  // The deleted twin's body is the one on disk in each case below.
-  it('a delete that stops right after the row drop leaves the survivor its body', async () => {
+  it('deleting the last twin removes the shared file', async () => {
     await twins()
-    // The rewrite waits forever, as after a crash right after the row drop.
-    unavailable.set('lower', new Promise<never>(() => {}))
-
-    void deleteNoteCommand('upper')
-    await vi.waitFor(() => expect(rowIds()).toEqual(['lower']))
-
-    unavailable.clear()
-    expect(await afterDelete('lower')).toEqual({
-      file: LOWER,
-      rows: ['lower'],
-      crossed: [],
-      deletes: [['note', 'upper']]
-    })
-  }, 30_000)
-
-  it('a local delete whose survivor rewrite throws leaves the survivor its body', async () => {
-    await twins()
-    unavailable.set('lower', Promise.reject(new Error('store gone')))
-    unavailable.get('lower')!.catch(() => {})
 
     await deleteNoteCommand('upper')
+    await deleteNoteCommand('lower')
 
-    expect(shared()).not.toContain('upper')
-    unavailable.clear()
-    expect(await afterDelete('lower')).toEqual({
-      file: LOWER,
-      rows: ['lower'],
-      crossed: [],
-      deletes: [['note', 'upper']]
-    })
+    expect({
+      exists: fs.existsSync(path.join(vault.path, 'Supernotes/a.md')),
+      rows: rowIds()
+    }).toEqual({ exists: false, rows: [] })
   }, 30_000)
 
   it('a survivor that owes its file body never takes the deleted twin body', async () => {
@@ -515,6 +527,41 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     lowerTags: getNoteTags(index.db, 'lower'),
     lowerAliases: getAliasesForNotes(index.db, ['lower']).get('lower')
   })
+  const LOWER_KEPT = {
+    file: expect.stringMatching(LOWER_HEAD_RE),
+    upperInFile: false,
+    lowerTags: ['lowertag'],
+    lowerAliases: ['lowalias']
+  }
+
+  /** Nothing of a twin delete has happened: both rows, upper's file, no tombstone, no purge. */
+  const untouched = () => ({
+    file: shared(),
+    rows: rowIds(),
+    deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls,
+    purged: vi.mocked(getCrdtProvider().purge).mock.calls
+  })
+  const UNTOUCHED = { file: UPPER_HEAD + UPPER, rows: ['lower', 'upper'], deletes: [], purged: [] }
+
+  /**
+   * After a twin delete that stopped before its step: a vault open and the
+   * survivor's write-back take nothing, and a retried delete leaves the
+   * survivor its own file.
+   */
+  async function expectStoppedDeleteHarmless(): Promise<void> {
+    await stopWatcher()
+    await openVault()
+    await writeBack('lower', LOWER)
+    expect({ ...untouched(), crossed: crossed() }).toEqual({ ...UNTOUCHED, crossed: [] })
+
+    await deleteNoteCommand('upper')
+    await afterDelete('lower')
+    await flushProjectionEvents()
+    expect({
+      ...lowerHeader(),
+      deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }).toEqual({ ...LOWER_KEPT, deletes: [['note', 'upper']] })
+  }
 
   it("a deleted twin's header never lands on the survivor", async () => {
     await headerTwins()
@@ -523,46 +570,147 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await afterDelete('lower')
     await flushProjectionEvents()
 
-    expect(lowerHeader()).toEqual({
-      file: expect.stringMatching(LOWER_HEAD_RE),
-      upperInFile: false,
-      lowerTags: ['lowertag'],
-      lowerAliases: ['lowalias']
-    })
+    expect(lowerHeader()).toEqual(LOWER_KEPT)
   }, 30_000)
 
-  it("a peer's delete of a twin never lands its header on the survivor", async () => {
+  // VERIFY-5499R4 (1a): nothing durable happens before the delete's step.
+  it("a twin delete waiting on the survivor's doc changes nothing, and fails when it cannot load", async () => {
     await headerTwins()
+    const store = stall()
+    unavailable.set('lower', store.promise)
 
-    expect(applyPeerDelete('upper')).toBe('applied')
-    await vi.waitFor(() => expect(shared()).toContain('lower [[x]]'))
+    const first = deleteNoteCommand('upper')
+    await vi.waitFor(() =>
+      expect(getCrdtProvider().open).toHaveBeenCalledWith('lower', undefined, { skipSeed: true })
+    )
+    expect(untouched()).toEqual(UNTOUCHED)
+
+    store.fail()
+    await expect(first).rejects.toBeInstanceOf(NoteError)
+    unavailable.clear()
+    expect(untouched()).toEqual(UNTOUCHED)
+    await expectStoppedDeleteHarmless()
+  }, 30_000)
+
+  it('a twin delete stopped before its step changes nothing', async () => {
+    await headerTwins()
+    unavailable.set('upper', stall().promise)
+
+    void deleteNoteCommand('upper')
+    await vi.waitFor(() =>
+      expect(getCrdtProvider().withDocLoaded).toHaveBeenCalledWith('upper', expect.any(Function))
+    )
+    expect(untouched()).toEqual(UNTOUCHED)
+
+    unavailable.clear()
+    await expectStoppedDeleteHarmless()
+  }, 30_000)
+
+  // VERIFY-5499R4 (1b): the survivor's file, the tombstone and the row drop are one step.
+  it('a twin delete that stops right after its step leaves the survivor its own file', async () => {
+    await headerTwins()
+    vi.mocked(getCrdtProvider().purge).mockImplementationOnce(() => new Promise(() => {}))
+
+    void deleteNoteCommand('upper')
+    await vi.waitFor(() => expect(rowIds()).toEqual(['lower']))
+
+    expect({
+      file: shared(),
+      deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }).toEqual({ file: expect.stringMatching(LOWER_HEAD_RE), deletes: [['note', 'upper']] })
     await afterDelete('lower')
     await flushProjectionEvents()
-
-    expect(lowerHeader()).toEqual({
-      file: expect.stringMatching(LOWER_HEAD_RE),
-      upperInFile: false,
-      lowerTags: ['lowertag'],
-      lowerAliases: ['lowalias']
-    })
-  }, 30_000)
-
-  // An image cover's framing and credit are not indexed. Written without them,
-  // the survivor's next push would reset them on peers.
-  it('a survivor with an image cover leaves it out of its file and its push', async () => {
-    await headerTwins('covers/low.png')
-    // The server holds the cover: a push without one would remove it there.
-    recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
-
-    await deleteNoteCommand('upper')
-
-    const frontmatter = parseNote(shared()).frontmatter
     expect({
-      cover: frontmatter.cover,
-      aliases: frontmatter.aliases,
-      push: noteCoverForPush(asClientDb(data.db), 'lower', frontmatter)
-    }).toEqual({ cover: undefined, aliases: ['lowalias'], push: undefined })
+      ...lowerHeader(),
+      push: noteCoverForPush(asClientDb(data.db), 'lower', parseNote(shared()).frontmatter)
+    }).toEqual({ ...LOWER_KEPT, push: { ref: 'wash:sage' } })
   }, 30_000)
+
+  it("a peer's twin delete waits for the survivor's file, then lands it in its own step", async () => {
+    await headerTwins()
+
+    expect(() => applyPeerDelete('upper')).toThrow(PendingSyncIntentError)
+    expect(untouched()).toEqual(UNTOUCHED)
+
+    expect(await applyPeerDeleteWhenReady('upper')).toEqual({
+      file: expect.stringMatching(LOWER_HEAD_RE),
+      rows: ['lower']
+    })
+    await afterDelete('lower')
+    await flushProjectionEvents()
+    expect(lowerHeader()).toEqual(LOWER_KEPT)
+  }, 30_000)
+
+  it("a peer's twin delete keeps waiting while the survivor's doc cannot load", async () => {
+    await headerTwins()
+    const store = stall()
+    unavailable.set('lower', store.promise)
+
+    expect(() => applyPeerDelete('upper')).toThrow(PendingSyncIntentError)
+    await vi.waitFor(() =>
+      expect(getCrdtProvider().open).toHaveBeenCalledWith('lower', undefined, { skipSeed: true })
+    )
+    expect(() => applyPeerDelete('upper')).toThrow(PendingSyncIntentError)
+    expect(untouched()).toEqual(UNTOUCHED)
+
+    store.fail()
+    unavailable.clear()
+    await applyPeerDeleteWhenReady('upper')
+    expect(lowerHeader()).toEqual(LOWER_KEPT)
+  }, 30_000)
+
+  // A write a page apply deferred lands after the delete's step, and would put
+  // the other twin's bytes under the survivor's new baseline.
+  it("a peer's twin delete waits while a page apply owes the shared file a write", async () => {
+    await headerTwins()
+    await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper')
+    const page = beginPageApply(asClientDb(data.db))
+    try {
+      writeSyncedVaultFile(path.join(vault.path, 'supernotes/A.md'), UPPER_HEAD + UPPER)
+
+      expect(() => applyPeerDelete('upper')).toThrow(PendingSyncIntentError)
+      expect(untouched()).toEqual(UNTOUCHED)
+    } finally {
+      page.rollback()
+    }
+
+    await applyPeerDeleteWhenReady('upper')
+    expect(lowerHeader()).toEqual(LOWER_KEPT)
+  }, 30_000)
+
+  // An image cover's framing and credit live only in the file. The rebuilt
+  // file keeps the ref; the push leaves the cover out until it changes here,
+  // so peers keep its framing.
+  for (const [how, remove] of [
+    ['local', () => deleteNoteCommand('upper')],
+    ['peer', () => applyPeerDeleteWhenReady('upper')]
+  ] as const) {
+    it(`a ${how} twin delete keeps the survivor's image cover without resetting it on peers`, async () => {
+      await headerTwins('covers/low.png')
+      // The server holds the cover with its framing.
+      recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+
+      await remove()
+      await flushProjectionEvents()
+
+      const frontmatter = parseNote(shared()).frontmatter
+      const db = asClientDb(data.db)
+      expect({
+        cover: frontmatter.cover,
+        aliases: frontmatter.aliases,
+        indexed: getNoteCacheById(index.db, 'lower')?.cover,
+        push: noteCoverForPush(db, 'lower', frontmatter),
+        reframed: noteCoverForPush(db, 'lower', { ...frontmatter, [COVER_ZOOM_FRONTMATTER_KEY]: 2 })
+          ?.zoom
+      }).toEqual({
+        cover: 'covers/low.png',
+        aliases: ['lowalias'],
+        indexed: 'covers/low.png',
+        push: undefined,
+        reframed: 2
+      })
+    }, 30_000)
+  }
 
   it('a survivor with an empty doc keeps its own header and never the deleted twin body', async () => {
     await headerTwins()
@@ -573,19 +721,22 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect({ file: shared(), crossed: crossed() }).toEqual({ file: LOWER_HEAD, crossed: [] })
   }, 30_000)
 
-  // Every fallible step of the leave runs before the row drop: a failure there
-  // aborts the delete with both rows and the file as they were.
-  for (const [failure, fail] of [
+  // A failure before the survivor's file is written aborts the delete with
+  // both rows and the file as they were; one after it leaves the survivor's
+  // own file.
+  for (const [failure, fail, file] of [
     [
       'an unreadable shared file',
-      () => fs.chmodSync(path.join(vault.path, 'Supernotes/a.md'), 0o000)
+      () => fs.chmodSync(path.join(vault.path, 'Supernotes/a.md'), 0o000),
+      UPPER
     ],
     [
       'a baseline that cannot be recorded',
       () =>
         vi.mocked(recordBaseline).mockImplementationOnce(() => {
           throw new Error('index gone')
-        })
+        }),
+      LOWER
     ]
   ] as const) {
     it(`${failure} aborts a twin delete with both rows intact`, async () => {
@@ -604,7 +755,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       await openVault()
       await writeBack('lower', LOWER)
       expect({ file: shared(), rows: rowIds(), crossed: crossed() }).toEqual({
-        file: UPPER,
+        file,
         rows: ['lower', 'upper'],
         crossed: []
       })

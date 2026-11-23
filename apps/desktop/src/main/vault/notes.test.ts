@@ -29,6 +29,7 @@ import { writeLockRow } from '../vault-locks/store'
 import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
+import type { SyncNoteDelete } from './notes-crud'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -76,6 +77,9 @@ vi.mock('../sync/crdt-external-feed', () => ({
 // ============================================================================
 // Test Suite
 // ============================================================================
+
+/** These tests sync nothing: the delete's step runs, and queues no tombstone. */
+const withoutSync: SyncNoteDelete = async (inStep) => inStep?.(() => {})
 
 describe('notes operations', () => {
   let tempVault: TestVaultResult
@@ -1636,7 +1640,7 @@ describe('notes operations', () => {
 
       flushProjectionEventsSpy.mockClear()
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(flushProjectionEventsSpy).not.toHaveBeenCalled()
     })
@@ -1650,7 +1654,7 @@ describe('notes operations', () => {
       const filePath = path.join(tempVault.path, created.path)
       expect(fs.existsSync(filePath)).toBe(true)
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(fs.existsSync(filePath)).toBe(false)
     })
@@ -1661,14 +1665,16 @@ describe('notes operations', () => {
         content: 'Content.'
       })
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       const retrieved = await notes.getNoteById(created.id)
       expect(retrieved).toBeNull()
     })
 
     it('T366: throws NOT_FOUND for non-existent note', async () => {
-      await expect(notes.deleteNote('nonexistent123')).rejects.toThrow('Note not found')
+      await expect(notes.deleteNote('nonexistent123', withoutSync)).rejects.toThrow(
+        'Note not found'
+      )
     })
 
     it('T366: emits DELETED event', async () => {
@@ -1685,7 +1691,7 @@ describe('notes operations', () => {
 
       mockSend.mockClear()
 
-      await notes.deleteNote(created.id)
+      await notes.deleteNote(created.id, withoutSync)
 
       expect(mockSend).toHaveBeenCalledWith(
         'notes:deleted',
@@ -1916,7 +1922,7 @@ describe('notes operations', () => {
         content: 'Points at [[Doomed Target]].'
       })
 
-      await notes.deleteNote(target.id)
+      await notes.deleteNote(target.id, withoutSync)
 
       expect((await notes.getNoteLinks(source.id)).outgoing).toEqual([
         { sourceId: source.id, targetId: null, targetTitle: 'Doomed Target' }
@@ -2041,7 +2047,7 @@ describe('notes operations', () => {
       })
 
       setPropertyRefs(testDb.db, ghost.id, { father: [`memry://note/${target.id}`] })
-      await notes.deleteNote(ghost.id)
+      await notes.deleteNote(ghost.id, withoutSync)
 
       const links = await notes.getNoteLinks(target.id)
 

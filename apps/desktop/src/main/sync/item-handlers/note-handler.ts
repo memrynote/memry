@@ -82,7 +82,7 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
-import { claimSharedFile, keepSurvivorFile, sharesCaseTwinFile } from '../../vault/case-twin-file'
+import { planCaseTwinLeave, sharesCaseTwinFile } from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -771,12 +771,13 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     }
 
     const absolutePath = toAbsolutePath(existing.path)
-    // Asked while this row still names the file (#5495). The claim does every
-    // fallible step of the leave before anything else here (case-twin-file.ts):
-    // a throw fails the item with both rows, the doc and the file intact.
-    // `applyDelete` is synchronous, so nothing runs between it and the drop.
-    const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), existing.path)
-    const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), existing.path, itemId) : null
+    // Planned while this row still names the file (#5495), before anything
+    // else here: a throw fails the item with both rows, the doc and the file
+    // intact, and a not-ready one is retried by the pull. `applyDelete` is
+    // synchronous, so nothing runs between the plan and the drop.
+    const leave = sharesCaseTwinFile(getVaultRoot(), existing.path)
+      ? planCaseTwinLeave(getVaultRoot(), existing.path, itemId)
+      : null
     keepUnseenText(ctx, {
       itemId,
       title: `${existing.title || 'Untitled'} (kept from deleted note)`,
@@ -815,6 +816,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       .all()
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
+    // The shared file becomes the survivor's own in the row drop's step.
+    leave?.()
     deleteNoteFromCache(indexDb, itemId)
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
@@ -829,16 +832,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     })
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
-    if (twinKeepsFile) {
-      // Floated: `applyDelete` is synchronous. The claim above is the
-      // lossless part; a rewrite lost to a crash leaves claimed bytes that
-      // only a doc-to-file pass touches.
-      void keepSurvivorFile(claim)
-    } else {
-      // Journaled with the page and unlinked after it commits (#2385): a lost
-      // unlink would leave a file with no row for the indexer to push back.
-      deleteSyncedVaultFile(absolutePath)
-    }
+    // Journaled with the page and unlinked after it commits (#2385): a lost
+    // unlink would leave a file with no row for the indexer to push back. A
+    // case twin's file stays with the other twin.
+    if (!leave) deleteSyncedVaultFile(absolutePath)
 
     // The note may be the last one in a folder another device deleted (#2512).
     const folder = extractFolderFromPath(existing.path)

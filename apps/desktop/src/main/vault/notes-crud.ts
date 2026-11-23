@@ -22,12 +22,7 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import {
-  claimSharedFile,
-  keepSurvivorFile,
-  sharesCaseTwinFile,
-  type SurvivorClaim
-} from './case-twin-file'
+import { planCaseTwinLeave, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -884,18 +879,13 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 // ============================================================================
 
 /**
- * The claim of a case twin on the file it leaves (`case-twin-file.ts`), or
- * null. A local delete takes it before it queues the tombstone, so a claim that
- * throws aborts the delete before peers hear of it.
+ * Queues the note's sync delete (`syncNoteDelete`). `inStep` is the delete's
+ * own step: it queues the tombstone with `enqueueTombstone`, and a throw there
+ * queues none.
  */
-export function claimNoteFile(id: string): SurvivorClaim | null {
-  const cached = getNoteCacheById(getIndexDatabase(), id)
-  if (!cached || !sharesCaseTwinFile(getVaultRoot(), cached.path)) return null
-  return claimSharedFile(getVaultRoot(), cached.path, id)
-}
+export type SyncNoteDelete = (inStep?: (enqueueTombstone: () => void) => void) => Promise<void>
 
-/** `claim` is `claimNoteFile`'s, taken earlier; left out, the claim is taken here. */
-export async function deleteNote(id: string, claim?: SurvivorClaim | null): Promise<void> {
+export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promise<void> {
   const db = getIndexDatabase()
 
   const cached = getNoteCacheById(db, id)
@@ -904,20 +894,34 @@ export async function deleteNote(id: string, claim?: SurvivorClaim | null): Prom
   }
   assertNoteWritable(id, cached.path)
 
-  // A case twin's file is the other twin's too (#5495): only this row goes.
-  const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), cached.path)
-  if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
-
-  // Every fallible step of the leave runs before the row drop (case-twin-file.ts):
-  // a throw here aborts the delete with both rows.
-  const leave = !twinKeepsFile
-    ? null
-    : claim === undefined
-      ? claimSharedFile(getVaultRoot(), cached.path, id)
-      : claim
-  deleteNoteFromCache(db, id)
-  deleteNotePosition(getDatabase(), cached.path)
-  await keepSurvivorFile(leave)
+  const vaultPath = getVaultRoot()
+  const dropRows = (): void => {
+    deleteNoteFromCache(db, id)
+    deleteNotePosition(getDatabase(), cached.path)
+  }
+  if (sharesCaseTwinFile(vaultPath, cached.path)) {
+    // A case twin's file is the other twin's too (#5495): only this row goes,
+    // and the file becomes the survivor's own in the step that drops it and
+    // queues the tombstone. Nothing before the step changes anything.
+    await prepareCaseTwinLeave(vaultPath, cached.path, id)
+    await syncDelete((enqueueTombstone) => {
+      planCaseTwinLeave(vaultPath, cached.path, id)()
+      enqueueTombstone()
+      dropRows()
+    })
+  } else {
+    await syncDelete()
+    // A twin that arrived while the delete awaited has its body in this file.
+    if (sharesCaseTwinFile(vaultPath, cached.path)) {
+      throw new NoteError(
+        'Another note now shares this file; try the delete again',
+        NoteErrorCode.DELETE_FAILED,
+        id
+      )
+    }
+    await deleteFile(toAbsolutePath(cached.path))
+    dropRows()
+  }
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,

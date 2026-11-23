@@ -69,16 +69,15 @@ export function syncNoteUpdate(noteId: string, title?: string): void {
 
 /**
  * Callers await it before they drop the cache (`deleteDocLocally`).
- * `beforeTombstone` runs in the tombstone's step, and a throw there queues none.
+ * `inStep` is the delete's own step, run with the doc loaded: it calls
+ * `enqueue` to queue the tombstone, which reads the cache, so before the cache
+ * drop. A throw there queues none and purges no doc.
  */
 export async function syncNoteDelete(
   noteId: string,
-  beforeTombstone: () => void = () => {}
+  inStep: (enqueue: () => void) => void = (enqueue) => enqueue()
 ): Promise<void> {
-  await deleteDocLocally(noteId, () => {
-    beforeTombstone()
-    enqueueLocalSyncDelete('note', noteId)
-  })
+  await deleteDocLocally(noteId, () => inStep(() => enqueueLocalSyncDelete('note', noteId)))
   recordLocalItemDelete('note', noteId)
 }
 
