@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use http_fakes::{FakeSecureStore, FakeTransport, jwt, response};
+use http_fakes::{FakeSecureStore, FakeTransport, jwt, response, response_with_header};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::errors::{StorageError, TransportError};
 use memry_core::api::sync::{SyncPhase, SyncProgress, SyncProgressListener};
@@ -243,6 +243,87 @@ async fn a_rate_limit_ends_the_round_and_leaves_the_rest_owed_for_the_next() {
         .await
         .expect("the next round");
     assert_eq!((second.documents, second.remaining), (2, 0), "{second:?}");
+}
+
+/// #5247 C40.2: a round a `429` ended after pulling something is not
+/// followed at once by another: until the server's `Retry-After` the next
+/// round makes no request and pulls nothing, which pauses the shell's drain.
+#[tokio::test(start_paused = true)]
+async fn a_round_after_a_rate_limit_waits_out_the_retry_after() {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault_with_side("retry-after", transport.clone());
+    let ids = owed_notes(&side, 3);
+    for answer in [devices(), no_bootstrap(), probe_page(), updates_page()] {
+        transport.push(answer);
+    }
+    transport.push(response_with_header(
+        429,
+        r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+        ("retry-after", "30"),
+    ));
+    let sync = vault.sync(session);
+
+    let first = sync.drain_bodies(None).await.expect("the round");
+    assert_eq!((first.documents, first.remaining), (1, 2), "{first:?}");
+
+    let calls = transport.call_count();
+    let paused = sync.drain_bodies(None).await.expect("the paused round");
+    assert_eq!((paused.documents, paused.remaining), (0, 2), "{paused:?}");
+    assert_eq!(
+        transport.call_count(),
+        calls,
+        "no request inside Retry-After"
+    );
+    assert_eq!(owed(&side), ids[1..].to_vec());
+
+    tokio::time::advance(std::time::Duration::from_secs(30)).await;
+    for answer in [
+        devices(),
+        no_bootstrap(),
+        probe_page(),
+        updates_page(),
+        updates_page(),
+    ] {
+        transport.push(answer);
+    }
+    let resumed = sync.drain_bodies(None).await.expect("the next round");
+    assert_eq!(
+        (resumed.documents, resumed.remaining),
+        (2, 0),
+        "{resumed:?}"
+    );
+}
+
+/// A `Retry-After` past any sane window neither panics the round nor parks
+/// the drain for the life of the process: the pause is capped at ten minutes.
+#[tokio::test(start_paused = true)]
+async fn an_absurd_retry_after_is_capped() {
+    let transport = FakeTransport::new(vec![]);
+    let (vault, side, session) = vault_with_side("retry-after-cap", transport.clone());
+    owed_notes(&side, 2);
+    for answer in [devices(), no_bootstrap(), probe_page(), updates_page()] {
+        transport.push(answer);
+    }
+    transport.push(response_with_header(
+        429,
+        r#"{"error":{"code":"RATE_LIMITED","message":"slow down"}}"#,
+        ("retry-after", &u64::MAX.to_string()),
+    ));
+    let sync = vault.sync(session);
+
+    let first = sync.drain_bodies(None).await.expect("the round");
+    assert_eq!((first.documents, first.remaining), (1, 1), "{first:?}");
+
+    tokio::time::advance(std::time::Duration::from_secs(600)).await;
+    for answer in [devices(), no_bootstrap(), probe_page(), updates_page()] {
+        transport.push(answer);
+    }
+    let resumed = sync.drain_bodies(None).await.expect("the next round");
+    assert_eq!(
+        (resumed.documents, resumed.remaining),
+        (1, 0),
+        "{resumed:?}"
+    );
 }
 
 #[tokio::test]

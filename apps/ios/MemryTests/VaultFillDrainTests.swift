@@ -52,7 +52,7 @@ struct VaultFillDrainTests {
     /// Owed documents backing off after a failure come back as `remaining`
     /// with nothing pulled; asking again at once would spin.
     @Test("a round that pulled nothing pauses the drain")
-    func anEmptyRoundEndsTheDrain() async throws {
+    func anEmptyRoundPausesTheDrain() async throws {
         let filler = StoreFiller(
             store: VaultStore(), alreadyComplete: true,
             rounds: [
