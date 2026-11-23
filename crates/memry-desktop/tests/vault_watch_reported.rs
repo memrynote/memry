@@ -311,6 +311,28 @@ fn a_removal_is_reported_once_and_a_file_back_at_that_path_is_new() {
 }
 
 #[test]
+fn a_file_back_after_its_notes_row_went_is_new_whatever_was_reported_for_it() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("f/a.md", "body");
+    f.index("n1", "f/a.md", "body");
+    f.write("f/a.md", "edited");
+    f.touch(&mut r, &["f/a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["changed"]);
+    // The app deletes the folder with its note's row, and the folder is put back from the
+    // trash before the watcher looks: one batch sees only the folder, there again (#5565).
+    f.rename("f", "trash/f");
+    f.files().remove("n1").unwrap();
+    f.rename("trash/f", "f");
+    f.touch(&mut r, &["f"], 2);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Added { path, .. }] if path == "f/a.md"),
+        "the file of a deleted note read as unchanged: {events:?}"
+    );
+}
+
+#[test]
 fn a_note_edited_outside_and_then_moved_keeps_its_id() {
     let f = fixture();
     let mut r = f.reconciler();

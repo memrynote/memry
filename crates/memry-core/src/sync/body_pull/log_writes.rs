@@ -2,10 +2,10 @@
 //! cursors in one transaction per chunk (§7.9, #5231), and an empty log leaves
 //! a cursor too.
 
-use rusqlite::{Connection, OptionalExtension as _, params};
+use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
-use crate::crdt::update_log::{self, Namespace};
+use crate::crdt::update_log;
 use crate::storage::nested_tx;
 use crate::sync::store;
 
@@ -225,15 +225,7 @@ pub(super) fn pack_freshness(
     if cursor.is_some_and(|cursor| cursor >= sequence_num) {
         return Ok(Freshness::Stale);
     }
-    let stored: Option<String> = conn
-        .prepare_cached("SELECT server_revision FROM yjs_snapshots WHERE doc_id = ?1")
-        .and_then(|mut statement| {
-            statement
-                .query_row(params![Namespace::Server.row_id(doc_id)], |row| row.get(0))
-                .optional()
-        })
-        .map_err(sqlite_failed)?
-        .flatten();
+    let stored = update_log::server_revision(conn, doc_id)?;
     if stored.as_deref() == Some(revision) {
         return Ok(Freshness::Stale);
     }

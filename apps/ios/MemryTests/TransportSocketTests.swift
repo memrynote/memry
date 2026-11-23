@@ -21,9 +21,12 @@ import Testing
 // **Nothing here drains a fixed number of callbacks.** Spec-defect 99: a test
 // that waits for N elements *hangs* when the bug is a missing call, and twenty
 // minutes of silence looks exactly like a deadlock in the seam under test.
-// Every wait below is `settle(until:)`, which **returns false** at its deadline
-// so the assertion fails with a message, and every assertion then compares the
-// **whole** recorded history rather than its length.
+// A wait on what the server or the listener recorded awaits their `Changes`,
+// bounded by the suite's time limit, because a loaded runner delivered
+// callbacks later than any short deadline allowed (#5484). Other waits are
+// `settle(until:)`, which **returns false** at its deadline so the assertion
+// fails with a message. Every assertion then compares the **whole** recorded
+// history rather than its length.
 
 /// A WebSocket server on loopback, and a record of what reached it.
 final class LoopbackSocketServer: @unchecked Sendable {
@@ -37,6 +40,8 @@ final class LoopbackSocketServer: @unchecked Sendable {
     private let listener: NWListener
     private let connections = Mutex<[NWConnection]>([])
     let log = Mutex(Log())
+    /// Wakes the tests waiting on `log`.
+    let changes = Changes()
     private(set) var port: UInt16 = 0
 
     init() async throws {
@@ -50,7 +55,7 @@ final class LoopbackSocketServer: @unchecked Sendable {
         listener.newConnectionHandler = { [weak self] connection in
             guard let self else { return }
             connections.withLock { $0.append(connection) }
-            log.withLock { $0.connections += 1 }
+            record { $0.connections += 1 }
             connection.start(queue: .global())
             receive(on: connection)
         }
@@ -120,6 +125,11 @@ final class LoopbackSocketServer: @unchecked Sendable {
         )
     }
 
+    private func record(_ change: (inout Log) -> Void) {
+        log.withLock { change(&$0) }
+        changes.changed()
+    }
+
     private func receive(on connection: NWConnection) {
         connection.receiveMessage { [weak self] content, context, _, error in
             guard let self else { return }
@@ -128,17 +138,17 @@ final class LoopbackSocketServer: @unchecked Sendable {
             switch opcode {
             case .text:
                 let text = content.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-                log.withLock { $0.textFrames.append(text) }
+                record { $0.textFrames.append(text) }
             case .binary:
-                log.withLock { $0.binaryFrames.append(content ?? Data()) }
+                record { $0.binaryFrames.append(content ?? Data()) }
             case .close:
-                log.withLock { $0.closes += 1 }
+                record { $0.closes += 1 }
                 return
             default:
                 break
             }
             guard error == nil else {
-                log.withLock { $0.closes += 1 }
+                record { $0.closes += 1 }
                 return
             }
             receive(on: connection)
@@ -255,7 +265,8 @@ struct TransportSocketTests {
 
         try handle.send(payload: Data("ping".utf8))
 
-        #expect(await settle { server.log.withLock { $0.textFrames } == ["ping"] })
+        await server.changes.until { !server.log.withLock { $0.textFrames.isEmpty } }
+        #expect(server.log.withLock { $0.textFrames } == ["ping"])
         #expect(server.log.withLock { $0.binaryFrames.isEmpty })
         withExtendedLifetime(handle) {}
     }
@@ -277,7 +288,8 @@ struct TransportSocketTests {
         handle = nil
         #expect(handle == nil)
 
-        #expect(await settle { server.log.withLock { $0.closes } == 1 })
+        await server.changes.until { server.log.withLock { $0.closes } >= 1 }
+        #expect(server.log.withLock { $0.closes } == 1)
     }
 
     /// Chapter 09 §9.1: a client MUST close the socket when backgrounded. The

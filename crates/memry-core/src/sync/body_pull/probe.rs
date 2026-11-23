@@ -6,7 +6,6 @@ use std::collections::HashMap;
 
 use serde_json::{Value as Json, json};
 
-use crate::api::errors::StorageError;
 use crate::crdt::update_log;
 use crate::protocol::http::RetryPolicy;
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
@@ -174,11 +173,7 @@ impl BodyPull {
             .read(move |conn| {
                 ids.into_iter()
                     .map(|doc_id| {
-                        let held = update_log::server_revision(conn, &doc_id).map_err(|error| {
-                            StorageError::Failed {
-                                what: error.to_string(),
-                            }
-                        })?;
+                        let held = update_log::server_revision(conn, &doc_id)?;
                         Ok((doc_id, held))
                     })
                     .collect()
