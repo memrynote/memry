@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { eq } from 'drizzle-orm'
 import type { NoteCoverSync } from '@memry/contracts/sync-payloads'
 import { syncState } from '@memry/db-schema/data-schema'
@@ -157,18 +158,31 @@ export function applyNoteCoverToFrontmatter(
  * - `present`: the file had a cover when last pushed or applied.
  * - `removal-pending`: a `null` was built for push and has not been confirmed.
  *   A retry rebuilds the payload, so the marker stays until the ack.
+ * - `unframed:<ref>`: the file was rebuilt with image cover `ref` alone
+ *   (`recordRebuiltNoteCover`). Its framing and credit lived only in the file,
+ *   so while the file holds the bare ref the push leaves the cover out, and
+ *   peers keep theirs. A build that predates this value reads it as no marker.
  */
-type NoteCoverSyncMarker = 'present' | 'removal-pending'
+type UnframedMarker = `unframed:${string}`
+type NoteCoverSyncMarker = 'present' | 'removal-pending' | UnframedMarker
 
 const COVER_MARKER_KEY_PREFIX = 'note-cover:'
+const UNFRAMED_MARKER_PREFIX = 'unframed:'
+
+function isUnframedMarker(value: string): value is UnframedMarker {
+  return value.startsWith(UNFRAMED_MARKER_PREFIX)
+}
 
 function readCoverMarker(db: DrizzleDb, noteId: string): NoteCoverSyncMarker | null {
-  const row = db
+  const value = db
     .select({ value: syncState.value })
     .from(syncState)
     .where(eq(syncState.key, COVER_MARKER_KEY_PREFIX + noteId))
-    .get()
-  return row?.value === 'present' || row?.value === 'removal-pending' ? row.value : null
+    .get()?.value
+  if (value === undefined) return null
+  return value === 'present' || value === 'removal-pending' || isUnframedMarker(value)
+    ? value
+    : null
 }
 
 function writeCoverMarker(db: DrizzleDb, noteId: string, marker: NoteCoverSyncMarker | null): void {
@@ -196,11 +210,18 @@ export function noteCoverForPush(
   frontmatter: NoteFrontmatter
 ): NoteCoverSync | null | undefined {
   const cover = noteCoverFromFrontmatter(frontmatter)
+  const marker = readCoverMarker(db, noteId)
   if (cover !== null) {
+    if (
+      marker === `${UNFRAMED_MARKER_PREFIX}${cover.ref}` &&
+      isDeepStrictEqual(cover, noteCoverFromFrontmatter({ [COVER_FRONTMATTER_KEY]: cover.ref }))
+    ) {
+      return undefined
+    }
     writeCoverMarker(db, noteId, 'present')
     return cover
   }
-  if (readCoverMarker(db, noteId) === null) return undefined
+  if (marker === null) return undefined
   writeCoverMarker(db, noteId, 'removal-pending')
   return null
 }
@@ -231,6 +252,17 @@ export function recordAppliedNoteCover(
   frontmatter: NoteFrontmatter
 ): void {
   writeCoverMarker(db, noteId, noteCoverFromFrontmatter(frontmatter) !== null ? 'present' : null)
+}
+
+/**
+ * After the note's file was rebuilt from its index rows, which hold the cover
+ * ref (`case-twin-file.ts`). An image cover's framing and credit were not
+ * written, so its push waits for a change here; any other cover was written
+ * whole, and no cover sends no removal.
+ */
+export function recordRebuiltNoteCover(db: DrizzleDb, noteId: string, ref: string | null): void {
+  const image = ref !== null && parseCoverValue(ref)?.kind === 'image'
+  writeCoverMarker(db, noteId, image ? `${UNFRAMED_MARKER_PREFIX}${ref}` : null)
 }
 
 export function clearNoteCoverMarker(db: DrizzleDb, noteId: string): void {

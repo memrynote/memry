@@ -171,13 +171,18 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteUpdate).toHaveBeenCalledWith('note-1')
   })
 
-  it('enqueues sync delete before removing the note', async () => {
-    vi.mocked(noteVault.deleteNote).mockResolvedValue(undefined)
+  // `deleteNote` queues the sync delete before it drops the cache, and runs
+  // its own step (a case twin's file, #5495) in the tombstone's.
+  it("hands deleteNote the note's sync delete, with deleteNote's step", async () => {
+    const inStep = vi.fn()
+    vi.mocked(noteVault.deleteNote).mockImplementation(async (_id, syncDelete) => {
+      await syncDelete(inStep)
+    })
 
     await deleteNoteCommand('note-1')
 
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
-    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1')
+    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1', expect.any(Function))
+    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1', inStep)
   })
 
   it('cleans up project links + home notes after deleting a note', async () => {
@@ -241,10 +246,12 @@ describe('notes domain adapter', () => {
     expect(runtimeEffects.syncNoteCreate).not.toHaveBeenCalled()
   })
 
-  it('still calls syncNoteDelete when deleteNote rejects (delete-before-remove contract)', async () => {
+  // The delete-before-remove order lives in `deleteNote`, which queues the
+  // sync delete itself: a delete it refuses must not reach peers.
+  it('queues no sync delete of its own when deleteNote refuses the delete', async () => {
     vi.mocked(noteVault.deleteNote).mockRejectedValue(new Error('locked'))
 
     await expect(deleteNoteCommand('note-1')).rejects.toThrow('locked')
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
+    expect(runtimeEffects.syncNoteDelete).not.toHaveBeenCalled()
   })
 })
