@@ -537,9 +537,11 @@ touch.
    snapshot watermark is recorded, which is what makes the CRDT sweep skip its baseline GET. The
    decrypt and signature checks run on the sync crypto worker, one batch per document (the
    snapshot under the device key that verified the last one, then every update under its named
-   signer's key), and on the main thread only when the worker is not running or rejects. Each entry
-   is read into a buffer of its own size: a post to the worker clones a view's whole buffer, and a
-   small read from Node's shared Buffer pool would send the 8 KiB pool with every update.
+   signer's key), and on the main thread only when the worker is not running or rejects. With no
+   previous signer to try, the snapshot is opened first in a batch of its own, so a snapshot that
+   verifies under no key costs no update reads or decrypts. Each entry is read into a buffer of its
+   own size: a post to the worker clones a view's whole buffer, and a small read from Node's shared
+   Buffer pool would send the 8 KiB pool with every update.
 5. **Commit.** Every `PACK_APPLY_PAGE_ENTRIES` = 100 applied entries, and at the end of each pack,
    the page transaction commits with the pack watermark written **inside** it.
 6. **Settle after a delivered pull.** A packed body lands before any record does, and packs are
@@ -585,7 +587,8 @@ no usable packs pays nothing.
 The key that verified the previous snapshot is tried first (`packs/pack-body-applier.ts:77-94`).
 An account keeps a key for every device it ever linked, and most snapshots come from the few
 devices that compacted last. Trying every key per snapshot cost 126 s of a 270 s pack phase on
-17k notes. The order does not change which key verifies.
+17k notes. The order does not change which key verifies. On the main thread the walk stops at
+the first key that verifies.
 
 ### `PACKS_APPLIED_THROUGH_CURSOR`
 
