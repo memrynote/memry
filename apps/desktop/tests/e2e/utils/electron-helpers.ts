@@ -284,12 +284,26 @@ export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Pro
   } catch {
     // Tour never appeared (already dismissed or not first-run).
     await dismissGithubStarCard(page)
+    await dismissIosBetaPrompt(page)
     return
   }
   await page.keyboard.press('Escape')
   await overlay.waitFor({ state: 'hidden', timeout }).catch(() => {})
   await settleFlags()
   await dismissGithubStarCard(page)
+  await dismissIosBetaPrompt(page)
+}
+
+/**
+ * Close the iPhone beta launch prompt. It is a modal the app opens once per
+ * install, and it takes every click until it closes. Closing it stores
+ * `promptSeen`, so it stays shut for the rest of the run.
+ */
+async function dismissIosBetaPrompt(page: Page): Promise<void> {
+  const prompt = page.getByRole('dialog').filter({ hasText: 'Memry for iPhone is in beta' })
+  if (!(await prompt.isVisible().catch(() => false))) return
+  await page.keyboard.press('Escape')
+  await prompt.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
 }
 
 /**
