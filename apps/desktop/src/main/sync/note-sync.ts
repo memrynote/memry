@@ -1,7 +1,7 @@
 import path from 'path'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
-import { binaryRecordFields } from './item-handlers/binary-note-record'
+import { binaryRecordFields } from '@memry/shared/file-types'
 import type { NoteMetadata } from '@memry/db-schema/data-schema'
 import { getNoteProperties, type PropertyValue } from '@main/database/queries/notes'
 import { getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-helpers'

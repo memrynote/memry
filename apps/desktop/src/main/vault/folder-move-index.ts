@@ -5,7 +5,7 @@
  * @module vault/folder-move-index
  */
 
-import { binaryRecordFields } from '../sync/item-handlers/binary-note-record'
+import { binaryRecordFields } from '@memry/shared/file-types'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import {
   extractDateFromPath,

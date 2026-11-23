@@ -7,6 +7,7 @@ import {
   isBinaryNoteRow,
   getExtensionFromMimeType,
   getDefaultExtension,
+  binaryRecordFields,
   getMimeType,
   type FileType
 } from '@memry/shared/file-types'
@@ -81,7 +82,6 @@ import {
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
 import {
-  binaryRecordFields,
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
   noteBinaryRecordForMarkdownRow
