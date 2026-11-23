@@ -25,7 +25,9 @@ import {
   getAliasesForNotes,
   getInboundLinkSourceIds,
   getNoteCacheById,
+  getNoteProperties,
   getNoteTags,
+  getPropertyType,
   insertNoteCache,
   reindexNoteNames,
   setNoteProperties,
@@ -104,7 +106,11 @@ vi.mock('../sync/crdt-external-feed', async (importOriginal) => {
 })
 vi.mock('./file-ops', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
-  return { ...real, safeRead: vi.fn(real.safeRead as never) }
+  return {
+    ...real,
+    safeRead: vi.fn(real.safeRead as never),
+    atomicWrite: vi.fn(real.atomicWrite as never)
+  }
 })
 vi.mock('../tasks/reconcile-markdown-tasks', () => ({
   reconcileTaskCheckboxesFromMarkdown: vi.fn(async () => 0)
@@ -135,7 +141,8 @@ import {
   startProjectionRuntime,
   stopProjectionRuntime
 } from '../projections'
-import { generateContentHash, parseNote } from './frontmatter'
+import { extractProperties, generateContentHash, parseNote, serializeNote } from './frontmatter'
+import { inferPropertyType } from './property-type'
 import { syncNoteToCache } from './note-sync'
 import { healCaseVariantRows } from './case-variant-heal'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
@@ -150,7 +157,7 @@ import {
   renameFolderCommand,
   renameNoteCommand
 } from '../notes/domain'
-import { safeRead } from './file-ops'
+import { atomicWrite, safeRead } from './file-ops'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
@@ -729,6 +736,103 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await deleteNoteCommand('upper')
 
     expect({ file: shared(), crossed: crossed() }).toEqual({ file: LOWER_HEAD, crossed: [] })
+  }, 30_000)
+
+  // VERIFY-5499R5 #9 (#5558): the rebuilt header keeps each value's YAML type.
+  for (const [how, remove] of [
+    ['local', () => deleteNoteCommand('upper')],
+    ['peer', () => applyPeerDeleteWhenReady('upper')]
+  ] as const) {
+    it(`a ${how} twin delete rebuilds the survivor's typed header as the serializer writes it`, async () => {
+      const typed =
+        '---\ntags:\n  - lowertag\nlist:\n  - a\n  - b\nwhen: 2026-01-02\nat: 2026-01-02T10:30:00.000Z\n' +
+        'count: 3\nratio: 0.5\ndone: true\nnested:\n  k: v\nnote: plain\n---\n'
+      fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+      seed('lower', 'SuperNotes/a.md', typed + LOWER)
+      seed('upper', 'SUPERNOTES/a.md', UPPER_HEAD + UPPER)
+      await openVault()
+      // The index rows lower's own file gave it, as the projector writes them.
+      const own = parseNote(typed + LOWER)
+      setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: [] })
+      setNoteProperties(index.db, 'lower', extractProperties(own.frontmatter), (name, value) =>
+        getPropertyType(index.db, name, value, inferPropertyType)
+      )
+      const indexed = getNoteProperties(index.db, 'lower')
+      docs.set('lower', await docOf(LOWER))
+      docs.set('upper', await docOf(UPPER))
+
+      await remove()
+
+      expect(shared()).toBe(serializeNote(own.frontmatter, LOWER))
+      // Read back in, the file indexes to the rows it was rebuilt from.
+      await afterDelete('lower')
+      await flushProjectionEvents()
+      expect(getNoteProperties(index.db, 'lower')).toEqual(indexed)
+    }, 30_000)
+  }
+
+  /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
+  function holdUpperWrite() {
+    let release = (): void => {}
+    let reached = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const atWrite = new Promise<void>((resolve) => (reached = resolve))
+    const real = vi.mocked(atomicWrite).getMockImplementation()!
+    vi.mocked(atomicWrite).mockImplementation(async (filePath, content) => {
+      if (content.includes('upper edited')) {
+        reached()
+        await gate
+      }
+      return real(filePath, content)
+    })
+    return { release, atWrite }
+  }
+
+  const UPPER_EDITED = '# a\n\nupper edited [[x]]\n'
+  const upperGone = () => ({
+    file: shared(),
+    rows: rowIds(),
+    indexed: getNoteCacheById(index.db, 'upper')?.id ?? null
+  })
+
+  // VERIFY-5499R5 #11 (#5559): a write-back of the deleted twin past its
+  // checks would land its body on the survivor's file and re-create its row.
+  it("a twin delete waits for the twin's write-back in flight, and the tombstone wins", async () => {
+    await twins()
+    const held = holdUpperWrite()
+    const pass = writeBack('upper', UPPER_EDITED)
+    await held.atWrite
+
+    const deleted = deleteNoteCommand('upper')
+    // Long enough for the delete to reach its step if nothing held it back.
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    held.release()
+    await pass
+    await deleted
+    await flushProjectionEvents()
+
+    expect(upperGone()).toEqual({ file: LOWER, rows: ['lower'], indexed: null })
+    expect(vi.mocked(enqueueLocalSyncDelete).mock.calls).toEqual([['note', 'upper']])
+    expect(await afterDelete('lower')).toMatchObject({ file: LOWER, rows: ['lower'], crossed: [] })
+  }, 30_000)
+
+  it("a peer's twin delete waits while the twin's write-back is in flight", async () => {
+    await twins()
+    // The survivor's file is ready, as on a pull's retry.
+    await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper')
+    const held = holdUpperWrite()
+    const pass = writeBack('upper', UPPER_EDITED)
+    await held.atWrite
+
+    expect(() => applyPeerDelete('upper')).toThrow(PendingSyncIntentError)
+    expect(rowIds()).toEqual(['lower', 'upper'])
+    held.release()
+    await pass
+
+    expect(await applyPeerDeleteWhenReady('upper')).toEqual({ file: LOWER, rows: ['lower'] })
+    await flushProjectionEvents()
+    expect(upperGone()).toEqual({ file: LOWER, rows: ['lower'], indexed: null })
+    expect(await afterDelete('lower')).toMatchObject({ file: LOWER, rows: ['lower'], crossed: [] })
   }, 30_000)
 
   // A failure before the survivor's file is written aborts the delete with

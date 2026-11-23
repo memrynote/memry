@@ -56,7 +56,12 @@ import {
 } from '@memry/sync-client/attachment-download-state'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { markWritebackIgnored, scheduleWriteback } from '../sync/crdt-writeback'
+import {
+  hasWritebackTurn,
+  markWritebackIgnored,
+  scheduleWriteback,
+  takeWritebackTurn
+} from '../sync/crdt-writeback'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
@@ -73,8 +78,8 @@ import {
   getAliasesForNotes,
   getNoteCacheById,
   getNoteCacheByPath,
+  getNoteFileProperties,
   getNoteHeaderTags,
-  getNotePropertiesAsRecord,
   updateNoteCache
 } from '@main/database/queries/notes'
 import { foldNotePath, getNoteMetadataById } from '@memry/storage-data'
@@ -144,7 +149,8 @@ function twinsOnFile(vaultPath: string, relativePath: string, leavingId: string)
  * Converts the doc of the twin left on the file into its file body, for the
  * next `planCaseTwinLeave`, and with `movesLeaving` the leaving twin's doc too,
  * for `planCaseTwinMove`. Changes nothing durable. Throws `NoteError` when a
- * doc cannot be loaded or written as markdown.
+ * doc cannot be loaded or written as markdown. A delete first waits out the
+ * leaving twin's write-back turn, which its step refuses to run beside.
  */
 export async function prepareCaseTwinLeave(
   vaultPath: string,
@@ -154,6 +160,7 @@ export async function prepareCaseTwinLeave(
 ): Promise<void> {
   const twins = twinsOnFile(vaultPath, relativePath, leavingId)
   if (twins === null) return
+  if (!movesLeaving) await takeWritebackTurn(leavingId, async () => {})
   const survivor = twins.length === 1 ? getNoteCacheById(getIndexDatabase(), twins[0]) : undefined
   const rebuildsSurvivor = survivor !== undefined && !isBinaryNoteRow(survivor)
   const ids = [...(rebuildsSurvivor ? twins : []), ...(movesLeaving ? [leavingId] : [])]
@@ -204,16 +211,20 @@ async function prepareBody(noteId: string): Promise<void> {
  * Call right before the step that drops `leavingId`'s row from the file, with
  * no await between. Throws, with nothing changed, when the file cannot be
  * read, when it is no longer shared, or (`CaseTwinLeaveNotReadyError`) while
- * the survivor's file is not prepared or a page apply still owes the file a
- * write. Returns the step's first part: it writes the survivor's own file and
- * baseline, and never awaits.
+ * the survivor's file is not prepared, a page apply still owes the file a
+ * write, or a write-back turn of the leaving twin runs: past its checks, it
+ * would land the deleted twin's bytes on the survivor's file after the step
+ * and re-create its row after the tombstone (#5559). Returns the step's first
+ * part: it writes the survivor's own file and baseline, and never awaits.
  */
 export function planCaseTwinLeave(
   vaultPath: string,
   relativePath: string,
   leavingId: string
 ): () => void {
-  return planLeave(vaultPath, relativePath, leavingId, null).leave
+  const { leave, notReady } = planLeave(vaultPath, relativePath, leavingId, null)
+  if (hasWritebackTurn(leavingId)) notReady()
+  return leave
 }
 
 /** What a twin moved off a shared file now has at its new path. */
@@ -373,7 +384,7 @@ function ownFile(
     {},
     {
       tags: getNoteHeaderTags(indexDb, noteId),
-      properties: getNotePropertiesAsRecord(indexDb, noteId),
+      properties: getNoteFileProperties(indexDb, noteId),
       aliases: getAliasesForNotes(indexDb, [noteId]).get(noteId) ?? [],
       ...(cover !== null ? { cover: { ref: cover } } : {}),
       title
