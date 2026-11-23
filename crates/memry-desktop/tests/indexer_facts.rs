@@ -692,3 +692,48 @@ fn a_reindex_asked_during_a_first_sync_is_answered_once_it_ended() {
     drop(open);
     e.close();
 }
+
+/// A first sync that starts while an asked reindex runs holds its search reindex: the answer
+/// waits for the first sync to end and the reindex to run after it, so it never says the search
+/// is current while it was deferred (#5423 C88.1).
+#[test]
+fn a_reindex_a_first_sync_held_midway_is_answered_once_it_ended() {
+    let (mut e, _store, notes) = seeded(2);
+    e.open();
+    let open = e.session.current().unwrap();
+    let (first, second) = (&notes[0].0, &notes[1].0);
+    let (sender, receiver) = broadcast::channel(16);
+    with_task(&open, receiver, |task| {
+        // Asked before the walk ends, the reindex is the first pass: no search reindex ran yet.
+        // The first sync starts once the reindex is under way, before its search reindex.
+        let hold = Arc::new(Mutex::new(None));
+        let (running, taken) = (open.first_sync.clone(), hold.clone());
+        let mut started = false;
+        let answer = task
+            .reindex(Box::new(move |_| {
+                if !std::mem::replace(&mut started, true) {
+                    *taken.lock().unwrap() = Some(running.hold());
+                }
+            }))
+            .unwrap();
+        sender.send(Applied::Indexed { complete: true }).unwrap();
+        until("the first sync started", || hold.lock().unwrap().is_some());
+        std::thread::sleep(IDLE_DELAY * 2);
+        assert!(
+            answer.try_recv().is_err(),
+            "pending while the first sync holds its search reindex"
+        );
+        assert!(!links_to(&open, first, second), "held by the first sync");
+        drop(hold.lock().unwrap().take());
+        answer
+            .recv_timeout(Duration::from_secs(30))
+            .unwrap()
+            .unwrap();
+        assert!(
+            links_to(&open, first, second),
+            "the answer follows the reindex"
+        );
+    });
+    drop(open);
+    e.close();
+}
