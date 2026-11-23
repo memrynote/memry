@@ -105,6 +105,7 @@ import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher } from './watcher'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from './case-twin-file'
+import { holdsBinaryChange } from './case-twin-bytes'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
@@ -754,6 +755,71 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
 
     expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
     expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+  })
+
+  // REVIEW-5602 #1: a fresh device has no file and no landing recorded.
+  it("on a fresh device the second twin's bytes landing keep no conflict copy of the first's", () => {
+    twins('Supernotes')
+    fs.rmSync(abs('Supernotes/p.png'))
+
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+
+    expect(read('Supernotes/p.png')).toBe('b-bytes')
+    expect(conflictCopies('Supernotes')).toEqual([])
+  })
+
+  it('on a fresh device a twin downloading its own bytes again keeps no conflict copy', () => {
+    twins('Supernotes')
+    fs.rmSync(abs('Supernotes/p.png'))
+
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+
+    expect(conflictCopies('Supernotes')).toEqual([])
+  })
+
+  // REVIEW-5602 #2: the shared branch's version of the test above.
+  it('a landing on a still-shared file whose rename keeps failing keeps one conflict copy', () => {
+    twins('Supernotes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
+
+    for (let i = 0; i < 3; i++) {
+      landCaseTwinDownload(abs('SUPERNOTES/p.png'), 'att-b2', sha256('b-new'), 'twin-b')
+    }
+    // A relaunch keeps nothing in memory.
+    resetAttachmentDownloadSession()
+    land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
+
+    expect(read('Supernotes/p.png')).toBe('b-new')
+    expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+    expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+
+    // The kept bytes split off later are not kept again.
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+  })
+
+  // REVIEW-5602 low 6: the landing kept the held change; a later split does not keep it again.
+  it('a held change kept by a still-shared landing is not kept again at the split', () => {
+    twins('Supernotes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    // The watcher's hold of the edit.
+    expect(holdsBinaryChange(vault.path, 'Supernotes/p.png', 'twin-a')).toBe(true)
+    expect(heldChanges()).toEqual(['supernotes/p.png'])
+    expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
+
+    land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+    expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
   })
 
   it('the attachment backfill uploads no twin while its file is shared', async () => {

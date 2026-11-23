@@ -78,7 +78,11 @@ import {
   getNotePropertiesAsRecord,
   updateNoteCache
 } from '@main/database/queries/notes'
-import { foldNotePath, getNoteMetadataById } from '@memry/storage-data'
+import {
+  foldNotePath,
+  getNoteMetadataById,
+  listNoteMetadataByFoldedPath
+} from '@memry/storage-data'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
 import { recordRebuiltNoteCover } from '../sync/item-handlers/note-cover-sync'
@@ -94,10 +98,13 @@ import {
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
+  readKeptCaseTwinCopy,
   readLandedCaseTwinHash,
   recordConflictCopyKept,
+  recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
   takeHeldCaseTwinChange,
+  takeKeptCaseTwinCopy,
   takeLandedCaseTwinHash,
   type MarkedFile
 } from './case-twin-bytes'
@@ -467,7 +474,8 @@ export function planBinaryCaseTwinMove(
  * file's hash, read by the plan. The file holds a change on no server when
  * the watcher held one, or when it differs from the bytes a download last
  * landed on it (#5585): an edit made while the app was closed, or whose event
- * is on the way, whatever its size. With no landing recorded (twins that
+ * is on the way, whatever its size. Bytes a landing already kept as a conflict
+ * copy are not a change (REVIEW-5602). With no landing recorded (twins that
  * shared the file before this build), the bytes are treated as changed. Such
  * a change is kept as a conflict copy when the survivor's bytes land, unless
  * they are those bytes. The step never awaits.
@@ -485,7 +493,8 @@ function planBinarySurvivor(
   return () => {
     const held = takeHeldCaseTwinChange(db, onDisk)
     const landed = takeLandedCaseTwinHash(db, onDisk)
-    const changed = held || sha256 === null || sha256 !== landed
+    const kept = takeKeptCaseTwinCopy(db, onDisk)
+    const changed = held || sha256 === null || (sha256 !== landed && sha256 !== kept)
     requestOwnBytes(db, survivor, sharedPath, changed ? null : { sha256 })
   }
 }
@@ -580,8 +589,10 @@ export function releaseAbandonedCaseTwinBytes(
  * which the vault takes in as a note of its own, once: a landing retried
  * after its rename failed finds the change kept. A landing on a file twins
  * still share keeps a change made since the bytes a download last landed
- * there the same way; with no landing recorded, the file counts as changed
- * (#5594). Throws, with nothing landed, when that copy cannot be written: the
+ * there the same way, once, and forgets a change the watcher held to it; with
+ * no landing recorded, the file counts as changed (#5594). The first bytes to
+ * land where twins' rows name no file yet are recorded too, so the other
+ * twin's landing finds them known (REVIEW-5602). Throws, with nothing landed, when that copy cannot be written: the
  * download is retried.
  */
 export function landCaseTwinDownload(
@@ -604,12 +615,17 @@ export function landCaseTwinDownload(
   const onFile = marked.find((note) => foldNotePath(note.path) === foldNotePath(landsOn))
   const shared = sharesCaseTwinFile(vaultPath, landsOn)
   if (onFile) {
-    const kept = keepChange(landAt, sha256, marks.get(onFile.id)?.sha256, { noteId: onFile.id })
+    const kept = keepChange(landAt, sha256, [marks.get(onFile.id)?.sha256], { noteId: onFile.id })
     if (kept !== null) recordConflictCopyKept(db, onFile.id, kept)
   } else if (shared) {
-    keepChange(landAt, sha256, readLandedCaseTwinHash(db, landsOn), { attachmentId })
+    const known = [readLandedCaseTwinHash(db, landsOn), readKeptCaseTwinCopy(db, landsOn)]
+    const kept = keepChange(landAt, sha256, known, { attachmentId })
+    if (kept !== null) recordKeptCaseTwinCopy(db, landsOn, kept)
+    takeHeldCaseTwinChange(db, landsOn)
   }
-  if (shared) recordLandedCaseTwinHash(db, landsOn, sha256)
+  const firstOnTwinFile =
+    diskCaseOf(vaultPath, landsOn) === null && listNoteMetadataByFoldedPath(db, landsOn).length > 1
+  if (shared || firstOnTwinFile) recordLandedCaseTwinHash(db, landsOn, sha256)
   return landAt
 }
 
@@ -620,11 +636,11 @@ export function landCaseTwinDownload(
 function keepChange(
   landAt: string,
   sha256: string,
-  known: string | undefined,
+  known: Array<string | undefined>,
   context: Record<string, string>
 ): string | null {
   const onDisk = hashFile(landAt)
-  if (onDisk === null || onDisk === sha256 || onDisk === known) return null
+  if (onDisk === null || onDisk === sha256 || known.includes(onDisk)) return null
   keepConflictCopy(landAt, context)
   return onDisk
 }

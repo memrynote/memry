@@ -110,7 +110,9 @@ describe('SYNC_STATE_KEYS', () => {
         CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
         CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
         // Additive (#5585): absent means no landing recorded on a shared file.
-        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+        // Additive (REVIEW-5602): absent means no conflict copy kept from a shared file.
+        CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
       })
     })
 

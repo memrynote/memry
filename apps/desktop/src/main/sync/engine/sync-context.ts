@@ -252,7 +252,14 @@ export const SYNC_STATE_KEYS = {
    * split compares the file with it to find a change the watcher never saw.
    * Missing reads as empty: the split then keeps the file's bytes.
    */
-  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share
+   * to the sha256 of the bytes a landing last kept from it as a conflict copy
+   * (REVIEW-5602). A landing retried after its rename failed, and the split,
+   * read those bytes as kept. Missing reads as empty.
+   */
+  CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

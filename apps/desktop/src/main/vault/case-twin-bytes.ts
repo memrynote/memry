@@ -10,6 +10,9 @@
  * - `caseTwinLandedHashes`: JSON object from the folded disk path of a shared
  *   file to the sha256 of the bytes a download last landed there: bytes a
  *   server holds (#5585).
+ * - `caseTwinKeptCopies`: the same, to the sha256 of the bytes a landing last
+ *   kept from the file as a conflict copy: a retried landing and the split
+ *   keep them once (REVIEW-5602).
  * - `caseTwinForeignBytes`: JSON object from note id to `{sha256}` of its file
  *   when it was marked (or when its change was last kept as a conflict copy),
  *   or null when the file held a change on no server at the split.
@@ -35,6 +38,7 @@ type Key =
   | typeof SYNC_STATE_KEYS.CASE_TWIN_HELD_CHANGES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES
+  | typeof SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES
 
 /** The bytes a mark was taken from, or null when they held a change on no server. */
 export type MarkedFile = { sha256: string } | null
@@ -149,8 +153,12 @@ export function takeHeldCaseTwinChange(db: DrizzleDb, diskPath: string): boolean
   return true
 }
 
-function readLandedHashes(db: DrizzleDb): Map<string, string> {
-  const hashes = readValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES)
+type PathHashKey =
+  | typeof SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES
+  | typeof SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES
+
+function readPathHashes(db: DrizzleDb, key: PathHashKey): Map<string, string> {
+  const hashes = readValue(db, key)
   if (typeof hashes !== 'object' || hashes === null || Array.isArray(hashes)) return new Map()
   return new Map(
     Object.entries(hashes).filter(
@@ -159,29 +167,52 @@ function readLandedHashes(db: DrizzleDb): Map<string, string> {
   )
 }
 
-/** A download landed bytes with this sha256 on a file case twins share (any spelling). */
-export function recordLandedCaseTwinHash(db: DrizzleDb, diskPath: string, sha256: string): void {
-  const hashes = readLandedHashes(db)
+function recordPathHash(db: DrizzleDb, key: PathHashKey, diskPath: string, sha256: string): void {
+  const hashes = readPathHashes(db, key)
   const folded = foldNotePath(diskPath)
   if (hashes.get(folded) === sha256) return
   hashes.set(folded, sha256)
-  writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, Object.fromEntries(hashes))
+  writeValue(db, key, Object.fromEntries(hashes))
 }
 
-/** The sha256 a download last landed on this shared file. */
-export function readLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
-  return readLandedHashes(db).get(foldNotePath(diskPath))
-}
-
-/** The sha256 a download last landed on this shared file, forgetting it. */
-export function takeLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
-  const hashes = readLandedHashes(db)
+function takePathHash(db: DrizzleDb, key: PathHashKey, diskPath: string): string | undefined {
+  const hashes = readPathHashes(db, key)
   const folded = foldNotePath(diskPath)
   const sha256 = hashes.get(folded)
   if (sha256 === undefined) return undefined
   hashes.delete(folded)
-  writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, Object.fromEntries(hashes))
+  writeValue(db, key, Object.fromEntries(hashes))
   return sha256
+}
+
+/** A download landed bytes with this sha256 on a file case twins share (any spelling). */
+export function recordLandedCaseTwinHash(db: DrizzleDb, diskPath: string, sha256: string): void {
+  recordPathHash(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, diskPath, sha256)
+}
+
+/** The sha256 a download last landed on this shared file. */
+export function readLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
+  return readPathHashes(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES).get(foldNotePath(diskPath))
+}
+
+/** The sha256 a download last landed on this shared file, forgetting it. */
+export function takeLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
+  return takePathHash(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, diskPath)
+}
+
+/** A landing kept this shared file's bytes, with this sha256, as a conflict copy. */
+export function recordKeptCaseTwinCopy(db: DrizzleDb, diskPath: string, sha256: string): void {
+  recordPathHash(db, SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES, diskPath, sha256)
+}
+
+/** The sha256 of the bytes a landing last kept from this shared file. */
+export function readKeptCaseTwinCopy(db: DrizzleDb, diskPath: string): string | undefined {
+  return readPathHashes(db, SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES).get(foldNotePath(diskPath))
+}
+
+/** The sha256 of the bytes a landing last kept from this shared file, forgetting it. */
+export function takeKeptCaseTwinCopy(db: DrizzleDb, diskPath: string): string | undefined {
+  return takePathHash(db, SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES, diskPath)
 }
 
 /**
