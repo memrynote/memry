@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { EventEmitter } from 'events'
 import { createHash } from 'crypto'
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { mkdtemp, rm, truncate, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -29,37 +29,59 @@ vi.mock('worker_threads', () => ({
   }
 }))
 
-import { hashFileOffThread } from './file-hash-bridge'
+import { IN_PROCESS_HASH_MAX_BYTES, hashFileOffThread } from './file-hash-bridge'
 
 describe('hashFileOffThread', () => {
-  beforeEach(() => {
+  let dir: string
+  const jobs: unknown[] = []
+  const sha256 = (bytes: string) => createHash('sha256').update(bytes).digest('hex')
+
+  beforeEach(async () => {
     mocks.spawn = null
+    jobs.length = 0
+    dir = await mkdtemp(join(tmpdir(), 'memry-file-hash-'))
   })
 
-  it("hands the path to the worker and answers with the worker's sha256", async () => {
-    const jobs: unknown[] = []
-    mocks.spawn = (workerData) => {
-      jobs.push(workerData)
-      const worker = new EventEmitter()
-      setImmediate(() => worker.emit('message', { type: 'hash-done', sha256: 'from-the-worker' }))
-      return worker
-    }
-
-    await expect(hashFileOffThread('/vault/p.png')).resolves.toBe('from-the-worker')
-    expect(jobs).toEqual([{ kind: 'hash', absolutePath: '/vault/p.png' }])
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
   })
 
-  it('hashes in-process when the worker cannot start', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'memry-file-hash-'))
-    try {
-      await writeFile(join(dir, 'p.png'), 'image bytes')
+  const workerAnswering = (sha: string) => (workerData: unknown) => {
+    jobs.push(workerData)
+    const worker = new EventEmitter()
+    setImmediate(() => worker.emit('message', { type: 'hash-done', sha256: sha }))
+    return worker
+  }
 
-      await expect(hashFileOffThread(join(dir, 'p.png'))).resolves.toBe(
-        createHash('sha256').update('image bytes').digest('hex')
-      )
-      await expect(hashFileOffThread(join(dir, 'gone.png'))).resolves.toBeNull()
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
+  it("hands a large file to the worker and answers with the worker's sha256", async () => {
+    const large = join(dir, 'v.mp4')
+    await writeFile(large, '')
+    await truncate(large, IN_PROCESS_HASH_MAX_BYTES + 1)
+    mocks.spawn = workerAnswering('from-the-worker')
+
+    await expect(hashFileOffThread(large)).resolves.toBe('from-the-worker')
+    expect(jobs).toEqual([{ kind: 'hash', absolutePath: large }])
+  })
+
+  // A worker costs more to start than a small file costs to hash (#5617).
+  it('hashes a small file in-process, with no worker', async () => {
+    await writeFile(join(dir, 'p.png'), 'image bytes')
+    mocks.spawn = workerAnswering('from-the-worker')
+
+    await expect(hashFileOffThread(join(dir, 'p.png'))).resolves.toBe(sha256('image bytes'))
+    await expect(hashFileOffThread(join(dir, 'gone.png'))).resolves.toBeNull()
+    expect(jobs).toEqual([])
+  })
+
+  it('hashes a large file in-process when the worker cannot start', async () => {
+    const large = join(dir, 'v.mp4')
+    await writeFile(large, '')
+    await truncate(large, IN_PROCESS_HASH_MAX_BYTES + 1)
+
+    await expect(hashFileOffThread(large)).resolves.toBe(
+      createHash('sha256')
+        .update(Buffer.alloc(IN_PROCESS_HASH_MAX_BYTES + 1))
+        .digest('hex')
+    )
   })
 })

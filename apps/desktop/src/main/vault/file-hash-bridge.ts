@@ -1,13 +1,15 @@
 /**
- * Hashes a file off the main thread, on the large-file worker entry: a binary
- * note's file can be gigabytes, and a first upload of a vault hashes every one
- * (#5608). The worker is spawned per hash, like the line-offset scan's.
+ * Hashes a file without blocking the main thread. A binary note's file can be
+ * gigabytes, and a first upload of a vault hashes every one (#5608), so a
+ * large file is hashed on the large-file worker entry, spawned per hash like
+ * the line-offset scan's.
  *
- * If the thread cannot start, the same hash runs here through async 1 MiB
- * reads, which yield to the event loop between windows.
+ * A small file, or a large one whose thread cannot start, is hashed here
+ * through async 1 MiB reads, which yield to the event loop between windows.
  */
 
 import { Worker } from 'worker_threads'
+import { stat } from 'fs/promises'
 import { join } from 'path'
 import { createLogger } from '../lib/logger'
 import { sha256OfFile } from './file-sha256'
@@ -19,8 +21,17 @@ import {
 
 const logger = createLogger('FileHashBridge')
 
+/** At or under this, starting a worker costs more than hashing in-process (#5617). */
+export const IN_PROCESS_HASH_MAX_BYTES = 8 * 1024 * 1024
+
 /** The sha256 (hex) of the file at `filePath`, or null when nothing is there. */
 export async function hashFileOffThread(filePath: string): Promise<string | null> {
+  // A file stat cannot read is opened in-process, which reports why or answers null.
+  const size = await stat(filePath).then(
+    (stats) => stats.size,
+    () => 0
+  )
+  if (size <= IN_PROCESS_HASH_MAX_BYTES) return sha256OfFile(filePath)
   try {
     return await hashOnWorker(filePath)
   } catch (err) {

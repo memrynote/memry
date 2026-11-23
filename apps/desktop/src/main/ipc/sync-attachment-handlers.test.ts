@@ -1123,7 +1123,10 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.service.checksumOf.mockResolvedValueOnce('sha-old')
     const reader = vi.mocked(registerManifestChecksumReader).mock.calls.at(-1)?.[0]
     await expect(reader?.('att-old')).resolves.toBe('sha-old')
-    expect(attachmentMocks.service.checksumOf).toHaveBeenCalledWith('att-old')
+    // It spends the downloads' pacing budget (#5617).
+    expect(attachmentMocks.service.checksumOf).toHaveBeenCalledWith('att-old', {
+      pace: expect.any(Function)
+    })
 
     let answer = (): void => {}
     vi.mocked(settleBinaryHashCheck).mockReturnValueOnce(

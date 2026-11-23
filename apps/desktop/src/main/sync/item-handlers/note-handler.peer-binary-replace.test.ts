@@ -26,6 +26,24 @@ import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
+const hashing = vi.hoisted(() => ({
+  /** Hashes that read their file. */
+  reads: 0,
+  /** Set: a hash, once it read the file, answers only when this resolves. */
+  answer: null as Promise<void> | null
+}))
+
+vi.mock('../../vault/file-hash-bridge', async () => {
+  const { sha256OfFile } = await import('../../vault/file-sha256')
+  return {
+    hashFileOffThread: async (filePath: string) => {
+      const sha256 = await sha256OfFile(filePath)
+      hashing.reads++
+      await hashing.answer
+      return sha256
+    }
+  }
+})
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
@@ -172,6 +190,8 @@ describe("a peer's replacement of a binary note's bytes", () => {
     attachmentEvents.offSaved(onSaved)
     attachmentEvents.offDownloadNeeded(onDownload)
     registerManifestChecksumReader(null)
+    hashing.reads = 0
+    hashing.answer = null
     manifests.clear()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -379,6 +399,33 @@ describe("a peer's replacement of a binary note's bytes", () => {
       expect(read('Pictures/p.png')).toBe('peer-bytes')
       expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
     })
+
+    // A landing holds a download slot while it waits (#5617).
+    it("answers within the deadline of the replace while other notes' checks run first", async () => {
+      const folders = ['A', 'B', 'C']
+      for (const folder of folders) {
+        seed(folder, `${folder}/p.png`, `${folder}-bytes`, false)
+        readChecksum.mockImplementationOnce(() => new Promise<string>(() => {}))
+      }
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] })
+      let answered = false
+      try {
+        for (const folder of folders) {
+          expect(pull(folder, `att-new-${folder}`, { dev1: 1, peer: 1 }, folder)).toBe('applied')
+        }
+        void settleBinaryHashCheck('C').then(() => {
+          answered = true
+        })
+        await vi.advanceTimersByTimeAsync(30_000)
+      } finally {
+        vi.useRealTimers()
+      }
+
+      expect(answered).toBe(true)
+      expect(readChecksum.mock.calls).toEqual([['att-A']])
+      land('C', 'att-new-C', abs('C/p.png'), 'peer-bytes')
+      expect(conflictCopies('C')).toEqual(['C-bytes'])
+    })
   })
 
   it('lands over bytes this device uploaded without a conflict copy', async () => {
@@ -552,6 +599,59 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
     expect(read('Pictures/p.png')).toBe('b-bytes')
     expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('b-bytes'))
+  })
+
+  /** Holds every hash, once it read its file, until the returned answer is called. */
+  function holdHashes(): () => void {
+    let answer = (): void => {}
+    hashing.answer = new Promise<void>((release) => {
+      answer = release
+    })
+    return answer
+  }
+
+  // The hash read the uploaded bytes before the landing renamed others over them (#5617).
+  it.each(['b-bytes', 'old-bytes'])(
+    "keeps an upload off the note when the peer's bytes (%s) land while its file hashes",
+    async (peerBytes) => {
+      seed('img', 'Pictures/p.png', 'old-bytes')
+      fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+      updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
+      enqueueUpload(asClientDb(data.db), 'img', abs('Pictures/p.png'))
+      const answer = holdHashes()
+
+      // The upload of the local edit succeeded; its file is hashing.
+      const recorded = recordUploadedFile('img', 'att-local', sha256('local-edit'))
+      await vi.waitFor(() => expect(hashing.reads).toBe(1))
+      expect(pull('img', 'att-b')).toBe('applied')
+      land('img', 'att-b', abs('Pictures/p.png'), peerBytes)
+      expect(conflictCopies('Pictures')).toEqual(['local-edit'])
+      answer()
+
+      expect(await recorded).toBe(false)
+      expect(attachmentOf('img')).toBe('att-b')
+      expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
+      expect(read('Pictures/p.png')).toBe(peerBytes)
+      expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256(peerBytes))
+    }
+  )
+
+  it('records the newer of two uploads whose hashes overlap, the file it holds', async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'edit-one')
+    const answer = holdHashes()
+
+    const first = recordUploadedFile('img', 'att-one', sha256('edit-one'))
+    await vi.waitFor(() => expect(hashing.reads).toBe(1))
+    fs.writeFileSync(abs('Pictures/p.png'), 'edit-two!')
+    const second = recordUploadedFile('img', 'att-two', sha256('edit-two!'))
+    await vi.waitFor(() => expect(hashing.reads).toBe(2))
+    answer()
+
+    expect(await first).toBe(false)
+    expect(await second).toBe(true)
+    expect(attachmentOf('img')).toBe('att-two')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('edit-two!'))
   })
 
   it.runIf(fileSystemIgnoresCase())(

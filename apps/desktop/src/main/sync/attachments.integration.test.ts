@@ -530,8 +530,10 @@ describe('the checksum of an uploaded attachment', () => {
     const src = await writeTempFile('p.png', randomBytes(64 * 1024))
     const { attachmentId } = await svc.uploadAttachment('note-1', src)
 
-    expect(await svc.checksumOf(attachmentId)).toBe(await sha256OfFile(src))
-    await expect(svc.checksumOf(randomUUID())).rejects.toMatchObject({ statusCode: 404 })
+    const pace = vi.fn(async () => {})
+    expect(await svc.checksumOf(attachmentId, { pace })).toBe(await sha256OfFile(src))
+    await expect(svc.checksumOf(randomUUID(), { pace })).rejects.toMatchObject({ statusCode: 404 })
+    expect(pace).toHaveBeenCalledTimes(2)
   }, 120_000)
 })
 

@@ -1309,9 +1309,9 @@ export class AttachmentSyncService {
    * manifest (#5608). Throws when the server has no manifest for the id, or
    * it cannot be fetched or verified.
    */
-  async checksumOf(attachmentId: string): Promise<string> {
+  async checksumOf(attachmentId: string, netOpts: DownloadNetOptions): Promise<string> {
     const [token, vaultKey] = await this.requireAuth()
-    const encrypted = await this.fetchManifest(token, attachmentId)
+    const encrypted = await this.fetchManifest(token, attachmentId, netOpts)
     return (await this.verifiedManifest(encrypted, vaultKey)).checksum
   }
 
