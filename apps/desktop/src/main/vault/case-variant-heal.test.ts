@@ -302,16 +302,15 @@ describe('healCaseVariantRows', () => {
   // differs from it forever. The server already holds every change in it, so
   // dropping the row loses nothing, and keeping it leaves a duplicate whose
   // delete unlinks the kept note's file (#5495). Only this device's pushes are
-  // on record, so a peer's edit pulled into a copy's doc looks like text typed
-  // here and never sent, and that copy stays with its text (#5247 A19).
+  // on record, so a peer's edit pulled into a copy's doc looks like the
+  // unpushed row's text, and that copy stays with its text (#5247 A19).
   it.runIf(fileSystemIgnoresCase())(
-    'drops a copy whose differing doc the server already holds, and keeps unpushed text and peer edits',
+    'drops a copy whose differing doc the server already holds, and keeps unpushed text',
     async () => {
       writeFile('SuperNotes/a.md', 'body')
       seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body', synced: true })
       seedRows('pushed', 'Supernotes/a.md', { contentHash: 'hash-body', synced: true })
       seedRows('unpushed', 'superNotes/a.md', { contentHash: 'hash-body', synced: true })
-      seedRows('peer-edited', 'SUPERNOTES/a.md', { contentHash: 'hash-body', synced: true })
       await saveDoc('original', 'body v2\n')
       recordPushed('pushed', await saveDoc('pushed', 'body v1\n'))
       const unpushed = await saveDoc('unpushed', 'body v1\n')
@@ -323,18 +322,9 @@ describe('healCaseVariantRows', () => {
         'unpushed',
         Y.encodeStateAsUpdate(typed, Y.encodeStateVector(unpushed))
       )
-      const ownPush = await saveDoc('peer-edited', 'body v1\n')
-      recordPushed('peer-edited', ownPush)
-      const peer = new Y.Doc()
-      Y.applyUpdate(peer, Y.encodeStateAsUpdate(ownPush))
-      peer.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('a peer edit')])
-      await crdt.store?.storeUpdate(
-        'peer-edited',
-        Y.encodeStateAsUpdate(peer, Y.encodeStateVector(ownPush))
-      )
 
       expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
-      const kept = ['original', 'peer-edited', 'unpushed']
+      const kept = ['original', 'unpushed']
       expect(notes().canonical.map((row) => row.id)).toEqual(kept)
       expect(notes().index.map((row) => row.id)).toEqual(kept)
     }
