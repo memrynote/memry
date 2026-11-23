@@ -1345,6 +1345,14 @@ baseline (protocol chapter 07 §7.8; #5243, #5474, #5477). The single-note pull 
 `false` there, so the pending-note replay does not push a snapshot. The Rust core takes the
 new baseline in the same walk instead; both end with the same body.
 
+None of that page's updates reach the doc, and the walk requests no further page for the
+note, even when the page says `hasMore`. Such an owe counts no failed pull, so a note a peer
+keeps snapshotting could stay owed pass after pass with no backoff and no stuck state. The
+coordinator counts these owes per note in memory, and a walk that settles the note resets
+the count. Each owe after the first in a row logs
+`CRDT walk owed again: a newer server snapshot replaced its baseline` at debug level, with
+the count and both sequences (#5247).
+
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
 counts are measured rather than predicted: at one round per sub-chunk the GET slice binds,
