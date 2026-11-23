@@ -296,7 +296,10 @@ impl AccountService {
         });
         match decision {
             Decision::Hold(state) => Ok(Applied::Held(state)),
-            Decision::Start { bind: false } => Ok(Applied::Start),
+            Decision::Start { bind: false } => {
+                self.restamp_records(&open.vault);
+                Ok(Applied::Start)
+            }
             Decision::Start { bind: true } => {
                 match self
                     .epoch
@@ -378,7 +381,35 @@ impl AccountService {
             // it, `vault-binding-resolve.ts:44-47`).
             Some(&id),
         )?;
+        self.restamp_records(&open.vault);
         Ok(())
+    }
+
+    /// Before the first push of a vault bound for sync, its records that state the local id state
+    /// the server id (#5535), once. A failure leaves sync running on the stamps as they are and
+    /// the restamp owed to the next start.
+    fn restamp_records(&self, vault: &Vault) {
+        let restamped = self
+            .session
+            .local_device_id()
+            .map_err(|error| error.to_string())
+            .and_then(|device| {
+                vault
+                    .restamp_record_vaults(&device)
+                    .map_err(|error| error.to_string())
+            });
+        match restamped {
+            Ok(0) => {}
+            Ok(count) => tracing::info!(
+                scope = "Binding",
+                count,
+                "restamped records to the server vault id"
+            ),
+            Err(error) => tracing::warn!(
+                scope = "Binding",
+                "records were not restamped to the server vault id: {error}"
+            ),
+        }
     }
 
     /// Ticks from a device other than this install's own: the id its writes stamp (from the
