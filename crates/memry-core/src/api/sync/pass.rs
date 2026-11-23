@@ -25,7 +25,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 use zeroize::Zeroizing;
 
-use super::VaultSync;
+use super::{QueuedAttachmentNews, VaultSync};
 use crate::api::errors::{StorageError, SyncError};
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
@@ -56,6 +56,10 @@ pub struct SyncPassSummary {
     pub rejected: u32,
     /// Rows still queued after the pass.
     pub pending: u32,
+    /// Attachment refusals the user was not told of yet, and landed uploads
+    /// they were (#5532).
+    #[uniffi(default = [])]
+    pub attachments: Vec<QueuedAttachmentNews>,
 }
 
 fn count(value: usize) -> u32 {
@@ -184,6 +188,8 @@ impl VaultSync {
             })
             .await?;
 
+        // Last, so a pass that failed above tells its refusals next time.
+        self.remember_told(&attachments.news).await?;
         Ok(SyncPassSummary {
             pulled: count(pulled.applied),
             deleted: count(pulled.deleted),
@@ -193,6 +199,7 @@ impl VaultSync {
             // of this pass the shell would otherwise never see (#5510).
             rejected: count(report.rejected).saturating_add(attachments.refused),
             pending: u32::try_from(pending).unwrap_or(u32::MAX),
+            attachments: attachments.news,
         })
     }
 }

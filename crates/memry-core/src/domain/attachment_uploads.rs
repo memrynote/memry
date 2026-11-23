@@ -114,6 +114,18 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
+/// The note's title, empty when it has none, so a refusal can name it.
+pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageError> {
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1",
+        params![note_id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|title| title.flatten().unwrap_or_default())
+    .map_err(failed)
+}
+
 /// Whether the note's body was purged here and holds nothing since: another
 /// device's delete applied (§7.15), so no block shows the picture any more.
 /// A note deleted only here keeps its body until then, and its upload stays
@@ -276,7 +288,61 @@ pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError>
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(conn, attachment_id)?;
     forget_purge(conn, attachment_id)
+}
+
+/// The `meta` key holding the refusal status the shell was last told about
+/// for one owed upload (#5532). A `meta` row rather than a table: the core's
+/// numbered migrations stay frozen until the Tauri branch merges. An older
+/// build never reads the key; a row it leaves behind once its upload lands
+/// names a random id that no new attach reuses, so it is never read again.
+fn refusal_key(attachment_id: &str) -> String {
+    format!("attachment_upload.refusal_seen:{attachment_id}")
+}
+
+/// The refusal status the shell was last told about for this upload.
+pub fn told_refusal(conn: &Connection, attachment_id: &str) -> Result<Option<u16>, StorageError> {
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![refusal_key(attachment_id)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(stored.and_then(|status| status.parse().ok()))
+}
+
+/// Records that the shell was told the upload was refused with `status`.
+/// An upload no longer owed records nothing.
+pub fn remember_refusal(
+    conn: &Connection,
+    attachment_id: &str,
+    status: u16,
+) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO meta (key, value) \
+         SELECT ?1, ?2 WHERE EXISTS \
+           (SELECT 1 FROM note_attachment_uploads WHERE attachment_id = ?3) \
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        params![
+            refusal_key(attachment_id),
+            status.to_string(),
+            attachment_id
+        ],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+fn forget_refusal(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![refusal_key(attachment_id)],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// Takes back an attach the server refused at once, where no block was
@@ -294,6 +360,7 @@ pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageErro
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_refusal(&tx, attachment_id)?;
     forget_purge(&tx, attachment_id)?;
     tx.commit().map_err(failed)
 }
