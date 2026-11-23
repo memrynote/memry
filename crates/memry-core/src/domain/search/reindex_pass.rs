@@ -282,7 +282,9 @@ impl ReindexPass {
 
     /// Indexes the next batch and commits it, `data.db` first. `data` and `index` are the
     /// writers; the caller lets go of both before the next batch. `stop` can end the batch
-    /// between two rows, which rolls back that batch only.
+    /// between two rows, which rolls back that batch only. When `index` is in a transaction of
+    /// the caller's, the batch commits into it and the caller commits it, after it lets go of
+    /// `data` (#5468); a caller whose commit fails abandons this pass.
     pub fn batch(
         &mut self,
         data: &Connection,

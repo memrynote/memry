@@ -157,6 +157,19 @@ impl Db {
         self.waiting.load(Ordering::SeqCst)
     }
 
+    /// The writer, held until the guard drops, for a caller that must let go of another
+    /// database's writer while it still holds this one: the search reindex commits `index.db`
+    /// after it lets go of `data.db` (#5468). It tells no body observer, so a database that has
+    /// one is refused.
+    pub(crate) fn hold_writer(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
+        if self.observer.get().is_some() {
+            return Err(StorageError::Failed {
+                what: "a database with a body observer cannot hand out its writer".to_owned(),
+            });
+        }
+        self.lock_writer()
+    }
+
     fn lock_writer(&self) -> Result<MutexGuard<'_, Connection>, StorageError> {
         self.waiting.fetch_add(1, Ordering::SeqCst);
         let guard = lock(&self.writer);

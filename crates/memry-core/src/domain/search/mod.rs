@@ -502,7 +502,7 @@ fn scored(
 }
 
 /// The one `rusqlite::Error` conversion both halves of this module use.
-pub(super) fn failed(error: rusqlite::Error) -> StorageError {
+pub(crate) fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }

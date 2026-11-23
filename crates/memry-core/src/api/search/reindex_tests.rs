@@ -91,6 +91,164 @@ fn a_writer_waiting_on_a_full_reindex_gets_the_lock_within_one_batch() {
     assert_eq!(rows as usize, total, "the index is complete");
 }
 
+/// Runs once, on the reindex thread, when the `index.db` connection starts its next COMMIT.
+static ON_INDEX_COMMIT: std::sync::Mutex<Option<Box<dyn FnOnce() + Send>>> =
+    std::sync::Mutex::new(None);
+
+fn on_index_commit(event: rusqlite::trace::TraceEvent<'_>) {
+    if let rusqlite::trace::TraceEvent::Stmt(_, sql) = event
+        && sql == "COMMIT"
+        && let Some(hook) = ON_INDEX_COMMIT.lock().expect("the hook").take()
+    {
+        hook();
+    }
+}
+
+/// #5468: a batch committed `index.db` while it still held the `data.db` writer, so a save or
+/// the vault write-back waited on the search-index commit once per batch. A `data.db` writer
+/// that asks while the index commit runs now gets the lock before that commit ends.
+#[test]
+fn a_data_writer_does_not_wait_on_a_batch_index_commit() {
+    let search = search_over(10);
+    search
+        .index
+        .call_blocking(|index| {
+            index.trace_v2(
+                rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+                Some(on_index_commit),
+            );
+            Ok(())
+        })
+        .expect("trace index.db");
+    let (got, during) = mpsc::channel::<()>();
+    let writer = Arc::new(std::sync::Mutex::new(None));
+    let got_lock = Arc::new(std::sync::Mutex::new(None));
+    {
+        let data = search.data.clone();
+        let writer = Arc::clone(&writer);
+        let got_lock = Arc::clone(&got_lock);
+        *ON_INDEX_COMMIT.lock().expect("the hook") = Some(Box::new(move || {
+            *writer.lock().expect("writer slot") = Some(std::thread::spawn(move || {
+                data.call_blocking(|_| Ok(())).expect("the writer");
+                let _ = got.send(());
+            }));
+            // Expiry fails the test: the writer is still blocked when the index commit goes on.
+            *got_lock.lock().expect("result slot") =
+                Some(during.recv_timeout(Duration::from_secs(10)).is_ok());
+        }));
+    }
+    assert!(
+        search
+            .reindex_until(&|| false, &mut LinkChanges::default())
+            .expect("reindex"),
+        "not stopped"
+    );
+    search
+        .index
+        .call_blocking(|index| {
+            index.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+            Ok(())
+        })
+        .expect("untrace");
+    if let Some(writer) = writer.lock().expect("writer slot").take() {
+        writer.join().expect("the writer thread");
+    }
+    assert_eq!(
+        *got_lock.lock().expect("result slot"),
+        Some(true),
+        "the data.db writer waited for the batch's index.db commit"
+    );
+}
+
+static INTERRUPT_INDEX_COMMIT: std::sync::Mutex<Option<(usize, rusqlite::InterruptHandle)>> =
+    std::sync::Mutex::new(None);
+
+/// Interrupts the `index.db` COMMIT counted down to by the slot, which fails it.
+fn interrupt_index_commit(event: rusqlite::trace::TraceEvent<'_>) {
+    if let rusqlite::trace::TraceEvent::Stmt(_, sql) = event
+        && sql == "COMMIT"
+    {
+        let mut slot = INTERRUPT_INDEX_COMMIT.lock().expect("the slot");
+        if let Some((left, _)) = slot.as_mut()
+            && *left > 0
+        {
+            *left -= 1;
+        } else if let Some((_, handle)) = slot.take() {
+            handle.interrupt();
+        }
+    }
+}
+
+fn fts_counts(search: &Search) -> (i64, i64) {
+    search
+        .index
+        .read_blocking(|index| {
+            index
+                .query_row(
+                    "SELECT count(*), count(DISTINCT id) FROM fts_notes",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .expect("count")
+}
+
+/// #5468: `data.db` now commits and lets go before `index.db` commits. A batch whose index
+/// commit fails after its `data.db` commit (a crash between the two) ends the pass with an
+/// error and leaves the index at its last committed batch; the next pass indexes the rest
+/// from `data.db`, every note once.
+#[test]
+fn a_lost_index_commit_after_the_data_commit_is_redone_by_the_next_pass() {
+    let total = BATCH_NOTES + 50;
+    let search = search_over(total);
+    search
+        .index
+        .call_blocking(|index| {
+            index.trace_v2(
+                rusqlite::trace::TraceEventCodes::SQLITE_TRACE_STMT,
+                Some(interrupt_index_commit),
+            );
+            // The first batch commits; the second batch's index commit fails.
+            *INTERRUPT_INDEX_COMMIT.lock().expect("the slot") =
+                Some((1, index.get_interrupt_handle()));
+            Ok(())
+        })
+        .expect("trace index.db");
+    assert!(
+        search
+            .reindex_until(&|| false, &mut LinkChanges::default())
+            .is_err(),
+        "the interrupted index commit fails the pass"
+    );
+    search
+        .index
+        .call_blocking(|index| {
+            index.trace_v2(rusqlite::trace::TraceEventCodes::empty(), None);
+            Ok(())
+        })
+        .expect("untrace");
+    // Batches are time-boxed too, so the first one's size is not fixed.
+    let (rows, ids) = fts_counts(&search);
+    assert!(
+        rows == ids && rows > 0 && rows < total as i64,
+        "only the first batch is in the index, once: {rows} rows, {ids} ids"
+    );
+    assert!(
+        search
+            .reindex_until(&|| false, &mut LinkChanges::default())
+            .expect("the next pass"),
+        "not stopped"
+    );
+    assert_eq!(
+        fts_counts(&search),
+        (total as i64, total as i64),
+        "every note indexed once"
+    );
+}
+
 /// A body whose one paragraph is a wiki link to `target`, as a Yjs update.
 fn linking_update(id: &str, target: &str) -> Vec<u8> {
     use crate::crdt::DocumentRegistry;
