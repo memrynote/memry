@@ -57,6 +57,19 @@ export function findStoredJournalEntry(
 }
 
 export async function createJournalEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {
+  const entry = await writeJournalEntryCreate(input)
+  await finishJournalEntryCreate(entry)
+  return entry
+}
+
+/**
+ * The create's file write and index cache row: file I/O and index writes
+ * only, so a caller can run it in the entry's write-back turn. The caller then
+ * runs `finishJournalEntryCreate` after the turn.
+ */
+export async function writeJournalEntryCreate(
+  input: CreateJournalEntryInput
+): Promise<JournalEntry> {
   const db = getIndexDatabase()
   const journalPath = getJournalRelativePath(input.date)
   // Read the cache row before the write, so `isNew` reflects whether the entry
@@ -90,16 +103,18 @@ export async function createJournalEntry(input: CreateJournalEntryInput): Promis
     },
     { isNew: !cached }
   )
+  return cacheId === entry.id ? entry : { ...entry, id: cacheId }
+}
+
+/**
+ * Flushes the projections, queues the create for sync, seeds the doc and
+ * tells the windows. The flush and the seed wait on the projection lane and
+ * the CRDT store, so this never runs in a write-back turn: the quit flush
+ * awaits every turn (#5475).
+ */
+export async function finishJournalEntryCreate(entry: JournalEntry): Promise<void> {
   await flushProjectionEvents()
-
-  const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
-  enqueueJournalCreate(cacheId, syncedEntry.date)
-  await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
-
-  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, {
-    date: syncedEntry.date,
-    entry: syncedEntry
-  })
-
-  return syncedEntry
+  enqueueJournalCreate(entry.id, entry.date)
+  await initializeJournalCrdt(entry.id, entry.date, entry.tags)
+  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, { date: entry.date, entry })
 }
