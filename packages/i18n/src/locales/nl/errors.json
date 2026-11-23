@@ -216,6 +216,7 @@
     "renameFailed": "Kan de naam van de map niet wijzigen",
     "renameCaseTwins": "Deze map bevat notities die een bestand delen met een notitie waarvan de mapnaam alleen in hoofdletters en kleine letters verschilt. Wijzig eerst de naam van die notities of verplaats ze, en wijzig daarna de naam van de map.",
     "deleteFailed": "Kan de map niet verwijderen",
+    "deleteCaseTwins": "Deze map en een map waarvan de naam alleen in hoofdletters en kleine letters verschilt, zijn op de schijf één map, dus als je hem verwijdert, worden de notities in beide verwijderd. Verwijder in plaats daarvan de notities die je niet nodig hebt een voor een.",
     "setConfigFailed": "Kan de mapinstellingen niet opslaan"
   },
   "folderView": {

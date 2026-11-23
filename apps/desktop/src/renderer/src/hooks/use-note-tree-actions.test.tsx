@@ -56,7 +56,7 @@ vi.mock('@/lib/logger', () => ({
 
 vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (error: unknown, fallback: string) =>
-    error instanceof Error ? error.message : fallback
+    error instanceof Error ? error.message : typeof error === 'string' ? error : fallback
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({
@@ -196,7 +196,7 @@ describe('useNoteTreeActions', () => {
       note: createNote('created', 'Other/New note.md')
     })
     vi.mocked(notesService.renameFolder).mockResolvedValue(true)
-    vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
+    vi.mocked(notesService.deleteFolder).mockResolvedValue({ success: true })
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
     vi.mocked(notesService.getAllPositions).mockResolvedValue({
@@ -336,6 +336,21 @@ describe('useNoteTreeActions', () => {
     })
     expect(notesService.openExternal).toHaveBeenCalledWith('work-a')
     expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
+  })
+
+  it('shows why a folder delete was refused', async () => {
+    vi.mocked(notesService.deleteFolder).mockResolvedValue({
+      success: false,
+      error: 'errors:folder.deleteCaseTwins'
+    })
+    const { result } = renderActions()
+
+    act(() => result.current.handleDeleteFolderClick('Work'))
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('errors:folder.deleteCaseTwins')
   })
 
   it('reveals a folder in the OS file manager and swallows a failed reveal (#2205)', async () => {

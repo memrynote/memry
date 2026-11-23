@@ -216,6 +216,7 @@
     "renameFailed": "Không thể đổi tên thư mục",
     "renameCaseTwins": "Thư mục này có các ghi chú dùng chung tệp với một ghi chú có tên thư mục chỉ khác nhau về chữ hoa và chữ thường. Hãy đổi tên hoặc di chuyển các ghi chú đó trước, rồi đổi tên thư mục.",
     "deleteFailed": "Không thể xóa thư mục",
+    "deleteCaseTwins": "Thư mục này và một thư mục có tên chỉ khác nhau về chữ hoa và chữ thường là cùng một thư mục trên ổ đĩa, nên xóa nó sẽ xóa ghi chú trong cả hai. Thay vào đó, hãy xóa từng ghi chú mà bạn không cần.",
     "setConfigFailed": "Không thể đặt cấu hình thư mục"
   },
   "folderView": {

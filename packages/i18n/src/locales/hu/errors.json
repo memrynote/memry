@@ -216,6 +216,7 @@
     "renameFailed": "Nem sikerült átnevezni a mappát",
     "renameCaseTwins": "Ez a mappa olyan jegyzeteket tartalmaz, amelyek egy olyan jegyzettel osztoznak egy fájlon, amelynek a mappaneve csak kis- és nagybetűkben tér el. Először nevezd át vagy helyezd át ezeket a jegyzeteket, majd nevezd át a mappát.",
     "deleteFailed": "Nem sikerült törölni a mappát",
+    "deleteCaseTwins": "Ez a mappa és egy csak kis- és nagybetűkben eltérő nevű mappa a lemezen egyetlen mappa, így a törlése mindkettő jegyzeteit törölné. Inkább egyenként töröld a szükségtelen jegyzeteket.",
     "setConfigFailed": "Nem sikerült menteni a mappa beállításait"
   },
   "folderView": {

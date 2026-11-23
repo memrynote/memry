@@ -785,7 +785,15 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
         for (const folderPath of foldersToDelete) {
           const result = await notesService.deleteFolder(folderPath)
-          if (!result.success) everyDeleteSucceeded = false
+          if (!result.success) {
+            everyDeleteSucceeded = false
+            toast.error(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'errors')('folder.deleteFailed')
+              )
+            )
+          }
         }
 
         if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)

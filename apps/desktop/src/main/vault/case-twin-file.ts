@@ -401,20 +401,43 @@ function ownFile(
  * would put both twins on one path.
  */
 export function assertFolderRenameKeepsCaseTwins(folderPath: string): void {
+  const vaultPath = getVaultRoot()
+  const stranded = otherSpellingPaths(folderPath).some((path) =>
+    sharesCaseTwinFile(vaultPath, path)
+  )
+  if (stranded) throw new Error('errors:folder.renameCaseTwins')
+}
+
+/**
+ * Refuse a folder delete that would remove a note filed under another spelling
+ * of the folder (#5642). The sidebar draws a folder for each spelling the rows
+ * have, but a case-insensitive disk keeps them all in one folder: deleting
+ * `Supernotes` recursively removed `SuperNotes/real.md`. The delete runs only
+ * when the disk spells the folder as asked, in case and Unicode form, and no
+ * row spelled with the folder in another case has its file in it.
+ */
+export function assertFolderDeleteKeepsCaseTwins(folderPath: string): void {
+  const vaultPath = getVaultRoot()
+  const onDisk = diskCaseOf(vaultPath, folderPath)
+  if (onDisk === null) return
+  const exact = `${folderPath}/`
+  const removesOtherSpelling =
+    onDisk !== folderPath ||
+    otherSpellingPaths(folderPath).some((path) => diskCaseOf(vaultPath, path)?.startsWith(exact))
+  if (removesOtherSpelling) throw new Error('errors:folder.deleteCaseTwins')
+}
+
+/** Note paths under `folderPath` in another case or Unicode form, not under its exact spelling. */
+function otherSpellingPaths(folderPath: string): string[] {
   const exact = `${folderPath}/`
   const folded = foldNotePath(exact)
-  const vaultPath = getVaultRoot()
-  const stranded = getDatabase()
+  return getDatabase()
     .select({ path: noteMetadata.path })
     .from(noteMetadata)
     .all()
-    .some(
-      ({ path }) =>
-        !path.startsWith(exact) &&
-        foldNotePath(path).startsWith(folded) &&
-        sharesCaseTwinFile(vaultPath, path)
+    .flatMap(({ path }) =>
+      !path.startsWith(exact) && foldNotePath(path).startsWith(folded) ? [path] : []
     )
-  if (stranded) throw new Error('errors:folder.renameCaseTwins')
 }
 
 /**

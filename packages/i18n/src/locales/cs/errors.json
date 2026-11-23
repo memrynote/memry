@@ -216,6 +216,7 @@
     "renameFailed": "Nepodařilo se přejmenovat složku",
     "renameCaseTwins": "Tato složka obsahuje poznámky, které sdílejí soubor s poznámkou, jejíž název složky se liší jen velikostí písmen. Nejprve tyto poznámky přejmenujte nebo přesuňte a pak složku přejmenujte.",
     "deleteFailed": "Nepodařilo se smazat složku",
+    "deleteCaseTwins": "Tato složka a složka, jejíž název se liší jen velikostí písmen, jsou na disku jedna složka, takže jejím smazáním byste smazali poznámky v obou. Místo toho smažte nepotřebné poznámky jednu po druhé.",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
   "folderView": {

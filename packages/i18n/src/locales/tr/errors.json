@@ -216,6 +216,7 @@
     "renameFailed": "Klasör yeniden adlandırılamadı",
     "renameCaseTwins": "Bu klasörde, klasör adı yalnızca büyük/küçük harf farkıyla ayrılan bir notla aynı dosyayı paylaşan notlar var. Önce bu notları yeniden adlandırın ya da taşıyın, ardından klasörü yeniden adlandırın.",
     "deleteFailed": "Klasör silinemedi",
+    "deleteCaseTwins": "Bu klasör ile adı yalnızca büyük/küçük harf farkıyla ayrılan bir klasör diskte tek bir klasördür; bu yüzden silmek ikisindeki notları da siler. Bunun yerine ihtiyacınız olmayan notları tek tek silin.",
     "setConfigFailed": "Klasör yapılandırması ayarlanamadı"
   },
   "folderView": {

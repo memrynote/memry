@@ -216,6 +216,7 @@
     "renameFailed": "Gagal menamakan semula folder",
     "renameCaseTwins": "Folder ini mengandungi nota yang berkongsi fail dengan nota yang nama foldernya hanya berbeza dari segi huruf besar dan kecil. Namakan semula atau pindahkan nota tersebut dahulu, kemudian namakan semula folder.",
     "deleteFailed": "Gagal memadamkan folder",
+    "deleteCaseTwins": "Folder ini dan folder yang namanya hanya berbeza dari segi huruf besar dan kecil ialah satu folder pada cakera, jadi memadamkannya akan memadamkan nota dalam kedua-duanya. Sebaliknya, padamkan nota yang tidak anda perlukan satu demi satu.",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },
   "folderView": {

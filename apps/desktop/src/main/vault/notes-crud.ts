@@ -23,6 +23,7 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
+  assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
   planCaseTwinLeave,
   prepareCaseTwinLeave,
@@ -1029,6 +1030,8 @@ export async function deleteFolder(folderPath: string): Promise<void> {
   const absPath = path.join(notesDir, folderPath)
 
   const { rm } = await import('fs/promises')
+  // Right before the delete, so a row filed in another spelling meanwhile is seen.
+  assertFolderDeleteKeepsCaseTwins(folderPath)
   await rm(absPath, { recursive: true, force: true })
 
   dropFolderPositions(getDatabase(), folderPath)
