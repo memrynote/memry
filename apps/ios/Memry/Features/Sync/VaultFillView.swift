@@ -53,7 +53,7 @@ struct VaultFillView<Content: View>: View {
         // so the run ending neither rebuilds the tabs nor drops a pushed note.
         VStack(spacing: 0) {
             if let progress = model.strip {
-                FirstSyncStrip(progress: progress)
+                FirstSyncStrip(progress: progress, quiet: model.isQuiet)
                     .transition(.opacity)
             }
             banner
@@ -111,8 +111,10 @@ extension EnvironmentValues {
 /// How far the first sync and the drain are, in live notes and journals of
 /// the vault: `Downloading notes · 3,200 of 9,677`, then `Downloading note
 /// content · 5,100 of 9,677`. The bar appears once the total is known.
+/// `quiet` adds `Still working` when no tick has come for a while.
 struct FirstSyncStrip: View {
     let progress: SyncProgress
+    let quiet: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.tight) {
@@ -133,6 +135,10 @@ struct FirstSyncStrip: View {
     }
 
     private var label: Text {
+        quiet ? Text("\(count) · Still working") : count
+    }
+
+    private var count: Text {
         let done = progress.completed.formatted()
         let total = progress.total?.formatted()
         switch (progress.phase, total) {

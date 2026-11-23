@@ -99,8 +99,41 @@ final class VaultFillViewModel {
     /// ``leave()`` ends it when the screen goes away.
     private var drainTask: Task<Void, Never>?
 
-    init(filler: any VaultFilling) {
+    /// Ticks heard since this screen began, and the count at which the last
+    /// ``quietAfter`` passed without one. ``isQuiet`` compares the two.
+    private var heard = 0
+    private var quietAt: Int?
+    private var quietTask: Task<Void, Never>?
+    /// `Task.sleep` in production. Tests pass a pause they end themselves.
+    private let pause: @Sendable (Duration) async throws -> Void
+
+    /// How long the strip waits for a tick before it says the run is still
+    /// going. A body manifest page that the server rate-limits waits up to
+    /// 60 s with no tick (#5352), which left the strip frozen on its last count.
+    static let quietAfter: Duration = .seconds(10)
+
+    init(
+        filler: any VaultFilling,
+        pause: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+    ) {
         self.filler = filler
+        self.pause = pause
+    }
+
+    /// The strip has shown the same count for ``quietAfter``. The core sends
+    /// no tick while it waits on the server, so the strip says the run is
+    /// still going rather than looking stuck.
+    var isQuiet: Bool { strip != nil && quietAt == heard }
+
+    /// A tick arrived, or a run began: the quiet stretch starts again.
+    private func hear() {
+        heard += 1
+        quietTask?.cancel()
+        let mark = heard
+        quietTask = Task { [weak self, pause] in
+            guard (try? await pause(Self.quietAfter)) != nil else { return }
+            self?.quietAt = mark
+        }
     }
 
     /// Until the gate answers and while the run goes. The vault's own sync
@@ -205,6 +238,7 @@ final class VaultFillViewModel {
     /// round in flight finishes in the core (no `rust_future_cancel`).
     func leave() {
         drainTask?.cancel()
+        quietTask?.cancel()
     }
 
     /// Starts the drain, or joins the one running, and returns when it ends.
@@ -215,6 +249,7 @@ final class VaultFillViewModel {
         if drainTask == nil {
             guard case .filled = phase, isForeground, !drained else { return }
             phase = .draining(carried)
+            hear()
             drainTask = Task { await drainRounds() }
         }
         await drainTask?.value
@@ -261,10 +296,12 @@ final class VaultFillViewModel {
     private func reportDrain(_ progress: SyncProgress) {
         guard case .draining = phase else { return }
         phase = .draining(progress)
+        hear()
     }
 
     private func run() async {
         phase = .filling(nil)
+        hear()
         let start = ContinuousClock.now
         Log.sync.notice("a first sync started")
         var carried: SyncProgress?
@@ -304,6 +341,7 @@ final class VaultFillViewModel {
         if previous?.phase != progress.phase { Self.logReached(progress) }
         let landedAgain = landedAgain(after: previous, progress)
         phase = .filling(progress.phase == .done ? previous : progress)
+        hear()
         if landedAgain { landed += 1 }
     }
 
