@@ -1,7 +1,9 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -10,7 +12,8 @@ import Testing
 // `quietAfter` with no tick it says the run is still going. The pause is
 // ended by the test, never by a wall clock.
 
-/// The quiet timer's pause, ended only by ``elapse()``.
+/// The quiet timer's pause, ended only by ``elapse()``. Newest first, so a
+/// stale pause wakes last, the order FIFO resumption hid.
 private final class TestPauses: @unchecked Sendable {
     private let waiting = Mutex<[CheckedContinuation<Void, Never>]>([])
 
@@ -27,7 +30,7 @@ private final class TestPauses: @unchecked Sendable {
             defer { held = [] }
             return held
         }
-        for continuation in all { continuation.resume() }
+        for continuation in all.reversed() { continuation.resume() }
     }
 }
 
@@ -113,7 +116,39 @@ struct VaultFillQuietTests {
 
         filler.finish()
         await run.value
+        // The drain's start began one more pause; end it so nothing leaks.
+        try await settle { pauses.count == 1 }
+        pauses.elapse()
         #expect(fill.strip == nil)
         #expect(!fill.isQuiet, "a run that ended has nothing to wait on")
     }
+
+    // REVIEW-5544: "Still working" made the body-phase line wrap on an iPhone,
+    // so the list under the strip jumped a line on each quiet flip.
+    @Test(
+        "the strip keeps its height when it says the run is still going",
+        arguments: [DynamicTypeSize.large, .accessibility5]
+    )
+    func theStripKeepsItsHeight(size: DynamicTypeSize) throws {
+        let progress = SyncProgress(phase: .bodies, completed: 5100, total: 9677)
+        let loud = try strip(progress, quiet: false, size: size)
+        let quiet = try strip(progress, quiet: true, size: size)
+        #expect(loud.size.height == quiet.size.height)
+    }
+}
+
+/// The strip at an iPhone 17's width (402 pt), recorded for the PR.
+@MainActor
+private func strip(_ progress: SyncProgress, quiet: Bool, size: DynamicTypeSize) throws -> UIImage {
+    let view = FirstSyncStrip(progress: progress, quiet: quiet)
+        .environment(\.dynamicTypeSize, size)
+        .background(Color.white)
+    let renderer = ImageRenderer(content: view)
+    renderer.proposedSize = ProposedViewSize(width: 402, height: nil)
+    renderer.scale = 3
+    let image = try #require(renderer.uiImage)
+    if let png = image.pngData() {
+        Attachment.record(png, named: "strip-\(size)-\(quiet ? "quiet" : "ticking").png")
+    }
+    return image
 }

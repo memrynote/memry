@@ -111,18 +111,27 @@ extension EnvironmentValues {
 /// How far the first sync and the drain are, in live notes and journals of
 /// the vault: `Downloading notes · 3,200 of 9,677`, then `Downloading note
 /// content · 5,100 of 9,677`. The bar appears once the total is known.
-/// `quiet` adds `Still working` when no tick has come for a while.
+/// `quiet` swaps the phase words for `Still working` when no tick has come for
+/// a while. Both labels are laid out and the hidden one keeps its space, so
+/// the strip, and the list under it, never changes height on the swap.
 struct FirstSyncStrip: View {
     let progress: SyncProgress
     let quiet: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-            label
-                .font(Tokens.Typography.supporting.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .monospacedDigit()
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ZStack(alignment: .topLeading) {
+                count
+                    .opacity(quiet ? 0 : 1)
+                    .accessibilityHidden(quiet)
+                stillWorking
+                    .opacity(quiet ? 1 : 0)
+                    .accessibilityHidden(!quiet)
+            }
+            .font(Tokens.Typography.supporting.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            .monospacedDigit()
+            .frame(maxWidth: .infinity, alignment: .leading)
             if let total = progress.total, total > 0 {
                 ProgressView(value: Double(min(progress.completed, total)), total: Double(total))
                     .progressViewStyle(.linear)
@@ -134,8 +143,10 @@ struct FirstSyncStrip: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var label: Text {
-        quiet ? Text("\(count) · Still working") : count
+    private var stillWorking: Text {
+        let done = progress.completed.formatted()
+        guard let total = progress.total?.formatted() else { return Text("Still working · \(done)") }
+        return Text("Still working · \(done) of \(total)")
     }
 
     private var count: Text {

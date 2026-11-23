@@ -132,6 +132,9 @@ final class VaultFillViewModel {
         let mark = heard
         quietTask = Task { [weak self, pause] in
             guard (try? await pause(Self.quietAfter)) != nil else { return }
+            // A pause can end after a newer tick cancelled it; its older mark
+            // would then overwrite the newer one.
+            guard !Task.isCancelled else { return }
             self?.quietAt = mark
         }
     }
@@ -289,6 +292,7 @@ final class VaultFillViewModel {
         }
         if pulled > 0 { Log.sync.notice("the body drain pulled", .count(pulled)) }
         phase = .filled
+        quietTask?.cancel()
         drainTask = nil
     }
 
@@ -318,6 +322,7 @@ final class VaultFillViewModel {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a first sync did not finish", .code(mapped.code))
             phase = .failed(mapped)
+            quietTask?.cancel()
         }
         let elapsed = UInt64(max(0, (ContinuousClock.now - start) / .milliseconds(1)))
         Log.sync.notice("the first sync ran for", .milliseconds(elapsed))
