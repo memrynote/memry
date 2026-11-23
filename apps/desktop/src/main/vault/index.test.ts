@@ -243,7 +243,12 @@ vi.mock('../sync/runtime', () => ({
 }))
 
 vi.mock('../sync/crdt-provider', () => ({
-  getCrdtProvider: () => ({ initPersistence: mocks.initCrdtPersistence })
+  getCrdtProvider: () => ({
+    initPersistence: mocks.initCrdtPersistence,
+    awaitPendingInit: async () => {},
+    hasPersistence: () => false,
+    readOnlyStore: () => null
+  })
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({
