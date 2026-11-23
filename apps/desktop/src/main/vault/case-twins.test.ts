@@ -56,18 +56,20 @@ vi.mock('../sync/local-mutations', () => ({
   removePendingNoteSyncItems: vi.fn()
 }))
 const docs = vi.hoisted(() => new Map<string, unknown>())
+/** A survivor whose doc the provider cannot hand out: `open` waits on, or rejects with, this. */
+const unavailable = vi.hoisted(() => new Map<string, Promise<never>>())
 vi.mock('../sync/crdt-provider', () => {
   const stub = {
     initForNote: vi.fn(async () => {}),
     updateMeta: vi.fn(),
-    getDoc: (id: string) => docs.get(id),
+    getDoc: (id: string) => (unavailable.has(id) ? undefined : docs.get(id)),
     recordOwedFullState: vi.fn(),
     hasPersistence: () => true,
     awaitPendingInit: async () => {},
     readOnlyStore: () => ({ docNames: async () => [], updates: async () => [] }),
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
-    open: async (id: string) => docs.get(id),
+    open: async (id: string) => (unavailable.has(id) ? unavailable.get(id) : docs.get(id)),
     withDocLoaded: async (_id: string, run: () => void) => run(),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
@@ -99,7 +101,7 @@ import {
 import { getStatus } from './index'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { recordOwedFileBody } from '../sync/crdt-owed-file-body'
+import { owesFileBody, recordOwedFileBody } from '../sync/crdt-owed-file-body'
 import { markdownToYFragment } from '../sync/blocknote-converter'
 import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -158,6 +160,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
   afterEach(async () => {
     docs.clear()
+    unavailable.clear()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
@@ -408,5 +411,71 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       exists: fs.existsSync(path.join(vault.path, 'Other/s.md')),
       rows: rowIds()
     }).toEqual({ exists: false, rows: ['lower', 'upper'] })
+  }, 30_000)
+
+  // The deleted twin's body is the one on disk in each case below.
+  it('a delete that stops right after the row drop leaves the survivor its body', async () => {
+    await twins()
+    // The rewrite waits forever, as after a crash right after the row drop.
+    unavailable.set('lower', new Promise<never>(() => {}))
+
+    void deleteNoteCommand('upper')
+    await vi.waitFor(() => expect(rowIds()).toEqual(['lower']))
+
+    unavailable.clear()
+    expect(await afterDelete('lower')).toEqual({
+      file: LOWER,
+      rows: ['lower'],
+      crossed: [],
+      deletes: [['note', 'upper']]
+    })
+  }, 30_000)
+
+  it('a local delete whose survivor rewrite throws leaves the survivor its body', async () => {
+    await twins()
+    unavailable.set('lower', Promise.reject(new Error('store gone')))
+    unavailable.get('lower')!.catch(() => {})
+
+    await deleteNoteCommand('upper')
+
+    expect(shared()).toBe(UPPER)
+    unavailable.clear()
+    expect(await afterDelete('lower')).toEqual({
+      file: LOWER,
+      rows: ['lower'],
+      crossed: [],
+      deletes: [['note', 'upper']]
+    })
+  }, 30_000)
+
+  it('a survivor with an empty doc never takes the deleted twin body', async () => {
+    await twins()
+    docs.set('lower', new Y.Doc())
+
+    await deleteNoteCommand('upper')
+
+    expect({ file: shared(), crossed: crossed() }).toEqual({ file: '', crossed: [] })
+    expect(await afterDelete('lower')).toEqual({
+      // Written into an empty file, the body keeps no final newline.
+      file: LOWER.trimEnd(),
+      rows: ['lower'],
+      crossed: [],
+      deletes: [['note', 'upper']]
+    })
+  }, 30_000)
+
+  it('a survivor that owes its file body never takes the deleted twin body', async () => {
+    await twins()
+    recordOwedFileBody('lower')
+
+    await deleteNoteCommand('upper')
+
+    expect({ file: shared(), owes: owesFileBody('lower') }).toEqual({ file: LOWER, owes: false })
+    expect(await afterDelete('lower')).toEqual({
+      file: LOWER,
+      rows: ['lower'],
+      crossed: [],
+      deletes: [['note', 'upper']]
+    })
   }, 30_000)
 })

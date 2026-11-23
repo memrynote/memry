@@ -22,7 +22,7 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import { keepSurvivorFile, sharesCaseTwinFile } from './case-twin-file'
+import { claimSharedFile, keepSurvivorFile, sharesCaseTwinFile } from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -892,8 +892,10 @@ export async function deleteNote(id: string): Promise<void> {
   if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
 
   deleteNoteFromCache(db, id)
+  // Same step as the row drop: no await between (case-twin-file.ts).
+  const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), cached.path, id) : null
   deleteNotePosition(getDatabase(), cached.path)
-  if (twinKeepsFile) await keepSurvivorFile(getVaultRoot(), cached.path, id)
+  await keepSurvivorFile(claim)
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,

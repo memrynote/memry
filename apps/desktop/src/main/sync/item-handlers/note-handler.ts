@@ -82,7 +82,7 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
-import { keepSurvivorFile, sharesCaseTwinFile } from '../../vault/case-twin-file'
+import { claimSharedFile, keepSurvivorFile, sharesCaseTwinFile } from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -812,6 +812,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     for (const { id } of clearedReminders) ctx.emit(ReminderChannels.events.DELETED, { id })
 
     deleteNoteFromCache(indexDb, itemId)
+    // Same step as the row drop, inside the page (case-twin-file.ts).
+    const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), existing.path, itemId) : null
     clearNoteCoverMarker(ctx.db, itemId)
     forgetBaselineOfRemotelyDeletedNote(ctx.db, itemId)
     void flushProjectionEvents()
@@ -826,7 +828,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     ctx.emit(NotesChannels.events.DELETED, { id: itemId, path: existing.path, source: 'sync' })
 
     if (twinKeepsFile) {
-      void keepSurvivorFile(getVaultRoot(), existing.path, itemId)
+      // Floated: `applyDelete` is synchronous. The claim above is the
+      // lossless part; a rewrite lost to a crash leaves claimed bytes that
+      // only a doc-to-file pass touches.
+      void keepSurvivorFile(claim)
     } else {
       // Journaled with the page and unlinked after it commits (#2385): a lost
       // unlink would leave a file with no row for the indexer to push back.

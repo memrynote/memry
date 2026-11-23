@@ -4,29 +4,55 @@
  *
  * On a case-insensitive disk two rows whose paths differ only in case name
  * one file, and the file holds one twin's body. A twin that leaves takes only
- * its row: the file is the other twin's too. Ask `sharesCaseTwinFile` while
- * the leaving row still names the file, then call `keepSurvivorFile` once it
- * no longer does. The file may hold the leaving twin's body, and left as it
- * was, the next vault open would read that body into the survivor and sync it.
+ * its row: the file is the other twin's too. The bytes on disk may be the
+ * leaving twin's body, and the survivor must never read them in.
+ *
+ * 1. `sharesCaseTwinFile`, while the leaving row still names the file.
+ * 2. `claimSharedFile`, in the same synchronous step as the leaving row's
+ *    drop, with no await between. Bytes that are not the survivor's own are
+ *    named its baseline, so from then on no pass reads them into its doc as an
+ *    outside edit: a write-back writes the doc over them. An owed file body
+ *    (`crdt-owed-file-body.ts`) is cleared with them: the bytes it owed are
+ *    gone, and a take would read the leaving twin's body. A crash after this
+ *    step leaves bytes only a doc-to-file pass touches.
+ * 3. `keepSurvivorFile`, after the step: writes the survivor's doc over the
+ *    claimed bytes. A survivor with an empty doc has no body here to write,
+ *    and its next open would seed the doc from the file, so the claimed bytes
+ *    are kept as one of its versions and the file is emptied; its body comes
+ *    with its next server merge.
  *
  * @module vault/case-twin-file
  */
 
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { writebackNow } from '../sync/crdt-writeback'
-import { owesFileBody } from '../sync/crdt-owed-file-body'
-import { recordBaseline } from '../sync/writeback-baseline'
+import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
+import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
+import { recordBaseline, writeWithBaseline } from '../sync/writeback-baseline'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from '../database'
-import { readVaultFile } from '../lib/paths'
+import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf } from './disk-case'
+import { atomicWrite } from './file-ops'
 import { generateContentHash } from './frontmatter'
 import { findCanonicalNoteForFile } from './note-sync'
+import { toAbsolutePath } from './notes-io'
+import { createSnapshot } from './notes-versions'
 
 const log = createLogger('CaseTwinFile')
+
+/** The twin left on a shared file, and the bytes there that are not its own. */
+export interface SurvivorClaim {
+  leavingId: string
+  survivorId: string
+  survivorPath: string
+  title: string
+  /** Null when the bytes on disk are the survivor's own. */
+  claimed: string | null
+}
 
 /** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
 export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
@@ -35,56 +61,78 @@ export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boo
 }
 
 /**
- * - `already-own`: the bytes on disk are, or are now named, the survivor's own.
- * - `written`: the survivor's doc was written over the file.
- * - `no-survivor`: no row names the file any more, or more than one still does.
- * - `refused`: the survivor has no body of its own to write (an empty doc, or
- *   one that owes its file body), or the write did not land. The file is left.
+ * Call in the step that drops twin `leavingId`'s row from `relativePath`, with
+ * no await since. Null when no single row is left on the file.
  */
-export type SurvivorFileOutcome = 'already-own' | 'written' | 'no-survivor' | 'refused'
-
-/**
- * After twin `leavingId` stopped naming `relativePath`, make the file hold the
- * surviving twin's body: doc to file, never file to doc. The bytes on disk are
- * named the survivor's baseline first, so the write-back writes over them
- * (keeping them as a version) instead of feeding them into the survivor's doc
- * as an outside edit. Never throws: the leave has already happened.
- */
-export async function keepSurvivorFile(
+export function claimSharedFile(
   vaultPath: string,
   relativePath: string,
   leavingId: string
-): Promise<SurvivorFileOutcome> {
+): SurvivorClaim | null {
   const onDisk = diskCaseOf(vaultPath, relativePath)
   const survivor = onDisk === null ? null : findCanonicalNoteForFile(vaultPath, onDisk)
-  if (!survivor || survivor.sharesFile) return 'no-survivor'
-  const context = { leavingId, survivorId: survivor.id, path: survivor.path }
-  try {
-    const indexDb = getIndexDatabase()
-    const raw = await readVaultFile(vaultPath, survivor.path)
-    const baseline = getNoteCacheById(indexDb, survivor.id)?.contentHash
-    if (raw === null || generateContentHash(raw) === baseline) return 'already-own'
+  if (!survivor || survivor.sharesFile) return null
+  const claim = {
+    leavingId,
+    survivorId: survivor.id,
+    survivorPath: survivor.path,
+    title: survivor.title,
+    claimed: null as string | null
+  }
+  const indexDb = getIndexDatabase()
+  const raw = readVaultFileSync(vaultPath, survivor.path)
+  if (
+    raw === null ||
+    generateContentHash(raw) === getNoteCacheById(indexDb, survivor.id)?.contentHash
+  )
+    return claim
+  recordBaseline(indexDb, survivor.id, raw)
+  if (owesFileBody(survivor.id)) clearOwedFileBody(survivor.id)
+  log.info('A case twin left a shared file holding bytes that are not the survivor’s', {
+    leavingId,
+    survivorId: survivor.id
+  })
+  return { ...claim, claimed: raw }
+}
 
+export type SurvivorFileOutcome = 'already-own' | 'written' | 'emptied' | 'failed'
+
+/**
+ * Write the survivor's doc over the bytes `claimSharedFile` claimed. Never
+ * throws: the leave has already happened, and a failure leaves claimed bytes
+ * that only a doc-to-file pass touches.
+ */
+export async function keepSurvivorFile(claim: SurvivorClaim | null): Promise<SurvivorFileOutcome> {
+  if (!claim || claim.claimed === null) return 'already-own'
+  const { survivorId, claimed } = claim
+  try {
     const provider = getCrdtProvider()
-    const live = provider.getDoc(survivor.id)
-    const doc = live ?? (await provider.open(survivor.id, undefined, { skipSeed: true }))
+    const live = provider.getDoc(survivorId)
+    const doc = live ?? (await provider.open(survivorId, undefined, { skipSeed: true }))
     try {
-      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0 || owesFileBody(survivor.id)) {
-        log.warn('The case twin left on a shared file has no body of its own to write', context)
-        return 'refused'
+      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length > 0) {
+        await writebackNow(survivorId, doc)
+        return 'written'
       }
-      recordBaseline(indexDb, survivor.id, raw)
-      await writebackNow(survivor.id, doc)
     } finally {
-      if (!live) await provider.closeIfInactive(survivor.id)
+      if (!live) await provider.closeIfInactive(survivorId)
     }
-    // Unchanged bytes are the doc's serialization, or a pass that could not
-    // write; either way they are now the survivor's baseline, so no pass reads
-    // them into its doc.
-    return (await readVaultFile(vaultPath, survivor.path)) === raw ? 'already-own' : 'written'
+    createSnapshot(survivorId, claimed, claim.title, SnapshotReasons.SIGNIFICANT)
+    const absolutePath = toAbsolutePath(claim.survivorPath)
+    markWritebackIgnored(absolutePath)
+    await writeWithBaseline(getIndexDatabase(), survivorId, '', () => atomicWrite(absolutePath, ''))
+    log.warn('The case twin left on a shared file has no doc body; the file was emptied', {
+      leavingId: claim.leavingId,
+      survivorId
+    })
+    return 'emptied'
   } catch (error) {
-    log.error('Could not write the surviving case twin into the shared file', { ...context, error })
+    log.error('Could not write the surviving case twin into the shared file', {
+      leavingId: claim.leavingId,
+      survivorId,
+      error
+    })
     trackMainError('notes', 'case_twin_file_survivor', error)
-    return 'refused'
+    return 'failed'
   }
 }
