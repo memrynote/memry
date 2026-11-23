@@ -10,13 +10,14 @@
  * - `caseTwinLandedHashes`: JSON object from the folded disk path of a shared
  *   file to the sha256 of the bytes a download last landed there: bytes a
  *   server holds (#5585).
- * - `caseTwinKeptCopies`: the same, to `{sha256, copy}`: the bytes a landing
- *   last kept from the file as a conflict copy, and the vault path of that
- *   copy. A retried landing and the split keep them once (REVIEW-5602), while
- *   the copy still holds them (VERIFY-5602).
+ * - `caseTwinKeptCopies`: the same (or of a file twins shared before a
+ *   split), to `{sha256, copy}`: the bytes a landing last kept from the file
+ *   as a conflict copy, and the vault path of that copy. A landing retried
+ *   after its rename failed keeps them once (REVIEW-5602), while the copy
+ *   still holds them (VERIFY-5602, VERIFY-5602R2).
  * - `caseTwinForeignBytes`: JSON object from note id to `{sha256}` of its file
- *   when it was marked (or when its change was last kept as a conflict copy),
- *   or null when the file held a change on no server at the split.
+ *   when it was marked, or null when the file held a change on no server at
+ *   the split.
  *
  * @module vault/case-twin-bytes
  */
@@ -214,7 +215,7 @@ function readKeptCopies(db: DrizzleDb): Map<string, KeptCopy> {
   )
 }
 
-/** A landing kept this shared file's bytes as a conflict copy. */
+/** A landing kept this file's bytes as a conflict copy. */
 export function recordKeptCaseTwinCopy(db: DrizzleDb, diskPath: string, kept: KeptCopy): void {
   const copies = readKeptCopies(db)
   copies.set(foldNotePath(diskPath), kept)
@@ -222,9 +223,10 @@ export function recordKeptCaseTwinCopy(db: DrizzleDb, diskPath: string, kept: Ke
 }
 
 /**
- * The sha256 of the bytes a landing last kept from this shared file, while
- * the copy it kept them in still holds them. A copy the user moved back over
- * the file, or changed, leaves them on no other file (VERIFY-5602).
+ * The sha256 of the bytes a landing last kept from this file, while the copy
+ * it kept them in still holds them. A copy the user moved back over the file,
+ * changed, deleted, or cannot read leaves them on no other file (VERIFY-5602,
+ * VERIFY-5602R2).
  */
 export function readKeptCaseTwinCopy(
   db: DrizzleDb,
@@ -232,13 +234,15 @@ export function readKeptCaseTwinCopy(
   diskPath: string
 ): string | undefined {
   const kept = readKeptCopies(db).get(foldNotePath(diskPath))
-  return kept && hashFile(join(vaultPath, kept.copy)) === kept.sha256 ? kept.sha256 : undefined
-}
-
-export function forgetKeptCaseTwinCopy(db: DrizzleDb, diskPath: string): void {
-  const copies = readKeptCopies(db)
-  if (copies.delete(foldNotePath(diskPath))) {
-    writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES, Object.fromEntries(copies))
+  if (!kept) return undefined
+  try {
+    return hashFile(join(vaultPath, kept.copy)) === kept.sha256 ? kept.sha256 : undefined
+  } catch (error) {
+    log.warn('A kept conflict copy cannot be read; its bytes count as not kept', {
+      copy: kept.copy,
+      error
+    })
+    return undefined
   }
 }
 
@@ -250,13 +254,6 @@ export function forgetKeptCaseTwinCopy(db: DrizzleDb, diskPath: string): void {
 export function markCaseTwinForeignBytes(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
   const marks = readCaseTwinForeignBytes(db)
   marks.set(noteId, marks.get(noteId) === null ? null : mark)
-  writeMarks(db, marks)
-}
-
-/** The file's bytes, with this sha256, are kept as a conflict copy: a retried landing keeps them once. */
-export function recordConflictCopyKept(db: DrizzleDb, noteId: string, sha256: string): void {
-  const marks = readCaseTwinForeignBytes(db)
-  marks.set(noteId, { sha256 })
   writeMarks(db, marks)
 }
 

@@ -816,15 +816,27 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
   })
 
-  /** A still-shared landing kept an offline edit as a copy, and the user moved the copy back over the file. */
-  function restoreKeptCopy(): void {
+  const COPY = 'Supernotes/p (conflict copy).png'
+
+  /** A still-shared landing kept an offline edit as a copy. */
+  function keepOfflineEdit(): void {
     twins('Supernotes')
     land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
     fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
     expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
     land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
-    fs.renameSync(abs('Supernotes/p (conflict copy).png'), abs('Supernotes/p.png'))
   }
+
+  /** ...and the user moved the copy back over the file. */
+  function restoreKeptCopy(): void {
+    keepOfflineEdit()
+    fs.renameSync(abs(COPY), abs('Supernotes/p.png'))
+  }
+
+  const keptBytes = () =>
+    conflictCopies('Supernotes')
+      .map((name) => read(path.join('Supernotes', name)))
+      .toSorted()
 
   // VERIFY-5602 #1 (K1, K2): the copy is gone, so the file is the edit's only copy.
   for (const [how, held] of [
@@ -858,6 +870,74 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
   })
 
+  // VERIFY-5602R2 #1: the user copied the conflict copy back, so at the split
+  // both files hold the edit; the copy goes or changes before the survivor's
+  // bytes land, leaving the file the edit's only copy.
+  for (const [how, split, landLeaver, changeCopy, kept] of [
+    [
+      'deleted after a peer delete',
+      () => applyPeerDelete('twin-b'),
+      () => {},
+      () => fs.rmSync(abs(COPY)),
+      ['edited offline']
+    ],
+    [
+      'deleted after a peer move',
+      () => applyPeerUpdate({ folderPath: 'Other' }),
+      () => land('twin-b', 'att-twin-b', abs('Other/p.png'), 'b-bytes'),
+      () => fs.rmSync(abs(COPY)),
+      ['edited offline']
+    ],
+    [
+      'changed after a peer delete',
+      () => applyPeerDelete('twin-b'),
+      () => {},
+      () => fs.writeFileSync(abs(COPY), 'copy edited'),
+      ['copy edited', 'edited offline']
+    ]
+  ] as const) {
+    it(`a restored edit whose conflict copy is ${how} is kept again when the twins' bytes land`, () => {
+      keepOfflineEdit()
+      fs.copyFileSync(abs(COPY), abs('Supernotes/p.png'))
+      expect(split()).toBe('applied')
+      changeCopy()
+
+      landLeaver()
+      land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+      expect(read('Supernotes/p.png')).toBe('a-bytes')
+      expect(keptBytes()).toEqual(kept)
+    })
+  }
+
+  // VERIFY-5602R2 #6: after a split, the rename fails and the user moves the copy back.
+  it('a conflict copy moved back over the file before a failed landing is retried is kept again', () => {
+    twins('Supernotes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    landCaseTwinDownload(abs('Supernotes/p.png'), 'att-twin-a', sha256('a-bytes'), 'twin-a')
+    fs.renameSync(abs(COPY), abs('Supernotes/p.png'))
+
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
+    expect(keptBytes()).toEqual(['edited offline'])
+  })
+
+  // VERIFY-5602R2 #5: a folder where the kept copy was, and the edit dropped on the file again.
+  it("a folder at a kept conflict copy's path does not fail the next landing", () => {
+    keepOfflineEdit()
+    fs.rmSync(abs(COPY))
+    fs.mkdirSync(abs(COPY))
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerUpdate({ attachmentId: 'att-b3' })).toBe('applied')
+
+    land('twin-b', 'att-b3', abs('SUPERNOTES/p.png'), 'b-3')
+
+    expect(read('Supernotes/p.png')).toBe('b-3')
+    expect(read('Supernotes/p (conflict copy) 1.png')).toBe('edited offline')
+  })
+
   // VERIFY-5602 #11: `ılık` and `Ilık` share a fold key but are two files on APFS.
   it('landings on two files that share only a fold key record no case twin state', () => {
     seed('dotless', 'Docs/ılık.png', 'd-bytes')
@@ -871,6 +951,22 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Docs/ılık.png')).toBe('d-bytes')
     expect(read('Docs/Ilık.png')).toBe('c-bytes')
     expect(landedHashes()).toEqual({})
+  })
+
+  // VERIFY-5602R2 #3: `ilik` and `ILIK` share a file, `ılık` only their fold key.
+  it("a landing on a file that only shares a fold key with twins' file keeps their landing known", () => {
+    seed('lower', 'Docs/ilik.png', 'l-bytes')
+    seed('upper', 'Docs/ILIK.png', 'u-bytes')
+    seed('dotless', 'Docs/ılık.png', 'd-bytes')
+    fs.rmSync(abs('Docs/ılık.png'))
+    land('upper', 'att-upper', abs('Docs/ILIK.png'), 'u-bytes')
+
+    land('dotless', 'att-dotless', abs('Docs/ılık.png'), 'd-bytes')
+    expect(applyPeerDelete('upper')).toBe('applied')
+    land('lower', 'att-lower', abs('Docs/ilik.png'), 'l-bytes')
+
+    expect(read('Docs/ilik.png')).toBe('l-bytes')
+    expect(conflictCopies('Docs')).toEqual([])
   })
 
   // REVIEW-5602 low 6: the landing kept the held change; a later split does not keep it again.

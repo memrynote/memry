@@ -39,7 +39,8 @@
  * conflict copy. A change is told by content hash (#5585): the split compares
  * the file with the bytes a download last landed on it, and the landing with
  * the hash marked at the split. A landing on a file twins still share compares
- * it with the bytes a download last landed there (#5594).
+ * it with the bytes a download last landed there (#5594). Either landing also
+ * takes bytes it kept before as kept, while their copy still holds them.
  *
  * @module vault/case-twin-file
  */
@@ -99,19 +100,16 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf, volumeIgnoresCase } from './disk-case'
 import {
   clearCaseTwinForeignBytes,
-  forgetKeptCaseTwinCopy,
   hashFile,
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
   readKeptCaseTwinCopy,
   readLandedCaseTwinHash,
-  recordConflictCopyKept,
   recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
   takeHeldCaseTwinChange,
   takeLandedCaseTwinHash,
-  type KeptCopy,
   type MarkedFile
 } from './case-twin-bytes'
 import { generateUniquePathSync } from './file-ops'
@@ -486,12 +484,12 @@ export function planBinaryCaseTwinMove(
  * file's hash, read by the plan. The file holds a change on no server when
  * the watcher held one, or when it differs from the bytes a download last
  * landed on it (#5585): an edit made while the app was closed, or whose event
- * is on the way, whatever its size. Bytes a landing already kept as a conflict
- * copy are not a change while that copy still holds them (REVIEW-5602,
- * VERIFY-5602). With no landing recorded (twins that
+ * is on the way, whatever its size. With no landing recorded (twins that
  * shared the file before this build), the bytes are treated as changed. Such
  * a change is kept as a conflict copy when the survivor's bytes land, unless
- * they are those bytes. The step never awaits.
+ * they are those bytes, or bytes a landing kept before whose copy still holds
+ * them then: a copy can change or go between the split and the landing
+ * (VERIFY-5602R2). The step never awaits.
  */
 function planBinarySurvivor(
   vaultPath: string,
@@ -503,12 +501,10 @@ function planBinarySurvivor(
   const survivor = getNoteMetadataById(db, survivorId)
   if (!survivor) return () => {}
   const sharedPath = join(vaultPath, onDisk)
-  const kept = readKeptCaseTwinCopy(db, vaultPath, onDisk)
   return () => {
     const held = takeHeldCaseTwinChange(db, onDisk)
     const landed = takeLandedCaseTwinHash(db, onDisk)
-    forgetKeptCaseTwinCopy(db, onDisk)
-    const changed = held || sha256 === null || (sha256 !== landed && sha256 !== kept)
+    const changed = held || sha256 === null || sha256 !== landed
     requestOwnBytes(db, survivor, sharedPath, changed ? null : { sha256 })
   }
 }
@@ -600,14 +596,14 @@ export function releaseAbandonedCaseTwinBytes(
  * note had before a split lands at its file now, not on the file the other
  * twin kept. A change made to the file since it was marked is on no server,
  * so it is kept first as a new file next to it, "<name> (conflict copy)",
- * which the vault takes in as a note of its own, once: a landing retried
- * after its rename failed finds the change kept. A landing on a file twins
+ * which the vault takes in as a note of its own. A landing on a file twins
  * still share keeps a change made since the bytes a download last landed
- * there the same way, once while the copy still holds them, and forgets a
- * change the watcher held to it; with no landing recorded, the file counts as
- * changed (#5594). The first bytes to land where twins' rows name no file yet
- * are recorded too (`recordFirstOnTwinFile`). Throws, with nothing landed,
- * when that copy cannot be written: the download is retried.
+ * there the same way, and forgets a change the watcher held to it; with no
+ * landing recorded, the file counts as changed (#5594). Either way the change
+ * is kept once while its copy still holds it (`keepChange`). The first bytes
+ * to land where twins' rows name no file yet are recorded too
+ * (`recordFirstOnTwinFile`). Throws, with nothing landed, when that copy
+ * cannot be written: the download is retried.
  */
 export function landCaseTwinDownload(
   filePath: string,
@@ -629,15 +625,9 @@ export function landCaseTwinDownload(
   const onFile = marked.find((note) => foldNotePath(note.path) === foldNotePath(landsOn))
   const shared = sharesCaseTwinFile(vaultPath, landsOn)
   if (onFile) {
-    const kept = keepChange(landAt, sha256, [marks.get(onFile.id)?.sha256], { noteId: onFile.id })
-    if (kept !== null) recordConflictCopyKept(db, onFile.id, kept.sha256)
+    keepChange(db, landAt, sha256, marks.get(onFile.id)?.sha256, { noteId: onFile.id })
   } else if (shared) {
-    const known = [
-      readLandedCaseTwinHash(db, landsOn),
-      readKeptCaseTwinCopy(db, vaultPath, landsOn)
-    ]
-    const kept = keepChange(landAt, sha256, known, { attachmentId })
-    if (kept !== null) recordKeptCaseTwinCopy(db, landsOn, kept)
+    keepChange(db, landAt, sha256, readLandedCaseTwinHash(db, landsOn), { attachmentId })
     takeHeldCaseTwinChange(db, landsOn)
   }
   if (shared) recordLandedCaseTwinHash(db, landsOn, sha256)
@@ -653,7 +643,8 @@ export function landCaseTwinDownload(
  * The proof is `listRowsOnFile`'s: a volume that keeps case has no twins, and
  * a row whose file is on disk names another file, as a twin of this one would
  * open it (`ılık.png` and `Ilık.png` on APFS). What a landing recorded under
- * their shared fold is forgotten then (VERIFY-5602).
+ * their shared fold is forgotten then (VERIFY-5602), unless that file is
+ * shared: it is then a twin pair's, and the record theirs (VERIFY-5602R2).
  */
 function recordFirstOnTwinFile(
   db: DrizzleDb,
@@ -663,26 +654,35 @@ function recordFirstOnTwinFile(
 ): void {
   if (!volumeIgnoresCase(vaultPath)) return
   const rows = listNoteMetadataByFoldedPath(db, landsOn)
-  if (rows.some((row) => diskCaseOf(vaultPath, row.path) !== null)) {
+  const onDisk = rows.filter((row) => diskCaseOf(vaultPath, row.path) !== null)
+  if (onDisk.length === 0) {
+    if (rows.length > 1) recordLandedCaseTwinHash(db, landsOn, sha256)
+  } else if (!onDisk.some((row) => sharesCaseTwinFile(vaultPath, row.path))) {
     takeLandedCaseTwinHash(db, landsOn)
-  } else if (rows.length > 1) {
-    recordLandedCaseTwinHash(db, landsOn, sha256)
   }
 }
 
 /**
- * Keeps the file at `landAt` as a conflict copy when it holds bytes other than
- * the landing's (`sha256`) and the known ones (`known`), returning them.
+ * Keeps the file at `landAt` as a conflict copy, and records the copy, when
+ * it holds bytes other than the landing's (`sha256`), the known ones (`known`:
+ * the mark, or the last landing on a still-shared file), and the ones a
+ * landing on this file last kept, while their copy still holds them. So a
+ * landing retried after its rename failed keeps a change once, and a copy
+ * moved back over the file, changed, or deleted is kept again
+ * (VERIFY-5602R2).
  */
 function keepChange(
+  db: DrizzleDb,
   landAt: string,
   sha256: string,
-  known: Array<string | undefined>,
+  known: string | undefined,
   context: Record<string, string>
-): KeptCopy | null {
+): void {
   const onDisk = hashFile(landAt)
-  if (onDisk === null || onDisk === sha256 || known.includes(onDisk)) return null
-  return { sha256: onDisk, copy: keepConflictCopy(landAt, context) }
+  if (onDisk === null || onDisk === sha256 || onDisk === known) return
+  const landsOn = toRelativePath(landAt)
+  if (onDisk === readKeptCaseTwinCopy(db, getVaultRoot(), landsOn)) return
+  recordKeptCaseTwinCopy(db, landsOn, { sha256: onDisk, copy: keepConflictCopy(landAt, context) })
 }
 
 /** Copies the file at `filePath` to a new "(conflict copy)" file, returning its vault path. */

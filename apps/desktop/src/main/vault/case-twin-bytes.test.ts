@@ -15,13 +15,11 @@ import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/ut
 import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
 import {
   clearCaseTwinForeignBytes,
-  forgetKeptCaseTwinCopy,
   hashFile,
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
   readKeptCaseTwinCopy,
-  recordConflictCopyKept,
   recordHeldCaseTwinChange,
   recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
@@ -78,7 +76,7 @@ describe('case twin hold state', () => {
     expect(stored(SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES)).toBeUndefined()
   })
 
-  it('a mark stores the file hash; a null mark stays null until a conflict copy keeps the change', () => {
+  it('a mark stores the file hash; a null mark stays null until cleared', () => {
     markCaseTwinForeignBytes(db(), 'twin-a', { sha256: 'h1' })
     expect(JSON.parse(stored(SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES)!)).toEqual({
       'twin-a': { sha256: 'h1' }
@@ -87,8 +85,6 @@ describe('case twin hold state', () => {
     markCaseTwinForeignBytes(db(), 'twin-b', null)
     markCaseTwinForeignBytes(db(), 'twin-b', { sha256: 'h2' })
     expect(readCaseTwinForeignBytes(db()).get('twin-b')).toBeNull()
-    recordConflictCopyKept(db(), 'twin-b', 'h3')
-    expect(readCaseTwinForeignBytes(db()).get('twin-b')).toEqual({ sha256: 'h3' })
 
     clearCaseTwinForeignBytes(db(), 'twin-a')
     clearCaseTwinForeignBytes(db(), 'twin-b')
@@ -121,9 +117,13 @@ describe('case twin hold state', () => {
     expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
     fs.rmSync(path.join(dir, 'p (conflict copy).png'))
     expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
-
-    forgetKeptCaseTwinCopy(db(), 'Supernotes/p.png')
-    expect(stored(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES)).toBeUndefined()
+    // VERIFY-5602R2 #5: a folder there cannot be read, and never fails the landing.
+    fs.mkdirSync(path.join(dir, 'p (conflict copy).png'))
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+    expect(log.warn).toHaveBeenCalledWith(
+      'A kept conflict copy cannot be read; its bytes count as not kept',
+      expect.objectContaining({ copy: 'p (conflict copy).png' })
+    )
   })
 
   it('a kept hash in the unreleased shape with no copy reads as not kept', () => {

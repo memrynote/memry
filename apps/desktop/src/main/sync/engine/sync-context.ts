@@ -262,11 +262,12 @@ export const SYNC_STATE_KEYS = {
    */
   ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals',
   /**
-   * JSON object from the folded vault path of a binary file case twins share
-   * to `{sha256, copy}`: the bytes a landing last kept from it as a conflict
-   * copy, and the vault path of that copy (REVIEW-5602). A landing retried
-   * after its rename failed, and the split, read those bytes as kept while the
-   * copy still holds them (VERIFY-5602). Missing reads as empty.
+   * JSON object from the folded vault path of a binary file case twins share,
+   * or shared before a split, to `{sha256, copy}`: the bytes a landing last
+   * kept from it as a conflict copy, and the vault path of that copy
+   * (REVIEW-5602). A later landing on the file reads those bytes as kept while
+   * the copy still holds them (VERIFY-5602, VERIFY-5602R2). Missing reads as
+   * empty.
    */
   CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const
