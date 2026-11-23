@@ -334,6 +334,52 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
+  // Tags compare by tag key on both clients (core `tags::dedupe`).
+  it('writes nothing for a foreign tag the day holds in another case', async () => {
+    journalHandler.applyUpsert(
+      ctx,
+      DAY,
+      { date: DATE, content: 'canonical\n', tags: ['a'] },
+      { c: 1 }
+    )
+    const before = dayFile()
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['A'] },
+      { b: 1 }
+    )
+
+    await drain()
+
+    expect(dayFile()).toBe(before)
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
+  // A tag the foreign record dropped since must not come back.
+  it('adds the newest record tags of a foreign id seen twice', async () => {
+    journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: 'canonical\n', tags: [] }, { c: 1 })
+    pullBody.mockResolvedValue(false)
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['x'] },
+      { b: 1 }
+    )
+    await drain()
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['y'] },
+      { b: 2 }
+    )
+    pullBody.mockResolvedValue(true)
+
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['y'])
+  })
+
   it('keeps the tags of a foreign row that held the day when the day record writes over it', async () => {
     foreignRow({ minter: 2 }, { body: '---\ntags:\n  - mine\n---\nminted here\n' })
 

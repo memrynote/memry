@@ -15,6 +15,7 @@
 import { createHash } from 'crypto'
 import { eq, like } from 'drizzle-orm'
 import * as Y from 'yjs'
+import { foldTag } from '@memry/shared/tag-fold'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { generateJournalId } from '@memry/contracts/journal-api'
 import type { VectorClock } from '@memry/contracts/sync-api'
@@ -72,7 +73,8 @@ export interface OwedJournalDayMerge {
   /**
    * The foreign record's `tags`. Skipped like `recordMarkdown` when the id was
    * deleted elsewhere: the deleting device merged them, and a tag removed
-   * since must not come back.
+   * since must not come back. The newest record's replace the ones kept, for
+   * the same reason (core: `journal_day_merge/owed.rs`).
    */
   recordTags?: string[]
 }
@@ -94,7 +96,7 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
   const recordMarkdown = merge.recordMarkdown ?? kept?.recordMarkdown
   const deleted = merge.deleted || kept?.deleted
   const tags = unionTags(kept?.tags ?? [], merge.tags ?? [])
-  const recordTags = unionTags(kept?.recordTags ?? [], merge.recordTags ?? [])
+  const recordTags = merge.recordTags ?? kept?.recordTags ?? []
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -332,8 +334,15 @@ function readDay(date: string): ReturnType<typeof parseJournalEntry> | null {
   }
 }
 
+/** By tag key, keeping the first spelling and its order, as the core's `tags::dedupe`. */
 function unionTags(kept: string[], added: string[]): string[] {
-  return [...new Set([...kept, ...added])]
+  const seen = new Set<string>()
+  return [...kept, ...added].filter((tag) => {
+    const key = foldTag(tag.trim())
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /**

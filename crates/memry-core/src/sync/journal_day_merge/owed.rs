@@ -1,6 +1,6 @@
 //! The apply-time half of §1.9.1: which foreign ids are owed a merge, kept as
 //! one `meta` row per foreign id, `journal.day_merge:<foreignId>` =
-//! `{foreignId, date, clock, deleted, recordMarkdown?}`.
+//! `{foreignId, date, clock, deleted, recordMarkdown?, recordTags?, holderTags?}`.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Value, json};
@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{canonical_journal_id, plan_journal_day_apply};
+use crate::domain::tags;
 use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::sync::clock::{self, ClockOrder, VectorClock};
@@ -34,6 +35,7 @@ pub(crate) fn plan_inbound(
         return Ok(None);
     }
     let content = payload.get("content").and_then(Value::as_str);
+    let incoming_tags = payload_tags(&payload);
     let incoming_clock = payload
         .get("clock")
         .and_then(|value| serde_json::from_value::<VectorClock>(value.clone()).ok())
@@ -58,7 +60,15 @@ pub(crate) fn plan_inbound(
     for foreign_id in &plan.owe_merge {
         if *foreign_id == record.item_id {
             if !tombstoned_past(&tx, foreign_id, &incoming_clock)? {
-                owe(&tx, foreign_id, date, &incoming_clock, content)?;
+                owe(
+                    &tx,
+                    foreign_id,
+                    date,
+                    &incoming_clock,
+                    content,
+                    incoming_tags.as_deref(),
+                    &[],
+                )?;
             }
         } else {
             owe_holder(&tx, foreign_id, date)?;
@@ -105,12 +115,20 @@ fn tombstoned_past(
 /// Records an owed merge. Idempotent; a second sighting widens the clock so
 /// the tombstone dominates every version seen, and keeps the record text
 /// (`content`) the drain builds a body from when the foreign doc has none.
+///
+/// Tags come in two kinds (§1.9.1 step 6). `record_tags` are the newest
+/// foreign record's `tags`: a later record replaces them, so a tag removed on
+/// the writing device stays removed; `None` (no `tags` key) keeps the ones
+/// kept. `holder_tags` are a local holder's, which may never have been
+/// pushed, so every sighting adds to them.
 pub(super) fn owe(
     conn: &Connection,
     foreign_id: &str,
     date: &str,
     seen: &VectorClock,
     content: Option<&str>,
+    record_tags: Option<&[String]>,
+    holder_tags: &[String],
 ) -> Result<(), StorageError> {
     let existing = read_owed(conn, foreign_id)?;
     let clock = match &existing {
@@ -121,18 +139,25 @@ pub(super) fn owe(
         .filter(|content| !content.trim().is_empty())
         .map(str::to_owned)
         .or_else(|| existing.as_ref().and_then(|e| e.record_markdown.clone()));
+    let (kept_record, kept_holder) = existing
+        .as_ref()
+        .map(|e| (e.record_tags.clone(), e.holder_tags.clone()))
+        .unwrap_or_default();
     let owed = OwedMerge {
         foreign_id: foreign_id.to_owned(),
         date: date.to_owned(),
         clock,
         deleted: existing.is_some_and(|existing| existing.deleted),
         record_markdown: markdown,
+        record_tags: record_tags.map_or(kept_record, <[String]>::to_vec),
+        holder_tags: tags::dedupe(kept_holder.into_iter().chain(holder_tags.iter().cloned())),
     };
     write_owed(conn, &owed)
 }
 
 /// Owes the merge of a foreign local holder, with the clock and `content`
-/// of its stored record.
+/// of its stored record, and its stored `tags` as holder tags. The caller deletes its `note_tags` rows, so
+/// the stored payload is where its tags survive.
 pub(super) fn owe_holder(
     conn: &Connection,
     foreign_id: &str,
@@ -144,11 +169,40 @@ pub(super) fn owe_holder(
         .and_then(|row| row.clock.as_deref())
         .and_then(|text| serde_json::from_str::<VectorClock>(text).ok())
         .unwrap_or_default();
-    let content = row
+    let payload = stored_payload(row);
+    let content = payload.get("content").and_then(Value::as_str);
+    owe(
+        conn,
+        foreign_id,
+        date,
+        &clock,
+        content,
+        None,
+        &payload_tags(&payload).unwrap_or_default(),
+    )
+}
+
+fn stored_payload(row: Option<sync_items::SyncItemRow>) -> serde_json::Map<String, Value> {
+    match row
         .and_then(|row| row.payload)
         .and_then(|payload| serde_json::from_str::<Value>(&payload).ok())
-        .and_then(|payload| payload.get("content")?.as_str().map(str::to_owned));
-    owe(conn, foreign_id, date, &clock, content.as_deref())
+    {
+        Some(Value::Object(payload)) => payload,
+        _ => serde_json::Map::new(),
+    }
+}
+
+/// The string array under `key`, skipping non-strings; `None` when absent.
+fn string_list(object: &serde_json::Map<String, Value>, key: &str) -> Option<Vec<String>> {
+    object.get(key).and_then(Value::as_array).map(|list| {
+        list.iter()
+            .filter_map(|tag| tag.as_str().map(str::to_owned))
+            .collect()
+    })
+}
+
+fn payload_tags(payload: &serde_json::Map<String, Value>) -> Option<Vec<String>> {
+    string_list(payload, "tags")
 }
 
 /// A tombstone arrived for a foreign id that is a live row here (a pre-fix
@@ -172,7 +226,10 @@ pub(crate) fn hold_for_merge(
         return Ok(false);
     };
     let clock = tombstone.cloned().unwrap_or_default();
-    owe(conn, item_id, &date, &clock, None)?;
+    // Its tags may be an unpushed local edit, as its body may.
+    let tags = payload_tags(&stored_payload(sync_items::load(conn, ITEM_TYPE, item_id)?))
+        .unwrap_or_default();
+    owe(conn, item_id, &date, &clock, None, None, &tags)?;
     mark_deleted(conn, item_id)?;
     Ok(true)
 }
@@ -202,6 +259,12 @@ fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
     if let Some(markdown) = &owed.record_markdown {
         value["recordMarkdown"] = json!(markdown);
     }
+    if !owed.record_tags.is_empty() {
+        value["recordTags"] = json!(owed.record_tags);
+    }
+    if !owed.holder_tags.is_empty() {
+        value["holderTags"] = json!(owed.holder_tags);
+    }
     let foreign_id = &owed.foreign_id;
     conn.execute(
         "INSERT INTO meta (key, value) VALUES (?1, ?2)
@@ -226,6 +289,7 @@ fn read_owed(conn: &Connection, foreign_id: &str) -> Result<Option<OwedMerge>, S
 
 fn parse_owed(value: &str) -> Option<OwedMerge> {
     let value: Value = serde_json::from_str(value).ok()?;
+    let object = value.as_object();
     Some(OwedMerge {
         foreign_id: value.get("foreignId")?.as_str()?.to_owned(),
         date: value.get("date")?.as_str()?.to_owned(),
@@ -238,6 +302,13 @@ fn parse_owed(value: &str) -> Option<OwedMerge> {
             .get("recordMarkdown")
             .and_then(Value::as_str)
             .map(str::to_owned),
+        // An older build wrote neither tag list.
+        record_tags: object
+            .and_then(|o| string_list(o, "recordTags"))
+            .unwrap_or_default(),
+        holder_tags: object
+            .and_then(|o| string_list(o, "holderTags"))
+            .unwrap_or_default(),
     })
 }
 

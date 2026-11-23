@@ -4,6 +4,7 @@ import type { CrdtPayloadForDecrypt } from '@memry/sync-client/worker-protocol'
 
 import { createLogger } from '../../lib/logger'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
+import { SignatureVerificationError } from '../decrypt'
 import type { SyncWorkerBridge } from '../worker-bridge'
 import type { BodyWatermark, DocumentPlan } from './body-plan'
 
@@ -53,6 +54,11 @@ interface Sealed {
   bytes: Uint8Array
   signerDeviceId: string
 }
+
+type Refusal = 'unregistered_signer' | 'bad_signature' | 'decrypt_failed' | 'no_result'
+
+/** A sealed blob's plaintext, or why it was refused. */
+type Opened = Uint8Array | Refusal
 
 export interface PackBodyApplier {
   localWatermark(noteId: string): Promise<BodyWatermark | null>
@@ -118,7 +124,7 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
   }
 
   /**
-   * Opens every blob, aligned with `sealed`; `undefined` where it does not
+   * Opens every blob, aligned with `sealed`; the refusal where it does not
    * verify or decrypt. Thousands of packed updates go through here, so the
    * crypto runs on the worker like the route path's, and on this thread only
    * when the worker is not running or rejects (transport, not a verdict).
@@ -131,7 +137,7 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     noteId: string,
     candidates: SignerKeys,
     untilFirstOpen = false
-  ): Promise<Array<Uint8Array | undefined>> => {
+  ): Promise<Opened[]> => {
     if (sealed.length === 0) return []
     const bridge = deps.workerBridge
     if (bridge?.isRunning) {
@@ -142,26 +148,35 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         signerDeviceId: s.signerDeviceId
       }))
       try {
-        const { results } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
-        const byIndex = new Map(results.map((r) => [r.index, r.update]))
-        return sealed.map((_s, index) => byIndex.get(index))
+        const { results, failures } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
+        const byIndex = new Map<number, Opened>(
+          failures.map((f) => [f.index, f.isSignatureError ? 'bad_signature' : 'decrypt_failed'])
+        )
+        for (const r of results) byIndex.set(r.index, r.update)
+        return sealed.map((s, index) =>
+          candidates.has(s.signerDeviceId)
+            ? (byIndex.get(index) ?? 'no_result')
+            : 'unregistered_signer'
+        )
       } catch (error) {
         log.warn('Pack body worker decrypt unavailable — falling back to main thread', {
           error: error instanceof Error ? error.message : String(error)
         })
       }
     }
-    const out: Array<Uint8Array | undefined> = []
+    const out: Opened[] = []
     for (const s of sealed) {
       const publicKey = candidates.get(s.signerDeviceId)
-      let plain: Uint8Array | undefined
-      try {
-        plain = publicKey ? decrypt(s.bytes, vaultKey, noteId, publicKey) : undefined
-      } catch {
-        plain = undefined
+      let plain: Opened = 'unregistered_signer'
+      if (publicKey) {
+        try {
+          plain = decrypt(s.bytes, vaultKey, noteId, publicKey)
+        } catch (error) {
+          plain = error instanceof SignatureVerificationError ? 'bad_signature' : 'decrypt_failed'
+        }
       }
       out.push(plain)
-      if (plain && untilFirstOpen) break
+      if (plain instanceof Uint8Array && untilFirstOpen) break
     }
     return out
   }
@@ -172,9 +187,9 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
     vaultKey: Uint8Array,
     noteId: string,
     candidates: SignerKeys,
-    first: Uint8Array | undefined
+    first: Opened | undefined
   ): Promise<Uint8Array | null> => {
-    if (first) return first
+    if (first instanceof Uint8Array) return first
     const rest = [...candidates.keys()].filter((id) => id !== lastSignerId)
     const opened = await openAll(
       rest.map((signerDeviceId) => ({ bytes, signerDeviceId })),
@@ -183,10 +198,11 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       candidates,
       true
     )
-    const hit = opened.findIndex((plain) => plain !== undefined)
-    if (hit < 0) return null
+    const hit = opened.findIndex((plain) => plain instanceof Uint8Array)
+    const plain = opened[hit]
+    if (!(plain instanceof Uint8Array)) return null
     lastSignerId = rest[hit]
-    return opened[hit] ?? null
+    return plain
   }
 
   return {
@@ -261,12 +277,13 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         }
         for (const [i, update] of plan.updates.entries()) {
           const plain = updatePlains[i]
-          if (!plain) {
-            if (i < updateBytes.length) {
+          if (!(plain instanceof Uint8Array)) {
+            if (plain !== undefined) {
               log.debug('Packed update unusable — the rest of the document stays on the routes', {
                 noteId,
                 sequenceNum: update.sequenceNum,
-                signerDeviceId: update.signerDeviceId
+                signerDeviceId: update.signerDeviceId,
+                reason: plain
               })
             }
             break
