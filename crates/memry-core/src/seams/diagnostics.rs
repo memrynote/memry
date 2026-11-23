@@ -104,6 +104,37 @@ pub enum CoreDiagnostic {
         elapsed_ms: u64,
         requests: RequestStats,
     },
+    /// The manifest reconcile kept `kept` stale rows live: their pull by id
+    /// brought no verified delete or attested marker (§5.12.1). `remembered`
+    /// of them hold an unattested marker for the push wave, and
+    /// `non_envelope` pull answers were not envelopes. `cursor` is the record
+    /// feed cursor, `None` when unset or not numeric. The ids stay out: this
+    /// payload carries no strings.
+    ReconcileKept {
+        kept: u32,
+        remembered: u32,
+        non_envelope: u32,
+        cursor: Option<i64>,
+    },
+    /// The refs pass pulled the `deleted` ids of the page at `cursor`:
+    /// `unverified` of them got no verified delete, so they stay live, and
+    /// `non_envelope` pulls got no envelope, so the feed re-read retries them.
+    RefsDeletes {
+        unverified: u32,
+        non_envelope: u32,
+        cursor: Option<i64>,
+    },
+}
+
+impl CoreDiagnostic {
+    /// A stored feed cursor as a number. Server cursors are integers.
+    pub(crate) fn cursor(stored: Option<&str>) -> Option<i64> {
+        stored.and_then(|cursor| cursor.parse().ok())
+    }
+
+    pub(crate) fn count(value: usize) -> u32 {
+        u32::try_from(value).unwrap_or(u32::MAX)
+    }
 }
 
 /// Where [`CoreDiagnostic`]s go.

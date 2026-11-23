@@ -18,6 +18,17 @@
 //!   ([`resolve_verified`]) drops the `meta` row and the row's flag; the last
 //!   retry keeps the `meta` row as given up, with the flag.
 //!
+//! The settings item reuses the hold (#5433): an edit over a deleted
+//! payload-less settings row ([`crate::domain::settings::apply`]) records a
+//! refusal of `synced_settings`, so the server copy is re-pulled and merged
+//! before the edit pushes. A settings hold is re-pulled on its own, and only a
+//! well-formed answer that leaves the id out counts toward [`MAX_RETRIES`]:
+//! anything else would release a seeded one-key edit over live server
+//! settings. An unusable answer about the request (a dropped page, an
+//! unverifiable record, a malformed body, a 4xx) counts toward
+//! [`MAX_SETTINGS_FAILURES`], which still bounds the hold; an answer about the
+//! network or the server's health (transport, 5xx, 429) counts nothing.
+//!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
 //! [`crate::protocol::account::UNKNOWN_SIGNER`].
@@ -31,17 +42,23 @@
 use rusqlite::{Connection, params};
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::domain::settings::SETTINGS_ITEM_TYPE;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
 use super::apply::Pending;
 use super::first_sync_store::{read_meta, write_meta};
-use super::pull::{PullError, PullLoop};
+use super::pull::{PullError, PullLoop, PullReport};
 
 /// Passes that re-pull one refusal. A signer still missing after this many
 /// fresh directories is not a device of the account; the row stays as it is,
 /// and its `meta` row stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
+
+/// Settings re-pulls that failed (not for transport) or came back
+/// unverifiable before a settings hold gives up. Stored after a `/` in the
+/// `meta` value; an older build parses such a value as 0 and keeps holding.
+pub(crate) const MAX_SETTINGS_FAILURES: u32 = 50;
 
 const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
 /// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
@@ -92,15 +109,14 @@ pub(crate) fn holds(
     item_type: &str,
     item_id: &str,
 ) -> Result<bool, StorageError> {
-    Ok(read_meta(conn, &key(item_type, item_id))?
-        .is_some_and(|attempts| attempts_of(&attempts) < MAX_RETRIES))
+    Ok(read_meta(conn, &key(item_type, item_id))?.is_some_and(|value| waiting(&value)))
 }
 
 /// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
 /// the directory it fetched for this pass. A transport failure is logged and
 /// counts no attempt; any other failure counts one.
 pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
-    let due: Vec<_> = db
+    let (settings, due): (Vec<_>, Vec<_>) = db
         .call(|conn| {
             migrate_id_only_keys(conn)?;
             adopt(conn)?;
@@ -108,8 +124,11 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
         })
         .await?
         .into_iter()
-        .filter(|(_, _, attempts)| *attempts < MAX_RETRIES)
-        .collect();
+        .filter(|(_, _, value)| waiting(value))
+        .partition(|(item_type, _, _)| item_type == SETTINGS_ITEM_TYPE);
+    for (_, id, value) in settings {
+        retry_settings(db, pull, id, value).await?;
+    }
     if due.is_empty() {
         return Ok(());
     }
@@ -121,24 +140,19 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
             ids.len()
         );
-        if matches!(
-            error,
-            PullError::Api {
-                source: ApiError::Transport { .. }
-            }
-        ) {
+        if is_transport(&error) {
             return Ok(());
         }
     }
     db.call(move |conn| {
-        for (item_type, id, attempts) in due {
+        for (item_type, id, value) in due {
             let key = key(&item_type, &id);
             // Resolved by the re-pull, or a refusal of it is still recorded:
             // this pass's attempt counts against the budget it had before.
             if read_meta(conn, &key)?.is_none() {
                 continue;
             }
-            let attempts = attempts + 1;
+            let attempts = attempts_of(&value) + 1;
             if attempts >= MAX_RETRIES {
                 eprintln!(
                     "memry-core: {item_type} {id}'s signer is still unknown after {attempts} \
@@ -152,12 +166,106 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
     .await
 }
 
-fn attempts_of(value: &str) -> u32 {
-    value.parse().unwrap_or(0)
+/// What one settings re-pull counts toward (VERIFY-5447 r3).
+enum Counted {
+    /// Says nothing about the server copy, or about this request.
+    Nothing,
+    /// A well-formed answer that left the id out: the server holds no copy.
+    Attempt,
+    /// An answer about this request that cannot be used, which may persist.
+    Failure,
 }
 
-/// Every recorded refusal, waiting or given up, as `(type, id, attempts)`.
-fn recorded(conn: &Connection) -> Result<Vec<(String, String, u32)>, StorageError> {
+/// Classifies a settings re-pull. Only a page that decoded, held no
+/// unverifiable record and left the id out shows the server has no copy; a
+/// record that resolved the hold has already dropped its `meta` row.
+fn counted(result: &Result<PullReport, PullError>) -> Counted {
+    match result {
+        Ok(report)
+            if report.uncovered > 0
+                && report.corrupt == 0
+                && report.dropped_pages == 0
+                && !report.refused =>
+        {
+            Counted::Attempt
+        }
+        Ok(_) => Counted::Failure,
+        Err(PullError::Api {
+            source: ApiError::MalformedResponse { .. },
+        }) => Counted::Failure,
+        Err(PullError::Api {
+            source: ApiError::Status { status, .. },
+        }) if (400..500).contains(status) && *status != 429 => Counted::Failure,
+        Err(_) => Counted::Nothing,
+    }
+}
+
+/// Re-pulls the settings hold alone, so its outcome is its own (see
+/// [`counted`]): an attempt toward [`MAX_RETRIES`], a failure toward
+/// [`MAX_SETTINGS_FAILURES`], or nothing.
+async fn retry_settings(
+    db: &Db,
+    pull: &PullLoop,
+    id: String,
+    value: String,
+) -> Result<(), StorageError> {
+    let result = pull.fetch_ids(std::slice::from_ref(&id)).await;
+    if let Err(error) = &result {
+        eprintln!("memry-core: re-pulling the held settings {id} failed: {error}");
+    }
+    let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
+    match counted(&result) {
+        Counted::Nothing => return Ok(()),
+        Counted::Attempt => attempts += 1,
+        Counted::Failure => failures += 1,
+    }
+    db.call(move |conn| {
+        let key = key(SETTINGS_ITEM_TYPE, &id);
+        if read_meta(conn, &key)?.is_none() {
+            return Ok(());
+        }
+        if attempts >= MAX_RETRIES || failures >= MAX_SETTINGS_FAILURES {
+            eprintln!(
+                "memry-core: settings {id}: {attempts} re-pull(s) found no server copy and \
+                 {failures} failed; its held edit is released"
+            );
+        }
+        write_meta(conn, &key, &format!("{attempts}/{failures}"))
+    })
+    .await
+}
+
+fn is_transport(error: &PullError) -> bool {
+    matches!(
+        error,
+        PullError::Api {
+            source: ApiError::Transport { .. }
+        }
+    )
+}
+
+/// Whether a recorded value still holds: under both budgets.
+fn waiting(value: &str) -> bool {
+    attempts_of(value) < MAX_RETRIES && failures_of(value) < MAX_SETTINGS_FAILURES
+}
+
+fn attempts_of(value: &str) -> u32 {
+    value
+        .split('/')
+        .next()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(0)
+}
+
+fn failures_of(value: &str) -> u32 {
+    value
+        .split_once('/')
+        .and_then(|(_, n)| n.parse().ok())
+        .unwrap_or(0)
+}
+
+/// Every recorded refusal, waiting or given up, as `(type, id, value)`.
+fn recorded(conn: &Connection) -> Result<Vec<(String, String, String)>, StorageError> {
     let mut statement = conn
         .prepare("SELECT key, value FROM meta WHERE key >= ?1 AND key < ?2 ORDER BY key")
         .map_err(failed)?;
@@ -172,7 +280,7 @@ fn recorded(conn: &Connection) -> Result<Vec<(String, String, u32)>, StorageErro
         .into_iter()
         .filter_map(|(key, value)| {
             let (item_type, id) = key[KEY_PREFIX.len()..].split_once(':')?;
-            Some((item_type.to_owned(), id.to_owned(), attempts_of(&value)))
+            Some((item_type.to_owned(), id.to_owned(), value))
         })
         .collect())
 }

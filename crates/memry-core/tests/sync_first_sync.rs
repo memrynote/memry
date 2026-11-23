@@ -800,12 +800,27 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
         response(200, &answer),
         response(200, &answer),
     ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
     let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
         .run(epoch(MODIFIED_AT) + 2_000)
         .await
         .expect("the first sync");
 
     assert_eq!(report.tombstones, 2);
+    // #5247: the unverified id reaches the shell's log, with the page cursor.
+    assert!(
+        sink.0
+            .lock()
+            .unwrap()
+            .contains(&CoreDiagnostic::RefsDeletes {
+                unverified: 1,
+                non_envelope: 0,
+                cursor: Some(10),
+            }),
+        "{:?}",
+        sink.0.lock().unwrap()
+    );
     assert_eq!(
         deleted_marks(&db, NOTE),
         (None, None),
@@ -980,13 +995,23 @@ async fn a_refs_pass_delete_pull_without_an_envelope_reopens_the_feed_re_read() 
             .to_string(),
         ),
     ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
     let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
         .run(epoch(MODIFIED_AT) + 1_000)
         .await
         .expect("the first sync");
 
     assert_eq!(report.refs_recorded, 1);
     assert_eq!(report.metadata_applied, 1, "the page's ref is not skipped");
+    // #5247: the fault reaches the shell's log as a non-envelope pull, not as
+    // an unverified id; a fresh device has no cursor yet.
+    let refs_deletes = CoreDiagnostic::RefsDeletes {
+        unverified: 0,
+        non_envelope: 1,
+        cursor: None,
+    };
+    assert!(sink.0.lock().unwrap().contains(&refs_deletes));
     assert_eq!(
         transport.calls_to("/sync/pull").len(),
         2,

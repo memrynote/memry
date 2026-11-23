@@ -581,7 +581,16 @@ blob is **one sync item** with `itemId = 'synced_settings'`
 later edits keep syncing (`apps/desktop/src/main/sync/item-handlers/settings-handler.ts:80-82`,
 `crates/memry-core/src/sync/apply.rs:250-258`, #5433). A core that marked it
 deleted on an earlier build clears that delete on the item's next merged write
-(`crates/memry-core/src/domain/settings.rs:217-225`).
+(`crates/memry-core/src/domain/settings.rs:233-241`). When that earlier build
+left the row with no payload, a local edit seeds an empty payload, and its push
+waits until a by-id re-pull merges the server's copy, so the edit cannot
+replace the account's settings with one key
+(`crates/memry-core/src/domain/settings.rs:148-156`,
+`crates/memry-core/src/sync/unknown_signer.rs:83-89`, `:107-113`). Only a
+well-formed page that leaves the id out counts toward releasing the hold. A
+dropped page, an unverifiable record, a malformed body or a 4xx counts toward a
+separate, larger bound; a transport failure, a 5xx or a 429 counts toward
+neither (`crates/memry-core/src/sync/unknown_signer.rs:170-201`, `:206-236`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:

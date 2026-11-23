@@ -124,12 +124,13 @@ impl BodyPull {
     /// A pack chunk's verified baselines, each with its cursor, in one
     /// transaction. Freshness is checked again inside it, so a document that
     /// moved since the caller's read is left alone. Answers, per baseline,
-    /// whether it was stored.
+    /// its freshness inside the transaction: `Fresh` was stored, and a body
+    /// that moved off its epoch is `Stale`.
     pub(super) async fn store_baselines(
         &self,
         baselines: Vec<Baseline>,
         epochs: &BodyEpochs,
-    ) -> Result<Vec<bool>, BodyPullError> {
+    ) -> Result<Vec<Freshness>, BodyPullError> {
         let epochs: Vec<i64> = baselines.iter().map(|b| epochs.of(&b.doc_id)).collect();
         let now = now_ms();
         let stored = self
@@ -138,10 +139,6 @@ impl BodyPull {
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let mut stored = Vec::with_capacity(baselines.len());
                 for (baseline, epoch) in baselines.iter().zip(epochs) {
-                    let Some(body) = held(&txn, &baseline.doc_id, epoch)? else {
-                        stored.push(false);
-                        continue;
-                    };
                     let fresh = pack_freshness(
                         &txn,
                         baseline.sequence_num,
@@ -149,7 +146,11 @@ impl BodyPull {
                         &baseline.revision,
                     )?;
                     let Freshness::Fresh { cursor } = fresh else {
-                        stored.push(false);
+                        stored.push(fresh);
+                        continue;
+                    };
+                    let Some(body) = held(&txn, &baseline.doc_id, epoch)? else {
+                        stored.push(Freshness::Stale);
                         continue;
                     };
                     put_baseline(
@@ -160,7 +161,7 @@ impl BodyPull {
                         cursor,
                         now,
                     )?;
-                    stored.push(true);
+                    stored.push(Freshness::Fresh { cursor });
                 }
                 txn.commit().map_err(sqlite_failed)?;
                 Ok(stored)
