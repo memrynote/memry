@@ -10,6 +10,7 @@ vi.mock('../vault/notes', () => ({
   renameNote: vi.fn(),
   moveNote: vi.fn(),
   deleteNote: vi.fn(),
+  claimNoteFile: vi.fn(() => null),
   getNoteById: vi.fn()
 }))
 
@@ -176,8 +177,8 @@ describe('notes domain adapter', () => {
 
     await deleteNoteCommand('note-1')
 
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
-    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1')
+    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1', expect.any(Function))
+    expect(noteVault.deleteNote).toHaveBeenCalledWith('note-1', null)
   })
 
   it('cleans up project links + home notes after deleting a note', async () => {
@@ -245,6 +246,6 @@ describe('notes domain adapter', () => {
     vi.mocked(noteVault.deleteNote).mockRejectedValue(new Error('locked'))
 
     await expect(deleteNoteCommand('note-1')).rejects.toThrow('locked')
-    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1')
+    expect(runtimeEffects.syncNoteDelete).toHaveBeenCalledWith('note-1', expect.any(Function))
   })
 })
