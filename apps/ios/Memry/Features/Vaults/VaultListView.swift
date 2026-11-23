@@ -1,3 +1,4 @@
+import Combine
 import MemryCore
 import SwiftUI
 
@@ -49,13 +50,19 @@ struct VaultListView: View {
     /// With no filler — a caller that supplied no `VaultFillerMinting` — the
     /// old path is what runs. That is deliberate: browsing what is already on
     /// the phone is still correct, it is simply not the whole story.
-    @ViewBuilder
     private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
-        if let filler = model.filler {
-            VaultFillView(filler: filler) { browse(vault, summary, filler) }
-        } else {
-            browse(vault, summary, nil)
+        VStack(spacing: 0) {
+            if let notice = model.registryNotice {
+                RegistryNotice(error: notice) { Task { await model.registryReachable() } }
+                    .transition(.opacity)
+            }
+            if let filler = model.filler {
+                VaultFillView(filler: filler) { browse(vault, summary, filler) }
+            } else {
+                browse(vault, summary, nil)
+            }
         }
+        .calmAnimation(.normal, value: model.registryNotice == nil)
     }
 
     private func browse(
@@ -127,6 +134,12 @@ struct VaultListView: View {
                     // empty account. A retry reads the registry again.
                     header("Your vault could not be opened", nil)
                     retry("Try again")
+                case .offline:
+                    header(
+                        "Connect to the internet to load your vaults",
+                        "This \(ThisDevice.noun) has no vault yet. Memry needs a connection to download one the first time."
+                    )
+                    retry("Try again")
                 case let .unreadable(error):
                     header("Your vaults could not be loaded", nil)
                     ErrorNotice(error: error, code: nil)
@@ -185,6 +198,26 @@ struct VaultListView: View {
     private func retry(_ title: String) -> some View {
         Button(title) { Task { await model.chooseAgain() } }
             .memrySecondaryAction()
+    }
+}
+
+/// The registry could not be read, and the vault opened from this device.
+/// Above the vault, never in its way; it goes once the account answers again
+/// after the network path changes (#5524).
+private struct RegistryNotice: View {
+    let error: UserFacingError
+    let pathChanged: () -> Void
+
+    var body: some View {
+        ErrorNotice(error: error, code: nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Tokens.Space.screenInline)
+            .padding(.vertical, Tokens.Space.inset)
+            .background(Tokens.Canvas.background.color)
+            .onReceive(
+                NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged)
+                    .receive(on: DispatchQueue.main)
+            ) { _ in pathChanged() }
     }
 }
 

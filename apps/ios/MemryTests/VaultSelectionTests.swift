@@ -194,6 +194,109 @@ struct VaultSelectionTests {
     }
 }
 
+/// A registry that answers what it is told, and can be told again: the
+/// network coming back between two reads.
+private final class SwitchableRegistry: VaultRegistry, @unchecked Sendable {
+    private let answer: Mutex<Result<[VaultSummary], any Error>>
+
+    init(_ answer: Result<[VaultSummary], any Error>) {
+        self.answer = Mutex(answer)
+    }
+
+    func answer(_ next: Result<[VaultSummary], any Error>) {
+        answer.withLock { $0 = next }
+    }
+
+    func vaults() async throws -> [VaultSummary] { try answer.withLock { $0 }.get() }
+
+    /// Stands in for `CoreVaultRegistry` opening a sealed name with the
+    /// master key.
+    func named(_ row: VaultSummary) -> VaultSummary {
+        var named = row
+        if row.encryptedName == "sealed-personal" { named.name = "Personal" }
+        return named
+    }
+}
+
+private let offline = ApiError.Transport(source: .Offline)
+
+/// #5524. A relaunch with no network opens the vault this device already holds.
+@MainActor
+@Suite("#5524 offline launch")
+struct OfflineLaunchTests {
+    private let personal = VaultSummary(
+        id: "b", name: "Personal", encryptedName: "sealed-personal", nameNonce: "nonce"
+    )
+
+    @Test("an offline relaunch opens the last vault, named, with a notice over it")
+    func offlineRelaunchOpensTheLastVault() async throws {
+        let suite = "offline-launch-\(UUID().uuidString)"
+        let registry = SwitchableRegistry(.success([summary("a", "Work"), personal]))
+        let first = VaultSelectionViewModel(
+            registry: registry,
+            opener: ScriptedOpener(),
+            snapshot: LaunchSnapshot(defaults: try #require(UserDefaults(suiteName: suite)))
+        )
+        await first.load()
+        await first.open(personal)
+
+        // The relaunch: a fresh snapshot over the same defaults, no network.
+        registry.answer(.failure(offline))
+        let opener = ScriptedOpener()
+        let relaunch = VaultSelectionViewModel(
+            registry: registry,
+            opener: opener,
+            snapshot: LaunchSnapshot(defaults: try #require(UserDefaults(suiteName: suite)))
+        )
+        await relaunch.load()
+
+        #expect(opener.openedVaultIds == ["b"])
+        #expect(relaunch.vault != nil)
+        guard case let .opened(opened) = relaunch.phase else {
+            Issue.record("an offline relaunch rendered as \(relaunch.phase)")
+            return
+        }
+        #expect(opened.id == "b")
+        #expect(VaultLabel(opened) == .named("Personal"))
+        #expect(relaunch.registryNotice?.code == ErrorMapping.userFacing(offline).code)
+        #expect(relaunch.registryNotice?.recourse == .retryLater)
+
+        // The network comes back: the notice goes, the vault stays.
+        registry.answer(.success([summary("a", "Work"), personal]))
+        await relaunch.registryReachable()
+        #expect(relaunch.registryNotice == nil)
+        #expect(relaunch.phase == .opened(opened))
+        #expect(relaunch.isSwitchable)
+    }
+
+    @Test("the snapshot keeps the sealed name, never the opened one")
+    func theSnapshotHoldsNoPlaintextName() throws {
+        let suite = "offline-launch-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        LaunchSnapshot(defaults: defaults).vaultOpened(personal)
+        let stored = try #require(defaults.data(forKey: "launchSnapshot.v1"))
+        #expect(String(decoding: stored, as: UTF8.self).contains("Personal") == false)
+        let reread = LaunchSnapshot(defaults: defaults).lastVaultSummary
+        #expect(reread?.encryptedName == "sealed-personal")
+        #expect(reread?.name == nil)
+    }
+
+    @Test("offline with no vault on this device asks for a connection, and opens nothing")
+    func offlineWithNoVaultAsksForAConnection() async {
+        let opener = ScriptedOpener()
+        let selection = VaultSelectionViewModel(
+            registry: SwitchableRegistry(.failure(offline)),
+            opener: opener,
+            snapshot: isolatedSnapshot()
+        )
+        await selection.load()
+        #expect(selection.phase == .offline)
+        #expect(selection.vault == nil)
+        #expect(selection.registryNotice == nil)
+        #expect(opener.openedVaultIds.isEmpty)
+    }
+}
+
 @Suite("T155 vault names")
 struct VaultLabelTests {
     @Test("a named vault is rendered by its name")

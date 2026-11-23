@@ -80,12 +80,18 @@ final class VaultSelectionViewModel {
         case empty
         /// The registry could not be read. Not an empty account.
         case unreadable(UserFacingError)
+        /// Offline, and this device has opened no vault yet (#5524).
+        case offline
         case opening(VaultSummary)
         case opened(VaultSummary)
         case failedToOpen(VaultSummary, UserFacingError)
     }
 
     private(set) var phase: Phase = .loading
+
+    /// Why the registry could not be read while the last vault opened from
+    /// this device anyway. Shown over the vault, never instead of it (#5524).
+    private(set) var registryNotice: UserFacingError?
 
     /// The open handle, for the screens that read it (T156, T157).
     ///
@@ -185,10 +191,18 @@ final class VaultSelectionViewModel {
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("the vault registry could not be read", .code(mapped.code))
+            // Local first: the vault this device last opened is on disk, and
+            // its sync waits for the network (#5524).
+            if let last = snapshot.lastVaultSummary {
+                await open(registry.named(last), source: "auto")
+                if case .opened = phase { registryNotice = mapped }
+                return
+            }
             // **Not** `.empty`. The account may hold four.
-            phase = .unreadable(mapped)
+            phase = mapped.code == Self.offlineCode ? .offline : .unreadable(mapped)
             return
         }
+        registryNotice = nil
 
         isSwitchable = summaries.count > 1
         Log.sync.info("read the vault registry", .count(summaries.count))
@@ -211,6 +225,25 @@ final class VaultSelectionViewModel {
         phase = .choosing(summaries)
     }
 
+    private static let offlineCode: ErrorCode = "transport.offline"
+
+    /// The network path changed while a vault is open without the registry:
+    /// one quiet read, which clears the notice once the account answers.
+    func registryReachable() async {
+        guard registryNotice != nil, case .opened = phase else { return }
+        let summaries: [VaultSummary]
+        do {
+            summaries = try await registry.vaults()
+        } catch {
+            Log.sync.info("the vault registry is still unreachable", .code(ErrorMapping.userFacing(error).code))
+            return
+        }
+        // A switch or a reload while the read was out decided the screen anew.
+        guard registryNotice != nil, case .opened = phase else { return }
+        registryNotice = nil
+        isSwitchable = summaries.count > 1
+    }
+
     // MARK: - The open
 
     /// Opens one vault through `VaultFiles.openingVault`, which is the whole
@@ -226,7 +259,7 @@ final class VaultSelectionViewModel {
             filler = syncable(summary.id) ? try await mint?.filler(for: opened, named: VaultLabel(summary).text) : nil
             // Before `vault` is published, so the shell built from it reads
             // this vault's saved tab and stacks.
-            snapshot.vaultOpened(summary.id)
+            snapshot.vaultOpened(summary)
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
@@ -259,6 +292,7 @@ final class VaultSelectionViewModel {
         }
         vault = nil
         filler = nil
+        registryNotice = nil
         await load()
     }
 }
