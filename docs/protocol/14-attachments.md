@@ -189,6 +189,12 @@ and 11 presign calls, with no chunk proxied
 presign and 150 ms manifest latency, the queue made 13 presign calls whether a
 chunk took 30 ms or 250 ms; with every 20th attachment at 300 chunks, it made 23.
 
+The Rust core batches the manifests of one re-drive call's downloads, leaving
+out ids the metered policy defers, and fetches alone when fewer than two would
+download. It remembers a 404 for 10 minutes per vault
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:30`, `:247`,
+`crates/memry-core/src/protocol/attachments.rs:165`).
+
 ## 14.6 Two transfer paths
 
 **Normative.** Either proxied through the Worker, or direct to R2 with presigned
