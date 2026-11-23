@@ -89,9 +89,12 @@ struct MarkdownShortcutTypingTests {
         window.rootViewController = UIHostingController(rootView: Body(page: page, model: model, editor: editor))
         window.makeKeyAndVisible()
         defer { window.isHidden = true }
-        try await Task.sleep(for: .milliseconds(300))
 
-        let first = try #require(Self.textViews(in: window).first)
+        // Generous deadlines throughout: SwiftUI draws and redraws the rows on
+        // the main actor, which a full parallel Unit run keeps busy (#5484).
+        var drawnFirst: BlockTextView?
+        try await wait(30) { drawnFirst = Self.textViews(in: window).first; return drawnFirst != nil }
+        let first = try #require(drawnFirst)
         first.becomeFirstResponder()
         first.selectedRange = NSRange(location: 1, length: 0)
         // Every text view the page has drawn, so a keystroke reaches the one
@@ -101,11 +104,10 @@ struct MarkdownShortcutTypingTests {
         // through the delegate, the page redrawing between.
         for character in " persisted" {
             var target: BlockTextView?
-            for _ in 0 ..< 40 {
+            try await wait(30) {
                 drawn += Self.textViews(in: window).filter { view in !drawn.contains { $0 === view } }
                 target = drawn.first { $0.isFirstResponder }
-                if target != nil { break }
-                try await Task.sleep(for: .milliseconds(25))
+                return target != nil
             }
             let field = try #require(target, "no text view holds the caret")
             let key = String(character)
@@ -117,9 +119,7 @@ struct MarkdownShortcutTypingTests {
         try await Task.sleep(for: .milliseconds(300))
         // Typing ends; whatever text view holds the caret commits.
         drawn.first { $0.isFirstResponder }?.resignFirstResponder()
-        for _ in 0 ..< 40 where editor.all.first.map({ BlockText.shown($0.inline) }) != "persisted" {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        try await wait(30) { editor.all.first.map { BlockText.shown($0.inline) } == "persisted" }
 
         let block = try #require(editor.all.first)
         #expect(block.kind == "bulletListItem")

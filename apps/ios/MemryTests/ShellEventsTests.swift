@@ -41,10 +41,11 @@ struct ShellEventsTests {
     }
 
     /// Awaits a task's value against a deadline. `nil` means it had not
-    /// finished, which is what a leaked loop looks like.
+    /// finished, which is what a leaked loop looks like. Generous for the same
+    /// reason as `waitUntil`: a cancelled loop returns on the main actor (#5484).
     private func outcome(
         of task: Task<ShellState.Outcome, Never>,
-        within seconds: Double = 3
+        within seconds: Double = 30
     ) async -> ShellState.Outcome? {
         await withTaskGroup(of: ShellState.Outcome?.self) { group in
             group.addTask { await task.value }
