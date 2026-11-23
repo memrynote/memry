@@ -11,6 +11,7 @@
 //! | the re-driver reads its manifests in one batch      | §14.5.2 batched read (#5337) |
 //! | the re-driver falls back to single manifest GETs    | §14.5.2 older server         |
 //! | a key-store error fails each row, not the re-drive  | one failure never stops it   |
+//! | two fetches of one attachment download it once      | in-flight dedupe (#5247)     |
 
 mod http_fakes;
 
@@ -231,6 +232,59 @@ async fn a_retry_asks_only_for_the_chunks_that_never_landed() {
     assert!(
         !dir.join("images/.partial").join(ATTACHMENT).exists(),
         "landed chunks are cleared once the file is whole"
+    );
+}
+
+/// REVIEW-5587: a note page restarted by a sync pass asks again for the
+/// picture its cancelled task is still downloading.
+#[tokio::test]
+async fn two_fetches_of_one_attachment_download_it_once() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-in-flight");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        no_presign(),
+    ];
+    script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
+    let expected_calls = script.len();
+    // Each answer is held, so the second fetch starts while the first runs.
+    let transport = FakeTransport::slow(script, 20);
+    let sync = vault.sync(session(transport.clone()));
+
+    let (first, second) = tokio::join!(
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+    );
+
+    for summary in [
+        first.expect("the first fetch"),
+        second.expect("the second fetch"),
+    ] {
+        assert!(summary.downloaded);
+        assert_eq!(summary.local_path.as_deref(), Some(ATTACHMENT));
+        assert_eq!(summary.bytes, fx.plaintext.len() as u64);
+    }
+    assert_eq!(
+        transport.call_count(),
+        expected_calls,
+        "one download, not two"
+    );
+    let images = dir.join("images");
+    assert_eq!(
+        std::fs::read(images.join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
+    );
+    let files: Vec<_> = std::fs::read_dir(&images)
+        .expect("images/")
+        .map(|entry| entry.expect("an entry"))
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+        .map(|entry| entry.file_name())
+        .collect();
+    assert_eq!(
+        files,
+        vec![ATTACHMENT],
+        "no temporary file is left beside it"
     );
 }
 

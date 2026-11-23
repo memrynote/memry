@@ -393,7 +393,8 @@ impl VaultSync {
     /// Writes the bytes under `images/` and returns the path the row records.
     ///
     /// Relative, because the sandbox container moves between launches on iOS
-    /// and an absolute path stored today is a dangling path tomorrow.
+    /// and an absolute path stored today is a dangling path tomorrow. Written
+    /// via a sibling temp file, so a reader never sees half a file.
     pub(super) fn write_bytes(
         &self,
         attachment_id: &str,
@@ -401,7 +402,13 @@ impl VaultSync {
     ) -> Result<String, SyncError> {
         let images = PathBuf::from(&self.directory).join("images");
         std::fs::create_dir_all(&images).map_err(storage_error)?;
-        std::fs::write(images.join(attachment_id), bytes).map_err(storage_error)?;
+        let partial = images.join(format!(".{attachment_id}.part"));
+        let written = std::fs::write(&partial, bytes)
+            .and_then(|()| std::fs::rename(&partial, images.join(attachment_id)));
+        if written.is_err() {
+            let _ = std::fs::remove_file(&partial);
+        }
+        written.map_err(storage_error)?;
         Ok(attachment_id.to_owned())
     }
 }
