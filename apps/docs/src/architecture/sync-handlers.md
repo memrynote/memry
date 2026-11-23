@@ -92,6 +92,15 @@ record clock for settings, stores it whole. Without the re-queue the device that
 value is the only one that ever has it. A merge where every local clock is equal or behind queues
 nothing, so pulling back your own push does not loop.
 
+Journals keep the document-level rule for every key but `tags` and `properties`, which merge per
+unit since #5508 (chapter 06 §6.12): `mergeJournalFields()` (`journal-merge.ts`) runs `mergeFields()`
+over `tags.<tagKey>` and `properties.<key>` units, and a winner with no value removes the unit, so a
+removed tag stays removed. A unit's clock is the document clock its writer last wrote it at, and a
+side's unit clocks count only while `fieldClocksAt` equals its `clock`; an older build keeps the keys
+but ticks the clock past the stamp, so its payload is read whole at its clock. Desktop diffs the day
+file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); the Rust core
+restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
+
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.
 
