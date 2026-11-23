@@ -22,13 +22,15 @@
 //! references names it, because every try draws a fresh file key and nonces.
 //! It is dereferenced once, then forgotten; a replay lowers nothing twice.
 //!
-//! **A purged note's upload waits out a grace.** Once another device's delete
-//! purged the note's body here, nothing goes up, but a same-id revive can
-//! still bring the block back (§14.8.2), and these bytes are the only copy.
-//! The row and the bytes stay, so the revive's next pass uploads them once.
-//! They go only after [`attachment_uploads::PURGE_GRACE_MS`] from the purge,
-//! desktop's grace for a deleted note's assets. A note deleted only here keeps
-//! both, as its delete can be undone.
+//! **A purged note's upload waits for a revive, however long (#5578).** Once
+//! another device's delete purged the note's body here, nothing goes up, but
+//! a same-id revive can still bring the block back (§14.8.2), and these bytes
+//! are the only copy. Nothing tells this device the note is gone for good:
+//! the server keeps its row and accepts a create over its marker at any age
+//! (§5.12.3). So the row and the bytes stay, and the revive's next pass
+//! uploads them once. They go only with an upload or a detach, so the disk
+//! they hold is the owed rows' bytes. A note deleted only here keeps both,
+//! as its delete can be undone.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -41,15 +43,6 @@ use super::*;
 
 static UPLOAD_GATES: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
-
-/// What an owed upload's row says to do.
-enum Owed {
-    Nothing,
-    Upload(PendingUpload),
-    /// Dropped once its purged note's grace ended: the bytes' path under
-    /// `images/`, which go next.
-    Purged(String),
-}
 
 fn upload_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
     let mut gates = UPLOAD_GATES
@@ -159,17 +152,6 @@ impl VaultSync {
     /// told ([`Self::remember_told`]), and its later upload is news too, so
     /// the shell can take back what it showed.
     pub async fn upload_queued_attachments(&self) -> Result<QueuedUploadSummary, SyncError> {
-        self.upload_queued_attachments_at(now_ms()).await
-    }
-
-    /// [`Self::upload_queued_attachments`] at `now_ms`, the clock a purged
-    /// note's grace is measured against. Not on the FFI surface; tests drive
-    /// the grace with it.
-    #[doc(hidden)]
-    pub async fn upload_queued_attachments_at(
-        &self,
-        now_ms: i64,
-    ) -> Result<QueuedUploadSummary, SyncError> {
         {
             let _gate = upload_gate(&self.vault_id).lock_owned().await;
             // Best effort: an upload releases its own set before it tries
@@ -196,7 +178,7 @@ impl VaultSync {
                 })
                 .await?;
             match self
-                .upload_queued(&attachment_id, RetryPolicy::polled(), now_ms)
+                .upload_queued(&attachment_id, RetryPolicy::polled())
                 .await
             {
                 Ok(true) => {
@@ -338,13 +320,11 @@ impl VaultSync {
     ///
     /// - Returns: `false` when nothing was owed (another caller uploaded it,
     ///   or it was detached, before or during the upload) or the note is
-    ///   deleted here, which keeps it owed. A purged note's upload is
-    ///   discarded once its grace ended at `at_ms`.
+    ///   deleted or purged here, which keeps it owed.
     pub(super) async fn upload_queued(
         &self,
         attachment_id: &str,
         initiate: RetryPolicy,
-        at_ms: i64,
     ) -> Result<bool, SyncError> {
         let _gate = upload_gate(&self.vault_id).lock_owned().await;
         let id = attachment_id.to_owned();
@@ -354,41 +334,14 @@ impl VaultSync {
             .db
             .call(move |conn| {
                 let Some(upload) = attachment_uploads::get(conn, &id)? else {
-                    return Ok(Owed::Nothing);
+                    return Ok(None);
                 };
-                if attachment_uploads::note_is_purged(conn, &upload.note_id)? {
-                    // A revive within the grace uploads it after all.
-                    if !attachment_uploads::purge_grace_ended(conn, &id, at_ms)? {
-                        return Ok(Owed::Nothing);
-                    }
-                    attachment_uploads::discard(conn, &id)?;
-                    return Ok(Owed::Purged(upload.local_path));
-                }
                 let live = attachment_uploads::note_is_live(conn, &upload.note_id)?;
-                Ok(if live {
-                    Owed::Upload(upload)
-                } else {
-                    Owed::Nothing
-                })
+                Ok(live.then_some(upload))
             })
             .await?;
-        let upload = match owed {
-            Owed::Upload(upload) => upload,
-            Owed::Nothing => return Ok(false),
-            Owed::Purged(local_path) => {
-                let path = PathBuf::from(&self.directory)
-                    .join("images")
-                    .join(local_path);
-                if let Err(error) = std::fs::remove_file(&path)
-                    && error.kind() != std::io::ErrorKind::NotFound
-                {
-                    eprintln!(
-                        "memry-core: attachment uploads: a purged note's bytes stay at {}: {error}",
-                        path.display()
-                    );
-                }
-                return Ok(false);
-            }
+        let Some(upload) = owed else {
+            return Ok(false);
         };
         let device_id = self.session.device_id()?;
         let path = PathBuf::from(&self.directory)
