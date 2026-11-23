@@ -744,12 +744,17 @@ describe('AttachmentSyncService', () => {
       const { deps, plaintext } = buildDownloadFixture('moved.pdf')
       const asked = path.join(tmpDir, 'old', 'moved.pdf')
       const landAt = path.join(tmpDir, 'moved.pdf')
-      const beforeFileLands = vi.fn((_filePath: string, _attachmentId: string) => landAt)
+      const beforeFileLands = vi.fn(
+        (_filePath: string, _attachmentId: string, _sha256: string) => landAt
+      )
       const service = new AttachmentSyncService({ ...deps, beforeFileLands })
 
       const result = await service.downloadAttachment('att-dir', asked)
 
-      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir')
+      // The manifest's checksum of the verified bytes (#5585).
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+      const sha256 = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', sha256)
       expect(result.filePath).toBe(landAt)
       const fsp = await import('node:fs/promises')
       expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)

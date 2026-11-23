@@ -10,6 +10,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'crypto'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -26,6 +27,7 @@ import { insertNoteCache } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
+import type * as AttachmentBackfill from '../sync/attachment-backfill'
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
@@ -106,6 +108,7 @@ import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from './case-twin
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
+import { listPendingUploads } from '../sync/attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,
   markDownloadFailed,
@@ -259,9 +262,11 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     return { updates: pushed().updates.filter(twin), saved: pushed().saved.filter(twin) }
   }
 
+  const sha256 = (bytes: string) => createHash('sha256').update(bytes).digest('hex')
+
   /** A download of note `id`'s attachment, asked for at `requestedPath`, as the downloader lands it. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): string {
-    const at = landCaseTwinDownload(requestedPath, attachmentId)
+    const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes))
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, bytes.length)
@@ -334,6 +339,8 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
   ] as const) {
     it(`a peer's ${how} of a binary twin keeps the shared file for the other twin`, () => {
       twins('Supernotes')
+      // B's bytes landed on the shared file: the split knows them.
+      land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
 
       expect(applyPeerUpdate(change)).toBe('applied')
 
@@ -532,20 +539,20 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
 
   it('a change whose event arrives after the split is kept as a conflict copy', async () => {
     twins('Supernotes')
+    seed('control', 'Supernotes/c.png', 'c-bytes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
     await startWatcher(vault.path)
     vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
     try {
       // The size both twins recorded, and its event still on the way at the split.
       fs.writeFileSync(abs('Supernotes/p.png'), 'h-bytes')
       expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
-      expect(foreignMarks()).toMatchObject({ 'twin-a': { size: 'h-bytes'.length } })
-      await vi.waitFor(() => expect(foreignMarks()).toMatchObject({ 'twin-a': null }), {
-        timeout: 15_000,
-        interval: 100
-      })
+      expect(foreignMarks()).toMatchObject({ 'twin-a': null })
     } finally {
       vi.useRealTimers()
     }
+    await editUntilPushed({ 'Supernotes/c.png': 'edited' }, pushedNote('control'))
+    expect(twinPushes()).toEqual({ updates: [], saved: [] })
 
     land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
     expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
@@ -666,6 +673,70 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p (conflict copy).png')).toBe('h-bytes')
     expect(read('Supernotes/p.png')).toBe('a-bytes')
   }, 45_000)
+
+  // VERIFY-5563R2 #3: an edit made while the app was closed, the size both twins recorded.
+  for (const [how, split] of [
+    ['move', () => applyPeerUpdate({ folderPath: 'Other' })],
+    ['delete', () => applyPeerDelete('twin-b')]
+  ] as const) {
+    it(`a same-size edit made while the app was closed is kept as a conflict copy at a peer's ${how}`, () => {
+      twins('Supernotes')
+      land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+      fs.writeFileSync(abs('Supernotes/p.png'), 'x-bytes')
+
+      expect(split()).toBe('applied')
+      land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+      expect(read('Supernotes/p.png')).toBe('a-bytes')
+      expect(read('Supernotes/p (conflict copy).png')).toBe('x-bytes')
+    })
+  }
+
+  it("a split with no change since a twin's bytes landed keeps no conflict copy", () => {
+    twins('Supernotes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+    expect(conflictCopies('Supernotes')).toEqual([])
+  })
+
+  it('a survivor whose file already holds its own bytes keeps no conflict copy', () => {
+    // No landing recorded: the file's bytes are unknown until the survivor's land.
+    twins('Supernotes')
+
+    expect(applyPeerDelete('twin-a')).toBe('applied')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+
+    expect(conflictCopies('Supernotes')).toEqual([])
+  })
+
+  it('a landing whose rename keeps failing keeps one conflict copy', () => {
+    twins('Supernotes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+    // Each retry asks where to land; the rename fails (the file is open elsewhere).
+    for (let i = 0; i < 3; i++) {
+      landCaseTwinDownload(abs('Supernotes/p.png'), 'att-twin-a', sha256('a-bytes'))
+    }
+
+    expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+    expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+  })
+
+  it('the attachment backfill uploads no twin while its file is shared', async () => {
+    twins('Supernotes', { attachmentId: null })
+    seed('solo', 'Other/s.png', 's-bytes', { attachmentId: null })
+    const { backfillUnsyncedAttachmentsWith } = await vi.importActual<typeof AttachmentBackfill>(
+      '../sync/attachment-backfill'
+    )
+
+    backfillUnsyncedAttachmentsWith({ db: asClientDb(data.db), vaultPath: vault.path })
+
+    expect(listPendingUploads(asClientDb(data.db)).map((row) => row.noteId)).toEqual(['solo'])
+  })
 
   it("a peer's move of a binary twin that cannot land changes nothing", () => {
     twins('Supernotes')

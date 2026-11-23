@@ -108,7 +108,9 @@ describe('SYNC_STATE_KEYS', () => {
         BINARY_NOTE_TEXT_BLOBS: 'binaryNoteTextBlobs',
         // Additive (#5522, #5560): absent means no held change and no hold.
         CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
-        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes'
+        CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+        // Additive (#5585): absent means no landing recorded on a shared file.
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
       })
     })
 
