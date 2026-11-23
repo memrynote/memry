@@ -19,7 +19,7 @@ use memry_core::api::errors::{SyncError, TransportError};
 use memry_core::api::sync::VaultSync;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
-use memry_core::domain::attachments::BlockAttachment;
+use memry_core::domain::attachments::{self, BlockAttachment};
 use memry_core::domain::notes;
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
@@ -185,6 +185,13 @@ async fn an_offline_attach_keeps_the_bytes_and_binds_the_block_at_once() {
         app.references(&note).is_empty(),
         "no reference before a manifest"
     );
+    // Below zero, so even a row with no known size would be evicted.
+    let evicted = app
+        .vault
+        .db_handle()
+        .call_blocking(|conn| attachments::evict_to_budget(conn, -1))
+        .expect("evict");
+    assert!(evicted.paths.is_empty(), "the only copy is never evicted");
 }
 
 #[tokio::test]
