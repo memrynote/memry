@@ -37,8 +37,11 @@ import Observation
 // round pulled something and some are still owed. A round that pulled nothing
 // with bodies still owed (a 429 hold, a backoff) asks again after growing
 // waits, until past the core's longest hold; then the next foreground resumes
-// it. The vault's passes are not held for it: a round holds the core's pass
-// gate for one bounded round.
+// it. Leaving the foreground cancels the drain: a wait ends at once, and the
+// round in flight finishes in the core and is durable, so the bodies stay owed
+// for the next foreground rather than holding a background task. The vault's
+// passes are not held for it: a round holds the core's pass gate for one
+// bounded round.
 
 @MainActor
 @Observable
@@ -237,12 +240,17 @@ final class VaultFillViewModel {
         await run()
     }
 
-    /// The scene's phase, from the vault scope. Back in the foreground, a
-    /// drain that the background, a round that pulled nothing, or a failed
-    /// round paused continues while bodies are owed.
+    /// The scene's phase, from the vault scope. The background cancels the
+    /// drain, so a wait after an empty round does not outlive the foreground.
+    /// Back in the foreground, a drain that the background, a round that pulled
+    /// nothing, or a failed round paused continues while bodies are owed.
     func sceneChanged(active: Bool) async {
         isForeground = active
-        guard active, hasRun else { return }
+        guard active else {
+            drainTask?.cancel()
+            return
+        }
+        guard hasRun else { return }
         await drain(showing: nil)
     }
 
@@ -258,6 +266,8 @@ final class VaultFillViewModel {
     /// the strip does not fade out and back in between the first sync and
     /// the drain.
     private func drain(showing carried: SyncProgress?) async {
+        // A cancelled drain may still be in its last round: start after it.
+        while let running = drainTask, running.isCancelled { await running.value }
         if drainTask == nil {
             guard case .filled = phase, isForeground, !drained else { return }
             phase = .draining(carried)
