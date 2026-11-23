@@ -25,7 +25,7 @@ pub mod canvas;
 pub mod canvas_folder;
 pub mod content_hash;
 pub mod custom_icons;
-mod desktop_records;
+pub(crate) mod desktop_records;
 pub mod embedding_input;
 #[cfg(feature = "markdown")]
 pub mod external_feed;

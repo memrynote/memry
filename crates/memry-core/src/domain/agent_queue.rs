@@ -146,14 +146,7 @@ fn enqueue(
 /// clears it in the same transaction. Returns how many it queued.
 pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize, StorageError> {
     let transaction = nested_tx::begin(conn).map_err(failed)?;
-    let pending: bool = transaction
-        .query_row(
-            "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",
-            params![BACKFILL_DONE],
-            |row| row.get(0),
-        )
-        .map_err(failed)?;
-    if !pending {
+    if !backfill_pending(&transaction)? {
         return Ok(0);
     }
     let conn = &transaction;
@@ -179,6 +172,17 @@ pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize,
     .map_err(failed)?;
     transaction.commit().map_err(failed)?;
     Ok(queued)
+}
+
+/// Whether the next [`backfill`] queues this vault's records: true until one
+/// ran, and again once the account turned unpaid.
+pub(crate) fn backfill_pending(conn: &Connection) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",
+        params![BACKFILL_DONE],
+        |row| row.get(0),
+    )
+    .map_err(failed)
 }
 
 fn ids(conn: &Connection, sql: &str, vault: &RecordVault) -> Result<Vec<String>, StorageError> {
