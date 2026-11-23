@@ -312,6 +312,9 @@ pub struct VaultSync {
     /// §9.9's 4004/4009 latch, here rather than on the socket because the
     /// shell mints a socket per foreground (#2798).
     realtime_latch: Arc<TerminalLatch>,
+    /// When the foreground drain may send its next request: set when a
+    /// `429` ended a round, for the wait the server asked for (#5247).
+    drain_resume_at: std::sync::Mutex<Option<tokio::time::Instant>>,
 }
 
 impl VaultSync {
@@ -327,6 +330,7 @@ impl VaultSync {
             session,
             directory,
             realtime_latch: Arc::default(),
+            drain_resume_at: std::sync::Mutex::default(),
         }
     }
 

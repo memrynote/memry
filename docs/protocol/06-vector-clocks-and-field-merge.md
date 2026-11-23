@@ -587,11 +587,34 @@ left the row with no payload, a local edit seeds an empty payload, and its push
 waits until a by-id re-pull merges the server's copy, so the edit cannot
 replace the account's settings with one key
 (`crates/memry-core/src/domain/settings.rs:148-156`,
-`crates/memry-core/src/sync/unknown_signer.rs:83-89`, `:107-113`). Only a
-well-formed page that leaves the id out counts toward releasing the hold. A
-dropped page, an unverifiable record, a malformed body or a 4xx counts toward a
-separate, larger bound; a transport failure, a 5xx or a 429 counts toward
-neither (`crates/memry-core/src/sync/unknown_signer.rs:170-201`, `:206-236`).
+`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`).
+
+**Every unknown-signer hold follows one rule, settings or not.** A pulled
+record refused only because its signer is missing from the pass's device
+directory records a hold on its `(type, id)`, and a queued edit of that row
+stays out of the push while the hold waits
+(`crates/memry-core/src/sync/unknown_signer.rs:86-92`, `:110-116`). Each pass
+re-pulls every waiting hold by id over that pass's fresh directory: each
+settings hold on its own, so another record's answer never counts toward it,
+and every other hold in one batch (`:122-140`). A verified record for the id
+ends the hold (`:96-105`). Otherwise the hold gives up after 5 attempts or 50
+failures, whichever comes first, and the queued edit then pushes
+(`:59`, `:64`, `:224-226`). One re-pull counts as follows
+(`:155-174`, `:180-221`):
+
+- **Attempt**: only a well-formed page that leaves the id out, with no dropped
+  page and no record still unverifiable.
+- **Failure**: a dropped page, a record still unverifiable, a malformed body, or
+  a 4xx other than 429.
+- **Never counts**: a transport failure, a 5xx, or a 429.
+
+**Desktop divergence.** Desktop has no hold and no re-pull. It skips a pulled
+record whose signer has no public key as a decrypt failure that is not a crypto
+error, and applies the rest of the page
+(`apps/desktop/src/main/sync/sync-crypto-batch.ts:174-184`, `:240-250`;
+`apps/desktop/src/main/sync/engine-pull.test.ts:306`). The page's corrupt
+re-fetch takes only crypto and parse failures, so it never retries that record
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:1041`).
 
 Some sub-objects are deliberately single-clocked as a unit, and the reasons are
 in the schema comments:
