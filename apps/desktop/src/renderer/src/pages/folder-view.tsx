@@ -205,7 +205,10 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
   // The tables sort themselves through TanStack; list and gallery get the rows
   // pre-sorted by the same view order.
-  const sortedNotes = useMemo(() => sortNotes(notes, activeView?.order), [notes, activeView?.order])
+  const sortedNotes = useMemo(
+    () => sortNotes(notes, activeView?.order, formulasMap),
+    [notes, activeView?.order, formulasMap]
+  )
 
   // The chart layout, when on. Tab state, not the view config: see
   // FOLDER_VIEW_STATE_KEYS.chart for why `.folder.md` must not hold it.
