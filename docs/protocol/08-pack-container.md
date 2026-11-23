@@ -703,10 +703,10 @@ pnpm --filter @memry/sync-server exec wrangler secret delete PACK_COVERAGE_DISAB
   row lists its key: it reads `pack_index` again right before the R2 delete
   and keeps every key listed by then
   (`apps/sync-server/src/services/pack-replaced-objects.ts:155-178`). A commit
-  that lands between that read and the delete still loses its object, and a
-  reader meets a 404 (§8.12). Unless such a late commit lists it, the object
-  was never listed, so no reader holds a URL to it and it waits for no grace
-  period.
+  that lands after that read, before or after the delete, still loses its
+  object, and a reader meets a 404 (§8.12). Unless such a late commit lists it,
+  the object was never listed, so no reader holds a URL to it and it waits for
+  no grace period.
 - **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
   `crdt_update` while the vault holds a needed row of that kind with a NULL
   `server_cursor`: such a row is in no range and never in the feed (chapter 07

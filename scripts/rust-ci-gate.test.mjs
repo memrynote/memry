@@ -8,6 +8,8 @@ import { describe, it } from 'node:test'
 // forever, and a skipped one counts as passed, so the gate must report on every PR, pass when no
 // Rust CI path changed, and otherwise pass only when every Rust job succeeded.
 const repo = new URL('..', import.meta.url).pathname
+const pathsAction = join(repo, '.github/actions/paths-changed')
+const listFilter = readFileSync(join(pathsAction, 'action.yml'), 'utf8').match(/--jq '([^']+)'/)[1]
 const workflow = readFileSync(join(repo, '.github/workflows/rust-ci.yml'), 'utf8')
 const include = workflow.match(/include: '([^']+)'/)[1]
 const pushPaths = [
@@ -16,9 +18,21 @@ const pushPaths = [
 const jobs = workflow.slice(workflow.indexOf('\njobs:\n'))
 const gate = jobs.slice(jobs.indexOf('\n  gate:\n'))
 
+// `files` are paths, or `{ filename, previous_filename }` for a rename. They go through the files
+// API's entry shape and the action's own jq filter, as the action lists them.
 function changed(files) {
-  const result = spawnSync('bash', [join(repo, '.github/actions/paths-changed/changed.sh')], {
-    input: files.join('\n'),
+  const page = files.map((file) =>
+    typeof file === 'string'
+      ? { filename: file, status: 'modified' }
+      : { status: 'renamed', ...file }
+  )
+  const listed = spawnSync('jq', ['-c', listFilter], {
+    input: JSON.stringify(page),
+    encoding: 'utf8'
+  })
+  assert.equal(listed.status, 0, listed.stderr)
+  const result = spawnSync('bash', [join(pathsAction, 'changed.sh')], {
+    input: listed.stdout,
     env: { PATH: process.env.PATH, INCLUDE: include, EXCLUDE: '^$' },
     encoding: 'utf8'
   })
@@ -48,6 +62,18 @@ describe('Rust CI gate', () => {
     for (const [, action] of workflow.matchAll(/uses: \.\/\.github\/actions\/([a-z0-9-]+)/g))
       assert.ok(pushPaths.includes(`.github/actions/${action}/**`), action)
     assert.equal(changed(['apps/docs/src/contribute/testing.md', 'README.md']), 'false')
+  })
+
+  it('runs the Rust jobs for a rename out of crates/', () => {
+    const moved = { filename: 'docs/old-lib.rs', previous_filename: 'crates/memry-core/src/lib.rs' }
+    assert.equal(changed([moved]), 'true')
+    assert.equal(changed([{ ...moved, previous_filename: 'apps/docs/old-lib.rs' }]), 'false')
+  })
+
+  it('runs the Rust jobs for a list of 3000 files, where the API stops', () => {
+    const docs = Array.from({ length: 3000 }, (_, i) => `apps/docs/src/generated/page-${i}.md`)
+    assert.equal(changed(docs), 'true')
+    assert.equal(changed(docs.slice(1)), 'false')
   })
 
   it('needs every other job', () => {

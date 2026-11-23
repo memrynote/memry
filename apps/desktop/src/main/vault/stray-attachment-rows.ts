@@ -11,8 +11,10 @@
  */
 
 import path from 'path'
-import { like } from 'drizzle-orm'
+import { eq, like } from 'drizzle-orm'
 import { NotesChannels } from '@memry/contracts/notes-api'
+import { attachmentFiles } from '@memry/db-schema/schema/attachment-files'
+import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
@@ -33,7 +35,9 @@ const logger = createLogger('StrayAttachmentRows')
 /**
  * Remove each binary note row in the attachment store from this device: its
  * index and canonical rows, its sidebar position, its queued sync items and
- * uploads, its owed bodies and its CRDT doc.
+ * uploads, its owed bodies, its CRDT doc, and the record of the files and
+ * body pushes the server holds for its id. Every reader of that record looks
+ * up a note this device still syncs, and the declined id is never one again.
  *
  * Local only. The file stays, because the note that embeds it still shows it,
  * and no delete is synced: a peer on an older build unlinks a deleted note's
@@ -82,6 +86,8 @@ export async function forgetStrayAttachmentRows(vaultPath: string): Promise<stri
     queue.removeByItemId(id)
     clearUpload(dataDb, id, path.join(vaultPath, relativePath))
     deleteNotePosition(dataDb, relativePath)
+    dataDb.delete(attachmentFiles).where(eq(attachmentFiles.noteId, id)).run()
+    dataDb.delete(noteBodySync).where(eq(noteBodySync.noteId, id)).run()
     deleteNoteFromCache(indexDb, id)
     emitNoteEvent(NotesChannels.events.DELETED, { id, path: relativePath, source: 'internal' })
   }
