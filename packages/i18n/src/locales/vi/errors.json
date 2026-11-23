@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
     "emptyFile": "Không thể tải lên tệp rỗng",
+    "emptyNotAttached": "Tệp này trống nên không được đính kèm. Nếu bạn đã dán một hình ảnh, hãy sao chép lại rồi dán.",
     "textInMediaFile": "Tệp này chứa văn bản thay vì nội dung đa phương tiện như tên tệp cho biết"
   },
   "crdt": {

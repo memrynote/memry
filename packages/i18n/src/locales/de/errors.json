@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Datei zu groß: {size} überschreitet das Limit von {limit}",
     "exceedsPlanLimit": "Die Datei ist größer, als dein Tarif erlaubt: {size} überschreitet {limit}",
     "emptyFile": "Leere Dateien können nicht hochgeladen werden",
+    "emptyNotAttached": "Diese Datei ist leer und wurde deshalb nicht angehängt. Wenn du ein Bild eingefügt hast, kopiere es erneut und füge es wieder ein.",
     "textInMediaFile": "Diese Datei enthält Text statt der Medien, die ihr Name angibt"
   },
   "crdt": {
