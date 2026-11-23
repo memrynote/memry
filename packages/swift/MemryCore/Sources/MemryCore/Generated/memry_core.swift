@@ -39546,4 +39546,4 @@ public func uniffiEnsureMemryCoreInitialized() {
     }
 }
 
-// swiftlint:enable all
+// swiftlint:enable all// PLANTED-GATE-PROOF drift
