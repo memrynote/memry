@@ -8,7 +8,8 @@ export const ATTACHMENT_CHANNELS = {
   UPLOAD_ATTACHMENT: 'sync:upload-attachment',
   GET_UPLOAD_PROGRESS: 'sync:get-upload-progress',
   DOWNLOAD_ATTACHMENT: 'sync:download-attachment',
-  GET_DOWNLOAD_PROGRESS: 'sync:get-download-progress'
+  GET_DOWNLOAD_PROGRESS: 'sync:get-download-progress',
+  DOWNLOAD_NOTE_FILES: 'sync:download-note-files'
 } as const
 
 // ============================================================================
@@ -49,6 +50,20 @@ export interface DownloadAttachmentResult {
   error?: string
 }
 
+/**
+ * Download the files an opened note is missing on this device: its embedded
+ * attachments and, for a binary note, the note's own file. Only does work while
+ * attachment auto-download is off; resolves once every file landed or failed.
+ */
+export interface DownloadNoteFilesInput {
+  noteId: string
+}
+
+export interface DownloadNoteFilesResult {
+  success: boolean
+  error?: string
+}
+
 export interface GetDownloadProgressInput {
   attachmentId: string
 }
@@ -82,6 +97,10 @@ export const DownloadAttachmentSchema = z.object({
 
 export const GetDownloadProgressSchema = z.object({
   attachmentId: z.string().min(1)
+})
+
+export const DownloadNoteFilesSchema = z.object({
+  noteId: z.string().min(1)
 })
 
 // ============================================================================

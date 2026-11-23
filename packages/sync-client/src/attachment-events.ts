@@ -8,7 +8,7 @@ interface AttachmentSavedEvent {
   diskPath: string
 }
 
-interface AttachmentDownloadNeededEvent {
+export interface AttachmentDownloadNeededEvent {
   noteId: string
   attachmentId: string
   /**

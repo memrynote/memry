@@ -313,7 +313,7 @@ describe('sync-attachment-handlers', () => {
   })
 
   // #given handlers are registered
-  it('registers all 4 attachment IPC channels on registerAttachmentHandlers', () => {
+  it('registers all 5 attachment IPC channels on registerAttachmentHandlers', () => {
     // #when
     registerAttachmentHandlers()
 
@@ -322,6 +322,7 @@ describe('sync-attachment-handlers', () => {
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_UPLOAD_PROGRESS)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_ATTACHMENT)).toBeDefined()
     expect(mockIpcMain._getHandler(SYNC_CHANNELS.GET_DOWNLOAD_PROGRESS)).toBeDefined()
+    expect(mockIpcMain._getHandler(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES)).toBeDefined()
   })
 
   it('subscribes to attachmentEvents on register', () => {

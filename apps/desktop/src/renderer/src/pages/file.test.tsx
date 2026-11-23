@@ -225,6 +225,22 @@ describe('FilePage', () => {
     ).toBeInTheDocument()
   })
 
+  it('downloads a file this device lacks before it shows it, and retries a failure (#5616)', async () => {
+    const user = userEvent.setup()
+    const downloadNoteFiles = vi.mocked(window.api.syncAttachments.downloadNoteFiles)
+    downloadNoteFiles.mockResolvedValueOnce({ success: false, error: 'R2 unavailable' })
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    expect(await screen.findByText('R2 unavailable')).toBeInTheDocument()
+    expect(downloadNoteFiles).toHaveBeenCalledWith({ noteId: 'file-1' })
+    expect(mocks.getFile).not.toHaveBeenCalled()
+
+    await user.click(screen.getByText('phaseF.pagesFile.tryAgain'))
+
+    expect(await screen.findByTestId('pdf-viewer')).toBeInTheDocument()
+    expect(downloadNoteFiles).toHaveBeenCalledTimes(2)
+  })
+
   it('renders file project chips with itemType file', async () => {
     renderWithProviders(<FilePage fileId="file-1" />)
 

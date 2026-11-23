@@ -162,6 +162,19 @@ export function markDownloadRequested(ownerId: string, attachmentId: string): vo
 }
 
 /**
+ * Claim a download the user is waiting on (#5616). Unlike
+ * {@link shouldAttemptDownload} it does not wait out a transient failure's
+ * backoff: the user asked now. False while an attempt already runs or once one
+ * landed this session.
+ */
+export function claimRequestedDownload(ownerId: string, attachmentId: string): boolean {
+  const key = keyOf(ownerId, attachmentId)
+  if (inFlight.has(key) || succeeded.has(key)) return false
+  inFlight.add(key)
+  return true
+}
+
+/**
  * Drop the in-flight claim without recording an outcome — the request never
  * reached the downloader (no listener, no token, no service), so the next pull
  * must be free to ask again.

@@ -515,6 +515,7 @@ export interface MainIpcInvokeHandlers {
   "sync:complete-linking-qr": (...args: [{ sessionId: string; }]) => Awaited<Promise<CompleteLinkingQrResult> | { success: false; error: string }>
   "sync:confirm-recovery-phrase": (...args: [{ confirmed: boolean; }]) => Awaited<Promise<{ success: boolean; }> | { success: false; error: string }>
   "sync:download-attachment": (...args: [{ attachmentId: string; targetPath?: string | undefined; }]) => Awaited<Promise<{ success: boolean; error: string; filePath?: undefined; } | { success: boolean; filePath: string; error?: undefined; }> | { success: false; error: string }>
+  "sync:download-note-files": (...args: [{ noteId: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }> | { success: false; error: string }>
   "sync:emergency-wipe": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "sync:finalize-vault-choice": (...args: [{ sessionId: string; parentFolderPath: string; selectedVaultUuids: string[]; primaryVaultUuid: string; }]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }> | { success: false; error: string }>
   "sync:generate-linking-qr": (...args: []) => Awaited<Promise<GenerateLinkingQrResult>>

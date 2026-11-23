@@ -2013,6 +2013,7 @@ interface SyncAttachmentsClientAPI {
     totalChunks: number
     progress: number
   }>
+  downloadNoteFiles: (input: { noteId: string }) => Promise<{ success: boolean; error?: string }>
 }
 
 // Window controls API

@@ -145,6 +145,7 @@ import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-edit
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import { NoteFilesDownloadNotice } from '@/components/note/note-files-download-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -1923,6 +1924,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-marquee-ignore
         >
           {isLocked && <LockedNoteNotice />}
+          <NoteFilesDownloadNotice key={note.id} noteId={note.id} />
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}

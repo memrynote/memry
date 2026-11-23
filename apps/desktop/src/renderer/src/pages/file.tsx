@@ -280,7 +280,13 @@ export function FilePage({ fileId }: FilePageProps) {
     refetch
   } = useQuery({
     queryKey: ['file', fileId],
-    queryFn: () => notesService.getFile(fileId!),
+    queryFn: async () => {
+      // With attachment auto-download off, the file stays on the server until
+      // it is opened (#5616): fetch it before reading where it is.
+      const downloaded = await window.api.syncAttachments.downloadNoteFiles({ noteId: fileId! })
+      if (!downloaded.success) throw new Error(downloaded.error)
+      return notesService.getFile(fileId!)
+    },
     enabled: !!fileId,
     staleTime: 60_000 // 1 minute
   })
