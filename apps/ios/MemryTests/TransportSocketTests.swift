@@ -1,6 +1,7 @@
 import Foundation
 import MemryCore
 import Network
+import os
 import Synchronization
 import Testing
 
@@ -38,7 +39,7 @@ final class LoopbackSocketServer: @unchecked Sendable {
     let log = Mutex(Log())
     private(set) var port: UInt16 = 0
 
-    init() throws {
+    init() async throws {
         let options = NWProtocolWebSocket.Options()
         options.autoReplyPing = true
         let parameters = NWParameters.tcp
@@ -46,10 +47,6 @@ final class LoopbackSocketServer: @unchecked Sendable {
         parameters.defaultProtocolStack.applicationProtocols.insert(options, at: 0)
 
         listener = try NWListener(using: parameters, on: .any)
-        let ready = DispatchSemaphore(value: 0)
-        listener.stateUpdateHandler = { state in
-            if case .ready = state { ready.signal() }
-        }
         listener.newConnectionHandler = { [weak self] connection in
             guard let self else { return }
             connections.withLock { $0.append(connection) }
@@ -57,18 +54,47 @@ final class LoopbackSocketServer: @unchecked Sendable {
             connection.start(queue: .global())
             receive(on: connection)
         }
-        listener.start(queue: .global())
-        // 20 s rather than 5. The bound still exists — a listener that never
-        // binds must fail here rather than hang the suite — but 5 s was a
-        // measurement of a warm laptop, and it flaked on a cold hosted runner
-        // where this is the first test in a `.serialized` suite and pays the
-        // whole Network.framework start-up. The failure this bound is for is a
-        // listener that cannot bind at all, which does not take 5 s to not
-        // happen.
-        guard ready.wait(timeout: .now() + 20) == .success, let bound = listener.port else {
-            throw TransportError.Failed(what: "the loopback listener never became ready")
+        port = try await Self.start(listener)
+    }
+
+    /// Starts the listener and awaits its bind. The old bound was a semaphore
+    /// wait in a synchronous init: up to 20 s of a cooperative-pool thread,
+    /// on the very runners where the full parallel run starves that pool, and
+    /// it still timed out there (#5484). Awaiting holds no thread. A listener
+    /// that fails says why, and one that never binds runs into the suite's
+    /// time limit, whose cancellation cancels it.
+    private static func start(_ listener: NWListener) async throws -> UInt16 {
+        let pending = OSAllocatedUnfairLock<CheckedContinuation<UInt16, any Error>?>(initialState: nil)
+        let finish: @Sendable (Result<UInt16, any Error>) -> Void = { result in
+            pending.withLock { continuation in
+                defer { continuation = nil }
+                return continuation
+            }?.resume(with: result)
         }
-        port = bound.rawValue
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                pending.withLock { $0 = continuation }
+                listener.stateUpdateHandler = { state in
+                    switch state {
+                    case .ready:
+                        if let port = listener.port {
+                            finish(.success(port.rawValue))
+                        } else {
+                            finish(.failure(TransportError.Failed(what: "the loopback listener is ready with no port")))
+                        }
+                    case let .failed(error):
+                        finish(.failure(TransportError.Failed(what: "the loopback listener failed: \(error)")))
+                    case .cancelled:
+                        finish(.failure(TransportError.Failed(what: "the loopback listener never became ready")))
+                    default:
+                        break
+                    }
+                }
+                listener.start(queue: .global())
+            }
+        } onCancel: {
+            listener.cancel()
+        }
     }
 
     func stop() {
@@ -130,13 +156,27 @@ final class RecordingListener: SocketListener, @unchecked Sendable {
     }
 
     let events = Mutex<[Event]>([])
+    private let changes = Changes()
 
     var history: [Event] { events.withLock { $0 } }
 
-    func onOpen() { events.withLock { $0.append(.open) } }
-    func onMessage(payload: Data) { events.withLock { $0.append(.message(payload)) } }
-    func onClosed(code: UInt16, reason: String) { events.withLock { $0.append(.closed(code)) } }
-    func onError(error: TransportError) { events.withLock { $0.append(.failed(TransportErrorKind(error))) } }
+    /// The whole history once it holds at least `count` events. No deadline:
+    /// the suite's time limit bounds it, because a loaded runner delivered
+    /// callbacks later than the old 5 s poll allowed (#5484).
+    func history(after count: Int) async -> [Event] {
+        await changes.until { history.count >= count }
+        return history
+    }
+
+    func onOpen() { record(.open) }
+    func onMessage(payload: Data) { record(.message(payload)) }
+    func onClosed(code: UInt16, reason: String) { record(.closed(code)) }
+    func onError(error: TransportError) { record(.failed(TransportErrorKind(error))) }
+
+    private func record(_ event: Event) {
+        events.withLock { $0.append(event) }
+        changes.changed()
+    }
 }
 
 /// Polls a condition to a deadline and **fails** there rather than waiting
@@ -173,20 +213,20 @@ struct TransportSocketTests {
     /// never a data path: the seam must carry the frame and read none of it.
     @Test("a frame arrives as bytes, unparsed, between an open and a close")
     func deliversFramesWithoutReadingThem() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         defer { server.stop() }
         let listener = RecordingListener()
         let subject = transport()
 
         let handle = try subject.openSocket(request: socketRequest(server), listener: listener)
-        #expect(await settle { listener.history == [.open] })
+        #expect(await listener.history(after: 1) == [.open])
 
         let frame = #"{"type":"changes_available","payload":{"cursor":"c1"}}"#
         server.sendText(frame)
-        #expect(await settle { listener.history.count == 2 })
+        #expect(await listener.history(after: 2).count == 2)
 
         handle.close()
-        #expect(await settle { listener.history.count == 3 })
+        #expect(await listener.history(after: 3).count == 3)
 
         let history = listener.history
         #expect(history.prefix(2) == [.open, .message(Data(frame.utf8))])
@@ -205,13 +245,13 @@ struct TransportSocketTests {
     /// would be a real protocol divergence that nothing else catches.
     @Test("the core's keepalive bytes go out as a text frame")
     func keepaliveIsATextFrame() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         defer { server.stop() }
         let listener = RecordingListener()
         let subject = transport()
 
         let handle = try subject.openSocket(request: socketRequest(server), listener: listener)
-        #expect(await settle { listener.history == [.open] })
+        #expect(await listener.history(after: 1) == [.open])
 
         try handle.send(payload: Data("ping".utf8))
 
@@ -225,13 +265,13 @@ struct TransportSocketTests {
     /// is the only place a close is a fact rather than a claim.
     @Test("dropping the handle closes the socket")
     func droppingTheHandleClosesTheSocket() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         defer { server.stop() }
         let listener = RecordingListener()
         let subject = transport()
 
         var handle: SocketHandle? = try subject.openSocket(request: socketRequest(server), listener: listener)
-        #expect(await settle { listener.history == [.open] })
+        #expect(await listener.history(after: 1) == [.open])
         #expect(server.log.withLock { $0.closes } == 0)
 
         handle = nil
@@ -247,16 +287,16 @@ struct TransportSocketTests {
     /// reopen behind the core's back and race its ladder into a second socket.
     @Test("background closes the socket and foreground does not reopen it")
     func backgroundClosesAndForegroundDoesNotReopen() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         defer { server.stop() }
         let listener = RecordingListener()
         let subject = transport()
 
         let handle = try subject.openSocket(request: socketRequest(server), listener: listener)
-        #expect(await settle { listener.history == [.open] })
+        #expect(await listener.history(after: 1) == [.open])
 
         subject.phaseChanged(to: .background)
-        #expect(await settle { listener.history == [.open, .closed(URLSessionTransport.backgroundCloseCode)] })
+        #expect(await listener.history(after: 2) == [.open, .closed(URLSessionTransport.backgroundCloseCode)])
 
         subject.phaseChanged(to: .foreground)
         // Nothing new may appear: no second open here, no second connection at
@@ -271,15 +311,15 @@ struct TransportSocketTests {
     /// error, rather than being queued into a socket that will never send it.
     @Test("a send after the close reports the socket closed")
     func sendAfterCloseFails() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         defer { server.stop() }
         let listener = RecordingListener()
         let subject = transport()
 
         let handle = try subject.openSocket(request: socketRequest(server), listener: listener)
-        #expect(await settle { listener.history == [.open] })
+        #expect(await listener.history(after: 1) == [.open])
         handle.close()
-        #expect(await settle { listener.history.count == 2 })
+        #expect(await listener.history(after: 2).count == 2)
 
         var thrown: TransportErrorKind?
         do {
@@ -296,7 +336,7 @@ struct TransportSocketTests {
     /// because this method is called from Rust.
     @Test("a handshake that fails reports on_error rather than throwing")
     func failedHandshakeReportsOnError() async throws {
-        let server = try LoopbackSocketServer()
+        let server = try await LoopbackSocketServer()
         let deadPort = server.port
         server.stop()
         // Give the listener a moment to actually release the port.
@@ -309,7 +349,7 @@ struct TransportSocketTests {
         let handle = try subject.openSocket(request: request, listener: listener)
         #expect(listener.history.isEmpty)
 
-        #expect(await settle { listener.history.count == 1 })
+        #expect(await listener.history(after: 1).count == 1)
         let history = listener.history
         #expect(history.first != .open)
         if case .failed = history.first {

@@ -22,7 +22,7 @@ import Testing
 // so a test that waited for it to finish would be exactly that bug.
 
 @MainActor
-@Suite("ShellEvents")
+@Suite("ShellEvents", .timeLimit(.minutes(1)))
 struct ShellEventsTests {
     /// Polls to a deadline. Never waits forever, and answers the condition one
     /// last time so an expiry and a slow pass cannot be confused. The default
@@ -63,6 +63,7 @@ struct ShellEventsTests {
     private final class CountingProbe: SecureStoreProbe {
         private let answer: SecureStoreAvailability
         private let calls = Mutex<Int>(0)
+        let changes = Changes()
 
         init(_ answer: SecureStoreAvailability) { self.answer = answer }
 
@@ -70,7 +71,16 @@ struct ShellEventsTests {
 
         func availability() -> SecureStoreAvailability {
             calls.withLock { $0 += 1 }
+            changes.changed()
             return answer
+        }
+
+        /// Awaits the first read. A full parallel run can keep the main actor,
+        /// where the handler runs, busy past any short deadline (#5484); the
+        /// suite's time limit bounds this.
+        func firstRead() async -> Int {
+            await changes.until { count >= 1 }
+            return count
         }
     }
 
@@ -165,7 +175,7 @@ struct ShellEventsTests {
         #expect(await waitUntil(0.3) { probe.count >= 1 } == false)
 
         shell.scenePhaseChanged(to: .active)
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
     }
 
     /// One hint, one re-read.
@@ -183,7 +193,7 @@ struct ShellEventsTests {
         defer { loop.cancel() }
 
         shell.emitter.emit(CoreEvent(.secureStoreLocked))
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
         // Long enough for a feedback loop to have run many times.
         #expect(await waitUntil(0.3) { probe.count > 1 } == false)
     }
@@ -211,7 +221,7 @@ struct ShellEventsTests {
         // lands, all four above have provably been consumed and ignored.
         shell.emitter.emit(CoreEvent(.secureStoreLocked))
 
-        #expect(await waitUntil { probe.count == 1 })
+        #expect(await probe.firstRead() == 1)
         #expect(shell.secureStore == .locked)
     }
 
