@@ -42,7 +42,7 @@ impl VaultSync {
             .queue_note_attachment(note_id, filename, mime_type, &bytes)
             .await?;
         match self
-            .upload_queued(&attachment_id, RetryPolicy::never())
+            .upload_queued(&attachment_id, RetryPolicy::never(), now_ms())
             .await
         {
             Err(error) if is_refused(&error) => {
@@ -121,9 +121,6 @@ pub(super) struct UploadedBlob {
     manifest_text: String,
     remote_size: i64,
     local_path: String,
-    /// The chunks' R2 addresses, for a dereference when nothing will
-    /// reference the upload after all.
-    pub(super) encrypted_hashes: Vec<String>,
 }
 
 impl UploadedBlob {
@@ -150,6 +147,10 @@ impl VaultSync {
     /// it after [`UploadedBlob::cache`]. A queued note upload's file is the
     /// only copy, so it is never rewritten here (#5510). `initiate` is the
     /// first call's retry ladder.
+    ///
+    /// `opened` gets the chunks' R2 addresses once the session is open and
+    /// before any chunk goes up, which is where the server starts counting
+    /// them (§14.8), so a caller can record them before they can leak.
     pub(super) async fn upload_blob(
         &self,
         attachment_id: String,
@@ -157,6 +158,7 @@ impl VaultSync {
         mime_type: &str,
         bytes: &[u8],
         initiate: RetryPolicy,
+        opened: impl AsyncFnOnce(Vec<String>) -> Result<(), SyncError>,
     ) -> Result<UploadedBlob, SyncError> {
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -185,6 +187,13 @@ impl VaultSync {
         )
         .await
         .map_err(attachment_error)?;
+        opened(
+            chunks
+                .iter()
+                .map(|chunk| chunk.reference.encrypted_hash.clone())
+                .collect(),
+        )
+        .await?;
 
         // A failure part way leaves a session the server will expire on its
         // own; cancelling is the tidy path and is not load-bearing.
@@ -259,10 +268,6 @@ impl VaultSync {
             mime_type: mime_type.to_owned(),
             manifest_text,
             remote_size,
-            encrypted_hashes: chunks
-                .iter()
-                .map(|chunk| chunk.reference.encrypted_hash.clone())
-                .collect(),
         })
     }
 

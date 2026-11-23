@@ -114,6 +114,160 @@ pub fn note_is_live(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
     .map_err(failed)
 }
 
+/// Whether the note's body was purged here and holds nothing since: another
+/// device's delete applied (§7.15), so no block shows the picture any more.
+/// A note deleted only here keeps its body until then, and its upload stays
+/// owed. A note this database does not hold is not judged purged.
+pub fn note_is_purged(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let local = crate::crdt::update_log::Namespace::Local.row_id(note_id);
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?1 AND deleted_at IS NOT NULL) \
+           AND EXISTS(SELECT 1 FROM yjs_doc_epochs WHERE doc_id = ?1 AND epoch > 0) \
+           AND NOT EXISTS(SELECT 1 FROM yjs_updates WHERE doc_id IN (?1, ?2)) \
+           AND NOT EXISTS(SELECT 1 FROM yjs_snapshots WHERE doc_id IN (?1, ?2))",
+        params![note_id, local],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
+/// How long a purged note's picture waits for a revive (§14.8.2) before its
+/// bytes and row go: desktop's `ASSET_RELEASE_GRACE_MS`
+/// (`apps/desktop/src/main/canvas/assets/asset-store.ts`), so this device
+/// keeps the picture as long as desktop keeps a deleted note's chunks.
+pub const PURGE_GRACE_MS: i64 = 30 * 24 * 60 * 60 * 1000;
+
+/// When a pulled delete purged the note of an owed upload, in `meta`. No
+/// migration: an older build ignores the key.
+const PURGED_KEY: &str = "attachment_upload.purged_at:";
+
+/// A pulled delete purged `note_id` here at `now_ms`: its owed uploads wait
+/// out [`PURGE_GRACE_MS`] from now. A later delete restarts the grace.
+pub fn mark_purged(conn: &Connection, note_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    conn.execute(
+        "INSERT INTO meta (key, value) \
+         SELECT ?1 || attachment_id, ?2 FROM note_attachment_uploads WHERE note_id = ?3 \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![PURGED_KEY, now_ms.to_string(), note_id],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Whether the grace of an upload whose note is purged has ended at `now_ms`.
+/// A purge with no recorded time (applied before this build) starts its grace
+/// now, so the picture is never dropped early.
+pub fn purge_grace_ended(
+    conn: &Connection,
+    attachment_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let key = format!("{PURGED_KEY}{attachment_id}");
+    let recorded = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![key],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    match recorded.and_then(|value| value.parse::<i64>().ok()) {
+        Some(purged_at) => Ok(now_ms - purged_at >= PURGE_GRACE_MS),
+        None => {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                params![key, now_ms.to_string()],
+            )
+            .map_err(failed)?;
+            Ok(false)
+        }
+    }
+}
+
+fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{PURGED_KEY}{attachment_id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Where an upload's chunk addresses wait in `meta` until a reference names
+/// them (#5533). No migration: `meta` is the baseline key-value table, and an
+/// older build ignores the key.
+const CHUNKS_KEY: &str = "attachment_upload.chunks:";
+
+/// Records the chunks an upload is about to put. The server counts each one
+/// from its put (§14.8), and a crash before the reference would otherwise
+/// leave them named by nothing on this device.
+pub fn record_chunks(
+    conn: &Connection,
+    attachment_id: &str,
+    hashes: &[String],
+) -> Result<(), StorageError> {
+    let value = serde_json::to_string(hashes).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![format!("{CHUNKS_KEY}{attachment_id}"), value],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
+/// Every recorded chunk set, by attachment id, or `only`'s. A set that will
+/// not parse is logged and skipped, so it never blocks another upload; its
+/// chunks cannot be named, so their quota stays held.
+pub fn recorded_chunks(
+    conn: &Connection,
+    only: Option<&str>,
+) -> Result<Vec<(String, Vec<String>)>, StorageError> {
+    let rows = conn
+        .prepare(
+            "SELECT substr(key, ?1), value FROM meta \
+             WHERE substr(key, 1, ?2) = ?3 AND (?4 IS NULL OR key = ?3 || ?4)",
+        )
+        .map_err(failed)?
+        .query_map(
+            params![
+                CHUNKS_KEY.len() as i64 + 1,
+                CHUNKS_KEY.len() as i64,
+                CHUNKS_KEY,
+                only
+            ],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(id, value)| match serde_json::from_str(&value) {
+            Ok(hashes) => Some((id, hashes)),
+            Err(error) => {
+                eprintln!(
+                    "memry-core: attachment uploads: the recorded chunks of {id} do not parse, skipped: {error}"
+                );
+                None
+            }
+        })
+        .collect())
+}
+
+/// The recorded chunks are referenced or released.
+pub fn forget_chunks(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
+    conn.execute(
+        "DELETE FROM meta WHERE key = ?1",
+        params![format!("{CHUNKS_KEY}{attachment_id}")],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// The upload is no longer owed: it landed, the server refused it for good,
 /// or the user detached the picture. The `attachments` row and the bytes stay.
 pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
@@ -122,11 +276,12 @@ pub fn clear(conn: &Connection, attachment_id: &str) -> Result<(), StorageError>
         params![attachment_id],
     )
     .map_err(failed)?;
-    Ok(())
+    forget_purge(conn, attachment_id)
 }
 
-/// Takes back an attach the server refused at once: no block was inserted, so
-/// nothing may keep the row.
+/// Takes back an attach the server refused at once, where no block was
+/// inserted, or a purged note's picture whose grace ended: nothing may keep
+/// the row.
 pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     let tx = crate::storage::nested_tx::begin(conn).map_err(failed)?;
     tx.execute(
@@ -139,5 +294,6 @@ pub fn discard(conn: &Connection, attachment_id: &str) -> Result<(), StorageErro
         params![attachment_id],
     )
     .map_err(failed)?;
+    forget_purge(&tx, attachment_id)?;
     tx.commit().map_err(failed)
 }
