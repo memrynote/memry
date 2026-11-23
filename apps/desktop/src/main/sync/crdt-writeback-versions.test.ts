@@ -75,7 +75,7 @@ vi.mock('../database/client', () => ({
 }))
 vi.mock('../database', () => ({ getIndexDatabase: () => h.indexDb, getDatabase: () => ({}) }))
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, purge: async () => {} })
+  getCrdtProvider: () => ({ getDoc: () => undefined })
 }))
 vi.mock('./crdt-external-feed', () => ({ feedExternalEditToCrdt: async () => false }))
 vi.mock('./crdt-feed', () => ({ replaceNoteTagsInCrdt: vi.fn() }))
@@ -94,8 +94,7 @@ vi.mock('../vault/file-ops', () => ({
   atomicWrite: async (absolute: string, content: string) => {
     h.files.set(absolute, content)
   },
-  ensureDirectory: vi.fn(),
-  deleteFile: vi.fn()
+  ensureDirectory: vi.fn()
 }))
 vi.mock('../lib/paths', async (importOriginal) => ({
   ...(await importOriginal<typeof PathsModule>()),
@@ -109,14 +108,11 @@ vi.mock('../vault/note-sync', () => ({
     const row = h.rows.get(input.id)
     if (row) h.rows.set(input.id, { ...row, contentHash: h.contentHash(input.fileContent) })
   },
-  deleteNoteFromCache: vi.fn()
+  refusesCaseTwinFile: () => false
 }))
 vi.mock('../vault/attachment-rename-reconcile', () => ({ reconcileRenamedAttachments: vi.fn() }))
 vi.mock('../projections', () => ({ flushProjectionEvents: vi.fn() }))
-vi.mock('../notes/note-date-reminders', () => ({
-  syncNoteDateReminders: vi.fn(),
-  clearNoteDateReminders: vi.fn()
-}))
+vi.mock('../notes/note-date-reminders', () => ({ syncNoteDateReminders: vi.fn() }))
 vi.mock('@memry/app-core/reminders', () => ({ createRemindersService: vi.fn() }))
 vi.mock('./local-mutations', () => ({
   enqueueLocalSyncCreate: vi.fn(),
@@ -299,6 +295,32 @@ describe('the version a write-back keeps of the bytes it replaces (#2646)', () =
     await pass(noteId, await docWith('The slow red fox'), 'remote')
 
     expect(h.files.get(fileOf(noteId))).toBe(after)
+  })
+
+  it.each([
+    [NOTE, '---\nid: x\n---\nThe slow red fox\n'],
+    [JOURNAL, "---\nid: x\ndate: '2026-01-03'\n---\nThe slow red fox\n"]
+  ])(
+    'keeps the body a pass would have written before taking an outside edit in (%s, #5605)',
+    async (noteId, wouldWrite) => {
+      writtenElsewhere(noteId, '---\nid: x\n---\nThe quick brown fox\n')
+      const outsideEdit = '---\nid: x\n---\nThe quick brown fox naps\n'
+      h.files.set(fileOf(noteId), outsideEdit)
+
+      await pass(noteId, await docWith('The slow red fox'), 'remote')
+
+      expect(h.files.get(fileOf(noteId))).toBe(outsideEdit)
+      expect(versionsKept(noteId)).toEqual([wouldWrite])
+    }
+  )
+
+  it('keeps no version before an outside edit whose body the doc already holds', async () => {
+    writtenElsewhere(NOTE, '---\nid: x\n---\nThe quick brown fox\n')
+    h.files.set(NOTE_FILE, '---\nid: x\n---\nThe slow red fox\n\n\n')
+
+    await pass(NOTE, await docWith('The slow red fox'), 'remote')
+
+    expect(versionsKept(NOTE)).toEqual([])
   })
 
   it('forgets the bytes it wrote for a note once the note is purged or the vault closes', async () => {

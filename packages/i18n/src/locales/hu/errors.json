@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nem sikerült alkalmazni a sablont",
     "appendBlocksFailed": "Nem sikerült áthelyezni a blokkot abba a jegyzetbe",
     "appendIntoCaseTwin": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek neve csak a kis- és nagybetűkben tér el. Nevezd át az egyiket, majd helyezd át újra a blokkot.",
+    "appendIntoBinary": "Blokkot csak jegyzetbe lehet áthelyezni, képbe, PDF-be, hang- vagy videofájlba nem.",
     "caseTwinMoveRefused": "Ez a jegyzet egy olyan jegyzettel osztozik a fájlján, amelynek a neve csak kis- és nagybetűkben tér el, ezért így nem helyezhető át. Nevezd át vagy helyezd át a másik jegyzetet, vagy töröld azt a példányt, amelyre nincs szükséged.",
     "exportPdfFailed": "Nem sikerült exportálni PDF-be",
     "exportHtmlFailed": "Nem sikerült exportálni HTML-be",

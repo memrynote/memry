@@ -12,6 +12,7 @@ import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { payloadCarriesOfflineClock } from '@memry/sync-client/offline-clock'
 import { rebindQueuedOfflineEdits } from './offline-queue-rebind'
 import { retireUndeletes } from './push-undelete-guard'
+import { retireStrayAttachmentRecords } from './push-stray-guard'
 import { withRetry, type RetryResult } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError, SyncServerError } from '../http-client'
@@ -252,11 +253,15 @@ export class PushCoordinator {
           }
 
           const dedupedItems = await this.prepareCanvasItems(
-            retireUndeletes(
+            retireStrayAttachmentRecords(
               this.ctx.deps.db,
-              this.ctx.deps.adapters,
               this.ctx.deps.queue,
-              this.deduplicateByItemId(items)
+              retireUndeletes(
+                this.ctx.deps.db,
+                this.ctx.deps.adapters,
+                this.ctx.deps.queue,
+                this.deduplicateByItemId(items)
+              )
             ),
             rejectedThisCycle
           )

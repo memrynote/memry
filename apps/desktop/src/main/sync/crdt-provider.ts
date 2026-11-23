@@ -48,6 +48,7 @@ import { openVaultFile } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
 import { recordBaseline } from './writeback-baseline'
+import { isBinaryNote } from './note-body-apply'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
 import { repairEmptyBlockIds } from './repair-block-ids'
@@ -239,12 +240,19 @@ interface ActiveDoc {
    * same function that writes the flag to both databases. A doc that is closed
    * when the toggle happens needs nothing: its next doOpen re-reads the row.
    *
-   * Every path that would send this doc's bytes to the server reads it: the
-   * update-queue branch of `onDocUpdate`, and the three snapshot pushes in
-   * `close`, `pushAllSnapshots` and `compactDoc`. `pushSnapshotForNote` is
-   * reached for notes with no open doc at all and re-reads the row instead.
+   * Every path that would send this doc's bytes to the server reads it, through
+   * `sendsBody`: the update-queue branch of `onDocUpdate`, and the three
+   * snapshot pushes in `close`, `pushAllSnapshots` and `compactDoc`.
+   * `pushSnapshotForNote` is reached for notes with no open doc at all and
+   * re-reads the row instead.
    */
   localOnly: boolean
+  /**
+   * A binary note's doc (`isBinaryNote`), cached at doOpen like `localOnly`.
+   * Its file is the blob, so nothing written to the doc is the note's body,
+   * and none of it may reach the server (#5607).
+   */
+  binary: boolean
   closing?: boolean
   /**
    * Set by `purge` before it awaits anything. `onDocUpdate` neither stores,
@@ -1174,6 +1182,7 @@ export class CrdtProvider {
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
       localOnly: this.isNoteLocalOnly(noteId),
+      binary: this.isBinary(noteId),
       awaitingMerge: !this.persistence && options?.skipSeed === true
     }
     this.docs.set(noteId, entry)
@@ -1238,6 +1247,24 @@ export class CrdtProvider {
     }
   }
 
+  /** `isBinaryNote`; false when the row cannot be read, as `isNoteLocalOnly` falls back. */
+  private isBinary(noteId: string): boolean {
+    try {
+      return isBinaryNote(getDatabase(), noteId)
+    } catch (err) {
+      log.warn('Could not read whether a note is binary; treating it as markdown', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
+  /** May this doc's bytes leave the device? Never a local-only note's, nor a binary note's. */
+  private sendsBody(entry: ActiveDoc): boolean {
+    return !entry.localOnly && !entry.binary
+  }
+
   /**
    * Point the open doc's cached flag at the value both databases now hold.
    *
@@ -1295,7 +1322,7 @@ export class CrdtProvider {
 
     const push = this.snapshotSender()
     const defer = options.deferSnapshot ? this.deferSnapshot : null
-    if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+    if (push && entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) {
       if (defer) {
         // Pushed later from the store, which flushDoc below brings up to date.
         defer(noteId)
@@ -1749,7 +1776,7 @@ export class CrdtProvider {
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
       if (signal?.aborted) break
-      if (entry.localOnly) continue
+      if (!this.sendsBody(entry)) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {
         const base = await this.readPushBase(noteId)
@@ -2218,11 +2245,13 @@ export class CrdtProvider {
     if (this.docs.get(noteId) === entry) this.endAwaitingMerge(noteId, entry)
   }
 
+  /** Null for a binary note, which gets no doc (#5607). */
   async initForNote(
     noteId: string,
     meta: { title?: string; date?: string },
     tags?: string[]
-  ): Promise<Y.Doc> {
+  ): Promise<Y.Doc | null> {
+    if (this.isBinary(noteId)) return null
     const doc = await this.open(noteId)
 
     doc.transact(() => {
@@ -2347,7 +2376,7 @@ export class CrdtProvider {
     // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
     // Recording a full-state row is skipped for the same reason the push is:
     // that row exists to get a body to the server.
-    if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
+    if (origin !== ORIGIN_NETWORK && this.sendsBody(entry)) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
       } else {
@@ -2617,7 +2646,7 @@ export class CrdtProvider {
 
     try {
       const push = this.snapshotSender()
-      if (push && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
+      if (push && entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) {
         // Credit only the bytes this payload actually covers. result.compacted
         // was encoded before the await, and applyIpcUpdate writes straight to
         // entry.doc with no compaction guard (only remote updates are

@@ -14,12 +14,7 @@ import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './status'
-import {
-  parseNote,
-  generateContentHash,
-  extractProperties,
-  extractTitleFromPath
-} from './frontmatter'
+import { parseNote, extractProperties, extractTitleFromPath } from './frontmatter'
 import { scanMarkdownFile } from './file-scan'
 import { enqueueIngestBackfill, clearIngestBackfill } from './ingest-backfill'
 import { generateNoteId } from '../lib/id'
@@ -71,12 +66,12 @@ import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { isWatchEnvironmentError, markExpectedCondition } from '../telemetry/expected-conditions'
-import { isWritebackIgnored } from '../sync/crdt-writeback'
+import { appWriteCheck, fileHoldsAppWrite } from './app-writes'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
-import { baselineBeforeFeed, ingestOutsideEdit } from '../sync/writeback-baseline'
-import { hasAnyVaultLock, isNoteLocked } from '../vault-locks/registry'
+import { baselineBeforeFeed, ingestOutsideEdit, isOutsideEdit } from '../sync/writeback-baseline'
+import { isNoteLocked } from '../vault-locks/registry'
 import { restoreLockedNoteFile } from '../vault-locks/service'
 import { protectLockedFile } from '../vault-locks/files'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
@@ -95,12 +90,12 @@ import {
   syncFolderConfigDelete,
   syncFolderConfigDiscovered
 } from '../notes/folder-config-effects'
-import { normalizeRelativePath, openVaultFile, readVaultFile } from '../lib/paths'
+import { normalizeRelativePath, openVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
 import { isVaultReachable } from './init'
 import { findVaultFiles } from './indexer'
-import { ATTACHMENTS_DIR } from './attachments'
+import { isInAttachmentStore } from './attachments'
 import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
@@ -289,7 +284,6 @@ export class VaultWatcher {
 
     // Capture exclude patterns for use in ignored function
     const userExcludePatterns = this.excludePatterns
-    const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
     this.watcher = chokidarWatch(watchPaths, {
@@ -302,10 +296,9 @@ export class VaultWatcher {
         // Always ignore hidden files and directories
         if (basename.startsWith('.')) return true
 
-        // Only the root attachments folder is the app's; nested ones hold notes (#3161).
-        if (filePath === attachmentsRoot || filePath.startsWith(attachmentsRoot + path.sep)) {
-          return true
-        }
+        // `filePath` has forward slashes on Windows, whatever `vaultPath` has.
+        const relativePath = normalizeRelativePath(path.relative(vaultPath, filePath))
+        if (isInAttachmentStore(relativePath)) return true
 
         // Check user-defined exclude patterns
         for (const pattern of userExcludePatterns) {
@@ -319,9 +312,7 @@ export class VaultWatcher {
         if (stats?.isFile()) {
           // Canvas documents are watched only so a removal outside the app
           // becomes a canvas delete (#2938); the note index never takes them.
-          const supported =
-            isSupportedPath(filePath) ||
-            isCanvasFilePath(normalizeRelativePath(path.relative(vaultPath, filePath)))
+          const supported = isSupportedPath(filePath) || isCanvasFilePath(relativePath)
           // Before `ready` this is the initial walk over files that were
           // already there; the open-time scan reports those. After it, an
           // unsupported file is one the user just put in the vault, and
@@ -650,16 +641,22 @@ export class VaultWatcher {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
 
-    if (isWritebackIgnored(absolutePath)) {
-      await this.checkLockedFileInWritebackWindow(absolutePath)
-      return
-    }
+    // The echo of the app's own write. Other bytes are an edit, however soon
+    // after an app write they land (#5605).
+    if (await fileHoldsAppWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType || isAppMoveEcho(this.vaultPath, relativePath)) {
+      // `ignored` keeps the attachment store out. An event that gets past it
+      // anyway (a change to a path with no row lands here) must not make a
+      // note of another note's attachment either (#5607).
+      if (
+        !fileType ||
+        isInAttachmentStore(relativePath) ||
+        isAppMoveEcho(this.vaultPath, relativePath)
+      ) {
         return
       }
 
@@ -1158,10 +1155,8 @@ export class VaultWatcher {
     if (!this.vaultPath) return
     const absolutePath = this.inDiskCase(eventPath)
 
-    if (isWritebackIgnored(absolutePath)) {
-      await this.checkLockedFileInWritebackWindow(absolutePath)
-      return
-    }
+    // The echo of the app's own write (see `handleFileAdd`).
+    if (await fileHoldsAppWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -1201,32 +1196,13 @@ export class VaultWatcher {
     }
   }
 
-  /**
-   * The app's own write-back is dropped for a few seconds after it lands, but
-   * an outside edit to a locked note inside that window still gets the locked
-   * text back (#2606). The write-back itself matches the locked baseline it
-   * just recorded, so it is left alone.
-   */
-  private async checkLockedFileInWritebackWindow(absolutePath: string): Promise<void> {
-    if (!this.vaultPath || !hasAnyVaultLock()) return
-    try {
-      const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
-      if (getFileType(getExtension(absolutePath)) !== 'markdown') return
-      const cached = getNoteCacheByPath(getIndexDatabase(), relativePath)
-      if (!cached || !isNoteLocked(cached.id, relativePath)) return
-      const content = await readVaultFile(this.vaultPath, relativePath)
-      if (content !== null) await restoreLockedNoteFile(cached.id, content)
-    } catch (err) {
-      this.onError?.(err instanceof Error ? err : new Error(String(err)))
-    }
-  }
-
   private async handleMarkdownFileChange(
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
     if (!this.vaultPath) return
+    const ownWrite = appWriteCheck(path.join(this.vaultPath, relativePath))
     const file = await openVaultFile(this.vaultPath, relativePath)
     if (file === null) return
     let content: string
@@ -1240,12 +1216,16 @@ export class VaultWatcher {
     if (!content) {
       return
     }
+    // Checked again on the bytes read here: a writer may have recorded them
+    // after the event's own check, and only `writeWithBaseline` writers leave
+    // a pending hash in the row for the check below.
+    if (ownWrite?.(content)) return
 
     const parsed = parseNote(content, relativePath, stats)
 
-    const contentHash = generateContentHash(content)
-
-    if (cached.contentHash === contentHash) {
+    // `cached` was read before the file. A write-back that recorded its bytes
+    // since, or is recording them, wrote no edit to feed back (#5605).
+    if (!isOutsideEdit(db, cached.id, getNoteCacheById(db, cached.id) ?? cached, content)) {
       return
     }
 

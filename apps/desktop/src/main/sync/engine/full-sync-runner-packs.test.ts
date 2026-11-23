@@ -161,7 +161,8 @@ const createHarness = (
           from: () => ({
             all: () => deviceKeys.map((key, i) => ({ deviceId: `device-${i}`, key })),
             // The pack-seed settle markers (pack-seeded-docs.ts): none listed.
-            where: () => ({ all: () => [] })
+            // And no note row yet, as on a fresh device before its pull.
+            where: () => ({ all: () => [], get: () => undefined })
           })
         })
       },
