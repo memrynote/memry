@@ -25,6 +25,8 @@ struct VaultSearchTests {
         let queries = Mutex([String]())
         let filters = Mutex([SearchFilter?]())
         let reindexes = Mutex(0)
+        /// Wakes the tests waiting on `queries`.
+        let changes = Changes()
         private let hits: [SearchResult]
         private let failure: (any Error)?
         let reindexFailure: Mutex<(any Error)?>
@@ -40,6 +42,7 @@ struct VaultSearchTests {
         func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
             queries.withLock { $0.append(query) }
             filters.withLock { $0.append(filter) }
+            changes.changed()
             if let failure { throw failure }
             return SearchGroups(notes: hits, journals: [], tasks: [], inbox: [])
         }
@@ -146,7 +149,7 @@ struct VaultSearchTests {
         index.schedule()
         await index.settle()
         #expect(index.completed == 1)
-        try await wait { search.queries.withLock { $0.count } >= 2 }
+        await search.changes.until { search.queries.withLock { $0.count } >= 2 }
         await model.settle()
 
         #expect(search.reindexes.withLock { $0 } == 1, "the burst is debounced into one reindex")
@@ -178,7 +181,7 @@ struct VaultSearchTests {
 
         let follower = Task { await model.followIndex() }
         defer { follower.cancel() }
-        try await wait { search.queries.withLock { $0.count } >= 2 }
+        await search.changes.until { search.queries.withLock { $0.count } >= 2 }
         await model.settle()
 
         #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the reindex never reached the query")
