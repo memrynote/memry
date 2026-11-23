@@ -16,7 +16,7 @@ const docsRelevantPatterns = [
 
 const ignoredRelevantPatterns = [
   /^apps\/desktop\/tests\//,
-  /(?:^|\/)(?:__fixtures__|fixtures|mocks)\//,
+  /(?:^|\/)(?:__fixtures__|__tests__|fixtures|mocks)\//,
   /(?:\.test|\.spec)\.[cm]?[jt]sx?$/,
   // Native/build shell tooling under scripts/ has no user-facing docs to update.
   /^apps\/(?:desktop|sync-server)\/scripts\/.+\.sh$/
