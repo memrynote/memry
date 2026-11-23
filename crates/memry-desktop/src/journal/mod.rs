@@ -6,8 +6,10 @@
 //! A day is a core journal record (its id, tags, instants and body) and a vault file at the
 //! path its date makes (`JournalDays::path_of`). Where the two meet:
 //! - a read takes the file of the day's row, and the config's path only for a day no row
-//!   names; the text, aliases and properties come from the file, as Electron reads them
-//!   (`readJournalEntry`), the id, tags and instants from the record (`findStoredJournalEntry`);
+//!   names; the text and aliases come from the file, as Electron reads them
+//!   (`readJournalEntry`), the id, tags, properties and instants from the record
+//!   (`findStoredJournalEntry`; a pulled property shows before the file has it, as iOS and the
+//!   CLI read it and as Electron's pull writes it to the file, #5509);
 //!   journal tags live on the record, never written back to the file (#3530, decided);
 //! - a create ([`write`]) writes the file Electron's `createJournalEntry` writes, in the order
 //!   13f's note create uses;
@@ -168,7 +170,14 @@ pub(crate) fn view_of(date: &str, raw: &str, stamp: Option<&DayStamp>) -> Journa
         .trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
         .to_owned();
     let instant = |ms: Option<i64>| ms.and_then(to_iso8601).unwrap_or_else(now_iso);
-    let properties = properties_of(&fields.frontmatter);
+    let properties = match stamp {
+        Some(stamp) => {
+            let mut held = stamp.properties.clone();
+            held.retain(|name, _| !is_reserved_day_key(name));
+            held
+        }
+        None => properties_of(&fields.frontmatter),
+    };
     JournalEntryView {
         id: stamp.map_or_else(|| format!("j{date}"), |stamp| stamp.id.clone()),
         date: date.to_owned(),

@@ -16,7 +16,7 @@ use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, merge_writ
 use memry_core::seams::secure_store::SecureStore;
 
 use super::journal::{Dated, dated_block, set_date};
-use super::place::{Found, Patch, Pulled, header_tags_of, patch};
+use super::place::{Found, Mark, Patch, Pulled, header_tags_of, patch};
 use crate::attachments;
 use crate::locks::Locks;
 use crate::vault::app_edit::OwnFiles;
@@ -205,6 +205,16 @@ impl Pass {
                 }
             },
         };
+        // The mark a pass that keeps the file gives back, so the pass after the wait (a body
+        // not pulled yet, #5509) still gives the file the pulled change. `None` once a failed
+        // move counted it.
+        let mut waiting = pulled.as_ref().map(|(mark, _)| mark.clone());
+        let wait = |waiting: Option<Mark>, outcome: Outcome| {
+            if let Some(mark) = waiting {
+                self.pulled.put_back(note_id, mark);
+            }
+            outcome
+        };
         let mut path = row.path.clone();
         let mut moved = false;
         if let Some((mark, record)) = &pulled {
@@ -218,7 +228,10 @@ impl Pass {
                 Ok(None) => {}
                 // The file and its row stay where they were, and the body is written there: a
                 // move that cannot happen never holds the file back from the note's edits.
-                Err(why) => self.pulled.retry(note_id, mark.clone(), &why),
+                Err(why) => {
+                    waiting = None;
+                    self.pulled.retry(note_id, mark.clone(), &why);
+                }
             }
         }
         let pulled = pulled.as_ref().map(|(_, record)| record);
@@ -229,7 +242,7 @@ impl Pass {
         let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
         let output = match output_over(made, note_id, &path, &file, patch.as_ref()) {
             Ok(output) => output,
-            Err(outcome) => return outcome,
+            Err(outcome) => return wait(waiting, outcome),
         };
         let patched = pulled.is_some()
             && split_frontmatter_block(&file.raw).block != split_frontmatter_block(&output).block;
@@ -270,9 +283,10 @@ impl Pass {
         let (version_kept, replaced_outside) = match kept {
             Ok(kept) => kept,
             Err(error) => {
-                return Outcome::Failed(format!(
-                    "no version of the replaced file was kept: {error}"
-                ));
+                return wait(
+                    waiting,
+                    Outcome::Failed(format!("no version of the replaced file was kept: {error}")),
+                );
             }
         };
         self.echo.will_write(&path, &hash);
@@ -291,8 +305,15 @@ impl Pass {
                 replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
             }
             Ok(_) => {}
-            Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
-            Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
+            Err(NoteFileError::ChangedUnderWrite) => {
+                return wait(waiting, Outcome::Kept(Keep::FileChanged));
+            }
+            Err(error) => {
+                return wait(
+                    waiting,
+                    Outcome::Failed(format!("the file was not written: {error}")),
+                );
+            }
         }
         // An attachment rename the body carries moves the file on this device too (#1714).
         attachments::reconcile_renames(&self.root, &self.vault, note_id, &file.raw, &output);

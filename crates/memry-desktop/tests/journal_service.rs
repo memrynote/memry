@@ -127,6 +127,29 @@ fn read(e: &Env, journal: &memry_core::api::journal::Journal) -> Option<JournalE
     entry(&e.session.current().unwrap(), journal, DAY).unwrap()
 }
 
+/// A property a pull set on the day's record shows before the file has it (#5509): the entry
+/// reads the record's properties, as iOS and the CLI do, and as Electron shows them once its
+/// pull writes them to the file (`journal-handler.ts` `buildJournalEntryWrite`).
+#[test]
+fn a_pulled_property_the_file_does_not_have_yet_is_in_the_entry() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    journal
+        .set_property(DAY.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+
+    let read = read(&e, &journal).expect("the day");
+    assert_eq!(
+        read.properties,
+        json!({ "mood": "calm", "rating": 4, "p3c": "c-val" })
+            .as_object()
+            .cloned()
+    );
+    assert!(!e.read(DAY_FILE).contains("p3c"), "the file is not written");
+}
+
 #[test]
 fn a_new_day_writes_the_file_electron_writes_then_seeds_its_body_from_it() {
     let (mut e, notes, store) = opened();
