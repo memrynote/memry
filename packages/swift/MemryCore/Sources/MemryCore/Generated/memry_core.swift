@@ -30601,10 +30601,11 @@ public enum CoreDiagnostic: Equatable, Hashable {
     case reconcileKept(kept: UInt32, remembered: UInt32, nonEnvelope: UInt32, cursor: Int64?
     )
     /**
-     * The refs pass pulled the `deleted` ids of the page at `cursor` and
-     * `unverified` of them got no verified delete, so they stay live.
+     * The refs pass pulled the `deleted` ids of the page at `cursor`:
+     * `unverified` of them got no verified delete, so they stay live, and
+     * `non_envelope` pulls got no envelope, so the feed re-read retries them.
      */
-    case refsDeletesUnverified(unverified: UInt32, cursor: Int64?
+    case refsDeletes(unverified: UInt32, nonEnvelope: UInt32, cursor: Int64?
     )
 
 
@@ -30639,7 +30640,7 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
         case 4: return .reconcileKept(kept: try FfiConverterUInt32.read(from: &buf), remembered: try FfiConverterUInt32.read(from: &buf), nonEnvelope: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
         )
         
-        case 5: return .refsDeletesUnverified(unverified: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
+        case 5: return .refsDeletes(unverified: try FfiConverterUInt32.read(from: &buf), nonEnvelope: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -30680,9 +30681,10 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
             FfiConverterOptionInt64.write(cursor, into: &buf)
             
         
-        case let .refsDeletesUnverified(unverified,cursor):
+        case let .refsDeletes(unverified,nonEnvelope,cursor):
             writeInt(&buf, Int32(5))
             FfiConverterUInt32.write(unverified, into: &buf)
+            FfiConverterUInt32.write(nonEnvelope, into: &buf)
             FfiConverterOptionInt64.write(cursor, into: &buf)
             
         }

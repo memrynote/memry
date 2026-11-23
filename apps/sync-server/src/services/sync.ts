@@ -1,5 +1,8 @@
 import { CRYPTO_VERSION, ED25519_PARAMS, XCHACHA20_PARAMS } from '@memry/contracts/crypto'
-import { deleteAttestationPayload, deleteClaimOf } from '@memry/contracts/delete-attestation'
+import {
+  acceptedDeleteAttestationPayloads,
+  deleteClaimOf
+} from '@memry/contracts/delete-attestation'
 import type {
   EncryptedItemPayload,
   NoteBodyChange,
@@ -207,18 +210,23 @@ const verifySignatureWithDevice = async (
  * §4.8.4), or null when the write attests nothing: not an attestable delete
  * (deleteClaimOf), or an old client that sent none. One that is present on an
  * attestable delete and does not verify under the signer's key is the item's
- * own SYNC_INVALID_SIGNATURE, like a bad item signature.
+ * own SYNC_INVALID_SIGNATURE, like a bad item signature. v2 must name the vault
+ * the push is routed to; v1, from builds before #5247, names none.
  */
 const verifyDeleteAttestation = async (
   device: Device,
-  item: PushItemInput
+  item: PushItemInput,
+  vaultId: string
 ): Promise<string | null> => {
   const claim = deleteClaimOf(item)
   if (!claim || item.deleteAttestation === undefined) return null
-  const message = encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION')
-  const valid = await verifyEd25519(device.auth_public_key, item.deleteAttestation, message).catch(
-    () => false
-  )
+  const signature = item.deleteAttestation
+  let valid = false
+  for (const payload of acceptedDeleteAttestationPayloads(claim, vaultId)) {
+    const message = encodeSignaturePayload(payload, 'DELETE_ATTESTATION')
+    valid = await verifyEd25519(device.auth_public_key, signature, message).catch(() => false)
+    if (valid) break
+  }
   if (!valid) {
     throw new AppError(
       ErrorCodes.SYNC_INVALID_SIGNATURE,
@@ -722,7 +730,7 @@ const processPushWave = async (
           devices.get(items[index].signerDeviceId) ?? null,
           items[index]
         )
-        const attestation = await verifyDeleteAttestation(device, items[index])
+        const attestation = await verifyDeleteAttestation(device, items[index], vaultId)
         if (attestation) attestations.set(index, attestation)
       } catch (error) {
         rejectWithError(index, error)

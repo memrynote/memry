@@ -31,11 +31,12 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::{DocumentRegistry, markdown_seed, update_log};
 use crate::domain::journal::{self, ITEM_TYPE};
+use crate::domain::journal_ops::metadata;
 use crate::domain::journal_rules::{
     JournalDayMergeAction, JournalDayMergeState, canonical_journal_id, plan_journal_day_apply,
     plan_journal_day_merge,
 };
-use crate::domain::{body_write, tasks};
+use crate::domain::{body_write, tags, tasks};
 use crate::storage::Db;
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
@@ -61,6 +62,13 @@ pub struct OwedMerge {
     /// The foreign record's `content`. A live foreign id whose doc holds no
     /// Yjs state gets its body built from it (§1.9.1).
     pub record_markdown: Option<String>,
+    /// The newest foreign record's `tags`. Added to `j<date>` unless
+    /// `deleted`: the deleting device added them already (§1.9.1 step 6).
+    pub record_tags: Vec<String>,
+    /// A foreign local holder's stored tags, which may never have been
+    /// pushed: always added. Both lists are empty in a merge an older build
+    /// recorded.
+    pub holder_tags: Vec<String>,
 }
 
 /// What one [`drain`] did.
@@ -268,6 +276,19 @@ fn settle(
     let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(update) = update {
         body_write::append_in(&tx, ITEM_TYPE, canonical, &update, now_ms).map_err(crdt_failed)?;
+    }
+    // The day's payload owns its tags; the fold carried only the body. A
+    // set union over the tags the day holds now, read in this transaction,
+    // so a re-run or a tag the day holds writes nothing (§1.9.1 step 6).
+    let record_tags = if merge.deleted {
+        &[][..]
+    } else {
+        &merge.record_tags[..]
+    };
+    if !(record_tags.is_empty() && merge.holder_tags.is_empty()) {
+        let mut union = tags::list(&tx, ITEM_TYPE, canonical)?;
+        union.extend(merge.holder_tags.iter().chain(record_tags).cloned());
+        metadata::set_tags(&tx, &merge.date, &union, device_id, now_ms)?;
     }
     // The foreign id's tombstone when it is live and clocked, then its body
     // and its debts, in one transaction.

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { listPacks } from './pack-list'
@@ -57,6 +57,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   harness.close()
 })
 
@@ -86,7 +87,10 @@ describe('listPacks', () => {
 
   it('issues one GET presigned URL per pack with minutes-scale expiry', async () => {
     seedPack({ id: 'p-1', minCursor: 1, maxCursor: 50 })
-    const before = Math.floor(Date.now() / 1000)
+    // #5247: a frozen clock one millisecond before a second boundary. The wall
+    // clock let listPacks read the next second and land at before + 301.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(1_700_000_000_999)
     const result = await listPacks(harness.db, USER, VAULT, {}, PRESIGN_CONFIG)
 
     const pack = result.packs[0]
@@ -94,8 +98,7 @@ describe('listPacks', () => {
       `https://test-account.r2.cloudflarestorage.com/test-bucket/${USER}/vaults/${VAULT}/packs/`
     )
     expect(pack.url).toContain('X-Amz-Signature=')
-    expect(pack.expiresAt).toBeGreaterThanOrEqual(before + 295)
-    expect(pack.expiresAt).toBeLessThanOrEqual(before + 300)
+    expect(pack.expiresAt).toBe(1_700_000_000 + 300)
   })
 
   it('omits urls entirely when the deployment has no presign config', async () => {

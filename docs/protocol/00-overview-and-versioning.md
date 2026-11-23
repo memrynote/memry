@@ -383,7 +383,7 @@ Four obligations bind every chapter.
    edit to this chapter — and a reviewer is then looking at the fact tables.
 
    ```
-   protocol-constants-sha256: 4f81f42f17ad22ac8aec4f062b56346bea07ea799dee02d71598877a70eb8e80
+   protocol-constants-sha256: 81f6dd44792cffdc5b311e354d662fb4999a2b63ab060f1e6554c86fadcb6b50
    ```
 
    To update it: change the constant, run

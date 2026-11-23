@@ -18,7 +18,10 @@
  *   insertion orders of one clock give one message.
  * - The ids are UTF-8 text, so a non-ASCII id pins the text-length head.
  * - Every `mutations[]` entry is one changed fact of a real claim, or the right
- *   claim under the wrong key. The only correct outcome is a refusal.
+ *   claim under the wrong key. The only correct outcome is a refusal. A v2
+ *   case verified in another vault, or read as v1, is one (#5247).
+ * - `cases` are v2, bound to `vaultId`. `v1Cases` are the bytes builds before
+ *   #5247 sign, which every verifier still accepts.
  */
 import {
   deleteAttestationMessage,
@@ -27,6 +30,7 @@ import {
 import { CBOR_FIELD_ORDER } from '../../src/cbor-ordering'
 import {
   DELETE_ATTESTATION_PURPOSE,
+  DELETE_ATTESTATION_PURPOSE_V1,
   deleteClaimOf,
   type DeleteClaim
 } from '../../src/delete-attestation'
@@ -42,6 +46,8 @@ import {
 import { meta } from './shared'
 
 const VAULT_KEY = '0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0'
+const VAULT_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+const OTHER_VAULT_ID = 'default'
 
 interface Spec {
   name: string
@@ -95,6 +101,8 @@ const SPECS: Spec[] = [
 interface Mutation {
   name: string
   claim: DeleteClaim
+  /** The vault the verifier checks it in; `null` reads it as v1. */
+  vaultId: string | null
   /** The key the verifier uses; the signer's unless the mutation swaps it. */
   signerPublicKeyB64: string
 }
@@ -103,9 +111,22 @@ const mutationsOf = (base: DeleteClaim, otherPublicKeyB64: string, publicKeyB64:
   const with_ = (name: string, changed: Partial<DeleteClaim>): Mutation => ({
     name,
     claim: { ...base, ...changed },
+    vaultId: VAULT_ID,
     signerPublicKeyB64: publicKeyB64
   })
   return [
+    {
+      name: 'the delete replayed into another vault (#5247)',
+      claim: base,
+      vaultId: OTHER_VAULT_ID,
+      signerPublicKeyB64: publicKeyB64
+    },
+    {
+      name: 'the v2 signature read as v1 (#5247)',
+      claim: base,
+      vaultId: null,
+      signerPublicKeyB64: publicKeyB64
+    },
     with_('the id is swapped', { id: 'task-2' }),
     with_('the type is swapped', { type: 'project' }),
     with_('deletedAt is raised by one second', { deletedAt: base.deletedAt + 1 }),
@@ -116,6 +137,7 @@ const mutationsOf = (base: DeleteClaim, otherPublicKeyB64: string, publicKeyB64:
     {
       name: 'the right claim under another device key',
       claim: base,
+      vaultId: VAULT_ID,
       signerPublicKeyB64: otherPublicKeyB64
     }
   ]
@@ -180,10 +202,11 @@ export async function buildDeleteAttestation(): Promise<Record<string, unknown>>
       signingSecretKey: signer.secretKey,
       signerDeviceId: signer.deviceId,
       clock: spec.claim.clock,
-      deletedAt: spec.claim.deletedAt
+      deletedAt: spec.claim.deletedAt,
+      vaultId: VAULT_ID
     })
     if (!pushItem.deleteAttestation) throw new Error(`${spec.name}: the writer did not attest`)
-    const message = deleteAttestationMessage(spec.claim)
+    const message = deleteAttestationMessage(spec.claim, VAULT_ID)
     // Proven verifiable before it is committed.
     const signature = crypto.fromBase64(pushItem.deleteAttestation)
     if (!crypto.verifyDetached(signature, message, signer.publicKey)) {
@@ -198,10 +221,27 @@ export async function buildDeleteAttestation(): Promise<Record<string, unknown>>
     })
   }
 
+  // v1: a build before #5247 signed no vault id. One case pins its bytes.
+  const v1Claim = SPECS[0].claim
+  const v1Message = deleteAttestationMessage(v1Claim, null)
+  const v1Signature = crypto.signDetached(v1Message, signer.secretKey)
+  if (!crypto.verifyDetached(v1Signature, v1Message, signer.publicKey)) {
+    throw new Error('v1: the attestation does not verify')
+  }
+  const v1Cases = [
+    {
+      name: 'v1 task delete from a build before #5247',
+      pins: `purpose ${DELETE_ATTESTATION_PURPOSE_V1} and no vaultId: verifiers in any vault accept it`,
+      claim: v1Claim,
+      messageHex: hex(v1Message),
+      signatureB64: b64(v1Signature)
+    }
+  ]
+
   const base = cases[0]
   const mutations = mutationsOf(SPECS[0].claim, b64(other.publicKey), publicKeyB64).map(
     (mutation) => {
-      const message = deleteAttestationMessage(mutation.claim)
+      const message = deleteAttestationMessage(mutation.claim, mutation.vaultId)
       const verifies = crypto.verifyDetached(
         crypto.fromBase64(base.signatureB64),
         message,
@@ -221,6 +261,8 @@ export async function buildDeleteAttestation(): Promise<Record<string, unknown>>
         'docs/protocol/04-record-envelope.md §4.8.4, docs/protocol/05-record-sync.md §5.12.3',
       writer: 'packages/sync-client/src/push/record-encrypt.ts',
       purpose: DELETE_ATTESTATION_PURPOSE,
+      purposeV1: DELETE_ATTESTATION_PURPOSE_V1,
+      vaultId: VAULT_ID,
       fieldOrder: CBOR_FIELD_ORDER.DELETE_ATTESTATION,
       signerSeedHex: FIXED.SEED_A,
       signerPublicKeyB64: publicKeyB64,
@@ -228,10 +270,11 @@ export async function buildDeleteAttestation(): Promise<Record<string, unknown>>
       otherSeedHex: FIXED.SEED_B,
       otherPublicKeyB64: b64(other.publicKey),
       notBound:
-        'vaultId and signerDeviceId are not signed: the verifier picks the key by signerDeviceId, so a swapped id fails',
+        'signerDeviceId is not signed: the verifier picks the key by signerDeviceId, so a swapped id fails',
       caseCount: cases.length
     }),
     cases,
+    v1Cases,
     mutations,
     claimOf
   }

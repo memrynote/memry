@@ -114,6 +114,8 @@ const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
 /** The turn (a pass or a frontmatter writer) running, or queued behind a running one, for each note. */
 const runningPasses = new Map<string, Promise<unknown>>()
+/** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
+const pendingRepairs = new Map<string, Array<() => Promise<void>>>()
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -328,13 +330,37 @@ export function takeWritebackTurn<T>(noteId: string, run: () => Promise<T>): Pro
   const turn = (runningPasses.get(noteId) ?? Promise.resolve())
     // The previous turn reported its own failure; this one runs regardless.
     .catch(() => {})
-    .then(run)
+    .then(async () => {
+      await runRepairs(noteId)
+      return run()
+    })
   runningPasses.set(noteId, turn)
   const clear = (): void => {
     if (runningPasses.get(noteId) === turn) runningPasses.delete(noteId)
   }
   turn.then(clear, clear)
   return turn
+}
+
+/**
+ * Runs `repair` as soon as the note's running turn ends, ahead of the turns
+ * already queued behind it. A writer that cannot wait for a turn (the sync
+ * apply's frontmatter rewrite) repairs what a pass that read the file before
+ * it wrote back, before a later local edit builds on that file (#5479).
+ * `repair` reports its own failure and must not wait on a pass of the note.
+ */
+export function repairAfterRunningTurn(noteId: string, repair: () => Promise<void>): void {
+  const queued = pendingRepairs.get(noteId)
+  if (queued) queued.push(repair)
+  else pendingRepairs.set(noteId, [repair])
+  void takeWritebackTurn(noteId, async () => {})
+}
+
+async function runRepairs(noteId: string): Promise<void> {
+  const queued = pendingRepairs.get(noteId)
+  if (!queued) return
+  pendingRepairs.delete(noteId)
+  for (const repair of queued) await repair()
 }
 
 /** Runs a pass and records what it cost, which is what paces the next one. */
@@ -506,6 +532,7 @@ export function resetWritebackState(): void {
   ignoredWrites.clear()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
+  pendingRepairs.clear()
   cancelGenerations.clear()
   debugState.clear()
   failingWritebacks.clear()

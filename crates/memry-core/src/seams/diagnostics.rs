@@ -116,10 +116,12 @@ pub enum CoreDiagnostic {
         non_envelope: u32,
         cursor: Option<i64>,
     },
-    /// The refs pass pulled the `deleted` ids of the page at `cursor` and
-    /// `unverified` of them got no verified delete, so they stay live.
-    RefsDeletesUnverified {
+    /// The refs pass pulled the `deleted` ids of the page at `cursor`:
+    /// `unverified` of them got no verified delete, so they stay live, and
+    /// `non_envelope` pulls got no envelope, so the feed re-read retries them.
+    RefsDeletes {
         unverified: u32,
+        non_envelope: u32,
         cursor: Option<i64>,
     },
 }

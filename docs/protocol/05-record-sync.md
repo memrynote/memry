@@ -1102,7 +1102,9 @@ A conforming client:
   cannot run and the delete would be unconditional.
 - MUST apply an admitted entry only if its `deleteAttestation` verifies under
   the signing key of `signerDeviceId` over the entry's **own** `type`, `id`,
-  `clock` and `deletedAt` (#2408). An entry with no attestation, half of one,
+  `clock` and `deletedAt` (#2408): v2 bound to the vault this device syncs, or
+  v1 (chapter 04 §4.8.4, #5247). A v2 attestation from another vault is a
+  signature that does not verify. An entry with no attestation, half of one,
   a signer that a completed device-key lookup does not name, or a signature
   that does not verify is refused,
   logged and never applied; the cursor still advances. Every marker shed before

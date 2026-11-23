@@ -75,6 +75,7 @@ describe('sync crypto batch', () => {
       vaultKey,
       signingSecretKey,
       'device-1',
+      null,
       {
         queue: { markFailed: mocks.markFailed } as never,
         extractPayloadMetadata: (payload) => ({
@@ -108,12 +109,19 @@ describe('sync crypto batch', () => {
       })
     }
 
-    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
-      workerBridge: workerBridge as never,
-      queue: { markFailed: mocks.markFailed } as never,
-      extractPayloadMetadata: () => ({ clock: { a: 1 } }),
-      resolvePushPayload: (item) => item.payload
-    })
+    const result = await encryptPushBatch(
+      [queueRow],
+      vaultKey,
+      signingSecretKey,
+      'device-1',
+      null,
+      {
+        workerBridge: workerBridge as never,
+        queue: { markFailed: mocks.markFailed } as never,
+        extractPayloadMetadata: () => ({ clock: { a: 1 } }),
+        resolvePushPayload: (item) => item.payload
+      }
+    )
 
     expect(workerBridge.encryptBatch).toHaveBeenCalledWith(
       [
@@ -125,7 +133,8 @@ describe('sync crypto batch', () => {
       ],
       vaultKey,
       signingSecretKey,
-      'device-1'
+      'device-1',
+      null
     )
     expect(mocks.markFailed).toHaveBeenCalledWith('queue-bad', 'Encrypt failed: boom')
     expect(mocks.logger.error).toHaveBeenCalledWith('Push: worker encrypt failed', {
@@ -152,13 +161,20 @@ describe('sync crypto batch', () => {
       })
     }
 
-    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
-      workerBridge: workerBridge as never,
-      queue: { markFailed: mocks.markFailed } as never,
-      extractPayloadMetadata: () => ({}),
-      resolvePushPayload: (item) => item.payload,
-      onItemTooLarge
-    })
+    const result = await encryptPushBatch(
+      [queueRow],
+      vaultKey,
+      signingSecretKey,
+      'device-1',
+      null,
+      {
+        workerBridge: workerBridge as never,
+        queue: { markFailed: mocks.markFailed } as never,
+        extractPayloadMetadata: () => ({}),
+        resolvePushPayload: (item) => item.payload,
+        onItemTooLarge
+      }
+    )
 
     expect(onItemTooLarge).toHaveBeenCalledWith({
       itemId: 'note-1',
@@ -182,7 +198,7 @@ describe('sync crypto batch', () => {
       })
     }
 
-    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', null, {
       workerBridge: workerBridge as never,
       queue: { markFailed: mocks.markFailed } as never,
       extractPayloadMetadata: () => ({}),
@@ -211,6 +227,7 @@ describe('sync crypto batch', () => {
       vaultKey,
       signingSecretKey,
       'device-1',
+      null,
       {
         queue: { markFailed: mocks.markFailed } as never,
         extractPayloadMetadata: () => ({}),
@@ -313,12 +330,19 @@ describe('sync crypto batch', () => {
         .mockRejectedValue(new Error('Unsupported worker message kind: encrypt-batch'))
     }
 
-    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
-      workerBridge: workerBridge as never,
-      queue: { markFailed: mocks.markFailed } as never,
-      extractPayloadMetadata: () => ({ clock: { a: 1 }, stateVector: 'sv' }),
-      resolvePushPayload: (item) => item.payload
-    })
+    const result = await encryptPushBatch(
+      [queueRow],
+      vaultKey,
+      signingSecretKey,
+      'device-1',
+      null,
+      {
+        workerBridge: workerBridge as never,
+        queue: { markFailed: mocks.markFailed } as never,
+        extractPayloadMetadata: () => ({ clock: { a: 1 }, stateVector: 'sv' }),
+        resolvePushPayload: (item) => item.payload
+      }
+    )
 
     expect(result).toEqual([{ queueId: 'queue-1', pushItem: { encrypted: true } }])
     expect(mocks.encryptItemForPush).toHaveBeenCalledWith(
@@ -338,7 +362,7 @@ describe('sync crypto batch', () => {
     }
     const resolvePushPayload = vi.fn((item: { payload: string }) => item.payload)
 
-    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', null, {
       workerBridge: workerBridge as never,
       queue: { markFailed: mocks.markFailed } as never,
       extractPayloadMetadata: () => ({}),
@@ -390,12 +414,19 @@ describe('sync crypto batch', () => {
   it('encrypts on the main thread without a worker request when the bridge is not running', async () => {
     const workerBridge = { isRunning: false, encryptBatch: vi.fn() }
 
-    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
-      workerBridge: workerBridge as never,
-      queue: { markFailed: mocks.markFailed } as never,
-      extractPayloadMetadata: () => ({}),
-      resolvePushPayload: (item) => item.payload
-    })
+    const result = await encryptPushBatch(
+      [queueRow],
+      vaultKey,
+      signingSecretKey,
+      'device-1',
+      null,
+      {
+        workerBridge: workerBridge as never,
+        queue: { markFailed: mocks.markFailed } as never,
+        extractPayloadMetadata: () => ({}),
+        resolvePushPayload: (item) => item.payload
+      }
+    )
 
     expect(workerBridge.encryptBatch).not.toHaveBeenCalled()
     expect(mocks.encryptItemForPush).toHaveBeenCalledTimes(1)

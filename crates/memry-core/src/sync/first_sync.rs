@@ -466,13 +466,12 @@ impl FirstSync {
                 false
             } else {
                 let pulled = self.pull.fetch_ids(&page.deleted).await?;
-                if pulled.uncovered > 0 {
-                    let unverified = CoreDiagnostic::count(pulled.uncovered);
+                if pulled.uncovered > 0 || pulled.dropped_pages > 0 {
                     eprintln!(
-                        "memry-core: first sync: {unverified} unverified delete(s) at {cursor:?}"
+                        "memry-core: first sync: page at cursor {cursor:?}: {} deleted id(s) had no verified delete, ignored; {} pull(s) got no envelope, the feed re-read retries them",
+                        pulled.uncovered, pulled.dropped_pages
                     );
-                    let cursor = CoreDiagnostic::cursor(cursor.as_deref());
-                    let event = CoreDiagnostic::RefsDeletesUnverified { unverified, cursor };
+                    let event = CoreDiagnostic::refs_deletes(&pulled, cursor.as_deref());
                     self.diagnostics.emit(event);
                 }
                 pulled.dropped_pages > 0

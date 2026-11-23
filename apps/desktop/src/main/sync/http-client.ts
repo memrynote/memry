@@ -9,6 +9,7 @@ import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { getBootstrapTokenHeaders } from './bootstrap-session-state'
+import { getSyncVaultId } from './sync-vault-id'
 import { admitCrdtPush, holdCrdtPushes } from './crdt-push-admission'
 import {
   SyncServerError,
@@ -46,24 +47,8 @@ export {
 } from '@memry/sync-client/http-errors'
 
 export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
-  try {
-    // The imports stay inside the call: hoisting them to module scope would
-    // pull ../database in at import time, which is exactly the eagerness the
-    // lazy resolution in this file exists to avoid. They resolve from the
-    // module registry after the first call.
-    const [{ getDatabase }, { getOrCreateVaultUuid }] = await Promise.all([
-      import('../database'),
-      import('../agent/storage/vault-id')
-    ])
-    // The SQLite read this used to repeat per authenticated request is now
-    // cached inside getOrCreateVaultUuid, keyed on the same DataDb handle —
-    // one mechanism for all eleven call sites, one invalidation hook
-    // (resetVaultUuidCache) instead of a second cache to keep in step here.
-    const vaultId = getOrCreateVaultUuid(getDatabase())
-    return vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
-  } catch {
-    return {}
-  }
+  const vaultId = await getSyncVaultId()
+  return vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
 }
 
 interface ServerErrorResponse {

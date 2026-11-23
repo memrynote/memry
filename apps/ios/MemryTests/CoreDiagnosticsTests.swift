@@ -72,19 +72,19 @@ struct CoreDiagnosticsTests {
     }
 
     /// #5247: what first sync kept live, which stderr never showed on iOS.
-    @Test("kept stale rows and unverified deletes report their counts and the cursor when known")
+    @Test("kept stale rows and open refs deletes report their counts and the cursor when known")
     func keptRows() {
         let lines = Lines()
         let sink = lines.sink()
         sink.record(event: .reconcileKept(kept: 3, remembered: 1, nonEnvelope: 0, cursor: 42))
         sink.record(event: .reconcileKept(kept: 1, remembered: 0, nonEnvelope: 1, cursor: nil))
-        sink.record(event: .refsDeletesUnverified(unverified: 2, cursor: 10))
-        sink.record(event: .refsDeletesUnverified(unverified: 1, cursor: nil))
+        sink.record(event: .refsDeletes(unverified: 2, nonEnvelope: 0, cursor: 10))
+        sink.record(event: .refsDeletes(unverified: 0, nonEnvelope: 1, cursor: nil))
         #expect(lines.texts == [
             "core reconcile kept stale rows [kept=3 remembered=1 non_envelope=0 cursor=42]",
             "core reconcile kept stale rows [kept=1 remembered=0 non_envelope=1]",
-            "core refs deletes unverified [unverified=2 cursor=10]",
-            "core refs deletes unverified [unverified=1]"
+            "core refs deletes left open [unverified=2 non_envelope=0 cursor=10]",
+            "core refs deletes left open [unverified=0 non_envelope=1]"
         ])
     }
 }

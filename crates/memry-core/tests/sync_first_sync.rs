@@ -813,8 +813,9 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
         sink.0
             .lock()
             .unwrap()
-            .contains(&CoreDiagnostic::RefsDeletesUnverified {
+            .contains(&CoreDiagnostic::RefsDeletes {
                 unverified: 1,
+                non_envelope: 0,
                 cursor: Some(10),
             }),
         "{:?}",
@@ -955,6 +956,98 @@ async fn a_forged_delete_for_a_deleted_id_leaves_the_note_live() {
         "a refused delete deletes neither the sync row nor the note"
     );
     assert_eq!(text_of(&db, NOTE), "Still here");
+}
+
+/// §5.14 (#5411 review): the pull of a refs page's `deleted` ids answered with
+/// no pull envelope reopens the cursor-skip repair, so the next pull re-reads
+/// the feed and retries those deletes. The page's refs are still recorded and
+/// pulled, and the bootstrap makes no extra request for the fault.
+#[tokio::test]
+async fn a_refs_pass_delete_pull_without_an_envelope_reopens_the_feed_re_read() {
+    const OTHER: &str = "def456abc789";
+    const REPAIR: &str = "sync.cursor_skip_repair";
+    let db = scratch_db("delete-non-envelope");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[41u8; 32]).expect("keypair");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, 'done')",
+            [REPAIR],
+        )
+        .map(|_| ())
+        .map_err(|error| memry_core::api::errors::StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("the finished repair");
+
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(OTHER, "note")], &[NOTE], 10, false)),
+        response(200, &json!({"error": "upstream"}).to_string()),
+        response(
+            200,
+            &json!({"items": [record_envelope(OTHER, "note")]}).to_string(),
+        ),
+        response(
+            200,
+            &json!({"notes": {OTHER: {"updates": [], "hasMore": false, "floor": 0}},
+                "snapshotMeta": {}})
+            .to_string(),
+        ),
+    ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
+    let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(report.refs_recorded, 1);
+    assert_eq!(report.metadata_applied, 1, "the page's ref is not skipped");
+    // #5247: the fault reaches the shell's log as a non-envelope pull, not as
+    // an unverified id; a fresh device has no cursor yet.
+    let refs_deletes = CoreDiagnostic::RefsDeletes {
+        unverified: 0,
+        non_envelope: 1,
+        cursor: None,
+    };
+    assert!(sink.0.lock().unwrap().contains(&refs_deletes));
+    assert_eq!(
+        transport.calls_to("/sync/pull").len(),
+        2,
+        "one pull for the deleted id and one for the ref, no retry"
+    );
+    let (repair, other) = db
+        .call_blocking(|conn| {
+            Ok((
+                read_meta(conn, REPAIR)?,
+                sync_items::load(conn, "note", OTHER)?.map(|row| row.deleted_at),
+            ))
+        })
+        .expect("the state");
+    assert_eq!(repair, None, "the feed re-read is reopened");
+    assert_eq!(other, Some(None), "the pulled ref is live");
+}
+
+/// §5.12.1, §5.14 (#5411 review): an id whose pull got no envelope is a server
+/// fault, counted in `dropped_pages`, and never as an id the server answered
+/// without a verified delete.
+#[tokio::test]
+async fn ids_in_a_pull_without_an_envelope_are_dropped_and_not_uncovered() {
+    let db = scratch_db("fetch-non-envelope");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({"error": "upstream"}).to_string(),
+    )]);
+    let pull = PullLoop::new(
+        http(transport),
+        db,
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+    );
+    let report = pull.fetch_ids(&[NOTE.to_owned()]).await.expect("the pull");
+    assert_eq!(report.dropped_pages, 1);
+    assert_eq!(report.uncovered, 0);
 }
 
 /// #2299 review A-5: a coversThrough push moves the server's watermark, so a
