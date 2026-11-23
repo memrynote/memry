@@ -89,8 +89,8 @@ The Rust core meets rule 5 with a refused-items ledger (#4453), the equal of
 desktop's below. A record its type's schema refuses is not applied, its local
 row is left as it is, and the pull records it by type, id and core build in
 `sync_refused_items`
-(`crates/memry-core/src/storage/migrations/data/0030_sync_refused_items.sql:12-18`,
-`crates/memry-core/src/sync/pull/apply_step.rs:54`). The core build is
+(`crates/memry-core/src/storage/migrations/data/0030_sync_refused_items.sql:14-20`,
+`crates/memry-core/src/sync/pull/apply_step.rs:72`). The core build is
 `<package version>+<tree hash>`, where the tree hash is git's hash of
 `crates/memry-core` at HEAD, stamped at compile time
 (`crates/memry-core/build.rs:40-58`,
@@ -99,26 +99,30 @@ the `x-memry-client` header: the refusal is the core's decision, and iOS reports
 one marketing version across its builds. The first page of every run refetches
 by id each `(type, id)` another core build recorded and nobody tried within the
 last hour, desktop's `CORRUPT_ITEM_COOLDOWN_MS`, and stamps it as tried
-(`crates/memry-core/src/sync/pull.rs:357-358`,
+(`crates/memry-core/src/sync/pull.rs:376-377`,
 `crates/memry-core/src/sync/refused_items.rs:98-124`). It reads only the
-requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:81-129`). A
+requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:177-180`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
-(`crates/memry-core/src/sync/pull/apply_step.rs:67-71`). Three things resolve
+(`crates/memry-core/src/sync/pull/apply_step.rs:118-122`). Three things resolve
 an entry: an apply, an expiry or a clock decision of the record
-(`crates/memry-core/src/sync/apply.rs:202`,
+(`crates/memry-core/src/sync/apply.rs:243`,
 `crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed or
 bare (`apply.rs:215`, `:235`), and a refetch that did not return it
-(`crates/memry-core/src/sync/pull/apply_step.rs:120-127`). A pair the server
+(`crates/memry-core/src/sync/pull/apply_step.rs:231-238`). A pair the server
 lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
 it as gone where desktop keeps it as `blob_missing` and refetches it on the
 cooldown. Nothing is lost by that: the server has no payload to send, the local
 row stays, and only an accepted push of the item refills the server row, at a
 new cursor that the feed delivers, where a refusal is ledgered again. A
 returned record that does not decode keeps its entry under the older build and
-the cooldown, and its local row is not flagged corrupt
-(`crates/memry-core/src/sync/pull/apply_step.rs:107-114`). One that decodes but
+the cooldown (`crates/memry-core/src/sync/pull/apply_step.rs:183-198`). Its
+local row is not flagged corrupt, except in the hardened pull of desktop's
+`SyncDriver` (`crates/memry-core/src/sync/pull.rs:166-169`), which flags it on
+a bad signature or when the corrupt ledger also asked for the pair
+(`apply_step.rs:187-192`, `crates/memry-core/src/sync/pull/items.rs:206-220`).
+One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
-row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:115`).
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:228`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -269,7 +273,7 @@ the pull ledgers it as above
 `crates/memry-core/src/domain/home_page/merge.rs:63-69`,
 `crates/memry-core/src/domain/agent_conversation/merge.rs:66-68`,
 `crates/memry-core/src/domain/agent_message/merge.rs:55-57`,
-`crates/memry-core/src/sync/apply.rs:236`). Electron records the same item in
+`crates/memry-core/src/sync/apply.rs:243`). Electron records the same item in
 its schema-invalid ledger
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
 fetches it again by id once another app version runs
@@ -337,7 +341,7 @@ A conforming client MUST accept both shapes and MUST emit the string shape.
 - `tag_definition` ids are **tag names**;
 - `folder_config` ids are **folder paths**;
 - `settings` has exactly **one** item, `synced_settings`
-  (`packages/sync-client/src/settings-sync.ts:171`,
+  (`packages/sync-client/src/settings-sync.ts:185`,
   `packages/sync-client/src/settings-sync-keys.ts:12`).
 
 **The sync bookkeeping key MUST therefore be `(type, id)` and never `id`
