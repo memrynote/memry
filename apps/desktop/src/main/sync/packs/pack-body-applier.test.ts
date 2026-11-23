@@ -6,7 +6,9 @@ import sodium, {
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { openCrdtBatch } from '../crdt-batch-open'
 import { decryptCrdtUpdate, encryptCrdtUpdate } from '../crdt-encrypt'
+import type { CrdtPayloadForDecrypt } from '@memry/sync-client/worker-protocol'
 import type { PackIndexEntry } from '@memry/contracts/pack-format'
 
 import type { DocumentPlan, PackedUpdate } from './body-plan'
@@ -403,47 +405,24 @@ describe('pack body applier', () => {
     /** Items the fake worker ran `decryptCrdtUpdate` on: one Ed25519 verify each. */
     let workerAttempts = 0
 
-    /** `worker.ts` handleDecryptCrdtBatch: per-item verdicts in-band. */
+    /** The worker's real `decrypt-crdt-batch` walk, minus the thread hop. */
     const fakeWorker = () => ({
       isRunning: true,
       decryptCrdtBatch: vi.fn(
         async (
-          items: Array<{
-            index: number
-            noteId: string
-            data?: Uint8Array
-            signerDeviceId: string
-          }>,
+          items: CrdtPayloadForDecrypt[],
           key: Uint8Array,
           signers: Record<string, string>,
           options?: { stopAtFirstOpen?: boolean }
         ) => {
-          const results: Array<{ index: number; update: Uint8Array }> = []
-          const failures: Array<{
-            index: number
-            noteId: string
-            error: string
-            isSignatureError: boolean
-          }> = []
-          for (const item of items) {
-            workerAttempts++
-            try {
-              const publicKey = new Uint8Array(Buffer.from(signers[item.signerDeviceId], 'base64'))
-              results.push({
-                index: item.index,
-                update: decryptCrdtUpdate(item.data!, key, item.noteId, publicKey)
-              })
-              if (options?.stopAtFirstOpen) break
-            } catch (error) {
-              failures.push({
-                index: item.index,
-                noteId: item.noteId,
-                error: String(error),
-                isSignatureError: true
-              })
-            }
-          }
-          return { results, failures }
+          const out = openCrdtBatch({
+            items,
+            vaultKey: key,
+            signerKeys: signers,
+            stopAtFirstOpen: options?.stopAtFirstOpen
+          })
+          workerAttempts += out.results.length + out.failures.length
+          return out
         }
       )
     })
