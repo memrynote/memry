@@ -1,8 +1,11 @@
 //! The search reindex in batches that let go of the `data.db` writer between them (#5417).
 
+use std::cell::OnceCell;
+
 use super::Search;
 use crate::api::errors::StorageError;
 use crate::domain::search::{self, LinkChanges};
+use crate::storage::nested_tx;
 
 impl Search {
     /// [`Search::reindex`] that `stop` can end between two rows (`false`): the batches it
@@ -22,6 +25,14 @@ impl Search {
     /// time ([`search::ReindexPass`]), so a writer waiting on `data.db` waits one batch. A
     /// batch that ends with writers waiting rests as long as it held the writer, so they get
     /// at least half of it while a pass runs.
+    ///
+    /// The batch writes `index.db` into a transaction opened here and commits `data.db`; that
+    /// transaction commits after the `data.db` writer is let go (#5468), so a save or the vault
+    /// write-back never waits on the search-index commit. The lock order stays `data.db` then
+    /// `index.db`: the index writer is taken under the data writer and only outlives it. A crash
+    /// between the two commits leaves `data.db` ahead of an index whose resume point and
+    /// watermarks are unmoved, so the next pass indexes that batch again from `data.db`.
+    /// A failed index commit ends the pass, as a failed batch does.
     pub(super) fn reindex_in_batches(
         &self,
         stop: &dyn Fn() -> bool,
@@ -35,20 +46,35 @@ impl Search {
             loop {
                 // Settling the changed names is a short take; reading every name is not, so
                 // it runs on a reader.
+                let index_writer = OnceCell::new();
                 let batch = self
                     .data
                     .call_blocking(|data| pass.settle_names(data))
                     .and_then(|()| self.data.read_blocking(|data| pass.load_names(data)))
                     .and_then(|()| {
-                        self.data.call_blocking(|data| {
+                        let (step, index_tx, rest) = self.data.call_blocking(|data| {
                             let held = std::time::Instant::now();
-                            let step = self.index.call_blocking(|index| {
-                                pass.batch(data, index, super::now_ms(), stop)
-                            })?;
+                            let _ = index_writer.set(self.index.hold_writer()?);
+                            let index = index_writer.get().expect("set above");
+                            let index_tx = nested_tx::begin(index).map_err(search::failed)?;
+                            let step = pass.batch(data, &index_tx, super::now_ms(), stop)?;
+                            // Counted under the writer: once it is let go, a waiter takes it.
                             let rest = (self.data.writers_waiting() > 0).then(|| held.elapsed());
-                            Ok((step, rest))
-                        })
+                            Ok((step, index_tx, rest))
+                        })?;
+                        match index_tx.commit().map_err(search::failed) {
+                            Ok(()) => Ok((step, rest)),
+                            Err(error) => {
+                                if let search::ReindexStep::Done(done) = step {
+                                    links.extend(done.links);
+                                }
+                                Err(error)
+                            }
+                        }
                     });
+                // Let go of index.db before the rest: a save takes data.db then index.db, and
+                // would wait on this writer while holding data.db (REVIEW-5503).
+                drop(index_writer);
                 let (step, rest) = match batch {
                     Ok(batch) => batch,
                     Err(error) => {
