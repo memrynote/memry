@@ -31,6 +31,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 
+use crate::seams::diagnostics::CoreDiagnostic;
 use crate::storage::nested_tx;
 
 use super::super::apply::{self, Pending};
@@ -119,6 +120,12 @@ impl FirstSync {
             eprintln!(
                 "memry-core: first sync reconcile: kept {kept} stale id(s) at cursor {cursor:?} with no verified delete or attested marker, {remembered} of them against a remembered unattested marker ({dropped_pages} non-envelope answer(s))"
             );
+            self.diagnostics.emit(CoreDiagnostic::ReconcileKept {
+                kept: CoreDiagnostic::count(kept),
+                remembered: CoreDiagnostic::count(remembered),
+                non_envelope: dropped_pages,
+                cursor: CoreDiagnostic::cursor(cursor.as_deref()),
+            });
         }
         self.db
             .call(|conn| write_meta(conn, META_FIRST_SYNC_RECONCILED, "1"))

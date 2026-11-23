@@ -26,6 +26,8 @@ use tokio::time::Instant;
 use crate::protocol::http::{HttpClient, RequestObserver};
 use crate::seams::diagnostics::{CoreDiagnostic, DiagnosticPhase, DiagnosticsSink, RequestStats};
 
+use super::pull_report::PullReport;
+
 /// The longest a running phase stays quiet.
 pub const INTERIM_INTERVAL: Duration = Duration::from_secs(120);
 
@@ -193,5 +195,16 @@ impl RequestObserver for RunDiagnostics {
         let Some(window) = guard.as_mut() else { return };
         window.retries += 1;
         window.rate_limit_wait_ms += wait_ms;
+    }
+}
+
+impl CoreDiagnostic {
+    /// What the refs pass's pull of a page's `deleted` ids left open.
+    pub(crate) fn refs_deletes(pulled: &PullReport, cursor: Option<&str>) -> Self {
+        Self::RefsDeletes {
+            unverified: Self::count(pulled.uncovered),
+            non_envelope: pulled.dropped_pages,
+            cursor: Self::cursor(cursor),
+        }
     }
 }
