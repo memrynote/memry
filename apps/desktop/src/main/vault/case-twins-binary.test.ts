@@ -269,7 +269,7 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
-    recordDownloadedFileSize(id, attachmentId, bytes.length)
+    recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
     return at
   }
 

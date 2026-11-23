@@ -527,10 +527,10 @@ export function registerAttachmentHandlers(): void {
         throw err
       }
       recordFile(noteId, diskPath, result.attachmentId)
-      return { attachmentId: result.attachmentId }
+      return { attachmentId: result.attachmentId, sha256: result.manifest.checksum }
     },
     () => getDatabase(),
-    (noteId, attachmentId) => recordUploadedAttachment(noteId, attachmentId)
+    (noteId, uploaded) => recordUploadedAttachment(noteId, uploaded.attachmentId, uploaded.sha256)
   )
 
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
@@ -563,7 +563,7 @@ export function registerAttachmentHandlers(): void {
         const result = await upload
         if (!result) return
         if (isDatabaseInitialized()) {
-          recordUploadedAttachment(noteId, result.attachmentId)
+          recordUploadedAttachment(noteId, result.attachmentId, result.manifest.checksum)
           recordFile(noteId, diskPath, result.attachmentId)
           // Outbox cleanup must never turn a successful upload into a failure.
           try {
@@ -726,7 +726,7 @@ export function registerAttachmentHandlers(): void {
           if (!intoDir) {
             const stats = await fs.promises.stat(result.filePath)
             if (isDatabaseInitialized()) {
-              recordDownloadedFileSize(noteId, attachmentId, stats.size)
+              recordDownloadedFileSize(noteId, attachmentId, stats.size, result.manifest.checksum)
             }
             landed?.()
           }

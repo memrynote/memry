@@ -127,7 +127,11 @@ vi.mock('@memry/sync-client/attachment-events', () => ({
 
 vi.mock('@memry/sync-client/attachment-download-state', async (importOriginal) => {
   const actual = await importOriginal<typeof AttachmentDownloadStateModule>()
-  return { ...actual, markDownloadSucceeded: vi.fn(actual.markDownloadSucceeded) }
+  return {
+    ...actual,
+    markDownloadSucceeded: vi.fn(actual.markDownloadSucceeded),
+    clearAttachmentDownloadFailure: vi.fn()
+  }
 })
 
 vi.mock('../sync/crdt-network-update', async () => await import('../sync/crdt-writeback'))
@@ -249,7 +253,10 @@ import {
 } from '../sync/note-attachment-metadata'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
-import { markDownloadSucceeded } from '@memry/sync-client/attachment-download-state'
+import {
+  clearAttachmentDownloadFailure,
+  markDownloadSucceeded
+} from '@memry/sync-client/attachment-download-state'
 import {
   AttachmentSyncService,
   AttachmentTooLargeError,
@@ -268,7 +275,7 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.service.uploadAttachment.mockReset()
     attachmentMocks.service.downloadAttachment
       .mockReset()
-      .mockResolvedValue({ filePath: '/tmp/file.pdf' })
+      .mockResolvedValue({ filePath: '/tmp/file.pdf', manifest: { checksum: 'sha-down' } })
     attachmentMocks.service.getUploadProgress.mockReset()
     attachmentMocks.service.getDownloadProgress.mockReset()
     attachmentMocks.service.setProgressCallback.mockReset()
@@ -276,9 +283,11 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.existsSync.mockReset().mockReturnValue(true)
     vi.mocked(clearUpload).mockClear()
     vi.mocked(markUploadFailed).mockClear()
-    attachmentMocks.queue.enqueue
-      .mockReset()
-      .mockResolvedValue({ attachmentId: 'attachment-1', sessionId: 'session-1' })
+    attachmentMocks.queue.enqueue.mockReset().mockResolvedValue({
+      attachmentId: 'attachment-1',
+      sessionId: 'session-1',
+      manifest: { checksum: 'sha-up' }
+    })
     attachmentMocks.queue.dispose.mockReset()
     vi.mocked(UploadQueue).mockClear()
     // A sync runtime is up unless a test says otherwise; saves upload only then.
@@ -500,7 +509,11 @@ describe('sync-attachment-handlers', () => {
     attachmentMocks.queue.enqueue.mockImplementation(
       async (_noteId: string, _filePath: string, cb: (progress: TransferProgress) => void) => {
         onProgress = cb
-        return { attachmentId: 'attachment-1', sessionId: 'session-1' }
+        return {
+          attachmentId: 'attachment-1',
+          sessionId: 'session-1',
+          manifest: { checksum: 'sha-up' }
+        }
       }
     )
     registerAttachmentHandlers()
@@ -642,7 +655,8 @@ describe('sync-attachment-handlers', () => {
 
     // #when the outbox drains one queued attachment
     await expect(uploader!('note-1', '/vault/attachments/outbox.pdf')).resolves.toEqual({
-      attachmentId: 'attachment-1'
+      attachmentId: 'attachment-1',
+      sha256: 'sha-up'
     })
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledWith(
       'note-1',
@@ -785,7 +799,8 @@ describe('sync-attachment-handlers', () => {
 
     const uploader = outboxUploaders.findLast(Boolean)!
     await expect(uploader('note-1', '/vault/attachments/signed-out.png')).resolves.toEqual({
-      attachmentId: 'attachment-1'
+      attachmentId: 'attachment-1',
+      sha256: 'sha-up'
     })
     expect(attachmentMocks.queue.enqueue).toHaveBeenCalledTimes(1)
   })
@@ -1020,7 +1035,7 @@ describe('sync-attachment-handlers', () => {
     }) => void
     onSaved({ noteId: 'note-1', diskPath: '/vault/attachments/saved.pdf' })
     await vi.waitFor(() =>
-      expect(recordUploadedAttachment).toHaveBeenCalledWith('note-1', 'attachment-1')
+      expect(recordUploadedAttachment).toHaveBeenCalledWith('note-1', 'attachment-1', 'sha-up')
     )
 
     const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
@@ -1056,7 +1071,12 @@ describe('sync-attachment-handlers', () => {
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/Other/file.pdf')
     await vi.waitFor(() =>
-      expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 'attachment-1', 1234)
+      expect(recordDownloadedFileSize).toHaveBeenCalledWith(
+        'note-1',
+        'attachment-1',
+        1234,
+        'sha-down'
+      )
     )
   })
 
@@ -1361,6 +1381,10 @@ describe('sync-attachment-handlers', () => {
       attachmentMocks.sent.filter((e) => e.channel === SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED)
     ).toEqual([])
     expect(recordDownloadedFileSize).not.toHaveBeenCalled()
+    // The owed row of the attachment the note no longer names is cleared.
+    expect(vi.mocked(clearAttachmentDownloadFailure).mock.calls.map(([, ...ids]) => ids)).toEqual([
+      ['note-1', 'attachment-1']
+    ])
   })
 
   // ==========================================================================

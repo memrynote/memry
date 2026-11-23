@@ -5,12 +5,24 @@ import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
-import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
+import {
+  clearCaseTwinForeignBytes,
+  hashFile,
+  holdsCaseTwinForeignBytes
+} from '../vault/case-twin-bytes'
+import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
+import { recordSyncedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('NoteAttachmentMetadata')
 
-export function recordUploadedAttachment(noteId: string, attachmentId: string): void {
+/** `sha256`: the uploaded bytes' checksum, unknown for an inbox attachment reused onto the note. */
+export function recordUploadedAttachment(
+  noteId: string,
+  attachmentId: string,
+  sha256?: string
+): void {
   const db = getDatabase()
   // The note's file holds bytes that are not its own, or a peer's replacement
   // is landing on it (#5560, #5580). Recorded on this note, the upload would
@@ -24,9 +36,24 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
     })
     return
   }
+  const note = getNoteMetadataById(db, noteId)
+  const binary = sha256 !== undefined && note !== undefined && isBinaryNoteRow(note)
+  if (binary) {
+    // The binary note's file holds other bytes now: a newer edit with its own
+    // upload, or a peer's replacement that landed while this one uploaded,
+    // which kept these bytes as a conflict copy, a note of its own (#5595).
+    const onDisk = hashFile(toAbsolutePath(note.path))
+    if (onDisk !== null && onDisk !== sha256) {
+      log.warn('An upload of bytes its file no longer holds is kept off the note', {
+        noteId,
+        attachmentId
+      })
+      return
+    }
+  }
   // Merge, don't replace: a note can embed several attachments and each upload
   // lands here separately — replacing the list dropped every id but the last.
-  const existing = getNoteMetadataById(db, noteId)?.attachmentReferences ?? []
+  const existing = note?.attachmentReferences ?? []
   const merged = existing.includes(attachmentId) ? existing : [...existing, attachmentId]
   // Data DB FIRST. It is the sync source of truth (`buildNotePushPayload` reads
   // `attachmentReferences` from it) while the index DB is a rebuildable cache.
@@ -38,6 +65,7 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
     attachmentReferences: merged
   })
   updateNoteCache(getIndexDatabase(), noteId, { attachmentId })
+  if (binary && updated) recordSyncedBinaryHash(db, noteId, sha256)
 
   // The way back out of a recorded "the server does not have this" verdict: the
   // server demonstrably has it now, so any stale failure row must not keep this
@@ -74,18 +102,21 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
 }
 
 /**
- * Binary note `noteId`'s attachment `attachmentId` landed on its file. The
- * file holds the note's own bytes only while the row still names that
- * attachment; a newer record keeps the file held until its own lands (#5580).
+ * Binary note `noteId`'s attachment `attachmentId`, whose bytes hash to
+ * `sha256`, landed on its file: bytes a server holds (#5598). The file holds
+ * the note's own bytes only while the row still names that attachment; a
+ * newer record keeps the file held until its own lands (#5580).
  */
 export function recordDownloadedFileSize(
   noteId: string,
   attachmentId: string,
-  fileSize: number
+  fileSize: number,
+  sha256: string
 ): void {
   const db = getDatabase()
   updateNoteCache(getIndexDatabase(), noteId, { fileSize })
   updateNoteMetadata(db, noteId, { fileSize })
+  recordSyncedBinaryHash(db, noteId, sha256)
   if (getNoteMetadataById(db, noteId)?.attachmentId === attachmentId) {
     clearCaseTwinForeignBytes(db, noteId)
   }
