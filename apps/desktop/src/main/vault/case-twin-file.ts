@@ -29,6 +29,9 @@
  * push leaves the cover out until it changes here (`recordRebuiltNoteCover`):
  * peers keep the framing.
  *
+ * A binary survivor (`isBinaryNoteRow`) has no doc to rebuild a file from, and
+ * its bytes are not markdown: its leave keeps the file as it is (#5562).
+ *
  * @module vault/case-twin-file
  */
 
@@ -44,6 +47,7 @@ import type { NoteBody } from '../sync/writing-markdown'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { isCoverValue } from '@memry/shared/cover-image'
+import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
 import {
   getAliasesForNotes,
@@ -116,7 +120,9 @@ export async function prepareCaseTwinLeave(
 ): Promise<void> {
   const twins = twinsOnFile(vaultPath, relativePath, leavingId)
   if (twins === null) return
-  const ids = [...(twins.length === 1 ? twins : []), ...(movesLeaving ? [leavingId] : [])]
+  const survivor = twins.length === 1 ? getNoteCacheById(getIndexDatabase(), twins[0]) : undefined
+  const rebuildsSurvivor = survivor !== undefined && !isBinaryNoteRow(survivor)
+  const ids = [...(rebuildsSurvivor ? twins : []), ...(movesLeaving ? [leavingId] : [])]
   await Promise.all(ids.map(prepareOnce))
 }
 
@@ -265,6 +271,7 @@ function planLeave(
   const survivor = getNoteMetadataById(dataDb, survivorId)
   const cached = getNoteCacheById(indexDb, survivorId)
   if (!survivor || !cached) throw new CaseTwinLeaveNotReadyError(leavingId)
+  if (isBinaryNoteRow(cached)) return { leave: () => {}, raw, notReady }
   const onDisk = raw === null ? null : generateContentHash(raw)
   if (raw === null || onDisk === cached.contentHash || onDisk === cached.pendingWriteHash) {
     return { leave: () => preparedBodies.delete(survivorId), raw, notReady }
