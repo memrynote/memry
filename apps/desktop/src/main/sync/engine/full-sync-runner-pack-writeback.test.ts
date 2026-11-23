@@ -759,6 +759,59 @@ describe('FullSyncRunner pack bootstrap and the markdown write-back', () => {
     ).toEqual([])
   })
 
+  // #5607: the server holds bodies for binary notes, from older builds that
+  // made a doc for one. A binary note's file is its blob, so it keeps no doc.
+  describe('a packed body of a binary note', () => {
+    const photo = { id: 'photonote001', body: 'Title an old doc pushed' }
+    const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const holdBinaryRow = (): void => {
+      mocks.rows.set(photo.id, {
+        id: photo.id,
+        path: 'photo.png',
+        title: 'photo',
+        contentHash: '',
+        journalDate: null,
+        createdAt: '2026-09-26T00:00:00.000Z'
+      })
+      fs.writeFileSync(path.join(mocks.vaultRoot, 'photo.png'), PNG)
+    }
+    const kept = (device: Device) => ({
+      docs: [...device.docs.keys()],
+      watermarks: [...device.watermarks.keys()],
+      file: fs.readFileSync(path.join(mocks.vaultRoot, 'photo.png'))
+    })
+
+    it('is dropped once its record lands', async () => {
+      const device = makeDevice()
+
+      await runSync(device, {
+        fresh: true,
+        packed: [photo],
+        pull: async () => {
+          await flushPendingWritebacks()
+          holdBinaryRow()
+          return true
+        }
+      })
+
+      expect(kept(device)).toEqual({ docs: [], watermarks: [], file: PNG })
+    })
+
+    it('opens no doc for a note this device already holds as binary', async () => {
+      const device = makeDevice()
+      holdBinaryRow()
+      const open = vi.spyOn(
+        device.provider as unknown as { open: (noteId: string) => Promise<Y.Doc> },
+        'open'
+      )
+
+      await runSync(device, { fresh: true, packed: [photo], pull: async () => true })
+
+      expect(open).not.toHaveBeenCalled()
+      expect(kept(device)).toEqual({ docs: [], watermarks: [], file: PNG })
+    })
+  })
+
   describe('a settle that cannot finish keeps its markers', () => {
     const live = { id: 'livenote0001', body: 'Live note body' }
     const second = { id: 'livenote0002', body: 'Second body' }

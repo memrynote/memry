@@ -158,7 +158,8 @@ vi.mock('../../vault/file-ops', async () => {
   }
 })
 
-vi.mock('../../vault/attachments', () => ({
+vi.mock('../../vault/attachments', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   getNoteAttachmentsDir: vi.fn((vaultPath: string, noteId: string) =>
     path.join(vaultPath, 'attachments', noteId)
   )
