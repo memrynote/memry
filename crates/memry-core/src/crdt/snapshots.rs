@@ -71,12 +71,11 @@ pub trait SnapshotSealer: Send + Sync {
     fn seal_snapshot(&self, doc_id: &str, state: &[u8]) -> Result<Vec<u8>, EnvelopeError>;
 }
 
-/// Why §7.13.2 refused a document.
+/// Why a snapshot push refused a document.
 ///
-/// Distinct variants rather than a bool, because the three conditions clear in
-/// completely different ways: unmerged state clears on the next clean pull, a
-/// local-only document never clears, and an empty encode clears on the first
-/// edit.
+/// Distinct variants rather than a bool, because each clears its own way:
+/// unmerged state on the next clean pull, a local-only or deleted document
+/// never, an empty encode on the first edit, and a stale load on a reload.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Refusal {
     /// Condition 1: the last pull ended holding debt — a stop-at-gap, an
@@ -84,10 +83,13 @@ pub enum Refusal {
     UnmergedRemoteState,
     /// Condition 2: the document is local-only.
     LocalOnly,
-    /// Condition 2: the document was purged.
+    /// Condition 2: the gate says the document was deleted. Never retried.
     Purged,
     /// Condition 3: the encoded state is empty.
     EmptyState,
+    /// A purge moved the epoch since the document loaded, so it holds the
+    /// purged body (#5356). Reload it under a fresh [`Epoch`] and retry.
+    PurgedSinceLoad,
 }
 
 impl Refusal {
@@ -97,6 +99,7 @@ impl Refusal {
             Self::LocalOnly => "the document is local-only",
             Self::Purged => "the document was purged",
             Self::EmptyState => "the encoded state is empty",
+            Self::PurgedSinceLoad => "the document was purged since it loaded",
         }
     }
 }
@@ -259,7 +262,7 @@ impl SnapshotPusher {
     ///
     /// `opened_at` is the document's [`Epoch`], captured before its log loaded
     /// into `document` (#5356). A purge since then left `document` holding
-    /// the purged body, which is refused [`Refusal::Purged`] before the
+    /// the purged body, which is refused [`Refusal::PurgedSinceLoad`] before the
     /// endpoint, since a stored snapshot deletes the server's rows.
     pub async fn push(
         &self,
@@ -334,7 +337,7 @@ impl SnapshotPusher {
             .await?;
         // #5356: purged since `document` loaded, so it holds the purged body.
         if now_at != opened_at {
-            return Ok(Err(Refusal::Purged));
+            return Ok(Err(Refusal::PurgedSinceLoad));
         }
         if owed {
             return Ok(Err(Refusal::UnmergedRemoteState));
@@ -427,7 +430,7 @@ impl SnapshotPusher {
         // #5356: purged during the request, by a delete or a revive. The state
         // pushed is the purged body's, and the new body owes a pull.
         let Some((sequence_num, pruned)) = stored else {
-            return Ok(SnapshotOutcome::Refused(Refusal::Purged));
+            return Ok(SnapshotOutcome::Refused(Refusal::PurgedSinceLoad));
         };
 
         Ok(SnapshotOutcome::Pushed {
@@ -583,12 +586,12 @@ mod tests {
             Refusal::LocalOnly,
             Refusal::Purged,
             Refusal::EmptyState,
+            Refusal::PurgedSinceLoad,
         ]
         .iter()
         .map(Refusal::reason)
         .collect();
-        // Four conditions, four explanations: §7.13.2's three clear in
-        // different ways and a collapsed message tells the user the wrong one.
+        // Each refusal clears its own way; a shared message names the wrong one.
         let mut unique = reasons.clone();
         unique.sort_unstable();
         unique.dedup();
