@@ -4,12 +4,26 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
-import { clearCaseTwinForeignBytes } from '../vault/case-twin-bytes'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
+import { SupersededDownloadError } from './attachment-errors'
 
 const log = createLogger('NoteAttachmentMetadata')
 
 export function recordUploadedAttachment(noteId: string, attachmentId: string): void {
   const db = getDatabase()
+  // The note's file holds bytes that are not its own, or a peer's replacement
+  // is landing on it (#5560, #5580). Recorded on this note, the upload would
+  // push over the bytes the note is waiting for. The landing keeps the
+  // uploaded bytes as a conflict copy, a note of its own, when they are a
+  // change since the mark.
+  if (holdsCaseTwinForeignBytes(db, noteId)) {
+    log.warn('An upload of a file awaiting its own bytes is kept off the note', {
+      noteId,
+      attachmentId
+    })
+    return
+  }
   // Merge, don't replace: a note can embed several attachments and each upload
   // lands here separately — replacing the list dropped every id but the last.
   const existing = getNoteMetadataById(db, noteId)?.attachmentReferences ?? []
@@ -59,8 +73,34 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
   enqueueLocalSyncUpdate('note', noteId)
 }
 
-export function recordDownloadedFileSize(noteId: string, fileSize: number): void {
+/**
+ * Binary note `noteId`'s attachment `attachmentId` landed on its file. The
+ * file holds the note's own bytes only while the row still names that
+ * attachment; a newer record keeps the file held until its own lands (#5580).
+ */
+export function recordDownloadedFileSize(
+  noteId: string,
+  attachmentId: string,
+  fileSize: number
+): void {
+  const db = getDatabase()
   updateNoteCache(getIndexDatabase(), noteId, { fileSize })
-  updateNoteMetadata(getDatabase(), noteId, { fileSize })
-  clearCaseTwinForeignBytes(getDatabase(), noteId)
+  updateNoteMetadata(db, noteId, { fileSize })
+  if (getNoteMetadataById(db, noteId)?.attachmentId === attachmentId) {
+    clearCaseTwinForeignBytes(db, noteId)
+  }
+}
+
+/**
+ * Before attachment `attachmentId` lands on binary note `noteId`'s file:
+ * throws when a newer record named another attachment while it downloaded,
+ * so older bytes never land where the row names newer ones (#5580).
+ */
+export function assertOwnAttachmentLands(
+  db: DrizzleDb,
+  noteId: string,
+  attachmentId: string
+): void {
+  const own = getNoteMetadataById(db, noteId)?.attachmentId
+  if (own && own !== attachmentId) throw new SupersededDownloadError(noteId, attachmentId)
 }

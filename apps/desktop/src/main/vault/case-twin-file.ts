@@ -60,6 +60,7 @@ import { markWritebackIgnored, scheduleWriteback } from '../sync/crdt-writeback'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
+import { assertOwnAttachmentLands } from '../sync/note-attachment-metadata'
 import { hasPendingVaultFileOp, writeNoteFileNow } from '../sync/bulk-apply'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import type { NoteBody } from '../sync/writing-markdown'
@@ -581,9 +582,11 @@ export function releaseAbandonedCaseTwinBytes(
 export function landCaseTwinDownload(
   filePath: string,
   attachmentId: string,
-  sha256: string
+  sha256: string,
+  fileOwnerId?: string
 ): string {
   const db = getDatabase()
+  if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
   const vaultPath = getVaultRoot()
   const landAt = keepCaseTwinChange(db, vaultPath, filePath, attachmentId, sha256)
   const landsOn = toRelativePath(landAt)
