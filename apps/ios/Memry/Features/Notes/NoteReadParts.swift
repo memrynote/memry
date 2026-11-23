@@ -59,6 +59,17 @@ enum NoteBodyPreview: Equatable, Sendable {
 }
 
 extension NoteReadViewModel {
+    /// Whether the page draws `preview` in place of blocks yet.
+    ///
+    /// A text preview waits for the walk: drawn first, a large note's whole
+    /// text is one `Text`, and laying it out held the main thread for
+    /// minutes before the blocks could replace it (#5507). The other
+    /// previews draw no text and show at once.
+    func showsPreview(_ preview: NoteBodyPreview) -> Bool {
+        guard case .text = preview else { return true }
+        return blocksWalked
+    }
+
     /// Where the screen is. `.missing` and `.unreadable` are deliberately not
     /// one case: "this vault has no such note" is a fact, and "this note would
     /// not read" is a failure, and only the second is worth retrying.

@@ -113,12 +113,12 @@ struct NoteTextPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            Text(text)
+            Text(Self.shown(text))
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(Self.caption)
+            Text(text.count > Self.limit ? Self.caption + " " + Self.shortened : Self.caption)
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,6 +127,16 @@ struct NoteTextPreview: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Tokens.Space.inset)
         .blockSurface()
+    }
+
+    /// The most characters one `Text` draws. Laying out a whole large
+    /// note's text in one `Text` held the main thread for minutes (#5507).
+    static let limit = 10_000
+
+    static let shortened = "Only the start of this note is shown."
+
+    static func shown(_ text: String) -> String {
+        text.count > limit ? String(text.prefix(limit)) : text
     }
 
     /// True of every note this view can show text for, and of no other screen
