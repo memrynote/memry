@@ -559,7 +559,8 @@ async fn a_document_loaded_before_a_purge_refuses_before_the_endpoint() {
 
 /// The retry [`Refusal::PurgedSinceLoad`] asks for: a document reloaded after
 /// the purge, under the epoch captured before its log loads, pushes its
-/// snapshot and stores it for the new body.
+/// snapshot and stores it for the new body. The revived body is in the log, so
+/// the push checks that the reload replayed it.
 #[tokio::test]
 async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
     let db = scratch_db("reloaded-after-purge");
@@ -575,6 +576,14 @@ async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
         })
     })
     .expect("purge");
+    db.call_blocking(|conn| {
+        update_log::append_local_update(conn, NOTE, &update_with_a_foreign_root(), 2).map_err(
+            |error| StorageError::Failed {
+                what: error.to_string(),
+            },
+        )
+    })
+    .expect("log the revived body");
 
     let reloaded_at = opened(&db, NOTE);
     let plan = db
@@ -584,13 +593,11 @@ async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
             })
         })
         .expect("plan");
+    assert!(!plan.is_empty(), "the revived body is in the log");
     let (_registry, document) = open_document(NOTE);
     for blob in plan.blobs() {
         document.apply_durable_update(blob).expect("replay");
     }
-    document
-        .apply_durable_update(&update_with_a_foreign_root())
-        .expect("the revived body");
 
     let transport = FakeTransport::new(vec![response(200, &json!({"sequenceNum": 4}).to_string())]);
     let outcome = pusher(&db, transport.clone(), secret_key.to_vec())
