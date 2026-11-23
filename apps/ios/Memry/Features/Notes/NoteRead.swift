@@ -72,6 +72,8 @@ final class NoteReadViewModel {
     @ObservationIgnored private(set) var blocksGeneration = 0
     /// The first walk of the blocks has finished, whatever it found.
     private(set) var blocksRead = false
+    /// A walk of the blocks has answered, present body or not (#5507).
+    private(set) var blocksWalked = false
     /// Each table in the body, by the block id of its `table` block.
     ///
     /// Read eagerly once the blocks land, rather than lazily while drawing:
@@ -195,6 +197,7 @@ final class NoteReadViewModel {
             blocksGeneration = generation
             blocks = []
         }
+        blocksWalked = true
         // A body not on this device yet has no blocks to find in: a find
         // request waits for the pull instead of reporting no match.
         if case let .ready(detail) = phase { blocksRead = detail.body.present }
