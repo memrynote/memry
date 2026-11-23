@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
+use crate::crdt::epoch::Epoch;
 use crate::protocol::http::{HttpClient, RetryPolicy};
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 
@@ -32,7 +33,7 @@ pub(in crate::sync) struct Probed {
 pub(in crate::sync) struct ProbeAnswer {
     pub(in crate::sync) since: i64,
     /// The body's epoch when the page was asked for (#5356).
-    pub(in crate::sync) epoch: i64,
+    pub(in crate::sync) epoch: Epoch,
     pub(in crate::sync) page: UpdatePage,
 }
 
@@ -54,6 +55,16 @@ impl BodyPull {
         doc_ids: &[String],
         requests: &mut usize,
     ) -> Result<HashMap<String, Probed>, BodyPullError> {
+        Ok(self.probe_paced(doc_ids, requests).await?.0)
+    }
+
+    /// [`Self::probe`], and the wait a `429` refusing it asked for, which the
+    /// foreground drain holds its next round back by (#5247).
+    pub(in crate::sync) async fn probe_paced(
+        &self,
+        doc_ids: &[String],
+        requests: &mut usize,
+    ) -> Result<(HashMap<String, Probed>, Option<u64>), BodyPullError> {
         let mut cursors = HashMap::new();
         let mut notes = Vec::new();
         for doc_id in doc_ids {
@@ -68,7 +79,7 @@ impl BodyPull {
             cursors.insert(doc_id.clone(), (cursor, self.body_epoch(doc_id).await?));
         }
         if notes.is_empty() {
-            return Ok(HashMap::new());
+            return Ok((HashMap::new(), None));
         }
         // Counted against the caller's per-pass budget like any other request.
         *requests += 1;
@@ -78,8 +89,9 @@ impl BodyPull {
             // No retries: a failed probe only means each document is pulled
             // through its own routes, so waiting through backoff buys nothing.
             .retry(RetryPolicy::never());
-        let Ok(body) = self.http.send_json::<Json>(request).await else {
-            return Ok(HashMap::new());
+        let body = match self.http.send_json::<Json>(request).await {
+            Ok(body) => body,
+            Err(error) => return Ok((HashMap::new(), error.rate_limit_wait_s())),
         };
         // An older server sends no `snapshotMeta` key at all, so an empty
         // answer there could hide a snapshot that pruned past the cursor.
@@ -136,6 +148,6 @@ impl BodyPull {
                 },
             );
         }
-        Ok(probed)
+        Ok((probed, None))
     }
 }

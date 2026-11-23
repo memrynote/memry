@@ -39,6 +39,14 @@ protocol VaultRegistry: Sendable {
     ///   away, because a reader that did once reported "this account has no
     ///   vaults" against an account holding four.
     func vaults() async throws -> [VaultSummary]
+
+    /// Names a row this registry listed before, with no request: what an
+    /// offline launch shows for the vault it reopens (#5524).
+    func named(_ row: VaultSummary) -> VaultSummary
+}
+
+extension VaultRegistry {
+    func named(_ row: VaultSummary) -> VaultSummary { row }
 }
 
 /// The production registry: the core's own `GET /sync/vaults`.
@@ -63,6 +71,10 @@ struct CoreVaultRegistry: VaultRegistry {
         // never as an account with no vaults.
         let rows = try await session.vaults()
         return Self.opened(rows, masterKey: masterKey())
+    }
+
+    func named(_ row: VaultSummary) -> VaultSummary {
+        Self.opened([row], masterKey: masterKey()).first ?? row
     }
 
     /// Each sealed name opened, for the rows that carry one.

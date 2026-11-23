@@ -112,13 +112,14 @@ struct NoteTextPreview: View {
     let text: String
 
     var body: some View {
+        let shown = Self.shown(text)
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            Text(Self.shown(text))
+            Text(shown)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(text.count > Self.limit ? Self.caption + " " + Self.shortened : Self.caption)
+            Text(shown.endIndex < text.endIndex ? Self.caption + " " + Self.shortened : Self.caption)
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,8 +136,10 @@ struct NoteTextPreview: View {
 
     static let shortened = "Only the start of this note is shown."
 
-    static func shown(_ text: String) -> String {
-        text.count > limit ? String(text.prefix(limit)) : text
+    /// Walks at most `limit` characters: counting a whole large body on
+    /// every redraw is the cost the cap is there to avoid.
+    static func shown(_ text: String) -> Substring {
+        text.prefix(limit)
     }
 
     /// True of every note this view can show text for, and of no other screen
@@ -245,10 +248,7 @@ struct NotePageLoad: ViewModifier {
             }
             // On open and after each sync pass: another device's edits reach this
             // page only through a body pull and a re-read.
-            .task(id: vaultSyncPasses) {
-                await model.loadIfNeeded()
-                await model.refreshFromRemote()
-            }
+            .task(id: vaultSyncPasses) { await model.refreshFromRemote() }
             // Opened, or restored at launch, before the first sync brought
             // its record in (`VaultFillView`): read again as records land.
             .onChange(of: firstSyncLanded) {

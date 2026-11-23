@@ -192,6 +192,7 @@ struct CoreVaultFiller: VaultFilling {
         do {
             let pass = try await sync.syncNow()
             SyncTelemetry.passCompleted(pass, since: start)
+            NotificationCenter.default.post(name: .vaultSyncPassSucceeded, object: nil)
             return pass
         } catch {
             SyncTelemetry.passFailed(error, since: start)

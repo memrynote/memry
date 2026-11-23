@@ -23,7 +23,7 @@
 //!
 //! An **unresolvable signer device is a hard failure, not a fallback**
 //! (§14.4.1). [`SignerResolver`] answers `None` for a device this vault cannot
-//! place, and [`fetch_manifest`] turns that into an error rather than skipping
+//! place, and [`open_manifest`] turns that into an error rather than skipping
 //! the check. A manifest is the only thing that names a file, so "I could not
 //! check who signed this" and "this is fine" must never be the same branch.
 //!
@@ -47,6 +47,9 @@ const CHUNK_NONCE_LEN: usize = 24;
 
 /// `presign-batch` takes at most this many hashes in one call (§14.6).
 pub const PRESIGN_BATCH_CAP: usize = 1024;
+
+/// `manifests/batch` takes at most this many ids in one call (§14.5.2).
+pub const MANIFEST_BATCH_CAP: usize = 100;
 
 /// The typed, permanent signal that this deployment has no presign secrets.
 const PRESIGN_UNAVAILABLE: &str = "STORAGE_PRESIGN_UNAVAILABLE";
@@ -136,8 +139,7 @@ pub struct PresignedBatch {
 /// Fetches one attachment's manifest and opens it.
 ///
 /// The signature check, the unwrap and the decrypt all happen inside
-/// [`super::attachment_manifest::decrypt`], in that order, and this function
-/// does not have the pieces to do them in any other.
+/// [`open_manifest`], in that order.
 pub async fn fetch_manifest(
     client: &HttpClient,
     vault_id: &str,
@@ -145,9 +147,58 @@ pub async fn fetch_manifest(
     vault_key: &[u8],
     signers: &dyn SignerResolver,
 ) -> Result<(AttachmentManifest, Vec<u8>), AttachmentError> {
-    let envelope: EncryptedAttachmentManifest =
-        fetch_manifest_envelope(client, vault_id, attachment_id).await?;
+    let wire: ManifestWire = client
+        .send_json(
+            ApiRequest::get(&format!("/sync/attachments/{attachment_id}/manifest"))
+                .auth(Auth::Session)
+                .header(VAULT_ID_HEADER, vault_id)
+                .retry(RetryPolicy::polled()),
+        )
+        .await?;
+    open_manifest(&wire.into(), vault_key, signers)
+}
 
+/// The stored manifests of up to [`MANIFEST_BATCH_CAP`] attachments in one
+/// call (§14.5.2). An id the server holds no manifest for is absent.
+/// `Ok(None)` when the server predates the route (404): the caller fetches
+/// each manifest alone with [`fetch_manifest`].
+pub async fn fetch_manifests_batch(
+    client: &HttpClient,
+    vault_id: &str,
+    attachment_ids: &[String],
+) -> Result<Option<HashMap<String, EncryptedAttachmentManifest>>, AttachmentError> {
+    #[derive(serde::Deserialize)]
+    struct Wire {
+        manifests: HashMap<String, ManifestWire>,
+    }
+
+    let request = ApiRequest::post("/sync/attachments/manifests/batch")
+        .auth(Auth::Session)
+        .header(VAULT_ID_HEADER, vault_id)
+        .json(&serde_json::json!({ "attachmentIds": attachment_ids }))
+        .retry(RetryPolicy::polled());
+    match client.send_json::<Wire>(request).await {
+        Ok(wire) => Ok(Some(
+            wire.manifests
+                .into_iter()
+                .map(|(id, manifest)| (id, manifest.into()))
+                .collect(),
+        )),
+        Err(ApiError::Status { status: 404, .. }) => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+/// Opens a fetched manifest, single or batched alike (§14.4.1).
+///
+/// The signature check, the unwrap and the decrypt all happen inside
+/// [`super::attachment_manifest::decrypt`], in that order, and this function
+/// does not have the pieces to do them in any other.
+pub fn open_manifest(
+    envelope: &EncryptedAttachmentManifest,
+    vault_key: &[u8],
+    signers: &dyn SignerResolver,
+) -> Result<(AttachmentManifest, Vec<u8>), AttachmentError> {
     // Resolved BEFORE the decrypt is attempted, so an unknown device is
     // refused rather than becoming a decrypt that happened to work.
     let signer_public_key = signers
@@ -157,44 +208,33 @@ pub async fn fetch_manifest(
         })?;
 
     let (manifest, file_key) =
-        super::attachment_manifest::decrypt(&envelope, vault_key, &signer_public_key)?;
+        super::attachment_manifest::decrypt(envelope, vault_key, &signer_public_key)?;
     Ok((manifest, file_key.to_vec()))
 }
 
-/// The raw envelope, as the route returns it.
-async fn fetch_manifest_envelope(
-    client: &HttpClient,
-    vault_id: &str,
-    attachment_id: &str,
-) -> Result<EncryptedAttachmentManifest, AttachmentError> {
-    #[derive(serde::Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Wire {
-        encrypted_manifest: String,
-        manifest_nonce: String,
-        encrypted_file_key: String,
-        key_nonce: String,
-        manifest_signature: String,
-        signer_device_id: String,
+/// One manifest envelope as the routes return it.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ManifestWire {
+    encrypted_manifest: String,
+    manifest_nonce: String,
+    encrypted_file_key: String,
+    key_nonce: String,
+    manifest_signature: String,
+    signer_device_id: String,
+}
+
+impl From<ManifestWire> for EncryptedAttachmentManifest {
+    fn from(wire: ManifestWire) -> Self {
+        Self {
+            encrypted_manifest: wire.encrypted_manifest,
+            manifest_nonce: wire.manifest_nonce,
+            encrypted_file_key: wire.encrypted_file_key,
+            key_nonce: wire.key_nonce,
+            manifest_signature: wire.manifest_signature,
+            signer_device_id: wire.signer_device_id,
+        }
     }
-
-    let wire: Wire = client
-        .send_json(
-            ApiRequest::get(&format!("/sync/attachments/{attachment_id}/manifest"))
-                .auth(Auth::Session)
-                .header(VAULT_ID_HEADER, vault_id)
-                .retry(RetryPolicy::polled()),
-        )
-        .await?;
-
-    Ok(EncryptedAttachmentManifest {
-        encrypted_manifest: wire.encrypted_manifest,
-        manifest_nonce: wire.manifest_nonce,
-        encrypted_file_key: wire.encrypted_file_key,
-        key_nonce: wire.key_nonce,
-        manifest_signature: wire.manifest_signature,
-        signer_device_id: wire.signer_device_id,
-    })
 }
 
 /// Asks for presigned GETs, or reports that this deployment has none.
