@@ -39,6 +39,13 @@ import fs from 'fs'
 import { dirname, join } from 'path'
 import * as Y from 'yjs'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import {
+  markDownloadOwed,
+  markDownloadRequested,
+  releaseDownloadAttempt,
+  shouldAttemptDownload
+} from '@memry/sync-client/attachment-download-state'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { markWritebackIgnored, scheduleWriteback } from '../sync/crdt-writeback'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
@@ -68,6 +75,12 @@ import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf } from './disk-case'
+import {
+  holdsCaseTwinForeignBytes,
+  markCaseTwinForeignBytes,
+  recordHeldCaseTwinChange,
+  takeHeldCaseTwinChange
+} from './case-twin-bytes'
 import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
 import { findCanonicalNoteForFile, listCaseTwinIds, syncNoteToCache } from './note-sync'
 import { getVaultRoot, toAbsolutePath } from './notes-io'
@@ -372,13 +385,38 @@ export function assertFolderRenameKeepsCaseTwins(folderPath: string): void {
 }
 
 /**
+ * Whether the watcher holds an outside change to binary note `noteId`'s file
+ * instead of pushing it, and why. A file a case twin shares holds one twin's
+ * bytes, whichever row the event names (#5522); the change is recorded for
+ * the split (`planBinaryCaseTwinMove`). After a split, a file that may hold
+ * the other twin's bytes is held until the note's own download lands (#5560).
+ */
+export function holdsBinaryChange(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): 'shared' | 'foreign' | null {
+  const db = getDatabase()
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  if (onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true) {
+    recordHeldCaseTwinChange(db, onDisk)
+    return 'shared'
+  }
+  return holdsCaseTwinForeignBytes(db, noteId) ? 'foreign' : null
+}
+
+/**
  * A peer's rename or move of binary note `movingId` off a file it shares with
  * a case twin (#5560). The file stays where it is for the other twin. The
- * moving twin gets a copy at `newAbsolutePath`, so its row never lacks a file,
- * and its own attachment is asked for there: the bytes on disk may be the
- * other twin's. Call right before the step that moves the row, with no await
+ * moving twin gets a copy at `newAbsolutePath`, so its row never lacks a file.
+ * Either file may hold the other twin's bytes, so neither is pushed until its
+ * own attachment lands (`markCaseTwinForeignBytes`), and each is asked for
+ * through the download tracking, recorded as owed so the re-driver retries a
+ * request no downloader took. The other twin's attachment is not asked for
+ * when the watcher held a change to the shared file: the change stays, and is
+ * not pushed. Call right before the step that moves the row, with no await
  * between. Throws, with nothing changed, when the file is no longer shared;
- * the step never awaits, and a copy that fails throws before anything moves.
+ * a copy that fails throws before anything moves.
  */
 export function planBinaryCaseTwinMove(
   vaultPath: string,
@@ -388,18 +426,19 @@ export function planBinaryCaseTwinMove(
   attachmentId: string | null
 ): () => void {
   const onDisk = diskCaseOf(vaultPath, relativePath)
-  if (onDisk === null || twinsOnFile(vaultPath, relativePath, movingId) === null) {
+  const twins = twinsOnFile(vaultPath, relativePath, movingId)
+  if (onDisk === null || twins === null) {
     throw new NoteError(
       'The note no longer shares its file; try the rename or move again',
       NoteErrorCode.WRITE_FAILED,
       movingId
     )
   }
+  const db = getDatabase()
   const sharedPath = join(vaultPath, onDisk)
-  // A new path that differs only in case names the same file: the twins still share it.
-  const target = fs.statSync(newAbsolutePath, { throwIfNoEntry: false })
-  const shared = fs.statSync(sharedPath)
-  if (target && target.ino === shared.ino && target.dev === shared.dev) return () => {}
+  // With more than one twin left, the file is still shared and the watcher holds it.
+  const keepSurvivor =
+    twins.length === 1 ? planBinarySurvivor(vaultPath, onDisk, twins[0], movingId) : () => {}
   return () => {
     markWritebackIgnored(newAbsolutePath)
     fs.mkdirSync(dirname(newAbsolutePath), { recursive: true })
@@ -408,17 +447,67 @@ export function planBinaryCaseTwinMove(
       movingId,
       attachmentId
     })
-    if (attachmentId) {
-      attachmentEvents.emitDownloadNeeded({
-        noteId: movingId,
-        attachmentId,
-        diskPath: newAbsolutePath
+    requestOwnBytes(db, movingId, attachmentId, newAbsolutePath)
+    keepSurvivor()
+  }
+}
+
+/**
+ * Binary note `survivorId` keeps the file at `onDisk` alone once `leavingId`
+ * leaves it (moved or deleted), and the file may hold the leaver's bytes. With
+ * no held change, its own attachment is asked for onto the file. A change the
+ * watcher held, or one it has not seen yet (a size neither twin recorded: the
+ * event is on the way, or the app was closed), stays; so does a file of a
+ * survivor with no attachment or kept local only. Such a file is not pushed.
+ * The plan reads; the step it returns never awaits.
+ */
+function planBinarySurvivor(
+  vaultPath: string,
+  onDisk: string,
+  survivorId: string,
+  leavingId: string
+): () => void {
+  const db = getDatabase()
+  const survivor = getNoteMetadataById(db, survivorId)
+  if (!survivor) return () => {}
+  const sharedPath = join(vaultPath, onDisk)
+  const size = fs.statSync(sharedPath).size
+  const unseenChange =
+    size !== survivor.fileSize && size !== getNoteMetadataById(db, leavingId)?.fileSize
+  return () => {
+    const held = takeHeldCaseTwinChange(db, onDisk) || unseenChange
+    if (held || !survivor.attachmentId || survivor.localOnly) {
+      markCaseTwinForeignBytes(db, survivorId)
+      log.warn('A file a case twin left may hold its bytes; it stays and is not pushed', {
+        noteId: survivorId,
+        path: onDisk,
+        held
       })
-    } else {
-      log.warn('A binary case twin with no attachment keeps a copy of the shared file', {
-        movingId
-      })
+      return
     }
+    requestOwnBytes(db, survivorId, survivor.attachmentId, sharedPath)
+  }
+}
+
+/** Holds pushes of the note's file until its own attachment lands on it. */
+function requestOwnBytes(
+  db: DrizzleDb,
+  noteId: string,
+  attachmentId: string | null,
+  diskPath: string
+): void {
+  markCaseTwinForeignBytes(db, noteId)
+  if (!attachmentId) {
+    log.warn("A binary case twin with no attachment keeps a file that may be its twin's", {
+      noteId
+    })
+    return
+  }
+  markDownloadOwed(db, noteId, attachmentId)
+  if (!shouldAttemptDownload(db, noteId, attachmentId)) return
+  markDownloadRequested(noteId, attachmentId)
+  if (!attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath })) {
+    releaseDownloadAttempt(noteId, attachmentId)
   }
 }
 

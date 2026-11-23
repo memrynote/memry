@@ -161,6 +161,32 @@ export function releaseDownloadAttempt(ownerId: string, attachmentId: string): v
   inFlight.delete(keyOf(ownerId, attachmentId))
 }
 
+/**
+ * The file for this attachment no longer holds its bytes (a binary case twin
+ * moved off a shared file, #5560). Forget a session success, and record a
+ * download owed now, so the re-driver asks for it until one lands even when
+ * this request never reaches a downloader (no token, auto-download off, no
+ * listener). A failure already recorded keeps its own retry window.
+ */
+export function markDownloadOwed(db: DrizzleDb, ownerId: string, attachmentId: string): void {
+  const key = keyOf(ownerId, attachmentId)
+  succeeded.delete(key)
+  const now = Date.now()
+  db.insert(attachmentDownloadFailures)
+    .values({
+      id: key,
+      ownerId,
+      attachmentId,
+      reason: 'transient',
+      attempts: 0,
+      lastError: 'Not downloaded yet',
+      nextAttemptAt: now,
+      updatedAt: now
+    })
+    .onConflictDoNothing()
+    .run()
+}
+
 /** The bytes are on disk. Forget every failure recorded for this attachment. */
 export function markDownloadSucceeded(
   db: DrizzleDb | null,

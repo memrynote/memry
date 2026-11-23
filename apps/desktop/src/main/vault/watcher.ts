@@ -103,7 +103,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
-import { sharesCaseTwinFile } from './case-twin-file'
+import { holdsBinaryChange } from './case-twin-file'
 
 const logger = createLogger('Watcher')
 
@@ -1274,13 +1274,14 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
     if (!this.vaultPath) return
-    // The file holds one twin's bytes, whichever row the event names: pushed,
-    // they land on every device as this row's attachment (#5522). The change
-    // is held until one twin leaves the file, and a later change pushes it.
-    if (sharesCaseTwinFile(this.vaultPath, relativePath)) {
-      logger.warn('A change to a file shared with a case twin is not pushed', {
+    // Pushed, bytes that may be a case twin's land on every device as this
+    // row's attachment (#5522, #5560).
+    const held = holdsBinaryChange(this.vaultPath, relativePath, cached.id)
+    if (held) {
+      logger.warn("A change to a file that may hold a case twin's bytes is not pushed", {
         noteId: cached.id,
-        path: relativePath
+        path: relativePath,
+        reason: held
       })
       return
     }
