@@ -223,6 +223,7 @@ function handleDecryptCrdtBatch(
       try {
         const update = decryptCrdtUpdate(packed, msg.vaultKey, item.noteId, signerPublicKey)
         results.push({ index: item.index, update })
+        if (msg.stopAtFirstOpen) break
       } catch (err) {
         failures.push({
           index: item.index,
