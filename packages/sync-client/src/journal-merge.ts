@@ -1,6 +1,10 @@
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { tagKey } from '@memry/shared/tag-fold'
-import { compare as compareClock, merge as mergeClock } from '@memry/sync-client/vector-clock'
+import {
+  compare as compareClock,
+  increment,
+  merge as mergeClock
+} from '@memry/sync-client/vector-clock'
 import { valuesEqual } from './field-merge'
 
 /**
@@ -26,10 +30,13 @@ export interface JournalUnitStamp {
   fieldClocksFloor?: VectorClock
 }
 
-/** A merged pair, stamped at the clock the caller stores it under (§6.12.3). */
+/** A merged pair and the clock it is stored and stamped at (§6.12.3). */
 export interface JournalFieldsMerge extends JournalUnitStamp {
   tags: string[]
   properties: Record<string, unknown>
+  clock: VectorClock
+  /** The merged fields differ from the remote's, so the merge is pushed. */
+  requeue: boolean
 }
 
 const TAG = 'tags.'
@@ -148,19 +155,23 @@ function localWinsTie(
 }
 
 /**
- * §6.12.3: a concurrent pair merges per unit, stamped at `at`, the clock the
- * caller stores the result under. A unit's claim is a trusted side's stamped
- * clock, or its floor where the floor dominates the other side's claim. A
- * claim that dominates the other wins; two concurrent claims tie-break on
- * ticks then value; with no claim on either side the remote's value stands,
- * as the document rule has it. A winner with no value removes the unit.
- * Local survivors keep local order and spelling, then remote-only survivors
- * follow in remote order.
+ * §6.12.3: a concurrent pair merges per unit. A unit's claim is a trusted
+ * side's stamped clock, or its floor where the floor dominates the other
+ * side's claim. A claim that dominates the other wins; two concurrent claims
+ * tie-break on ticks then value; with no claim on either side the remote's
+ * value stands, as the document rule has it. A winner with no value removes
+ * the unit. Local survivors keep local order and spelling, then remote-only
+ * survivors follow in remote order.
+ *
+ * A result that holds the remote's fields is the remote's record: it keeps
+ * the remote's order, is stored at the union clock and is not pushed. Any
+ * other result is stored at the union ticked by `device` and re-queued, so the
+ * push dominates both inputs and an older core applies it whole.
  */
 export function mergeJournalFields(
   local: JournalFields,
   remote: JournalFields,
-  at: VectorClock
+  device: string
 ): JournalFieldsMerge {
   const localUnits = units(local)
   const remoteUnits = units(remote)
@@ -172,14 +183,10 @@ export function mergeJournalFields(
       ...remoteUnits.keys()
     ])
   ].toSorted()
-  // §6.12.1: an untrusted local side proves nothing. Its `clock` carries
-  // this device's ticks since it last synced, body-only saves included, so
-  // the remote's value stands on every unit, as the document rule applies a
-  // concurrent remote whole. An untrusted remote was written whole at its
-  // clock, which is its floor.
-  const localTrusted = trusted(local)
-  const localStamped: FieldClocks = localTrusted ? local.fieldClocks : {}
-  const localFloor = localTrusted ? local.fieldClocksFloor : undefined
+  // §6.12.1: an untrusted side was written whole at its clock, which is its
+  // floor: it reads only where it dominates the other side's claim.
+  const localStamped: FieldClocks = trusted(local) ? local.fieldClocks : {}
+  const localFloor = trusted(local) ? local.fieldClocksFloor : (local.clock ?? {})
   const remoteStamped: FieldClocks = trusted(remote) ? remote.fieldClocks : {}
   const remoteFloor = trusted(remote) ? remote.fieldClocksFloor : (remote.clock ?? {})
 
@@ -216,8 +223,8 @@ export function mergeJournalFields(
     ...localUnits.keys(),
     ...[...remoteUnits.keys()].filter((unit) => !localUnits.has(unit))
   ].filter((unit) => merged.has(unit))
-  const tags: string[] = []
-  const properties: Record<string, unknown> = {}
+  let tags: string[] = []
+  let properties: Record<string, unknown> = {}
   for (const unit of order) {
     if (unit.startsWith(TAG)) {
       const tag = localUnits.get(unit) ?? merged.get(unit)
@@ -226,16 +233,27 @@ export function mergeJournalFields(
       properties[unit.slice(PROPERTY.length)] = merged.get(unit)
     }
   }
+  const remoteTags = remote.tags ?? []
+  const remoteProperties = remote.properties ?? {}
+  const sameTags = valuesEqual(tags.toSorted(), remoteTags.toSorted())
+  if (sameTags && valuesEqual(properties, remoteProperties)) {
+    tags = [...remoteTags]
+    properties = { ...remoteProperties }
+  }
+  const requeue = !valuesEqual(
+    { tags, properties },
+    { tags: remoteTags, properties: remoteProperties }
+  )
+  const union = mergeClock(local.clock ?? {}, remote.clock ?? {})
+  const clock = requeue ? increment(union, device) : union
 
-  // An untrusted local side's merge is stored whole at `at`, as an older
-  // build's record applied whole is: it knows no unit it wrote, and its own
-  // writes up to `at` are behind the result (VERIFY-5529R2). Otherwise every
-  // unit neither side names reads as absent on both, so the merged payload
-  // supersedes what either floor did.
-  if (!localTrusted) return { tags, properties, ...stamp({}, at, at) }
+  // Every unit neither side names reads as absent on both, so the merged
+  // payload supersedes what either floor did.
   return {
     tags,
     properties,
-    ...stamp(fieldClocks, at, mergeClock(localFloor ?? {}, remoteFloor ?? {}))
+    clock,
+    requeue,
+    ...stamp(fieldClocks, clock, mergeClock(localFloor ?? {}, remoteFloor ?? {}))
   }
 }

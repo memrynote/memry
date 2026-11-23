@@ -48,10 +48,12 @@ export interface Scenario {
   steps: Step[]
 }
 
-interface Write {
+export interface Write {
   unit: string
   value: string
   clock: VectorClock
+  /** The scenario step that wrote it; -1 for the initial record. */
+  step: number
 }
 
 export interface View {
@@ -131,7 +133,8 @@ export function run(scenario: Scenario, rule: Rule, reference = false): Outcome 
   const writes: Write[] = UNITS.map((unit) => ({
     unit,
     value: valueOf(INITIAL, unit),
-    clock: { ...INITIAL.clock }
+    clock: { ...INITIAL.clock },
+    step: -1
   }))
   const log: string[] = []
   const doPull = (device: Device): boolean => {
@@ -146,13 +149,13 @@ export function run(scenario: Scenario, rule: Rule, reference = false): Outcome 
     return payload !== null
   }
 
-  for (const step of scenario.steps) {
+  for (const [index, step] of scenario.steps.entries()) {
     const device = devices.get(step.dev)
     if (!device) continue
     if (step.op === 'edit') {
       if (localEdit(device, rule, step.change)) {
         const unit = unitOf(step.change)
-        writes.push({ unit, value: valueOf(device, unit), clock: { ...device.clock } })
+        writes.push({ unit, value: valueOf(device, unit), clock: { ...device.clock }, step: index })
       }
     } else if (step.op === 'body') localEdit(device, rule, null)
     else if (step.op === 'push') doPush(device)

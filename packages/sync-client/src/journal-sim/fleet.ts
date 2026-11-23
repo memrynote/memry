@@ -48,7 +48,7 @@ export type Change =
 export type RuleCall =
   | { fn: 'edit'; base: JournalFields | null; next: Payload; out: JournalUnitStamp | null }
   | { fn: 'wholesale'; remote: Payload; out: JournalUnitStamp | null }
-  | { fn: 'merge'; local: Payload; remote: Payload; at: VectorClock; out: JournalFieldsMerge }
+  | { fn: 'merge'; local: Payload; remote: Payload; device: string; out: JournalFieldsMerge }
 
 const STAMP_KEYS = ['fieldClocks', 'fieldClocksAt', 'fieldClocksFloor'] as const
 
@@ -74,13 +74,13 @@ export class Rule {
     return out
   }
 
-  merge(local: Payload, remote: Payload, at: VectorClock): JournalFieldsMerge {
-    const out = mergeJournalFields(local, remote, at)
+  merge(local: Payload, remote: Payload, device: string): JournalFieldsMerge {
+    const out = mergeJournalFields(local, remote, device)
     this.calls?.push({
       fn: 'merge',
       local: clone(local),
       remote: clone(remote),
-      at,
+      device,
       out: clone(out)
     })
     return out
@@ -165,8 +165,7 @@ export function localEdit(device: Device, rule: Rule, edit: Change | null): bool
   if (device.kind === 'newCore') {
     // `sync_items::apply_local_edit_in` restamps every journal write.
     const next = stored(device)
-    const stamp = rule.edit(before, next)
-    device.extra = stamp === null ? {} : stampKeys(stamp)
+    device.extra = stampKeys(rule.edit(before, next) ?? {})
   }
   return true
 }
@@ -214,25 +213,22 @@ function applyDesk(device: Device, rule: Rule, remote: Payload): PullAction {
     }
     return 'apply'
   }
-  // A newer build's merge ticks this device, so the push dominates every
-  // input it merged and an older core applies it whole (VERIFY-5529R2).
-  const at =
-    device.kind === 'newDesk'
-      ? increment(resolution.mergedClock, device.id)
-      : resolution.mergedClock
   if (device.kind === 'oldDesk') {
     device.tags = [...remote.tags]
     device.properties = { ...remote.properties }
-  } else {
-    const local = { ...fields(device), ...rule.edit(device.base, fields(device)) }
-    const merged = rule.merge(local, remote, at)
-    device.tags = [...merged.tags]
-    device.properties = { ...merged.properties }
-    device.base = { ...fields(device), clock: at, ...stampKeys(merged) }
+    device.clock = { ...resolution.mergedClock }
+    // The pull coordinator re-queues a `'conflict'` journal.
+    device.pending = true
+    return 'merge'
   }
-  device.clock = { ...at }
-  // The pull coordinator re-queues a `'conflict'` journal.
-  device.pending = true
+  const local = { ...fields(device), ...rule.edit(device.base, fields(device)) }
+  const merged = rule.merge(local, remote, device.id)
+  device.tags = [...merged.tags]
+  device.properties = { ...merged.properties }
+  device.clock = { ...merged.clock }
+  device.base = { ...fields(device), ...stampKeys(merged) }
+  // `'conflict'` re-queues the journal only when the merge changed its fields.
+  if (merged.requeue) device.pending = true
   return 'merge'
 }
 
@@ -254,17 +250,16 @@ function applyCore(device: Device, rule: Rule, remote: Payload): PullAction {
     setStored(device, { ...clone(remote), clock: union })
     return 'merge'
   }
-  const at = increment(union, device.id)
-  const merged = rule.merge(local, remote, at)
+  const merged = rule.merge(local, remote, device.id)
   const { fieldClocks: _c, fieldClocksAt: _a, fieldClocksFloor: _f, ...rest } = clone(remote)
   setStored(device, {
     ...rest,
     tags: merged.tags,
     properties: merged.properties,
-    clock: at,
+    clock: merged.clock,
     ...stampKeys(merged)
   })
-  device.pending = true
+  if (merged.requeue) device.pending = true
   return 'merge'
 }
 
