@@ -44,10 +44,11 @@ function units(side: JournalFields): Map<string, unknown> {
 /**
  * §6.12.1: a side's unit clocks are trusted only when a writer that knows them
  * stamped them at the clock it pushed. Otherwise (no `fieldClocks`, or an older
- * build ticked `clock` past the stamp) every unit the side names was written at
- * its document clock, which is today's whole-record rule for that side.
+ * build ticked `clock` past the stamp) the side was written whole at its
+ * document clock: every unit in `union`, and every unit it names, takes that
+ * clock, so a unit it lacks is a removal rather than an unclocked absence.
  */
-export function journalUnitClocks(side: JournalFields): FieldClocks {
+export function journalUnitClocks(side: JournalFields, union: Iterable<string> = []): FieldClocks {
   const map = side.fieldClocks ?? {}
   const trusted =
     side.fieldClocks !== undefined &&
@@ -56,7 +57,9 @@ export function journalUnitClocks(side: JournalFields): FieldClocks {
   if (trusted) return { ...map }
   const clock = side.clock ?? {}
   const seeded: FieldClocks = {}
-  for (const unit of [...Object.keys(map), ...units(side).keys()]) seeded[unit] = { ...clock }
+  for (const unit of [...union, ...Object.keys(map), ...units(side).keys()]) {
+    seeded[unit] = { ...clock }
+  }
   return seeded
 }
 
@@ -90,16 +93,16 @@ export function mergeJournalFields(
 ): JournalFieldsMerge {
   const localUnits = units(local)
   const remoteUnits = units(remote)
-  const localClocks = journalUnitClocks(local)
-  const remoteClocks = journalUnitClocks(remote)
   const all = [
     ...new Set([
-      ...Object.keys(localClocks),
-      ...Object.keys(remoteClocks),
+      ...Object.keys(local.fieldClocks ?? {}),
+      ...Object.keys(remote.fieldClocks ?? {}),
       ...localUnits.keys(),
       ...remoteUnits.keys()
     ])
   ].toSorted()
+  const localClocks = journalUnitClocks(local, all)
+  const remoteClocks = journalUnitClocks(remote, all)
 
   const { merged, mergedFieldClocks } = mergeFields(
     Object.fromEntries(localUnits),

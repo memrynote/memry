@@ -75,6 +75,7 @@ vi.mock('../../vault/index', () => ({
 import { _resetBulkApplyForTests } from '../bulk-apply'
 import { buildJournalEntryWrite } from '../../vault/journal'
 import { journalHandler } from './journal-handler'
+import { readJournalFieldsBase } from '../journal-fields'
 
 const DATE = '2026-11-23'
 const DAY = `j${DATE}`
@@ -191,5 +192,29 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     })
 
     expect(pushed().properties).toEqual({ mine: 1 })
+  })
+
+  // REVIEW-5529 finding 1: an older build removed a tag and a property while
+  // this device made an edit that touched neither.
+  it('keeps an older build’s removal of a tag and a property', () => {
+    apply({ ...base, tags: ['T'], properties: { p: 1 } })
+    editLocally(['T'], { p: 1 }, { X: 1, N: 1 })
+    pushed()
+
+    apply({ date: DATE, content: null, tags: [], properties: {}, clock: { X: 1, O: 1 } })
+
+    const payload = pushed()
+    expect(payload.tags).toEqual([])
+    expect(payload.properties).toEqual({})
+  })
+
+  // REVIEW-5529 finding 2: re-pulling the legacy row this device already holds
+  // is the identical equal-clock skip of §6.5.2 P4, and writes no base.
+  it('skips an equal-clock legacy row identical to the local day', () => {
+    apply(base)
+    const before = readJournalFieldsBase(ctx.db, DAY)
+
+    expect(apply(base)).toBe('skipped')
+    expect(readJournalFieldsBase(ctx.db, DAY)).toEqual(before)
   })
 })

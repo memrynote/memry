@@ -82,22 +82,34 @@ fn trusted_map(side: &Map<String, Value>, clock: &VectorClock) -> Option<UnitClo
     (stamp == *clock).then_some(map)
 }
 
-/// §6.12.1: a side's unit clocks.
-pub fn journal_unit_clocks(side: &Map<String, Value>) -> Result<UnitClocks, StorageError> {
+/// The unit names a side's `fieldClocks` carries, trusted or not.
+fn clocked_units(side: &Map<String, Value>) -> Vec<String> {
+    match side.get("fieldClocks") {
+        Some(Value::Object(clocks)) => clocks.keys().cloned().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// §6.12.1: a side's unit clocks. An untrusted side was written whole at its
+/// clock: every unit in `union`, and every unit it names, takes that clock, so
+/// a unit it lacks is a removal rather than an unclocked absence.
+pub fn journal_unit_clocks(
+    side: &Map<String, Value>,
+    union: &BTreeSet<String>,
+) -> Result<UnitClocks, StorageError> {
     let clock = doc_clock(side)?;
     if let Some(map) = trusted_map(side, &clock) {
         return Ok(map);
     }
-    let mut seeded = UnitClocks::new();
-    if let Some(Value::Object(stale)) = side.get("fieldClocks") {
-        for unit in stale.keys() {
-            seeded.insert(unit.clone(), clock.clone());
-        }
-    }
-    for (unit, _) in units(side) {
-        seeded.insert(unit, clock.clone());
-    }
-    Ok(seeded)
+    let named = clocked_units(side)
+        .into_iter()
+        .chain(units(side).into_iter().map(|(unit, _)| unit));
+    Ok(union
+        .iter()
+        .cloned()
+        .chain(named)
+        .map(|unit| (unit, clock.clone()))
+        .collect())
 }
 
 /// §6.12.2: the unit clocks a local edit from `base` to `next` pushes, as the
@@ -119,7 +131,7 @@ pub fn field_clocks_for_edit(
             &seed
         }
     };
-    let mut clocks = journal_unit_clocks(from)?;
+    let mut clocks = journal_unit_clocks(from, &BTreeSet::new())?;
     let before = units(from);
     let after = units(next);
     let all: BTreeSet<&String> = before.iter().chain(after.iter()).map(|(u, _)| u).collect();
@@ -142,15 +154,14 @@ pub fn merge_journal_fields(
 ) -> Result<JournalMerge, StorageError> {
     let local_units = units(local);
     let remote_units = units(remote);
-    let local_clocks = journal_unit_clocks(local)?;
-    let remote_clocks = journal_unit_clocks(remote)?;
-    let all: BTreeSet<String> = local_clocks
-        .keys()
-        .chain(remote_clocks.keys())
-        .chain(local_units.iter().map(|(u, _)| u))
-        .chain(remote_units.iter().map(|(u, _)| u))
-        .cloned()
+    let all: BTreeSet<String> = clocked_units(local)
+        .into_iter()
+        .chain(clocked_units(remote))
+        .chain(local_units.iter().map(|(u, _)| u.clone()))
+        .chain(remote_units.iter().map(|(u, _)| u.clone()))
         .collect();
+    let local_clocks = journal_unit_clocks(local, &all)?;
+    let remote_clocks = journal_unit_clocks(remote, &all)?;
     let fields: Vec<&str> = all.iter().map(String::as_str).collect();
     let as_map =
         |units: &[(String, Value)]| -> Map<String, Value> { units.iter().cloned().collect() };

@@ -131,3 +131,26 @@ fn a_removal_is_not_resurrected_by_a_peer_that_edited_something_else() {
     pull(&phone, &pushed(&desk));
     assert_eq!(view(&phone), (json!(["keep"]), json!({ "k": 2 })));
 }
+
+/// REVIEW-5529 finding 1: an older build's removal is read whole at its clock,
+/// so a tag and a property it dropped stay dropped (§6.12.1).
+#[test]
+fn an_older_builds_removal_is_not_resurrected_by_a_body_only_edit() {
+    let phone = open("old-removal");
+    let legacy = json!({
+        "date": DAY, "content": "", "tags": ["T"], "properties": { "p": 1 },
+        "clock": { "X": 1 }
+    });
+    pull(&phone, &legacy.to_string());
+    // A new-build edit that changes neither tags nor properties.
+    phone
+        .call_blocking(|conn| metadata::set_aliases(conn, DAY, &tags(&["alias"]), "N", NOW))
+        .expect("aliases");
+
+    let old_build = json!({
+        "date": DAY, "content": null, "tags": [], "properties": {},
+        "clock": { "X": 1, "O": 1 }
+    });
+    pull(&phone, &old_build.to_string());
+    assert_eq!(view(&phone), (json!([]), json!({})));
+}

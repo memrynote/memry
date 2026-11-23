@@ -44,6 +44,7 @@ import {
 import { generateJournalId } from '@memry/contracts/journal-api'
 import { keepUnseenText } from '../keep-unseen-text'
 import { mergeJournalFields, type JournalFields } from '@memry/sync-client/journal-merge'
+import { valuesEqual } from '@memry/sync-client/field-merge'
 import {
   forgetJournalFieldsBase,
   localJournalFields,
@@ -303,6 +304,37 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     _deviceId: string,
     operation: string
   ): string | null {
+    return this.buildPayload(db, itemId, operation, true)
+  }
+
+  /**
+   * §6.5.2 P4 compares the day's fields, not its unit clocks: a legacy row this
+   * device already holds carries none, and building them would also advance
+   * the synced base outside a push (REVIEW-5529).
+   */
+  protected matchesLocalPayload(
+    db: DrizzleDb,
+    itemId: string,
+    remote: JournalSyncPayload
+  ): boolean {
+    const { fieldClocks: _clocks, fieldClocksAt: _at, ...fields } = remote
+    try {
+      const local = this.buildPayload(db, itemId, 'update', false)
+      if (local == null) return false
+      const parsed = this.schema.safeParse(JSON.parse(local))
+      return parsed.success && valuesEqual(parsed.data, fields)
+    } catch {
+      return false
+    }
+  }
+
+  /** `stamp`: add unit clocks and record them as the synced base (the push path only). */
+  private buildPayload(
+    db: DrizzleDb,
+    itemId: string,
+    operation: string,
+    stamp: boolean
+  ): string | null {
     const cached = getNoteMetadataById(db, itemId)
     if (!cached?.journalDate) return null
 
@@ -321,14 +353,16 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       aliases = extractAliases(parsed.frontmatter, cached.journalDate)
       // Unit clocks only for fields read from the file (§6.12.2): a push
       // without them is read whole at its clock, today's rule.
-      const fields = localJournalFields(
-        db,
-        cached.id,
-        { tags, properties: properties ?? {} },
-        cached.clock ?? {}
-      )
-      writeJournalFieldsBase(db, cached.id, fields)
-      unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
+      if (stamp) {
+        const fields = localJournalFields(
+          db,
+          cached.id,
+          { tags, properties: properties ?? {} },
+          cached.clock ?? {}
+        )
+        writeJournalFieldsBase(db, cached.id, fields)
+        unitClocks = { fieldClocks: fields.fieldClocks, fieldClocksAt: fields.fieldClocksAt }
+      }
     } catch {
       log.warn('Could not read journal file for push payload', {
         noteId: cached.id,
