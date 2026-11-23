@@ -66,6 +66,7 @@ vi.mock('../sync/crdt-provider', () => {
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
     open: async (id: string) => docs.get(id),
+    withDocLoaded: async (_id: string, run: () => void) => run(),
     closeIfInactive: async () => {},
     purge: vi.fn()
   }
@@ -113,6 +114,8 @@ import { appendBlocksToNote } from './append-blocks'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher, getWatcher } from './watcher'
+import { deleteNoteCommand } from '../notes/domain'
+import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -340,5 +343,29 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
 
     expect({ file: shared(), crossed: crossed() }).toEqual({ file: UPPER, crossed: [] })
+  }, 30_000)
+
+  it('deleting a twin drops its row and keeps the file the other twin shares', async () => {
+    await twins()
+
+    await deleteNoteCommand('lower')
+
+    expect({
+      file: shared(),
+      rows: rowIds(),
+      syncedDeletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }).toEqual({ file: UPPER, rows: ['upper'], syncedDeletes: [['note', 'lower']] })
+  }, 30_000)
+
+  it('deleting a note with no twin removes its file', async () => {
+    await twins()
+    seed('solo', 'Other/s.md', '# s\n\nsolo\n')
+
+    await deleteNoteCommand('solo')
+
+    expect({
+      exists: fs.existsSync(path.join(vault.path, 'Other/s.md')),
+      rows: rowIds()
+    }).toEqual({ exists: false, rows: ['lower', 'upper'] })
   }, 30_000)
 })

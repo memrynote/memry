@@ -21,7 +21,8 @@ import {
   generateContentHash,
   type NoteFrontmatter
 } from './frontmatter'
-import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { syncNoteToCache, deleteNoteFromCache, findCanonicalNoteForFile } from './note-sync'
+import { diskCaseOf } from './disk-case'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -886,8 +887,13 @@ export async function deleteNote(id: string): Promise<void> {
   }
   assertNoteWritable(id, cached.path)
 
-  const absolutePath = toAbsolutePath(cached.path)
-  await deleteFile(absolutePath)
+  // A case twin's file is the other twin's too (#5297): only this row goes.
+  const onDisk = diskCaseOf(getVaultRoot(), cached.path)
+  if (onDisk !== null && findCanonicalNoteForFile(getVaultRoot(), onDisk)?.sharesFile) {
+    logger.warn('Deleting a case twin keeps the file it shares', { noteId: id, path: cached.path })
+  } else {
+    await deleteFile(toAbsolutePath(cached.path))
+  }
 
   deleteNoteFromCache(db, id)
   deleteNotePosition(getDatabase(), cached.path)
