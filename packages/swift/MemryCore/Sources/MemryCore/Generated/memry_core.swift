@@ -14254,8 +14254,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * Bounded so a write's [`Self::sync_now`] waits for at most one round:
      * rounds and passes take the same pass gate. A round with nothing due
      * makes no request, and so does a round before the `Retry-After` of a
-     * `429` that ended the last one: it pulls nothing, which pauses the
-     * shell's drain until the next foreground. It opens a bootstrap session
+     * `429` the last one met, whether it ended that round or only answered
+     * its probe or bootstrap open, or one the first sync's bodies pass gave
+     * up on: it pulls nothing, which pauses the shell's drain until the next
+     * foreground. It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -14616,8 +14618,10 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
      * Bounded so a write's [`Self::sync_now`] waits for at most one round:
      * rounds and passes take the same pass gate. A round with nothing due
      * makes no request, and so does a round before the `Retry-After` of a
-     * `429` that ended the last one: it pulls nothing, which pauses the
-     * shell's drain until the next foreground. It opens a bootstrap session
+     * `429` the last one met, whether it ended that round or only answered
+     * its probe or bootstrap open, or one the first sync's bodies pass gave
+     * up on: it pulls nothing, which pauses the shell's drain until the next
+     * foreground. It opens a bootstrap session
      * for the round and pulls four documents at a time when the server
      * grants one (a device's first day, §10.9), one at a time otherwise.
      *
@@ -38805,7 +38809,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 49610) {
+    if (uniffi_memry_core_checksum_method_vaultsync_drain_bodies() != 41901) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
