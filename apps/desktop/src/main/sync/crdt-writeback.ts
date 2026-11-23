@@ -319,6 +319,11 @@ async function runWriteback(
   await takeWritebackTurn(noteId, () => runPass(noteId, doc, local, remoteEditedAtMs))
 }
 
+/** Whether a turn of this note (a pass or a frontmatter writer) is running or queued. */
+export function hasWritebackTurn(noteId: string): boolean {
+  return runningPasses.has(noteId)
+}
+
 /**
  * Runs `run` once the note's earlier turns have settled. A pass writes back
  * the frontmatter it read, and a writer that changes only frontmatter (tags,
