@@ -3,9 +3,13 @@
 //!
 //! Electron kept it in the vault registry (`vaultUuid`); here the registry
 //! entry becomes a cache of this key, so a vault opened from another path or
-//! after a registry reset still syncs to the vault the server knows. It is
-//! never the local `vault.id` (`storage::vault_identity`), which canvases
-//! stamp and which stays per database, as Electron's does.
+//! after a registry reset still syncs to the vault the server knows. It may
+//! differ from the local `vault.id` (`storage::vault_identity`): a device that
+//! downloaded the vault binds it over a freshly minted local id. Synced records
+//! that name their vault (canvases, agent conversations) state this id once it
+//! is bound ([`RecordVault`], #5505), because Electron adopts the server uuid as
+//! its local one (`vault-adoption.ts:49-80`) and §13.7.21's `vaultId` is the
+//! value of `X-Memry-Vault-Id`.
 //!
 //! Additive: an older build ignores the key. `SyncDriver` refuses a vault with
 //! none, which would send no header and be routed to the account's only vault.
@@ -42,6 +46,37 @@ pub fn bind(conn: &Connection, id: &str) -> Result<(), StorageError> {
 /// The bound server vault id, if any.
 pub fn bound(conn: &Connection) -> Result<Option<String>, StorageError> {
     read_meta(conn, META_SERVER_VAULT_ID)
+}
+
+/// The vault a synced record that names one belongs to here: the one owner of
+/// which `vaultId` such a record states and which ones list in this vault.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordVault {
+    stamp: String,
+    local: String,
+}
+
+impl RecordVault {
+    /// Reads the binding now, so a bind made while the vault is open applies to
+    /// the next write. `local` is the vault's own id, which an unbound vault
+    /// states and which its server id becomes when it binds first.
+    pub fn read(conn: &Connection, local: &str) -> Result<Self, StorageError> {
+        Ok(Self {
+            stamp: bound(conn)?.unwrap_or_else(|| local.to_owned()),
+            local: local.to_owned(),
+        })
+    }
+
+    /// The `vaultId` a record written here states: the bound server id, else the local id.
+    pub fn stamp(&self) -> &str {
+        &self.stamp
+    }
+
+    /// The local id, which records written before the bind, or by a build before #5505, state.
+    /// A vault lists records of either id, so no stored row needs rewriting.
+    pub fn local(&self) -> &str {
+        &self.local
+    }
 }
 
 #[cfg(test)]
