@@ -16,7 +16,7 @@
 //! document not reached still owed. Only a local storage failure is an error.
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use tokio::task::JoinSet;
@@ -46,6 +46,8 @@ pub struct DrainReport {
     pub requests: usize,
     /// Live documents still owed after the round, backed-off ones included.
     pub remaining: usize,
+    /// The wait a `429` that ended the round asked for, in seconds.
+    pub rate_limit_s: Option<u64>,
 }
 
 /// The documents due now, at most one round of them. Local only: runs the
@@ -86,6 +88,7 @@ pub async fn run(
 
     let mut report = DrainReport::default();
     let ended = Arc::new(AtomicBool::new(false));
+    let rate_limit_s = Arc::new(AtomicU64::new(0));
     for chunk in due.chunks(PROBE_CHUNK) {
         let mut probed: HashMap<String, Probed> =
             match bodies.probe(chunk, &mut report.requests).await {
@@ -106,6 +109,7 @@ pub async fn run(
                 Arc::clone(bodies),
                 Arc::clone(&queue),
                 Arc::clone(&ended),
+                Arc::clone(&rate_limit_s),
                 Arc::clone(&tally),
             ));
         }
@@ -129,6 +133,7 @@ pub async fn run(
         }
     }
     report.remaining = remaining(db).await?;
+    report.rate_limit_s = Some(rate_limit_s.load(Ordering::SeqCst)).filter(|&wait_s| wait_s > 0);
     Ok(report)
 }
 
@@ -139,6 +144,7 @@ async fn worker(
     bodies: Arc<BodyPull>,
     queue: Arc<Mutex<Queue>>,
     ended: Arc<AtomicBool>,
+    rate_limit_s: Arc<AtomicU64>,
     tally: Arc<Tally>,
 ) -> Result<(BodyPullReport, usize), StorageError> {
     let mut part = BodyPullReport::default();
@@ -155,7 +161,14 @@ async fn worker(
                 tally.advance();
             }
             Step::Owed => {}
-            Step::Ended => ended.store(true, Ordering::SeqCst),
+            Step::Ended {
+                rate_limit_s: wait_s,
+            } => {
+                if let Some(wait_s) = wait_s {
+                    rate_limit_s.fetch_max(wait_s, Ordering::SeqCst);
+                }
+                ended.store(true, Ordering::SeqCst);
+            }
         }
     }
     Ok((part, settled))
