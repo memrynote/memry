@@ -190,6 +190,19 @@ export function markCaseTwinForeignBytes(db: DrizzleDb, noteId: string, mark: Ma
   writeMarks(db, marks)
 }
 
+/**
+ * Note `noteId`'s file, marked as holding a change on no server, hashes to
+ * `sha256`, bytes a server holds (#5608): the landing keeps only a change made
+ * since. False, with nothing written, when the mark is not null.
+ */
+export function markHeldFileOnServer(db: DrizzleDb, noteId: string, sha256: string): boolean {
+  const marks = readCaseTwinForeignBytes(db)
+  if (marks.get(noteId) !== null) return false
+  marks.set(noteId, { sha256 })
+  writeMarks(db, marks)
+  return true
+}
+
 /** The file's bytes, with this sha256, are kept as a conflict copy: a retried landing keeps them once. */
 export function recordConflictCopyKept(db: DrizzleDb, noteId: string, sha256: string): void {
   const marks = readCaseTwinForeignBytes(db)

@@ -102,7 +102,13 @@ import { clearAllPendingDeletes } from '../../vault/rename-tracker'
 import { startWatcher, stopWatcher } from '../../vault/watcher'
 import { landCaseTwinDownload } from '../../vault/case-twin-file'
 import { noteHandler } from './note-handler'
-import { recordDownloadedFileSize, recordUploadedAttachment } from '../note-attachment-metadata'
+import {
+  recordDownloadedFileSize,
+  recordUploadedAttachment,
+  recordUploadedFile
+} from '../note-attachment-metadata'
+import { registerManifestChecksumReader, settleBinaryHashCheck } from '../binary-hash-check'
+import { SyncServerError } from '@memry/sync-client/http-errors'
 import { enqueueLocalSyncUpdate } from '../local-mutations'
 import { SupersededDownloadError } from '../attachment-errors'
 import { enqueueUpload } from '../attachment-outbox'
@@ -129,6 +135,13 @@ describe("a peer's replacement of a binary note's bytes", () => {
   const onSaved = (event: { noteId: string }) => saved(event.noteId)
   const onDownload = (event: { noteId: string; attachmentId: string; diskPath: string }) =>
     downloads(event.noteId, event.attachmentId, event.diskPath)
+  /** The server's manifest checksums, by attachment id; any other id is gone (404). */
+  const manifests = new Map<string, string>()
+  const readChecksum = vi.fn(async (attachmentId: string) => {
+    const checksum = manifests.get(attachmentId)
+    if (checksum === undefined) throw new SyncServerError('Failed to fetch manifest', 404)
+    return checksum
+  })
   const abs = (relativePath: string) => path.join(vault.path, relativePath)
   const read = (relativePath: string) => fs.readFileSync(abs(relativePath), 'utf8')
 
@@ -152,11 +165,14 @@ describe("a peer's replacement of a binary note's bytes", () => {
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
     attachmentEvents.onSaved(onSaved)
     attachmentEvents.onDownloadNeeded(onDownload)
+    registerManifestChecksumReader(readChecksum)
   })
 
   afterEach(async () => {
     attachmentEvents.offSaved(onSaved)
     attachmentEvents.offDownloadNeeded(onDownload)
+    registerManifestChecksumReader(null)
+    manifests.clear()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
@@ -304,20 +320,71 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(conflictCopies('Pictures')).toEqual(['new-bytes'])
   })
 
-  it('keeps the bytes of a note with no synced hash recorded as a conflict copy', () => {
-    seed('img', 'Pictures/p.png', 'old-bytes', false)
+  // A note from before #5603, or after a session teardown cleared sync_state.
+  describe('of a note with no synced hash recorded (#5608)', () => {
+    it('lands over bytes its attachment holds on the server, and records their hash', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      manifests.set('att-img', sha256('old-bytes'))
 
-    expect(pull('img', 'att-new')).toBe('applied')
-    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(pull('img', 'att-new')).toBe('applied')
+      await settleBinaryHashCheck('img')
 
-    expect(read('Pictures/p.png')).toBe('peer-bytes')
-    expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
+      expect(readChecksum).toHaveBeenCalledWith('att-img')
+      expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('old-bytes'))
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual([])
+    })
+
+    it('keeps bytes other than its attachment holds as a conflict copy', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      manifests.set('att-img', sha256('old-bytes'))
+      fs.writeFileSync(abs('Pictures/p.png'), 'edited while closed')
+
+      expect(pull('img', 'att-new')).toBe('applied')
+      await settleBinaryHashCheck('img')
+
+      expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBeUndefined()
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual(['edited while closed'])
+    })
+
+    it('keeps its bytes as a conflict copy when the manifest cannot be read', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+
+      expect(pull('img', 'att-new')).toBe('applied')
+      await settleBinaryHashCheck('img')
+
+      expect(readChecksum).toHaveBeenCalledWith('att-img')
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
+    })
+
+    it('keeps its bytes as a conflict copy when the manifest never answers', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes', false)
+      readChecksum.mockImplementationOnce(() => new Promise<string>(() => {}))
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      try {
+        expect(pull('img', 'att-new')).toBe('applied')
+        const settled = settleBinaryHashCheck('img')
+        await vi.advanceTimersByTimeAsync(30_000)
+        await settled
+      } finally {
+        vi.useRealTimers()
+      }
+
+      land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+      expect(read('Pictures/p.png')).toBe('peer-bytes')
+      expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
+    })
   })
 
-  it('lands over bytes this device uploaded without a conflict copy', () => {
+  it('lands over bytes this device uploaded without a conflict copy', async () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     fs.writeFileSync(abs('Pictures/p.png'), 'up-bytes!')
-    recordUploadedAttachment('img', 'att-up', sha256('up-bytes!'))
+    expect(await recordUploadedFile('img', 'att-up', sha256('up-bytes!'))).toBe(true)
     expect(attachmentOf('img')).toBe('att-up')
 
     expect(pull('img', 'att-new', { dev1: 2, peer: 1 })).toBe('applied')
@@ -469,7 +536,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(conflictCopies('Pictures')).toEqual(['local-edit'])
   })
 
-  it("keeps an upload that finishes after the peer's bytes landed off the note", () => {
+  it("keeps an upload that finishes after the peer's bytes landed off the note", async () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
     updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
@@ -479,7 +546,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(conflictCopies('Pictures')).toEqual(['local-edit'])
 
     // The upload of the local edit was in flight; it finishes after the landing.
-    recordUploadedAttachment('img', 'att-local', sha256('local-edit'))
+    expect(await recordUploadedFile('img', 'att-local', sha256('local-edit'))).toBe(false)
 
     expect(attachmentOf('img')).toBe('att-b')
     expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')

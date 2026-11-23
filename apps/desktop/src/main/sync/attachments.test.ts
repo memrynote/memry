@@ -748,8 +748,10 @@ describe('AttachmentSyncService', () => {
       const { deps, plaintext } = buildDownloadFixture('moved.pdf')
       const asked = path.join(tmpDir, 'old', 'moved.pdf')
       const landAt = path.join(tmpDir, 'moved.pdf')
+      // Async: the hook waits for a binary note's hash check before it answers (#5608).
       const beforeFileLands = vi.fn(
-        (_filePath: string, _attachmentId: string, _sha256: string, _fileOwnerId?: string) => landAt
+        async (_filePath: string, _attachmentId: string, _sha256: string, _fileOwnerId?: string) =>
+          landAt
       )
       const service = new AttachmentSyncService({ ...deps, beforeFileLands })
 

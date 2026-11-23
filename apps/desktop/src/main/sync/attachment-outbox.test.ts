@@ -277,7 +277,10 @@ describe('attachment outbox', () => {
     enqueueUpload(db, 'note-fail', failPath)
     enqueueUpload(db, 'note-gone', gonePath)
 
-    const onUploaded = vi.fn()
+    let pendingWhileRecording: string[] = []
+    const onUploaded = vi.fn(() => {
+      pendingWhileRecording = listPendingUploads(db).map((row) => row.noteId)
+    })
     const upload = vi.fn(async (_noteId: string, diskPath: string) => {
       if (diskPath === failPath) throw new Error('server said no')
       return { attachmentId: 'att-' + path.basename(diskPath), sha256: 'sha-ok' }
@@ -285,10 +288,13 @@ describe('attachment outbox', () => {
 
     return drainOutboxWith({ db, vaultPath: tempDir, upload, onUploaded }).then((result) => {
       expect(result).toEqual({ uploaded: 1, failed: 1, dropped: 1 })
-      expect(onUploaded).toHaveBeenCalledWith('note-ok', {
-        attachmentId: 'att-ok.pdf',
-        sha256: 'sha-ok'
-      })
+      expect(onUploaded).toHaveBeenCalledWith(
+        'note-ok',
+        { attachmentId: 'att-ok.pdf', sha256: 'sha-ok' },
+        okPath
+      )
+      // Recorded before its row clears: a crash while it records retries the upload.
+      expect(pendingWhileRecording).toContain('note-ok')
 
       const pending = listPendingUploads(db)
       expect(pending).toHaveLength(1)

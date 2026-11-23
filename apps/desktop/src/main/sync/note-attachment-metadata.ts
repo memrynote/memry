@@ -6,23 +6,50 @@ import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-do
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
-import {
-  clearCaseTwinForeignBytes,
-  hashFile,
-  holdsCaseTwinForeignBytes
-} from '../vault/case-twin-bytes'
+import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
+import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
 import { recordSyncedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('NoteAttachmentMetadata')
 
-/** `sha256`: the uploaded bytes' checksum, unknown for an inbox attachment reused onto the note. */
-export function recordUploadedAttachment(
+/** An inbox attachment reused onto the note, its bytes' checksum unknown. */
+export function recordUploadedAttachment(noteId: string, attachmentId: string): void {
+  recordOnNote(noteId, attachmentId)
+}
+
+/**
+ * An upload of note `noteId`'s file, whose bytes hash to `sha256`, succeeded.
+ * Resolves false when the upload is kept off the note: the file does not hold
+ * its bytes, so nothing may record it as holding them.
+ */
+export async function recordUploadedFile(
   noteId: string,
   attachmentId: string,
-  sha256?: string
-): void {
+  sha256: string
+): Promise<boolean> {
+  const note = getNoteMetadataById(getDatabase(), noteId)
+  const binary = note !== undefined && isBinaryNoteRow(note)
+  if (binary) {
+    // The binary note's file holds other bytes now: a newer edit with its own
+    // upload, or a peer's replacement that landed while this one uploaded,
+    // which kept these bytes as a conflict copy, a note of its own (#5595).
+    // Hashed off the main thread: a vault's first upload hashes every file (#5608).
+    const onDisk = await hashFileOffThread(toAbsolutePath(note.path))
+    if (onDisk !== null && onDisk !== sha256) {
+      log.warn('An upload of bytes its file no longer holds is kept off the note', {
+        noteId,
+        attachmentId
+      })
+      return false
+    }
+  }
+  return recordOnNote(noteId, attachmentId, binary ? sha256 : undefined)
+}
+
+/** `syncedHash`: the binary note's uploaded bytes' checksum. False when kept off the note. */
+function recordOnNote(noteId: string, attachmentId: string, syncedHash?: string): boolean {
   const db = getDatabase()
   // The note's file holds bytes that are not its own, or a peer's replacement
   // is landing on it (#5560, #5580). Recorded on this note, the upload would
@@ -34,23 +61,9 @@ export function recordUploadedAttachment(
       noteId,
       attachmentId
     })
-    return
+    return false
   }
   const note = getNoteMetadataById(db, noteId)
-  const binary = sha256 !== undefined && note !== undefined && isBinaryNoteRow(note)
-  if (binary) {
-    // The binary note's file holds other bytes now: a newer edit with its own
-    // upload, or a peer's replacement that landed while this one uploaded,
-    // which kept these bytes as a conflict copy, a note of its own (#5595).
-    const onDisk = hashFile(toAbsolutePath(note.path))
-    if (onDisk !== null && onDisk !== sha256) {
-      log.warn('An upload of bytes its file no longer holds is kept off the note', {
-        noteId,
-        attachmentId
-      })
-      return
-    }
-  }
   // Merge, don't replace: a note can embed several attachments and each upload
   // lands here separately — replacing the list dropped every id but the last.
   const existing = note?.attachmentReferences ?? []
@@ -65,7 +78,7 @@ export function recordUploadedAttachment(
     attachmentReferences: merged
   })
   updateNoteCache(getIndexDatabase(), noteId, { attachmentId })
-  if (binary && updated) recordSyncedBinaryHash(db, noteId, sha256)
+  if (syncedHash !== undefined && updated) recordSyncedBinaryHash(db, noteId, syncedHash)
 
   // The way back out of a recorded "the server does not have this" verdict: the
   // server demonstrably has it now, so any stale failure row must not keep this
@@ -80,7 +93,7 @@ export function recordUploadedAttachment(
       noteId,
       attachmentId
     })
-    return
+    return true
   }
 
   // A successful upload only mutates this sidecar row, and nothing else on the
@@ -99,6 +112,7 @@ export function recordUploadedAttachment(
   // predates the key ignores it and applies the rest of the update exactly as
   // it does today.
   enqueueLocalSyncUpdate('note', noteId)
+  return true
 }
 
 /**

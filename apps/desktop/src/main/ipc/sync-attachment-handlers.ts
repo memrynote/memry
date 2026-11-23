@@ -75,10 +75,8 @@ import {
 } from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { createLogger } from '../lib/logger'
-import {
-  recordDownloadedFileSize,
-  recordUploadedAttachment
-} from '../sync/note-attachment-metadata'
+import { recordDownloadedFileSize, recordUploadedFile } from '../sync/note-attachment-metadata'
+import { registerManifestChecksumReader, settleBinaryHashCheck } from '../sync/binary-hash-check'
 import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime-state'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
@@ -224,7 +222,9 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
-    beforeFileLands: (filePath, attachmentId, sha256, fileOwnerId) => {
+    beforeFileLands: async (filePath, attachmentId, sha256, fileOwnerId) => {
+      // The note's file may be a peer-replaced one being compared with its attachment (#5608).
+      if (fileOwnerId !== undefined) await settleBinaryHashCheck(fileOwnerId)
       const landAt = isDatabaseInitialized()
         ? landCaseTwinDownload(filePath, attachmentId, sha256, fileOwnerId)
         : filePath
@@ -526,12 +526,20 @@ export function registerAttachmentHandlers(): void {
         if (err instanceof UnsendableAttachmentError) reportRefusedUpload(noteId, diskPath, err)
         throw err
       }
-      recordFile(noteId, diskPath, result.attachmentId)
       return { attachmentId: result.attachmentId, sha256: result.manifest.checksum }
     },
     () => getDatabase(),
-    (noteId, uploaded) => recordUploadedAttachment(noteId, uploaded.attachmentId, uploaded.sha256)
+    async (noteId, uploaded, diskPath) => {
+      if (await recordUploadedFile(noteId, uploaded.attachmentId, uploaded.sha256)) {
+        recordFile(noteId, diskPath, uploaded.attachmentId)
+      }
+    }
   )
+  registerManifestChecksumReader(async (attachmentId) => {
+    const service = getOrCreateAttachmentService()
+    if (!service) throw new Error('Sync not initialized')
+    return service.checksumOf(attachmentId)
+  })
 
   attachmentEvents.onSaved(({ noteId, diskPath }) => {
     void (async () => {
@@ -563,8 +571,9 @@ export function registerAttachmentHandlers(): void {
         const result = await upload
         if (!result) return
         if (isDatabaseInitialized()) {
-          recordUploadedAttachment(noteId, result.attachmentId, result.manifest.checksum)
-          recordFile(noteId, diskPath, result.attachmentId)
+          if (await recordUploadedFile(noteId, result.attachmentId, result.manifest.checksum)) {
+            recordFile(noteId, diskPath, result.attachmentId)
+          }
           // Outbox cleanup must never turn a successful upload into a failure.
           try {
             clearUpload(getDatabase(), noteId, diskPath)
@@ -787,6 +796,7 @@ export function registerAttachmentHandlers(): void {
 
 export function unregisterAttachmentHandlers(): void {
   registerOutboxUploader(null, null, null)
+  registerManifestChecksumReader(null)
   registerAttachmentQueueReset(null)
   clearAttachmentState()
   attachmentEvents.removeAllListeners('saved')
