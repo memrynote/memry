@@ -25,6 +25,7 @@ import {
   moveFileInCache,
   deleteNoteFromCache,
   findCanonicalNoteForFile,
+  listCaseTwinPaths,
   refusesCaseTwinFile,
   findCanonicalNotePath,
   isRemoteApplySpelling,
@@ -643,7 +644,7 @@ export class VaultWatcher {
 
     // The echo of the app's own write. Other bytes are an edit, however soon
     // after an app write they land (#5605).
-    if (await fileHoldsAppWrite(absolutePath)) return
+    if (await this.isOwnWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -1156,7 +1157,7 @@ export class VaultWatcher {
     const absolutePath = this.inDiskCase(eventPath)
 
     // The echo of the app's own write (see `handleFileAdd`).
-    if (await fileHoldsAppWrite(absolutePath)) return
+    if (await this.isOwnWrite(absolutePath)) return
 
     try {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
@@ -1196,12 +1197,34 @@ export class VaultWatcher {
     }
   }
 
+  /**
+   * Whether the file the event names holds the app's own write. A write is
+   * recorded by the path it went to, and a case twin writes the file it shares
+   * by its own spelling, which the event, spelled as the disk is, does not
+   * carry (#5624).
+   */
+  private async isOwnWrite(absolutePath: string): Promise<boolean> {
+    if (await fileHoldsAppWrite(absolutePath)) return true
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return false
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
+    for (const twinPath of listCaseTwinPaths(vaultPath, relativePath)) {
+      if (twinPath !== relativePath && (await fileHoldsAppWrite(path.join(vaultPath, twinPath)))) {
+        return true
+      }
+    }
+    return false
+  }
+
   private async handleMarkdownFileChange(
     relativePath: string,
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
     if (!this.vaultPath) return
+    // A twin that leaves between the read and the check below leaves the file
+    // unshared, holding bytes that may not be this note's (#5624).
+    const sharedAtRead = listCaseTwinPaths(this.vaultPath, relativePath).length > 0
     const ownWrite = appWriteCheck(path.join(this.vaultPath, relativePath))
     const file = await openVaultFile(this.vaultPath, relativePath)
     if (file === null) return
@@ -1239,6 +1262,13 @@ export class VaultWatcher {
     }
 
     if (refusesCaseTwinFile(this.vaultPath, relativePath, cached.id)) return
+    if (sharedAtRead) {
+      logger.warn('A case twin left the file during its read; the bytes stay out of the doc', {
+        noteId: cached.id,
+        path: relativePath
+      })
+      return
+    }
 
     const syncResult = syncNoteToCache(
       db,

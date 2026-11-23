@@ -17,6 +17,8 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { attachmentUploadQueue } from '@memry/db-schema/schema/attachment-upload-queue'
 import { crdtBodyDebts } from '@memry/db-schema/schema/crdt-body-debts'
+import { attachmentFiles } from '@memry/db-schema/schema/attachment-files'
+import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { listDeclinedRefs } from '@memry/sync-client/declined-refs'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import { upsertNoteMetadata } from '@memry/storage-data'
@@ -104,6 +106,8 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { getCrdtProvider, resetCrdtProvider } from '../sync/crdt-provider'
 import { queueUploadIfAbsent } from '../sync/attachment-outbox'
 import { oweCrdtBodyDebts } from '../sync/engine/crdt-body-debts'
+import { recordAttachmentFile } from '../sync/attachment-files'
+import { recordNoteBodyPush } from '../sync/note-body-push-record'
 import { ItemApplier } from '../sync/apply-item'
 import { forgetStrayAttachmentRows } from './stray-attachment-rows'
 
@@ -169,15 +173,23 @@ describe('note rows an older Windows build made of attachment files', () => {
     note('host', 'notes/host.md', HOST_MD)
     note('stray', STRAY_FILE, PNG)
     note('photo', 'notes/photo.png', PNG)
-    // What an older build left for the stray: a doc, queued items, an upload, a debt.
+    // What an older build left for the stray: a doc, queued items, an upload, a
+    // debt, and the record of the upload and body push the server took for it.
     const doc = new Y.Doc()
     doc.getMap('meta').set('title', 'abc-pasted')
-    store.set('stray', [Y.encodeStateAsUpdate(doc)])
+    const update = Y.encodeStateAsUpdate(doc)
+    store.set('stray', [update])
     const queue = new SyncQueueManager(asSyncDb(data.db))
     queue.enqueueNoteBody('stray', 'body')
     queue.enqueue({ type: 'note', itemId: 'stray', operation: 'update', payload: '{}' })
     queueUploadIfAbsent(asSyncDb(data.db), 'stray', path.join(vault.path, STRAY_FILE))
     oweCrdtBodyDebts(asSyncDb(data.db), ['stray'], 'broadcast')
+    // The host uploaded the same file and pushed its body too.
+    for (const id of ['host', 'stray']) {
+      const file = path.join(vault.path, STRAY_FILE)
+      recordAttachmentFile(asSyncDb(data.db), vault.path, id, file, `att-${id}`)
+      recordNoteBodyPush(id, 'confirmed', 1_768_000_000_000, asClientDb(data.db), [update])
+    }
   }
 
   const state = () => ({
@@ -199,7 +211,16 @@ describe('note rows an older Windows build made of attachment files', () => {
     uploads: data.db.select().from(attachmentUploadQueue).all(),
     debts: data.db.select().from(crdtBodyDebts).all(),
     docs: [...store.keys()].toSorted(),
-    declined: listDeclinedRefs(asSyncDb(data.db))
+    declined: listDeclinedRefs(asSyncDb(data.db)),
+    attachmentFiles: data.db
+      .select({ noteId: attachmentFiles.noteId, path: attachmentFiles.path })
+      .from(attachmentFiles)
+      .all(),
+    bodyPushes: data.db
+      .select({ noteId: noteBodySync.noteId })
+      .from(noteBodySync)
+      .all()
+      .map((r) => r.noteId)
   })
 
   const cleaned = {
@@ -211,10 +232,12 @@ describe('note rows an older Windows build made of attachment files', () => {
     uploads: [],
     debts: [],
     docs: [],
-    declined: [{ type: 'note', id: 'stray' }]
+    declined: [{ type: 'note', id: 'stray' }],
+    attachmentFiles: [{ noteId: 'host', path: STRAY_FILE }],
+    bodyPushes: ['host']
   }
 
-  it('drops every trace of the row, queues no delete and keeps the file', async () => {
+  it("drops every trace of the row, queues no delete and keeps the file and the host's records", async () => {
     strayVault()
 
     await expect(forgetStrayAttachmentRows(vault.path)).resolves.toEqual(['stray'])
