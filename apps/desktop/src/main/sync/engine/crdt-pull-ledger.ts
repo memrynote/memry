@@ -119,6 +119,12 @@ export class CrdtPullLedger {
    * counts when the debt store is session-only and its `failures` reads 0.
    */
   private sessionFailures = new Map<string, number>()
+  /**
+   * Walks in a row a newer server snapshot cut short, per note. That owe counts
+   * no failure, so a note under steady snapshot churn stays owed with no other
+   * trace (#5247). Session only; a walk that settles the note clears it.
+   */
+  private prunedWalkOwes = new Map<string, number>()
 
   constructor(
     protected ctx: SyncContext,
@@ -303,6 +309,14 @@ export class CrdtPullLedger {
     this.onDeferred?.()
   }
 
+  /** Owe a walk a newer server snapshot cut short; returns how many walks in a row it is. */
+  protected owePrunedWalk(noteId: string): number {
+    const inARow = (this.prunedWalkOwes.get(noteId) ?? 0) + 1
+    this.prunedWalkOwes.set(noteId, inARow)
+    this.owePendingPull(noteId)
+    return inARow
+  }
+
   /**
    * An update the provider dropped (its doc was closing): the doc lacks it,
    * and the watermark may already claim it, so only a walk may settle the
@@ -428,6 +442,7 @@ export class CrdtPullLedger {
     this.debts.clearWithheld(clean.filter((noteId) => !stillOwed.has(noteId)))
     for (const noteId of clean) {
       this.ctx.deps.crdtProvider?.recordWholeBodyMerged(noteId)
+      this.prunedWalkOwes.delete(noteId)
       if (stillOwed.has(noteId)) continue
       this.sessionFailures.delete(noteId)
       this.unmergedRemoteNotes.delete(noteId)
@@ -470,5 +485,6 @@ export class CrdtPullLedger {
     this.deferredPulls.clear()
     this.unmergedRemoteNotes.clear()
     this.sessionFlagGenerations.clear()
+    this.prunedWalkOwes.clear()
   }
 }

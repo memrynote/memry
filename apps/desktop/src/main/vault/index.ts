@@ -75,6 +75,7 @@ import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
 import { healCaseVariantRows } from './case-variant-heal'
+import { forgetStrayAttachmentRows } from './stray-attachment-rows'
 import { closeActivityLog, openActivityLog } from './activity-log'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
@@ -473,6 +474,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   } catch (error) {
     logger.error('Dropping case-variant copies of notes and folders failed:', error)
     trackMainError('vault', 'case_variant_heal', error)
+  }
+  if (isStale()) return
+
+  // Before the removal replay, so it never sees a stray row: one whose file
+  // went missing would be taken for a delete there.
+  try {
+    await forgetStrayAttachmentRows(vaultPath)
+  } catch (error) {
+    logger.error('Dropping note rows made of attachment files failed:', error)
+    trackMainError('vault', 'stray_attachment_rows', error)
   }
   if (isStale()) return
 

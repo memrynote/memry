@@ -20,6 +20,7 @@ import { compare } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import { staysOnDevice } from './content-sync-base'
 
 const log = createLogger('PendingDeletes')
 
@@ -41,15 +42,15 @@ export interface PendingDelete {
  *
  * Same shape and same rules as `NoteSyncService.buildDeletePayload`: no
  * user-visible text, the clock bumped under the real device id (peers order the
- * delete by it), and skipped entirely for a local-only row or one the server has
- * never seen.
+ * delete by it), and skipped entirely for a row that stays on this device or one
+ * the server has never seen.
  */
 export function buildContentDeletePayload(db: DataDb, itemId: string): string | null {
   const local = getNoteMetadataById(db, itemId)
   if (!local) return null
   // The "never leaves this device" switch — mirrors `shouldSkip` on the online
   // path, which a deferred delete would otherwise bypass.
-  if (local.localOnly) return null
+  if (staysOnDevice(local)) return null
   // No clock means the server has never seen this note, so there is no peer
   // holding it and nothing to tombstone.
   if (!local.clock) return null

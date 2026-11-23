@@ -22,7 +22,7 @@ import {
   closeIndexDatabase
 } from '../database'
 import { parseNote } from './frontmatter'
-import { ATTACHMENTS_DIR } from './attachments'
+import { isInAttachmentStore } from './attachments'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import {
@@ -124,15 +124,16 @@ export async function findVaultFiles(
       // Skip hidden files and directories
       if (entry.name.startsWith('.')) continue
 
+      const fullPath = path.join(dirPath, entry.name)
+      const relativePath = normalizeRelativePath(path.relative(basePath, fullPath))
+
       // The app's attachments live in <vault>/attachments only. A nested folder
       // with that name is the user's own (Obsidian's "subfolder under current
       // folder" setting makes them) and its notes are ordinary notes (#3161).
-      if (dirPath === basePath && entry.name === ATTACHMENTS_DIR) continue
+      if (isInAttachmentStore(relativePath)) continue
 
       // Skip excluded patterns (exact match or prefix match)
       if (excludePatterns.some((p) => entry.name === p || entry.name.startsWith(`${p}/`))) continue
-
-      const fullPath = path.join(dirPath, entry.name)
 
       if (entry.isDirectory()) {
         // Recursively scan subdirectories
@@ -142,13 +143,13 @@ export async function findVaultFiles(
         const supported = isSupportedPath(fullPath)
         if (supported) {
           // Add supported file (relative path from vault root)
-          files.push(normalizeRelativePath(path.relative(basePath, fullPath)))
+          files.push(relativePath)
         } else {
           logger.debug(`Skipping unsupported file: ${entry.name}`)
           if (activity) {
             activity.unsupportedCount++
             if (activity.unsupported.length < SCAN_COLLECT_LIMIT) {
-              activity.unsupported.push(normalizeRelativePath(path.relative(basePath, fullPath)))
+              activity.unsupported.push(relativePath)
             }
           }
         }
