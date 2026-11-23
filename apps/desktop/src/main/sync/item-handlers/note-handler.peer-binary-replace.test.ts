@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'crypto'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -210,11 +211,13 @@ describe("a peer's replacement of a binary note's bytes", () => {
 
   /** The downloader landing an asked-for attachment: `beforeFileLands`, the rename, the size. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): void {
-    const at = landCaseTwinDownload(requestedPath, attachmentId, id)
+    const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, attachmentId, bytes.length)
   }
+
+  const sha256 = (bytes: string) => createHash('sha256').update(bytes).digest('hex')
 
   const conflictCopies = (folder: string) =>
     fs
@@ -368,7 +371,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
   it('keeps holding the file when the record moves on between a landing and its size', async () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     expect(pull('img', 'att-b')).toBe('applied')
-    const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-b', 'img')
+    const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-b', sha256('b-bytes'), 'img')
     markWritebackIgnored(at)
     fs.writeFileSync(at, 'b-bytes')
     // A newer replacement applies before the landing records its size.

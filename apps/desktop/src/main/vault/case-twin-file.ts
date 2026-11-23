@@ -36,7 +36,9 @@
  * survivor's file may hold the leaver's bytes (`planBinarySurvivor`). Such a
  * file is not pushed until the note's own attachment lands on it
  * (`landCaseTwinDownload`), which first keeps a change made to the file as a
- * conflict copy.
+ * conflict copy. A change is told by content hash (#5585): the split compares
+ * the file with the bytes a download last landed on it, and the landing with
+ * the hash marked at the split.
  *
  * @module vault/case-twin-file
  */
@@ -86,14 +88,16 @@ import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf } from './disk-case'
 import {
-  changedSinceMarked,
   clearCaseTwinForeignBytes,
-  holdCaseTwinForeignChange,
+  hashFile,
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
-  recordHeldCaseTwinChange,
-  takeHeldCaseTwinChange
+  recordConflictCopyKept,
+  recordLandedCaseTwinHash,
+  takeHeldCaseTwinChange,
+  takeLandedCaseTwinHash,
+  type MarkedFile
 } from './case-twin-bytes'
 import { generateUniquePathSync } from './file-ops'
 import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
@@ -303,7 +307,8 @@ function planLeave(
   if (!survivor || !cached) throw new CaseTwinLeaveNotReadyError(leavingId)
   if (isBinaryNoteRow(cached)) {
     const onDisk = diskCaseOf(vaultPath, relativePath) ?? relativePath
-    return { leave: planBinarySurvivor(vaultPath, onDisk, survivorId, leavingId), raw, notReady }
+    const sha256 = hashFile(join(vaultPath, onDisk))
+    return { leave: planBinarySurvivor(vaultPath, onDisk, survivorId, sha256), raw, notReady }
   }
   const onDisk = raw === null ? null : generateContentHash(raw)
   if (raw === null || onDisk === cached.contentHash || onDisk === cached.pendingWriteHash) {
@@ -406,33 +411,6 @@ export function assertFolderRenameKeepsCaseTwins(folderPath: string): void {
 }
 
 /**
- * Whether the watcher holds an outside change to binary note `noteId`'s file
- * instead of pushing it, logging the hold. Every watcher path that would push
- * the file asks. A file a case twin shares holds one twin's bytes, whichever
- * row the event names (#5522); the change is recorded for the split
- * (`planBinarySurvivor`). After a split, a file that may hold the other twin's
- * bytes is held until the note's own download lands (#5560), and the change is
- * recorded so the landing keeps it as a conflict copy.
- */
-export function holdsBinaryChange(
-  vaultPath: string,
-  relativePath: string,
-  noteId: string
-): boolean {
-  const db = getDatabase()
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  const shared = onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
-  if (shared) recordHeldCaseTwinChange(db, onDisk)
-  else if (!holdCaseTwinForeignChange(db, noteId)) return false
-  log.warn("A change to a file that may hold a case twin's bytes is not pushed", {
-    noteId,
-    path: relativePath,
-    reason: shared ? 'shared' : 'foreign'
-  })
-  return true
-}
-
-/**
  * A peer's rename or move of binary note `movingId` off a file it shares with
  * a case twin (#5560). The file stays where it is for the other twin. The
  * moving twin gets a copy at `newAbsolutePath`, so its row never lacks a file.
@@ -460,10 +438,11 @@ export function planBinaryCaseTwinMove(
   }
   const db = getDatabase()
   const sharedPath = join(vaultPath, onDisk)
+  const sha256 = hashFile(sharedPath)
   const localOnly = getNoteMetadataById(db, movingId)?.localOnly ?? false
   // With more than one twin left, the file is still shared and the watcher holds it.
   const keepSurvivor =
-    twins.length === 1 ? planBinarySurvivor(vaultPath, onDisk, twins[0], movingId) : () => {}
+    twins.length === 1 ? planBinarySurvivor(vaultPath, onDisk, twins[0], sha256) : () => {}
   return () => {
     markWritebackIgnored(newAbsolutePath)
     fs.mkdirSync(dirname(newAbsolutePath), { recursive: true })
@@ -472,35 +451,40 @@ export function planBinaryCaseTwinMove(
       movingId,
       attachmentId
     })
-    requestOwnBytes(db, { id: movingId, attachmentId, localOnly }, newAbsolutePath, false)
+    // The copy holds the shared bytes: a change in them is the survivor's to keep.
+    const copied = sha256 === null ? null : { sha256 }
+    requestOwnBytes(db, { id: movingId, attachmentId, localOnly }, newAbsolutePath, copied)
     keepSurvivor()
   }
 }
 
 /**
- * Binary note `survivorId` keeps the file at `onDisk` alone once `leavingId`
- * leaves it (moved or deleted), and the file may hold the leaver's bytes: its
- * own attachment is asked for onto the file. A change the watcher held, or
- * one it has not seen yet (a size neither twin recorded: the event is on the
- * way, or the app was closed), is kept as a conflict copy when they land.
- * The plan reads; the step it returns never awaits.
+ * Binary note `survivorId` keeps the file at `onDisk` alone once the other
+ * twin leaves it (moved or deleted), and the file may hold the leaver's
+ * bytes: its own attachment is asked for onto the file. `sha256` is the
+ * file's hash, read by the plan. The file holds a change on no server when
+ * the watcher held one, or when it differs from the bytes a download last
+ * landed on it (#5585): an edit made while the app was closed, or whose event
+ * is on the way, whatever its size. With no landing recorded (twins that
+ * shared the file before this build), the bytes are treated as changed. Such
+ * a change is kept as a conflict copy when the survivor's bytes land, unless
+ * they are those bytes. The step never awaits.
  */
 function planBinarySurvivor(
   vaultPath: string,
   onDisk: string,
   survivorId: string,
-  leavingId: string
+  sha256: string | null
 ): () => void {
   const db = getDatabase()
   const survivor = getNoteMetadataById(db, survivorId)
   if (!survivor) return () => {}
   const sharedPath = join(vaultPath, onDisk)
-  const size = fs.statSync(sharedPath).size
-  const unseenChange =
-    size !== survivor.fileSize && size !== getNoteMetadataById(db, leavingId)?.fileSize
   return () => {
-    const changed = takeHeldCaseTwinChange(db, onDisk) || unseenChange
-    requestOwnBytes(db, survivor, sharedPath, changed)
+    const held = takeHeldCaseTwinChange(db, onDisk)
+    const landed = takeLandedCaseTwinHash(db, onDisk)
+    const changed = held || sha256 === null || sha256 !== landed
+    requestOwnBytes(db, survivor, sharedPath, changed ? null : { sha256 })
   }
 }
 
@@ -508,7 +492,8 @@ function planBinarySurvivor(
  * The file at `diskPath` may hold note `note`'s case twin's bytes. Its pushes
  * are held, and its own attachment is asked for there through the download
  * tracking, recorded as owed so the re-driver retries a request no downloader
- * took. `changed` says the file holds a change on no server. A note with no
+ * took. `mark` is the file's hash, or null when it holds a change on no
+ * server. A note with no
  * attachment, kept local only, or whose attachment the server no longer has,
  * has no other copy of its bytes: its file is the best one there is, and
  * stays pushable.
@@ -517,7 +502,7 @@ function requestOwnBytes(
   db: DrizzleDb,
   note: { id: string; attachmentId: string | null; localOnly: boolean },
   diskPath: string,
-  changed: boolean
+  mark: MarkedFile
 ): void {
   if (!note.attachmentId || note.localOnly || isDownloadAbandoned(db, note.id, note.attachmentId)) {
     log.warn(
@@ -526,12 +511,12 @@ function requestOwnBytes(
         noteId: note.id,
         attachmentId: note.attachmentId,
         localOnly: note.localOnly,
-        changed
+        changed: mark === null
       }
     )
     return
   }
-  markCaseTwinForeignBytes(db, note.id, diskPath, changed)
+  markCaseTwinForeignBytes(db, note.id, mark)
   askForOwnBytes(db, note.id, note.attachmentId, diskPath)
 }
 
@@ -583,24 +568,42 @@ export function releaseAbandonedCaseTwinBytes(
 }
 
 /**
- * Where a downloaded attachment lands (`beforeFileLands`), for a note whose
- * file may hold its case twin's bytes (#5560). A download asked for at the
- * path the note had before a split lands at its file now, not on the file the
- * other twin kept. A change made to the file since it was marked is on no
- * server, so it is kept first as a new file next to it, "<name> (conflict
- * copy)", which the vault takes in as a note of its own. Throws, with nothing
- * landed, when that copy cannot be written: the download is retried.
+ * Where a downloaded attachment whose bytes hash to `sha256` lands
+ * (`beforeFileLands`). Bytes landing on a file case twins share are recorded,
+ * so their split can tell a change made since (#5585). For a note whose file
+ * may hold its case twin's bytes (#5560), a download asked for at the path the
+ * note had before a split lands at its file now, not on the file the other
+ * twin kept. A change made to the file since it was marked is on no server,
+ * so it is kept first as a new file next to it, "<name> (conflict copy)",
+ * which the vault takes in as a note of its own, once: a landing retried
+ * after its rename failed finds the change kept. Throws, with nothing landed,
+ * when that copy cannot be written: the download is retried.
  */
 export function landCaseTwinDownload(
   filePath: string,
   attachmentId: string,
+  sha256: string,
   fileOwnerId?: string
 ): string {
   const db = getDatabase()
   if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
+  const vaultPath = getVaultRoot()
+  const landAt = keepCaseTwinChange(db, vaultPath, filePath, attachmentId, sha256)
+  const landsOn = toRelativePath(landAt)
+  if (sharesCaseTwinFile(vaultPath, landsOn)) recordLandedCaseTwinHash(db, landsOn, sha256)
+  return landAt
+}
+
+/** Where a marked note's download lands, keeping a change on its file first. */
+function keepCaseTwinChange(
+  db: DrizzleDb,
+  vaultPath: string,
+  filePath: string,
+  attachmentId: string,
+  sha256: string
+): string {
   const marks = readCaseTwinForeignBytes(db)
   if (marks.size === 0) return filePath
-  const vaultPath = getVaultRoot()
   const marked = [...marks.keys()].flatMap((id) => getNoteMetadataById(db, id) ?? [])
   const owner = marked.find((note) => note.attachmentId === attachmentId)
   const landAt =
@@ -609,8 +612,11 @@ export function landCaseTwinDownload(
       : filePath
   const landsOn = foldNotePath(toRelativePath(landAt))
   const onFile = marked.find((note) => foldNotePath(note.path) === landsOn)
-  if (onFile && changedSinceMarked(marks.get(onFile.id) ?? null, landAt)) {
+  if (!onFile) return landAt
+  const onDisk = hashFile(landAt)
+  if (onDisk !== null && onDisk !== sha256 && onDisk !== marks.get(onFile.id)?.sha256) {
     keepConflictCopy(onFile.id, landAt)
+    recordConflictCopyKept(db, onFile.id, onDisk)
   }
   return landAt
 }

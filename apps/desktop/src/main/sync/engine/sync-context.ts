@@ -240,11 +240,19 @@ export const SYNC_STATE_KEYS = {
    */
   CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
   /**
-   * JSON list of binary note ids whose file may hold a case twin's bytes
-   * after the twins split (#5560). The watcher pushes no change to them
-   * until the note's own download lands. Missing reads as an empty list.
+   * JSON object from binary note id to `{sha256}` of its file, or null,
+   * for each note whose file may hold a case twin's bytes after the twins
+   * split (#5560, #5585). The watcher pushes no change to them until the
+   * note's own download lands. Missing reads as empty.
    */
-  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes'
+  CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
+  /**
+   * JSON object from the folded vault path of a binary file case twins share
+   * to the sha256 of the bytes a download last landed there (#5585). The
+   * split compares the file with it to find a change the watcher never saw.
+   * Missing reads as empty: the split then keeps the file's bytes.
+   */
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

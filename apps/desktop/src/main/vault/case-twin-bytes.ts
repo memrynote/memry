@@ -1,17 +1,23 @@
 /**
  * Which binary files may hold a case twin's bytes, kept in `sync_state` so a
- * restart keeps the hold (#5522, #5560). `case-twin-file.ts` writes both
- * keys; the watcher reads them, and a note's own download landing clears it.
+ * restart keeps the hold (#5522, #5560). `case-twin-file.ts` writes the
+ * keys; the hold (`holdsBinaryChange`, `holdsBinaryUpload`) reads them for the
+ * watcher and the attachment backfill, and a note's own download landing
+ * clears it.
  *
  * - `caseTwinHeldChanges`: JSON list of the folded disk paths of shared files
  *   the watcher held a change to.
- * - `caseTwinForeignBytes`: JSON object from note id to the size and mtime of
- *   its file when it was marked, or null once the file holds a change that is
- *   on no server (held at the split, or made since).
+ * - `caseTwinLandedHashes`: JSON object from the folded disk path of a shared
+ *   file to the sha256 of the bytes a download last landed there: bytes a
+ *   server holds (#5585).
+ * - `caseTwinForeignBytes`: JSON object from note id to `{sha256}` of its file
+ *   when it was marked (or when its change was last kept as a conflict copy),
+ *   or null when the file held a change on no server at the split.
  *
  * @module vault/case-twin-bytes
  */
 
+import { createHash } from 'crypto'
 import fs from 'fs'
 import { eq } from 'drizzle-orm'
 import { syncState } from '@memry/db-schema/schema/sync-state'
@@ -19,15 +25,46 @@ import { foldNotePath } from '@memry/storage-data'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
 import { createLogger } from '../lib/logger'
+import { getDatabase } from '../database'
+import { diskCaseOf } from './disk-case'
+import { findCanonicalNoteForFile } from './note-sync'
 
 const log = createLogger('CaseTwinBytes')
 
 type Key =
   | typeof SYNC_STATE_KEYS.CASE_TWIN_HELD_CHANGES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES
+  | typeof SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES
 
-/** The file a mark was taken from, or null when it changed since. */
-export type MarkedFile = { size: number; mtimeMs: number } | null
+/** The bytes a mark was taken from, or null when they held a change on no server. */
+export type MarkedFile = { sha256: string } | null
+
+/**
+ * The sha256 (hex, as an attachment manifest's checksum) of the file at
+ * `filePath`, or null when nothing is there. Read in 1 MiB chunks, so a large
+ * file never sits in memory whole. Synchronous: the split's plan reads it
+ * with no await before its step.
+ */
+export function hashFile(filePath: string): string | null {
+  let fd: number
+  try {
+    fd = fs.openSync(filePath, 'r')
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null
+    throw error
+  }
+  try {
+    const hash = createHash('sha256')
+    const chunk = Buffer.allocUnsafe(1024 * 1024)
+    let read: number
+    while ((read = fs.readSync(fd, chunk, 0, chunk.length, null)) > 0) {
+      hash.update(chunk.subarray(0, read))
+    }
+    return hash.digest('hex')
+  } finally {
+    fs.closeSync(fd)
+  }
+}
 
 function readValue(db: DrizzleDb, key: Key): unknown {
   const value = db
@@ -62,15 +99,16 @@ function readHeld(db: DrizzleDb): Set<string> {
   return new Set(Array.isArray(paths) ? paths.filter((p) => typeof p === 'string') : [])
 }
 
-function isMarkedFile(value: unknown): value is MarkedFile {
-  return (
-    value === null ||
-    (typeof value === 'object' &&
-      'size' in value &&
-      typeof value.size === 'number' &&
-      'mtimeMs' in value &&
-      typeof value.mtimeMs === 'number')
-  )
+/**
+ * A stored mark. `{size, mtimeMs}` is the shape of a build that never shipped
+ * (#5563 before #5585); it reads as null, so the landing keeps the file's
+ * change rather than trust a fingerprint it cannot compare.
+ */
+function toMarkedFile(value: unknown): MarkedFile | undefined {
+  if (value === null) return null
+  if (typeof value !== 'object') return undefined
+  if ('sha256' in value && typeof value.sha256 === 'string') return { sha256: value.sha256 }
+  return 'size' in value && 'mtimeMs' in value ? null : undefined
 }
 
 /** Each note whose file may hold a case twin's bytes, with the file it was marked at. */
@@ -84,7 +122,10 @@ export function readCaseTwinForeignBytes(db: DrizzleDb): Map<string, MarkedFile>
     return new Map()
   }
   return new Map(
-    Object.entries(marks).filter((entry): entry is [string, MarkedFile] => isMarkedFile(entry[1]))
+    Object.entries(marks).flatMap(([noteId, value]): Array<[string, MarkedFile]> => {
+      const mark = toMarkedFile(value)
+      return mark === undefined ? [] : [[noteId, mark]]
+    })
   )
 }
 
@@ -108,50 +149,109 @@ export function takeHeldCaseTwinChange(db: DrizzleDb, diskPath: string): boolean
   return true
 }
 
+function readLandedHashes(db: DrizzleDb): Map<string, string> {
+  const hashes = readValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES)
+  if (typeof hashes !== 'object' || hashes === null || Array.isArray(hashes)) return new Map()
+  return new Map(
+    Object.entries(hashes).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    )
+  )
+}
+
+/** A download landed bytes with this sha256 on a file case twins share (any spelling). */
+export function recordLandedCaseTwinHash(db: DrizzleDb, diskPath: string, sha256: string): void {
+  const hashes = readLandedHashes(db)
+  const folded = foldNotePath(diskPath)
+  if (hashes.get(folded) === sha256) return
+  hashes.set(folded, sha256)
+  writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, Object.fromEntries(hashes))
+}
+
+/** The sha256 a download last landed on this shared file, forgetting it. */
+export function takeLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string | undefined {
+  const hashes = readLandedHashes(db)
+  const folded = foldNotePath(diskPath)
+  const sha256 = hashes.get(folded)
+  if (sha256 === undefined) return undefined
+  hashes.delete(folded)
+  writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES, Object.fromEntries(hashes))
+  return sha256
+}
+
 /**
- * Note `noteId`'s file at `filePath` may hold a case twin's bytes: no change to
- * it is pushed. `changed` says the file already holds a change on no server.
+ * Note `noteId`'s file may hold a case twin's bytes: no change to it is
+ * pushed. `mark` is the sha256 of the file now, or null when it holds a change
+ * on no server; a null mark stays null until the note's own bytes land.
  */
-export function markCaseTwinForeignBytes(
-  db: DrizzleDb,
-  noteId: string,
-  filePath: string,
-  changed: boolean
-): void {
+export function markCaseTwinForeignBytes(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
   const marks = readCaseTwinForeignBytes(db)
-  if (changed || marks.get(noteId) === null) {
-    marks.set(noteId, null)
-  } else {
-    const { size, mtimeMs } = fs.statSync(filePath)
-    marks.set(noteId, { size, mtimeMs })
-  }
+  marks.set(noteId, marks.get(noteId) === null ? null : mark)
   writeMarks(db, marks)
 }
 
-/** Whether note `noteId`'s file may hold a case twin's bytes; if so, a change to it is recorded. */
-export function holdCaseTwinForeignChange(db: DrizzleDb, noteId: string): boolean {
+/** The file's bytes, with this sha256, are kept as a conflict copy: a retried landing keeps them once. */
+export function recordConflictCopyKept(db: DrizzleDb, noteId: string, sha256: string): void {
   const marks = readCaseTwinForeignBytes(db)
-  if (!marks.has(noteId)) return false
-  if (marks.get(noteId) !== null) {
-    marks.set(noteId, null)
-    writeMarks(db, marks)
-  }
-  return true
+  marks.set(noteId, { sha256 })
+  writeMarks(db, marks)
 }
 
 export function holdsCaseTwinForeignBytes(db: DrizzleDb, noteId: string): boolean {
   return readCaseTwinForeignBytes(db).has(noteId)
 }
 
-/** Whether the file at `filePath` changed since it was marked; a missing file holds nothing. */
-export function changedSinceMarked(mark: MarkedFile, filePath: string): boolean {
-  const stats = fs.statSync(filePath, { throwIfNoEntry: false })
-  if (!stats) return false
-  return mark === null || stats.size !== mark.size || stats.mtimeMs !== mark.mtimeMs
-}
-
 /** The note's own attachment landed on its file. */
 export function clearCaseTwinForeignBytes(db: DrizzleDb, noteId: string): void {
   const marks = readCaseTwinForeignBytes(db)
   if (marks.delete(noteId)) writeMarks(db, marks)
+}
+
+/**
+ * Whether the watcher holds an outside change to binary note `noteId`'s file
+ * instead of pushing it, logging the hold. Every watcher path that would push
+ * the file asks. A file a case twin shares holds one twin's bytes, whichever
+ * row the event names (#5522); the change is recorded for the split
+ * (`planBinarySurvivor`). After a split, a file that may hold the other twin's
+ * bytes is held until the note's own download lands (#5560), which keeps a
+ * change since the mark as a conflict copy.
+ */
+export function holdsBinaryChange(
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  return holdsBinaryFile(getDatabase(), vaultPath, relativePath, noteId, true)
+}
+
+/**
+ * `holdsBinaryChange` for an upload no change event asked for (the attachment
+ * backfill): the file is held, and nothing is recorded as changed.
+ */
+export function holdsBinaryUpload(
+  db: DrizzleDb,
+  vaultPath: string,
+  relativePath: string,
+  noteId: string
+): boolean {
+  return holdsBinaryFile(db, vaultPath, relativePath, noteId, false)
+}
+
+function holdsBinaryFile(
+  db: DrizzleDb,
+  vaultPath: string,
+  relativePath: string,
+  noteId: string,
+  changed: boolean
+): boolean {
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  const shared = onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
+  if (shared && changed) recordHeldCaseTwinChange(db, onDisk)
+  if (!shared && !holdsCaseTwinForeignBytes(db, noteId)) return false
+  log.warn("A file that may hold a case twin's bytes is not pushed", {
+    noteId,
+    path: relativePath,
+    reason: shared ? 'shared' : 'foreign'
+  })
+  return true
 }

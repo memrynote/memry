@@ -5,7 +5,7 @@ import { createLogger } from '../lib/logger'
 import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
-import { clearCaseTwinForeignBytes, holdCaseTwinForeignChange } from '../vault/case-twin-bytes'
+import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
 import { SupersededDownloadError } from './attachment-errors'
 
 const log = createLogger('NoteAttachmentMetadata')
@@ -13,10 +13,11 @@ const log = createLogger('NoteAttachmentMetadata')
 export function recordUploadedAttachment(noteId: string, attachmentId: string): void {
   const db = getDatabase()
   // The note's file holds bytes that are not its own, or a peer's replacement
-  // is landing on it (#5560, #5580). The upload read a change that is on no
-  // server: it is recorded as one, so the landing keeps it as a conflict copy,
-  // a note of its own. Recorded on this note, it would push over the peer's.
-  if (holdCaseTwinForeignChange(db, noteId)) {
+  // is landing on it (#5560, #5580). Recorded on this note, the upload would
+  // push over the bytes the note is waiting for. The landing keeps the
+  // uploaded bytes as a conflict copy, a note of its own, when they are a
+  // change since the mark.
+  if (holdsCaseTwinForeignBytes(db, noteId)) {
     log.warn('An upload of a file awaiting its own bytes is kept off the note', {
       noteId,
       attachmentId

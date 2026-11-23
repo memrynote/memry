@@ -225,10 +225,16 @@ export interface AttachmentSyncDeps {
    * note's file read as an edit ticks the note's clock and uploads the bytes
    * the server already holds (#5255). Returns the path the file lands at: a
    * case twin's download asked for at a path its note has since left lands at
-   * the note's file now (#5560). `fileOwnerId` is the note whose own file the
+   * the note's file now (#5560). `sha256` is the manifest's checksum of the
+   * bytes, already verified. `fileOwnerId` is the note whose own file the
    * download lands on; throwing `SupersededDownloadError` drops the landing.
    */
-  beforeFileLands?: (filePath: string, attachmentId: string, fileOwnerId?: string) => string
+  beforeFileLands?: (
+    filePath: string,
+    attachmentId: string,
+    sha256: string,
+    fileOwnerId?: string
+  ) => string
   fetchFn?: FetchFn
 }
 
@@ -938,7 +944,12 @@ export class AttachmentSyncService {
 
         try {
           landedAt =
-            this.deps.beforeFileLands?.(destPath, attachmentId, opts?.fileOwnerId) ?? destPath
+            this.deps.beforeFileLands?.(
+              destPath,
+              attachmentId,
+              manifest.checksum,
+              opts?.fileOwnerId
+            ) ?? destPath
           await rename(partialPath, landedAt)
         } catch (renameErr) {
           if (renameErr instanceof SupersededDownloadError) throw renameErr

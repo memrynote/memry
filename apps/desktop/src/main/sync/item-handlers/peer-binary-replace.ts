@@ -1,7 +1,11 @@
 import fs from 'fs'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { hasPendingUpload } from '../attachment-outbox'
-import { holdsCaseTwinForeignBytes, markCaseTwinForeignBytes } from '../../vault/case-twin-bytes'
+import {
+  hashFile,
+  holdsCaseTwinForeignBytes,
+  markCaseTwinForeignBytes
+} from '../../vault/case-twin-bytes'
 import { sharesCaseTwinFile } from '../../vault/case-twin-file'
 import { getVaultRoot, toAbsolutePath } from '../../vault/notes'
 
@@ -47,6 +51,8 @@ export function planPeerBinaryReplace(
       !note.attachmentId ||
       hasPendingUpload(db, note.id, filePath) ||
       (!!note.fileSize && stats.size !== note.fileSize))
-  return (landingPath) =>
-    markCaseTwinForeignBytes(db, note.id, landingPath, changed || !fs.existsSync(landingPath))
+  return (landingPath) => {
+    const sha256 = changed ? null : hashFile(landingPath)
+    markCaseTwinForeignBytes(db, note.id, sha256 === null ? null : { sha256 })
+  }
 }
