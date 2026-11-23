@@ -1037,7 +1037,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   (§8.12): the same kind, `minCursor` and `maxCursor`, a new key, and every
   entry whose row is still current. The purged document has no rows left, so
   none of its entries is kept (`rewritePurgedPacks`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:289`). The commit is
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:337`). The commit is
   guarded on the rewrite still pending, on every kept entry still current
   (the recheck of chapter 07 §7.15) and on the listing cap (§8.14). The same
   batch makes the old object due at once. A pack left with no current entry
@@ -1068,7 +1068,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   its rewrite committed and listed nothing, because no entry of the pack
   stayed current: the rewrite lists a row only when `kept.length > 0` and
   otherwise only settles the pending row
-  (`apps/sync-server/src/services/pack-purge-rewrite.ts:135`, `:175`, `:191`).
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:161`, `:197`, `:207`).
   No guard fails then, and the swap may commit, which is harmless because the
   run's range holds only current entries. A purge after the listing read that
   takes out an input of the run makes `replacePacks` record nothing: it
@@ -1155,15 +1155,22 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   the `record` pack whose `cover_from` is `through` takes `cover_from = from`,
   else the one whose `cover_through` is `from` takes `cover_through =
   through` (`absorbCoverage`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:228`). With neither, the
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:264`). With neither, the
   rewrite stays pending, and the pass runs it again after its other rewrites,
   for as long as each round settles one: a neighbour that was itself a pending
   rewrite has by then listed its new pack or handed its coverage on
   (`rewritePurgedPacks`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:289`). When a round
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:337`). The retry reads
+  no object, because the pack kept nothing, and only hands the coverage on; a
+  rewrite another pass settled meanwhile counts as settled (`handOn`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:234`). When a round
   settles none, the pass resets the kind
-  (`apps/sync-server/src/services/pack-purge-rewrite.ts:315`). Either way the
-  chain keeps tiling (§8.10). A
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:379`), unless it
+  settled a rewrite and leaves more pending: their neighbour may be among
+  those, so the rewrites wait for the next pass, which runs the oldest first.
+  A pass that settles none still resets, and a rewrite pending past its grace
+  still resets the kind (**The 900 s bound**). Either way the chain keeps
+  tiling (§8.10). A
   rollup's swap is guarded on its run's first `cover_from` and last
   `cover_through` still being the values it planned with, so a neighbour that
   took coverage meanwhile fails the swap. The same batch makes

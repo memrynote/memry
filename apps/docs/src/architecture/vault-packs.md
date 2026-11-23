@@ -350,7 +350,8 @@ pack that keeps nothing is not listed again: its coverage moves to the neighbour
 same batch, so the coverage chain never keeps a hole. Its neighbour may itself wait for a rewrite, as when
 the first two packs of the chain both held only the deleted note. The pass then runs the first pack's rewrite
 again after the others: the second has by then handed its coverage to the third, which takes the first's too.
-Only when no rewrite of the pass can give it a neighbour is the record kind reset. Every replaced record object of the
+When no rewrite of the pass can give it a neighbour, the record kind is reset, unless the pass settled a rewrite
+and left more for the next pass, which may list that neighbour. Every replaced record object of the
 vault is made due at once, so the same 900-second deadline holds. The tombstone shed
 (`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
 packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that
