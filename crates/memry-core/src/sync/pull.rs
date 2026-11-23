@@ -533,7 +533,7 @@ fn apply_items(
 
 /// Fails the page when SQLite rolled its transaction back on its own: writing
 /// on would autocommit the cursor without the records it names.
-fn still_open(conn: &Connection) -> Result<(), StorageError> {
+pub(crate) fn still_open(conn: &Connection) -> Result<(), StorageError> {
     if conn.is_autocommit() {
         return Err(StorageError::Failed {
             what: "the page's transaction was rolled back".to_owned(),
