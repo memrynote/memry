@@ -58,6 +58,7 @@ import { markWritebackIgnored, scheduleWriteback } from '../sync/crdt-writeback'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
+import { assertOwnAttachmentLands } from '../sync/note-attachment-metadata'
 import { hasPendingVaultFileOp, writeNoteFileNow } from '../sync/bulk-apply'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
 import type { NoteBody } from '../sync/writing-markdown'
@@ -590,8 +591,13 @@ export function releaseAbandonedCaseTwinBytes(
  * copy)", which the vault takes in as a note of its own. Throws, with nothing
  * landed, when that copy cannot be written: the download is retried.
  */
-export function landCaseTwinDownload(filePath: string, attachmentId: string): string {
+export function landCaseTwinDownload(
+  filePath: string,
+  attachmentId: string,
+  fileOwnerId?: string
+): string {
   const db = getDatabase()
+  if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
   const marks = readCaseTwinForeignBytes(db)
   if (marks.size === 0) return filePath
   const vaultPath = getVaultRoot()

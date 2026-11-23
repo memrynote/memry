@@ -12,7 +12,11 @@ import {
 import { generateFileKey } from '../crypto/keys'
 import { signPayload } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
 import type * as PromisesModule from 'node:fs/promises'
 
 let tmpDir: string
@@ -744,15 +748,32 @@ describe('AttachmentSyncService', () => {
       const { deps, plaintext } = buildDownloadFixture('moved.pdf')
       const asked = path.join(tmpDir, 'old', 'moved.pdf')
       const landAt = path.join(tmpDir, 'moved.pdf')
-      const beforeFileLands = vi.fn((_filePath: string, _attachmentId: string) => landAt)
+      const beforeFileLands = vi.fn(
+        (_filePath: string, _attachmentId: string, _fileOwnerId?: string) => landAt
+      )
       const service = new AttachmentSyncService({ ...deps, beforeFileLands })
 
-      const result = await service.downloadAttachment('att-dir', asked)
+      const result = await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
 
-      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir')
+      expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', 'note-3')
       expect(result.filePath).toBe(landAt)
       const fsp = await import('node:fs/promises')
       expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+    })
+
+    it('lands nothing when beforeFileLands drops a superseded download', async () => {
+      const { deps } = buildDownloadFixture('p.png')
+      const asked = path.join(tmpDir, 'p.png')
+      const beforeFileLands = vi.fn((): string => {
+        throw new SupersededDownloadError('note-3', 'att-dir')
+      })
+      const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+      await expect(
+        service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+      ).rejects.toBeInstanceOf(SupersededDownloadError)
+      const fsp = await import('node:fs/promises')
       await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
     })
 

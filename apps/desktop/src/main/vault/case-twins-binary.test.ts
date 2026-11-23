@@ -261,10 +261,10 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
 
   /** A download of note `id`'s attachment, asked for at `requestedPath`, as the downloader lands it. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): string {
-    const at = landCaseTwinDownload(requestedPath, attachmentId)
+    const at = landCaseTwinDownload(requestedPath, attachmentId, id)
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
-    recordDownloadedFileSize(id, bytes.length)
+    recordDownloadedFileSize(id, attachmentId, bytes.length)
     return at
   }
 

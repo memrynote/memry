@@ -14,7 +14,11 @@ import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
 import { signPayload, verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
-import { EmptyAttachmentError, TextInMediaFileError } from './attachment-errors'
+import {
+  EmptyAttachmentError,
+  SupersededDownloadError,
+  TextInMediaFileError
+} from './attachment-errors'
 import { mediaFileHoldsText } from './media-signature'
 import {
   NetworkError,
@@ -221,9 +225,10 @@ export interface AttachmentSyncDeps {
    * note's file read as an edit ticks the note's clock and uploads the bytes
    * the server already holds (#5255). Returns the path the file lands at: a
    * case twin's download asked for at a path its note has since left lands at
-   * the note's file now (#5560).
+   * the note's file now (#5560). `fileOwnerId` is the note whose own file the
+   * download lands on; throwing `SupersededDownloadError` drops the landing.
    */
-  beforeFileLands?: (filePath: string, attachmentId: string) => string
+  beforeFileLands?: (filePath: string, attachmentId: string, fileOwnerId?: string) => string
   fetchFn?: FetchFn
 }
 
@@ -747,6 +752,8 @@ export class AttachmentSyncService {
       onProgress?: ProgressCallback
       /** Attachment ids queued to download next; their manifests share one call. */
       upcoming?: () => string[]
+      /** The note whose own file `targetPath` is (#5580). */
+      fileOwnerId?: string
     } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
@@ -930,9 +937,11 @@ export class AttachmentSyncService {
         }
 
         try {
-          landedAt = this.deps.beforeFileLands?.(destPath, attachmentId) ?? destPath
+          landedAt =
+            this.deps.beforeFileLands?.(destPath, attachmentId, opts?.fileOwnerId) ?? destPath
           await rename(partialPath, landedAt)
         } catch (renameErr) {
+          if (renameErr instanceof SupersededDownloadError) throw renameErr
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
           if (isDiskSpaceError(renameErr)) {
             throw new Error(getMainI18n().t('errors:attachment.diskFull'), { cause: renameErr })

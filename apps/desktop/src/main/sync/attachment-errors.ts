@@ -30,3 +30,15 @@ export class TextInMediaFileError extends UnsendableAttachmentError {
     this.name = 'TextInMediaFileError'
   }
 }
+
+/**
+ * A downloaded attachment that is no longer its note's own: a newer record
+ * named another attachment while it downloaded (#5580). Landing it would put
+ * older bytes on the file the row names newer ones for, so it is dropped.
+ */
+export class SupersededDownloadError extends Error {
+  constructor(noteId: string, attachmentId: string) {
+    super(`Attachment ${attachmentId} is no longer the own attachment of note ${noteId}`)
+    this.name = 'SupersededDownloadError'
+  }
+}

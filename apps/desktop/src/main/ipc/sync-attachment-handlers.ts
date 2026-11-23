@@ -22,7 +22,7 @@ import {
   type TransferProgress,
   type UploadResult
 } from '../sync/attachments'
-import { UnsendableAttachmentError } from '../sync/attachment-errors'
+import { SupersededDownloadError, UnsendableAttachmentError } from '../sync/attachment-errors'
 import { classifyError } from '../sync/sync-errors'
 import {
   getCachedMaxFileSize,
@@ -42,6 +42,7 @@ import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
 import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
+  clearAttachmentDownloadFailure,
   markDownloadFailed,
   markDownloadSucceeded,
   releaseDownloadAttempt
@@ -223,9 +224,9 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
-    beforeFileLands: (filePath, attachmentId) => {
+    beforeFileLands: (filePath, attachmentId, fileOwnerId) => {
       const landAt = isDatabaseInitialized()
-        ? landCaseTwinDownload(filePath, attachmentId)
+        ? landCaseTwinDownload(filePath, attachmentId, fileOwnerId)
         : filePath
       markWritebackIgnored(landAt)
       return landAt
@@ -693,7 +694,7 @@ export function registerAttachmentHandlers(): void {
             ownerId: noteId,
             attachmentId,
             targetPath: diskPath,
-            ...(intoDir ? { targetIsDir: true } : {}),
+            ...(intoDir ? { targetIsDir: true } : { fileOwnerId: noteId }),
             source: 'eager',
             ...(sizeHint !== undefined ? { sizeHint } : {}),
             ...(recencyHint !== undefined ? { recencyHint } : {})
@@ -725,7 +726,7 @@ export function registerAttachmentHandlers(): void {
           if (!intoDir) {
             const stats = await fs.promises.stat(result.filePath)
             if (isDatabaseInitialized()) {
-              recordDownloadedFileSize(noteId, stats.size)
+              recordDownloadedFileSize(noteId, attachmentId, stats.size)
             }
             landed?.()
           }
@@ -733,6 +734,16 @@ export function registerAttachmentHandlers(): void {
           // PDF or image only once it is on disk.
           fileTextNoteChanged(noteId)
         } catch (err) {
+          if (err instanceof SupersededDownloadError) {
+            // A newer record named another attachment while this one
+            // downloaded (#5580): nothing is owed for it any more.
+            logger.info('Dropped a download its note no longer names', { noteId, attachmentId })
+            releaseDownloadAttempt(noteId, attachmentId)
+            if (isDatabaseInitialized()) {
+              clearAttachmentDownloadFailure(getDatabase(), noteId, attachmentId)
+            }
+            return
+          }
           if (err instanceof DownloadQueueClearedError) {
             // Queue torn down (vault switch / runtime restart) before the item
             // ran. Not an outcome — release the claim so the next pull or

@@ -101,7 +101,9 @@ import { clearAllPendingDeletes } from '../../vault/rename-tracker'
 import { startWatcher, stopWatcher } from '../../vault/watcher'
 import { landCaseTwinDownload } from '../../vault/case-twin-file'
 import { noteHandler } from './note-handler'
-import { recordDownloadedFileSize } from '../note-attachment-metadata'
+import { recordDownloadedFileSize, recordUploadedAttachment } from '../note-attachment-metadata'
+import { enqueueLocalSyncUpdate } from '../local-mutations'
+import { SupersededDownloadError } from '../attachment-errors'
 import { enqueueUpload } from '../attachment-outbox'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 
@@ -208,10 +210,10 @@ describe("a peer's replacement of a binary note's bytes", () => {
 
   /** The downloader landing an asked-for attachment: `beforeFileLands`, the rename, the size. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): void {
-    const at = landCaseTwinDownload(requestedPath, attachmentId)
+    const at = landCaseTwinDownload(requestedPath, attachmentId, id)
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
-    recordDownloadedFileSize(id, bytes.length)
+    recordDownloadedFileSize(id, attachmentId, bytes.length)
   }
 
   const conflictCopies = (folder: string) =>
@@ -331,6 +333,92 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(read('Pictures/p.png')).toBe('peer-bytes')
     expect(conflictCopies('Pictures')).toEqual(['edit-during-download'])
   }, 30_000)
+
+  it('drops an older replacement that finishes after a newer one landed', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    expect(pull('img', 'att-b')).toBe('applied')
+    expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')
+    expect(downloads.mock.calls.map(([, id]) => id)).toEqual(['att-b', 'att-c'])
+
+    land('img', 'att-c', abs('Pictures/p.png'), 'c-bytes')
+    expect(() => land('img', 'att-b', abs('Pictures/p.png'), 'b-bytes')).toThrow(
+      SupersededDownloadError
+    )
+
+    expect(attachmentOf('img')).toBe('att-c')
+    expect(read('Pictures/p.png')).toBe('c-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  it('drops an older replacement that finishes first, and lands the newer one', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    expect(pull('img', 'att-b')).toBe('applied')
+    expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')
+
+    expect(() => land('img', 'att-b', abs('Pictures/p.png'), 'b-bytes')).toThrow(
+      SupersededDownloadError
+    )
+    expect(read('Pictures/p.png')).toBe('old-bytes')
+    land('img', 'att-c', abs('Pictures/p.png'), 'c-bytes')
+
+    expect(read('Pictures/p.png')).toBe('c-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  it('keeps holding the file when the record moves on between a landing and its size', async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    expect(pull('img', 'att-b')).toBe('applied')
+    const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-b', 'img')
+    markWritebackIgnored(at)
+    fs.writeFileSync(at, 'b-bytes')
+    // A newer replacement applies before the landing records its size.
+    expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')
+    recordDownloadedFileSize('img', 'att-b', 'b-bytes'.length)
+
+    // An edit made now is on no server: it is held, and kept when C lands.
+    await startWatcher(vault.path)
+    seed('control', 'Pictures/c.png', 'c-bytes')
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+    try {
+      await vi.waitFor(
+        async () => {
+          fs.writeFileSync(abs('Pictures/p.png'), 'edit-after-b')
+          fs.writeFileSync(abs('Pictures/c.png'), 'control-edit')
+          await new Promise((resolve) => setTimeout(resolve, 400))
+          await flushProjectionEvents()
+          expect(saved.mock.calls.map(([id]) => id)).toContain('control')
+        },
+        { timeout: 15_000, interval: 100 }
+      )
+      await drainIngestBackfill()
+      await flushProjectionEvents()
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(saved.mock.calls.map(([id]) => id)).not.toContain('img')
+    land('img', 'att-c', abs('Pictures/p.png'), 'peer-c')
+    expect(read('Pictures/p.png')).toBe('peer-c')
+    expect(conflictCopies('Pictures')).toEqual(['edit-after-b'])
+  }, 30_000)
+
+  it("keeps an upload that finishes after the pull off the peer's note, as the conflict copy", () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+    updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
+    enqueueUpload(asClientDb(data.db), 'img', abs('Pictures/p.png'))
+    expect(pull('img', 'att-b')).toBe('applied')
+
+    // The upload of the local edit was in flight; it finishes now.
+    recordUploadedAttachment('img', 'att-local')
+
+    expect(attachmentOf('img')).toBe('att-b')
+    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
+    land('img', 'att-b', abs('Pictures/p.png'), 'b-bytes')
+    expect(attachmentOf('img')).toBe('att-b')
+    expect(read('Pictures/p.png')).toBe('b-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['local-edit'])
+  })
 
   it.runIf(fileSystemIgnoresCase())(
     "leaves a file a case twin shares alone: it holds one twin's bytes",
