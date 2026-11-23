@@ -823,9 +823,10 @@ Downloads happen on GitHub Releases, where PostHog cannot see them — the landi
 download-click event measures intent, not a download. A daily cron on the sync server
 (`services/release-downloads.ts`, run from the `scheduled` handler at 04:00 UTC) reads
 `GET /repos/memrynote/memry/releases` and emits one `release_download_count_snapshot` event per asset.
-It skips `ort-static-*` prereleases: they hold the static ONNX Runtime archives that CI downloads on
-every memry-ml build, and their filenames (`...-apple-darwin.tar.zst`, `...-windows-msvc.tar.zst`)
-would otherwise count CI runs as installer downloads.
+It skips `ort-static-*` and `ort-pod-*` prereleases: they hold the ONNX Runtime archives that CI
+downloads on every memry-ml and iOS build, and their filenames (`...-apple-darwin.tar.zst`,
+`...-windows-msvc.tar.zst`, `pod-archive-onnxruntime-c-*.zip`) would otherwise count CI runs as
+installer or update downloads.
 
 **It is a metric snapshot, not a user event.** One emission per poll per asset, from a fixed
 service `distinct_id` — nobody downloaded anything at the moment it fired. Person and user counts
