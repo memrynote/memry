@@ -299,9 +299,9 @@ impl Indexer {
         large.extend(pass.unread.iter().cloned());
         self.search.forget_note_properties(large)?;
         progress(built(&pass, total));
-        // Not while a first sync runs: the reindex holds the `data.db` writer for its whole pass,
-        // which the first sync's bodies pass waits on (#5409). One that started before it
-        // stops, committing nothing, and stays owed.
+        // Not while a first sync runs (#5409): the reindex takes the `data.db` writer per batch,
+        // and the first sync's bodies pass still waits on each batch. One that started before
+        // it stops, keeping the batches it committed, and the rest stays owed.
         let held = || self.first_sync.is_running();
         if let Some(owed) = links {
             // The links of every batch it committed join the owed ones, so a pass that stops

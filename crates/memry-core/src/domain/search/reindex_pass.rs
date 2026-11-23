@@ -26,7 +26,9 @@
 //! `id -> rowid` once, from the FTS5 content table, and deletes by rowid.
 //!
 //! **Two passes never interleave their batches.** Each batch checks, in its transaction, that
-//! the resume point and the notes watermark are what its pass last committed or planned from.
+//! the resume point, the notes watermark and [`SEQ_KEY`] are what its pass last committed or
+//! planned from. Every batch commit counts [`SEQ_KEY`] up, so a pass that committed in between
+//! is seen even when it left the other two as they were: the rowids this pass planned are gone.
 //! A pass that finds them moved answers [`Step::Stale`] and is planned again.
 
 use std::collections::{BTreeSet, HashMap};
@@ -49,6 +51,8 @@ use super::maintenance::{
 
 /// `index_meta` key: the resume point of a pass that has committed a batch and not its last.
 pub const RESUME_KEY: &str = "reindex.resume";
+/// `index_meta` key: counts every batch commit, the last one of a pass included.
+const SEQ_KEY: &str = "reindex.seq";
 /// The most notes and tasks one batch indexes.
 pub const BATCH_NOTES: usize = 200;
 /// A batch that has run this long commits after the row it is on.
@@ -158,8 +162,8 @@ pub struct ReindexPass {
     resume: Resume,
     notes: Planned,
     tasks: Planned,
-    /// The `(resume point, notes watermark)` this pass expects to find, raw.
-    expect: (Option<String>, Option<String>),
+    /// The `(resume point, notes watermark, batch commit count)` this pass expects to find, raw.
+    expect: (Option<String>, Option<String>, Option<String>),
     /// Loaded before the first batch and again after names were settled: reading every name
     /// per batch would cost a 17k-note vault seconds over a pass.
     names: Option<WikiNames>,
@@ -177,6 +181,7 @@ impl ReindexPass {
         let expect = (
             meta_raw(index, RESUME_KEY)?,
             meta_raw(index, NOTES_WATERMARK_KEY)?,
+            meta_raw(index, SEQ_KEY)?,
         );
         let notes_watermark = meta_number(index, NOTES_WATERMARK_KEY)?;
         let tasks_watermark = meta_number(index, TASKS_WATERMARK_KEY)?;
@@ -297,6 +302,7 @@ impl ReindexPass {
         let found = (
             meta_raw(&transaction, RESUME_KEY)?,
             meta_raw(&transaction, NOTES_WATERMARK_KEY)?,
+            meta_raw(&transaction, SEQ_KEY)?,
         );
         if found != self.expect {
             return Ok(Step::Stale);
@@ -368,9 +374,10 @@ impl ReindexPass {
                 })?;
             meta_set(&transaction, RESUME_KEY, &raw)?;
             let watermark = meta_raw(&transaction, NOTES_WATERMARK_KEY)?;
+            let seq = count_commit(&transaction)?;
             data_tx.commit().map_err(failed)?;
             transaction.commit().map_err(failed)?;
-            self.expect = (Some(raw), watermark);
+            self.expect = (Some(raw), watermark, Some(seq));
             return Ok(Step::More);
         }
 
@@ -398,6 +405,7 @@ impl ReindexPass {
         transaction
             .execute("DELETE FROM index_meta WHERE key = ?1", params![RESUME_KEY])
             .map_err(failed)?;
+        count_commit(&transaction)?;
         data_tx.commit().map_err(failed)?;
         transaction.commit().map_err(failed)?;
         if self.resume.failed {
@@ -409,6 +417,17 @@ impl ReindexPass {
         }
         Ok(Step::Done(std::mem::take(&mut self.done)))
     }
+}
+
+/// Counts this batch's commit in [`SEQ_KEY`] and gives the new count, raw.
+fn count_commit(index: &Connection) -> Result<String, StorageError> {
+    let seq = meta_raw(index, SEQ_KEY)?
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .unwrap_or(0)
+        .wrapping_add(1)
+        .to_string();
+    meta_set(index, SEQ_KEY, &seq)?;
+    Ok(seq)
 }
 
 /// Notes a row that failed to index: the pass goes on, and its last batch answers the first.

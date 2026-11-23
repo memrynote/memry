@@ -6,6 +6,7 @@
 //! | a failing full pass keeps the previous index            | no up-front delete, error kept  |
 //! | a resume point from another stamps or index version     | the resume point names versions |
 //! | tasks stay searchable during a full pass                | tasks replaced, never emptied   |
+//! | a pass overlapped by another never doubles a row        | every batch commit is counted   |
 
 use memry_core::domain::search::{self, NOTES_WATERMARK_KEY, STAMPS_KEY};
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
@@ -185,4 +186,29 @@ fn r5425_c_tasks_stay_searchable_during_a_full_pass() {
     search::reindex(&data, &index, NOW + 2).expect("finish");
     assert_eq!(count(&index, "fts_tasks"), 1);
     assert_eq!(count(&index, "fts_notes"), total, "every note once");
+}
+
+/// A pass that planned before another pass committed goes stale even when the other left the
+/// resume point and the notes watermark as they were: its planned rowids are gone.
+#[test]
+fn r5425_d_a_pass_overlapped_by_another_never_doubles_a_row() {
+    let (data, index) = indexed_vault(3);
+    put(
+        &data,
+        "task",
+        "t1",
+        r#"{"title":"Ferry timetable v2","projectId":"p"}"#,
+        NOW + 1,
+    );
+    let mut first = search::ReindexPass::plan(&data, &index).expect("plan");
+    search::reindex(&data, &index, NOW + 2).expect("the other pass");
+    loop {
+        match first.batch(&data, &index, NOW + 3, &|| false) {
+            Ok(search::ReindexStep::More) => continue,
+            Ok(_) => break,
+            Err(error) => panic!("batch: {error:?}"),
+        }
+    }
+    assert_eq!(count(&index, "fts_notes"), 3, "every note once");
+    assert_eq!(count(&index, "fts_tasks"), 1, "every task once");
 }
