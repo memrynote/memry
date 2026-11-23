@@ -367,28 +367,28 @@ keeps the day file's text when `j<D>` writes over a foreign holder's file. A for
 whose id this device already tombstoned at or after the incoming clock owes
 nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:75`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:128`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:94`). Desktop keeps
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:95`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
 count the unprojected id as server-only
 (`apps/desktop/src/main/sync/journal-day-merge.ts:71`). The core keeps them in
 `meta` under `journal.day_merge:<id>`
-(`crates/memry-core/src/sync/journal_day_merge/mod.rs:49`).
+(`crates/memry-core/src/sync/journal_day_merge/mod.rs:50`).
 
 **Tombstones.** A tombstone for an owed `F` means another device merged it: the
 merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:171`;
-core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:238`). A tombstone
+core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:239`). A tombstone
 for a foreign id that is a live local row keeps that row, its body and its file
 for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:186`; core:
-`crates/memry-core/src/sync/journal_day_merge/owed.rs:211`, called from
+`crates/memry-core/src/sync/journal_day_merge/owed.rs:212`, called from
 `crates/memry-core/src/sync/apply.rs:286`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:202`; core:
 `crates/memry-core/src/api/sync/pass.rs:135`,
-`crates/memry-core/src/sync/journal_day_merge/mod.rs:122`). The core drains
+`crates/memry-core/src/sync/journal_day_merge/mod.rs:123`). The core drains
 only in its steady-state pass; a first sync records owed merges and the next
 pass settles them. The decision is a pure function of five facts
 (`packages/domain-notes/src/journal/day-identity.ts:90`,
@@ -428,7 +428,7 @@ pass settles them. The decision is a pure function of five facts
    (`apps/desktop/src/main/sync/journal-day-merge.ts:304`). Desktop never
    writes over a day file no row holds
    (`apps/desktop/src/main/sync/journal-day-merge.ts:312`; core:
-   `crates/memry-core/src/sync/journal_day_merge/mod.rs:209`).
+   `crates/memry-core/src/sync/journal_day_merge/mod.rs:210`).
 5. Point task links at `F` to `j<D>`
    (`apps/desktop/src/main/notes/runtime-effects.ts:125`; core:
    `crates/memry-core/src/sync/journal_day_merge/mod.rs:252`).
