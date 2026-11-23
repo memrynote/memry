@@ -26,7 +26,8 @@ import Observation
 // **`metadataCorrupt` and `bodiesStopped` are not failures and are not
 // hidden.** The core's own doc says so: they are the items this device could
 // not open and the documents whose body pull stopped at an update it could not
-// apply. Their cursors did not advance, so a later run retries them. A vault
+// apply. A stopped body's cursor did not advance, so a later run retries it; an
+// unopened item may never be pulled again, so its copy promises nothing. A vault
 // that returns some of them is a vault the screen must say something about
 // rather than render as complete.
 //
@@ -143,6 +144,11 @@ final class VaultFillViewModel {
     var incomplete: String? {
         guard let summary, summary.metadataCorrupt > 0 || summary.bodiesStopped > 0 else {
             return nil
+        }
+        // A corrupt item may be a stale row the reconcile kept, which no later
+        // sync pulls again, so only stopped bodies are promised a retry (#5247).
+        guard summary.metadataCorrupt == 0 else {
+            return "Some of this vault could not be opened on this \(ThisDevice.noun)."
         }
         return "Some of this vault could not be opened on this \(ThisDevice.noun). Memry will try those again next time it syncs."
     }

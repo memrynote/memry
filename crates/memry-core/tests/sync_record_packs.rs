@@ -1065,6 +1065,52 @@ async fn an_omitted_row_whose_pull_is_not_an_envelope_is_kept() {
     assert_eq!(report.reconcile_removed, 0);
 }
 
+/// #5247: a kept stale row reaches the shell's log as counts and the cursor,
+/// not only stderr, which iOS does not keep.
+#[tokio::test]
+async fn a_kept_stale_row_is_told_to_the_diagnostics_sink() {
+    #[derive(Default)]
+    struct Captured(Mutex<Vec<CoreDiagnostic>>);
+    impl DiagnosticsSink for Captured {
+        fn record(&self, event: CoreDiagnostic) {
+            self.0.lock().unwrap().push(event);
+        }
+    }
+
+    let db = scratch_db("omitted-told");
+    let mut server = covered_vault(4, 10);
+    server.live.retain(|(id, _)| id != "n3");
+    let mut clockless = marker("n3", 7, false);
+    let fields = clockless.as_object_mut().expect("an object");
+    fields.insert("clock".into(), Json::Null);
+    fields.remove("deleteAttestation");
+    server.markers.push(clockless);
+    let routes = Routes::new(server);
+    let sink = Arc::new(Captured::default());
+    first_sync_observed(&db, &routes, &[], &RunDiagnostics::new(sink.clone()))
+        .run(1_800_000_000_000)
+        .await
+        .expect("the first sync finishes");
+
+    let told: Vec<CoreDiagnostic> = sink
+        .0
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|event| matches!(event, CoreDiagnostic::ReconcileKept { .. }))
+        .copied()
+        .collect();
+    assert_eq!(
+        told,
+        vec![CoreDiagnostic::ReconcileKept {
+            kept: 1,
+            remembered: 1,
+            non_envelope: 0,
+            cursor: Some(4),
+        }]
+    );
+}
+
 /// A tombstone the server still holds arrives signed and deletes.
 #[tokio::test]
 async fn an_omitted_row_the_pull_answers_with_a_signed_delete_is_removed() {

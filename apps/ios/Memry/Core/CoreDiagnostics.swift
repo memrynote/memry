@@ -46,6 +46,29 @@ final class CoreDiagnostics: DiagnosticsSink {
                 Self.metric("server_errors", stats.serverErrors),
                 Self.metric("transport_errors", stats.transportErrors)
             )
+        case let .reconcileKept(kept, remembered, nonEnvelope, cursor):
+            let counts = (
+                Self.metric("kept", kept),
+                Self.metric("remembered", remembered),
+                Self.metric("non_envelope", nonEnvelope)
+            )
+            if let cursor {
+                log.notice(
+                    "core reconcile kept stale rows", counts.0, counts.1, counts.2,
+                    Self.metric("cursor", max(cursor, 0))
+                )
+            } else {
+                log.notice("core reconcile kept stale rows", counts.0, counts.1, counts.2)
+            }
+        case let .refsDeletesUnverified(unverified, cursor):
+            if let cursor {
+                log.notice(
+                    "core refs deletes unverified",
+                    Self.metric("unverified", unverified), Self.metric("cursor", max(cursor, 0))
+                )
+            } else {
+                log.notice("core refs deletes unverified", Self.metric("unverified", unverified))
+            }
         }
     }
 

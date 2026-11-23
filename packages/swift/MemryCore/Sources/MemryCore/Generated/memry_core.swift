@@ -30590,6 +30590,22 @@ public enum CoreDiagnostic: Equatable, Hashable {
      */
     case phaseStats(phase: DiagnosticPhase, finished: Bool, elapsedMs: UInt64, requests: RequestStats
     )
+    /**
+     * The manifest reconcile kept `kept` stale rows live: their pull by id
+     * brought no verified delete or attested marker (§5.12.1). `remembered`
+     * of them hold an unattested marker for the push wave, and
+     * `non_envelope` pull answers were not envelopes. `cursor` is the record
+     * feed cursor, `None` when unset or not numeric. The ids stay out: this
+     * payload carries no strings.
+     */
+    case reconcileKept(kept: UInt32, remembered: UInt32, nonEnvelope: UInt32, cursor: Int64?
+    )
+    /**
+     * The refs pass pulled the `deleted` ids of the page at `cursor` and
+     * `unverified` of them got no verified delete, so they stay live.
+     */
+    case refsDeletesUnverified(unverified: UInt32, cursor: Int64?
+    )
 
 
 
@@ -30620,6 +30636,12 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
         case 3: return .phaseStats(phase: try FfiConverterTypeDiagnosticPhase.read(from: &buf), finished: try FfiConverterBool.read(from: &buf), elapsedMs: try FfiConverterUInt64.read(from: &buf), requests: try FfiConverterTypeRequestStats.read(from: &buf)
         )
         
+        case 4: return .reconcileKept(kept: try FfiConverterUInt32.read(from: &buf), remembered: try FfiConverterUInt32.read(from: &buf), nonEnvelope: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
+        )
+        
+        case 5: return .refsDeletesUnverified(unverified: try FfiConverterUInt32.read(from: &buf), cursor: try FfiConverterOptionInt64.read(from: &buf)
+        )
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -30648,6 +30670,20 @@ public struct FfiConverterTypeCoreDiagnostic: FfiConverterRustBuffer {
             FfiConverterBool.write(finished, into: &buf)
             FfiConverterUInt64.write(elapsedMs, into: &buf)
             FfiConverterTypeRequestStats.write(requests, into: &buf)
+            
+        
+        case let .reconcileKept(kept,remembered,nonEnvelope,cursor):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt32.write(kept, into: &buf)
+            FfiConverterUInt32.write(remembered, into: &buf)
+            FfiConverterUInt32.write(nonEnvelope, into: &buf)
+            FfiConverterOptionInt64.write(cursor, into: &buf)
+            
+        
+        case let .refsDeletesUnverified(unverified,cursor):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt32.write(unverified, into: &buf)
+            FfiConverterOptionInt64.write(cursor, into: &buf)
             
         }
     }

@@ -800,12 +800,26 @@ async fn a_bare_deleted_id_keeps_the_note_and_a_signed_delete_still_deletes() {
         response(200, &answer),
         response(200, &answer),
     ]);
+    let sink = Arc::new(CapturedDiagnostics::default());
     let report = first_sync(&db, transport.clone(), public_key, RecordedProgress::new())
+        .with_diagnostics(RunDiagnostics::new(sink.clone()))
         .run(epoch(MODIFIED_AT) + 2_000)
         .await
         .expect("the first sync");
 
     assert_eq!(report.tombstones, 2);
+    // #5247: the unverified id reaches the shell's log, with the page cursor.
+    assert!(
+        sink.0
+            .lock()
+            .unwrap()
+            .contains(&CoreDiagnostic::RefsDeletesUnverified {
+                unverified: 1,
+                cursor: Some(10),
+            }),
+        "{:?}",
+        sink.0.lock().unwrap()
+    );
     assert_eq!(
         deleted_marks(&db, NOTE),
         (None, None),

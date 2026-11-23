@@ -59,7 +59,7 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
-use crate::seams::diagnostics::DiagnosticPhase;
+use crate::seams::diagnostics::{CoreDiagnostic, DiagnosticPhase};
 use crate::storage::{Db, nested_tx};
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
@@ -467,10 +467,13 @@ impl FirstSync {
             } else {
                 let pulled = self.pull.fetch_ids(&page.deleted).await?;
                 if pulled.uncovered > 0 {
+                    let unverified = CoreDiagnostic::count(pulled.uncovered);
                     eprintln!(
-                        "memry-core: first sync: {} deleted id(s) on the page at cursor {cursor:?} had no verified delete, ignored",
-                        pulled.uncovered
+                        "memry-core: first sync: {unverified} unverified delete(s) at {cursor:?}"
                     );
+                    let cursor = CoreDiagnostic::cursor(cursor.as_deref());
+                    let event = CoreDiagnostic::RefsDeletesUnverified { unverified, cursor };
+                    self.diagnostics.emit(event);
                 }
                 pulled.dropped_pages > 0
             };
