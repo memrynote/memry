@@ -21,6 +21,9 @@ vi.mock('@memry/storage-data', () => ({
   updateNoteMetadata: vi.fn()
 }))
 
+const probe = vi.hoisted(() => ({ real: null as boolean | null }))
+vi.mock('./birthtime-probe', () => ({ birthtimeIsReal: () => probe.real }))
+
 import { getDatabase, getIndexDatabase } from '../database'
 import {
   trackPendingDelete,
@@ -166,6 +169,50 @@ describe('rename-tracker', () => {
     expect(buildFileIdentityKey({ ...changed, birthtime: new Date(0) })).toBeNull()
     // Linux without statx reports the ctime as birthtime.
     expect(buildFileIdentityKey({ ...changed, birthtimeMs: changed.ctimeMs })).toBeNull()
+  })
+
+  it('keys a file whose birthtime equals its ctime once the probe found real birthtimes', () => {
+    // A file written right after it was created on ext4 or tmpfs: statx reports
+    // a real birthtime, in the same timestamp tick as the ctime.
+    const fresh = new Date('2026-01-12T00:00:00.000Z')
+    const linuxFresh = {
+      dev: 1,
+      ino: 42,
+      birthtime: fresh,
+      birthtimeMs: fresh.getTime(),
+      ctimeMs: fresh.getTime(),
+      size: 20,
+      mtime: fresh
+    }
+    try {
+      probe.real = true
+      const key = buildFileIdentityKey(linuxFresh)
+      expect(key).not.toBeNull()
+      trackPendingDelete('note-f', 'stale-hash', 'notes/f.md', vi.fn(), key)
+      // ext4 hands the freed inode to a file born later: its own key.
+      const reborn = new Date(fresh.getTime() + 1)
+      const reused = buildFileIdentityKey({
+        ...linuxFresh,
+        birthtime: reborn,
+        birthtimeMs: reborn.getTime(),
+        ctimeMs: reborn.getTime()
+      })
+      expect(checkForRename('new-hash', 'notes/other.md', [reused])).toBeNull()
+      expect(checkForRename('new-hash', 'notes/f-renamed.md', [key])).toMatchObject({
+        id: 'note-f'
+      })
+      // No birthtime still means no key.
+      expect(buildFileIdentityKey({ ...linuxFresh, birthtime: new Date(0) })).toBeNull()
+
+      // libuv reports the ctime as birthtime: no file has an identity.
+      probe.real = false
+      expect(buildFileIdentityKey(linuxFresh)).toBeNull()
+      expect(
+        buildFileIdentityKey({ ...linuxFresh, birthtimeMs: 1, birthtime: new Date(1) })
+      ).toBeNull()
+    } finally {
+      probe.real = null
+    }
   })
 
   it('matches identical-hash collisions FIFO, oldest pending delete first', async () => {
