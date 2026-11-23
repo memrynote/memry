@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Masyadong malaki ang file: lumalampas ang {size} sa limitasyong {limit}",
     "exceedsPlanLimit": "Mas malaki ang file kaysa sa pinapayagan ng iyong plano: lumalampas ang {size} sa {limit}",
     "emptyFile": "Hindi mai-upload ang walang lamang file",
+    "emptyNotAttached": "Walang laman ang file na ito, kaya hindi ito na-attach. Kung nag-paste ka ng larawan, kopyahin itong muli at i-paste.",
     "textInMediaFile": "Teksto ang laman ng file na ito sa halip na ang media na sinasabi ng pangalan nito"
   },
   "crdt": {

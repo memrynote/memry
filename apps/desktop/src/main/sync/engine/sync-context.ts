@@ -253,7 +253,15 @@ export const SYNC_STATE_KEYS = {
    * split compares the file with it to find a change the watcher never saw.
    * Missing reads as empty: the split then keeps the file's bytes.
    */
-  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
+  CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+  /**
+   * JSON object from the absolute path of a file the attachment uploader
+   * refused for good (`UnsendableAttachmentError`) to its `{size, mtimeMs}`
+   * at the time (#5606). The upload backfill does not offer a file whose
+   * size and mtime still match; a write changes them and offers it again.
+   * Missing reads as empty.
+   */
+  ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
 } as const
 
 /** The schema-invalid ledger type of a refused change-feed body, keyed by note id (#2297). */

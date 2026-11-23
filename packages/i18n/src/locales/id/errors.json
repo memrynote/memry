@@ -65,6 +65,7 @@
     "exceedsMaxSize": "File terlalu besar: {size} melebihi batas {limit}",
     "exceedsPlanLimit": "File lebih besar dari yang diizinkan paket Anda: {size} melebihi {limit}",
     "emptyFile": "Tidak dapat mengunggah file kosong",
+    "emptyNotAttached": "File ini kosong, jadi tidak dilampirkan. Jika Anda menempelkan gambar, salin lagi lalu tempelkan.",
     "textInMediaFile": "File ini berisi teks, bukan media yang disebutkan namanya"
   },
   "crdt": {

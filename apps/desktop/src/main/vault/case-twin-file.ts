@@ -56,12 +56,8 @@ import {
 } from '@memry/sync-client/attachment-download-state'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import {
-  hasWritebackTurn,
-  markWritebackIgnored,
-  scheduleWriteback,
-  takeWritebackTurn
-} from '../sync/crdt-writeback'
+import { hasWritebackTurn, scheduleWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
@@ -460,9 +456,11 @@ export function planBinaryCaseTwinMove(
   const keepSurvivor =
     twins.length === 1 ? planBinarySurvivor(vaultPath, onDisk, twins[0], sha256) : () => {}
   return () => {
-    markWritebackIgnored(newAbsolutePath)
+    // No hash means the file was gone at the plan, and the copy throws.
+    const landed = sha256 === null ? null : recordAppWrite(newAbsolutePath, { sha256 })
     fs.mkdirSync(dirname(newAbsolutePath), { recursive: true })
     fs.copyFileSync(sharedPath, newAbsolutePath)
+    landed?.()
     log.info('A binary case twin moved off a shared file; the file stays with the other twin', {
       movingId,
       attachmentId

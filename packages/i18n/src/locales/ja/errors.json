@@ -65,6 +65,7 @@
     "exceedsMaxSize": "ファイルが大きすぎます：{size} は上限の {limit} を超えています",
     "exceedsPlanLimit": "ファイルがプランの上限を超えています：{size}（上限 {limit}）",
     "emptyFile": "空のファイルはアップロードできません",
+    "emptyNotAttached": "このファイルは空のため、添付されませんでした。画像を貼り付けた場合は、もう一度コピーしてから貼り付けてください。",
     "textInMediaFile": "このファイルには、名前が示すメディアではなくテキストが含まれています"
   },
   "crdt": {

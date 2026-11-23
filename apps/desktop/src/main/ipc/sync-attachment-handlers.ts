@@ -52,11 +52,12 @@ import {
   clearUpload,
   isLocalOnlyNote,
   markUploadFailed,
+  refuseUpload,
   registerAttachmentQueueReset,
   registerOutboxUploader,
   uploadFileState
 } from '../sync/attachment-outbox'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from '../vault/app-writes'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import { fileTextNoteChanged } from '../file-text'
@@ -228,7 +229,9 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
       const landAt = isDatabaseInitialized()
         ? landCaseTwinDownload(filePath, attachmentId, sha256, fileOwnerId)
         : filePath
-      markWritebackIgnored(landAt)
+      // The downloader renames the verified file in after this returns and
+      // reports no landing, so the record stays in flight until it expires.
+      recordAppWrite(landAt, { sha256 })
       return landAt
     },
     getMaxFileSize: () => getCachedMaxFileSize(),
@@ -587,7 +590,8 @@ export function registerAttachmentHandlers(): void {
           return
         }
         // An empty file (#3414) or text in a media file (#5415) fails
-        // identically on every retry: drop the row, never retry it.
+        // identically on every retry: drop the row and remember the refusal,
+        // so the backfill does not offer the unchanged file again (#5606).
         if (err instanceof UnsendableAttachmentError) {
           logger.info('Dropped an attachment upload that cannot succeed', {
             noteId,
@@ -595,9 +599,12 @@ export function registerAttachmentHandlers(): void {
           })
           if (isDatabaseInitialized()) {
             try {
-              clearUpload(getDatabase(), noteId, diskPath)
+              refuseUpload(getDatabase(), noteId, diskPath)
             } catch (outboxErr) {
-              logger.warn('Failed to clear attachment upload intent', { noteId, err: outboxErr })
+              logger.warn('Failed to record a refused attachment upload', {
+                noteId,
+                err: outboxErr
+              })
             }
           }
           reportRefusedUpload(noteId, diskPath, err)

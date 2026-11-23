@@ -54,7 +54,6 @@ export interface AssetReleaseDeps {
   dereference: (chunkHashes: string[]) => Promise<{ ok: boolean }>
   /** Release one canvas's chunk holds on these images (#3022). Idempotent; never throws. */
   releaseHolds: (canvasId: string, contentHashes: string[]) => Promise<{ ok: boolean }>
-  markWritebackIgnored: (absolutePath: string) => void
 }
 
 /**
@@ -263,7 +262,6 @@ async function releaseCanvas(
     if (shared) continue
     const diskPath = canvasAssetDiskPath(deps.vaultPath, row.filename)
     try {
-      deps.markWritebackIgnored(diskPath)
       await rm(diskPath, { force: true })
     } catch (err) {
       log.warn('Could not remove a freed canvas asset file', { canvasId, err })

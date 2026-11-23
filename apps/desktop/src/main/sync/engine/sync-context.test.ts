@@ -110,7 +110,10 @@ describe('SYNC_STATE_KEYS', () => {
         CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
         CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
         // Additive (#5585): absent means no landing recorded on a shared file.
-        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes'
+        CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
+        // Additive (#5606): absent means no upload refusal is remembered, so
+        // each refused file is offered and refused once more.
+        ATTACHMENT_UPLOAD_REFUSALS: 'attachmentUploadRefusals'
       })
     })
 

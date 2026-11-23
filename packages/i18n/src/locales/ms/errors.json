@@ -65,6 +65,7 @@
     "exceedsMaxSize": "Fail terlalu besar: {size} melebihi had {limit}",
     "exceedsPlanLimit": "Fail lebih besar daripada yang dibenarkan oleh pelan anda: {size} melebihi {limit}",
     "emptyFile": "Tidak dapat memuat naik fail kosong",
+    "emptyNotAttached": "Fail ini kosong, jadi ia tidak dilampirkan. Jika anda menampal imej, salin semula dan tampalkannya.",
     "textInMediaFile": "Fail ini mengandungi teks dan bukan media yang dinyatakan oleh namanya"
   },
   "crdt": {

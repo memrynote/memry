@@ -293,7 +293,7 @@ final class VaultFiles: FileProtection {
     /// one would silently resolve to the vaults directory itself, and `..` or a
     /// separator would escape it — both are the "an unparseable input reads as
     /// an empty one" failure, one layer down.
-    private func vaultDirectory(_ vaultId: String) throws -> URL {
+    func vaultDirectory(_ vaultId: String) throws -> URL {
         guard !vaultId.isEmpty,
               vaultId != ".", vaultId != "..",
               !vaultId.contains("/"),
