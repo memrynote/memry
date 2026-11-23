@@ -57,7 +57,7 @@ one-class change reviewable.
 | `compression.json`                      |                                  9 | `../scripts/vectors/compression.ts`         | `../src/__tests__/compression.test.ts`                                           |
 | `field-merge.json`                      |                                 32 | `../scripts/vectors/field-merge.ts`         | `../src/__tests__/field-merge.test.ts`                                           |
 | `settings-merge.json`                   |                                 18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests   |
-| `journal-merge.json`                    |                                 16 | `../scripts/vectors/journal-merge.ts`       | `../src/__tests__/journal-merge.test.ts` + Rust `journal_merge_vectors.rs`       |
+| `journal-merge.json`                    |                                 18 | `../scripts/vectors/journal-merge.ts`       | `../src/__tests__/journal-merge.test.ts` + Rust `journal_merge_vectors.rs`       |
 | `recreate-clock.json`                   |                                 11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs` |
 | `versioned-values.json`                 |                                 43 | `../scripts/vectors/versioned-values.ts`    | `../src/__tests__/versioned-values.test.ts` + Rust `versioned_values_vectors.rs` |
 | `tag-fold.json`                         |                                 13 | `../scripts/vectors/tag-fold.ts`            | `../src/__tests__/tag-fold.test.ts` + Rust `tag_fold_vectors.rs`                 |

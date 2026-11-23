@@ -6,7 +6,7 @@
     "class": "journal-merge",
     "chapter": "docs/protocol/06-vector-clocks-and-field-merge.md",
     "implementation": "packages/sync-client/src/journal-merge.ts",
-    "caseCount": 16
+    "caseCount": 18
   },
   "edits": [
     {
@@ -831,7 +831,7 @@
     },
     {
       "name": "old-build-remote-is-whole-record",
-      "pins": "§6.12.1: an older build ticked clock past fieldClocksAt; its side is read at its clock, today’s rule",
+      "pins": "§6.12.1: an older build ticked clock past fieldClocksAt; every unit in the union is read at its clock, so t-a, absent from it, is removed: today’s rule",
       "local": {
         "tags": [
           "lm-jtag",
@@ -901,7 +901,6 @@
       "expected": {
         "tags": [
           "lm-jtag",
-          "t-a",
           "old"
         ],
         "properties": {
@@ -935,7 +934,9 @@
           },
           "tags.t-a": {
             "X": 1,
-            "A": 1
+            "A": 1,
+            "C": 1,
+            "O": 1
           }
         },
         "requeue": true
@@ -992,8 +993,7 @@
       },
       "expected": {
         "tags": [
-          "lm-jtag",
-          "t-a"
+          "lm-jtag"
         ],
         "properties": {
           "mood": "good",
@@ -1014,10 +1014,124 @@
           },
           "tags.t-a": {
             "X": 1,
-            "A": 1
+            "A": 1,
+            "O": 3
           }
         },
         "requeue": true
+      }
+    },
+    {
+      "name": "old-build-removes-tag-and-property",
+      "pins": "§6.12.1: an older build removed a tag and a property; a body-only local edit does not resurrect them",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocks": {
+          "tags.t": {
+            "X": 1
+          },
+          "properties.p": {
+            "X": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        },
+        "fieldClocks": {
+          "tags.t": {
+            "X": 1
+          },
+          "properties.p": {
+            "X": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        },
+        "requeue": false
+      }
+    },
+    {
+      "name": "legacy-remote-removes-tag-and-property",
+      "pins": "§6.12.1: a payload with no fieldClocks that lacks a unit removes it at its clock",
+      "local": {
+        "tags": [
+          "T"
+        ],
+        "properties": {
+          "p": 1
+        },
+        "clock": {
+          "X": 1,
+          "N": 1
+        },
+        "fieldClocks": {
+          "tags.t": {
+            "X": 1
+          },
+          "properties.p": {
+            "X": 1
+          }
+        },
+        "fieldClocksAt": {
+          "X": 1,
+          "N": 1
+        }
+      },
+      "remote": {
+        "tags": [],
+        "properties": {},
+        "clock": {
+          "X": 1,
+          "O": 1
+        }
+      },
+      "expected": {
+        "tags": [],
+        "properties": {},
+        "fieldClocks": {
+          "properties.p": {
+            "X": 1,
+            "O": 1
+          },
+          "tags.t": {
+            "X": 1,
+            "O": 1
+          }
+        },
+        "requeue": false
       }
     },
     {

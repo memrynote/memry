@@ -63,6 +63,11 @@ function pushed(local: JournalFields, remote: JournalFields): JournalFields {
 }
 
 const A_AFTER_CLI = pushed(A, CLI)
+
+/** The reviewer's repro (REVIEW-5529): a legacy day holding one tag and one property. */
+const LEGACY_DAY_FIELDS = { tags: ['T'], properties: { p: 1 } }
+const LEGACY_DAY: JournalFields = { ...LEGACY_DAY_FIELDS, clock: { X: 1 } }
+const STAMPED_LEGACY_DAY = edit(null, { ...LEGACY_DAY_FIELDS, clock: { X: 1 } })
 const B_AFTER_A = pushed(B, A_AFTER_CLI)
 
 interface EditSpec {
@@ -189,7 +194,7 @@ const MERGES: MergeSpec[] = [
   },
   {
     name: 'old-build-remote-is-whole-record',
-    pins: '§6.12.1: an older build ticked clock past fieldClocksAt; its side is read at its clock, today’s rule',
+    pins: '§6.12.1: an older build ticked clock past fieldClocksAt; every unit in the union is read at its clock, so t-a, absent from it, is removed: today’s rule',
     local: A,
     remote: {
       tags: ['lm-jtag', 'old'],
@@ -204,6 +209,24 @@ const MERGES: MergeSpec[] = [
     pins: '§6.12.1: a payload with no fieldClocks names its units at its clock',
     local: A,
     remote: { tags: ['lm-jtag'], properties: { mood: 'good', energy: 9 }, clock: { X: 1, O: 3 } }
+  },
+  {
+    name: 'old-build-removes-tag-and-property',
+    pins: '§6.12.1: an older build removed a tag and a property; a body-only local edit does not resurrect them',
+    local: edit(LEGACY_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: 1 } }),
+    remote: {
+      tags: [],
+      properties: {},
+      clock: { X: 1, O: 1 },
+      fieldClocks: STAMPED_LEGACY_DAY.fieldClocks,
+      fieldClocksAt: STAMPED_LEGACY_DAY.fieldClocksAt
+    }
+  },
+  {
+    name: 'legacy-remote-removes-tag-and-property',
+    pins: '§6.12.1: a payload with no fieldClocks that lacks a unit removes it at its clock',
+    local: edit(LEGACY_DAY, { ...LEGACY_DAY_FIELDS, clock: { X: 1, N: 1 } }),
+    remote: { tags: [], properties: {}, clock: { X: 1, O: 1 } }
   },
   {
     name: 'local-dominates-every-unit-requeues',

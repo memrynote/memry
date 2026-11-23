@@ -97,7 +97,8 @@ unit since #5508 (chapter 06 §6.12): `mergeJournalFields()` (`journal-merge.ts`
 over `tags.<tagKey>` and `properties.<key>` units, and a winner with no value removes the unit, so a
 removed tag stays removed. A unit's clock is the document clock its writer last wrote it at, and a
 side's unit clocks count only while `fieldClocksAt` equals its `clock`; an older build keeps the keys
-but ticks the clock past the stamp, so its payload is read whole at its clock. Desktop diffs the day
+but ticks the clock past the stamp, so its payload is read whole at its clock: every unit either
+side names takes that clock, and a unit missing from its value is a removal. Desktop diffs the day
 file against the last synced fields it keeps in `sync_state` (`journal-fields.ts`); the Rust core
 restamps in `apply_local_edit_in`. The shared `journal-merge.json` vectors run against both.
 

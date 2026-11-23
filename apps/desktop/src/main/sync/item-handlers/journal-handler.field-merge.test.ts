@@ -181,6 +181,8 @@ describe('concurrent journal tag and property edits (#5508)', () => {
     editLocally(['lm-jtag'], { mood: 'good', mine: 1 }, { X: 1, A: 1 })
 
     // An older build kept the stamp but ticked the clock and removed `mood`.
+    // Its record is read whole at its clock, which dominates this device's
+    // tick on every unit: `mine` loses as it would under today's rule.
     apply({
       date: DATE,
       content: null,
@@ -191,7 +193,9 @@ describe('concurrent journal tag and property edits (#5508)', () => {
       fieldClocksAt: { X: 1 }
     })
 
-    expect(pushed().properties).toEqual({ mine: 1 })
+    const payload = pushed()
+    expect(payload.tags).toEqual(['lm-jtag'])
+    expect(payload.properties).toBeNull()
   })
 
   // REVIEW-5529 finding 1: an older build removed a tag and a property while
@@ -205,16 +209,19 @@ describe('concurrent journal tag and property edits (#5508)', () => {
 
     const payload = pushed()
     expect(payload.tags).toEqual([])
-    expect(payload.properties).toEqual({})
+    // A day with no properties pushes `null`.
+    expect(payload.properties).toBeNull()
   })
 
   // REVIEW-5529 finding 2: re-pulling the legacy row this device already holds
   // is the identical equal-clock skip of §6.5.2 P4, and writes no base.
   it('skips an equal-clock legacy row identical to the local day', () => {
     apply(base)
+    // The row an older build of this device pushed: the same day, no unit clocks.
+    const { fieldClocks: _clocks, fieldClocksAt: _at, ...legacy } = pushed()
     const before = readJournalFieldsBase(ctx.db, DAY)
 
-    expect(apply(base)).toBe('skipped')
+    expect(apply(legacy)).toBe('skipped')
     expect(readJournalFieldsBase(ctx.db, DAY)).toEqual(before)
   })
 })

@@ -365,7 +365,7 @@ unioned across sightings (`record_tags`, `holder_tags`;
 no tags. Desktop also
 keeps the day file's text when `j<D>` writes over a foreign holder's file. A foreign record
 whose id this device already tombstoned at or after the incoming clock owes
-nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:75`,
+nothing again (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:89`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:128`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:95`). Desktop keeps
 owed merges in `sync_state` and declines the ref so the manifest check does not
@@ -375,12 +375,12 @@ count the unprojected id as server-only
 (`crates/memry-core/src/sync/journal_day_merge/mod.rs:50`).
 
 **Tombstones.** A tombstone for an owed `F` means another device merged it: the
-merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:171`;
+merge is marked deleted (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:231`;
 core: `crates/memry-core/src/sync/journal_day_merge/owed.rs:239`). A tombstone
 for a foreign id that is a live local row keeps that row, its body and its file
 for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
-`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:186`; core:
+`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:243-246`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:212`, called from
 `crates/memry-core/src/sync/apply.rs:286`).
 
@@ -452,7 +452,7 @@ pass settles them. The decision is a pure function of five facts
    and may never have been pushed, so they are added either way. A later
    record replaces the record tags kept, for the same reason
    (`apps/desktop/src/main/sync/journal-day-merge.ts:99`,
-   `:264`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`;
+   `:264`, `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:96`;
    core: `crates/memry-core/src/sync/journal_day_merge/mod.rs:283`). `j<D>`'s
    current tags are read at the moment they are written, in the same
    transaction or write-back turn, never earlier. Desktop owed merges written
