@@ -1067,3 +1067,40 @@ async fn a_413_names_storage_full_only_for_the_quota() {
         );
     }
 }
+
+/// #5532 review: the client gate's kill switch (403 `PLATFORM_WRITES_DISABLED`)
+/// and version floor (426 `CLIENT_UPGRADE_REQUIRED`) say nothing about the
+/// file. The upload stays owed and silent, and lands once the gate opens.
+#[tokio::test]
+async fn a_closed_client_gate_keeps_the_upload_owed_and_untold() {
+    for (status, code) in [
+        (403, "PLATFORM_WRITES_DISABLED"),
+        (426, "CLIENT_UPGRADE_REQUIRED"),
+    ] {
+        let (dir, store) = (scratch_dir(), store());
+        let (note, id) = {
+            let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+            let note = app.note(&store);
+            let id = app.attach(&note).await.expect("kept for later");
+            (note, id)
+        };
+        let mut script = vec![error_response(status, code, "gate closed")];
+        script.extend(upload_script());
+        let app = launch(&dir, &store, script);
+        let gated = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            (gated.refused, gated.news.len()),
+            (0, 0),
+            "{code}: {gated:?}"
+        );
+        assert_eq!(owed(&app, &id), 1, "{code}");
+
+        let landed = app.sync.upload_queued_attachments().await.expect("drain");
+        assert_eq!(
+            (landed.uploaded, landed.news.len()),
+            (1, 0),
+            "{code}: {landed:?}"
+        );
+        assert_eq!(app.references(&note), vec![id], "{code}");
+    }
+}

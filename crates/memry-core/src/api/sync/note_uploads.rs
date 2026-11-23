@@ -61,7 +61,9 @@ fn upload_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
 /// Whether the server refused the upload in a way no retry changes: a 4xx
 /// other than an expired session (401), a timeout (408) or a rate limit (429),
 /// or bytes that would not frame. Everything else, the network above all,
-/// keeps the upload owed.
+/// keeps the upload owed. The client gate's 403 `PLATFORM_WRITES_DISABLED` and
+/// 426 `CLIENT_UPGRADE_REQUIRED` arrive as `WritesDisabled` and
+/// `UpgradeRequired`, not as a `Status`, so they keep it owed too.
 pub(super) fn is_refused(error: &SyncError) -> bool {
     match error {
         SyncError::Api {
