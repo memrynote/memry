@@ -350,3 +350,5 @@ GitHub code scanning and the local staged-secret hook are intentionally conserva
 - In fixtures, avoid object fields named `token`, `secret`, or `apiKey` when the value is runtime data. Use a neutral field name and keep the real header name only at the request boundary.
 
 `scripts/check-staged-secrets.mjs` treats an assignment as credential-shaped only when a sensitive keyword (`SECRET`, `TOKEN`, `PASSWORD`, `API_KEY`, …) is a whole word in the key: `ACCESS_TOKEN`, `refreshToken`, and `APIToken` are scanned, while identifiers that merely contain one inside a longer word — fts5's `tokenize='porter unicode61'`, `tokenizer`, `passwordless` — are not. `scripts/check-staged-secrets.test.mjs` covers both directions and runs in the Secret scan CI job; extend it when you change the rules rather than reformatting the code that trips them.
+
+<!-- gate proof, do not merge -->
