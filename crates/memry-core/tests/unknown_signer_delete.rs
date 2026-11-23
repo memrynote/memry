@@ -305,6 +305,8 @@ async fn a_delete_whose_signature_fails_for_another_reason_is_never_re_pulled() 
     assert!(second.iter().all(|url| url != "/sync/pull"), "{second:?}");
 }
 
+/// A record still unverifiable is an unusable answer, not the server's
+/// absence (#5502): it counts toward [`MAX_FAILURES`], not [`MAX_RETRIES`].
 #[tokio::test]
 async fn a_signer_that_never_appears_stops_being_re_pulled() {
     let [page, pulled] = deleted_page(
@@ -317,11 +319,11 @@ async fn a_signer_that_never_appears_stops_being_re_pulled() {
     let sync = vault.sync(session);
     sync.sync_now().await.expect("the refusing pass");
 
-    // Five passes re-pull it; after that the row is left as it is.
-    for pass in 0..7 {
+    // Fifty passes re-pull it; after that the row is left as it is.
+    for pass in 0..52 {
         let before = transport.call_count();
         transport.push(devices(false));
-        if pass < 5 {
+        if pass < 50 {
             transport.push(response(
                 200,
                 &json!({"items": [delete_by_new_device("note", "deadnotexxxx")]}).to_string(),
@@ -330,7 +332,7 @@ async fn a_signer_that_never_appears_stops_being_re_pulled() {
         transport.push(empty_changes());
         sync.sync_now().await.expect("a pass");
         let urls = &urls(&transport)[before..];
-        assert_eq!(urls[1] == "/sync/pull", pass < 5, "pass {pass}: {urls:?}");
+        assert_eq!(urls[1] == "/sync/pull", pass < 50, "pass {pass}: {urls:?}");
     }
 
     assert!(
@@ -497,7 +499,7 @@ async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
     sync.sync_now().await.expect("the refusing pass");
     for _ in 0..5 {
         transport.push(devices(false));
-        transport.push(re_pulled("note", "deadnotexxxx"));
+        transport.push(response(200, r#"{"items":[]}"#));
         transport.push(empty_changes());
         sync.sync_now().await.expect("a re-pulling pass");
     }
@@ -524,8 +526,11 @@ async fn a_new_refusal_of_a_given_up_id_gets_a_fresh_budget() {
     assert!(deleted(&side, "note", "deadnotexxxx"));
 }
 
+/// #5502: a re-pull that failed says nothing about the record. Five `{}`
+/// pages and five server errors later it still waits, and once its signer is
+/// listed the next re-pull applies it.
 #[tokio::test]
-async fn a_failed_re_pull_counts_unless_the_transport_failed() {
+async fn re_pulls_without_an_answer_keep_the_record_waiting() {
     let [page, pulled] = deleted_page(
         &["deadnotexxxx"],
         vec![delete_by_new_device("note", "deadnotexxxx")],
@@ -536,19 +541,56 @@ async fn a_failed_re_pull_counts_unless_the_transport_failed() {
     let sync = vault.sync(session);
     sync.sync_now().await.expect("the refusing pass");
 
-    // A transport failure counts nothing: six of them, and the budget is whole.
-    for _ in 0..6 {
-        transport.push(devices(false));
-        transport.push(Err(TransportError::Cancelled));
-        transport.push(empty_changes());
-        sync.sync_now().await.expect("an offline re-pull");
+    let answers: [fn() -> Scripted; 4] = [
+        || Err(TransportError::Cancelled),
+        || response(200, "{}"),
+        || response(200, "not json"),
+        || {
+            response(
+                504,
+                r#"{"error":{"code":"GATEWAY_TIMEOUT","message":"down"}}"#,
+            )
+        },
+    ];
+    for answer in answers {
+        for _ in 0..5 {
+            transport.push(devices(false));
+            transport.push(answer());
+            transport.push(empty_changes());
+            sync.sync_now().await.expect("a failed re-pull");
+        }
     }
-    // An answer that will not parse counts: five, then no more re-pulls.
-    for pass in 0..6 {
+
+    let before = transport.call_count();
+    transport.push(devices(true));
+    transport.push(re_pulled("note", "deadnotexxxx"));
+    transport.push(empty_changes());
+    sync.sync_now()
+        .await
+        .expect("a pass with the new device listed");
+    assert_eq!(urls(&transport)[before + 1], "/sync/pull");
+    assert!(deleted(&side, "note", "deadnotexxxx"));
+}
+
+/// #5502: only a well-formed page that leaves the id out counts an attempt;
+/// five of them and the record is no longer re-pulled.
+#[tokio::test]
+async fn well_formed_re_pulls_without_the_record_give_up() {
+    let [page, pulled] = deleted_page(
+        &["deadnotexxxx"],
+        vec![delete_by_new_device("note", "deadnotexxxx")],
+    );
+    let transport = FakeTransport::new(vec![devices(false), page, pulled]);
+    let (vault, side, session) = vault("absent-re-pull", transport.clone());
+    live_row(&side, "note", "deadnotexxxx");
+    let sync = vault.sync(session);
+    sync.sync_now().await.expect("the refusing pass");
+
+    for pass in 0..7 {
         let before = transport.call_count();
         transport.push(devices(false));
         if pass < 5 {
-            transport.push(response(200, "not json"));
+            transport.push(response(200, r#"{"items":[]}"#));
         }
         transport.push(empty_changes());
         sync.sync_now().await.expect("a pass");
@@ -920,7 +962,7 @@ async fn settings_re_pulls_answered_without_items_keep_the_seeded_edit_held() {
 }
 
 /// VERIFY-5447 r3 #4: a server error says nothing about the server copy, so
-/// it counts toward no bound. Passes up to [`MAX_SETTINGS_FAILURES`] of it
+/// it counts toward no bound. Passes up to [`MAX_FAILURES`] of it
 /// keep the one-key edit held (504 is not retried within a pass).
 #[tokio::test]
 async fn settings_re_pulls_failing_with_a_server_error_keep_the_seeded_edit_held() {

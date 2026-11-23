@@ -206,6 +206,27 @@ async fn a_revived_day_whose_server_body_applies_is_not_pushed() {
     assert!(db.call_blocking(|c| Ok(queued(c))).unwrap().is_empty());
 }
 
+/// #5247: a server body that does not decode cannot be judged, and a push
+/// would not heal it. The day is kept as unhealable, so no later pass reads
+/// it again or puts it ahead of the others.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_revived_day_whose_server_body_does_not_decode_is_never_read_again() {
+    let db = scratch("undecodable");
+    author(&db);
+    let transport = server(&[(2, &[200, 1, 7, 255, 255, 255, 255, 3])]);
+    let healed = revive_heal::run(&db, &body_pull(&db, Arc::clone(&transport)))
+        .await
+        .unwrap();
+    assert_eq!(healed, 0);
+    assert_eq!(transport.call_count(), 2, "the body was read");
+    db.call_blocking(|c| {
+        assert!(queued(c).is_empty());
+        assert!(revive_heal::candidates(c).unwrap().is_empty());
+        Ok(())
+    })
+    .unwrap();
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_revived_day_with_an_unpushed_update_waits_for_its_push() {
     let db = scratch("unpushed");

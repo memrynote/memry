@@ -12,22 +12,25 @@
 //!   which a local edit never touches (an edit clears `corrupt_reason`, so the
 //!   reason cannot be the record of it).
 //! - [`retry`] re-pulls those ids at the start of every pass, over that pass's
-//!   fresh directory, at most [`MAX_RETRIES`] times per refusal.
+//!   fresh directory, until a budget below runs out.
 //! - [`holds`] keeps a queued edit of such a row out of the push meanwhile.
 //! - The wait ends when the row resolves: a verified record for it
 //!   ([`resolve_verified`]) drops the `meta` row and the row's flag; the last
 //!   retry keeps the `meta` row as given up, with the flag.
 //!
+//! Only a well-formed answer that leaves the id out counts toward
+//! [`MAX_RETRIES`]: anything else would give up on a record over a server
+//! hiccup (#5502). An unusable answer about the request (a dropped page, a
+//! record still unverifiable, a malformed body, a 4xx) counts toward
+//! [`MAX_FAILURES`], which still bounds the hold; an answer about the network
+//! or the server's health (transport, 5xx, 429) counts nothing.
+//!
 //! The settings item reuses the hold (#5433): an edit over a deleted
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
 //! refusal of `synced_settings`, so the server copy is re-pulled and merged
-//! before the edit pushes. A settings hold is re-pulled on its own, and only a
-//! well-formed answer that leaves the id out counts toward [`MAX_RETRIES`]:
-//! anything else would release a seeded one-key edit over live server
-//! settings. An unusable answer about the request (a dropped page, an
-//! unverifiable record, a malformed body, a 4xx) counts toward
-//! [`MAX_SETTINGS_FAILURES`], which still bounds the hold; an answer about the
-//! network or the server's health (transport, 5xx, 429) counts nothing.
+//! before the edit pushes. A settings hold is re-pulled on its own, so another
+//! record's answer never counts toward releasing a seeded one-key edit over
+//! live server settings.
 //!
 //! A record whose signature fails for any other reason is never retried: its
 //! reason does not end with
@@ -50,15 +53,15 @@ use super::apply::Pending;
 use super::first_sync_store::{read_meta, write_meta};
 use super::pull::{PullError, PullLoop, PullReport};
 
-/// Passes that re-pull one refusal. A signer still missing after this many
-/// fresh directories is not a device of the account; the row stays as it is,
-/// and its `meta` row stays at this count, given up.
+/// Well-formed re-pulls that left the record out before its hold gives up:
+/// the server no longer serves it. The row stays as it is, and its `meta` row
+/// stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-/// Settings re-pulls that failed (not for transport) or came back
-/// unverifiable before a settings hold gives up. Stored after a `/` in the
-/// `meta` value; an older build parses such a value as 0 and keeps holding.
-pub(crate) const MAX_SETTINGS_FAILURES: u32 = 50;
+/// Re-pulls that failed (not for the network or the server's health) or came
+/// back unverifiable before a hold gives up. Stored after a `/` in the `meta`
+/// value; an older build parses such a value as 0 and keeps holding.
+pub(crate) const MAX_FAILURES: u32 = 50;
 
 const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
 /// The first key past every [`KEY_PREFIX`] key (`;` follows `:`).
@@ -113,8 +116,9 @@ pub(crate) fn holds(
 }
 
 /// Re-pulls, by id, every refusal still waiting. The caller built `pull` over
-/// the directory it fetched for this pass. A transport failure is logged and
-/// counts no attempt; any other failure counts one.
+/// the directory it fetched for this pass. Each settings hold is re-pulled on
+/// its own, every other hold in one batch; each outcome counts per
+/// [`counted`].
 pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> {
     let (settings, due): (Vec<_>, Vec<_>) = db
         .call(|conn| {
@@ -126,47 +130,16 @@ pub(crate) async fn retry(db: &Db, pull: &PullLoop) -> Result<(), StorageError> 
         .into_iter()
         .filter(|(_, _, value)| waiting(value))
         .partition(|(item_type, _, _)| item_type == SETTINGS_ITEM_TYPE);
-    for (_, id, value) in settings {
-        retry_settings(db, pull, id, value).await?;
+    for hold in settings {
+        re_pull(db, pull, vec![hold]).await?;
     }
-    if due.is_empty() {
-        return Ok(());
+    if !due.is_empty() {
+        re_pull(db, pull, due).await?;
     }
-    let mut ids: Vec<String> = due.iter().map(|(_, id, _)| id.clone()).collect();
-    ids.sort();
-    ids.dedup();
-    if let Err(error) = pull.fetch_ids(&ids).await {
-        eprintln!(
-            "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
-            ids.len()
-        );
-        if is_transport(&error) {
-            return Ok(());
-        }
-    }
-    db.call(move |conn| {
-        for (item_type, id, value) in due {
-            let key = key(&item_type, &id);
-            // Resolved by the re-pull, or a refusal of it is still recorded:
-            // this pass's attempt counts against the budget it had before.
-            if read_meta(conn, &key)?.is_none() {
-                continue;
-            }
-            let attempts = attempts_of(&value) + 1;
-            if attempts >= MAX_RETRIES {
-                eprintln!(
-                    "memry-core: {item_type} {id}'s signer is still unknown after {attempts} \
-                     directories; no longer re-pulled"
-                );
-            }
-            write_meta(conn, &key, &attempts.to_string())?;
-        }
-        Ok(())
-    })
-    .await
+    Ok(())
 }
 
-/// What one settings re-pull counts toward (VERIFY-5447 r3).
+/// What one re-pull counts toward (VERIFY-5447 r3).
 enum Counted {
     /// Says nothing about the server copy, or about this request.
     Nothing,
@@ -176,9 +149,9 @@ enum Counted {
     Failure,
 }
 
-/// Classifies a settings re-pull. Only a page that decoded, held no
-/// unverifiable record and left the id out shows the server has no copy; a
-/// record that resolved the hold has already dropped its `meta` row.
+/// Classifies a re-pull. Only a page that decoded, held no unverifiable
+/// record and left an id out shows the server has no copy; a record that
+/// resolved its hold has already dropped its `meta` row.
 fn counted(result: &Result<PullReport, PullError>) -> Counted {
     match result {
         Ok(report)
@@ -200,53 +173,56 @@ fn counted(result: &Result<PullReport, PullError>) -> Counted {
     }
 }
 
-/// Re-pulls the settings hold alone, so its outcome is its own (see
-/// [`counted`]): an attempt toward [`MAX_RETRIES`], a failure toward
-/// [`MAX_SETTINGS_FAILURES`], or nothing.
-async fn retry_settings(
+/// Re-pulls `holds` in one fetch and counts its outcome (see [`counted`])
+/// against every one still recorded after it: an attempt toward
+/// [`MAX_RETRIES`], a failure toward [`MAX_FAILURES`], or nothing. A refusal
+/// recorded again by the re-pull counts against the budget it had before.
+async fn re_pull(
     db: &Db,
     pull: &PullLoop,
-    id: String,
-    value: String,
+    holds: Vec<(String, String, String)>,
 ) -> Result<(), StorageError> {
-    let result = pull.fetch_ids(std::slice::from_ref(&id)).await;
+    let mut ids: Vec<String> = holds.iter().map(|(_, id, _)| id.clone()).collect();
+    ids.sort();
+    ids.dedup();
+    let result = pull.fetch_ids(&ids).await;
     if let Err(error) = &result {
-        eprintln!("memry-core: re-pulling the held settings {id} failed: {error}");
+        eprintln!(
+            "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
+            ids.len()
+        );
     }
-    let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
-    match counted(&result) {
-        Counted::Nothing => return Ok(()),
-        Counted::Attempt => attempts += 1,
-        Counted::Failure => failures += 1,
+    let counted = counted(&result);
+    if matches!(counted, Counted::Nothing) {
+        return Ok(());
     }
     db.call(move |conn| {
-        let key = key(SETTINGS_ITEM_TYPE, &id);
-        if read_meta(conn, &key)?.is_none() {
-            return Ok(());
+        for (item_type, id, value) in holds {
+            let key = key(&item_type, &id);
+            if read_meta(conn, &key)?.is_none() {
+                continue;
+            }
+            let (mut attempts, mut failures) = (attempts_of(&value), failures_of(&value));
+            match counted {
+                Counted::Attempt => attempts += 1,
+                _ => failures += 1,
+            }
+            if attempts >= MAX_RETRIES || failures >= MAX_FAILURES {
+                eprintln!(
+                    "memry-core: {item_type} {id}: {attempts} re-pull(s) found no server copy \
+                     and {failures} failed; no longer re-pulled"
+                );
+            }
+            write_meta(conn, &key, &format!("{attempts}/{failures}"))?;
         }
-        if attempts >= MAX_RETRIES || failures >= MAX_SETTINGS_FAILURES {
-            eprintln!(
-                "memry-core: settings {id}: {attempts} re-pull(s) found no server copy and \
-                 {failures} failed; its held edit is released"
-            );
-        }
-        write_meta(conn, &key, &format!("{attempts}/{failures}"))
+        Ok(())
     })
     .await
 }
 
-fn is_transport(error: &PullError) -> bool {
-    matches!(
-        error,
-        PullError::Api {
-            source: ApiError::Transport { .. }
-        }
-    )
-}
-
 /// Whether a recorded value still holds: under both budgets.
 fn waiting(value: &str) -> bool {
-    attempts_of(value) < MAX_RETRIES && failures_of(value) < MAX_SETTINGS_FAILURES
+    attempts_of(value) < MAX_RETRIES && failures_of(value) < MAX_FAILURES
 }
 
 fn attempts_of(value: &str) -> u32 {

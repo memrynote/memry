@@ -86,7 +86,11 @@ setting everywhere. Before #2383 settings picked the larger single tick and kept
 peer still on that rule converges through the re-queue a concurrent merge triggers. The shared
 `settings-merge.json` vectors run against both desktop and the Rust core, including the re-queue
 flag; since #2399 the Rust core also keeps the local value on an absent winner and re-queues after a
-concurrent merge.
+concurrent merge. Since #5506 both also re-queue when a local path clock is ahead of the pulled
+one: a peer can push a payload it built before pulling this device's tick, and the server, with no
+record clock for settings, stores it whole. Without the re-queue the device that holds the newer
+value is the only one that ever has it. A merge where every local clock is equal or behind queues
+nothing, so pulling back your own push does not loop.
 
 Agent message sync is append-only. If a message id already exists locally, the handler treats the
 remote item as idempotent instead of overwriting a terminal message.

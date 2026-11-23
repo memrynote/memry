@@ -196,7 +196,7 @@ macOS (APFS) and Windows (NTFS) are case-insensitive by default, so after `Super
 
 The rules that keep this closed:
 
-- The watcher spells every add, change and addDir path the way the disk does (`diskCaseOf`, `src/main/vault/disk-case.ts`, built on the native `realpathSync`) before it looks up a row.
+- The watcher spells every add, change and addDir path the way the disk does (`diskCaseOf`, `src/main/vault/disk-case.ts`, built on the native `realpathSync`) before it looks up a row. A change with no row at the disk's spelling goes to a row at the event's own spelling before it falls back to an add. An outside case-only file rename can land inside the change debounce, so the disk already spells `Apple.md` while the row is still at `apple.md` until the rename's unlink and add match. Adding the new spelling listed the note under a fresh id, and the unmatched unlink then synced a delete of the original (#5247).
 - While the app runs its own folder rename, the watcher skips the add and change events for notes the app already moved.
 - A delayed unlink is dropped when the data DB shows the note now lives at another path. The index catches up in batches, so on Linux an unlink of the old path can arrive after the data DB moved the note.
 - `moveNotesInCache` moves every data-DB row in one synchronous pass, then updates the index in batches of 500 with a flush between them. One update per note used to overflow the 2,000-event projection queue, and the overflow left notes at the old path for good.

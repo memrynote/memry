@@ -9,7 +9,8 @@ use crate::protocol::types::ArrivingItemType;
 use crate::storage::nested_tx;
 
 use super::{
-    MAX_PULL_IDS, PullError, PullLoop, PullReport, apply_items, sqlite_failed, typed_covers,
+    MAX_PULL_IDS, PullError, PullLoop, PullReport, apply_items, sqlite_failed, still_open,
+    typed_covers,
 };
 use crate::sync::apply::{self, Pending};
 use crate::sync::pull_decode::{Decoding, now_ms};
@@ -148,6 +149,7 @@ impl PullLoop {
             .call(move |conn| {
                 let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
                 let totals = apply_items(&txn, pending, false, now, clock_device.as_deref())?;
+                still_open(&txn)?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok(totals)
             })

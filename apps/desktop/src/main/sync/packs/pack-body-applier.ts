@@ -128,8 +128,9 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
    * verify or decrypt. Thousands of packed updates go through here, so the
    * crypto runs on the worker like the route path's, and on this thread only
    * when the worker is not running or rejects (transport, not a verdict).
-   * With `untilFirstOpen`, this thread stops at the first blob that opens and
-   * the result ends there.
+   * With `untilFirstOpen`, both threads stop at the first blob that opens; a
+   * refusal never stops the walk, and the worker leaves the blobs after the
+   * hit unopened ('no_result').
    */
   const openAll = async (
     sealed: Sealed[],
@@ -148,7 +149,12 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         signerDeviceId: s.signerDeviceId
       }))
       try {
-        const { results, failures } = await bridge.decryptCrdtBatch(items, vaultKey, signerKeysB64)
+        const { results, failures } = await bridge.decryptCrdtBatch(
+          items,
+          vaultKey,
+          signerKeysB64,
+          { stopAtFirstOpen: untilFirstOpen }
+        )
         const byIndex = new Map<number, Opened>(
           failures.map((f) => [f.index, f.isSignatureError ? 'bad_signature' : 'decrypt_failed'])
         )
