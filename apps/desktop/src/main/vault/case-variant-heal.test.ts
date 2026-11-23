@@ -33,15 +33,35 @@ import * as Y from 'yjs'
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: vi.fn(() => []) } }))
 // The provider's doc store is the real LevelDB adapter; only the provider's
 // vault-scoped init (preflight child, store path) is left out.
-const crdt = vi.hoisted(() => ({ store: null as CrdtPersistence | null }))
+const crdt = vi.hoisted(() => ({
+  store: null as CrdtPersistence | null,
+  live: new Map<string, unknown>(),
+  /** Runs before each store read resolves, as a slow LevelDB read would. */
+  beforeRead: async (_noteId: string): Promise<void> => {},
+  inits: 0
+}))
 vi.mock('../sync/crdt-provider', async () => {
   const { readOnlyStore } = await import('../sync/crdt-persistence')
   return {
     getCrdtProvider: () => ({
-      awaitPendingInit: async () => {},
+      awaitPendingInit: async () => {
+        crdt.inits++
+      },
       hasPersistence: () => crdt.store !== null,
-      getDoc: () => undefined,
-      readOnlyStore: () => (crdt.store ? readOnlyStore(crdt.store) : null)
+      getDoc: (noteId: string) => crdt.live.get(noteId),
+      readOnlyStore: () => {
+        const store = crdt.store ? readOnlyStore(crdt.store) : null
+        return (
+          store && {
+            ...store,
+            updates: async (noteId: string) => {
+              const updates = await store.updates(noteId)
+              await crdt.beforeRead(noteId)
+              return updates
+            }
+          }
+        )
+      }
     })
   }
 })
@@ -84,6 +104,9 @@ describe('healCaseVariantRows', () => {
     vi.mocked(getIndexDatabase).mockReturnValue(index.db)
     crdtDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-heal-crdt-'))
     crdt.store = new LeveldbPersistence(crdtDir)
+    crdt.live.clear()
+    crdt.beforeRead = async () => {}
+    crdt.inits = 0
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
   })
 
@@ -250,15 +273,81 @@ describe('healCaseVariantRows', () => {
 
     expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
     expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
+    // No row can go, so the open does not wait for the doc store's preflight.
+    expect(crdt.inits).toBe(0)
   })
 
   /** The doc an editor saved for `noteId`: the store holds it, no file does. */
-  async function saveDoc(noteId: string, markdown: string): Promise<void> {
+  async function saveDoc(noteId: string, markdown: string): Promise<Y.Doc> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     await crdt.store?.storeUpdate(noteId, Y.encodeStateAsUpdate(doc))
-    doc.destroy()
+    return doc
   }
+
+  /** Records `pushed` as the doc state the server took for `noteId`. */
+  function recordPushed(noteId: string, pushed: Y.Doc): void {
+    data.db
+      .insert(noteBodySync)
+      .values({
+        noteId,
+        pushedStateVector: Buffer.from(Y.encodeStateVector(pushed)).toString('base64'),
+        lastConfirmedAt: 2,
+        updatedAt: 2
+      })
+      .run()
+  }
+
+  // A copy indexed before #5297 holds an older doc than the kept note's, and
+  // differs from it forever. The server already holds every change in it, so
+  // dropping the row loses nothing, and keeping it leaves a duplicate whose
+  // delete unlinks the kept note's file (#5495).
+  it.runIf(fileSystemIgnoresCase())(
+    'drops a copy whose differing doc the server already holds, and keeps unpushed text',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body', synced: true })
+      seedRows('pushed', 'Supernotes/a.md', { contentHash: 'hash-body', synced: true })
+      seedRows('unpushed', 'superNotes/a.md', { contentHash: 'hash-body', synced: true })
+      await saveDoc('original', 'body v2\n')
+      recordPushed('pushed', await saveDoc('pushed', 'body v1\n'))
+      const unpushed = await saveDoc('unpushed', 'body v1\n')
+      recordPushed('unpushed', unpushed)
+      const typed = new Y.Doc()
+      Y.applyUpdate(typed, Y.encodeStateAsUpdate(unpushed))
+      typed.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('unpushed words')])
+      await crdt.store?.storeUpdate(
+        'unpushed',
+        Y.encodeStateAsUpdate(typed, Y.encodeStateVector(unpushed))
+      )
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 1, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['original', 'unpushed'])
+    }
+  )
+
+  // The drop reads the copy's live doc again after the last await: a keystroke
+  // in its tab while the store read was slow is in that doc, not in the read.
+  it.runIf(fileSystemIgnoresCase())(
+    'keeps a copy typed into while its store read was in flight',
+    async () => {
+      writeFile('SuperNotes/a.md', 'body')
+      seedRows('original', 'SuperNotes/a.md', { contentHash: 'hash-body' })
+      seedRows('copy', 'Supernotes/a.md', { contentHash: 'hash-body' })
+      await saveDoc('original', 'body\n')
+      const saved = await saveDoc('copy', 'body\n')
+      crdt.beforeRead = async (noteId) => {
+        if (noteId !== 'copy' || crdt.live.has('copy')) return
+        const tab = new Y.Doc()
+        Y.applyUpdate(tab, Y.encodeStateAsUpdate(saved))
+        tab.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('a keystroke')])
+        crdt.live.set('copy', tab)
+      }
+
+      expect(await healCaseVariantRows(vault.path)).toEqual({ notes: 0, folders: 0 })
+      expect(notes().canonical.map((row) => row.id)).toEqual(['copy', 'original'])
+    }
+  )
 
   // Sync off queues nothing, so only the saved doc shows text the copy holds
   // and the shared file lacks, such as an edit not yet written back at quit.
