@@ -161,7 +161,8 @@ describe('worker', () => {
         ],
         vaultKey: new Uint8Array(32),
         signingSecretKey: new Uint8Array(64),
-        signerDeviceId: 'device-1'
+        signerDeviceId: 'device-1',
+        vaultId: null
       }
 
       // #when
@@ -189,7 +190,8 @@ describe('worker', () => {
         items: [],
         vaultKey,
         signingSecretKey,
-        signerDeviceId: 'device-1'
+        signerDeviceId: 'device-1',
+        vaultId: null
       }
 
       // #when
