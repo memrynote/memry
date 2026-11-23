@@ -96,9 +96,10 @@ import { NoteError, NoteErrorCode } from '../lib/errors'
 import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
-import { diskCaseOf } from './disk-case'
+import { diskCaseOf, volumeIgnoresCase } from './disk-case'
 import {
   clearCaseTwinForeignBytes,
+  forgetKeptCaseTwinCopy,
   hashFile,
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
@@ -109,8 +110,8 @@ import {
   recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
   takeHeldCaseTwinChange,
-  takeKeptCaseTwinCopy,
   takeLandedCaseTwinHash,
+  type KeptCopy,
   type MarkedFile
 } from './case-twin-bytes'
 import { generateUniquePathSync } from './file-ops'
@@ -486,7 +487,8 @@ export function planBinaryCaseTwinMove(
  * the watcher held one, or when it differs from the bytes a download last
  * landed on it (#5585): an edit made while the app was closed, or whose event
  * is on the way, whatever its size. Bytes a landing already kept as a conflict
- * copy are not a change (REVIEW-5602). With no landing recorded (twins that
+ * copy are not a change while that copy still holds them (REVIEW-5602,
+ * VERIFY-5602). With no landing recorded (twins that
  * shared the file before this build), the bytes are treated as changed. Such
  * a change is kept as a conflict copy when the survivor's bytes land, unless
  * they are those bytes. The step never awaits.
@@ -501,10 +503,11 @@ function planBinarySurvivor(
   const survivor = getNoteMetadataById(db, survivorId)
   if (!survivor) return () => {}
   const sharedPath = join(vaultPath, onDisk)
+  const kept = readKeptCaseTwinCopy(db, vaultPath, onDisk)
   return () => {
     const held = takeHeldCaseTwinChange(db, onDisk)
     const landed = takeLandedCaseTwinHash(db, onDisk)
-    const kept = takeKeptCaseTwinCopy(db, onDisk)
+    forgetKeptCaseTwinCopy(db, onDisk)
     const changed = held || sha256 === null || (sha256 !== landed && sha256 !== kept)
     requestOwnBytes(db, survivor, sharedPath, changed ? null : { sha256 })
   }
@@ -600,11 +603,11 @@ export function releaseAbandonedCaseTwinBytes(
  * which the vault takes in as a note of its own, once: a landing retried
  * after its rename failed finds the change kept. A landing on a file twins
  * still share keeps a change made since the bytes a download last landed
- * there the same way, once, and forgets a change the watcher held to it; with
- * no landing recorded, the file counts as changed (#5594). The first bytes to
- * land where twins' rows name no file yet are recorded too, so the other
- * twin's landing finds them known (REVIEW-5602). Throws, with nothing landed, when that copy cannot be written: the
- * download is retried.
+ * there the same way, once while the copy still holds them, and forgets a
+ * change the watcher held to it; with no landing recorded, the file counts as
+ * changed (#5594). The first bytes to land where twins' rows name no file yet
+ * are recorded too (`recordFirstOnTwinFile`). Throws, with nothing landed,
+ * when that copy cannot be written: the download is retried.
  */
 export function landCaseTwinDownload(
   filePath: string,
@@ -627,46 +630,75 @@ export function landCaseTwinDownload(
   const shared = sharesCaseTwinFile(vaultPath, landsOn)
   if (onFile) {
     const kept = keepChange(landAt, sha256, [marks.get(onFile.id)?.sha256], { noteId: onFile.id })
-    if (kept !== null) recordConflictCopyKept(db, onFile.id, kept)
+    if (kept !== null) recordConflictCopyKept(db, onFile.id, kept.sha256)
   } else if (shared) {
-    const known = [readLandedCaseTwinHash(db, landsOn), readKeptCaseTwinCopy(db, landsOn)]
+    const known = [
+      readLandedCaseTwinHash(db, landsOn),
+      readKeptCaseTwinCopy(db, vaultPath, landsOn)
+    ]
     const kept = keepChange(landAt, sha256, known, { attachmentId })
     if (kept !== null) recordKeptCaseTwinCopy(db, landsOn, kept)
     takeHeldCaseTwinChange(db, landsOn)
   }
-  const firstOnTwinFile =
-    diskCaseOf(vaultPath, landsOn) === null && listNoteMetadataByFoldedPath(db, landsOn).length > 1
-  if (shared || firstOnTwinFile) recordLandedCaseTwinHash(db, landsOn, sha256)
+  if (shared) recordLandedCaseTwinHash(db, landsOn, sha256)
+  else if (diskCaseOf(vaultPath, landsOn) === null) {
+    recordFirstOnTwinFile(db, vaultPath, landsOn, sha256)
+  }
   return landAt
 }
 
 /**
+ * Bytes landing where no file is yet are recorded when other rows name the
+ * file they make, so the other twin's landing finds them known (REVIEW-5602).
+ * The proof is `listRowsOnFile`'s: a volume that keeps case has no twins, and
+ * a row whose file is on disk names another file, as a twin of this one would
+ * open it (`ılık.png` and `Ilık.png` on APFS). What a landing recorded under
+ * their shared fold is forgotten then (VERIFY-5602).
+ */
+function recordFirstOnTwinFile(
+  db: DrizzleDb,
+  vaultPath: string,
+  landsOn: string,
+  sha256: string
+): void {
+  if (!volumeIgnoresCase(vaultPath)) return
+  const rows = listNoteMetadataByFoldedPath(db, landsOn)
+  if (rows.some((row) => diskCaseOf(vaultPath, row.path) !== null)) {
+    takeLandedCaseTwinHash(db, landsOn)
+  } else if (rows.length > 1) {
+    recordLandedCaseTwinHash(db, landsOn, sha256)
+  }
+}
+
+/**
  * Keeps the file at `landAt` as a conflict copy when it holds bytes other than
- * the landing's (`sha256`) and the known ones (`known`), returning their hash.
+ * the landing's (`sha256`) and the known ones (`known`), returning them.
  */
 function keepChange(
   landAt: string,
   sha256: string,
   known: Array<string | undefined>,
   context: Record<string, string>
-): string | null {
+): KeptCopy | null {
   const onDisk = hashFile(landAt)
   if (onDisk === null || onDisk === sha256 || known.includes(onDisk)) return null
-  keepConflictCopy(landAt, context)
-  return onDisk
+  return { sha256: onDisk, copy: keepConflictCopy(landAt, context) }
 }
 
-function keepConflictCopy(filePath: string, context: Record<string, string>): void {
+/** Copies the file at `filePath` to a new "(conflict copy)" file, returning its vault path. */
+function keepConflictCopy(filePath: string, context: Record<string, string>): string {
   const ext = extname(filePath)
   const copyPath = generateUniquePathSync(
     join(dirname(filePath), `${basename(filePath, ext)} (conflict copy)${ext}`),
     (p) => !!getNoteCacheByPath(getIndexDatabase(), toRelativePath(p))
   )
   fs.copyFileSync(filePath, copyPath, fs.constants.COPYFILE_EXCL)
+  const copy = toRelativePath(copyPath)
   log.warn("A change to a file that may have held a case twin's bytes is kept as a new file", {
     ...context,
-    copy: toRelativePath(copyPath)
+    copy
   })
+  return copy
 }
 
 function sameStateVector(a: Uint8Array, b: Uint8Array): boolean {

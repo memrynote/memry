@@ -255,9 +255,10 @@ export const SYNC_STATE_KEYS = {
   CASE_TWIN_LANDED_HASHES: 'caseTwinLandedHashes',
   /**
    * JSON object from the folded vault path of a binary file case twins share
-   * to the sha256 of the bytes a landing last kept from it as a conflict copy
-   * (REVIEW-5602). A landing retried after its rename failed, and the split,
-   * read those bytes as kept. Missing reads as empty.
+   * to `{sha256, copy}`: the bytes a landing last kept from it as a conflict
+   * copy, and the vault path of that copy (REVIEW-5602). A landing retried
+   * after its rename failed, and the split, read those bytes as kept while the
+   * copy still holds them (VERIFY-5602). Missing reads as empty.
    */
   CASE_TWIN_KEPT_COPIES: 'caseTwinKeptCopies'
 } as const

@@ -15,12 +15,15 @@ import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/ut
 import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
 import {
   clearCaseTwinForeignBytes,
+  forgetKeptCaseTwinCopy,
   hashFile,
   holdsCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
+  readKeptCaseTwinCopy,
   recordConflictCopyKept,
   recordHeldCaseTwinChange,
+  recordKeptCaseTwinCopy,
   recordLandedCaseTwinHash,
   takeHeldCaseTwinChange,
   takeLandedCaseTwinHash
@@ -100,6 +103,35 @@ describe('case twin hold state', () => {
     )
 
     expect([...readCaseTwinForeignBytes(db())]).toEqual([['twin-a', null]])
+  })
+
+  it('kept bytes count as kept only while the copy named with them holds them', () => {
+    const kept = createHash('sha256').update('edited').digest('hex')
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'edited')
+    recordKeptCaseTwinCopy(db(), 'SUPERNOTES/p.png', {
+      sha256: kept,
+      copy: 'p (conflict copy).png'
+    })
+
+    expect(JSON.parse(stored(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES)!)).toEqual({
+      'supernotes/p.png': { sha256: kept, copy: 'p (conflict copy).png' }
+    })
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBe(kept)
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'changed')
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+    fs.rmSync(path.join(dir, 'p (conflict copy).png'))
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
+
+    forgetKeptCaseTwinCopy(db(), 'Supernotes/p.png')
+    expect(stored(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES)).toBeUndefined()
+  })
+
+  it('a kept hash in the unreleased shape with no copy reads as not kept', () => {
+    const kept = createHash('sha256').update('edited').digest('hex')
+    fs.writeFileSync(path.join(dir, 'p (conflict copy).png'), 'edited')
+    store(SYNC_STATE_KEYS.CASE_TWIN_KEPT_COPIES, JSON.stringify({ 'supernotes/p.png': kept }))
+
+    expect(readKeptCaseTwinCopy(db(), dir, 'Supernotes/p.png')).toBeUndefined()
   })
 
   it('hashes a file larger than one read as the manifest checksum does, and a missing file as null', () => {

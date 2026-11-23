@@ -416,6 +416,15 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
         .get()?.value ?? '[]'
     )
 
+  const landedHashes = (): unknown =>
+    JSON.parse(
+      data.db
+        .select({ value: syncState.value })
+        .from(syncState)
+        .where(eq(syncState.key, 'caseTwinLandedHashes'))
+        .get()?.value ?? '{}'
+    )
+
   const owed = () =>
     data.db
       .select({ id: attachmentDownloadFailures.id })
@@ -798,11 +807,70 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
     expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
 
-    // The kept bytes split off later are not kept again.
-    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    // Copied back while the copy still holds them, the kept bytes split off later are not kept again.
+    fs.copyFileSync(abs('Supernotes/p (conflict copy).png'), abs('Supernotes/p.png'))
     expect(applyPeerDelete('twin-b')).toBe('applied')
     land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
     expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+    expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+  })
+
+  /** A still-shared landing kept an offline edit as a copy, and the user moved the copy back over the file. */
+  function restoreKeptCopy(): void {
+    twins('Supernotes')
+    land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerUpdate({ attachmentId: 'att-b2' })).toBe('applied')
+    land('twin-b', 'att-b2', abs('SUPERNOTES/p.png'), 'b-new')
+    fs.renameSync(abs('Supernotes/p (conflict copy).png'), abs('Supernotes/p.png'))
+  }
+
+  // VERIFY-5602 #1 (K1, K2): the copy is gone, so the file is the edit's only copy.
+  for (const [how, held] of [
+    ['', false],
+    [' whose change the watcher held', true]
+  ] as const) {
+    it(`a restored conflict copy${how} is kept again when a twin's next bytes land on the still-shared file`, () => {
+      restoreKeptCopy()
+      // The watcher's hold of the restored edit.
+      if (held) holdsBinaryChange(vault.path, 'Supernotes/p.png', 'twin-a')
+      expect(heldChanges()).toEqual(held ? ['supernotes/p.png'] : [])
+      expect(applyPeerUpdate({ attachmentId: 'att-b3' })).toBe('applied')
+
+      land('twin-b', 'att-b3', abs('SUPERNOTES/p.png'), 'b-3')
+
+      expect(read('Supernotes/p.png')).toBe('b-3')
+      expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+      expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+    })
+  }
+
+  // VERIFY-5602 #1 (K3).
+  it('a restored conflict copy is kept again when the survivor of a split gets its bytes', () => {
+    restoreKeptCopy()
+
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
+    expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+    expect(read('Supernotes/p (conflict copy).png')).toBe('edited offline')
+  })
+
+  // VERIFY-5602 #11: `ılık` and `Ilık` share a fold key but are two files on APFS.
+  it('landings on two files that share only a fold key record no case twin state', () => {
+    seed('dotless', 'Docs/ılık.png', 'd-bytes')
+    seed('capital', 'Docs/Ilık.png', 'c-bytes')
+    fs.rmSync(abs('Docs/ılık.png'))
+    fs.rmSync(abs('Docs/Ilık.png'))
+
+    land('dotless', 'att-dotless', abs('Docs/ılık.png'), 'd-bytes')
+    land('capital', 'att-capital', abs('Docs/Ilık.png'), 'c-bytes')
+
+    expect(read('Docs/ılık.png')).toBe('d-bytes')
+    expect(read('Docs/Ilık.png')).toBe('c-bytes')
+    expect(landedHashes()).toEqual({})
   })
 
   // REVIEW-5602 low 6: the landing kept the held change; a later split does not keep it again.
@@ -849,3 +917,80 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(downloads).not.toHaveBeenCalled()
   })
 })
+
+// VERIFY-5602 #11: a volume that keeps case (Linux) keeps each spelling as its own file.
+describe.runIf(!fileSystemIgnoresCase())(
+  'binary notes whose paths differ in case on a case-sensitive volume',
+  () => {
+    let vault: ReturnType<typeof createTestVault>
+    let data: TestDatabaseResult
+    let index: TestDatabaseResult
+
+    beforeEach(() => {
+      vault = createTestVault('case-sensitive-binary')
+      data = createTestDataDb()
+      index = createTestIndexDb()
+      vi.mocked(getDatabase).mockReturnValue(asClientDb(data.db))
+      vi.mocked(getIndexDatabase).mockReturnValue(index.db)
+      vi.mocked(getStatus).mockReturnValue({
+        isOpen: true,
+        path: vault.path,
+        isIndexing: false,
+        indexProgress: 100,
+        error: null
+      })
+    })
+
+    afterEach(() => {
+      index.close()
+      data.close()
+      vault.cleanup()
+      vi.clearAllMocks()
+    })
+
+    it('their landings record no case twin state', () => {
+      const notes = [
+        ['lower', 'Supernotes/p.png'],
+        ['upper', 'SUPERNOTES/p.png']
+      ] as const
+      for (const [id, relativePath] of notes) {
+        upsertNoteMetadata(asClientDb(data.db), {
+          id,
+          path: relativePath,
+          title: 'p',
+          fileType: 'image',
+          mimeType: 'image/png',
+          attachmentId: `att-${id}`,
+          localOnly: false,
+          clock: { dev1: 1 },
+          createdAt: '2026-01-10T00:00:00.000Z',
+          modifiedAt: '2026-01-12T00:00:00.000Z',
+          syncedAt: '2026-01-12T00:00:00.000Z',
+          fileSize: 7
+        })
+      }
+
+      for (const [id, relativePath] of notes) {
+        const bytes = `${id}-bytes`
+        const at = landCaseTwinDownload(
+          path.join(vault.path, relativePath),
+          `att-${id}`,
+          createHash('sha256').update(bytes).digest('hex'),
+          id
+        )
+        fs.mkdirSync(path.dirname(at), { recursive: true })
+        fs.writeFileSync(at, bytes)
+        expect(
+          data.db
+            .select()
+            .from(syncState)
+            .all()
+            .map((row) => row.key)
+        ).toEqual([])
+      }
+
+      expect(fs.readFileSync(path.join(vault.path, 'Supernotes/p.png'), 'utf8')).toBe('lower-bytes')
+      expect(fs.readFileSync(path.join(vault.path, 'SUPERNOTES/p.png'), 'utf8')).toBe('upper-bytes')
+    })
+  }
+)
