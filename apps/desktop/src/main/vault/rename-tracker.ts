@@ -10,6 +10,7 @@
  * @module vault/rename-tracker
  */
 
+import type { Stats } from 'fs'
 import path from 'path'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
@@ -214,8 +215,8 @@ export function trackPendingDelete(
  * @param contentHash - Content hash of the newly added file, or null when it
  *   was not worth computing (no delete was in flight, so no rename is possible)
  * @param newPath - Relative path of the new file
- * @param statKey - Size + mtime of the new file, which matches a pending delete
- *   whose body was never read and therefore has no hash to compare
+ * @param statKeys - The new file's identity key, then its size + mtime key,
+ *   which match a pending delete whose hash could not be compared
  * @returns The matched note id and old path if this was a rename, null if new.
  *   `onRealDelete` is the matched delete's own callback, for a caller that
  *   decides the move is not a rename after all (a journal leaving the journal
@@ -224,11 +225,12 @@ export function trackPendingDelete(
 export function checkForRename(
   contentHash: string | null,
   newPath: string,
-  statKey?: string | null
+  statKeys: readonly (string | null)[] = []
 ): RenameMatch | null {
-  const pending =
-    (contentHash !== null ? takeMatch(pendingDeletes, contentHash) : null) ??
-    (statKey ? takeMatch(pendingDeletesByStat, statKey) : null)
+  let pending = contentHash !== null ? takeMatch(pendingDeletes, contentHash) : null
+  for (const statKey of statKeys) {
+    pending ??= statKey ? takeMatch(pendingDeletesByStat, statKey) : null
+  }
 
   if (!pending) {
     // No pending delete with this content - it's a new file
@@ -317,6 +319,23 @@ export function buildStatRenameKey(
   const modifiedMs = new Date(modifiedAt).getTime()
   if (Number.isNaN(modifiedMs)) return null
   return `${fileSize}:${modifiedMs}`
+}
+
+/**
+ * Rename key for a file the watcher saw change but whose index row may trail
+ * the change. Device + inode + birthtime tie it to that file, which a rename
+ * keeps: an unrelated file of the same size and mtime has another inode, or,
+ * where the filesystem hands a freed inode to the next file (ext4), another
+ * birthtime. Null when the filesystem reports no inode or no birthtime (0 on
+ * some Windows, Linux and network filesystems), so such a file never falls
+ * back to size + mtime alone.
+ */
+export function buildFileIdentityKey(
+  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'size' | 'mtime'>
+): string | null {
+  const born = stats.birthtime.getTime()
+  if (!stats.ino || !born) return null
+  return `ino:${stats.dev}:${stats.ino}:${born}:${stats.size}:${stats.mtime.getTime()}`
 }
 
 /**
