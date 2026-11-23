@@ -248,6 +248,8 @@ struct Server {
     /// Presigned URLs live this long on the test clock, and a GET on an
     /// expired one answers 403. Unset, every URL lives past the run.
     presign: Option<Presign>,
+    /// Once re-listed, every record pack GET answers 403, live URL or not.
+    resigned_refused: bool,
 }
 
 /// What the network answers while it is down.
@@ -360,6 +362,9 @@ impl Server {
                     .parse::<i64>()
                     .is_ok_and(|expires_at| expires_at <= presign.now())
             {
+                return Some(response(403, "{}"));
+            }
+            if self.resigned_refused && self.listings.load(Ordering::Relaxed) > 1 {
                 return Some(response(403, "{}"));
             }
             if let Some(timer) = self.pack_timeout {
@@ -860,6 +865,38 @@ async fn a_retry_past_the_url_lifetime_re_lists_before_it_downloads() {
     assert_eq!(report.record_packs.packs_applied, 7, "{report:?}");
     assert_eq!(report.reconcile_pulled, 0);
     assert_eq!(routes.count("/sync/packs"), 2, "{:?}", routes.calls());
+    assert_eq!(live_ids(&db).len(), 70);
+}
+
+/// #5247: a re-signed pack keeps the expiry the re-list gave it, so a 403 on
+/// its URL while that URL is live is final. The pack becomes a gap at once,
+/// and the phase neither pauses for it nor re-lists again.
+#[tokio::test(start_paused = true)]
+async fn a_403_on_a_live_re_signed_url_is_final() {
+    let db = scratch_db("drop-relist-refused");
+    // The URLs expire during the first pause, so the re-list comes with
+    // pauses still left to take.
+    let mut server = dropped_server(30, Some(60));
+    server.resigned_refused = true;
+    let routes = Routes::new(server);
+    let report = run(&db, &routes, &[]).await;
+
+    assert_eq!(report.record_packs.packs_applied, 0, "{report:?}");
+    assert_eq!(report.record_packs.fallback_reasons.len(), 7, "{report:?}");
+    let calls = routes.calls();
+    let relist = calls
+        .iter()
+        .enumerate()
+        .filter(|(_, url)| url.contains("/sync/packs"))
+        .map(|(at, _)| at)
+        .nth(1)
+        .expect("the drop outlived the URLs, so the phase re-listed");
+    let gets_after = calls[relist..]
+        .iter()
+        .filter(|url| url.contains("https://r2.example/packs/"))
+        .count();
+    assert_eq!(gets_after, 7, "one GET per re-signed pack: {calls:?}");
+    assert_eq!(routes.count("/sync/packs"), 2, "{calls:?}");
     assert_eq!(live_ids(&db).len(), 70);
 }
 
