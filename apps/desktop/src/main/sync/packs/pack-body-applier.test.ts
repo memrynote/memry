@@ -231,6 +231,56 @@ describe('pack body applier', () => {
       expect(decrypt.mock.calls.length).toBeLessThanOrEqual(42 + 19 + 42)
     })
 
+    // On this thread every verify is a full Ed25519 pass over up to 8 MiB.
+    it('stops walking the keys at the first one that verifies the snapshot', async () => {
+      const keys = new Map([['a', deviceA.publicKey]])
+      for (let i = 0; i < 10; i++) {
+        keys.set(`old-${i}`, sodium.crypto_sign_keypair('uint8array').publicKey)
+      }
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => keys,
+        decrypt
+      })
+
+      const reached = await sut.applyDocument(
+        'note-1',
+        snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 1, 'r')
+      )
+
+      expect(reached).toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
+      expect(decrypt).toHaveBeenCalledOnce()
+    })
+
+    it('reads and opens no update when the snapshot verifies under no registered key', async () => {
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const read = vi.fn(async () => sealed('note-1', 'u5', deviceA))
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        decrypt
+      })
+
+      const reached = await sut.applyDocument('note-1', {
+        ...snapshotPlan('note-1', sealed('note-1', 'base', stranger), 4, 'r4'),
+        updates: [{ ...update('note-1', 5, 'a', new Uint8Array()), read }],
+        watermark: { appliedSequence: 5, snapshotRevision: 'r4' }
+      })
+
+      expect(reached).toBeNull()
+      expect(read).not.toHaveBeenCalled()
+      // One verify per registered key, all on the snapshot.
+      expect(decrypt).toHaveBeenCalledTimes(2)
+      expect(openCalls).toEqual([])
+    })
+
     it('resolves the registered keys once per bootstrap, not once per document', async () => {
       const getSignerPublicKeys = vi.fn(async () => new Map([['a', deviceA.publicKey]]))
       const sut = createPackBodyApplier({
@@ -279,8 +329,8 @@ describe('pack body applier', () => {
     })
 
     it.each([
-      ['its named signer is not registered', 'c', 'signer c is not registered'],
-      ['it verifies only under another registered key', 'a', 'Signature verification failed']
+      ['its named signer is not registered', 'c', 'unregistered_signer'],
+      ['it verifies only under another registered key', 'a', 'bad_signature']
     ])(
       'stops at an update when %s, vouching only for what applied',
       async (_label, signer, reason) => {
@@ -304,7 +354,7 @@ describe('pack body applier', () => {
         expect(applied.map((row) => row.update)).toEqual([plain('base'), plain('u5')])
         expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
         expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
-        expect(refusalReasons()).toEqual([expect.stringContaining(reason)])
+        expect(refusalReasons()).toEqual([reason])
       }
     )
 
@@ -453,7 +503,7 @@ describe('pack body applier', () => {
       expect(reached).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
       expect(watermarks.get('note-1')).toEqual({ appliedSequence: 5, snapshotRevision: 'r4' })
       expect(decrypt).not.toHaveBeenCalled()
-      expect(refusalReasons()).toEqual([expect.stringContaining('Signature verification failed')])
+      expect(refusalReasons()).toEqual(['bad_signature'])
     })
 
     it('finds a new snapshot signer on the worker and refuses a snapshot no key verifies', async () => {
@@ -487,6 +537,34 @@ describe('pack body applier', () => {
       ])
       expect(applied.filter((row) => row.noteId === 'note-3')).toEqual([])
       expect(watermarks.has('note-3')).toBe(false)
+    })
+
+    // A refusal is a non-empty reason, not a falsy hole: the key walk on this
+    // thread must step past it to the key that opens the snapshot.
+    it('falls back to this thread and walks past a key that refuses the snapshot', async () => {
+      const worker = fakeWorker()
+      worker.decryptCrdtBatch.mockRejectedValue(new Error('worker gone'))
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        workerBridge: worker
+      })
+
+      await expect(sut.applyDocument('note-1', plan('note-1', deviceB))).resolves.toEqual({
+        appliedSequence: 7,
+        snapshotRevision: 'r4'
+      })
+      expect(applied.map((row) => row.update)).toEqual([
+        plain('base'),
+        plain('u5'),
+        plain('u6'),
+        plain('u7')
+      ])
     })
 
     it('falls back to this thread when the worker rejects', async () => {
