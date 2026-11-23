@@ -123,12 +123,18 @@ export function listPendingUploads(
     .all()
 }
 
+/** An upload the server accepted: its id and the checksum of the bytes it sent. */
+export interface UploadedFile {
+  attachmentId: string
+  sha256: string
+}
+
 export interface OutboxDrainDeps {
   db: DrizzleDb
   vaultPath: string
   /** Null: another path owns this upload and records its outcome; the row is left alone. */
-  upload: (noteId: string, diskPath: string) => Promise<{ attachmentId: string } | null>
-  onUploaded?: (noteId: string, attachmentId: string) => void
+  upload: (noteId: string, diskPath: string) => Promise<UploadedFile | null>
+  onUploaded?: (noteId: string, uploaded: UploadedFile) => void
   now?: number
 }
 
@@ -224,7 +230,7 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
       const result = await deps.upload(row.noteId, row.diskPath)
       if (!result) continue
       clearUpload(deps.db, row.noteId, row.diskPath)
-      deps.onUploaded?.(row.noteId, result.attachmentId)
+      deps.onUploaded?.(row.noteId, result)
       uploaded++
     } catch (err) {
       if (uploadFileState(deps.db, deps.vaultPath, row) === 'deleted') {
@@ -285,14 +291,14 @@ type RegisteredUploader = OutboxDrainDeps['upload']
 
 let registeredUploader: RegisteredUploader | null = null
 let getDbForDrain: (() => DrizzleDb) | null = null
-let onUploadedForDrain: ((noteId: string, attachmentId: string) => void) | null = null
+let onUploadedForDrain: OutboxDrainDeps['onUploaded'] | null = null
 let registeredQueueReset: (() => void) | null = null
 let draining = false
 
 export function registerOutboxUploader(
   uploader: RegisteredUploader | null,
   getDb: (() => DrizzleDb) | null,
-  onUploaded: ((noteId: string, attachmentId: string) => void) | null
+  onUploaded: OutboxDrainDeps['onUploaded'] | null
 ): void {
   registeredUploader = uploader
   getDbForDrain = getDb

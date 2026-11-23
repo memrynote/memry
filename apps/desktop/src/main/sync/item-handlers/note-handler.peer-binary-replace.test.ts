@@ -106,6 +106,8 @@ import { recordDownloadedFileSize, recordUploadedAttachment } from '../note-atta
 import { enqueueLocalSyncUpdate } from '../local-mutations'
 import { SupersededDownloadError } from '../attachment-errors'
 import { enqueueUpload } from '../attachment-outbox'
+import { readSyncedBinaryHash } from '../binary-synced-hash'
+import { deleteNoteFromCache } from '../../vault/note-sync'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 
 function fileSystemIgnoresCase(): boolean {
@@ -166,8 +168,8 @@ describe("a peer's replacement of a binary note's bytes", () => {
     vi.clearAllMocks()
   })
 
-  /** A synced image note: its canonical and index rows, and its bytes on disk. */
-  function seed(id: string, relativePath: string, bytes: string): void {
+  /** A synced image note: its canonical and index rows, and the bytes it last downloaded on disk. */
+  function seed(id: string, relativePath: string, bytes: string, landed = true): void {
     const fields = {
       id,
       path: relativePath,
@@ -187,6 +189,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
     markWritebackIgnored(abs(relativePath))
     fs.writeFileSync(abs(relativePath), bytes)
+    if (landed) recordDownloadedFileSize(id, `att-${id}`, bytes.length, sha256(bytes))
   }
 
   /** The peer's record for note `id`, as a pull applies it. */
@@ -214,7 +217,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
     markWritebackIgnored(at)
     fs.writeFileSync(at, bytes)
-    recordDownloadedFileSize(id, attachmentId, bytes.length)
+    recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
   }
 
   const sha256 = (bytes: string) => createHash('sha256').update(bytes).digest('hex')
@@ -288,6 +291,49 @@ describe("a peer's replacement of a binary note's bytes", () => {
 
     expect(read('Pictures/p.png')).toBe('peer-bytes')
     expect(conflictCopies('Pictures')).toEqual(['edited while closed'])
+  })
+
+  it('keeps a same-size edit made while the app was closed as a conflict copy', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'new-bytes')
+
+    expect(pull('img', 'att-new')).toBe('applied')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['new-bytes'])
+  })
+
+  it('keeps the bytes of a note with no synced hash recorded as a conflict copy', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes', false)
+
+    expect(pull('img', 'att-new')).toBe('applied')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['old-bytes'])
+  })
+
+  it('lands over bytes this device uploaded without a conflict copy', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'up-bytes!')
+    recordUploadedAttachment('img', 'att-up', sha256('up-bytes!'))
+    expect(attachmentOf('img')).toBe('att-up')
+
+    expect(pull('img', 'att-new', { dev1: 2, peer: 1 })).toBe('applied')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  it('forgets the synced hash with the note', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('old-bytes'))
+
+    deleteNoteFromCache(index.db, 'img')
+
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBeUndefined()
   })
 
   it("keeps this device's concurrent replacement as a conflict copy", () => {
@@ -376,7 +422,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     fs.writeFileSync(at, 'b-bytes')
     // A newer replacement applies before the landing records its size.
     expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')
-    recordDownloadedFileSize('img', 'att-b', 'b-bytes'.length)
+    recordDownloadedFileSize('img', 'att-b', 'b-bytes'.length, sha256('b-bytes'))
 
     // An edit made now is on no server: it is held, and kept when C lands.
     await startWatcher(vault.path)
@@ -421,6 +467,24 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(attachmentOf('img')).toBe('att-b')
     expect(read('Pictures/p.png')).toBe('b-bytes')
     expect(conflictCopies('Pictures')).toEqual(['local-edit'])
+  })
+
+  it("keeps an upload that finishes after the peer's bytes landed off the note", () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+    updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
+    enqueueUpload(asClientDb(data.db), 'img', abs('Pictures/p.png'))
+    expect(pull('img', 'att-b')).toBe('applied')
+    land('img', 'att-b', abs('Pictures/p.png'), 'b-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['local-edit'])
+
+    // The upload of the local edit was in flight; it finishes after the landing.
+    recordUploadedAttachment('img', 'att-local', sha256('local-edit'))
+
+    expect(attachmentOf('img')).toBe('att-b')
+    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
+    expect(read('Pictures/p.png')).toBe('b-bytes')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('b-bytes'))
   })
 
   it.runIf(fileSystemIgnoresCase())(

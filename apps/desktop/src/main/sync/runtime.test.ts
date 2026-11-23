@@ -1864,7 +1864,7 @@ describe('sync runtime', () => {
     async function startWithQueuedFile() {
       const runtime = await loadRuntime()
       const outbox = await import('./attachment-outbox')
-      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1' }))
+      const upload = vi.fn(async () => ({ attachmentId: 'attachment-1', sha256: 'sha' }))
       outbox.registerOutboxUploader(upload, () => outboxDb, null)
       const queueFile = (name: string): string => {
         const diskPath = path.join(tempDir, name)

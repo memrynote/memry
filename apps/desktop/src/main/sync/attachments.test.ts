@@ -778,6 +778,8 @@ describe('AttachmentSyncService', () => {
       ).rejects.toBeInstanceOf(SupersededDownloadError)
       const fsp = await import('node:fs/promises')
       await expect(fsp.stat(asked)).rejects.toThrow(/ENOENT/)
+      // Neither the partial nor its resume sidecar outlives the dropped download.
+      expect((await fsp.readdir(tmpDir)).filter((name) => name.includes('.mrypart'))).toEqual([])
     })
 
     it('reports progress to the per-call callback instead of the shared slot', async () => {

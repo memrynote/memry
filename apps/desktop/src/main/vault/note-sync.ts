@@ -48,6 +48,7 @@ import {
 import { flushProjectionEvents, publishProjectionEvent } from '../projections'
 import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
+import { forgetSyncedBinaryHash } from '../sync/binary-synced-hash'
 
 function getCanonicalDb() {
   try {
@@ -240,6 +241,7 @@ function removeCanonicalMetadata(noteId: string): void {
   const dataDb = getCanonicalDb()
   if (!dataDb) return
   deleteCanonicalNote(dataDb, noteId)
+  forgetSyncedBinaryHash(dataDb, noteId)
 }
 
 /**
