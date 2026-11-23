@@ -479,6 +479,15 @@ one check, `isInAttachmentStore` in `src/main/vault/attachments.ts`, decides tha
 indexer's walk, the watcher's `ignored` matcher and the watcher's add handler. The check reads
 the path relative to the vault with either separator.
 
+A read by path makes no note there either. `getNoteByPath` (`src/main/vault/notes-crud.ts`)
+answers `notes.getByPath`, from the app and from an agent through `vault_desktop_read`. For a
+path the index does not hold, it reads the file and indexes it as a markdown note. It does that
+only for a `.md` file outside the attachment store. Any other path with no row reads as not
+found (`null`) and gets no row. Before this check, `notes.getByPath` on
+`attachments/host/k3f9x2-photo.png` made a markdown note of the image, with the image's bytes as
+its text. An image, PDF, audio or video file in a note folder gets its binary row from the
+indexer or the watcher. A path that has a row still reads that row.
+
 Builds before this check missed the folder on Windows. Chokidar hands the matcher paths with
 forward slashes there, and those builds compared them to a path with backslashes. So every
 image or PDF pasted into a note on Windows became a note of its own. For example, a paste into
@@ -491,7 +500,11 @@ These stray rows are cleaned up on each device, locally:
 - **At vault open**, `forgetStrayAttachmentRows` (`src/main/vault/stray-attachment-rows.ts`)
   removes every binary row whose path is in the attachment store. It removes the index and
   canonical rows, the sidebar position, the queued sync items and uploads, the owed CRDT
-  bodies and the CRDT doc. It runs before the removal replay, which would otherwise take a
+  bodies and the CRDT doc. It also removes the `attachment_files` and `note_body_sync` rows
+  keyed by the stray's id, which record the upload and the body pushes the server took for
+  it. Every reader of those rows looks up a note this device still syncs, and the stray's id
+  is declined, so nothing reads them again. The host note's rows for the same file stay. It
+  runs before the removal replay, which would otherwise take a
   stray row whose file went missing for a delete. It needs the CRDT store, so with no store
   open the rows stay until the next open. With no stray row it does nothing, so it runs at
   every open.
