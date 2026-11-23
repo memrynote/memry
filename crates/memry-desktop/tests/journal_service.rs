@@ -127,6 +127,71 @@ fn read(e: &Env, journal: &memry_core::api::journal::Journal) -> Option<JournalE
     entry(&e.session.current().unwrap(), journal, DAY).unwrap()
 }
 
+/// A property a pull set on the day's record shows before the file has it (#5509), as Electron
+/// shows it once its pull writes it into the file (`journal-handler.ts`
+/// `buildJournalEntryWrite`); a value the record and the file agree on keeps the file's
+/// spelling, and a key only the file holds stays.
+#[test]
+fn a_pulled_property_the_file_does_not_have_yet_is_in_the_entry() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    let day = NewDay {
+        properties: json!({ "mood": "calm", "topics": ["a", "b"] })
+            .as_object()
+            .unwrap()
+            .clone(),
+        ..new_day()
+    };
+    notes.create_day(&open, day).unwrap();
+    journal
+        .set_property(DAY.into(), "p3c".into(), r#""c-val""#.into())
+        .unwrap();
+    journal
+        .set_property(DAY.into(), "mood".into(), r#""happy""#.into())
+        .unwrap();
+
+    let read = notes
+        .day_entry(&open, &journal, DAY)
+        .unwrap()
+        .expect("the day");
+    assert_eq!(
+        read.properties,
+        json!({ "mood": "happy", "topics": ["a", "b"], "p3c": "c-val" })
+            .as_object()
+            .cloned()
+    );
+    assert!(!e.read(DAY_FILE).contains("p3c"), "the file is not written");
+}
+
+/// Keys the record never holds (`aliases`, a cover) and one an outside edit added that the
+/// record has not taken stay in the entry as the file says them.
+#[test]
+fn keys_only_the_file_holds_stay_in_the_entry() {
+    let (e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let journal = open.vault.journal(store).unwrap();
+    notes.create_day(&open, new_day()).unwrap();
+    // Written straight to the bytes the next read takes, before any feed of them.
+    let file = NEW_FILE.replacen(
+        "mood: calm\n",
+        "mood: calm\naliases:\n  - Morning\ncover: covers/a.png\noutside: yes\n",
+        1,
+    );
+    assert_ne!(file, NEW_FILE);
+    e.write(DAY_FILE, &file);
+
+    let read = notes
+        .day_entry(&open, &journal, DAY)
+        .unwrap()
+        .expect("the day");
+    let properties = read.properties.expect("properties");
+    assert_eq!(properties.get("aliases"), Some(&json!(["Morning"])));
+    assert_eq!(properties.get("cover"), Some(&json!("covers/a.png")));
+    assert_eq!(properties.get("outside"), Some(&json!("yes")));
+    assert_eq!(properties.get("rating"), Some(&json!(4)));
+}
+
 #[test]
 fn a_new_day_writes_the_file_electron_writes_then_seeds_its_body_from_it() {
     let (mut e, notes, store) = opened();

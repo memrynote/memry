@@ -5,7 +5,9 @@
 //! rewrites its frontmatter.
 //!
 //! In the pass, under the rows' lane, after its row, hash and file checks (a missing file is
-//! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass):
+//! kept missing, an outside edit not fed yet is kept, and the mark stays for the next pass; a
+//! pass that keeps the file later, for a body not pulled yet or a file changed under the write,
+//! gives the mark back, #5509):
 //! - **Place** ([`Pass::place`]). The record's folder as the disk spells it, under the name its
 //!   title makes ([`name_for`]) when the pull changed the title ([`Mark::title_before`]), else
 //!   under the file's name byte for byte (Electron's `titleChanged`, `note-handler.ts:349`), numbered
