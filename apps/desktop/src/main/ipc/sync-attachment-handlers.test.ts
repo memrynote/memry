@@ -1041,10 +1041,14 @@ describe('sync-attachment-handlers', () => {
     // A case twin's download lands where its note's file is now (#5560).
     const { beforeFileLands } = vi.mocked(AttachmentSyncService).mock.calls[0][0]
     vi.mocked(landCaseTwinDownload).mockReturnValueOnce('/vault/Other/file.pdf')
-    expect(beforeFileLands?.('/vault/attachments/file.pdf', 'attachment-1')).toBe(
+    expect(beforeFileLands?.('/vault/attachments/file.pdf', 'attachment-1', 'sha')).toBe(
       '/vault/Other/file.pdf'
     )
-    expect(landCaseTwinDownload).toHaveBeenCalledWith('/vault/attachments/file.pdf', 'attachment-1')
+    expect(landCaseTwinDownload).toHaveBeenCalledWith(
+      '/vault/attachments/file.pdf',
+      'attachment-1',
+      'sha'
+    )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/Other/file.pdf')
     await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 1234))
   })

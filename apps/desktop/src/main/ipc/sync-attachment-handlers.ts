@@ -223,9 +223,9 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
-    beforeFileLands: (filePath, attachmentId) => {
+    beforeFileLands: (filePath, attachmentId, sha256) => {
       const landAt = isDatabaseInitialized()
-        ? landCaseTwinDownload(filePath, attachmentId)
+        ? landCaseTwinDownload(filePath, attachmentId, sha256)
         : filePath
       markWritebackIgnored(landAt)
       return landAt

@@ -221,9 +221,10 @@ export interface AttachmentSyncDeps {
    * note's file read as an edit ticks the note's clock and uploads the bytes
    * the server already holds (#5255). Returns the path the file lands at: a
    * case twin's download asked for at a path its note has since left lands at
-   * the note's file now (#5560).
+   * the note's file now (#5560). `sha256` is the manifest's checksum of the
+   * bytes, already verified.
    */
-  beforeFileLands?: (filePath: string, attachmentId: string) => string
+  beforeFileLands?: (filePath: string, attachmentId: string, sha256: string) => string
   fetchFn?: FetchFn
 }
 
@@ -930,7 +931,8 @@ export class AttachmentSyncService {
         }
 
         try {
-          landedAt = this.deps.beforeFileLands?.(destPath, attachmentId) ?? destPath
+          landedAt =
+            this.deps.beforeFileLands?.(destPath, attachmentId, manifest.checksum) ?? destPath
           await rename(partialPath, landedAt)
         } catch (renameErr) {
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
