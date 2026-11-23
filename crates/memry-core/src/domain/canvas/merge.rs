@@ -22,6 +22,11 @@
 //! - **An absent key keeps the local value.** `title`, `folder`, `icon` and
 //!   `ownerNoteId` absent from the remote mean an older client that never
 //!   stated them, and `null` is a real clear. `vaultId` always stays local.
+//! - **A restamp contests only `vaultId`** ([`server_vault::restamp`], which
+//!   desktop's handler does not know). A concurrent remote restamp whose base
+//!   this live canvas is strictly after leaves this canvas as it is under the
+//!   merged clock, re-queued; a local restamp whose base the remote is strictly
+//!   after takes the remote's canvas with no conflict copy.
 //!
 //! The copy and the overwrite are one transaction, as desktop's are. The copy
 //! is a new item no peer has; the merged original is re-queued beside it
@@ -35,7 +40,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::desktop_records::fails_desktop_schema;
-use crate::domain::notes::{failed, insert_local, next_clock, object};
+use crate::domain::notes::{clock_in, failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
@@ -45,7 +50,7 @@ use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
 use crate::sync::hardening::requeue;
-use crate::sync::outbox;
+use crate::sync::{outbox, server_vault};
 
 use super::ITEM_TYPE;
 
@@ -91,8 +96,18 @@ pub fn apply_remote(
         Gate::Wholesale => None,
         Gate::Merge { merged_clock, .. } => Some(merged_clock),
     };
+    let restamped_remote = live
+        && merged_clock.is_some()
+        && server_vault::restamp_superseded(remote.object(), &clock_in(local.object())?);
+    let restamped_local =
+        server_vault::restamp_superseded(local.object(), &clock_in(remote.object())?);
     let local_scene = local.object().get("scene").and_then(Value::as_str);
-    if merged_clock.is_some() && live && local_scene.is_some_and(|scene| scene != remote_scene) {
+    if merged_clock.is_some()
+        && live
+        && !restamped_remote
+        && !restamped_local
+        && local_scene.is_some_and(|scene| scene != remote_scene)
+    {
         let device = clock_device.ok_or_else(|| StorageError::Failed {
             what: format!(
                 "canvas {} diverged and this pull has no device clock id for its conflict copy",
@@ -102,9 +117,10 @@ pub fn apply_remote(
         write_conflict_copy(&tx, local.object(), device, now_ms)?;
     }
 
-    let changes = kept_changes(local.object(), remote.object(), merged_clock.as_ref())?;
+    let winner = if restamped_remote { &local } else { &remote };
+    let changes = kept_changes(local.object(), winner.object(), merged_clock.as_ref())?;
     let merged = InboundRecord {
-        payload_json: remote.merge(&changes),
+        payload_json: winner.merge(&changes),
         ..record.clone()
     };
     finish(tx, &merged, now_ms, merged_clock.is_some())

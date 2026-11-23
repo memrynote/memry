@@ -264,7 +264,7 @@ where the schema has no `.nullable()`, a value of the wrong type, or `widgets`
 that is not a string), the Rust core returns `Refused`, writes nothing, and
 the pull ledgers it as above
 (`crates/memry-core/src/domain/desktop_records/mod.rs:108-125`,
-`crates/memry-core/src/domain/canvas/merge.rs:68-70`,
+`crates/memry-core/src/domain/canvas/merge.rs:76-78`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:65-67`,
 `crates/memry-core/src/domain/home_page/merge.rs:63-69`,
 `crates/memry-core/src/domain/agent_conversation/merge.rs:66-68`,
@@ -1169,7 +1169,7 @@ edit look like a divergence.
 `ownerNoteId` names the note whose whiteboard block embeds the canvas.
 
 **Normative**, the apply rule (`canvas-handler.ts:148-345`, `:479-571`). It is the
-document-level resolver (§13.9) with five additions:
+document-level resolver (§13.9) with five additions, and a sixth in the Rust core:
 
 Before any of them, a live record that fails desktop's schema is refused and
 the local record stays as it is: a schema key of the wrong type (a numeric
@@ -1178,7 +1178,7 @@ the local record stays as it is: a schema key of the wrong type (a numeric
 non-negative integer
 (`VectorClockSchema`, `packages/contracts/src/sync-api.ts:386`;
 `packages/contracts/src/sync-payloads.ts:187-207`,
-`crates/memry-core/src/domain/canvas/merge.rs:68-70`). Desktop refuses it as
+`crates/memry-core/src/domain/canvas/merge.rs:76-78`). Desktop refuses it as
 `schema_invalid` before the handler runs
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
@@ -1197,7 +1197,20 @@ refetches it once another core build runs (§13.2).
    merged clock. Identical scene text merges the clocks and creates nothing;
 4. `title`, `folder`, `icon` and `ownerNoteId` absent from the remote keep the
    local value, and `null` clears it. `vaultId` keeps the local value;
-5. the copy and the overwrite are one transaction.
+5. the copy and the overwrite are one transaction;
+6. Rust core only: a restamp contests only `vaultId`. A client that rewrites
+   `vaultId` to the bound server vault id (#5535) changes nothing else under
+   one tick and states the clock the record had before as `vaultRestampBase`
+   (`crates/memry-core/src/sync/server_vault.rs:98`, `:187-189`). A record is
+   a restamp only while its `clock` is after its `vaultRestampBase` by exactly
+   one tick in total, so a base a later edit carries along is inert
+   (`server_vault.rs:201-211`). On a concurrent clock, a remote restamp whose
+   base the live local canvas is strictly after leaves the local canvas as it
+   is under the merged clock, re-queued, and a local restamp whose base the
+   remote is strictly after takes the remote's canvas. Neither writes a
+   conflict copy (`crates/memry-core/src/domain/canvas/merge.rs:99-123`).
+   Desktop's schema strips the key (`packages/contracts/src/sync-payloads.ts:187-207`),
+   so desktop resolves a restamp as any concurrent edit, by rule 3.
 
 A delete follows chapter 05 §5.8 unchanged: a canvas survives a tombstone only
 when its local clock is strictly after the tombstone's (#2198,
@@ -1288,7 +1301,7 @@ soft-deletes, so a deleted folder can arrive as a live record whose
 `deletedAt` is a number; a reader treats it as deleted.
 
 **Normative**, the apply rule (`canvas-folder-handler.ts:53-133`). It is the
-document-level resolver (§13.9) with three additions:
+document-level resolver (§13.9) with three additions, and a fourth in the Rust core:
 
 Before any of them, a live record that fails desktop's schema is refused and
 the local record stays as it is: a payload that is not a JSON object, a schema
@@ -1316,10 +1329,17 @@ either, and stays a skip.
    `vaultId` stays local. A `null` `path` fails the schema, so desktop refuses
    the record (`apps/desktop/src/main/sync/apply-item.ts:166-176`) and the Rust
    core refuses it too. `deletedAt` is the remote's: absent
-   or `null` makes the folder live again (`:74-80`).
+   or `null` makes the folder live again (`:74-80`);
+4. Rust core only: a live record that passes the schema, over a remote
+   restamp (§13.7.21 rule 6) whose base the live local folder is strictly
+   after, keeps the local `path`, `icon` and `deletedAt` under the merged
+   clock, re-queued
+   (`crates/memry-core/src/domain/canvas_folder/merge.rs:65-70`). Desktop
+   strips `vaultRestampBase` (`packages/contracts/src/sync-payloads.ts:218-225`)
+   and applies the restamp by rule 2.
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-60`, over
+(`crates/memry-core/src/domain/canvas_folder/merge.rs:36-72`, over
 `crates/memry-core/src/domain/desktop_records/mod.rs:55-64`, `:108-170`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
