@@ -115,7 +115,7 @@ let unlandedOps: PendingVaultFileOp[] = []
  * time, because its ignore window is TTL-based — marking at enqueue time could
  * expire before a deferred flush reaches the file.
  */
-function writeNoteFileNow(absolutePath: string, content: string): void {
+export function writeNoteFileNow(absolutePath: string, content: string): void {
   markWritebackIgnored(absolutePath)
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
@@ -229,6 +229,22 @@ export function writeSyncedVaultFile(absolutePath: string, content: string): voi
  * delete has already auto-committed, so the unlink runs synchronously; a
  * failure is logged, not thrown, because the delete itself has applied.
  */
+/** A path as a case-insensitive disk compares it. */
+function foldPath(filePath: string): string {
+  return filePath.normalize('NFC').toLowerCase()
+}
+
+/**
+ * Whether a page apply still owes this file a write or an unlink, under any
+ * spelling a case-insensitive disk folds together: journaled ops not landed
+ * yet, and the open page's deferred ones.
+ */
+export function hasPendingVaultFileOp(absolutePath: string): boolean {
+  const target = foldPath(absolutePath)
+  const matches = (op: PendingVaultFileOp): boolean => foldPath(op.absolutePath) === target
+  return unlandedOps.some(matches) || (activeSession?.hasOp(matches) ?? false)
+}
+
 export function deleteSyncedVaultFile(absolutePath: string): void {
   if (activeSession) {
     activeSession.deferDelete(absolutePath)
@@ -336,6 +352,10 @@ class PageApplySession implements PageApplyHandle {
 
   deferDelete(absolutePath: string): void {
     this.pendingOps.push({ kind: 'delete', absolutePath, deferredAt: Date.now() })
+  }
+
+  hasOp(matches: (op: PendingVaultFileOp) => boolean): boolean {
+    return this.pendingOps.some(matches)
   }
 
   afterCommit(notify: () => void): void {

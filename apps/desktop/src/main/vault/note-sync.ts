@@ -124,6 +124,35 @@ export interface CanonicalNoteRef {
 }
 
 /**
+ * The rows that name the file at `relativePath` (the disk's spelling) on a
+ * disk that ignores case; empty on one that does not.
+ */
+function listRowsOnFile(
+  dataDb: NonNullable<ReturnType<typeof getCanonicalDb>>,
+  vaultPath: string,
+  relativePath: string
+) {
+  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
+  const candidates = volumeIgnoresCase(vaultPath)
+    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
+    : []
+  // The fold finds candidates; the disk proves which of them name this file. On
+  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
+  return candidates.filter((candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath)
+}
+
+/**
+ * The ids of the case twins sharing the file at `relativePath` (the disk's
+ * spelling) other than `noteId`. Empty when the file is not shared.
+ */
+export function listCaseTwinIds(vaultPath: string, relativePath: string, noteId: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return []
+  const rows = listRowsOnFile(dataDb, vaultPath, relativePath)
+  return rows.length > 1 ? rows.map((row) => row.id).filter((id) => id !== noteId) : []
+}
+
+/**
  * The identity the vault already holds for the file at `relativePath`, given
  * in the disk's spelling, if it holds one.
  *
@@ -145,15 +174,7 @@ export function findCanonicalNoteForFile(
   const dataDb = getCanonicalDb()
   if (!dataDb) return null
   const exact = getNoteMetadataByPath(dataDb, relativePath)
-  // The exact row too: a re-keyed twin sits at the disk spelling (#5297).
-  const candidates = volumeIgnoresCase(vaultPath)
-    ? listNoteMetadataByFoldedPath(dataDb, relativePath)
-    : []
-  // The fold finds candidates; the disk proves which of them name this file. On
-  // APFS `ılık.md` and `Ilık.md` fold to one key but are two files.
-  const onThisFile = candidates.filter(
-    (candidate) => diskCaseOf(vaultPath, candidate.path) === relativePath
-  )
+  const onThisFile = listRowsOnFile(dataDb, vaultPath, relativePath)
   const row = exact ?? onThisFile[0]
   return row
     ? {
