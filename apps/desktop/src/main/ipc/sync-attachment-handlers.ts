@@ -57,6 +57,7 @@ import {
 } from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
+import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import { fileTextNoteChanged } from '../file-text'
 import { getStatus as getVaultStatus } from '../vault/status'
 import {
@@ -222,7 +223,13 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getVaultPath: () => getVaultStatus().path,
-    beforeFileLands: markWritebackIgnored,
+    beforeFileLands: (filePath, attachmentId) => {
+      const landAt = isDatabaseInitialized()
+        ? landCaseTwinDownload(filePath, attachmentId)
+        : filePath
+      markWritebackIgnored(landAt)
+      return landAt
+    },
     getMaxFileSize: () => getCachedMaxFileSize(),
     getAccessToken: () => getValidAccessToken(),
     getVaultKey: async () => {
@@ -742,6 +749,9 @@ export function registerAttachmentHandlers(): void {
             attachmentId,
             err
           )
+          if (reason === 'missing' && isDatabaseInitialized()) {
+            releaseAbandonedCaseTwinBytes(getDatabase(), noteId, attachmentId)
+          }
           logger.error('Attachment download failed', {
             noteId,
             attachmentId,

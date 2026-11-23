@@ -105,6 +105,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
+import { holdsBinaryChange } from './case-twin-file'
 
 const logger = createLogger('Watcher')
 
@@ -723,18 +724,18 @@ export class VaultWatcher {
     claimed: CanonicalNoteRef,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) return
     // A size other than the row's is a file replaced before adoption: a local
-    // change, stamped and pushed as `handleNonMarkdownFileChange` does. A pull
-    // writes the row with size 0 and records the size once the download lands,
-    // so 0 says nothing about the file, and neither does a file other rows
-    // share.
+    // change, stamped and pushed as `handleNonMarkdownFileChange` does, and
+    // held as it holds it. A pull writes the row with size 0 and records the
+    // size once the download lands, so 0 says nothing about the file.
     const replaced =
       fileType !== 'markdown' &&
-      !claimed.sharesFile &&
       !!claimed.fileSize &&
-      claimed.fileSize !== stats.size
+      claimed.fileSize !== stats.size &&
+      !holdsBinaryChange(this.vaultPath, relativePath, claimed.id)
     if (fileType === 'markdown') {
       syncNoteStatToCache(
         db,
@@ -1077,8 +1078,11 @@ export class VaultWatcher {
     db: ReturnType<typeof getIndexDatabase>,
     claimedId: string | null
   ): Promise<void> {
+    if (!this.vaultPath) return
     // Get file stats for metadata
     const stats = await fs.stat(absolutePath)
+    // A claimed row's file may be a case twin's: its change is held, not pushed.
+    const held = claimedId !== null && holdsBinaryChange(this.vaultPath, relativePath, claimedId)
 
     // Generate a new ID for this file, unless the path already has one
     const id = claimedId ?? generateNoteId()
@@ -1114,7 +1118,7 @@ export class VaultWatcher {
       wordCount: 0
     }
 
-    syncNoteCreate(id, title, [])
+    if (!held) syncNoteCreate(id, title, [])
 
     // Emit event to renderer (using same channel for unified tree)
     emitEvent(NotesChannels.events.CREATED, {
@@ -1124,7 +1128,7 @@ export class VaultWatcher {
       fileType // Include file type so renderer knows this is not markdown
     })
 
-    attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
+    if (!held) attachmentEvents.emitSaved({ noteId: id, diskPath: absolutePath })
 
     if (claimedId === null) recordActivity({ kind: 'added', source: 'watcher', path: relativePath })
   }
@@ -1334,6 +1338,10 @@ export class VaultWatcher {
     cached: NonNullable<ReturnType<typeof getNoteCacheByPath>>,
     db: ReturnType<typeof getIndexDatabase>
   ): Promise<void> {
+    if (!this.vaultPath) return
+    // Pushed, bytes that may be a case twin's land on every device as this
+    // row's attachment (#5522, #5560).
+    if (holdsBinaryChange(this.vaultPath, relativePath, cached.id)) return
     // Get file stats for updated metadata
     const stats = await fs.stat(absolutePath)
 

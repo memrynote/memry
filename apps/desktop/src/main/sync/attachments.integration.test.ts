@@ -778,7 +778,13 @@ describe('a fresh device downloading many attachments through the download queue
     const landed = new Map<string, boolean>()
 
     await downloadAll(
-      { ...deps, beforeFileLands: (filePath) => landed.set(filePath, existsSync(filePath)) },
+      {
+        ...deps,
+        beforeFileLands: (filePath) => {
+          landed.set(filePath, existsSync(filePath))
+          return filePath
+        }
+      },
       originals
     )
 

@@ -83,7 +83,13 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
-import { planCaseTwinLeave, planCaseTwinMove, sharesCaseTwinFile } from '../../vault/case-twin-file'
+import {
+  askForCaseTwinOwnBytes,
+  planBinaryCaseTwinMove,
+  planCaseTwinLeave,
+  planCaseTwinMove,
+  sharesCaseTwinFile
+} from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -295,11 +301,24 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           )
           const newRelPath = toRelativePath(newAbsPath)
           const oldAbsPath = toAbsolutePath(existing.path)
+          // A case twin's file is the other twin's too (#5560): it stays, and
+          // this twin's own file lands at the new path in the step below. A
+          // throw fails the item with nothing moved.
+          const twinMove = sharesCaseTwinFile(notesDir, existing.path)
+            ? planBinaryCaseTwinMove(
+                notesDir,
+                existing.path,
+                itemId,
+                newAbsPath,
+                data.attachmentId ?? existing.attachmentId
+              )
+            : null
 
           updateFields.path = newRelPath
 
+          twinMove?.()
           try {
-            if (fs.existsSync(oldAbsPath)) {
+            if (!twinMove && fs.existsSync(oldAbsPath)) {
               markWritebackIgnored(newAbsPath)
               const dir = path.dirname(newAbsPath)
               fs.mkdirSync(dir, { recursive: true })
@@ -342,6 +361,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           syncedAt,
           modifiedAt
         })
+        askForCaseTwinOwnBytes(ctx.db, itemId)
         if (isMarkdownRecordOverBinaryNote(existing, data)) {
           healBinaryNoteRecord(ctx.db, itemId, remoteClock, getNoteSyncService())
         }
