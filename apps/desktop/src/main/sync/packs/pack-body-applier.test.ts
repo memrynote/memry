@@ -220,6 +220,56 @@ describe('pack body applier', () => {
       expect(decrypt.mock.calls.length).toBeLessThanOrEqual(42 + 19 + 42)
     })
 
+    // On this thread every verify is a full Ed25519 pass over up to 8 MiB.
+    it('stops walking the keys at the first one that verifies the snapshot', async () => {
+      const keys = new Map([['a', deviceA.publicKey]])
+      for (let i = 0; i < 10; i++) {
+        keys.set(`old-${i}`, sodium.crypto_sign_keypair('uint8array').publicKey)
+      }
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () => keys,
+        decrypt
+      })
+
+      const reached = await sut.applyDocument(
+        'note-1',
+        snapshotPlan('note-1', sealed('note-1', 'body', deviceA), 1, 'r')
+      )
+
+      expect(reached).toEqual({ appliedSequence: 1, snapshotRevision: 'r' })
+      expect(decrypt).toHaveBeenCalledOnce()
+    })
+
+    it('reads and opens no update when the snapshot verifies under no registered key', async () => {
+      const decrypt = vi.fn(decryptCrdtUpdate)
+      const read = vi.fn(async () => sealed('note-1', 'u5', deviceA))
+      const sut = createPackBodyApplier({
+        store,
+        getVaultKey: async () => vaultKey,
+        getSignerPublicKeys: async () =>
+          new Map([
+            ['a', deviceA.publicKey],
+            ['b', deviceB.publicKey]
+          ]),
+        decrypt
+      })
+
+      const reached = await sut.applyDocument('note-1', {
+        ...snapshotPlan('note-1', sealed('note-1', 'base', stranger), 4, 'r4'),
+        updates: [{ ...update('note-1', 5, 'a', new Uint8Array()), read }],
+        watermark: { appliedSequence: 5, snapshotRevision: 'r4' }
+      })
+
+      expect(reached).toBeNull()
+      expect(read).not.toHaveBeenCalled()
+      // One verify per registered key, all on the snapshot.
+      expect(decrypt).toHaveBeenCalledTimes(2)
+      expect(openCalls).toEqual([])
+    })
+
     it('resolves the registered keys once per bootstrap, not once per document', async () => {
       const getSignerPublicKeys = vi.fn(async () => new Map([['a', deviceA.publicKey]]))
       const sut = createPackBodyApplier({

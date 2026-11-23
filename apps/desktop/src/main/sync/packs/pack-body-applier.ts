@@ -122,12 +122,15 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
    * verify or decrypt. Thousands of packed updates go through here, so the
    * crypto runs on the worker like the route path's, and on this thread only
    * when the worker is not running or rejects (transport, not a verdict).
+   * With `untilFirstOpen`, this thread stops at the first blob that opens and
+   * the result ends there.
    */
   const openAll = async (
     sealed: Sealed[],
     vaultKey: Uint8Array,
     noteId: string,
-    candidates: SignerKeys
+    candidates: SignerKeys,
+    untilFirstOpen = false
   ): Promise<Array<Uint8Array | undefined>> => {
     if (sealed.length === 0) return []
     const bridge = deps.workerBridge
@@ -148,15 +151,19 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         })
       }
     }
-    return sealed.map((s) => {
+    const out: Array<Uint8Array | undefined> = []
+    for (const s of sealed) {
       const publicKey = candidates.get(s.signerDeviceId)
-      if (!publicKey) return undefined
+      let plain: Uint8Array | undefined
       try {
-        return decrypt(s.bytes, vaultKey, noteId, publicKey)
+        plain = publicKey ? decrypt(s.bytes, vaultKey, noteId, publicKey) : undefined
       } catch {
-        return undefined
+        plain = undefined
       }
-    })
+      out.push(plain)
+      if (plain && untilFirstOpen) break
+    }
+    return out
   }
 
   /** The snapshot opened under the first device key that verifies it, or null. */
@@ -173,7 +180,8 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       rest.map((signerDeviceId) => ({ bytes, signerDeviceId })),
       vaultKey,
       noteId,
-      candidates
+      candidates,
+      true
     )
     const hit = opened.findIndex((plain) => plain !== undefined)
     if (hit < 0) return null
@@ -194,10 +202,22 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
 
       // One worker round trip for the document: the snapshot under the last
       // signer's key, then every readable update under its named signer's key
-      // only (chapter 07 §7.14).
+      // only (chapter 07 §7.14). With no signer to guess, the snapshot walks
+      // the keys first, so one that verifies under none costs no update reads.
       const snapshotBytes = plan.snapshot ? await plan.snapshot.read() : null
       const guessSigner =
         snapshotBytes && lastSignerId && candidates.has(lastSignerId) ? lastSignerId : null
+      const refuseSnapshot = (): null => {
+        log.debug('Packed snapshot verified under no registered device key — item GET instead', {
+          noteId
+        })
+        return null
+      }
+      let snapshotPlain: Uint8Array | null = null
+      if (snapshotBytes && !guessSigner) {
+        snapshotPlain = await openSnapshot(snapshotBytes, vaultKey, noteId, candidates, undefined)
+        if (!snapshotPlain) return refuseSnapshot()
+      }
       const updateBytes = await readUpdates(noteId, plan)
       const opened = await openAll(
         [
@@ -215,21 +235,9 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       )
       const updatePlains = guessSigner ? opened.slice(1) : opened
 
-      let snapshotPlain: Uint8Array | null = null
-      if (snapshotBytes) {
-        snapshotPlain = await openSnapshot(
-          snapshotBytes,
-          vaultKey,
-          noteId,
-          candidates,
-          guessSigner ? opened[0] : undefined
-        )
-        if (!snapshotPlain) {
-          log.debug('Packed snapshot verified under no registered device key — item GET instead', {
-            noteId
-          })
-          return null
-        }
+      if (snapshotBytes && guessSigner) {
+        snapshotPlain = await openSnapshot(snapshotBytes, vaultKey, noteId, candidates, opened[0])
+        if (!snapshotPlain) return refuseSnapshot()
       }
 
       try {
