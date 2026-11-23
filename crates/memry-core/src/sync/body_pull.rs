@@ -80,7 +80,7 @@ mod probe;
 mod server_body;
 
 pub use log_writes::BodyEpochs;
-pub use manifest::CRDT_MANIFEST_PAGE_LIMIT;
+pub use manifest::{CRDT_MANIFEST_PAGE_LIMIT, MANIFEST_READ_DEADLINE};
 pub use pack_seed::{PACK_SEED_CHUNK, PackEntrySeed, PackSeed, PackUpdateSeed};
 pub(super) use probe::Probed;
 

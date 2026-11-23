@@ -640,7 +640,10 @@ unless every page is read (chapter 08 §8.4.3), and no poll comes back for it
   (`crates/memry-core/src/protocol/http/retry.rs:4`, `:13`, `:42-46`, `:88-93`,
   `:102-104`, `crates/memry-core/src/protocol/http.rs:284`, `:293`,
   `:463-466`, `:471-474`,
-  `crates/memry-core/src/sync/body_pull/manifest.rs:42`).
+  `crates/memry-core/src/sync/body_pull/manifest.rs:54`). The whole read
+  stops short once it has run 300 s, so a server that rate-limits every page
+  costs one deadline, not a window per page
+  (`crates/memry-core/src/sync/body_pull/manifest.rs:26`, `:40`).
 - **Desktop.** No retry count. Each wait is the larger of 1 s and the
   `retry-after`, read as seconds or as an HTTP date, and the read stops when
   a wait would end more than 60 s after the page's first `429`
