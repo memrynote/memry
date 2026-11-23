@@ -98,10 +98,13 @@ export class AttachmentDownloadPrefetch {
       hashes,
       done: (async () => {
         const window = await fetchWindow([...hashes])
-        for (const [h, url] of window?.urls ?? []) {
-          this.urls.set(h, { url, expiresAtMs: window!.expiresAtMs })
-          this.unarmed.delete(h)
+        if (!window) return
+        for (const [h, url] of window.urls) {
+          this.urls.set(h, { url, expiresAtMs: window.expiresAtMs })
         }
+        // A hash the answer leaves out gets no URL from a later call either;
+        // only its own download asks again, then takes the proxy.
+        for (const h of hashes) this.unarmed.delete(h)
       })()
     }
     this.presignFetches.add(fetch)

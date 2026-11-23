@@ -45,13 +45,17 @@ function encrypt(plaintext: Uint8Array, key: Uint8Array): Uint8Array {
   return framed
 }
 
-/** A server holding attachments of the given chunk counts, with presigning on. */
-function fakeServer(chunkCounts: Record<string, number>) {
+/**
+ * A server holding attachments of the given chunk counts, with presigning on.
+ * A 200 presign answer leaves out the chunks of the `noUrlFor` attachments.
+ */
+function fakeServer(chunkCounts: Record<string, number>, noUrlFor: string[] = []) {
   const vaultKey = generateFileKey()
   const signer = sodium.crypto_sign_keypair()
   const manifests = new Map<string, Record<string, string>>()
   const chunks = new Map<string, Uint8Array>()
   const files = new Map<string, Buffer>()
+  const chunkHashes = new Map<string, string[]>()
 
   for (const [id, count] of Object.entries(chunkCounts)) {
     const fileKey = generateFileKey()
@@ -66,6 +70,10 @@ function fakeServer(chunkCounts: Record<string, number>) {
         size: plaintext.length
       }
     })
+    chunkHashes.set(
+      id,
+      refs.map((ref) => ref.encryptedHash)
+    )
     const whole = Buffer.concat(parts)
     files.set(id, whole)
     const manifest = {
@@ -100,6 +108,8 @@ function fakeServer(chunkCounts: Record<string, number>) {
     manifests.set(id, { ...signed, manifestSignature: toB64(signature), signerDeviceId: 'd1' })
   }
 
+  const unsigned = new Set(noUrlFor.flatMap((id) => chunkHashes.get(id)!))
+  const presignRequests: string[][] = []
   const counts = { manifestGet: 0, manifestBatch: 0, presign: 0, direct: 0, proxied: 0 }
   const fetchFn = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
@@ -117,9 +127,12 @@ function fakeServer(chunkCounts: Record<string, number>) {
     }
     if (route === 'presign-batch') {
       counts.presign++
-      const { chunkHashes } = JSON.parse(init?.body as string) as { chunkHashes: string[] }
+      const requested = (JSON.parse(init?.body as string) as { chunkHashes: string[] }).chunkHashes
+      presignRequests.push(requested)
       return Response.json({
-        urls: Object.fromEntries(chunkHashes.map((h) => [h, `${R2}${h}`])),
+        urls: Object.fromEntries(
+          requested.filter((h) => !unsigned.has(h)).map((h) => [h, `${R2}${h}`])
+        ),
         expiresAt: Math.floor(Date.now() / 1000) + 300
       })
     }
@@ -144,7 +157,7 @@ function fakeServer(chunkCounts: Record<string, number>) {
     getVaultPath: () => tmpDir,
     fetchFn
   })
-  return { service, counts, files }
+  return { service, counts, files, chunkHashes, presignRequests }
 }
 
 /** Every attachment eagerly through the real queue, as the pull fan-out does. */
@@ -196,6 +209,27 @@ describe('attachment downloads sharing manifest and presign calls (#5329)', () =
     expect(server.counts.direct).toBe(1201)
     expect(server.counts.manifestBatch).toBe(1)
   }, 60_000)
+
+  it('proxies a chunk a 200 presign answer leaves out and offers it to no other presign call', async () => {
+    const server = fakeServer({ a: 1, b: 1, c: 1 }, ['b'])
+    const [ha, hb, hc] = ['a', 'b', 'c'].map((id) => server.chunkHashes.get(id)![0])
+    const download = async (attachmentId: string, upcoming: string[] = []): Promise<void> => {
+      const targetPath = path.join(tmpDir, `${attachmentId}.bin`)
+      await server.service.downloadAttachment(attachmentId, targetPath, {
+        upcoming: () => upcoming
+      })
+      expect(Buffer.compare(await readFile(targetPath), server.files.get(attachmentId)!)).toBe(0)
+    }
+
+    // a's manifest batch carries b, so a's presign call asks for b's chunk too and gets no URL.
+    await download('a', ['b'])
+    // c downloads alone, so its presign call holds only its own chunk.
+    await download('c')
+    await download('b')
+
+    expect(server.presignRequests).toEqual([[ha, hb], [hc], [hb]])
+    expect(server.counts).toMatchObject({ direct: 2, proxied: 1 })
+  })
 
   it('downloads 1,064 attachments with ceil(1064/100) manifest calls and at most as many presign calls', async () => {
     const server = fakeServer(

@@ -175,4 +175,25 @@ describe('the day merge tags, behind a running pass of the day', () => {
       'x'
     ])
   })
+
+  // Core `set_tags` dedupes the whole list by tag key, keeping the first
+  // spelling; the desktop write keeps one spelling per key too (#5247 A18).
+  it('writes one spelling per tag key when the day file holds case variants', async () => {
+    await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'Morning.' })
+    const file = path.join(vault.path, 'journal', `${DATE}.md`)
+    fs.writeFileSync(file, `---\ndate: ${DATE}\ntags:\n  - Work\n  - work\n---\nMorning.\n`)
+
+    journalHandler.applyUpsert(
+      { db: asSyncDb(dataDb.db), emit: vi.fn() },
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['x', 'WORK'] },
+      { b: 1 }
+    )
+    await runJournalDayMerges(asSyncDb(dataDb.db), async () => true)
+
+    expect(parseJournalEntry(fs.readFileSync(file, 'utf8'), DATE).frontmatter.tags).toEqual([
+      'Work',
+      'x'
+    ])
+  })
 })
