@@ -497,6 +497,8 @@ mod sync_body_route_batch;
 mod sync_body_step_budget;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
+#[path = "sync_empty_body_first_sync.rs"]
+mod sync_empty_body_first_sync;
 #[path = "sync_empty_body_pull.rs"]
 mod sync_empty_body_pull;
 #[path = "sync_engine.rs"]

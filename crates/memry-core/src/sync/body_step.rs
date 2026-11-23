@@ -54,7 +54,7 @@ pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyStep, StorageError
             more_due = true;
             break;
         }
-        let mut probed = match body_pull.probe(chunk, &mut total.requests).await {
+        let mut probed = match body_pull.probe(chunk, &mut total.requests, 0).await {
             Ok(probed) => probed,
             Err(BodyPullError::Storage { source }) => return Err(source),
             Err(BodyPullError::Api { .. }) => Default::default(),
