@@ -313,6 +313,27 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
+  // Case variants fold to one key; they must not hide the missing tag.
+  it('adds a foreign tag to a day file holding case variants of one tag', async () => {
+    journalHandler.applyUpsert(
+      ctx,
+      DAY,
+      { date: DATE, content: 'canonical\n', tags: ['Work', 'work'] },
+      { c: 1 }
+    )
+    journalHandler.applyUpsert(
+      ctx,
+      FOREIGN,
+      { date: DATE, content: 'theirs\n', tags: ['x'] },
+      { b: 1 }
+    )
+
+    await drain()
+
+    expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toContain('x')
+    expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+  })
+
   it('keeps the tags of a foreign row that held the day when the day record writes over it', async () => {
     foreignRow({ minter: 2 }, { body: '---\ntags:\n  - mine\n---\nminted here\n' })
 

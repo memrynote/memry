@@ -27,6 +27,7 @@ import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
 import { applyHeaderTagEdit } from '../vault/frontmatter'
+import { foldTag } from '@memry/shared/tag-fold'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
@@ -70,8 +71,13 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
 export function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
   return takeWritebackTurn(resolveJournalEntryId(date), async () => {
     const kept = (await readJournalEntry(date))?.tags ?? []
-    const next = applyHeaderTagEdit(kept, { add: [...tags] })
-    if (next.length > kept.length) await writeJournalUpdate({ date, tags: next })
+    // By tag key, and keeping `kept` as written: a file holding case variants
+    // (`Work`, `work`) must not hide a tag that is missing.
+    const keys = new Set(kept.map((tag) => foldTag(tag.trim())))
+    const added = applyHeaderTagEdit([], {
+      add: tags.filter((tag) => !keys.has(foldTag(tag.trim())))
+    })
+    if (added.length > 0) await writeJournalUpdate({ date, tags: [...kept, ...added] })
   })
 }
 

@@ -440,7 +440,7 @@ pass settles them. The decision is a pure function of five facts
    `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:88`). The day
    file's tags are read in the day's write-back turn, so a tag edit queued
    behind a running pass keeps its tags
-   (`apps/desktop/src/main/journal/update-entry.ts:70`). The core does not
+   (`apps/desktop/src/main/journal/update-entry.ts:71`). The core does not
    carry them yet (#5483).
 7. Only here, after the merge, and when `F` is live and its clock is
    non-empty, queue its tombstone with clock
