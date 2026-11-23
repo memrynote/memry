@@ -309,7 +309,6 @@ mod tests {
             let totals = apply_page(
                 conn,
                 vec![pulled(&item_type, &id, payload, clock)],
-                vec![],
                 NOW + 4,
                 Some("a"),
                 &AtRestKey::default(),

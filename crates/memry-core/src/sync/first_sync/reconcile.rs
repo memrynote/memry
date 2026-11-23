@@ -186,7 +186,6 @@ impl FirstSync {
                 apply::apply_page_into(
                     &txn,
                     gone,
-                    Vec::new(),
                     now,
                     None,
                     vault_root.as_deref(),

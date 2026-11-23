@@ -451,7 +451,7 @@ impl PullLoop {
             at_head: !report.has_more,
         };
         let (outcomes, advanced_documents) = self
-            .apply_all(pending, Vec::new(), owe_bodies, Some(advance), &mut feed)
+            .apply_all(pending, owe_bodies, Some(advance), &mut feed)
             .await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;

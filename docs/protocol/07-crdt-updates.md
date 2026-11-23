@@ -982,11 +982,6 @@ note's body, and the loss is **unrecoverable in practice**: this section leaves
 the server rows in place, so nothing reports an error and the device simply
 stops asking for them.
 
-**The untyped tombstone of §5.12.1 is the deliberate exception and purges
-unconditionally.** That is not id-shape inference either: an untyped delete
-marks _every_ row under that id whatever its type, so whatever owns the body
-rows is among the things being deleted.
-
 **Disposition of Q07.4: answered** (this section).
 
 ## 7.16 The Yjs client id is derived, not chosen

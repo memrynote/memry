@@ -61,7 +61,7 @@ mod tombstone;
 
 use record::apply_record;
 pub use record::{apply_inbound, apply_inbound_on};
-use tombstone::{apply_tombstone, apply_untyped_tombstone};
+use tombstone::apply_tombstone;
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -150,7 +150,6 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
     at_rest: &AtRestKey,
@@ -159,7 +158,6 @@ pub(crate) fn apply_page(
     apply_page_into(
         conn,
         pending,
-        untyped,
         now_ms,
         clock_device,
         None,
@@ -169,8 +167,7 @@ pub(crate) fn apply_page(
     Ok(totals)
 }
 
-/// Applies one page's decoded items, in the order they were handed over, plus
-/// the ids §5.12.1 leaves with no type on the wire.
+/// Applies one page's decoded items, in the order they were handed over.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy is clocked under. `at_rest` seals the agent records
@@ -186,7 +183,6 @@ pub(crate) fn apply_page(
 pub(crate) fn apply_page_into(
     conn: &Connection,
     pending: Vec<Pending>,
-    untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
     vault_root: Option<&Path>,
@@ -258,10 +254,6 @@ pub(crate) fn apply_page_into(
                 }
             }
         }
-    }
-    for item_id in untyped {
-        apply_untyped_tombstone(conn, &item_id, now_ms, totals)?;
-        refused_items::resolve_id(conn, &item_id)?;
     }
     Ok(())
 }
