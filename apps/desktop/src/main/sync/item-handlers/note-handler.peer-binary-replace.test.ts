@@ -108,7 +108,7 @@ import {
   getIndexDatabase as getClientIndexDatabase
 } from '../../database/client'
 import { getStatus } from '../../vault/index'
-import { markWritebackIgnored } from '../crdt-writeback'
+import { recordAppWrite } from '../../vault/app-writes'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -223,8 +223,9 @@ describe("a peer's replacement of a binary note's bytes", () => {
     upsertNoteMetadata(asClientDb(data.db), fields)
     insertNoteCache(index.db, { ...fields, contentHash: null })
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
-    markWritebackIgnored(abs(relativePath))
+    const written = recordAppWrite(abs(relativePath), bytes)
     fs.writeFileSync(abs(relativePath), bytes)
+    written()
     if (landed) recordDownloadedFileSize(id, `att-${id}`, bytes.length, sha256(bytes))
   }
 
@@ -251,7 +252,8 @@ describe("a peer's replacement of a binary note's bytes", () => {
   /** The downloader landing an asked-for attachment: `beforeFileLands`, the rename, the size. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): void {
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
-    markWritebackIgnored(at)
+    // The downloader records the verified file's hash and never reports it landed.
+    recordAppWrite(at, { sha256: sha256(bytes) })
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
   }
@@ -532,7 +534,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     expect(pull('img', 'att-b')).toBe('applied')
     const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-b', sha256('b-bytes'), 'img')
-    markWritebackIgnored(at)
+    recordAppWrite(at, { sha256: sha256('b-bytes') })
     fs.writeFileSync(at, 'b-bytes')
     // A newer replacement applies before the landing records its size.
     expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')

@@ -892,11 +892,11 @@ document to its vault `.md` file and re-indexes it for search.
   converts on main instead, as every job did before, and after three worker failures the
   session stops trying it (`worker_disabled`). Custom callout types reach the worker with
   each job, because the parser reads them from a per-process registry.
-- **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
-  network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
-  sweep per TTL window) rather than scanned on every watcher event, and
-  `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
-  survive into the next one.
+- **Per-vault bookkeeping** — the app keeps the bytes it wrote or is writing to each file
+  (`src/main/vault/app-writes.ts`), and write-back keeps recent inbound network updates, in
+  short-TTL maps. Entries are evicted in an amortized pass (at most one sweep per TTL window)
+  rather than scanned on every watcher event, and `CrdtProvider.destroy()` clears the maps
+  outright, so no vault's note ids or file paths survive into the next one.
 - **Only an edit moves a note's edit time** — the pass re-indexes the note with a
   `modifiedAt`, which is what Recently Edited and the modified sort read. A pass armed by a
   local edit stamps now. A remote pass keeps the note's time, moved forward only to the
@@ -996,13 +996,29 @@ document to its vault `.md` file and re-indexes it for search.
 - **A file changed outside the app is ingested before it is written** — the pass compares
   the file's hash with the index row's `contentHash`. A mismatch means bytes the doc has
   never seen, so the pass does not write. The watcher ingests an edit made while the app
-  is open. An edit made while the app was closed raises no event, and the launch index
-  pass skips a path it already lists, so the pass that finds the mismatch runs the ingest
-  itself (#2539). It feeds the file into the doc with `feedExternalEditToCrdt`, a full body
-  replace in which the file wins, and moves the index row to the new bytes only once the
-  doc holds them. Later passes then write as usual. If the feed cannot land (a large-file
-  body, or a doc that opens empty with no store) the pass keeps skipping and the file stays
-  as it is.
+  is open, however soon after an app write (#5605). Every writer records the sha256 of the
+  bytes it is about to write to a path and marks them landed once they are in the file
+  (`src/main/vault/app-writes.ts`). The watcher reads the file an event names and drops the
+  event only when it holds bytes the app wrote or is writing there. Any other bytes are an
+  outside edit, and once the watcher has read them, an edit that puts the app's earlier
+  bytes back is an edit too. A record expires 5 s after its write lands, which only bounds
+  the map. The one record without a hash is a binary note's file moved by sync, too large
+  to hash inside the apply: any bytes at its new path count as the app's for those 5 s.
+  The change handler checks the bytes it read again, and compares them with the index row
+  read after the file, `pending_write_hash` included, so a late event that reads a pass's
+  write in progress is never fed back over typing the doc gained since.
+  Builds before #5605 dropped every event on a path for 5 s after an app write, without
+  reading the file. An edit made in that window waited on disk until the next pass, which
+  replaced the doc's body with the file and lost what the doc had gained since, a peer's
+  merged edit included. An edit made while the app was closed raises no event, and the
+  launch index pass skips a path it already lists, so the pass that finds the mismatch runs
+  the ingest itself (#2539). Before it feeds the file, the pass keeps the body it serialized
+  as a version when that body differs from the file's, the rule the owed-file take follows
+  (#2646). A version that cannot be saved leaves the edit waiting on disk. The pass feeds
+  the file into the doc with `feedExternalEditToCrdt`, a full body replace in which the
+  file wins, and moves the index row to the new bytes only once the doc holds them. Later
+  passes then write as usual. If the feed cannot land (a large-file body, or a doc that
+  opens empty with no store) the pass keeps skipping and the file stays as it is.
 - **A pass keeps a version of bytes it did not write** — the module records, per note, the
   content hash of the file bytes its last successful pass wrote this session. Before a pass
   writes a body that differs from the file's body, it compares the file's hash with that

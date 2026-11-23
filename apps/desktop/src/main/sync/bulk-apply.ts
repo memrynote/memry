@@ -3,7 +3,7 @@ import path from 'path'
 import { createHash } from 'node:crypto'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
-import { markWritebackIgnored } from './crdt-writeback'
+import { recordAppWrite } from '../vault/app-writes'
 import { writeThroughLock, writeThroughLockSync } from '../vault-locks/files'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
@@ -111,30 +111,33 @@ let unlandedOps: PendingVaultFileOp[] = []
 
 /**
  * The atomic tmp-write-then-rename every synced note file gets, sync path and
- * deferred flush alike. `markWritebackIgnored` is called here, at actual write
- * time, because its ignore window is TTL-based — marking at enqueue time could
- * expire before a deferred flush reaches the file.
+ * deferred flush alike. The bytes are recorded as the app's here, at actual
+ * write time, so the watcher drops this write's echo and nothing else (#5605);
+ * a record expires, so one made at enqueue time could lapse before a deferred
+ * flush reaches the file.
  */
 export function writeNoteFileNow(absolutePath: string, content: string): void {
-  markWritebackIgnored(absolutePath)
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
+  const landed = recordAppWrite(absolutePath, content)
   writeThroughLockSync(absolutePath, () => {
     fs.writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
     fs.renameSync(tmpPath, absolutePath)
     return content
   })
+  landed()
 }
 
 async function writeNoteFileNowAsync(absolutePath: string, content: string): Promise<void> {
-  markWritebackIgnored(absolutePath)
   await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true })
   const tmpPath = absolutePath + '.tmp'
+  const landed = recordAppWrite(absolutePath, content)
   await writeThroughLock(absolutePath, async () => {
     await fs.promises.writeFile(tmpPath, content, { encoding: 'utf-8', mode: 0o600 })
     await fs.promises.rename(tmpPath, absolutePath)
     return content
   })
+  landed()
 }
 
 function isMissingFileError(err: unknown): boolean {
@@ -143,7 +146,6 @@ function isMissingFileError(err: unknown): boolean {
 }
 
 function deleteVaultFileNow(absolutePath: string): void {
-  markWritebackIgnored(absolutePath)
   writeThroughLockSync(absolutePath, () => {
     try {
       fs.unlinkSync(absolutePath)
@@ -155,7 +157,6 @@ function deleteVaultFileNow(absolutePath: string): void {
 }
 
 async function deleteVaultFileNowAsync(absolutePath: string): Promise<void> {
-  markWritebackIgnored(absolutePath)
   await writeThroughLock(absolutePath, async () => {
     try {
       await fs.promises.unlink(absolutePath)
@@ -675,8 +676,8 @@ function removeJournal(): void {
  *     content. This is the case that matters: skipping on mere existence kept
  *     an UPDATE's old bytes on disk forever while its row moved on. The
  *     journal content is exactly what the committed row describes, so
- *     overwriting restores row/file agreement; `markWritebackIgnored` keeps
- *     the replay's own echo out of the watcher.
+ *     overwriting restores row/file agreement; `writeNoteFileNow` records the
+ *     replay's bytes, so the watcher drops its echo.
  */
 export function replayBulkApplyJournal(): void {
   let raw: string

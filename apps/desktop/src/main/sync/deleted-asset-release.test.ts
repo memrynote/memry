@@ -72,7 +72,7 @@ function assetCtx(): AssetServiceContext {
     dereference,
     holdChunks: async () => ({ status: 'ok', missing: new Set() }),
     releaseHolds: async () => ({ ok: true }),
-    markWritebackIgnored: () => {},
+    recordAppWrite: () => () => {},
     trackEvent: () => {}
   }
 }
@@ -87,8 +87,7 @@ const release = () =>
       return [`chunk-of-${attachmentId}`]
     },
     dereference,
-    releaseHolds: async () => ({ ok: true }),
-    markWritebackIgnored: () => {}
+    releaseHolds: async () => ({ ok: true })
   })
 
 /** A live canvas whose scene holds one externalized image with these bytes. */
@@ -324,8 +323,7 @@ describe('deleted note attachments', () => {
         throw new Error('manifest signer revoked')
       },
       dereference,
-      releaseHolds: async () => ({ ok: true }),
-      markWritebackIgnored: () => {}
+      releaseHolds: async () => ({ ok: true })
     })
     expect(settled).toBe(0)
     expect(releaseRows()).toHaveLength(1)

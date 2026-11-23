@@ -145,9 +145,7 @@ vi.mock('../sync/crdt-writeback-port', async () => {
   const writeback = await import('../sync/crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../sync/crdt-writeback', () => ({
-  markWritebackIgnored: vi.fn()
-}))
+vi.mock('../sync/crdt-writeback', () => ({}))
 
 // The eager download-needed gate reads this from the sync layer; flip it in
 // tests that exercise the on-demand-only mode.
@@ -261,7 +259,7 @@ import { getValidAccessToken } from '../sync/token-manager'
 import { isDatabaseInitialized } from '../database/client'
 import { recordDownloadedFileSize, recordUploadedFile } from '../sync/note-attachment-metadata'
 import { registerManifestChecksumReader, settleBinaryHashCheck } from '../sync/binary-hash-check'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { appWriteCheck, resetAppWrites } from '../vault/app-writes'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
 import {
   clearAttachmentDownloadFailure,
@@ -320,6 +318,7 @@ describe('sync-attachment-handlers', () => {
 
   afterEach(() => {
     unregisterAttachmentHandlers()
+    resetAppWrites()
   })
 
   // #given handlers are registered
@@ -1071,8 +1070,8 @@ describe('sync-attachment-handlers', () => {
         expect.objectContaining({ pace: expect.any(Function), fileOwnerId: 'note-1' })
       )
     )
-    // The file is announced when it lands, not when the download is queued:
-    // a queued download outlives the watcher's ignore window (#5255).
+    // The file's bytes are recorded as the app's when it lands, not when the download is
+    // queued: a queued download outlives the record's expiry (#5255).
     // A case twin's download lands where its note's file is now (#5560).
     const { beforeFileLands } = vi.mocked(AttachmentSyncService).mock.calls[0][0]
     vi.mocked(landCaseTwinDownload).mockReturnValueOnce('/vault/Other/file.pdf')
@@ -1085,7 +1084,9 @@ describe('sync-attachment-handlers', () => {
       'sha',
       'note-1'
     )
-    expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/Other/file.pdf')
+    // The watcher then takes the downloaded bytes at the land path for the app's own.
+    expect(appWriteCheck('/vault/Other/file.pdf')?.({ sha256: 'sha' })).toBe(true)
+    expect(appWriteCheck('/vault/attachments/file.pdf')).toBeNull()
     await vi.waitFor(() =>
       expect(recordDownloadedFileSize).toHaveBeenCalledWith(
         'note-1',
