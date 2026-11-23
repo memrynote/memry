@@ -98,7 +98,8 @@ import {
 } from '../sync/local-mutations'
 import { feedExternalEditToCrdt, takeOwedFile } from '../sync/crdt-external-feed'
 import { markdownToYFragment } from '../sync/blocknote-converter'
-import { markWritebackIgnored, writebackNow } from '../sync/crdt-writeback'
+import { writebackNow } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -210,8 +211,9 @@ describe.runIf(fileSystemIgnoresCase())('remote apply into a case-variant folder
     }
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    if (options.remote !== false) markWritebackIgnored(absolutePath)
+    const landed = options.remote !== false ? recordAppWrite(absolutePath, body) : null
     fs.writeFileSync(absolutePath, body)
+    landed?.()
   }
 
   const allMetadataRows = () =>

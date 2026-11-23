@@ -27,7 +27,7 @@ vi.mock('../crdt-writeback-port', async () => {
   const writeback = await import('../crdt-writeback')
   return { crdtWriteback: () => writeback }
 })
-vi.mock('../crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
+vi.mock('../crdt-writeback', () => ({}))
 vi.mock('../crdt-provider', () => ({ getCrdtProvider: () => ({ purge }) }))
 vi.mock('../../projections', () => ({
   flushProjectionEvents: vi.fn(),
