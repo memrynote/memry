@@ -672,15 +672,22 @@ nothing.** §6.9 already requires a key outside the modelled set to ride along
 rather than fail the payload; an unaddressable key is that rule's limiting case,
 and refusing the payload over one would stall every other synced setting.
 
-**A merge in which any path compared `concurrent` MUST re-queue the merged
-settings** (`packages/sync-client/src/settings-sync.ts:112`; the Rust core
-enqueues in the merge's own transaction,
-`crates/memry-core/src/sync/settings_merge.rs`, #2399). This is §6.5.2 P3
-for settings, which reach it without the pull coordinator's conflict re-queue:
-the handler reports `applied`, and settings have no `buildPushPayload`, so the
-queued payload is what gets pushed. Without it, a device that kept its own value
-on a concurrent pair is the only one holding it; the server keeps the peer's row
-and the two devices stay on different values (#2287).
+**A merge in which any path's local clock compared `concurrent` with or
+`after` the remote's MUST re-queue the merged settings**
+(`packages/sync-client/src/settings-merge.ts:62-65`,
+`packages/sync-client/src/settings-sync.ts:124`; the Rust core enqueues in the
+merge's own transaction, `crates/memry-core/src/sync/settings_merge.rs`, #2399,
+#5506). This is §6.5.2 P3 for settings, which reach it without the pull
+coordinator's conflict re-queue: the handler reports `applied`, and settings
+have no `buildPushPayload`, so the queued payload is what gets pushed. Without
+it, a device that kept a value the server lacks is the only one holding it, and
+the devices stay on different values. Two shapes reach that state: a concurrent
+pair, where the server keeps the peer's row (#2287); and a local clock that
+dominates, because a peer pushed a payload it built before pulling this
+device's tick on another path. Settings carry no record clock, so the server
+takes that stale payload whole (#5506). A merge where every local clock is
+`equal` or `before` re-queues nothing, so a device that pulls its own push back
+does not push again.
 
 **A mixed pair converges through that re-queue, not through the rule.** A #2287
 build (tick max, local keeps a tie) and a #2383 build can pick different winners
