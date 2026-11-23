@@ -21,6 +21,23 @@ private final class Waits: @unchecked Sendable {
     func pause(_ duration: Duration) async throws { asked.withLock { $0.append(duration) } }
 }
 
+/// A drain wait that lasts until its task is cancelled, signalling each
+/// start. The quiet timer's pauses end at once.
+private final class HeldWaits: @unchecked Sendable {
+    let waiting: AsyncStream<Void>
+    private let started: AsyncStream<Void>.Continuation
+    private let quiet: Duration
+    @MainActor init() {
+        (waiting, started) = AsyncStream.makeStream()
+        quiet = VaultFillViewModel.quietAfter
+    }
+    func pause(_ duration: Duration) async throws {
+        guard duration != quiet else { return }
+        started.yield()
+        try await Task.sleep(for: .seconds(3_600))
+    }
+}
+
 @MainActor
 @Suite("#5233 the body drain", .serialized)
 struct VaultFillDrainTests {
@@ -100,6 +117,52 @@ struct VaultFillDrainTests {
         await fill.sceneChanged(active: true)
         #expect(filler.history.count - 1 > rounds, "the next foreground resumes it")
         fill.leave()
+    }
+
+    /// REVIEW-5567 #1: a wait after an empty round ends with the foreground;
+    /// the bodies stay owed and the next foreground asks again.
+    @Test(.timeLimit(.minutes(1)))
+    func theBackgroundEndsAWait() async throws {
+        let filler = StoreFiller(
+            store: VaultStore(), alreadyComplete: true,
+            rounds: [
+                ([], .success(.round(0, remaining: 900))),
+                ([], .success(.round(900, remaining: 0))),
+            ]
+        )
+        let waits = HeldWaits()
+        let fill = VaultFillViewModel(filler: filler, pause: waits.pause)
+        let run = Task { await fill.begin() }
+        for await _ in waits.waiting { break }
+
+        await fill.sceneChanged(active: false)
+        await run.value
+        #expect(filler.history == [.gate, .drain], "no round in the background")
+        #expect(fill.phase == .filled)
+
+        await fill.sceneChanged(active: true)
+        #expect(filler.history == [.gate, .drain, .drain], "the foreground resumes the drain")
+        fill.leave()
+    }
+
+    /// The round in flight when the app backgrounds finishes in the core. A
+    /// foreground before it ends starts a new drain after it, not none.
+    @Test("a foreground during the backgrounded round resumes the drain")
+    func aQuickForegroundResumes() async throws {
+        let filler = HeldDrainFiller(firstRound: .round(400, remaining: 500))
+        let fill = VaultFillViewModel(filler: filler)
+        let run = Task { await fill.begin() }
+        for _ in 0..<200 where !filler.isHeld {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(filler.isHeld)
+        await fill.sceneChanged(active: false)
+        let back = Task { await fill.sceneChanged(active: true) }
+        filler.finish()
+        await run.value
+        await back.value
+        #expect(filler.rounds == 2)
+        #expect(fill.phase == .filled)
     }
 
     @Test("a screen that goes away asks for no further round")
