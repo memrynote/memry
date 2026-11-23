@@ -454,6 +454,7 @@ async fn a_start_restamps_a_vault_bound_before_the_restamp_once() {
     let db = open.vault.db_handle();
     {
         let local = local.clone();
+        let device = device.clone();
         db.call_blocking(move |conn| {
             let new = NewCanvas {
                 id: Some("drawn"),
@@ -494,4 +495,23 @@ async fn a_start_restamps_a_vault_bound_before_the_restamp_once() {
         })
         .unwrap();
     }
+    // The start's restamp states its device and base, so a peer reads it as a restamp.
+    let marker = db
+        .read_blocking(|conn| {
+            let payload: String = conn
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = 'canvas' AND item_id = 'drawn'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+            Ok(payload["vaultRestamp"].clone())
+        })
+        .unwrap();
+    let base = std::collections::BTreeMap::from([(device.clone(), 1)]);
+    assert_eq!(
+        marker,
+        serde_json::json!({ "device": device, "base": base })
+    );
 }

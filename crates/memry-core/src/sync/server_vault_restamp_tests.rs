@@ -98,16 +98,19 @@ fn a_bind_restamps_each_live_local_record_once_through_its_clock() {
             assert_eq!(queued(conn, item_type, id), 1, "{item_type}");
         }
         // Only `vaultId` and the clock move, and the clock moves past the one it had, which the
-        // restamp states as its base.
+        // restamp states as its base, beside the device that restamped it.
         let after = payload(conn, "canvas", "live");
-        assert_eq!(after["vaultRestampBase"], before["clock"]);
+        assert_eq!(
+            after["vaultRestamp"],
+            json!({ "device": DEVICE, "base": before["clock"] })
+        );
         let mut unchanged = after.clone();
         unchanged["vaultId"] = before["vaultId"].clone();
         unchanged["clock"] = before["clock"].clone();
         unchanged
             .as_object_mut()
             .expect("an object")
-            .remove("vaultRestampBase");
+            .remove("vaultRestamp");
         assert_eq!(unchanged, before);
         let old = serde_json::from_value(before["clock"].clone()).expect("a clock");
         assert_eq!(
@@ -298,8 +301,8 @@ fn an_edit_after_a_restamp_still_contests_a_concurrent_drawing() {
         })
         .expect("edit");
     assert!(
-        edited_there.get("vaultRestampBase").is_some(),
-        "the base rides along"
+        edited_there.get("vaultRestamp").is_some(),
+        "the marker rides along"
     );
     let (db, _dir) = open("restamp-edit-receiver");
     db.call_blocking(move |conn| {
@@ -323,7 +326,7 @@ fn a_restamp_over_an_edit_this_side_never_saw_keeps_both_drawings() {
         .expect("read");
     // The restamper had pulled a third device's ink before it restamped.
     restamped["scene"] = json!(r#"{"elements":[{"id":"third-ink"}]}"#);
-    restamped["vaultRestampBase"] = json!({ RESTAMPER: 1, "third": 1 });
+    restamped["vaultRestamp"]["base"] = json!({ RESTAMPER: 1, "third": 1 });
     restamped["clock"] = json!({ RESTAMPER: 2, "third": 1 });
     let (db, _dir) = open("restamp-unseen-base");
     db.call_blocking(move |conn| {
@@ -332,6 +335,59 @@ fn a_restamp_over_an_edit_this_side_never_saw_keeps_both_drawings() {
         pull(conn, vec![remote("canvas", "c", &restamped)])?;
         assert_eq!(canvas_count(conn), 2, "a conflict copy");
         assert_eq!(payload(conn, "canvas", "c")["scene"], restamped["scene"]);
+        Ok(())
+    })
+    .expect("pull");
+}
+
+/// REVIEW-5621 item 2: desktop stores the keys its schema does not name and pushes them again under
+/// its own payload (§13.2.1). A desktop drawing made over the restamp's base, before desktop
+/// applied the restamp, carries the restamp's marker but is no restamp: a peer that drew too keeps
+/// both drawings.
+#[test]
+fn a_desktop_drawing_carrying_a_restamps_marker_still_gets_a_conflict_copy() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas", "c", canvas_written_by_restamper);
+    let restamped = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas", "c")))
+        .expect("read");
+    let mut desktop = before.clone();
+    for (key, value) in restamped.as_object().expect("an object") {
+        if before.get(key).is_none() {
+            desktop[key] = value.clone();
+        }
+    }
+    desktop["scene"] = json!(r#"{"elements":[{"id":"desktop-ink"}]}"#);
+    desktop["clock"] = json!({ RESTAMPER: 1, "desktop": 1 });
+    let (db, _dir) = open("restamp-desktop-repush");
+    db.call_blocking(move |conn| {
+        pull(conn, vec![remote("canvas", "c", &before)])?;
+        canvas::update(conn, "c", &scene_edit(PEER_INK), DEVICE, NOW + 2)?;
+        pull(conn, vec![remote("canvas", "c", &desktop)])?;
+        assert_eq!(canvas_count(conn), 2, "a conflict copy");
+        assert_eq!(payload(conn, "canvas", "c")["scene"], desktop["scene"]);
+        Ok(())
+    })
+    .expect("pull");
+}
+
+/// REVIEW-5621 item 4: a marker over an empty base names no content, so it is no restamp, and a
+/// drawing it carries that this side never saw keeps both drawings.
+#[test]
+fn a_restamp_marker_over_an_empty_base_is_no_restamp() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas", "c", canvas_written_by_restamper);
+    let mut forged = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas", "c")))
+        .expect("read");
+    forged["scene"] = json!(r#"{"elements":[{"id":"third-ink"}]}"#);
+    forged["vaultRestamp"] = json!({ "device": "third", "base": {} });
+    forged["clock"] = json!({ "third": 1 });
+    let (db, _dir) = open("restamp-empty-base");
+    db.call_blocking(move |conn| {
+        pull(conn, vec![remote("canvas", "c", &before)])?;
+        canvas::update(conn, "c", &scene_edit(PEER_INK), DEVICE, NOW + 2)?;
+        pull(conn, vec![remote("canvas", "c", &forged)])?;
+        assert_eq!(canvas_count(conn), 2, "a conflict copy");
+        assert_eq!(payload(conn, "canvas", "c")["scene"], forged["scene"]);
         Ok(())
     })
     .expect("pull");

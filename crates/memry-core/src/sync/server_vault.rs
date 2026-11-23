@@ -16,6 +16,7 @@
 //! none, which would send no header and be routed to the account's only vault.
 
 use rusqlite::Connection;
+use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
@@ -25,7 +26,7 @@ use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 
-use super::clock::{ClockOrder, VectorClock, clock_total, compare};
+use super::clock::{ClockOrder, VectorClock, compare, increment};
 use super::first_sync_store::{read_meta, write_meta};
 use super::outbox;
 
@@ -91,11 +92,18 @@ impl RecordVault {
 /// `meta` key set once [`restamp`] ran for the bound vault.
 const META_RESTAMPED: &str = "sync.record_vault_restamped";
 
-/// The payload key in which a [`restamp`] of a canvas or a canvas folder states the clock the
-/// record had before it, which [`restamp_superseded`] reads. Additive: desktop's schemas strip
-/// a key they do not name (`packages/contracts/src/sync-payloads.ts:187-225`), and a core
-/// before it carries it as an unknown key (§13.2 rule 3).
-const RESTAMP_BASE: &str = "vaultRestampBase";
+/// The payload key in which a [`restamp`] of a canvas or a canvas folder states a [`Restamp`],
+/// which [`restamp_superseded`] reads. Additive: desktop resolves a record without it but pushes
+/// it again (§13.2.1), and a core before it carries it as an unknown key (§13.2 rule 3).
+const RESTAMP: &str = "vaultRestamp";
+
+/// The device that restamped a record and the clock the record had before. A value of any other
+/// shape is no restamp.
+#[derive(Deserialize)]
+struct Restamp {
+    device: String,
+    base: VectorClock,
+}
 
 /// The synced types that state their vault, each with its projection table.
 const STAMPED: [(&str, &str); 3] = [
@@ -110,8 +118,8 @@ const STAMPED: [(&str, &str); 3] = [
 /// every other device filters out (Electron's `store.ts:538`, `folder-store.ts:126`). Each one is
 /// a local edit under this device's next tick, since the server refuses a clock that does not
 /// advance (`detectReplay`, `apps/sync-server/src/services/sync.ts:230`), the rest of the payload
-/// stays as stored, and it is queued as an update. A canvas or a canvas folder also states its
-/// clock before the restamp ([`RESTAMP_BASE`]), so a concurrent edit on either side outranks it
+/// stays as stored, and it is queued as an update. A canvas or a canvas folder also states this
+/// device and its clock before the restamp ([`RESTAMP`]), so a concurrent edit on either side outranks it
 /// ([`restamp_superseded`]) and the restamp contests only `vaultId`. A deleted record is never
 /// queued, so no update revives it, and a conversation waiting for the agent backfill is left to
 /// it ([`agent_queue::backfill`]). Unbound: nothing, and the run stays owed. Returns how many it
@@ -185,7 +193,11 @@ fn restamp_one(
     }
     let mut changes = vec![("vaultId", Change::Set(json!(server)))];
     if item_type != agent_conversation::ITEM_TYPE {
-        changes.push((RESTAMP_BASE, Change::Set(json!(clock_in(object)?))));
+        let base = clock_in(object)?;
+        changes.push((
+            RESTAMP,
+            Change::Set(json!({ "device": device_id, "base": base })),
+        ));
     }
     desktop_records::edit(tx, item_type, id, &stored, changes, device_id, now_ms)?;
     if item_type != agent_conversation::ITEM_TYPE || !agent_queue::backfill_pending(tx)? {
@@ -195,18 +207,20 @@ fn restamp_one(
 }
 
 /// Whether a merge keeps the other side's content over `record`'s: `record` is a [`restamp`], its
-/// clock its [`RESTAMP_BASE`] plus one tick, so it changed only `vaultId` since that base, and
-/// `other` is strictly after the base, so it holds every edit `record` holds. A record edited
-/// after its restamp has ticked again and is not one, so a base left in the payload is inert.
+/// clock exactly its [`Restamp`] base ticked once by the restamping device, so it changed only
+/// `vaultId` since that base, and `other` is strictly after the base, so it holds every edit
+/// `record` holds. Any later edit ticks again, the restamper's own included, and a device that
+/// stored the marker without applying the restamp (desktop, §13.2.1) ticks its own id, so a
+/// marker carried along is inert. An empty base names no content and is no restamp.
 pub(crate) fn restamp_superseded(record: &Object, other: &VectorClock) -> bool {
-    let base = record
-        .get(RESTAMP_BASE)
-        .and_then(|base| serde_json::from_value::<VectorClock>(base.clone()).ok());
-    let (Some(base), Ok(clock)) = (base, clock_in(record)) else {
+    let marker = record
+        .get(RESTAMP)
+        .and_then(|marker| serde_json::from_value::<Restamp>(marker.clone()).ok());
+    let (Some(Restamp { device, base }), Ok(clock)) = (marker, clock_in(record)) else {
         return false;
     };
-    compare(&clock, &base) == ClockOrder::After
-        && clock_total(&clock) == clock_total(&base).saturating_add(1)
+    base.values().any(|&tick| tick > 0)
+        && compare(&clock, &increment(&base, &device)) == ClockOrder::Equal
         && compare(other, &base) == ClockOrder::After
 }
 

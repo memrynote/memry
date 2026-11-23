@@ -1150,7 +1150,8 @@ bookmarks and does not write them.
 `ownerNoteId: null` included
 (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts:404-442`),
 and a client that writes a canvas MUST do the same: an absent key is read as
-"not stated" by every receiver.
+"not stated" by every receiver. A Rust core's restamp adds `vaultRestamp`
+(rule 6), which desktop resolves without but pushes again (§13.2.1).
 
 `scene` is Excalidraw JSON **text**, and its form is normative because desktop
 compares scenes as text to decide a conflict. It is desktop's canonical form
@@ -1200,17 +1201,20 @@ refetches it once another core build runs (§13.2).
 5. the copy and the overwrite are one transaction;
 6. Rust core only: a restamp contests only `vaultId`. A client that rewrites
    `vaultId` to the bound server vault id (#5535) changes nothing else under
-   one tick and states the clock the record had before as `vaultRestampBase`
-   (`crates/memry-core/src/sync/server_vault.rs:98`, `:187-189`). A record is
-   a restamp only while its `clock` is after its `vaultRestampBase` by exactly
-   one tick in total, so a base a later edit carries along is inert
-   (`server_vault.rs:201-211`). On a concurrent clock, a remote restamp whose
+   one tick of its clock id, and states that id and the clock the record had
+   before as `vaultRestamp`: `{"device": <clock id>, "base": <clock>}`
+   (`crates/memry-core/src/sync/server_vault.rs:98-106`, `:196-200`). A record
+   is a restamp only while its `clock` equals that base ticked once by that
+   device and the base is not empty. A marker a later edit carries along is
+   inert: the edit ticks again, and a desktop that stored the marker without
+   applying the restamp ticks its own id. A marker of any other shape is no
+   restamp (`server_vault.rs:215-225`). On a concurrent clock, a remote restamp whose
    base the live local canvas is strictly after leaves the local canvas as it
    is under the merged clock, re-queued, and a local restamp whose base the
    remote is strictly after takes the remote's canvas. Neither writes a
-   conflict copy (`crates/memry-core/src/domain/canvas/merge.rs:99-123`).
-   Desktop's schema strips the key (`packages/contracts/src/sync-payloads.ts:187-207`),
-   so desktop resolves a restamp as any concurrent edit, by rule 3.
+   conflict copy (`crates/memry-core/src/domain/canvas/merge.rs:99-126`).
+   Desktop resolves without it but pushes it again (§13.2.1), so desktop
+   resolves a restamp as any concurrent edit, by rule 3.
 
 A delete follows chapter 05 §5.8 unchanged: a canvas survives a tombstone only
 when its local clock is strictly after the tombstone's (#2198,
@@ -1335,8 +1339,8 @@ either, and stays a skip.
    after, keeps the local `path`, `icon` and `deletedAt` under the merged
    clock, re-queued
    (`crates/memry-core/src/domain/canvas_folder/merge.rs:65-70`). Desktop
-   strips `vaultRestampBase` (`packages/contracts/src/sync-payloads.ts:218-225`)
-   and applies the restamp by rule 2.
+   resolves without `vaultRestamp` but pushes it again (§13.2.1), and applies
+   the restamp by rule 2.
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/canvas_folder/merge.rs:36-72`, over
