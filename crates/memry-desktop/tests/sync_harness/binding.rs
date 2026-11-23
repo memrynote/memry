@@ -1,19 +1,22 @@
 //! The account side of sync against the real Worker, through the shell's wiring
 //! ([`SyncWiring`] attached to a real `Session`): a vault one account synced holds as `Foreign`
-//! for the next account and never runs a pass (`vault-account-binding.ts:79-110`), and a device
+//! for the next account and never runs a pass (`vault-account-binding.ts:79-110`), a device
 //! the account revokes stops sync and reports one event that keeps its keys
-//! (`DeviceRevokedEvent`, D7).
+//! (`DeviceRevokedEvent`, D7), and a vault merged into the account's vault restamps the records
+//! it wrote under its local id once (#5535).
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
+use memry_core::domain::canvas::{self, NewCanvas};
+use memry_core::domain::canvas_folder;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::sync::outbox;
 use memry_desktop::account::AccountService;
-use memry_desktop::account::binding::{Applied, BindingState};
+use memry_desktop::account::binding::{Applied, BindingChoice, BindingState};
 use memry_desktop::account::session_events::{self, AccountEvent};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::registry::config::AppConfig;
@@ -320,6 +323,109 @@ async fn after_sign_in_an_empty_vault_adopts_the_accounts_vault_and_one_with_not
     assert_eq!(
         b.adopt_account_vault_if_absent(&open).await.unwrap(),
         None,
+        "once"
+    );
+}
+
+/// #5535: a vault with content merged into the account's vault states the account vault's id in
+/// every live canvas and canvas folder it made before the bind, queued once; a deleted canvas is
+/// never queued, and the next start queues nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_merge_restamps_the_canvases_made_before_it_once_and_never_a_deleted_one() {
+    const HOME: &str = "6d2f0a41-8c3b-4e7a-b915-3a7c0e9d2b64";
+    let mut server = Server::start();
+    let store = device_key::with_device_key();
+    let (_dir, account, _) = new_account(&mut server, store.clone(), super::account::EMAIL).await;
+    account
+        .session()
+        .register_vault(HOME.into(), "Home".into())
+        .await
+        .expect("the vault is on the account");
+
+    let vault_dir = tempfile::tempdir().unwrap();
+    let session = open_session(&vault_dir);
+    let open = session.current().unwrap();
+    std::fs::write(open.path.join("note.md"), "# mine\n").unwrap();
+    let local = open.vault.id();
+    let device = account.session().local_device_id().unwrap();
+    let db = open.vault.db_handle();
+    {
+        let (local, device) = (local.clone(), device.clone());
+        db.call_blocking(move |conn| {
+            for id in ["drawn", "dropped"] {
+                let new = NewCanvas {
+                    id: Some(id),
+                    title: Some(id),
+                    owner_note_id: None,
+                    scene: None,
+                    folder: None,
+                    icon: None,
+                };
+                canvas::create(conn, &new, &local, &device, 1)?;
+            }
+            canvas::delete(conn, "dropped", &device, 2)?;
+            canvas_folder::upsert(conn, &local, "Work", None, &device, 3)?;
+            conn.execute("DELETE FROM outbox", []).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    }
+    let stated = |item_type: &'static str, id: &'static str| {
+        db.read_blocking(move |conn| {
+            let payload: String = conn
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                    [item_type, id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let queued: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE item_type = ?1 AND item_id = ?2",
+                    [item_type, id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+            Ok((payload["vaultId"].as_str().unwrap().to_owned(), queued))
+        })
+        .unwrap()
+    };
+
+    let Applied::Held(state) = account
+        .apply_open_vault_binding(&open, session.registry())
+        .await
+        .unwrap()
+    else {
+        panic!("a vault with content waits for the user");
+    };
+    assert!(
+        matches!(state, BindingState::NeedsDecision { .. }),
+        "{state:?}"
+    );
+    let bound = account
+        .resolve_open_vault_binding(&open, session.registry(), &state, BindingChoice::Merge)
+        .unwrap();
+    assert_eq!(bound, BindingState::Bound);
+    assert_eq!(open.vault.server_vault_id().unwrap().as_deref(), Some(HOME));
+    assert_eq!(stated("canvas", "drawn"), (HOME.to_owned(), 1));
+    assert_eq!(stated("canvas_folder", "cvf_work"), (HOME.to_owned(), 1));
+    assert_eq!(stated("canvas", "dropped"), (local.clone(), 0), "deleted");
+
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM outbox", []).unwrap();
+        Ok(())
+    })
+    .unwrap();
+    let applied = account
+        .apply_open_vault_binding(&open, session.registry())
+        .await
+        .unwrap();
+    assert_eq!(applied, Applied::Start);
+    assert_eq!(stated("canvas", "drawn"), (HOME.to_owned(), 0), "once");
+    assert_eq!(
+        stated("canvas_folder", "cvf_work"),
+        (HOME.to_owned(), 0),
         "once"
     );
 }

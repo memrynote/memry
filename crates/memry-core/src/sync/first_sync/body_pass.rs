@@ -54,6 +54,11 @@ pub const MAX_RATE_LIMIT_PAUSE_S: u64 = 60;
 /// the error. The run is resumable, so giving up loses no work; the bound only
 /// stops a server that keeps refusing from holding the pass open forever.
 pub const MAX_RATE_LIMIT_PAUSES: u32 = 8;
+
+/// How many 429s each probe chunk waits out (#5570). One refused chunk of a
+/// hundred documents holding no cursor costs two hundred route pulls; a wait
+/// costs at most the window. Past it the chunk falls back to those pulls.
+const PROBE_RATE_LIMIT_PAUSES: u32 = 2;
 impl FirstSync {
     /// Bodies from packs, once (`pack_bootstrap/bodies.rs`). Answers whether
     /// the phase settled or owed every live document, which makes the debts
@@ -213,7 +218,11 @@ async fn pull_parallel(
     let mut report = BodyPullReport::default();
     let mut probed = HashMap::new();
     for chunk in window.chunks(PROBE_CHUNK) {
-        probed.extend(bodies.probe(chunk, &mut report.requests).await?);
+        probed.extend(
+            bodies
+                .probe(chunk, &mut report.requests, PROBE_RATE_LIMIT_PAUSES)
+                .await?,
+        );
     }
     let total = window.len() as u64;
     let (current, pending): (Vec<String>, Vec<String>) = window
@@ -382,8 +391,16 @@ async fn body_worker(
                 // The bodies pass owed this document before the pull; only a
                 // merged pull settles it (`body_debt`'s invariant).
                 let outcome = part.clone();
-                db.call(move |conn| body_debt::after_pull(conn, &doc_id, &outcome))
+                let settled = doc_id.clone();
+                db.call(move |conn| body_debt::after_pull(conn, &settled, &outcome))
                     .await?;
+                // A settle that stored nothing has no tell of its own (#5570):
+                // the pull tells only a document whose log grew, and a write-back
+                // that kept the file while the body was owed waits for a tell.
+                // An empty server body is that case on every first install.
+                if part.merged() && part.baselines + part.updates == 0 {
+                    bodies.tell_observers_of(vec![doc_id]).await;
+                }
                 report.absorb(part);
                 queue.finished();
             }
