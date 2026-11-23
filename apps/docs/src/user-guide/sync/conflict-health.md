@@ -58,6 +58,8 @@ Auto-resolved is not the same as auto-merged. CRDT text keeps both sides. Everyw
 | Canvases                                                                                      | Neither side is dropped — the other version lands as a [conflict copy](/user-guide/canvas/sync-and-limits#conflict-copies)                          | Nothing; you end up with a second canvas                                             |
 | Image, PDF, audio and video files                                                             | Another device's replacement lands on this device's file. A change made here that has not synced is kept first as `<name> (conflict copy)`          | Nothing; you end up with a second file                                               |
 
+For image, PDF, audio and video files, "has not synced" means the file's bytes differ from the bytes this device last downloaded or uploaded for that note. That includes an edit of the same size made while the app was closed. A file with no record of its synced bytes counts as changed. After updating the app, the first replacement of a file that has not synced since then can leave a conflict copy even when you did not edit it. Delete the copy if it matches.
+
 There is nothing to act on when a conflict resolves, which is why the app does not warn you. If a value you set came back different, see [Recovering an Overwritten Edit](#recovering-an-overwritten-edit).
 
 ## Sync History
