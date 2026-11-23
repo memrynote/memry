@@ -196,6 +196,103 @@ fn a_settings_row_an_earlier_build_deleted_revives_on_the_next_edit() {
     .expect("settings revive");
 }
 
+// REVIEW-5434 #1: the verified re-pull of a settings delete is skipped, and
+// ending the wait clears the row's stale unknown-signer flag. Any other
+// corrupt reason stays: the delete says nothing about the payload.
+#[test]
+fn a_verified_settings_delete_clears_only_an_unknown_signer_flag() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::protocol::account::UNKNOWN_SIGNER;
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+    use crate::sync::unknown_signer;
+
+    let dir = temp_dir("apply-settings-delete-signer");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 1)?;
+        let delete = || Pending::Tombstone {
+            item_type: SETTINGS_ITEM_TYPE.to_owned(),
+            item_id: SETTINGS_ITEM_ID.to_owned(),
+            deleted_at: 5,
+            server_cursor: None,
+            clock: None,
+            body_state_vector: None,
+        };
+        let reason = |conn: &Connection| {
+            sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)
+                .expect("read")
+                .expect("row")
+                .corrupt_reason
+        };
+        let refused = format!("device-new{UNKNOWN_SIGNER}");
+        for (flag, kept) in [(refused.as_str(), None), ("bad schema", Some("bad schema"))] {
+            sync_items::mark_corrupt(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, flag, 2)?;
+            unknown_signer::refused(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?;
+            unknown_signer::resolve_verified(conn, &[delete()])?;
+            assert_eq!(apply_page(conn, vec![delete()], 6, None)?.skipped, 1);
+            assert_eq!(reason(conn).as_deref(), kept);
+            assert!(!unknown_signer::holds(
+                conn,
+                SETTINGS_ITEM_TYPE,
+                SETTINGS_ITEM_ID
+            )?);
+        }
+        Ok(())
+    })
+    .expect("settings delete signer");
+}
+
+// REVIEW-5434 #2: an older build applied a settings tombstone before this
+// device ever pulled the item, leaving a deleted metadata-only row. A local
+// edit seeds the empty payload, revives the row and queues the push.
+#[test]
+fn a_settings_edit_over_a_metadata_only_deleted_row_seeds_and_syncs() {
+    use crate::domain::settings::{self as settings_domain, SETTINGS_ITEM_TYPE};
+    use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    let dir = temp_dir("apply-settings-metadata-only");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        store::mark_deleted(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID, 2, None, 2)?;
+        settings_domain::set(conn, "editor.font", "mono".into(), "device-a", 3)?;
+        let row = sync_items::load(conn, SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID)?.expect("row");
+        assert_eq!(row.deleted_at, None);
+        assert_eq!(row.payload_state, sync_items::PAYLOAD_STATE_FULL);
+        let payload: serde_json::Value =
+            serde_json::from_str(&row.payload.expect("payload")).expect("json");
+        assert_eq!(payload["settings"]["editor"]["font"], "mono");
+        let queued: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_type = ?1",
+                [SETTINGS_ITEM_TYPE],
+                |row| row.get(0),
+            )
+            .map_err(sqlite_failed)?;
+        assert_eq!(queued, 1);
+
+        // The hold is recorded once, by the seed. Later edits find the row
+        // live with a payload and leave the re-pull budget where it is.
+        let budget = |conn: &Connection| {
+            crate::sync::first_sync_store::read_meta(
+                conn,
+                "sync.unknown_signer_wait:settings:synced_settings",
+            )
+        };
+        assert_eq!(budget(conn)?.as_deref(), Some("0"));
+        crate::sync::first_sync_store::write_meta(
+            conn,
+            "sync.unknown_signer_wait:settings:synced_settings",
+            "3/7",
+        )?;
+        settings_domain::set(conn, "editor.font", "serif".into(), "device-a", 4)?;
+        assert_eq!(budget(conn)?.as_deref(), Some("3/7"));
+        Ok(())
+    })
+    .expect("settings metadata-only");
+}
+
 // §5.12.2: a `_tombstone` row an older build filed still outranks the typed
 // item that arrives after it, though no current path files one.
 #[test]
