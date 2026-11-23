@@ -6,6 +6,7 @@ import {
   renameFolder,
   deleteFolder,
   deleteNote,
+  claimNoteFile,
   getNoteById,
   type Note,
   type NoteCreateInput,
@@ -13,6 +14,7 @@ import {
   type NoteUpdateOutcome
 } from '../vault/notes'
 import type { NoteTagTemplateOutcome } from '@memry/contracts/notes-api'
+import type { SurvivorClaim } from '../vault/case-twin-file'
 import { applyTagTemplateAfterAdd, undoTagTemplate } from './tag-template'
 import { extractTags } from '../vault/frontmatter'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
@@ -157,9 +159,14 @@ export async function deleteNoteCommand(id: string): Promise<void> {
   // Before the sync delete is queued: a refused delete must not reach peers.
   assertNoteWritable(id)
   // Enqueue sync delete BEFORE cache removal — enqueue reads cache for vector
-  // clock, and the loaded doc for the tombstone's body vector (#3037)
-  await syncNoteDelete(id)
-  await deleteNote(id)
+  // clock, and the loaded doc for the tombstone's body vector (#3037).
+  // A case twin claims its shared file first, in the same step: a claim that
+  // throws aborts the delete before peers hear of it (#5495).
+  const leave: { claim: SurvivorClaim | null } = { claim: null }
+  await syncNoteDelete(id, () => {
+    leave.claim = claimNoteFile(id)
+  })
+  await deleteNote(id, leave.claim)
   // Drop the note's project links + clear any project home note pointing at it,
   // only once the note is actually gone (spec §4 "Cleanup rules").
   await cleanupProjectLinksForDeletedNote(id)

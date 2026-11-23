@@ -8,16 +8,22 @@
  * leaving twin's body, and the survivor must never read them in.
  *
  * 1. `sharesCaseTwinFile`, while the leaving row still names the file.
- * 2. `claimSharedFile`, right before the leaving row's drop, with no await
- *    between. It does every fallible step of the leave, so a throw aborts the
- *    delete with both rows and the file as they were. Bytes that are not the
+ * 2. `claimSharedFile`, before anything of the leave reaches the index or a
+ *    peer: a local delete claims in its tombstone's step, before the tombstone
+ *    is queued (`deleteNoteCommand`), a peer's delete right before the row
+ *    drop. It does every fallible step of the leave, so a throw aborts the
+ *    delete with both rows, the file, and the sync queue as they were. While
+ *    both rows name the file no write-back touches it (`refusesCaseTwinFile`),
+ *    so the claim holds until the drop. Bytes that are not the
  *    survivor's own are named its baseline, so from then on no pass reads them
  *    into its doc as an outside edit, and an owed file body
  *    (`crdt-owed-file-body.ts`) is cleared with them: the bytes it owed are
  *    gone, and a take would read the leaving twin's body. The survivor's own
- *    header is read from its index rows (header tags, properties). Its cover
+ *    header is read from its index rows: header tags, properties, aliases, and
+ *    a wash cover. An image cover's framing and credit are not indexed, so it
+ *    is left out of the file rather than written with reset framing. Its cover
  *    marker is cleared, so its next push omits a cover the file lost instead of
- *    removing it on peers.
+ *    removing it on peers, which keep theirs.
  * 3. `keepSurvivorFile`, after the drop: writes the survivor's own header over
  *    the claimed bytes (kept as one of its versions), then its doc's body. A
  *    survivor with an empty doc keeps the header alone; its body comes with
@@ -33,7 +39,9 @@ import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline, writeWithBaseline } from '../sync/writeback-baseline'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
+import { parseCoverValue } from '@memry/shared/cover-image'
 import {
+  getAliasesForNotes,
   getNoteCacheById,
   getNoteHeaderTags,
   getNotePropertiesAsRecord
@@ -72,9 +80,10 @@ export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boo
 }
 
 /**
- * Call right before twin `leavingId`'s row leaves `relativePath`, with no await
- * between. Throws, with nothing changed that the leave depends on, when the
- * file cannot be read. Null when the leave leaves no single row on the file.
+ * Call before twin `leavingId`'s row leaves `relativePath`, and before a local
+ * delete queues its tombstone. Throws, with nothing changed that the leave
+ * depends on, when the file cannot be read. Null when the leave leaves no
+ * single row on the file.
  */
 export function claimSharedFile(
   vaultPath: string,
@@ -89,6 +98,7 @@ export function claimSharedFile(
   const survivor = getNoteMetadataById(dataDb, survivorId)
   if (!survivor) return null
   const indexDb = getIndexDatabase()
+  const cached = getNoteCacheById(indexDb, survivorId)
   const raw = readVaultFileSync(vaultPath, survivor.path)
   const claim: SurvivorClaim = {
     leavingId,
@@ -97,16 +107,17 @@ export function claimSharedFile(
     claimed: null,
     header: {}
   }
-  if (
-    raw === null ||
-    generateContentHash(raw) === getNoteCacheById(indexDb, survivorId)?.contentHash
-  )
-    return claim
+  if (raw === null || generateContentHash(raw) === cached?.contentHash) return claim
+  const cover = cached?.cover ?? null
   const header = applyRemoteFrontmatter(
     {},
     {
       tags: getNoteHeaderTags(indexDb, survivorId),
       properties: getNotePropertiesAsRecord(indexDb, survivorId),
+      aliases: getAliasesForNotes(indexDb, [survivorId]).get(survivorId) ?? [],
+      ...(cover !== null && parseCoverValue(cover)?.kind === 'wash'
+        ? { cover: { ref: cover } }
+        : {}),
       title: survivor.title
     }
   )

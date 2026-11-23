@@ -22,11 +22,14 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import {
+  getAliasesForNotes,
   getInboundLinkSourceIds,
   getNoteTags,
   insertNoteCache,
+  reindexNoteNames,
   setNoteProperties,
-  setNoteTags
+  setNoteTags,
+  updateNoteCache
 } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 
@@ -133,6 +136,7 @@ import { startWatcher, stopWatcher, getWatcher } from './watcher'
 import { deleteNoteCommand } from '../notes/domain'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
+import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -474,21 +478,31 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
   }, 30_000)
 
-  const LOWER_HEAD = '---\ntags:\n  - lowertag\nstatus: low\n---\n'
-  const UPPER_HEAD = '---\ntags:\n  - uppersecret\nstatus: secret\n---\n'
+  const LOWER_HEAD =
+    "---\ntags:\n  - lowertag\nstatus: low\ncover: 'wash:sage'\naliases:\n  - lowalias\n---\n"
+  const UPPER_HEAD =
+    "---\ntags:\n  - uppersecret\nstatus: secret\ncover: 'wash:clay'\naliases:\n  - upalias\n---\n"
+  const LOWER_HEAD_RE =
+    /^---\ntags:\n {2}- lowertag\nstatus: low\ncover: 'wash:sage'\naliases:\n {2}- lowalias\n---\n[\s\S]*lower \[\[x\]\]\n$/
 
   /** The twins with headers, each indexed from its own, the upper file last on disk. */
-  async function headerTwins(): Promise<void> {
+  async function headerTwins(lowerCover = 'wash:sage'): Promise<void> {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
     seed('lower', 'SuperNotes/a.md', LOWER_HEAD + LOWER)
     seed('upper', 'SUPERNOTES/a.md', UPPER_HEAD + UPPER)
     await openVault()
-    for (const [id, tag, status] of [
-      ['lower', 'lowertag', 'low'],
-      ['upper', 'uppersecret', 'secret']
+    for (const [id, tag, status, cover, alias] of [
+      ['lower', 'lowertag', 'low', lowerCover, 'lowalias'],
+      ['upper', 'uppersecret', 'secret', 'wash:clay', 'upalias']
     ] as const) {
       setNoteTags(index.db, id, { header: [tag], inline: [] })
       setNoteProperties(index.db, id, { status }, () => 'text')
+      reindexNoteNames(index.db, {
+        noteId: id,
+        title: 'a',
+        aliases: { kind: 'read', aliases: [alias] }
+      })
+      updateNoteCache(index.db, id, { cover })
     }
     docs.set('lower', await docOf(LOWER))
     docs.set('upper', await docOf(UPPER))
@@ -497,8 +511,9 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
   /** What the shared file and the index say about the survivor's header. */
   const lowerHeader = () => ({
     file: shared(),
-    upperInFile: shared().includes('upper'),
-    lowerTags: getNoteTags(index.db, 'lower')
+    upperInFile: /upper|clay/.test(shared()),
+    lowerTags: getNoteTags(index.db, 'lower'),
+    lowerAliases: getAliasesForNotes(index.db, ['lower']).get('lower')
   })
 
   it("a deleted twin's header never lands on the survivor", async () => {
@@ -509,11 +524,10 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await flushProjectionEvents()
 
     expect(lowerHeader()).toEqual({
-      file: expect.stringMatching(
-        /^---\ntags:\n {2}- lowertag\nstatus: low\n---\n[\s\S]*lower \[\[x\]\]\n$/
-      ),
+      file: expect.stringMatching(LOWER_HEAD_RE),
       upperInFile: false,
-      lowerTags: ['lowertag']
+      lowerTags: ['lowertag'],
+      lowerAliases: ['lowalias']
     })
   }, 30_000)
 
@@ -526,12 +540,28 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await flushProjectionEvents()
 
     expect(lowerHeader()).toEqual({
-      file: expect.stringMatching(
-        /^---\ntags:\n {2}- lowertag\nstatus: low\n---\n[\s\S]*lower \[\[x\]\]\n$/
-      ),
+      file: expect.stringMatching(LOWER_HEAD_RE),
       upperInFile: false,
-      lowerTags: ['lowertag']
+      lowerTags: ['lowertag'],
+      lowerAliases: ['lowalias']
     })
+  }, 30_000)
+
+  // An image cover's framing and credit are not indexed. Written without them,
+  // the survivor's next push would reset them on peers.
+  it('a survivor with an image cover leaves it out of its file and its push', async () => {
+    await headerTwins('covers/low.png')
+    // The server holds the cover: a push without one would remove it there.
+    recordAppliedNoteCover(asClientDb(data.db), 'lower', { cover: 'covers/low.png' })
+
+    await deleteNoteCommand('upper')
+
+    const frontmatter = parseNote(shared()).frontmatter
+    expect({
+      cover: frontmatter.cover,
+      aliases: frontmatter.aliases,
+      push: noteCoverForPush(asClientDb(data.db), 'lower', frontmatter)
+    }).toEqual({ cover: undefined, aliases: ['lowalias'], push: undefined })
   }, 30_000)
 
   it('a survivor with an empty doc keeps its own header and never the deleted twin body', async () => {
@@ -565,7 +595,11 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       await expect(deleteNoteCommand('upper')).rejects.toThrow(/EACCES|index gone/)
 
       fs.chmodSync(path.join(vault.path, 'Supernotes/a.md'), 0o644)
-      expect(rowIds()).toEqual(['lower', 'upper'])
+      // Peers never hear of a delete this device did not make.
+      expect({ rows: rowIds(), deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls }).toEqual({
+        rows: ['lower', 'upper'],
+        deletes: []
+      })
       await stopWatcher()
       await openVault()
       await writeBack('lower', LOWER)

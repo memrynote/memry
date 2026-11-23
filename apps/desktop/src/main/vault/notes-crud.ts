@@ -22,7 +22,12 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
-import { claimSharedFile, keepSurvivorFile, sharesCaseTwinFile } from './case-twin-file'
+import {
+  claimSharedFile,
+  keepSurvivorFile,
+  sharesCaseTwinFile,
+  type SurvivorClaim
+} from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -878,7 +883,19 @@ async function writeNote(input: NoteUpdateInput): Promise<NoteUpdateOutcome> {
 // Delete
 // ============================================================================
 
-export async function deleteNote(id: string): Promise<void> {
+/**
+ * The claim of a case twin on the file it leaves (`case-twin-file.ts`), or
+ * null. A local delete takes it before it queues the tombstone, so a claim that
+ * throws aborts the delete before peers hear of it.
+ */
+export function claimNoteFile(id: string): SurvivorClaim | null {
+  const cached = getNoteCacheById(getIndexDatabase(), id)
+  if (!cached || !sharesCaseTwinFile(getVaultRoot(), cached.path)) return null
+  return claimSharedFile(getVaultRoot(), cached.path, id)
+}
+
+/** `claim` is `claimNoteFile`'s, taken earlier; left out, the claim is taken here. */
+export async function deleteNote(id: string, claim?: SurvivorClaim | null): Promise<void> {
   const db = getIndexDatabase()
 
   const cached = getNoteCacheById(db, id)
@@ -891,12 +908,16 @@ export async function deleteNote(id: string): Promise<void> {
   const twinKeepsFile = sharesCaseTwinFile(getVaultRoot(), cached.path)
   if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
 
-  // Every fallible step of the leave, then the row drop, with no await between
-  // (case-twin-file.ts): a throw here aborts the delete with both rows.
-  const claim = twinKeepsFile ? claimSharedFile(getVaultRoot(), cached.path, id) : null
+  // Every fallible step of the leave runs before the row drop (case-twin-file.ts):
+  // a throw here aborts the delete with both rows.
+  const leave = !twinKeepsFile
+    ? null
+    : claim === undefined
+      ? claimSharedFile(getVaultRoot(), cached.path, id)
+      : claim
   deleteNoteFromCache(db, id)
   deleteNotePosition(getDatabase(), cached.path)
-  await keepSurvivorFile(claim)
+  await keepSurvivorFile(leave)
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,
