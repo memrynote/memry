@@ -1,6 +1,6 @@
-import fs from 'fs'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { hasPendingUpload } from '../attachment-outbox'
+import { readSyncedBinaryHash } from '../binary-synced-hash'
 import {
   hashFile,
   holdsCaseTwinForeignBytes,
@@ -13,7 +13,6 @@ interface BinaryNote {
   id: string
   path: string
   attachmentId: string | null
-  fileSize: number | null
   localOnly: boolean
 }
 
@@ -42,17 +41,15 @@ export function planPeerBinaryReplace(
     return null
   }
   const filePath = toAbsolutePath(note.path)
-  const stats = fs.statSync(filePath, { throwIfNoEntry: false })
-  // On no server: never uploaded, an upload pending or in flight, a size the
-  // watcher has not recorded yet, or this device's own concurrent replacement.
-  const changed =
-    !!stats &&
-    (concurrent ||
-      !note.attachmentId ||
-      hasPendingUpload(db, note.id, filePath) ||
-      (!!note.fileSize && stats.size !== note.fileSize))
+  // On no server: never uploaded, an upload pending or in flight, or this
+  // device's own concurrent replacement.
+  const changed = concurrent || !note.attachmentId || hasPendingUpload(db, note.id, filePath)
+  // Otherwise the file holds bytes a server has only while they hash to those
+  // last landed or uploaded here (#5598). With none recorded it may hold a
+  // change made while the app was closed, whatever its size.
+  const synced = readSyncedBinaryHash(db, note.id)
   return (landingPath) => {
-    const sha256 = changed ? null : hashFile(landingPath)
-    markCaseTwinForeignBytes(db, note.id, sha256 === null ? null : { sha256 })
+    const sha256 = changed || synced === undefined ? null : hashFile(landingPath)
+    markCaseTwinForeignBytes(db, note.id, sha256 !== null && sha256 === synced ? { sha256 } : null)
   }
 }

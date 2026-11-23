@@ -86,8 +86,75 @@ jobs:
 
   swift-bindings-fresh:
     name: Generated Swift bindings are current
-    # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
-    # from the same build. Anything less proves nothing about what ships.
+    # Bindgen reads the UniFFI metadata out of the iOS device library, the same
+    # slice build-xcframework.sh reads. The library is built without the
+    # `semantic` feature: no UniFFI export sits behind it, and leaving it off
+    # means this check needs no ONNX Runtime download (#5531), so a download
+    # outage cannot hide drift. The XCFramework itself is built by
+    # `xcframework` below.
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      IPHONEOS_DEPLOYMENT_TARGET: '26.0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+          targets: aarch64-apple-ios
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
+      - name: Select Xcode 26
+        run: |
+          app=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$app" ]; then
+            echo "::error::No Xcode 26 on this runner. Found: $(ls -d /Applications/Xcode*.app 2>/dev/null | tr '\n' ' ')"
+            exit 1
+          fi
+          sudo xcode-select -s "$app"
+          xcodebuild -version
+
+      # Run from crates/: uniffi's bindgen resolves `cargo metadata` from the
+      # current directory.
+      - name: Regenerate bindings
+        working-directory: crates
+        run: |
+          cargo build -p memry-core --lib --target aarch64-apple-ios
+          rm -rf target/bindings-check
+          cargo run -p uniffi-bindgen-swift -- \
+            generate \
+            --library target/aarch64-apple-ios/debug/libmemry_core.a \
+            --language swift \
+            --out-dir target/bindings-check
+          generated=../packages/swift/MemryCore/Sources/MemryCore/Generated
+          rm -rf "$generated"
+          mkdir -p "$generated"
+          mv target/bindings-check/*.swift "$generated/"
+
+      # status, not diff: a file bindgen added or stopped emitting is drift too.
+      # --text: .gitattributes marks the Generated Swift `-diff`.
+      - name: Fail if the committed bindings drifted
+        run: |
+          generated=packages/swift/MemryCore/Sources/MemryCore/Generated/
+          if [ -n "$(git status --porcelain -- "$generated")" ]; then
+            git status --short -- "$generated"
+            git diff --text -- "$generated"
+            echo "::error::Generated Swift bindings are stale. Run crates/memry-core/build-xcframework.sh and commit the result."
+            exit 1
+          fi
+
+  xcframework:
+    name: Build XCFramework
+    # macOS: the XCFramework needs the iOS SDK. Built with `semantic`, so it
+    # links ONNX Runtime exactly as the app does.
     runs-on: macos-26
     timeout-minutes: 45
 
@@ -125,17 +192,8 @@ jobs:
           path: ~/Library/Caches/memry/onnxruntime
           key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
-      - name: Build XCFramework and regenerate bindings
+      - name: Build XCFramework
         run: crates/memry-core/build-xcframework.sh
-
-      # The binary is gitignored; the Swift beside it is committed. Only the
-      # Swift is diffed.
-      - name: Fail if the committed bindings drifted
-        run: |
-          if ! git diff --exit-code -- packages/swift/MemryCore/Sources/MemryCore/Generated/; then
-            echo "::error::Generated Swift bindings are stale. Run crates/memry-core/build-xcframework.sh and commit the result."
-            exit 1
-          fi
 
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4

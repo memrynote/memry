@@ -343,7 +343,7 @@ describe('main zero-covered runtime surfaces', () => {
     const store = await import('./settings/saved-filters-store')
 
     attachmentMetadata.recordUploadedAttachment('note-1', 'att-1')
-    attachmentMetadata.recordDownloadedFileSize('note-1', 'att-1', 42)
+    attachmentMetadata.recordDownloadedFileSize('note-1', 'att-1', 42, 'sha-1')
 
     expect(mocks.updateNoteCache).toHaveBeenCalledWith(mocks.indexDb, 'note-1', {
       attachmentId: 'att-1'
