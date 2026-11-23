@@ -68,7 +68,8 @@ vi.mock('../sync/crdt-provider', () => {
     open: async (id: string) => docs.get(id),
     withDocLoaded: async (_id: string, run: () => void) => run(),
     closeIfInactive: async () => {},
-    purge: vi.fn()
+    whenPersisted: async () => {},
+    purge: vi.fn(async () => {})
   }
   return { ORIGIN_LOCAL: 'local', getCrdtProvider: vi.fn(() => stub) }
 })
@@ -116,6 +117,7 @@ import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher, getWatcher } from './watcher'
 import { deleteNoteCommand } from '../notes/domain'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
+import { noteHandler } from '../sync/item-handlers/note-handler'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -345,17 +347,54 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect({ file: shared(), crossed: crossed() }).toEqual({ file: UPPER, crossed: [] })
   }, 30_000)
 
-  it('deleting a twin drops its row and keeps the file the other twin shares', async () => {
-    await twins()
-
-    await deleteNoteCommand('lower')
-
-    expect({
+  /** After a twin's delete: the next vault open and the survivor's write-back. */
+  async function afterDelete(survivor: 'lower' | 'upper') {
+    await stopWatcher()
+    await openVault()
+    await writeBack(survivor, survivor === 'lower' ? LOWER : UPPER)
+    return {
       file: shared(),
       rows: rowIds(),
-      syncedDeletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
-    }).toEqual({ file: UPPER, rows: ['upper'], syncedDeletes: [['note', 'lower']] })
-  }, 30_000)
+      crossed: crossed(),
+      deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }
+  }
+
+  const applyPeerDelete = (id: string) =>
+    noteHandler.applyDelete({ db: asClientDb(data.db), emit: vi.fn() }, id)
+
+  for (const [deleted, survivor, body] of [
+    ['lower', 'upper', UPPER],
+    ['upper', 'lower', LOWER]
+  ] as const) {
+    it(`deleting twin ${deleted} keeps the shared file with ${survivor}'s body`, async () => {
+      await twins()
+
+      await deleteNoteCommand(deleted)
+
+      expect(shared()).toBe(body)
+      expect(await afterDelete(survivor)).toEqual({
+        file: body,
+        rows: [survivor],
+        crossed: [],
+        deletes: [['note', deleted]]
+      })
+    }, 30_000)
+
+    it(`a peer's delete of twin ${deleted} keeps the shared file with ${survivor}'s body`, async () => {
+      await twins()
+
+      expect(applyPeerDelete(deleted)).toBe('applied')
+
+      await vi.waitFor(() => expect(shared()).toBe(body))
+      expect(await afterDelete(survivor)).toEqual({
+        file: body,
+        rows: [survivor],
+        crossed: [],
+        deletes: []
+      })
+    }, 30_000)
+  }
 
   it('deleting a note with no twin removes its file', async () => {
     await twins()

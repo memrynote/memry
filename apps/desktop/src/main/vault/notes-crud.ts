@@ -21,8 +21,8 @@ import {
   generateContentHash,
   type NoteFrontmatter
 } from './frontmatter'
-import { syncNoteToCache, deleteNoteFromCache, findCanonicalNoteForFile } from './note-sync'
-import { diskCaseOf } from './disk-case'
+import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { handSharedFileToTwin, sharedWithCaseTwin } from './case-twin-file'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -887,16 +887,13 @@ export async function deleteNote(id: string): Promise<void> {
   }
   assertNoteWritable(id, cached.path)
 
-  // A case twin's file is the other twin's too (#5297): only this row goes.
-  const onDisk = diskCaseOf(getVaultRoot(), cached.path)
-  if (onDisk !== null && findCanonicalNoteForFile(getVaultRoot(), onDisk)?.sharesFile) {
-    logger.warn('Deleting a case twin keeps the file it shares', { noteId: id, path: cached.path })
-  } else {
-    await deleteFile(toAbsolutePath(cached.path))
-  }
+  // A case twin's file is the other twin's too (#5495): only this row goes.
+  const twinKeepsFile = sharedWithCaseTwin(getVaultRoot(), cached.path)
+  if (!twinKeepsFile) await deleteFile(toAbsolutePath(cached.path))
 
   deleteNoteFromCache(db, id)
   deleteNotePosition(getDatabase(), cached.path)
+  if (twinKeepsFile) await handSharedFileToTwin(getVaultRoot(), cached.path, id)
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,
