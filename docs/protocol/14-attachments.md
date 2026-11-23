@@ -510,9 +510,10 @@ purges a note's body keeps the note's owed uploads, each with its row and its
 local bytes, and logs how many it kept
 (`crates/memry-core/src/sync/apply.rs:303-311`). A sync pass uploads nothing
 for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
-Desktop's outbox does not wait for a revive: it holds back only a local-only
-note's rows (`apps/desktop/src/main/sync/attachment-outbox.ts:262`) and uploads
-a deleted note's queued file while the file exists (`:292`).
+Desktop's outbox does not wait for a revive: it skips a local-only note's rows
+and a stray's, never a deleted note's
+(`apps/desktop/src/main/sync/attachment-outbox.ts:265-270`), and uploads a
+queued file while it exists (`:300`).
 No age ends the wait, because the server accepts a create over the note's
 marker at any age (§5.12.3) and those bytes are the only copy
 (`crates/memry-core/src/api/sync/note_uploads.rs:25-33`). After a same-id
