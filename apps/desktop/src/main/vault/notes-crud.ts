@@ -22,6 +22,7 @@ import {
   type NoteFrontmatter
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
+import { assertFolderRenameKeepsCaseTwins } from './case-twin-split'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
 import {
   compareHeaderTags,
@@ -947,6 +948,7 @@ export async function createFolder(folderPath: string): Promise<void> {
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
+  assertFolderRenameKeepsCaseTwins(oldPath)
   const notesDir = getVaultRoot()
   const oldAbsPath = path.join(notesDir, oldPath)
   const newAbsPath = path.join(notesDir, newPath)

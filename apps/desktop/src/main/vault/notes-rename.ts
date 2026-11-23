@@ -16,7 +16,8 @@ import path from 'path'
 import fs from 'fs/promises'
 import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { syncNoteToCache, syncFileToCache, sharesCaseTwinFile } from './note-sync'
+import { writeCaseTwinBody } from './case-twin-split'
 import {
   ensureDirectory,
   sanitizeFilename,
@@ -83,8 +84,12 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
 
   const now = new Date().toISOString()
 
-  // Pure filesystem rename — file bytes untouched; title/dates live in the DBs
-  await fs.rename(oldPath, newPath)
+  // Pure filesystem rename — file bytes untouched; title/dates live in the DBs.
+  // A case twin's file is the other twin's too: it stays, and this twin's own
+  // body goes to the new path (#5498).
+  if (sharesCaseTwinFile(getVaultRoot(), existing.path))
+    await writeCaseTwinBody(id, newRelativePath)
+  else await fs.rename(oldPath, newPath)
 
   if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, title: newTitle, modified: new Date(now) }
@@ -197,8 +202,9 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
 
   // Filesystem rename first; the body, if it needs re-pointing, is rewritten in
   // place below rather than during the move, so a failed write cannot strand the
-  // file between two folders.
-  await fs.rename(oldPath, newPath)
+  // file between two folders. A case twin leaves the file it shares (#5498).
+  if (sharesCaseTwinFile(notesDir, existing.path)) await writeCaseTwinBody(id, newRelativePath)
+  else await fs.rename(oldPath, newPath)
 
   if (!binary && changesJournalDate(cached?.date ?? null, newRelativePath)) {
     return { ...existing, path: newRelativePath, modified: new Date(now) }

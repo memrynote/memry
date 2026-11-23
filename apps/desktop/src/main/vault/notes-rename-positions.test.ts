@@ -50,7 +50,11 @@ vi.mock('./notes-io', () => ({
   toAbsolutePath: (relative: string) => `/vault/${relative}`,
   toRelativePath: (absolute: string) => absolute.replace('/vault/', '')
 }))
-vi.mock('./note-sync', () => ({ syncNoteToCache: vi.fn(), syncFileToCache: vi.fn() }))
+vi.mock('./note-sync', () => ({
+  syncNoteToCache: vi.fn(),
+  syncFileToCache: vi.fn(),
+  sharesCaseTwinFile: () => false
+}))
 vi.mock('./frontmatter', () => ({
   parseNote: vi.fn(() => ({ frontmatter: {}, content: '' })),
   generateContentHash: vi.fn(() => 'hash')

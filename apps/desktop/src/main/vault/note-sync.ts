@@ -188,6 +188,16 @@ export function isRemoteApplySpelling(claimed: CanonicalNoteRef, relativePath: s
 const log = createLogger('NoteSync')
 
 /**
+ * Whether the file the row at `relativePath` names is also another row's: a
+ * case twin's (#5263). Callers name the file by the row's spelling; the rows
+ * are matched to the disk's. A file that is not there is no one's.
+ */
+export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  return onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
+}
+
+/**
  * Whether the file at `relativePath` is shared by case twins: distinct rows
  * whose paths fold to it on a case-insensitive disk (#5263). The file holds
  * one twin's body, so its bytes never enter note `noteId`'s doc. Taking them
@@ -200,10 +210,7 @@ export function refusesCaseTwinFile(
   relativePath: string,
   noteId: string
 ): boolean {
-  // Callers name the file by the row's spelling; the rows are matched to
-  // the disk's. A file that is not there holds no body to take.
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  if (onDisk === null || !findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile) return false
+  if (!sharesCaseTwinFile(vaultPath, relativePath)) return false
   log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
   return true
 }

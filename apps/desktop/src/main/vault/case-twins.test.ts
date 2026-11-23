@@ -66,6 +66,7 @@ vi.mock('../sync/crdt-provider', () => {
     isNoteLocalOnly: () => false,
     isAwaitingMerge: () => false,
     open: async (id: string) => docs.get(id),
+    holdDoc: () => async () => {},
     closeIfInactive: async () => {},
     purge: vi.fn()
   }
@@ -113,6 +114,7 @@ import { appendBlocksToNote } from './append-blocks'
 import { rewriteInboundWikiLinks } from './rename-link-rewrite'
 import { clearAllPendingDeletes } from './rename-tracker'
 import { startWatcher, stopWatcher, getWatcher } from './watcher'
+import { moveNoteCommand, renameFolderCommand, renameNoteCommand } from '../notes/domain'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -340,5 +342,108 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     })
 
     expect({ file: shared(), crossed: crossed() }).toEqual({ file: UPPER, crossed: [] })
+  }, 30_000)
+
+  const read = (relativePath: string) =>
+    fs.existsSync(path.join(vault.path, relativePath))
+      ? fs.readFileSync(path.join(vault.path, relativePath), 'utf8')
+      : null
+
+  const pathOf = (id: string) =>
+    data.db.select().from(noteMetadata).where(eq(noteMetadata.id, id)).get()?.path
+
+  it('renaming a twin writes its own body to the new file and leaves the shared file', async () => {
+    await twins()
+
+    const note = await renameNoteCommand('lower', 'b')
+
+    expect({
+      path: note.path,
+      rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+      renamed: read('Supernotes/b.md')?.includes('lower'),
+      file: shared(),
+      crossed: crossed()
+    }).toEqual({
+      path: 'Supernotes/b.md',
+      rows: { lower: 'Supernotes/b.md', upper: 'SUPERNOTES/a.md' },
+      renamed: true,
+      file: UPPER,
+      crossed: []
+    })
+  }, 30_000)
+
+  it('moving a twin writes its own body to the new folder and leaves the shared file', async () => {
+    await twins()
+
+    await moveNoteCommand('upper', 'Other')
+
+    expect({
+      rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+      moved: read('Other/a.md')?.includes('upper'),
+      file: shared()
+    }).toEqual({
+      rows: { lower: 'Supernotes/a.md', upper: 'Other/a.md' },
+      moved: true,
+      file: UPPER
+    })
+  }, 30_000)
+
+  it('a twin whose own body is not on this device is not renamed', async () => {
+    await twins()
+    docs.set('lower', new Y.Doc())
+
+    await expect(renameNoteCommand('lower', 'b')).rejects.toThrow('errors:note.caseTwinNoBody')
+    expect({ row: pathOf('lower'), file: shared(), renamed: read('Supernotes/b.md') }).toEqual({
+      row: 'Supernotes/a.md',
+      file: UPPER,
+      renamed: null
+    })
+  }, 30_000)
+
+  it('renaming a note with no twin moves its file', async () => {
+    await twins()
+    seed('solo', 'Other/s.md', '# s\n\nsolo\n')
+
+    await renameNoteCommand('solo', 't')
+
+    expect({ old: read('Other/s.md'), renamed: read('Other/t.md'), row: pathOf('solo') }).toEqual({
+      old: null,
+      renamed: '# s\n\nsolo\n',
+      row: 'Other/t.md'
+    })
+  }, 30_000)
+
+  it('renaming the folder of two twins keeps both on the file they share', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'Supernotes/A.md', UPPER)
+    await openVault()
+
+    await renameFolderCommand('Supernotes', 'Renamed')
+
+    expect({
+      rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+      file: read('Renamed/a.md')
+    }).toEqual({
+      rows: { lower: 'Renamed/a.md', upper: 'Renamed/A.md' },
+      file: UPPER
+    })
+  }, 30_000)
+
+  it('renaming a folder that would strand a twin spelled in another case is refused', async () => {
+    await twins()
+
+    await expect(renameFolderCommand('Supernotes', 'Renamed')).rejects.toThrow(
+      'errors:folder.renameCaseTwins'
+    )
+    expect({
+      rows: { lower: pathOf('lower'), upper: pathOf('upper') },
+      file: shared(),
+      renamed: fs.existsSync(path.join(vault.path, 'Renamed'))
+    }).toEqual({
+      rows: { lower: 'Supernotes/a.md', upper: 'SUPERNOTES/a.md' },
+      file: UPPER,
+      renamed: false
+    })
   }, 30_000)
 })

@@ -29,6 +29,7 @@
     "moveFailed": "Failed to move note",
     "applyTemplateFailed": "Failed to apply template",
     "appendBlocksFailed": "Failed to move the block to that note",
+    "caseTwinNoBody": "This note shares its file with a note whose name differs only in case, and this device does not hold this note's own content yet, so it was not renamed or moved. Try again once it has synced.",
     "appendIntoCaseTwin": "That note shares its file with a note whose name differs only in case. Rename one of them, then move the block again.",
     "exportPdfFailed": "Failed to export PDF",
     "exportHtmlFailed": "Failed to export HTML",
@@ -211,6 +212,7 @@
   "folder": {
     "createFailed": "Failed to create folder",
     "renameFailed": "Failed to rename folder",
+    "renameCaseTwins": "This folder holds notes that share a file with a note whose folder name differs only in case. Rename or move those notes first, then rename the folder.",
     "deleteFailed": "Failed to delete folder",
     "setConfigFailed": "Failed to set folder config"
   },
