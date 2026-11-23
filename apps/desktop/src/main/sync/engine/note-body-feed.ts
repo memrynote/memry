@@ -10,7 +10,7 @@ import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { fetchCrdtSnapshot, getFromServer, NetworkError, SyncServerError } from '../http-client'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import type { CrdtProvider } from '../crdt-provider'
-import { isKnownNote, landNoteBody } from '../note-body-apply'
+import { isBinaryNote, isKnownNote, landNoteBody } from '../note-body-apply'
 import { serverSecondsToMs, type CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { SchemaInvalidLedger } from './schema-invalid-ledger'
 import {
@@ -169,9 +169,12 @@ export class NoteBodyFeed {
     const pageRecords = new Set(
       changes.items.filter((i) => i.type === 'note' || i.type === 'journal').map((i) => i.id)
     )
+    const db = this.deps.ctx.deps.db
+    // A binary note's body is not its file (#5607): it lands nowhere and is owed nothing.
     const wanted = (noteId: string): boolean => {
       if (pageRecords.has(noteId) || provider.isNoteLocalOnly(noteId)) return false
-      if (isKnownNote(this.deps.ctx.deps.db, noteId)) return true
+      if (isBinaryNote(db, noteId)) return false
+      if (isKnownNote(db, noteId)) return true
       this.dropRowlessBody(noteId)
       return false
     }
@@ -382,13 +385,15 @@ export class NoteBodyFeed {
 
   /**
    * Heal a refused body by merging the note's whole server body; true resolves
-   * the ledger entry. A note with no row here, or a local-only one, is resolved
-   * without a pull: merging it would arm a write-back that re-creates a deleted
-   * note, and a local-only note takes no server state (review A-H1).
+   * the ledger entry. A note with no row here, a local-only one or a binary one
+   * is resolved without a pull: merging it would arm a write-back that
+   * re-creates a deleted note, a local-only note takes no server state (review
+   * A-H1), and a binary note has no body (#5607).
    */
   async heal(noteId: string, token: string, vaultKey: Uint8Array): Promise<boolean> {
     const provider = this.deps.ctx.deps.crdtProvider
-    if (!provider || !isKnownNote(this.deps.ctx.deps.db, noteId)) return true
+    const db = this.deps.ctx.deps.db
+    if (!provider || !isKnownNote(db, noteId) || isBinaryNote(db, noteId)) return true
     if (provider.isNoteLocalOnly(noteId)) return true
     const crdtSync = this.deps.crdtSync()
     const merged = await crdtSync.applyCrdtIncrementals(noteId, token, vaultKey)

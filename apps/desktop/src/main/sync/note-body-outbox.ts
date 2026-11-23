@@ -73,6 +73,11 @@ export interface NoteBodyOutboxDeps {
   /** Requests a whole-doc snapshot for a note whose refused rows were dropped. */
   requestSnapshot?: (noteId: string) => void
   /**
+   * True for a binary note, whose file is its blob: its rows are dropped
+   * unsent (#5607). An older build queued them for the doc it made of one.
+   */
+  isBinaryNote?: (noteId: string) => boolean
+  /**
    * The user's pause (#3382). Rows wait in sync_queue while it is on, and
    * `flushAll` sends them once it ends.
    */
@@ -298,6 +303,7 @@ export class NoteBodyOutbox {
   /** True when the server stored a push; false when the rows were dropped unsent. */
   /** The updates the server stored, or null when there was nothing to push. */
   private async sendFlush(noteId: string, flush: NoteBodyFlush): Promise<Uint8Array[] | null> {
+    if (this.deps.isBinaryNote?.(noteId)) return null
     if (flush.updates) {
       this.deps.recordPush?.(noteId, 'sent')
       await this.deps.push(noteId, flush.updates)

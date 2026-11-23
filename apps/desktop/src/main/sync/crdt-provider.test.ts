@@ -214,6 +214,7 @@ vi.mock('../database', () => ({
   getIndexDatabase: () => ({ kind: 'index-db' })
 }))
 vi.mock('@memry/storage-data', () => ({
+  getNoteMetadataById: () => undefined,
   updateNoteMetadata: (...args: unknown[]) => mocks.updateNoteMetadata(...args)
 }))
 vi.mock('./local-mutations', () => ({
@@ -426,9 +427,9 @@ describe('CrdtProvider', () => {
   })
 
   it('initializes persistence, seeds markdown, exposes metadata, and closes cleanly', async () => {
-    const doc = await provider.initForNote('note-1', { title: 'Seeded', date: '2026-01-01' }, [
+    const doc = (await provider.initForNote('note-1', { title: 'Seeded', date: '2026-01-01' }, [
       'tag-a'
-    ])
+    ]))!
 
     expect(provider.isInitialized()).toBe(true)
     expect(doc.getMap('meta').get('title')).toBe('Seeded')
