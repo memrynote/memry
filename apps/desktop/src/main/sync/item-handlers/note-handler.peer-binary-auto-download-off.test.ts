@@ -14,6 +14,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncState } from '@memry/db-schema/schema/sync-state'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -154,7 +155,13 @@ import {
   registerAttachmentHandlers,
   unregisterAttachmentHandlers
 } from '../../ipc/sync-attachment-handlers'
-import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
+import {
+  markDownloadRequested,
+  resetAttachmentDownloadSession,
+  shouldAttemptDownload
+} from '@memry/sync-client/attachment-download-state'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
+import { deleteNote } from '../../vault/notes-crud'
 
 describe("a peer's replacement of a binary note with attachment auto-download off", () => {
   let vault: ReturnType<typeof createTestVault>
@@ -226,8 +233,7 @@ describe("a peer's replacement of a binary note with attachment auto-download of
   }
 
   /** The peer's record for image note `id` naming `attachmentId`, as a pull applies it. */
-  function pull(id: string, attachmentId: string, title = 'p') {
-    const clock = { dev1: 1, peer: 1 }
+  function pull(id: string, attachmentId: string, title = 'p', clock = { dev1: 1, peer: 1 }) {
     const payload: NoteSyncPayload = {
       title,
       folderPath: 'Pictures',
@@ -263,6 +269,24 @@ describe("a peer's replacement of a binary note with attachment auto-download of
       { timeout: 2_000 }
     )
   }
+
+  /** The peer's record for note `id` applies while signed out: its file is held for bytes not yet asked for. */
+  async function holdForPeerBytes(id: string, relativePath: string): Promise<void> {
+    vi.mocked(getValidAccessToken).mockResolvedValueOnce(null)
+    expect(pull(id, 'att-new')).toBe('applied')
+    await vi.waitFor(() => expect(getValidAccessToken).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(read(relativePath)).toBe('old-bytes')
+  }
+
+  /** The `sync_state` rows kept for note `id`. */
+  const stateRowsOf = (id: string) =>
+    data.db
+      .select({ key: syncState.key })
+      .from(syncState)
+      .all()
+      .map((row) => row.key)
+      .filter((key) => key.endsWith(`:${id}`))
 
   /** An edit here, uploaded: the note records it only when its file is its own. */
   async function editAndUpload(id: string, relativePath: string, bytes: string): Promise<void> {
@@ -305,5 +329,85 @@ describe("a peer's replacement of a binary note with attachment auto-download of
 
     expect(server.downloads).toEqual([])
     expect(fs.existsSync(abs('Pictures/fresh.png'))).toBe(false)
+  })
+
+  it("leaves a held note's embedded attachments to download on demand", async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    server.blobs.set('att-new', 'peer-bytes')
+    server.blobs.set('att-embed', 'embed-bytes')
+    await holdForPeerBytes('img', 'Pictures/p.png')
+
+    markDownloadRequested('img', 'att-embed')
+    attachmentEvents.emitDownloadNeeded({
+      noteId: 'img',
+      attachmentId: 'att-embed',
+      diskPath: abs('attachments/img'),
+      intoDir: true
+    })
+    // Released, not downloaded: opening the note still asks for it.
+    await vi.waitFor(() =>
+      expect(shouldAttemptDownload(asClientDb(data.db), 'img', 'att-embed')).toBe(true)
+    )
+    await redriveAttachmentDownloads()
+
+    await landed('img', 'Pictures/p.png', 'peer-bytes')
+    expect(server.downloads).toEqual(['att-new'])
+  })
+
+  describe('deleting a held note', () => {
+    const ctx = () => ({ db: asClientDb(data.db), emit: vi.fn() })
+
+    it("drops its marks on a peer's delete, so the id re-created later is not held", async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes')
+      server.blobs.set('att-new', 'peer-bytes')
+      server.blobs.set('att-again', 'again-bytes')
+      await holdForPeerBytes('img', 'Pictures/p.png')
+
+      expect(noteHandler.applyDelete(ctx(), 'img', { dev1: 1, peer: 2 })).toBe('applied')
+      expect(stateRowsOf('img')).toEqual([])
+
+      expect(pull('img', 'att-again', 'p', { dev1: 1, peer: 3 })).toBe('applied')
+      await redriveAttachmentDownloads()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      // A new note's file downloads on demand; a held one would download now.
+      expect(server.downloads).toEqual([])
+    })
+
+    it('drops its marks on a delete here', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes')
+      server.blobs.set('att-new', 'peer-bytes')
+      await holdForPeerBytes('img', 'Pictures/p.png')
+
+      await deleteNote('img', async () => {})
+
+      expect(fs.existsSync(abs('Pictures/p.png'))).toBe(false)
+      expect(stateRowsOf('img')).toEqual([])
+    })
+
+    it("keeps the hold when the peer's delete loses to this device's newer clock", async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes')
+      server.blobs.set('att-new', 'peer-bytes')
+      await holdForPeerBytes('img', 'Pictures/p.png')
+
+      expect(noteHandler.applyDelete(ctx(), 'img', { dev1: 1 })).toBe('skipped')
+      await redriveAttachmentDownloads()
+
+      await landed('img', 'Pictures/p.png', 'peer-bytes')
+    })
+
+    it('keeps the hold when a delete here fails before the note goes', async () => {
+      seed('img', 'Pictures/p.png', 'old-bytes')
+      server.blobs.set('att-new', 'peer-bytes')
+      await holdForPeerBytes('img', 'Pictures/p.png')
+
+      await expect(
+        deleteNote('img', async () => {
+          throw new Error('queue unavailable')
+        })
+      ).rejects.toThrow('queue unavailable')
+      await redriveAttachmentDownloads()
+
+      await landed('img', 'Pictures/p.png', 'peer-bytes')
+    })
   })
 })

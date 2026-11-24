@@ -49,6 +49,7 @@ import { flushProjectionEvents, publishProjectionEvent } from '../projections'
 import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
 import { forgetSyncedBinaryHash } from '../sync/binary-synced-hash'
+import { clearCaseTwinForeignBytes } from './case-twin-bytes'
 
 function getCanonicalDb() {
   try {
@@ -251,11 +252,18 @@ export function findCanonicalNotePath(id: string): string | null {
   return getNoteMetadataById(dataDb, id)?.path ?? null
 }
 
+/**
+ * Drops note `noteId`'s row and the `sync_state` marks kept for its binary
+ * file. Every caller drops the row once its file is gone or another row's,
+ * and the pull re-creates no id this device deleted while its tombstone is
+ * pending, so a re-created id starts with no mark.
+ */
 function removeCanonicalMetadata(noteId: string): void {
   const dataDb = getCanonicalDb()
   if (!dataDb) return
   deleteCanonicalNote(dataDb, noteId)
   forgetSyncedBinaryHash(dataDb, noteId)
+  clearCaseTwinForeignBytes(dataDb, noteId)
 }
 
 /**
