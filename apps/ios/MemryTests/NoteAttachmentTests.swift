@@ -1,7 +1,9 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -15,6 +17,8 @@ import Testing
 // | a remote url is ordinary content, not a failed download | §Q4                     |
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
+// | a cancelled fetch asks for no further picture           | REVIEW-5587: no repeat download per pass |
+// | the page asks for pictures before the body pull answers | REVIEW-5587: no network wait on open |
 
 // MARK: - fakes
 
@@ -85,6 +89,58 @@ private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable 
         calls.withLock { $0.append(attachmentId) }
         onFetch?()
         return summary
+    }
+}
+
+/// Holds each attachment fetch and body pull until `release()`, as a core
+/// call runs to its end whether or not its task was cancelled.
+private final class GatedFiller: VaultFilling, @unchecked Sendable {
+    let started: AsyncStream<Void>
+    private let start: AsyncStream<Void>.Continuation
+    private let calls = Mutex<[String]>([])
+    private let gate = Mutex<(open: Bool, held: [CheckedContinuation<Void, Never>])>((false, []))
+
+    init() { (started, start) = AsyncStream.makeStream() }
+
+    var fetched: [String] { calls.withLock { $0 } }
+
+    /// Lets every held call through, and every later one.
+    func release() {
+        let held = gate.withLock { state in
+            state.open = true
+            defer { state.held = [] }
+            return state.held
+        }
+        held.forEach { $0.resume() }
+    }
+
+    private func pass() async {
+        await withCheckedContinuation { continuation in
+            let open = gate.withLock { state in
+                if !state.open { state.held.append(continuation) }
+                return state.open
+            }
+            if open { continuation.resume() }
+        }
+    }
+
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary { .none }
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        await pass()
+        return BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
+    }
+
+    func fetchAttachment(
+        attachmentId: String,
+        reachable: Reachable
+    ) async throws -> AttachmentFetchSummary {
+        calls.withLock { $0.append(attachmentId) }
+        start.yield()
+        await pass()
+        return AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: attachmentId)
     }
 }
 
@@ -186,6 +242,58 @@ struct NoteAttachmentTests {
             return
         }
         #expect(attachment.localPath == "att-1")
+    }
+
+    /// REVIEW-5587: each sync pass restarts the page's task. The cancelled
+    /// loop stops after the fetch in flight; the next task asks again.
+    @Test("a cancelled fetch of waiting pictures asks for no further one", .timeLimit(.minutes(1)))
+    func aCancelledFetchStops() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil)),
+            ]
+        )
+        let filler = GatedFiller()
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        let run = Task { await model.fetchWaitingAttachments() }
+        for await _ in filler.started { break }
+        run.cancel()
+        filler.release()
+        await run.value
+        #expect(filler.fetched.count == 1)
+    }
+
+    /// REVIEW-5587: opening a note asks for its pictures right after the
+    /// local read, not after the body pull's round trip.
+    @Test("the page asks for its pictures while the body pull is out", .timeLimit(.minutes(1)))
+    func picturesDoNotWaitForThePull() async throws {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = GatedFiller()
+        defer { filler.release() }
+        // Its own id: parallel suites announce edits to shared ids.
+        let model = NoteReadViewModel(
+            route: NoteRoute(id: UUID().uuidString), reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+        window.rootViewController = UIHostingController(
+            rootView: Color.clear.modifier(NotePageLoad(model: model, source: UUID()))
+        )
+
+        for await _ in filler.started { break }
+        #expect(filler.fetched == ["att-1"])
     }
 
     /// A picture waiting for an unmetered path is the feature working. The

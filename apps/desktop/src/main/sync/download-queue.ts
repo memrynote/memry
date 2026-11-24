@@ -275,6 +275,11 @@ export class DownloadQueue {
     this.pacer.setMultiplier(multiplier)
   }
 
+  /** One pacing token for a manifest read outside the queue: a binary note's check (#5608). */
+  pace(): Promise<void> {
+    return this.pacer.acquire()
+  }
+
   dispose(): void {
     this.disposed = true
     if (this.network && this.boundHandler) {
