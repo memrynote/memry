@@ -365,6 +365,7 @@ fn a_vault_with_vectors_keeps_index_db_at_its_latest_version() {
     assert!(with(&data, user_version) >= 17);
 }
 
+#[cfg(unix)]
 fn one_note(path: &Path) {
     let db = opened(path);
     with(&db, |conn| {
