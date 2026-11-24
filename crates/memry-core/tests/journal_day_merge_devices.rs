@@ -46,7 +46,8 @@ use memry_core::sync::store;
 use rusqlite::Connection;
 use serde_json::{Value as Json, json};
 use tokio::sync::Notify;
-use yrs::{ReadTxn as _, StateVector, Text as _, Transact as _};
+use yrs::updates::decoder::Decode as _;
+use yrs::{GetString as _, ReadTxn as _, StateVector, Text as _, Transact as _, Update};
 
 const BASE: &str = "https://sync.example.com";
 const MASTER_KEY: [u8; 32] = [7u8; 32];
@@ -538,6 +539,40 @@ impl Dev {
         self.db(move |c| metadata::set_tags(c, DATE, &want, &clock, now()).map(|_| ()));
     }
 
+    /// `j<D>`'s text in root `t`: every update of it, server then local.
+    fn day_text(&self) -> String {
+        let blobs: Vec<Vec<u8>> = self.db(|c| {
+            Ok(update_log::load_plan(c, DAY)
+                .map_err(failed)?
+                .blobs()
+                .into_iter()
+                .map(<[u8]>::to_vec)
+                .collect())
+        });
+        let doc = yrs::Doc::new();
+        let body = doc.get_or_insert_text("t");
+        for blob in blobs {
+            doc.transact_mut()
+                .apply_update(Update::decode_v1(&blob).unwrap())
+                .unwrap();
+        }
+        body.get_string(&doc.transact())
+    }
+
+    /// Text typed into `F` and not pushed yet: its update and the queued
+    /// row that pushes it, as `seed_foreign` writes the held body.
+    fn type_into_foreign(&self, text: &str) {
+        let update = text_update(8, text);
+        self.db(move |conn| {
+            let body = update.clone();
+            outbox::commit(conn, &Change::crdt_update("journal", F, update), 2, |tx| {
+                update_log::append_local_update_in(tx, F, &body, 2)
+                    .map(|_| ())
+                    .map_err(failed)
+            })
+        });
+    }
+
     /// Removes `tag` from the day (a user edit).
     fn remove(&self, tag: &str) {
         let rest: Vec<String> = self.day().into_iter().filter(|t| t != tag).collect();
@@ -545,12 +580,11 @@ impl Dev {
         self.set_tags(&rest);
     }
 
-    /// Touches another record field of `j<D>` so it takes a newer cursor.
-    fn bump_alias(&self) {
-        let clock = self.clock.clone();
-        self.db(move |c| {
-            metadata::set_aliases(c, DATE, &["later".to_owned()], &clock, now()).map(|_| ())
-        });
+    /// Sets `j<D>`'s aliases to `alias`, another record field, so it takes a
+    /// newer cursor.
+    fn bump_alias(&self, alias: &str) {
+        let (clock, aliases) = (self.clock.clone(), vec![alias.to_owned()]);
+        self.db(move |c| metadata::set_aliases(c, DATE, &aliases, &clock, now()).map(|_| ()));
     }
 
     /// A pre-#2939 install's projection of the foreign id `F` for the day,
@@ -633,7 +667,7 @@ impl World {
     /// again and pushes it past the tombstone. Asserts the order A will pull.
     async fn order(&self, order: Order) {
         if order == Order::TombstoneFirst {
-            self.b.bump_alias();
+            self.b.bump_alias("later");
             self.b.pass().await;
         }
         let day_first = self.server.cursor_of(DAY) < self.server.cursor_of(F);
@@ -699,17 +733,22 @@ async fn pushed_then_overwritten(order: Order) {
     w.assert_day(&["a", "b", "c"]);
 }
 
-/// (B4) B merges `F`, then the user removes `b` from `j<D>` on B before it
-/// pushes. A held `b` as pulled, so B saw it: it stays removed.
+/// (B4) B merges `F`, then the user removes `b` from `j<D>` on B. A held `b`
+/// as pulled, so B saw it: it stays removed. Day first, A pulls the merge
+/// before the removal: an edit B makes after its merge queues `j<D>` behind
+/// `F`'s delete, so B can never push a `j<D>` without `b` ahead of it.
 async fn removed_after_the_merge(order: Order) {
     let w = World::new(&["a", "b"]).await;
-    if order == Order::DayFirst {
-        w.server.trap(&w.b.registered, "POST /sync/push", None);
-    }
     w.b.pass().await;
+    if order == Order::DayFirst {
+        w.order(order).await;
+        w.a.pass().await;
+    }
     w.b.remove("b");
     w.b.pass().await;
-    w.order(order).await;
+    if order == Order::TombstoneFirst {
+        w.order(order).await;
+    }
     w.settle().await;
     w.assert_day(&["a"]);
 }
@@ -734,6 +773,35 @@ async fn added_offline(order: Order, offline: &[&[&str]], in_the_gap: bool) {
     }
     w.settle().await;
     w.assert_day(offline.last().unwrap());
+}
+
+/// (c5) A types into `F` offline, then B merges `F` without that text. Day
+/// first, `j<D>` displaces `F` before its tombstone arrives, and the
+/// tombstone must not purge the body the drain folds into the day. In the
+/// gap, A pushes the text to `F` after B merged it, where no device reads it.
+async fn typed_offline(order: Order, in_the_gap: bool) {
+    let w = World::new(&["a", "b"]).await;
+    w.a.type_into_foreign("offline ");
+    if in_the_gap {
+        pass_with_gap(&w, &w.a, "POST /sync/crdt/updates", async {
+            w.b.pass().await;
+            w.order(order).await;
+        })
+        .await;
+    } else {
+        w.b.pass().await;
+        w.order(order).await;
+    }
+    w.settle().await;
+    // The note body feed tells B that `j<D>`'s body changed; this server
+    // sends none, so a record edit makes B pull it.
+    w.a.bump_alias("read");
+    w.settle().await;
+    for (device, text) in [("A", w.a.day_text()), ("B", w.b.day_text())] {
+        assert!(text.contains("offline "), "{device}'s j<D>: {text:?}");
+        assert!(text.contains("held"), "{device}'s j<D>: {text:?}");
+    }
+    w.assert_day(&["a", "b"]);
 }
 
 #[tokio::test]
@@ -787,4 +855,24 @@ async fn two_offline_edits_are_kept_day_first() {
 #[tokio::test]
 async fn two_offline_edits_are_kept_tombstone_first() {
     added_offline(Order::TombstoneFirst, &[C, D], false).await;
+}
+
+#[tokio::test]
+async fn offline_text_is_kept_day_first() {
+    typed_offline(Order::DayFirst, false).await;
+}
+
+#[tokio::test]
+async fn offline_text_is_kept_tombstone_first() {
+    typed_offline(Order::TombstoneFirst, false).await;
+}
+
+#[tokio::test]
+async fn text_pushed_while_the_day_merges_is_kept_day_first() {
+    typed_offline(Order::DayFirst, true).await;
+}
+
+#[tokio::test]
+async fn text_pushed_while_the_day_merges_is_kept_tombstone_first() {
+    typed_offline(Order::TombstoneFirst, true).await;
 }

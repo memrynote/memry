@@ -1131,6 +1131,43 @@ async fn a_deleted_blank_holder_still_brings_its_offline_tag_to_the_day() {
     assert_eq!(tags, vec!["a", "b", "c"]);
 }
 
+/// Desktop B merged `F`, then the user removed `b` from the day before B
+/// pushed. Desktop's queue coalesces the edit into the queued `j<D>`, ahead
+/// of `F`'s delete, so `j<D>` without `b` arrives first and displaces the
+/// holder, and every holder tag counts until a tombstone. The tombstone's
+/// weighing replaces that list: `b` stays removed and the body still folds
+/// (#5659).
+#[tokio::test]
+async fn a_tag_removed_before_the_day_arrived_ahead_of_the_tombstone_stays_removed() {
+    let db = scratch_db("holder-day-first-removed");
+    db.call_blocking(|conn| {
+        hold_foreign_tagged(conn, &["a", "b"])?;
+        let day = record(
+            CANONICAL,
+            &tagged_payload("", &["a"], json!({"device-b": 4})),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+            ApplyOutcome::Applied
+        );
+        Ok(())
+    })
+    .unwrap();
+    pull_tombstones_at(&db, &[FOREIGN], Some(json!({"device-b": 3}))).await;
+
+    let report = journal_day_merge::drain(&db, &bodies_for(&db, &[]), "device-a")
+        .await
+        .unwrap();
+
+    assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+    db.call_blocking(|conn| {
+        assert_eq!(day_tags(conn), vec!["a"]);
+        assert_eq!(text_of(conn, CANONICAL), "held");
+        Ok(())
+    })
+    .unwrap();
+}
+
 /// `F` held as pulled at `{device-b: 2}`, with a body, as a pre-fix install
 /// projected it.
 fn hold_foreign_tagged(conn: &mut Connection, held_tags: &[&str]) -> Result<(), StorageError> {
