@@ -113,6 +113,9 @@ import { holdsBinaryChange } from './case-twin-hold'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
+import { SupersededDownloadError } from '../sync/attachment-errors'
+import { readSyncedBinaryHash } from '../sync/binary-synced-hash'
+import { listCaseTwinForeignBytes } from './case-twin-bytes'
 import { listPendingUploads } from '../sync/attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,
@@ -1007,6 +1010,103 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
 
     expect(conflictCopies('Supernotes')).toEqual(['p (conflict copy).png'])
+  })
+
+  // VERIFY-5602R3 #7: the moved twin's copy holds the offline edit too, and is
+  // its only file once the user changes the shared file again.
+  for (const [how, threeTwins] of [
+    ['the last twin', false],
+    ['one of three twins', true]
+  ] as const) {
+    it(`an offline edit copied to a twin moved off ${how} is kept when the moved twin's bytes land`, () => {
+      twins('Supernotes')
+      if (threeTwins) seed('twin-c', 'SuperNotes/p.png', 'b-bytes')
+      land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-bytes')
+      fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+      expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+      fs.writeFileSync(abs('Supernotes/p.png'), 'edited again')
+
+      land('twin-b', 'att-twin-b', abs('Other/p.png'), 'b-bytes')
+
+      expect(read('Other/p.png')).toBe('b-bytes')
+      expect(read('Other/p (conflict copy).png')).toBe('edited offline')
+      expect(read('Supernotes/p.png')).toBe('edited again')
+    })
+  }
+
+  // VERIFY-5602R3 #3: `existsSync` follows the link and reads the path as free.
+  it("a dangling symlink at the conflict copy's path does not fail the landing", () => {
+    twins('Supernotes')
+    fs.writeFileSync(abs('Supernotes/p.png'), 'edited offline')
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+    fs.symlinkSync(abs('gone.png'), abs(COPY))
+
+    land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a-bytes')
+
+    expect(read('Supernotes/p.png')).toBe('a-bytes')
+    expect(read('Supernotes/p (conflict copy) 1.png')).toBe('edited offline')
+    expect(fs.readlinkSync(abs(COPY))).toBe(abs('gone.png'))
+  })
+
+  // REVIEW-5680 #1: the moving twin's copy followed a dangling link out of the vault.
+  it("a peer's move of a binary twin onto a dangling link writes nothing outside the vault", () => {
+    twins('Supernotes')
+    const outside = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'memry-outside-')), 'p.png')
+    try {
+      fs.mkdirSync(abs('Other'))
+      fs.symlinkSync(outside, abs('Other/p.png'))
+
+      expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+
+      expect(rows()).toEqual([
+        { id: 'twin-a', path: 'Supernotes/p.png' },
+        { id: 'twin-b', path: 'Other/p 1.png' }
+      ])
+      expect(read('Other/p 1.png')).toBe('b-bytes')
+      expect(fs.existsSync(outside)).toBe(false)
+    } finally {
+      fs.rmSync(path.dirname(outside), { recursive: true, force: true })
+    }
+  })
+
+  // REVIEW-5662 #3: a twin's own download is in flight when a peer deletes it.
+  it("a deleted twin's download lands nothing and records no hash", () => {
+    twins('Supernotes')
+    expect(applyPeerDelete('twin-b')).toBe('applied')
+
+    expect(() => land('twin-b', 'att-twin-b', abs('SUPERNOTES/p.png'), 'b-new')).toThrow(
+      SupersededDownloadError
+    )
+
+    expect(read('Supernotes/p.png')).toBe('b-bytes')
+    expect(conflictCopies('Supernotes')).toEqual([])
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'twin-b')).toBeUndefined()
+  })
+
+  it('a download whose note is deleted while its bytes land records no hash', () => {
+    seed('solo', 'Other/s.png', 's-bytes')
+    const at = landCaseTwinDownload(abs('Other/s.png'), 'att-solo', sha256('s-new'), 'solo')
+    expect(applyPeerDelete('solo')).toBe('applied')
+
+    fs.writeFileSync(at, 's-new')
+    recordDownloadedFileSize('solo', 'att-solo', 's-new'.length, sha256('s-new'))
+
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'solo')).toBeUndefined()
+  })
+
+  // REVIEW-5662 #4: A is marked as the survivor of B's move, and a pull since
+  // named its file for twin A2. A's delete marks A2 and clears A's mark alone.
+  it("a marked twin's delete clears its own mark and keeps every other", () => {
+    twins('Supernotes')
+    expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
+    seed('twin-a2', 'SUPERNOTES/p.png', 'b-bytes')
+    const marked = () => listCaseTwinForeignBytes(asClientDb(data.db)).toSorted()
+    expect(marked()).toEqual(['twin-a', 'twin-b'])
+
+    expect(applyPeerDelete('twin-a')).toBe('applied')
+
+    expect(rows().map((row) => row.id)).toEqual(['twin-a2', 'twin-b'])
+    expect(marked()).toEqual(['twin-a2', 'twin-b'])
   })
 
   it('the attachment backfill uploads no twin while its file is shared', async () => {

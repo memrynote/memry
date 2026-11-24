@@ -176,7 +176,8 @@ test('notes rename and move refuse a case twin and change nothing', { skip }, as
 
 test('folders rename refuses a folder holding case twins and moves nothing', { skip }, async () => {
   const { vaultPath, twin } = await makeTwinVault()
-  for (const folder of ['SuperNotes', 'supernotes']) {
+  // The check and the rename see one folder, however the path spells it (#5642).
+  for (const folder of ['SuperNotes', 'supernotes', './SuperNotes', 'SuperNotes//.']) {
     const result = await cli(vaultPath, 'folders', 'rename', folder, 'Archive')
     assert.equal(result.code, 1, folder)
     assert.equal(result.stdout, '', folder)
