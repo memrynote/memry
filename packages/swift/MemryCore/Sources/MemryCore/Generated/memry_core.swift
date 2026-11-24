@@ -5664,6 +5664,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func comments(id: String) throws  -> [ReviewComment]
     
     /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+    func file(id: String) throws  -> NoteFile?
+    
+    /**
      * Every live folder, parent before child.
      */
     func folders() throws  -> [FolderSummary]
@@ -5980,6 +5987,21 @@ open func comments(id: String)throws  -> [ReviewComment]  {
     return try  FfiConverterSequenceTypeReviewComment.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_comments(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A binary note's own file (#5668): the PDF, image, audio or video that
+     * is the note's whole content. `None` for a note that names none, which
+     * opens as a body. Fetch the bytes with `VaultSync::fetch_attachment`.
+     */
+open func file(id: String)throws  -> NoteFile?  {
+    return try  FfiConverterOptionTypeNoteFile.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_file(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
     )
@@ -22098,6 +22120,85 @@ public func FfiConverterTypeNoteDetail_lower(_ value: NoteDetail) -> RustBuffer 
 
 
 /**
+ * What a shell needs to open a binary note.
+ */
+public struct NoteFile: Equatable, Hashable {
+    /**
+     * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+     */
+    public var fileType: String
+    public var mimeType: String?
+    public var attachmentId: String
+    /**
+     * The cache row, `None` until a manifest or a download writes one. Its
+     * `local_path` is set once the bytes are on disk.
+     */
+    public var attachment: CachedAttachment?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The payload's `fileType`, as stored: `pdf`, `image`, `audio` or `video`.
+         */fileType: String, mimeType: String?, attachmentId: String, 
+        /**
+         * The cache row, `None` until a manifest or a download writes one. Its
+         * `local_path` is set once the bytes are on disk.
+         */attachment: CachedAttachment?) {
+        self.fileType = fileType
+        self.mimeType = mimeType
+        self.attachmentId = attachmentId
+        self.attachment = attachment
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NoteFile: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNoteFile: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NoteFile {
+        return
+            try NoteFile(
+                fileType: FfiConverterString.read(from: &buf), 
+                mimeType: FfiConverterOptionString.read(from: &buf), 
+                attachmentId: FfiConverterString.read(from: &buf), 
+                attachment: FfiConverterOptionTypeCachedAttachment.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NoteFile, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.fileType, into: &buf)
+        FfiConverterOptionString.write(value.mimeType, into: &buf)
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterOptionTypeCachedAttachment.write(value.attachment, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lift(_ buf: RustBuffer) throws -> NoteFile {
+    return try FfiConverterTypeNoteFile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNoteFile_lower(_ value: NoteFile) -> RustBuffer {
+    return FfiConverterTypeNoteFile.lower(value)
+}
+
+
+/**
  * The note a `[[wiki link]]` opens, and the heading to scroll to.
  */
 public struct NoteLinkTarget: Equatable, Hashable {
@@ -33992,12 +34093,19 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case AttachmentUnverified(deviceId: String
     )
     /**
-     * The bytes arrived and were not the bytes the manifest describes.
+     * The attachment's bytes or its manifest were not what chapter 14 requires.
      *
-     * A failed chunk hash, a failed whole-file checksum, or a chunk that
-     * would not decrypt. Separate from `AttachmentUnverified` because the
-     * manifest was trustworthy and the transfer was not, so a retry is
-     * reasonable here and is not there.
+     * On a download: a chunk that failed its hash or size check, would not
+     * decrypt, or never arrived; an assembled file that failed its whole-file
+     * checksum; a manifest that would not decode, decrypt or parse; or a
+     * manifest whose `id` names another attachment than the one asked for
+     * (§14.7). Separate from `AttachmentUnverified` because no signature
+     * failed: the server sent the wrong bytes or the wrong manifest, so a
+     * retry is reasonable here and is not there.
+     *
+     * On an upload: a file that needs more chunks than a session allows
+     * (§14.2), or a manifest that would not seal. The upload counts these as
+     * refused and does not retry them.
      */
     case AttachmentCorrupt(what: String
     )
@@ -34795,6 +34903,30 @@ fileprivate struct FfiConverterOptionTypeSyncProgressListener: FfiConverterRustB
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCachedAttachment: FfiConverterRustBuffer {
+    typealias SwiftType = CachedAttachment?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCachedAttachment.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCachedAttachment.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeCalendarCaldavObject: FfiConverterRustBuffer {
     typealias SwiftType = CalendarCaldavObject?
 
@@ -35027,6 +35159,30 @@ fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeNoteDetail.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeNoteFile: FfiConverterRustBuffer {
+    typealias SwiftType = NoteFile?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNoteFile.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNoteFile.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -38772,6 +38928,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_comments() != 52547) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_notes_file() != 56267) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {

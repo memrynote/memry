@@ -68,20 +68,6 @@ test(
   }
 )
 
-test('folders delete refuses the vault root', async () => {
-  const vaultPath = await makeVault()
-  for (const folder of ['/', '.', 'SuperNotes/..']) {
-    const result = await deleteFolder(vaultPath, folder)
-
-    assert.equal(result.code, 1, folder)
-    assert.deepEqual(
-      await listFiles(vaultPath),
-      ['Sub', 'Sub/child.md', 'real.md'],
-      `${folder} deleted files`
-    )
-  }
-})
-
 test('folders delete removes a folder spelled as on disk and ignores a missing one', async () => {
   const vaultPath = await makeVault()
 

@@ -82,10 +82,12 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { diskCaseOf } from './disk-case'
 import {
   clearCaseTwinForeignBytes,
+  hasHeldCaseTwinChange,
   hashFile,
   holdsCaseTwinForeignBytes,
   listCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
+  readLandedCaseTwinHash,
   takeHeldCaseTwinChange,
   takeLandedCaseTwinHash,
   type MarkedFile
@@ -425,8 +427,9 @@ export function planBinaryCaseTwinMove(
       movingId,
       attachmentId
     })
-    // The copy holds the shared bytes: a change in them is the survivor's to keep.
-    const copied = sha256 === null ? null : { sha256 }
+    // The copy holds the shared bytes, so a change in them is kept from either
+    // file (VERIFY-5602R3): the user may change the shared file again first.
+    const copied = markSharedFile(db, onDisk, sha256)
     requestOwnBytes(db, { id: movingId, attachmentId, localOnly }, newAbsolutePath, copied)
     keepSurvivor()
   }
@@ -436,15 +439,11 @@ export function planBinaryCaseTwinMove(
  * Binary note `survivorId` keeps the file at `onDisk` alone once the other
  * twin leaves it (moved or deleted), and the file may hold the leaver's
  * bytes: its own attachment is asked for onto the file. `sha256` is the
- * file's hash, read by the plan. The file holds a change on no server when
- * the watcher held one, or when it differs from the bytes a download last
- * landed on it (#5585): an edit made while the app was closed, or whose event
- * is on the way, whatever its size. With no landing recorded (twins that
- * shared the file before this build), the bytes are treated as changed. Such
- * a change is kept as a conflict copy when the survivor's bytes land, unless
- * they are those bytes, or bytes a landing kept before whose copy still holds
- * them then: a copy can change or go between the split and the landing
- * (VERIFY-5602R2). The step never awaits.
+ * file's hash, read by the plan. A change in it (`markSharedFile`) is kept as
+ * a conflict copy when the survivor's bytes land, unless they are those
+ * bytes, or bytes a landing kept before whose copy still holds them then: a
+ * copy can change or go between the split and the landing (VERIFY-5602R2).
+ * The step never awaits.
  */
 function planBinarySurvivor(
   vaultPath: string,
@@ -457,11 +456,24 @@ function planBinarySurvivor(
   if (!survivor) return () => {}
   const sharedPath = join(vaultPath, onDisk)
   return () => {
-    const held = takeHeldCaseTwinChange(db, onDisk)
-    const landed = takeLandedCaseTwinHash(db, onDisk)
-    const changed = held || sha256 === null || sha256 !== landed
-    requestOwnBytes(db, survivor, sharedPath, changed ? null : { sha256 })
+    const mark = markSharedFile(db, onDisk, sha256)
+    takeHeldCaseTwinChange(db, onDisk)
+    takeLandedCaseTwinHash(db, onDisk)
+    requestOwnBytes(db, survivor, sharedPath, mark)
   }
+}
+
+/**
+ * The mark of the shared file at `onDisk`, whose hash a split's plan read:
+ * null when it holds a change on no server, that is when the watcher held
+ * one, or when it differs from the bytes a download last landed on it
+ * (#5585): an edit made while the app was closed, or whose event is on the
+ * way, whatever its size. With no landing recorded (twins that shared the
+ * file before this build), the bytes are treated as changed.
+ */
+function markSharedFile(db: DrizzleDb, onDisk: string, sha256: string | null): MarkedFile {
+  if (sha256 === null || hasHeldCaseTwinChange(db, onDisk)) return null
+  return sha256 === readLandedCaseTwinHash(db, onDisk) ? { sha256 } : null
 }
 
 /**
