@@ -18,6 +18,7 @@ on:
       - 'crates/**'
       - 'packages/swift/**'
       - 'scripts/check-line-ceilings.mjs'
+      - 'scripts/check-uniffi-not-gated.mjs'
       - '.github/workflows/rust-ci.yml'
       - '.github/actions/paths-changed/**'
   # Main has no merge queue today. If it gets one, the gate reports there too, after every job ran.
@@ -57,7 +58,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|packages/swift/|scripts/check-line-ceilings\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/paths-changed/)'
+          include: '^(crates/|packages/swift/|scripts/check-line-ceilings\.mjs$|scripts/check-uniffi-not-gated\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/paths-changed/)'
 
   lint-and-test:
     name: fmt, clippy, test
@@ -110,11 +111,17 @@ jobs:
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 
+      # swift-bindings-fresh builds without `semantic` and the app links a build with it.
+      - name: No UniFFI export behind the semantic feature
+        working-directory: .
+        run: node scripts/check-uniffi-not-gated.mjs
+
   swift-bindings-fresh:
     name: Generated Swift bindings are current
     # Bindgen reads the UniFFI metadata out of the iOS device library, the same
     # slice build-xcframework.sh reads. The library is built without the
-    # `semantic` feature: no UniFFI export sits behind it, and leaving it off
+    # `semantic` feature: no UniFFI export sits behind it (lint-and-test runs
+    # scripts/check-uniffi-not-gated.mjs), and leaving it off
     # means this check needs no ONNX Runtime download (#5531), so a download
     # outage cannot hide drift. The XCFramework itself is built by
     # `xcframework` below.
