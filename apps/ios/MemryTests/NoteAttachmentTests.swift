@@ -1,6 +1,8 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -16,6 +18,8 @@ import Testing
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
 // | a run holding a stale list skips a file another run landed | one download per file |
 // | a later run skips a permanent failure and asks again after any other | desktop `asksOnSync` |
+// | a cancelled fetch asks for no further picture           | REVIEW-5587: no repeat download per pass |
+// | the page asks for pictures before the body pull answers | REVIEW-5587: no network wait on open |
 
 private let route = NoteRoute(id: "note-1")
 
@@ -193,73 +197,6 @@ struct NoteAttachmentTests {
         #expect(model.attachmentFetches.isEmpty)
     }
 
-    /// REVIEW-5685: a pass restarts the page while a run downloads one of two
-    /// files. The new run lands the other; the first run, still holding both
-    /// in its list, must not download it again.
-    @Test("a run holding a stale list skips a file another run landed")
-    func staleRunSkipsALandedFile() async {
-        let urls = ["att-a": "a.png", "att-b": "b.png"]
-        let reader = ScriptedAttachments(
-            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
-            bindings: [
-                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
-                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil))
-            ]
-        )
-        let filler = FirstFetchGatedFiller { id in
-            if let url = urls[id] { reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: id))) }
-        }
-        let model = NoteReadViewModel(
-            route: route, reader: reader, filler: filler,
-            reachability: FixedPath(path: .wifi)
-        )
-        await model.loadIfNeeded()
-
-        let first = Task { await model.fetchWaitingAttachments() }
-        await filler.waitUntilFetching()
-        await model.fetchWaitingAttachments()
-        filler.finish()
-        await first.value
-
-        #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
-        #expect(model.attachmentFetches.isEmpty)
-    }
-
-    /// REVIEW-5685, desktop `asksOnSync`: a file asking cannot bring stays
-    /// failed through the next pass instead of going back to the server and
-    /// flickering Downloading. A failure asking again can fix is asked again.
-    @Test("a later run skips a permanent failure and asks again after any other")
-    func passesSkipPermanentFailures() async {
-        let reader = ScriptedAttachments(
-            blocks: [imageBlock(url: "picture.png")],
-            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
-        )
-        let unverified = SyncError.AttachmentUnverified(deviceId: "device")
-        let corrupt = SyncError.AttachmentCorrupt(what: "chunk")
-        #expect(ErrorMapping.userFacing(unverified).recourse == .blocked)
-        #expect(ErrorMapping.userFacing(corrupt).recourse == .retry)
-        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
-
-        let refused = ScriptedAttachmentFiller(summary: pending, failure: unverified)
-        let refusedModel = NoteReadViewModel(
-            route: route, reader: reader, filler: refused, reachability: FixedPath(path: .wifi)
-        )
-        await refusedModel.loadIfNeeded()
-        await refusedModel.fetchWaitingAttachments()
-        await refusedModel.fetchWaitingAttachments()
-        #expect(refused.fetched == ["att-1"], "a permanent failure went back to the server")
-        #expect(refusedModel.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(unverified)))
-
-        let damaged = ScriptedAttachmentFiller(summary: pending, failure: corrupt)
-        let damagedModel = NoteReadViewModel(
-            route: route, reader: reader, filler: damaged, reachability: FixedPath(path: .wifi)
-        )
-        await damagedModel.loadIfNeeded()
-        await damagedModel.fetchWaitingAttachments()
-        await damagedModel.fetchWaitingAttachments()
-        #expect(damaged.fetched == ["att-1", "att-1"])
-    }
-
     /// A picture waiting for an unmetered path is the feature working. The
     /// placeholder stays and nothing is reported as a failure.
     @Test("a deferred fetch is not an error and leaves the placeholder")
@@ -361,6 +298,131 @@ struct NoteAttachmentTests {
     func repeatedUrlsAreDeduplicated() {
         let blocks = [imageBlock(url: "a.png"), imageBlock(url: "a.png")]
         #expect(NoteReadViewModel.attachmentUrls(in: blocks) == ["a.png"])
+    }
+}
+
+/// Runs of the note page's on-open download: two at once, one a sync pass
+/// cancelled, one after a failure, and the one the open starts.
+@Suite("Note attachment download runs")
+@MainActor
+struct NoteAttachmentRunTests {
+    /// REVIEW-5685: a pass restarts the page while a run downloads one of two
+    /// files. The new run lands the other; the first run, still holding both
+    /// in its list, must not download it again.
+    @Test("a run holding a stale list skips a file another run landed")
+    func staleRunSkipsALandedFile() async {
+        let urls = ["att-a": "a.png", "att-b": "b.png"]
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil))
+            ]
+        )
+        let filler = FirstFetchGatedFiller { id in
+            if let url = urls[id] { reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: id))) }
+        }
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        await model.fetchWaitingAttachments()
+        filler.finish()
+        await first.value
+
+        #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// REVIEW-5685, desktop `asksOnSync`: a file asking cannot bring stays
+    /// failed through the next pass instead of going back to the server and
+    /// flickering Downloading. A failure asking again can fix is asked again.
+    @Test("a later run skips a permanent failure and asks again after any other")
+    func passesSkipPermanentFailures() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let unverified = SyncError.AttachmentUnverified(deviceId: "device")
+        let corrupt = SyncError.AttachmentCorrupt(what: "chunk")
+        #expect(ErrorMapping.userFacing(unverified).recourse == .blocked)
+        #expect(ErrorMapping.userFacing(corrupt).recourse == .retry)
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+
+        let refused = ScriptedAttachmentFiller(summary: pending, failure: unverified)
+        let refusedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: refused, reachability: FixedPath(path: .wifi)
+        )
+        await refusedModel.loadIfNeeded()
+        await refusedModel.fetchWaitingAttachments()
+        await refusedModel.fetchWaitingAttachments()
+        #expect(refused.fetched == ["att-1"], "a permanent failure went back to the server")
+        #expect(refusedModel.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(unverified)))
+
+        let damaged = ScriptedAttachmentFiller(summary: pending, failure: corrupt)
+        let damagedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: damaged, reachability: FixedPath(path: .wifi)
+        )
+        await damagedModel.loadIfNeeded()
+        await damagedModel.fetchWaitingAttachments()
+        await damagedModel.fetchWaitingAttachments()
+        #expect(damaged.fetched == ["att-1", "att-1"])
+    }
+
+    /// REVIEW-5587: each sync pass restarts the page's task. The cancelled
+    /// loop stops after the fetch in flight; the next task asks again.
+    @Test("a cancelled fetch of waiting pictures asks for no further one", .timeLimit(.minutes(1)))
+    func aCancelledFetchStops() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil)),
+            ]
+        )
+        let filler = HeldAttachmentFiller()
+        let model = NoteReadViewModel(route: route, reader: reader, filler: filler, reachability: FixedPath(path: .wifi))
+        await model.loadIfNeeded()
+
+        let run = Task { await model.fetchWaitingAttachments() }
+        for await _ in filler.started { break }
+        run.cancel()
+        filler.release()
+        await run.value
+        #expect(filler.fetched.count == 1)
+    }
+
+    /// REVIEW-5587: opening a note asks for its pictures right after the
+    /// local read, not after the body pull's round trip.
+    @Test("the page asks for its pictures while the body pull is out", .timeLimit(.minutes(1)))
+    func picturesDoNotWaitForThePull() async throws {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = HeldAttachmentFiller()
+        defer { filler.release() }
+        // Its own id: parallel suites announce edits to shared ids.
+        let model = NoteReadViewModel(
+            route: NoteRoute(id: UUID().uuidString), reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        let window = UIWindow(windowScene: try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+        window.rootViewController = UIHostingController(
+            rootView: Color.clear.modifier(NotePageLoad(model: model, source: UUID()))
+        )
+
+        for await _ in filler.started { break }
+        #expect(filler.fetched == ["att-1"])
     }
 }
 

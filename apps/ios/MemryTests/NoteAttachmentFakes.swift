@@ -211,3 +211,55 @@ func cached(id: String, localPath: String?) -> CachedAttachment {
         mimeType: "image/png"
     )
 }
+
+/// Holds each attachment fetch and body pull until `release()`, as a core
+/// call runs to its end whether or not its task was cancelled.
+final class HeldAttachmentFiller: VaultFilling, @unchecked Sendable {
+    let started: AsyncStream<Void>
+    private let start: AsyncStream<Void>.Continuation
+    private let calls = Mutex<[String]>([])
+    private let gate = Mutex<(open: Bool, held: [CheckedContinuation<Void, Never>])>((false, []))
+
+    init() { (started, start) = AsyncStream.makeStream() }
+
+    var fetched: [String] { calls.withLock { $0 } }
+
+    /// Lets every held call through, and every later one.
+    func release() {
+        let held = gate.withLock { state in
+            state.open = true
+            defer { state.held = [] }
+            return state.held
+        }
+        held.forEach { $0.resume() }
+    }
+
+    private func pass() async {
+        await withCheckedContinuation { continuation in
+            let open = gate.withLock { state in
+                if !state.open { state.held.append(continuation) }
+                return state.open
+            }
+            if open { continuation.resume() }
+        }
+    }
+
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary { .none }
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        await pass()
+        return BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
+    }
+
+    func fetchAttachment(
+        attachmentId: String,
+        reachable: Reachable
+    ) async throws -> AttachmentFetchSummary {
+        calls.withLock { $0.append(attachmentId) }
+        start.yield()
+        await pass()
+        return AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: attachmentId)
+    }
+}

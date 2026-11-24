@@ -291,6 +291,7 @@ vi.mock('./crdt-writeback-port', () => ({
     scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
     cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
     flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
+    hasArmedWritebacks: () => false,
     resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
     writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
   })

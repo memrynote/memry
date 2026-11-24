@@ -62,7 +62,7 @@
     "uploadFailed": "Nie udało się przesłać załącznika",
     "uploadProgressFailed": "Nie udało się odczytać postępu przesyłania",
     "downloadFailed": "Nie udało się pobrać załącznika",
-    "downloadGone": "Tego pliku nie ma już na serwerze synchronizacji.",
+    "downloadGone": "Tego pliku nie ma już na serwerze synchronizacji. Jeśli inne urządzenie nadal go ma, dodaj go ponownie z tego urządzenia.",
     "downloadMissing": "Tego pliku nie ma jeszcze na serwerze synchronizacji. Otwórz go ponownie jutro, aby sprawdzić.",
     "downloadNeedsSync": "Synchronizacja nie działa, więc nie można pobrać tego pliku. Zostanie pobrany automatycznie, gdy synchronizacja zacznie działać.",
     "downloadProgressFailed": "Nie udało się odczytać postępu pobierania",
@@ -220,6 +220,7 @@
     "renameCaseTwins": "Ten folder zawiera notatki, które współdzielą plik z notatką, której nazwa folderu różni się tylko wielkością liter. Najpierw zmień nazwy tych notatek lub je przenieś, a potem zmień nazwę folderu.",
     "deleteFailed": "Nie udało się usunąć folderu",
     "deleteCaseTwins": "Ten folder i folder o tej samej nazwie zapisanej inaczej, na przykład inną wielkością liter, to na dysku jeden folder, więc usunięcie go usunęłoby notatki z obu. Zamiast tego usuń niepotrzebne notatki pojedynczo.",
+    "deleteWindowsName": "Nazwa tego folderu kończy się kropką lub spacją, które Windows pomija, więc usunięcie go mogłoby usunąć też inny folder. Zamiast tego usuń pojedynczo notatki, które się w nim znajdują.",
     "setConfigFailed": "Nie udało się zapisać konfiguracji folderu"
   },
   "folderView": {

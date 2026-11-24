@@ -250,15 +250,11 @@ extension NoteReadViewModel {
     ///
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
+    ///
+    /// A sync pass cancels the run that `NotePageLoad` started for it. The
+    /// cancelled run asks for no further picture: the next run asks for the
+    /// rest, and the core joins it to a download still running (#5674).
     func fetchWaitingAttachments() async {
-        // Not the caller's task: `NotePageLoad` restarts its task on every
-        // sync pass, and the restarted run skips what the cancelled one is
-        // downloading. Uncancelled, that run still rebinds what lands, which
-        // `loadAttachments` would not do on a cancelled task.
-        await Task { await fetchEachWaitingAttachment() }.value
-    }
-
-    private func fetchEachWaitingAttachment() async {
         guard let filler else { return }
         // The screen passes `PathReachability.forAttachments`. With none, the
         // answer for "we have not seen a path" is usable (`unknownPath`).
@@ -274,6 +270,7 @@ extension NoteReadViewModel {
         }
         var landed = false
         for id in waiting where asks(for: id) {
+            guard !Task.isCancelled else { break }
             attachmentFetches[id] = .downloading
             do {
                 let summary = try await filler.fetchAttachment(attachmentId: id, reachable: reachable)
@@ -286,8 +283,11 @@ extension NoteReadViewModel {
             }
         }
 
+        // Not the caller's task: the next run skips what this one marked
+        // downloading, so what landed here is rebound here or not at all, and
+        // `loadAttachments` binds nothing on a cancelled task.
         if landed {
-            await loadAttachments()
+            await Task { await loadAttachments() }.value
         }
     }
 

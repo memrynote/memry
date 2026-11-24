@@ -35,7 +35,7 @@ const server = vi.hoisted(() => ({
       attachmentId: string,
       sha256: string,
       fileOwnerId?: string
-    ) => string
+    ) => Promise<string>
   }
 }))
 
@@ -124,8 +124,12 @@ vi.mock('../attachments', () => ({
         const bytes = server.blobs.get(attachmentId) ?? ''
         const checksum = createHash('sha256').update(bytes).digest('hex')
         const filePath =
-          server.deps?.beforeFileLands?.(targetPath, attachmentId, checksum, opts?.fileOwnerId) ??
-          targetPath
+          (await server.deps?.beforeFileLands?.(
+            targetPath,
+            attachmentId,
+            checksum,
+            opts?.fileOwnerId
+          )) ?? targetPath
         fs.writeFileSync(filePath, bytes)
         return { filePath, manifest: { checksum } }
       }
@@ -144,7 +148,7 @@ import { recordAppWrite } from '../../vault/app-writes'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { noteHandler } from './note-handler'
-import { recordDownloadedFileSize, recordUploadedAttachment } from '../note-attachment-metadata'
+import { recordDownloadedFileSize, recordUploadedFile } from '../note-attachment-metadata'
 import { redriveAttachmentDownloads } from '../attachment-download-redriver'
 import { getValidAccessToken } from '../token-manager'
 import {
@@ -285,9 +289,9 @@ describe("a peer's replacement of a binary note with attachment auto-download of
       .filter((key) => key.endsWith(`:${id}`))
 
   /** An edit here, uploaded: the note records it only when its file is its own. */
-  function editAndUpload(id: string, relativePath: string, bytes: string): void {
+  async function editAndUpload(id: string, relativePath: string, bytes: string): Promise<void> {
     fs.writeFileSync(abs(relativePath), bytes)
-    recordUploadedAttachment(id, `att-edit-${id}`, sha256(bytes))
+    await recordUploadedFile(id, `att-edit-${id}`, sha256(bytes))
   }
 
   it("lands the peer's bytes, and the note's next edit syncs", async () => {
@@ -297,7 +301,7 @@ describe("a peer's replacement of a binary note with attachment auto-download of
     expect(pull('img', 'att-new')).toBe('applied')
 
     await landed('img', 'Pictures/p.png', 'peer-bytes')
-    editAndUpload('img', 'Pictures/p.png', 'edited-after')
+    await editAndUpload('img', 'Pictures/p.png', 'edited-after')
     expect(attachmentOf('img')).toBe('att-edit-img')
   })
 

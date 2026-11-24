@@ -62,7 +62,7 @@
     "uploadFailed": "Não foi possível enviar o anexo",
     "uploadProgressFailed": "Não foi possível obter o progresso do envio",
     "downloadFailed": "Não foi possível baixar o anexo",
-    "downloadGone": "Este arquivo não está mais no servidor de sincronização.",
+    "downloadGone": "Este arquivo não está mais no servidor de sincronização. Se outro dispositivo ainda tiver o arquivo, adicione-o novamente a partir desse dispositivo.",
     "downloadMissing": "Este arquivo ainda não está no servidor de sincronização. Abra-o novamente amanhã para verificar.",
     "downloadNeedsSync": "A sincronização não está em execução, então não é possível baixar este arquivo. Ele será baixado automaticamente quando a sincronização estiver em execução.",
     "downloadProgressFailed": "Não foi possível obter o progresso do download",
@@ -220,6 +220,7 @@
     "renameCaseTwins": "Esta pasta contém notas que compartilham um arquivo com uma nota cujo nome de pasta difere apenas em maiúsculas e minúsculas. Renomeie ou mova essas notas primeiro e, depois, renomeie a pasta.",
     "deleteFailed": "Não foi possível excluir a pasta",
     "deleteCaseTwins": "Esta pasta e uma pasta com o mesmo nome escrito de outra forma, por exemplo com outras maiúsculas e minúsculas, são uma única pasta no disco, então excluí-la excluiria as notas de ambas. Em vez disso, exclua uma a uma as notas de que você não precisa.",
+    "deleteWindowsName": "O nome desta pasta termina em um ponto ou um espaço, que o Windows ignora, então excluí-la poderia excluir também outra pasta. Em vez disso, exclua uma a uma as notas que ela contém.",
     "setConfigFailed": "Não foi possível definir a configuração da pasta"
   },
   "folderView": {

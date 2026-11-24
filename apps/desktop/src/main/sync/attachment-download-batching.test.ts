@@ -321,6 +321,19 @@ describe('a manifest that names another attachment (#5652)', () => {
     expect(Buffer.compare(await readFile(targetPath), server.files.get('b')!)).toBe(0)
   })
 
+  // A binary note's replace compares its file with this checksum (#5608).
+  it("refuses the checksum read, and answers the attachment's own once the server answers right", async () => {
+    const servedAs = new Map([['b', 'a']])
+    const server = fakeServer({ a: 1, b: 1 }, { servedAs })
+
+    await expect(server.service.checksumOf('b', {})).rejects.toThrow(
+      'Manifest names attachment a, not b'
+    )
+
+    servedAs.clear()
+    expect(await server.service.checksumOf('b', {})).toBe(sha256(server.files.get('b')!))
+  })
+
   it('refuses a batch answer under another attachment key, presigning none of its chunks, before any chunk request or write', async () => {
     const server = fakeServer({ a: 1, b: 1, c: 1 }, { servedAs: new Map([['b', 'c']]) })
     await server.service.downloadAttachment('a', path.join(tmpDir, 'a.bin'), {
