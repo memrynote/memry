@@ -1272,7 +1272,11 @@ attachment's id is dropped from the note, and its local file is queued for
 upload again, which adds the new id and pushes the note. Holds would not cover
 this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
-loses it.
+loses it. Both this check and the 30-day release read an attachment's chunks
+from its signed manifest, and both refuse a manifest whose `id` is not the
+attachment asked for (#5664): dereferencing its chunks would free another
+attachment's. The release then frees nothing and keeps its record, and the
+check stays pending, until the server answers with the right manifest.
 
 ### Binary note records pushed as markdown
 
