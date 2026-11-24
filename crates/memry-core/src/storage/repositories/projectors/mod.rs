@@ -201,6 +201,10 @@ pub fn delete(
         }
         .map_err(failed)?;
     }
+    if item_type == "note" {
+        // A deleted note wants none of its pictures (#5675).
+        crate::domain::attachment_refs::merge_note_references(conn, item_id, Some(&[]))?;
+    }
     Ok(())
 }
 
