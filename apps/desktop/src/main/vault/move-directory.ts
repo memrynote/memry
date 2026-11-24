@@ -5,12 +5,23 @@
  */
 
 import path from 'path'
-import { existsSync, type Dirent } from 'fs'
-import { lstat, mkdir, readFile, readdir, rename, rm, rmdir } from 'fs/promises'
+import { constants, existsSync, type Dirent } from 'fs'
+import {
+  copyFile,
+  link,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  rmdir,
+  unlink
+} from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { atomicWrite, withTransientFsRetry } from './file-ops'
-import { getMemryDir } from './init'
+import { getMemryDir, readVaultConfig } from './init'
 import { clearStrandedFolders, holdStrandedFolder } from './app-folder-changes'
 import { resolveVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
@@ -65,13 +76,15 @@ const VaultRelativePath = z
  * vault format (`crates/memry-desktop/src/vault/move_journal.rs`), written
  * byte for byte as its serde output, `{"version":1,"from":…,"staging":…}`, so
  * a move either app left half done is put back by whichever opens the vault
- * next. Tauri adds `shown` (a visible folder it put leftovers in) and leaves
- * `from` out of a record that only shows a staging directory; both read here.
+ * next. Tauri adds `shown` (the visible folder a show moves into, written
+ * before anything moves there) and leaves `from` out of a record that only
+ * shows a staging directory; both read here.
  */
 const FolderMoveRecordSchema = z.object({
   version: z.number(),
   from: VaultRelativePath.optional(),
-  staging: VaultRelativePath
+  staging: VaultRelativePath,
+  shown: VaultRelativePath.optional()
 })
 type FolderMoveRecord = z.infer<typeof FolderMoveRecordSchema>
 
@@ -136,7 +149,7 @@ export async function moveDirectory(vaultPath: string, from: string, to: string)
 
   const id = randomBytes(6).toString('hex')
   const stagingAbs = path.join(path.dirname(toAbs), `${STAGING_PREFIX}${id}`)
-  const recordPath = path.join(moveRecordDir(vaultPath), `${id}.json`)
+  const recordPath = recordPathOf(vaultPath, id)
   const record = { version: 1, from: relative(fromAbs), staging: relative(stagingAbs) }
   runningMoves.add(id)
   try {
@@ -169,51 +182,62 @@ export async function moveDirectory(vaultPath: string, from: string, to: string)
  *   conflict copy, and whatever is at `to` is left alone. A record has no
  *   `to`, so finishing the move forward would be a guess. What still cannot go
  *   back moves to a visible `<from name> (incomplete move)` beside the staging
- *   directory, so no file stays hidden.
+ *   directory (the record's `shown` when a show was cut short), so no file
+ *   stays hidden. A record with no `from` only shows its staging directory.
  * - Its staging directory is gone: the move ended (its folder is at `to`, and
  *   the replay re-keys each row to its moved file, rolling forward) or was
  *   fully undone. Only the record goes.
  *
  * Only a staging directory that not even the visible rename could empty keeps
  * its record, and its source app-owned for this session so none of its notes'
- * removals syncs as a delete, for the next open to try again. A record this
- * build cannot act on stays for the app that wrote it; a newer version's keeps
- * its source held. Then every `.memry-move-<id>` directory no usable record
- * names (a pre-journal build's, or its record's unusable) is renamed to a
- * visible `Moved folder (incomplete move)` beside it, never deleted, as the
- * Tauri sweep does: hidden, the replay would take its notes for deletes.
+ * removals syncs as a delete, for the next open to try again. A newer
+ * version's record stays for the app that wrote it and keeps its source held.
+ * Then every `.memry-move-<id>` directory no usable record names (a
+ * pre-journal build's, or its record's unusable) is renamed to a visible
+ * `Moved folder (incomplete move)` beside it, never deleted, as the Tauri
+ * sweep does: hidden, the replay would take its notes for deletes. An
+ * unusable record goes once no staging directory of its id is left hidden.
  */
 export async function recoverStrandedFolderMoves(vaultPath: string): Promise<void> {
   clearStrandedFolders()
-  const claimed = new Set(runningMoves)
+  // The sweep runs in the background index build, which a folder rename does
+  // not wait for, so a move can start at any await below. The invariant: the
+  // sweep only shows or puts back a staging dir no live move owns, and never
+  // replaces a file. `runningMoves` is therefore read live at every decision,
+  // never from a snapshot, and every put-back step refuses an existing target.
+  const claimed = new Set<string>()
+  const owned = (id: string): boolean => claimed.has(id) || runningMoves.has(id)
+  const unusable = new Map<string, string>()
   const recordDir = moveRecordDir(vaultPath)
   const names = existsSync(recordDir) ? await readdir(recordDir) : []
 
   for (const name of names) {
     const id = name.endsWith('.json') ? name.slice(0, -'.json'.length) : ''
-    if (!MOVE_ID.test(id) || claimed.has(id)) continue
+    if (!MOVE_ID.test(id) || runningMoves.has(id)) continue
     const recordPath = path.join(recordDir, name)
     let record: FolderMoveRecord | null = null
     try {
       record = await readMoveRecord(recordPath)
-      if (!record) {
-        logger.error('Leaving a folder move record this build cannot read')
-      } else if (record.version !== 1) {
+      if (record?.version !== undefined && record.version !== 1) {
         logger.error(`Leaving a version ${record.version} folder move record`)
         if (record.from !== undefined) holdStrandedFolder(record.from)
-      } else if (record.from === undefined || !(await isOwnMove(vaultPath, id, record))) {
-        logger.error('Leaving a folder move record that names no source of its own')
-      } else {
+      } else if (!record || !(await isOwnMove(vaultPath, id, record))) {
+        logger.error('Showing the folder of a folder move record this build cannot use')
+        unusable.set(id, recordPath)
+      } else if (!runningMoves.has(id)) {
         claimed.add(id)
         const stagingAbs = path.join(vaultPath, record.staging)
-        const fromAbs = path.join(vaultPath, record.from)
+        const fromAbs = record.from === undefined ? null : path.join(vaultPath, record.from)
         if (existsSync(stagingAbs)) {
-          await mkdir(path.dirname(fromAbs), { recursive: true })
-          await putBack(stagingAbs, fromAbs)
-          await showStaged(stagingAbs, path.basename(fromAbs))
+          if (fromAbs) {
+            await mkdir(path.dirname(fromAbs), { recursive: true })
+            await putBack(stagingAbs, fromAbs)
+          }
+          const shown = record.shown === undefined ? null : path.join(vaultPath, record.shown)
+          await showStaged(stagingAbs, fromAbs ? path.basename(fromAbs) : UNKNOWN_SOURCE, shown)
         }
-        if (existsSync(stagingAbs)) holdStrandedFolder(record.from)
-        else await removeMoveRecord(recordPath)
+        if (!existsSync(stagingAbs)) await removeMoveRecord(recordPath)
+        else if (record.from !== undefined) holdStrandedFolder(record.from)
       }
     } catch (error) {
       logger.error(`Could not put back a failed folder move: ${errnoCode(error) ?? 'unknown'}`)
@@ -221,11 +245,26 @@ export async function recoverStrandedFolderMoves(vaultPath: string): Promise<voi
     }
   }
 
-  for (const stagingAbs of await findStagingDirs(vaultPath)) {
-    if (claimed.has(path.basename(stagingAbs).slice(STAGING_PREFIX.length))) continue
-    logger.warn('Showing a folder move staging directory no usable record names')
-    await showStaged(stagingAbs, UNKNOWN_SOURCE)
+  const exclude = readVaultConfig(vaultPath).excludePatterns
+  const hidden = new Set<string>()
+  for (const stagingAbs of await findStagingDirs(vaultPath, exclude)) {
+    const id = path.basename(stagingAbs).slice(STAGING_PREFIX.length)
+    // A record written since the loop read the journal: a move that started
+    // and failed meanwhile. Its record puts it back at the next open.
+    const recordedSince = !names.includes(`${id}.json`) && existsSync(recordPathOf(vaultPath, id))
+    if (!owned(id) && !recordedSince) {
+      logger.warn('Showing a folder move staging directory no usable record names')
+      await showStaged(stagingAbs, UNKNOWN_SOURCE, null)
+    }
+    if (existsSync(stagingAbs)) hidden.add(id)
   }
+  for (const [id, recordPath] of unusable) {
+    if (!hidden.has(id)) await removeMoveRecord(recordPath)
+  }
+}
+
+function recordPathOf(vaultPath: string, id: string): string {
+  return path.join(moveRecordDir(vaultPath), `${id}.json`)
 }
 
 /**
@@ -238,8 +277,11 @@ async function readMoveRecord(recordPath: string): Promise<FolderMoveRecord | nu
   return parseMoveRecord(await readFile(recordPath, 'utf8'))
 }
 
-/** Every `.memry-move-<id>` directory in the vault, outside dot folders and links. */
-async function findStagingDirs(dir: string): Promise<string[]> {
+/**
+ * Every `.memry-move-<id>` directory in the vault, outside dot folders, links
+ * and folders named exactly as an exclude pattern, as the Tauri open's walk.
+ */
+async function findStagingDirs(dir: string, exclude: string[]): Promise<string[]> {
   let entries: Dirent[]
   try {
     entries = await readdir(dir, { withFileTypes: true })
@@ -255,8 +297,8 @@ async function findStagingDirs(dir: string): Promise<string[]> {
     const abs = path.join(dir, entry.name)
     if (entry.name.startsWith(STAGING_PREFIX)) {
       if (MOVE_ID.test(entry.name.slice(STAGING_PREFIX.length))) found.push(abs)
-    } else if (!entry.name.startsWith('.')) {
-      found.push(...(await findStagingDirs(abs)))
+    } else if (!entry.name.startsWith('.') && !exclude.includes(entry.name)) {
+      found.push(...(await findStagingDirs(abs, exclude)))
     }
   }
   return found
@@ -271,17 +313,23 @@ function within(rel: string, folder: string): boolean {
  * The checks the Tauri sweep makes before it puts anything back: the staging
  * directory is the record's own (`.memry-move-<its id>`), the source is in
  * neither it nor `.memry` (in any letter case), and no path leads out of the
- * vault, through a link either.
+ * vault, through a link either. `shown` must also sit beside the staging
+ * directory, where a show always puts it.
  */
 async function isOwnMove(
   vaultPath: string,
   id: string,
-  { from, staging }: FolderMoveRecord
+  { from, staging, shown }: FolderMoveRecord
 ): Promise<boolean> {
-  if (from === undefined || path.posix.basename(staging) !== `${STAGING_PREFIX}${id}`) return false
-  if (within(from, staging) || within(from, '.memry')) return false
-  for (const rel of [from, staging]) {
-    if ((await resolveVaultFile(vaultPath, rel)).kind === 'outside') return false
+  if (path.posix.basename(staging) !== `${STAGING_PREFIX}${id}`) return false
+  if (from !== undefined && (within(from, staging) || within(from, '.memry'))) return false
+  if (shown !== undefined && path.posix.dirname(shown) !== path.posix.dirname(staging)) {
+    return false
+  }
+  for (const rel of [from, staging, shown]) {
+    if (rel !== undefined && (await resolveVaultFile(vaultPath, rel)).kind === 'outside') {
+      return false
+    }
   }
   return true
 }
@@ -316,73 +364,126 @@ async function freeName(taken: string, candidate: (n: number) => string): Promis
 }
 
 /**
- * The Tauri put-back's `<name> (conflict copy)<ext>`, then `(conflict copy 2)`
- * and on, beside `taken`. A directory's name keeps its dots.
+ * The Tauri put-back's names for `taken`: itself, then `<name> (conflict
+ * copy)<ext>`, `(conflict copy 2)` and on. A directory's name keeps its dots.
  */
-function conflictName(taken: string, isDirectory: boolean): Promise<string | null> {
+function* targetNames(taken: string, isDirectory: boolean): Generator<string> {
+  yield taken
   const fileName = path.basename(taken)
   const dot = isDirectory ? -1 : fileName.lastIndexOf('.')
   const [name, ext] = dot > 0 ? [fileName.slice(0, dot), fileName.slice(dot)] : [fileName, '']
-  return freeName(taken, (n) => `${name} (conflict copy${n === 1 ? '' : ` ${n}`})${ext}`)
+  for (let n = 1; n <= FREE_NAME_TRIES; n++) {
+    yield path.join(path.dirname(taken), `${name} (conflict copy${n === 1 ? '' : ` ${n}`})${ext}`)
+  }
 }
 
 /** Logs a put-back step that failed; what it would have moved stays staged. */
-async function tryStep(step: () => Promise<unknown>): Promise<void> {
+async function tryStep(step: () => Promise<unknown>): Promise<boolean> {
   try {
     await withTransientFsRetry(step, 'moveDirectory')
+    return true
   } catch (error) {
     // Only the errno — never the path, which is note-derived.
     logger.error(`Could not put back a folder move entry: ${errnoCode(error) ?? 'unknown'}`)
+    return false
+  }
+}
+
+/** A rename onto a name that is there failed instead of replacing it. */
+const TAKEN_CODES = new Set(['EEXIST', 'ENOTEMPTY', 'ENOTDIR'])
+
+/**
+ * Creates `target` from the file `staged` only while nothing is there, as
+ * Tauri's `rename_no_replace`: Node has no exclusive rename, but a hard link
+ * and an exclusive copy both fail `EEXIST` on a name taken since the look.
+ */
+async function placeFile(staged: string, target: string): Promise<void> {
+  try {
+    await link(staged, target)
+  } catch (error) {
+    // A volume with no hard links (FAT, some network mounts) gets a copy.
+    if (errnoCode(error) === 'EEXIST') throw error
+    await copyFile(staged, target, constants.COPYFILE_EXCL)
   }
 }
 
 /**
  * Move the tree at `staged` back to `source`, merging into a directory that is
- * there, as the Tauri put-back does. Nothing is replaced: an entry whose name
- * is taken comes back beside it as a conflict copy. A step that fails is
- * logged and the rest still goes back; what failed stays in `staged`.
+ * there, as the Tauri put-back does. Nothing is ever replaced, even by a file
+ * that lands mid-way: a file goes back by an exclusive create, and an entry
+ * whose name is taken comes back beside it at the first conflict name that
+ * the create gets. A step that fails is logged and the rest still goes back;
+ * what failed stays in `staged`.
  */
 async function putBack(staged: string, source: string): Promise<void> {
   const stat = await lstat(staged).catch(() => null)
   if (!stat) return // gone from the staging directory: nothing to put back
   const isDirectory = stat.isDirectory()
-  if (!(await isTaken(source))) {
+  if (isDirectory || stat.isSymbolicLink()) {
+    // A directory rename refuses a file or a non-empty directory at the
+    // target, so it replaces at most an empty directory: never a file. A link
+    // has no exclusive create that keeps it a link: the look before its
+    // rename is the one window left, as on a Tauri volume with no exclusive
+    // rename.
+    if (!(await isTaken(source))) {
+      try {
+        await withTransientFsRetry(() => rename(staged, source), 'moveDirectory')
+        return
+      } catch (error) {
+        const code = errnoCode(error) ?? ''
+        // A directory Windows holds goes back entry by entry.
+        if (!TAKEN_CODES.has(code) && !(isDirectory && isLockedTreeError(error))) {
+          logger.error(`Could not put back a folder move entry: ${code || 'unknown'}`)
+          return
+        }
+      }
+    }
+  }
+  for (const target of targetNames(source, isDirectory)) {
     try {
-      await withTransientFsRetry(() => rename(staged, source), 'moveDirectory')
-      return
-    } catch (error) {
-      // A directory Windows holds goes back entry by entry.
-      if (!isDirectory || !isLockedTreeError(error)) {
-        logger.error(`Could not put back a folder move entry: ${errnoCode(error) ?? 'unknown'}`)
+      if (!isDirectory) {
+        if (stat.isSymbolicLink()) {
+          if (await isTaken(target)) continue
+          await withTransientFsRetry(() => rename(staged, target), 'moveDirectory')
+        } else {
+          await withTransientFsRetry(() => placeFile(staged, target), 'moveDirectory')
+          await tryStep(() => unlink(staged))
+        }
         return
       }
-      await tryStep(() => mkdir(source))
+      try {
+        await withTransientFsRetry(() => mkdir(target), 'moveDirectory')
+      } catch (error) {
+        // Merge only into a directory at the entry's own name.
+        const merge = target === source && (await lstat(target).catch(() => null))?.isDirectory()
+        if (errnoCode(error) !== 'EEXIST' || !merge) throw error
+      }
+      for (const name of await readdir(staged)) {
+        await putBack(path.join(staged, name), path.join(target, name))
+      }
+      await tryStep(() => rmdir(staged))
+      return
+    } catch (error) {
+      if (errnoCode(error) === 'EEXIST') continue
+      logger.error(`Could not put back a folder move entry: ${errnoCode(error) ?? 'unknown'}`)
+      return
     }
   }
-  const there = await lstat(source).catch(() => null)
-  if (isDirectory && there?.isDirectory()) {
-    for (const name of await readdir(staged)) {
-      await putBack(path.join(staged, name), path.join(source, name))
-    }
-    await tryStep(() => rmdir(staged))
-    return
-  }
-  const copy = await conflictName(source, isDirectory)
-  if (copy) await tryStep(() => rename(staged, copy))
-  else logger.error('Could not put back a folder move entry: no free conflict name')
+  logger.error('Could not put back a folder move entry: no free conflict name')
 }
 
 /**
- * Move what is left in the staging directory into the first free visible
- * `<name> (incomplete move)`, then `(incomplete move 2)` and on, beside it:
- * Tauri's names, so the user finds the files.
+ * Move what is left in the staging directory into `shown` when a show that
+ * was cut short named it and it is a directory, or else into the first free
+ * visible `<name> (incomplete move)`, then `(incomplete move 2)` and on,
+ * beside it: Tauri's names, so the user finds the files.
  */
-async function showStaged(stagingAbs: string, name: string): Promise<void> {
+async function showStaged(stagingAbs: string, name: string, shown: string | null): Promise<void> {
   if (!existsSync(stagingAbs)) return
-  const visible = await freeName(
-    stagingAbs,
-    (n) => `${name} (incomplete move${n === 1 ? '' : ` ${n}`})`
-  )
+  const reuse = shown && (await lstat(shown).catch(() => null))?.isDirectory()
+  const visible = reuse
+    ? shown
+    : await freeName(stagingAbs, (n) => `${name} (incomplete move${n === 1 ? '' : ` ${n}`})`)
   if (visible) await putBack(stagingAbs, visible)
   if (existsSync(stagingAbs)) {
     logger.error('A failed folder move left files in its hidden staging directory')

@@ -11,7 +11,8 @@ const { windows } = vi.hoisted(() => ({
     held: false,
     lockedFiles: new Set<string>(),
     stagingLocked: false,
-    beforeRename: null as null | ((from: string) => Promise<void>)
+    /** Runs before every rename, link and copy the app makes. */
+    beforeMove: null as null | ((from: string) => Promise<void>)
   }
 }))
 
@@ -26,7 +27,7 @@ function errno(code: string): NodeJS.ErrnoException {
 vi.mock('fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof PromisesModule>()
   const rename = async (from: string, to: string): Promise<void> => {
-    await windows.beforeRename?.(from)
+    await windows.beforeMove?.(from)
     if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
     if (windows.stagingLocked && from.includes('.memry-move-')) throw errno('EIO')
     if (windows.held && !path.basename(from).startsWith('.')) {
@@ -38,7 +39,18 @@ vi.mock('fs/promises', async (importOriginal) => {
     }
     return actual.rename(from, to)
   }
-  return { ...actual, default: { ...actual, rename }, rename }
+  const link = async (from: string, to: string): Promise<void> => {
+    await windows.beforeMove?.(from)
+    if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
+    return actual.link(from, to)
+  }
+  const copyFile = async (from: string, to: string, mode?: number): Promise<void> => {
+    await windows.beforeMove?.(from)
+    if (windows.lockedFiles.has(path.basename(from))) throw errno('EPERM')
+    return actual.copyFile(from, to, mode)
+  }
+  const mocked = { rename, link, copyFile }
+  return { ...actual, default: { ...actual, ...mocked }, ...mocked }
 })
 
 // Windows and macOS resolve names case-insensitively; emulate that so the test
@@ -90,7 +102,7 @@ describe('moveDirectory', () => {
     windows.held = true
     windows.lockedFiles.clear()
     windows.stagingLocked = false
-    windows.beforeRename = null
+    windows.beforeMove = null
     write('Beta/b.md')
     write('Beta/Gamma/g.md')
     write('Beta/Gamma/Deep/deep.md')
@@ -216,10 +228,10 @@ describe('moveDirectory', () => {
     expect(isAppFolderChange('Beta/Gamma/g.md')).toBe(false)
   })
 
-  it('leaves a move this process is still running to that move', async () => {
+  it('leaves a move this process is still running to a sweep started during it', async () => {
     let resume = (): void => {}
     const paused = new Promise<void>((reached) => {
-      windows.beforeRename = async (from) => {
+      windows.beforeMove = async (from) => {
         if (path.basename(from) !== 'g.md') return
         reached()
         await new Promise<void>((resolve) => (resume = resolve))
@@ -234,6 +246,7 @@ describe('moveDirectory', () => {
 
     await expect(move).resolves.toBeUndefined()
     expect(tree()).toContain('Delta/Beta/Gamma/g.md')
+    expect(tree().some((rel) => rel.includes('incomplete move'))).toBe(false)
     expect(fs.readdirSync(path.join(root, '.memry/moves'))).toEqual([])
   })
 })
@@ -248,7 +261,7 @@ describe('recoverStrandedFolderMoves', () => {
     windows.held = false
     windows.lockedFiles.clear()
     windows.stagingLocked = false
-    windows.beforeRename = null
+    windows.beforeMove = null
     write('Beta/b.md')
     write(`${staging}/Gamma/g.md`)
     fs.mkdirSync(path.join(root, '.memry/moves'), { recursive: true })
@@ -336,15 +349,16 @@ describe('recoverStrandedFolderMoves', () => {
     expect(fs.existsSync(recordPath())).toBe(false)
   })
 
+  // A newer build's record stays for that build; any other goes with its folder.
   it.each([
-    { record: { version: 2, from: 'Beta', staging }, held: true },
-    { record: { version: 1, staging, shown: 'Moved folder (incomplete move)' }, held: false },
-    { record: { version: 1, from: 'Beta', staging: '.memry-move-ba9876543210' }, held: false },
-    { record: { version: 1, from: '.memry/Beta', staging }, held: false },
-    { record: { version: 1, from: `${staging}/Beta`, staging }, held: false },
-    { record: { version: 1, from: '../Beta', staging }, held: false },
-    { record: 'not json', held: false }
-  ])('shows the folder of a record it cannot act on: $record', async ({ record, held }) => {
+    { record: { version: 2, from: 'Beta', staging }, kept: true },
+    { record: { version: 1, staging }, kept: false },
+    { record: { version: 1, from: 'Beta', staging: '.memry-move-ba9876543210' }, kept: false },
+    { record: { version: 1, from: '.memry/Beta', staging }, kept: false },
+    { record: { version: 1, from: `${staging}/Beta`, staging }, kept: false },
+    { record: { version: 1, from: '../Beta', staging }, kept: false },
+    { record: 'not json', kept: false }
+  ])('shows the folder of a record it cannot put back: $record', async ({ record, kept }) => {
     const text = typeof record === 'string' ? record : JSON.stringify(record)
     fs.writeFileSync(recordPath(), text)
 
@@ -357,7 +371,128 @@ describe('recoverStrandedFolderMoves', () => {
       'Moved folder (incomplete move)/Gamma/',
       'Moved folder (incomplete move)/Gamma/g.md'
     ])
-    expect(fs.readFileSync(recordPath(), 'utf8')).toBe(text)
-    expect(isAppFolderChange('Beta/b.md')).toBe(held)
+    expect(fs.existsSync(recordPath()) && fs.readFileSync(recordPath(), 'utf8')).toBe(kept && text)
+    expect(isAppFolderChange('Beta/b.md')).toBe(kept)
+  })
+
+  it('keeps a record it cannot read while its folder is still hidden', async () => {
+    fs.writeFileSync(recordPath(), 'not json')
+    fs.mkdirSync(path.join(root, 'Moved folder (incomplete move)'))
+    for (let n = 2; n <= 1000; n++) {
+      fs.mkdirSync(path.join(root, `Moved folder (incomplete move ${n})`))
+    }
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(fs.existsSync(path.join(root, staging))).toBe(true)
+    expect(fs.readFileSync(recordPath(), 'utf8')).toBe('not json')
+  })
+
+  it('shows into the folder a sweep killed mid-show named', async () => {
+    fs.writeFileSync(
+      recordPath(),
+      JSON.stringify({ version: 1, from: 'Beta', staging, shown: 'Beta (incomplete move)' })
+    )
+    write('Beta (incomplete move)/shown.md')
+    write('Beta/Gamma/other.md')
+    windows.lockedFiles.add('g.md')
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta (incomplete move)/',
+      'Beta (incomplete move)/Gamma/',
+      'Beta (incomplete move)/Gamma/g.md',
+      'Beta (incomplete move)/shown.md',
+      'Beta/',
+      'Beta/Gamma/',
+      'Beta/Gamma/other.md',
+      'Beta/b.md'
+    ])
+    expect(fs.existsSync(recordPath())).toBe(false)
+  })
+
+  it('leaves a staging directory in an excluded folder alone', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write('node_modules/.memry-move-ba9876543210/d.md')
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toContain('node_modules/.memry-move-ba9876543210/d.md')
+    expect(tree().some((rel) => rel.includes('incomplete move'))).toBe(false)
+  })
+
+  it('never replaces a file that lands at a put-back target just before it goes back', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/c.md`)
+    windows.beforeMove = async (from) => {
+      if (path.basename(from) === 'c.md' && !fs.existsSync(path.join(root, 'Beta/c.md'))) {
+        fs.writeFileSync(path.join(root, 'Beta/c.md'), 'landed')
+      }
+    }
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(fs.readFileSync(path.join(root, 'Beta/c.md'), 'utf8')).toBe('landed')
+    expect(fs.readFileSync(path.join(root, 'Beta/c (conflict copy).md'), 'utf8')).toBe(
+      `${staging}/c.md`
+    )
+    expect(fs.existsSync(path.join(root, staging))).toBe(false)
+  })
+
+  it('never replaces a file that lands at a conflict name just before the copy goes there', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write(`${staging}/b.md`)
+    const landing = path.join(root, 'Beta/b (conflict copy).md')
+    windows.beforeMove = async (from) => {
+      if (path.basename(from) === 'b.md' && !fs.existsSync(landing)) {
+        fs.writeFileSync(landing, 'landed')
+      }
+    }
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(fs.readFileSync(landing, 'utf8')).toBe('landed')
+    expect(fs.readFileSync(path.join(root, 'Beta/b (conflict copy 2).md'), 'utf8')).toBe(
+      `${staging}/b.md`
+    )
+  })
+
+  it('leaves a move started during the sweep to that move', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write('Alpha/A1/a.md')
+    write('Alpha/x.md')
+    let release = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let gated = (): void => {}
+    const atGate = new Promise<void>((resolve) => (gated = resolve))
+    let move: Promise<void> | null = null
+    windows.beforeMove = async (from) => {
+      if (path.basename(from) === 'x.md') {
+        gated()
+        await gate
+      } else if (path.basename(from) === 'Gamma' && !move) {
+        // The user moves a folder while the open's sweep puts this one back.
+        windows.held = true
+        move = moveDirectory(root, 'Alpha', 'Moved')
+        await atGate
+      }
+    }
+
+    await recoverStrandedFolderMoves(root)
+    release()
+
+    await expect(move).resolves.toBeUndefined()
+    expect(tree()).toEqual([
+      'Beta/',
+      'Beta/Gamma/',
+      'Beta/Gamma/g.md',
+      'Beta/b.md',
+      'Moved/',
+      'Moved/A1/',
+      'Moved/A1/a.md',
+      'Moved/x.md'
+    ])
+    expect(fs.readdirSync(path.join(root, '.memry/moves'))).toEqual([])
   })
 })
