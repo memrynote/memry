@@ -144,9 +144,17 @@ const rewriteOne = async (
   coverage: Coverage,
   packKey: string
 ): Promise<true | string> => {
-  const read = await readPackObject(storage, kind, packKey)
-  if (typeof read === 'string') return read
   const waiting = waitingFor(packKey)
+  const read = await readPackObject(storage, kind, packKey)
+  // A concurrent pass may settle the rewrite and delete the object after this
+  // pass selected the row (VERIFY-5636 #9): settled, so no reset.
+  if (typeof read === 'string') {
+    const row = await db
+      .prepare(`SELECT ${waiting.sql} AS pending`)
+      .bind(...waiting.bind)
+      .first<{ pending: number }>()
+    return row?.pending ? read : true
+  }
   for (let attempt = 0; attempt < REWRITE_ATTEMPTS; attempt++) {
     const live = await liveIndexes(db, keptJoin(kind, scope, read.entries))
     const kept = read.entries.filter((_, index) => live.has(index))

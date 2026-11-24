@@ -16,6 +16,9 @@ import type { AppContext, Bindings } from '../types'
 import {
   PACK_PURGE_DEADLINE_SECONDS,
   PACK_REPLACED_GRACE_SECONDS,
+  RECORD_SYNC_ITEM_TYPES,
+  type PackListResponse,
+  type RecordChangesResponse,
   type RecordSyncItemType
 } from '@memry/contracts/sync-api'
 
@@ -92,6 +95,11 @@ const seed = async (): Promise<void> => {
     .run(DEVICE_ID, USER_ID, publicKey, now(), now())
 }
 
+const executionCtx = {
+  waitUntil: () => undefined,
+  passThroughOnException: () => undefined
+} as unknown as ExecutionContext
+
 const buildApp = () => {
   const app = new Hono<AppContext>()
   app.onError(errorHandler)
@@ -141,14 +149,53 @@ const push = async (app: App, ...specs: PushSpec[]): Promise<void> => {
       body: JSON.stringify({ items: await Promise.all(specs.map(signed)) })
     },
     env,
-    {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined
-    } as unknown as ExecutionContext
+    executionCtx
   )
   expect(res.status).toBe(200)
   const { accepted } = (await res.json()) as { accepted: string[] }
   expect(accepted).toEqual(specs.map((spec) => spec.id))
+}
+
+const getRoute = async <T>(app: App, path: string): Promise<T> => {
+  const headers = { 'X-Memry-Sync-Types': RECORD_SYNC_ITEM_TYPES.join(',') }
+  const res = await app.request(path, { headers }, env, executionCtx)
+  expect(res.status).toBe(200)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test reader of a route whose shape the assertions check
+  return (await res.json()) as T
+}
+
+/**
+ * A fresh device's record bootstrap through the routes: the listed record
+ * packs chained from cursor 0, then the changes feed past the chain. Each item
+ * it ends with as `type:id@blob_key`, beside every row the server holds.
+ */
+const freshDeviceRecords = async (app: App) => {
+  const { packs } = await getRoute<PackListResponse>(app, '/sync/packs?limit=50')
+  const chain = packs
+    .filter((pack) => pack.itemKind === 'record')
+    .toSorted((a, b) => (a.coverFrom ?? 0) - (b.coverFrom ?? 0))
+  const held = new Map<string, string>()
+  let through = 0
+  for (const pack of chain) {
+    const object = await storage.get(pack.packKey)
+    if (pack.coverFrom !== through || pack.coverThrough === undefined || !object) break
+    const { entries } = await parsePack(new Uint8Array(await object.arrayBuffer()))
+    for (const entry of entries) held.set(entry.id, entry.sourceKey)
+    through = pack.coverThrough
+  }
+  const tail = await getRoute<RecordChangesResponse>(app, `/sync/changes?cursor=${through}`)
+  expect(tail.hasMore).toBe(false)
+  const rows = harness.raw
+    .prepare('SELECT item_type, item_id, blob_key FROM sync_items')
+    .all() as Array<{ item_type: string; item_id: string; blob_key: string }>
+  for (const id of [...tail.items.map((item) => item.id), ...tail.deleted]) {
+    const row = rows.find((candidate) => candidate.item_id === id)
+    if (row) held.set(`${row.item_type}:${id}`, row.blob_key)
+  }
+  return {
+    device: [...held].map(([id, key]) => `${id}@${key}`).toSorted(),
+    server: rows.map((row) => `${row.item_type}:${row.item_id}@${row.blob_key}`).toSorted()
+  }
 }
 
 /** Builds the record kind until nothing is left above its watermark. */
@@ -441,6 +488,43 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
 
     expect(raced).toBe(true)
     expect(listedRecordPacks()).toEqual([{ ...kept, cover_from: 0 }])
+  })
+
+  // VERIFY-5636 #9 (#5247): a compaction message settled both rewrites and its
+  // deletion pass removed the old objects between the purge pass's SELECT and
+  // its read; the read found the object missing and reset the record kind.
+  it('a rewrite whose pack a concurrent pass settled and deleted before its read leaves the record packs listed', async () => {
+    const app = buildApp()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 1, operation: 'create' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    await compactAll()
+    await push(app, { id: 'note-x', type: 'note', tick: 2, operation: 'update' })
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(2)
+    const read = storage.get.bind(storage)
+    let raced = false
+    vi.spyOn(storage, 'get').mockImplementation(async (key, options) => {
+      if (!raced && pendingRewrites().includes(key)) {
+        raced = true
+        await messagePasses()
+      }
+      return read(key, options)
+    })
+
+    await push(app, { id: 'note-x', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(raced).toBe(true)
+    expect(pendingRewrites()).toEqual([])
+    expect(listedRecordPacks()).toEqual([
+      expect.objectContaining({ cover_from: 0, cover_through: before[1].cover_through })
+    ])
+    expect(await heldBy('note:note-x@')).toEqual([])
+    const { device, server } = await freshDeviceRecords(app)
+    expect(device).toEqual(server)
   })
 
   // REVIEW-5636 #4: the pass settled one rewrite and left two for the next
