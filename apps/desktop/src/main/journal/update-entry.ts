@@ -52,26 +52,26 @@ const logger = createLogger('Journal:Update')
  * re-arm after a pass restores its body but not the tags or properties written
  * beside it, so those are written again in the turn (#5479). An update that
  * creates the entry writes the file in the turn too, since a pass writes a day
- * file that does not exist yet (`materialize`), and seeds the doc after it.
+ * file that does not exist yet (`materialize`), and seeds the doc after it,
+ * returning the entry as its file holds it then (`finishJournalEntryCreate`).
  */
 export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
   const id = resolveJournalEntryId(input.date)
   if (input.content === undefined) {
     const { entry, created } = await takeWritebackTurn(id, () => writeJournalUpdate(input))
-    if (created) await finishJournalEntryCreate(created)
-    return entry
+    return created ? finishJournalEntryCreate(created) : entry
   }
   const { entry, tagsBefore, created } = await writeJournalUpdate(input)
-  if (created) await finishJournalEntryCreate(created)
+  const settled = created ? await finishJournalEntryCreate(created) : entry
   const added = entry.tags.filter((tag) => !tagsBefore.includes(tag))
   const removed = tagsBefore.filter((tag) => !entry.tags.includes(tag))
   const tagEdit: HeaderTagEdit | undefined =
     added.length + removed.length > 0 ? { add: added, remove: removed } : undefined
-  if (!tagEdit && input.properties === undefined) return entry
+  if (!tagEdit && input.properties === undefined) return settled
   await takeWritebackTurn(id, () =>
     rewriteJournalFrontmatter(input.date, tagEdit, input.properties)
   )
-  return entry
+  return settled
 }
 
 /**
