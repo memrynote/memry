@@ -112,7 +112,7 @@ export class CaseTwinLeaveNotReadyError extends PendingSyncIntentError {
   constructor(leavingId: string) {
     super('note', leavingId)
     this.name = 'CaseTwinLeaveNotReadyError'
-    this.message = 'Another save of a note on this shared file is still running; try again'
+    this.message = 'Another change to this shared file is still running; try again'
   }
 }
 
@@ -251,7 +251,7 @@ export function planCaseTwinMove(
     own = { content: raw, frontmatter: parsed.frontmatter, markdown: parsed.content }
   } else {
     const prepared = preparedBodies.get(leavingId) ?? notReady()
-    own = ownFile(indexDb, leavingId, leaving.title, cached.cover, prepared, raw)
+    own = ownFile(indexDb, leavingId, leaving.title, cached, prepared)
   }
   const absolutePath = toAbsolutePath(newRelativePath)
   const moved = { content: own.content, frontmatter: own.frontmatter, markdown: own.markdown }
@@ -328,7 +328,7 @@ function planLeave(
   // the other twin's bytes back under the survivor's baseline.
   if (hasPendingVaultFileOp(absolutePath)) throw new CaseTwinLeaveNotReadyError(leavingId)
 
-  const own = ownFile(indexDb, survivorId, survivor.title, cached.cover, prepared, raw)
+  const own = ownFile(indexDb, survivorId, survivor.title, cached, prepared)
   // The leaving twin's own bytes are its doc's, never the survivor's history.
   // Bytes neither twin holds are an edit no doc has: the survivor keeps a copy.
   const leaving = getNoteCacheById(indexDb, leavingId)

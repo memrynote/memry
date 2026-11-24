@@ -942,11 +942,13 @@ export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promis
       }
       enqueueTombstone()
     })
-    if (sharesCaseTwinFile(vaultPath, cached.path)) {
+    const twinArrived = (): boolean => sharesCaseTwinFile(vaultPath, cached.path)
+    // A stray row's file is the attachment store's, not this row's (#5607).
+    if (!isAttachmentStoreRow(cached)) {
+      await deleteFile(toAbsolutePath(cached.path), () => !twinArrived())
+    }
+    if (twinArrived()) {
       logger.warn('A case twin arrived on a deleted note’s file; the file stays the twin’s', { id })
-    } else if (!isAttachmentStoreRow(cached)) {
-      // A stray row's file is the attachment store's, not this row's (#5607).
-      await deleteFile(toAbsolutePath(cached.path))
     }
     dropRows()
   }

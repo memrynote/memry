@@ -17,7 +17,8 @@ import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/share
 import {
   getAliasesForNotes,
   getNoteFileProperties,
-  getNoteHeaderTags
+  getNoteHeaderTags,
+  getNoteSnapshots
 } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
@@ -105,20 +106,45 @@ export function indexedHeader(
 }
 
 /**
+ * The header of a note's own last file, when one of its versions holds the
+ * bytes its baseline names. The shared file's header may be the other twin's,
+ * so it never stands in.
+ */
+function ownLastHeader(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  baseline: { contentHash?: string | null; pendingWriteHash?: string | null }
+): NoteFrontmatter | undefined {
+  const hashes = new Set([baseline.contentHash, baseline.pendingWriteHash])
+  const version = getNoteSnapshots(indexDb, noteId).find((snapshot) =>
+    hashes.has(snapshot.contentHash)
+  )
+  return version ? parseNote(version.fileContent).frontmatter : undefined
+}
+
+/**
  * A note's own file: its prepared doc body under a header rebuilt from its
- * index rows, with the YAML types of the shared file's `raw` header.
+ * index rows, with the YAML types of its own last header (`ownLastHeader`).
  */
 export function ownFile(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cachedCover: string | null | undefined,
-  prepared: PreparedBody,
-  raw: string | null
+  cached: {
+    cover?: string | null
+    contentHash?: string | null
+    pendingWriteHash?: string | null
+  },
+  prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
-  const cover = isCoverValue(cachedCover) ? cachedCover : null
-  const file = raw === null ? undefined : parseNote(raw).frontmatter
-  const header = indexedHeader(indexDb, noteId, title, cover, file)
+  const cover = isCoverValue(cached.cover) ? cached.cover : null
+  const header = indexedHeader(
+    indexDb,
+    noteId,
+    title,
+    cover,
+    ownLastHeader(indexDb, noteId, cached)
+  )
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''

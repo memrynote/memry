@@ -187,7 +187,7 @@ import {
   renameFolderCommand,
   renameNoteCommand
 } from '../notes/domain'
-import { atomicWrite, safeRead } from './file-ops'
+import { atomicWrite, safeRead, setVaultFileWriteGuard } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
@@ -198,6 +198,8 @@ import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
 import { beginPageApply, writeNoteFileNow, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
+import { createSnapshot } from './note-snapshots'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { registerNotesHandlers } from '../ipc/notes-handlers'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 
@@ -567,6 +569,25 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }).toEqual({ file: LOWER, rows: ['lower'], deletes: [['note', 'upper']] })
   }, 30_000)
 
+  it('a delete that finds a twin arrived right before its unlink leaves the file to the twin', async () => {
+    await lone()
+    // The twin lands while the unlink awaits the lock check.
+    setVaultFileWriteGuard({
+      beforeWrite: async () => {
+        seed('lower', 'SuperNotes/a.md', LOWER)
+        return null
+      },
+      afterWrite: async () => {}
+    })
+    try {
+      await deleteNoteCommand('upper')
+    } finally {
+      setVaultFileWriteGuard(null)
+    }
+
+    expect({ file: shared(), rows: rowIds() }).toEqual({ file: LOWER, rows: ['lower'] })
+  }, 30_000)
+
   const snapshotsOf = (id: string) =>
     getNoteSnapshots(index.db, id).map((snapshot) => snapshot.fileContent)
 
@@ -901,25 +922,66 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  // A quoted string that spells a date or JSON is stored as the date's or the
-  // list's text: the rebuilt header keeps the string the file holds.
-  it("a twin delete keeps the survivor's quoted strings that spell a date or JSON", async () => {
-    const quoted = "---\nwhen: '2026-01-02'\nids: '[1,2]'\nat: 2026-01-03\n---\n"
+  const QUOTED = "---\nwhen: '2026-01-02'\nids: '[1,2]'\nat: 2026-01-03\n---\n"
+  const TYPED = '---\nwhen: 2026-01-02\nids: [1,2]\n---\n'
+
+  /**
+   * Twins whose own files carry `lowerOwn` and `upperOwn`, upper's bytes
+   * on disk, with lower's property rows indexed from its own header. A
+   * version of lower's own bytes is kept when `lowerVersion`. Returns lower's
+   * own header.
+   */
+  async function propertyTwins(lowerOwn: string, upperOwn: string, lowerVersion: boolean) {
     fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
-    seed('lower', 'SuperNotes/a.md', quoted + LOWER)
-    seed('upper', 'SUPERNOTES/a.md', quoted + UPPER)
+    seed('lower', 'SuperNotes/a.md', lowerOwn + LOWER)
+    seed('upper', 'SUPERNOTES/a.md', upperOwn + UPPER)
     await openVault()
-    const own = parseNote(quoted + LOWER)
+    const own = parseNote(lowerOwn + LOWER)
     setNoteProperties(index.db, 'lower', extractProperties(own.frontmatter), (name, value) =>
       getPropertyType(index.db, name, value, inferPropertyType)
     )
+    if (lowerVersion) {
+      createSnapshot('lower', lowerOwn + LOWER, 'a', SnapshotReasons.CLOSE)
+    }
     docs.set('lower', await docOf(LOWER))
     docs.set('upper', await docOf(UPPER))
+    return own.frontmatter
+  }
+
+  // A quoted string that spells a date or JSON is stored as the date's or the
+  // list's text: the rebuilt header keeps the string the survivor's own last
+  // file holds, which a version of it keeps.
+  for (const [name, upperHeader] of [
+    ['shares its header', QUOTED],
+    ['has no header', '']
+  ] as const) {
+    it(`a twin delete keeps the survivor's quoted strings when the leaving twin ${name}`, async () => {
+      const own = await propertyTwins(QUOTED, upperHeader, true)
+
+      await deleteNoteCommand('upper')
+
+      expect(parseNote(shared()).frontmatter).toEqual(own)
+      expect(shared()).toBe(serializeNote(own, LOWER))
+    }, 30_000)
+  }
+
+  // The leaving twin's header is not the survivor's: its quoted strings never
+  // type the survivor's dates and lists.
+  it("a twin delete keeps the survivor's dates and lists the leaving twin quotes", async () => {
+    const own = await propertyTwins(TYPED, QUOTED, false)
 
     await deleteNoteCommand('upper')
 
-    expect(parseNote(shared()).frontmatter).toMatchObject(own.frontmatter)
-    expect(shared()).toBe(serializeNote(own.frontmatter, LOWER))
+    expect(parseNote(shared()).frontmatter).toEqual(own)
+  }, 30_000)
+
+  it("a twin move keeps its dates and lists the staying twin's header quotes", async () => {
+    const own = await propertyTwins(TYPED, QUOTED, false)
+
+    await renameNoteCommand('lower', 'b')
+
+    const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
+    expect(parseNote(moved).frontmatter).toMatchObject(own)
   }, 30_000)
 
   /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
