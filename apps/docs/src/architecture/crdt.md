@@ -962,8 +962,15 @@ document to its vault `.md` file and re-indexes it for search.
   new path as a second note (#5671). The rename releases the turns before it rewrites the
   path links to the moved notes, because that rewrite feeds the linking notes' docs and can
   wait on the store. Folder renames hold their turns one at a time: a rename and one of the
-  folder above it each held a note the other waited for, and neither finished. A body update
-  feeds the doc before its file outside the queue, because the feed can wait on the store and a pass queued behind it could hang the quit flush. An update
+  folder above it each held a note the other waited for, and neither finished. A quit flush
+  also waits up to the held-work cap (1.5 s) for a rename still queued behind another, which
+  holds no turn yet. A body update
+  feeds the doc before its file outside the queue, because the feed can wait on the store and a pass queued behind it could hang the quit flush. The note command's body update
+  (`updateNote`) and a link rewrite (`landSourceRewrite`) then write the file and the rows in
+  the queue, at the path the row has then: a folder rename that ran during the feed moved the
+  file, and the path read before the feed made the old folder again (#5690). The link rewrite
+  rewrites the bytes the file holds in the queue, so a tag or property written during the
+  feed is kept. An update
   that creates a journal day (a tags save or the day merge's tags, for a day with no file)
   writes the file and its index row in the queue, since a pass writes a day file that does
   not exist yet (`materialize`). The create's sync enqueue waits for the projection lane,
