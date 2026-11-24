@@ -43,7 +43,10 @@ interface AppWrite {
   /** Wall clock, for expiry only. */
   recordedAt: number
   landed: { at: number; step: number } | null
-  /** The `step` a later write of the path landed at, or the watcher read other bytes there. */
+  /**
+   * The `step` a later write of the file landed at, under this spelling or
+   * another that names the same file, or the watcher read other bytes there.
+   */
   supersededStep: number | null
 }
 

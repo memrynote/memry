@@ -289,6 +289,18 @@ describe('Write tools — P1 deny-by-default', () => {
     }
   })
 
+  it('refuses to delete the vault itself or a folder outside it, before the gate (#5653)', async () => {
+    const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
+    const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_delete_folder')!
+    for (const path of ['/', '.', './', '..', '../Archive', 'Archive/..']) {
+      await expect(
+        t.handler({ path }, { writeGrant: 'turn-grant-1', windowId: 'w1' }),
+        path
+      ).rejects.toMatchObject({ code: 'VALIDATION' })
+    }
+    expect(gate).not.toHaveBeenCalled()
+  })
+
   it('rejects an argument the tool does not take, before the gate', async () => {
     const gate = vi.fn<WriteToolGate>(async () => ({ approved: true }))
     const t = buildWriteTools(handles, gate).find((x) => x.name === 'vault_update_task')!

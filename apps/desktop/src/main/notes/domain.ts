@@ -4,6 +4,7 @@ import {
   renameNote,
   moveNote,
   renameFolder,
+  checkFolderDelete,
   deleteFolder,
   deleteNote,
   getNoteById,
@@ -146,7 +147,9 @@ export async function renameFolderCommand(oldPath: string, newPath: string): Pro
   })
 }
 
-export async function deleteFolderCommand(folderPath: string): Promise<void> {
+export async function deleteFolderCommand(requestedPath: string): Promise<void> {
+  // The watcher and folder_config know the folder as rows name it.
+  const folderPath = checkFolderDelete(requestedPath)
   await withAppFolderChange([folderPath], async () => {
     await deleteFolder(folderPath)
     syncFolderConfigDelete(folderPath)

@@ -31,6 +31,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::storage::nested_tx;
+use crate::sync::journal_day_merge;
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
@@ -238,6 +239,7 @@ pub fn apply_local_edit_in(
             what: format!("sync item {item_type}/{item_id} has no payload to merge into"),
         });
     };
+    journal_day_merge::note_local_edit(conn, item_type, item_id, &stored)?;
 
     let merged = StoredPayload::parse(&stored)
         .map_err(refuse(item_type, item_id))?

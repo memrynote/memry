@@ -31,7 +31,7 @@
 
 use std::collections::HashMap;
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::settings::SETTINGS_ITEM_TYPE;
@@ -466,9 +466,18 @@ pub fn collapse_records(rows: Vec<OutboxRow>) -> Vec<Collapsed> {
 pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, StorageError> {
     let mut removed = 0;
     for id in ids {
-        removed += conn
-            .execute("DELETE FROM outbox WHERE id = ?1", params![id])
+        let acked: Option<(String, String, String)> = conn
+            .query_row(
+                "DELETE FROM outbox WHERE id = ?1 RETURNING item_type, item_id, op",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()
             .map_err(failed)?;
+        if let Some((item_type, item_id, op)) = acked {
+            removed += 1;
+            super::journal_day_merge::note_acked(conn, &item_type, &item_id, &op)?;
+        }
     }
     Ok(removed)
 }
