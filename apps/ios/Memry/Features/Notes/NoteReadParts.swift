@@ -243,8 +243,10 @@ extension NoteReadViewModel {
     ///
     /// Each download shows in `attachmentFetches` while it runs and after it
     /// fails, and every exit clears `.downloading`. An attachment another run
-    /// is already downloading is skipped, so the pass-triggered run and Try
-    /// again never fetch the same bytes twice.
+    /// is downloading, or whose file another run landed, is skipped, so the
+    /// pass-triggered run and Try again never fetch the same bytes twice. A
+    /// permanent failure is not asked again (`isPermanentFailure`): a new
+    /// screen asks again.
     ///
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
@@ -271,7 +273,7 @@ extension NoteReadViewModel {
             waiting.append(attachment.attachmentId)
         }
         var landed = false
-        for id in waiting where attachmentFetches[id] != .downloading {
+        for id in waiting where asks(for: id) {
             attachmentFetches[id] = .downloading
             do {
                 let summary = try await filler.fetchAttachment(attachmentId: id, reachable: reachable)
@@ -286,6 +288,18 @@ extension NoteReadViewModel {
 
         if landed {
             await loadAttachments()
+        }
+    }
+
+    /// Read as each download starts, not when the run listed `waiting`: a run
+    /// that started earlier holds a stale list.
+    private func asks(for id: String) -> Bool {
+        if attachmentFetches[id] == .downloading || attachmentFetches[id]?.isPermanentFailure == true {
+            return false
+        }
+        return !attachments.values.contains { binding in
+            guard case let .bound(attachment) = binding else { return false }
+            return attachment.attachmentId == id && attachment.localPath != nil
         }
     }
 

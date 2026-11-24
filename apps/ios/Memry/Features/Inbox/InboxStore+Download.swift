@@ -13,11 +13,13 @@ extension InboxStore {
     /// lands the bytes in the attachment cache on any usable path, and the
     /// pass copies cached bytes into `attachments/inbox/{id}/` without a
     /// download. Other captures' files in that pass stay on the observed path.
-    /// Only an unfiled capture: the pass places no other.
-    func downloadFile(of item: InboxItemRecord) async {
+    /// Only an unfiled capture: the pass places no other. `afterPass` does
+    /// not ask again after a permanent failure (`isPermanentFailure`).
+    func downloadFile(of item: InboxItemRecord, afterPass: Bool = false) async {
         guard let filler, let attachmentId = item.attachmentId, item.filedAtMs == nil,
               item.attachmentPath != nil, localFile(item.attachmentPath) == nil,
-              fileDownloads[item.id] != .downloading
+              fileDownloads[item.id] != .downloading,
+              !(afterPass && fileDownloads[item.id]?.isPermanentFailure == true)
         else { return }
         let observed = reachability()
         let opened = AttachmentDownload.openedPath(on: observed)

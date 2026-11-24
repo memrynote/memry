@@ -145,6 +145,7 @@ struct NoteCoverBand: View {
     var height: CGFloat?
 
     @State private var picture: NoteCoverPicture = .pending
+    @Environment(\.vaultSyncPasses) private var syncPasses
 
     /// On the page the band already reaches under the navigation bar, so its
     /// own slot is half the token; the reposition sheet keeps the full band.
@@ -177,6 +178,13 @@ struct NoteCoverBand: View {
         .accessibilityElement()
         .accessibilityLabel(accessibilityLabel)
         .task(id: cover.ref) { await load() }
+        // Opened offline, a waiting cover downloads once a pass runs (#5644).
+        // `.pending` while it does, so the next pass does not ask twice.
+        .onChange(of: syncPasses) {
+            guard picture == .waiting else { return }
+            picture = .pending
+            Task { await load() }
+        }
     }
 
     private var seedWash: some View {
@@ -231,8 +239,10 @@ struct NoteCoverBand: View {
             // Deferred offline: the wash stays.
             guard summary.downloaded else { return .waiting }
         } catch {
-            Log.sync.error("a cover could not be fetched", .code(ErrorMapping.userFacing(error).code))
-            return .waiting
+            let mapped = ErrorMapping.userFacing(error)
+            Log.sync.error("a cover could not be fetched", .code(mapped.code))
+            // A failure asking again cannot fix is not asked again each pass.
+            return mapped.recourse == .blocked ? .missing : .waiting
         }
         return await resolve(owner: owner, url: url, fetching: false)
     }

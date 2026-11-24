@@ -1,6 +1,5 @@
 import Foundation
 import MemryCore
-import Synchronization
 import Testing
 
 @testable import Memry
@@ -15,163 +14,8 @@ import Testing
 // | a remote url is ordinary content, not a failed download | §Q4                     |
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
-
-// MARK: - fakes
-
-/// A reader whose attachment answers a test scripts.
-private final class ScriptedAttachments: NotesReading, @unchecked Sendable {
-    private let blocks: [Block]
-    private let bindings: Mutex<[String: BlockAttachment]>
-    private let resolved = Mutex<[String]>([])
-
-    init(blocks: [Block], bindings: [String: BlockAttachment]) {
-        self.blocks = blocks
-        self.bindings = Mutex(bindings)
-    }
-
-    /// Every url the model asked about, in order.
-    var asked: [String] { resolved.withLock { $0 } }
-
-    func rebind(_ url: String, to binding: BlockAttachment) {
-        bindings.withLock { $0[url] = binding }
-    }
-
-    func folders() async throws -> [FolderSummary] { [] }
-    func list() async throws -> [NoteSummary] { [] }
-
-    func read(id: String) async throws -> NoteDetail? {
-        NoteDetail(
-            summary: NoteSummary(
-                id: id, title: "a note", folderPath: nil,
-                emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
-            ),
-            body: NoteBody(text: "body", present: true)
-        )
-    }
-
-    func blocks(id: String) async throws -> [Block]? { blocks }
-
-    func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
-        // As the live reader's `CoreExecutor.run` does.
-        try Task.checkCancellation()
-        resolved.withLock { $0.append(url) }
-        return bindings.withLock { $0[url] } ?? .unknown
-    }
-}
-
-/// A filler that reports what the core would for one attachment.
-private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable {
-    private let summary: AttachmentFetchSummary
-    private let calls = Mutex<[String]>([])
-    private let paths = Mutex<[Reachable]>([])
-    private let onFetch: (@Sendable () -> Void)?
-
-    init(summary: AttachmentFetchSummary, onFetch: (@Sendable () -> Void)? = nil) {
-        self.summary = summary
-        self.onFetch = onFetch
-    }
-
-    var fetched: [String] { calls.withLock { $0 } }
-    /// The path each fetch was judged against.
-    var judged: [Reachable] { paths.withLock { $0 } }
-
-    func isFirstSyncComplete() async throws -> Bool { true }
-    func firstSync(
-        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
-    ) async throws -> FirstSyncSummary { .none }
-    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
-        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
-    }
-
-    func fetchAttachment(
-        attachmentId: String,
-        reachable: Reachable
-    ) async throws -> AttachmentFetchSummary {
-        calls.withLock { $0.append(attachmentId) }
-        paths.withLock { $0.append(reachable) }
-        onFetch?()
-        return summary
-    }
-}
-
-/// A filler whose one fetch waits until the test lets it finish, so the test
-/// can see the screen while the download runs. It lands the bytes when it has
-/// no `failure`, and ignores cancellation as a UniFFI async call does.
-private final class GatedAttachmentFiller: VaultFilling, @unchecked Sendable {
-    private let calls = Mutex(0)
-    private let (entered, enter) = AsyncStream<Void>.makeStream()
-    private let (gate, open) = AsyncStream<Void>.makeStream()
-    private let failure: SyncError?
-    private let onLanded: (@Sendable () -> Void)?
-
-    init(failure: SyncError?, onLanded: (@Sendable () -> Void)? = nil) {
-        self.failure = failure
-        self.onLanded = onLanded
-    }
-
-    var fetches: Int { calls.withLock { $0 } }
-
-    func waitUntilFetching() async {
-        for await _ in entered { return }
-    }
-
-    func finish() { open.yield() }
-
-    func isFirstSyncComplete() async throws -> Bool { true }
-    func firstSync(
-        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
-    ) async throws -> FirstSyncSummary { .none }
-    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
-        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
-    }
-
-    func fetchAttachment(
-        attachmentId: String,
-        reachable: Reachable
-    ) async throws -> AttachmentFetchSummary {
-        calls.withLock { $0 += 1 }
-        enter.yield()
-        let gate = gate
-        await Task { for await _ in gate { break } }.value
-        if let failure { throw failure }
-        onLanded?()
-        return AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: attachmentId)
-    }
-}
-
-private final class FixedPath: Reachability {
-    init(path: Reachable) { self.path = path }
-    let path: Reachable
-    func current() -> Reachable { path }
-    func observe(observer: ReachabilityObserver) {}
-}
-
-// MARK: - helpers
-
-private func imageBlock(url: String) -> Block {
-    Block(
-        id: "b1",
-        kind: "image",
-        depth: 0,
-        props: [BlockProp(name: "url", value: url)],
-        inline: []
-    )
-}
-
-private func cached(id: String, localPath: String?) -> CachedAttachment {
-    CachedAttachment(
-        attachmentId: id,
-        manifest: "{}",
-        noteRefs: ["note-1"],
-        remoteSize: 100,
-        localPath: localPath,
-        downloadedAt: localPath == nil ? nil : 1,
-        unmeteredOnly: true,
-        pinned: false,
-        filename: "picture.png",
-        mimeType: "image/png"
-    )
-}
+// | a run holding a stale list skips a file another run landed | one download per file |
+// | a later run skips a permanent failure and asks again after any other | desktop `asksOnSync` |
 
 private let route = NoteRoute(id: "note-1")
 
@@ -347,6 +191,73 @@ struct NoteAttachmentTests {
         }
         #expect(attachment.localPath == "att-1", "the landed picture stayed a placeholder")
         #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// REVIEW-5685: a pass restarts the page while a run downloads one of two
+    /// files. The new run lands the other; the first run, still holding both
+    /// in its list, must not download it again.
+    @Test("a run holding a stale list skips a file another run landed")
+    func staleRunSkipsALandedFile() async {
+        let urls = ["att-a": "a.png", "att-b": "b.png"]
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "a.png"), imageBlock(url: "b.png")],
+            bindings: [
+                "a.png": .bound(attachment: cached(id: "att-a", localPath: nil)),
+                "b.png": .bound(attachment: cached(id: "att-b", localPath: nil))
+            ]
+        )
+        let filler = FirstFetchGatedFiller { id in
+            if let url = urls[id] { reader.rebind(url, to: .bound(attachment: cached(id: id, localPath: id))) }
+        }
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        await model.fetchWaitingAttachments()
+        filler.finish()
+        await first.value
+
+        #expect(filler.fetched.sorted() == ["att-a", "att-b"], "a file was downloaded twice")
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// REVIEW-5685, desktop `asksOnSync`: a file asking cannot bring stays
+    /// failed through the next pass instead of going back to the server and
+    /// flickering Downloading. A failure asking again can fix is asked again.
+    @Test("a later run skips a permanent failure and asks again after any other")
+    func passesSkipPermanentFailures() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let unverified = SyncError.AttachmentUnverified(deviceId: "device")
+        let corrupt = SyncError.AttachmentCorrupt(what: "chunk")
+        #expect(ErrorMapping.userFacing(unverified).recourse == .blocked)
+        #expect(ErrorMapping.userFacing(corrupt).recourse == .retry)
+        let pending = AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+
+        let refused = ScriptedAttachmentFiller(summary: pending, failure: unverified)
+        let refusedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: refused, reachability: FixedPath(path: .wifi)
+        )
+        await refusedModel.loadIfNeeded()
+        await refusedModel.fetchWaitingAttachments()
+        await refusedModel.fetchWaitingAttachments()
+        #expect(refused.fetched == ["att-1"], "a permanent failure went back to the server")
+        #expect(refusedModel.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(unverified)))
+
+        let damaged = ScriptedAttachmentFiller(summary: pending, failure: corrupt)
+        let damagedModel = NoteReadViewModel(
+            route: route, reader: reader, filler: damaged, reachability: FixedPath(path: .wifi)
+        )
+        await damagedModel.loadIfNeeded()
+        await damagedModel.fetchWaitingAttachments()
+        await damagedModel.fetchWaitingAttachments()
+        #expect(damaged.fetched == ["att-1", "att-1"])
     }
 
     /// A picture waiting for an unmetered path is the feature working. The
