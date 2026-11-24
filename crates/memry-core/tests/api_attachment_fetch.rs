@@ -11,6 +11,9 @@
 //! | the re-driver reads its manifests in one batch      | §14.5.2 batched read (#5337) |
 //! | the re-driver falls back to single manifest GETs    | §14.5.2 older server         |
 //! | a key-store error fails each row, not the re-drive  | one failure never stops it   |
+//! | a row that will not read fails alone                | one failure never stops it   |
+//! | a manifest naming another attachment is refused     | §14.7 id = manifest id       |
+//! | a batched manifest under another id is refused      | §14.7 id = manifest id       |
 
 mod http_fakes;
 
@@ -23,6 +26,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, FakeTransport, body_json, error_response, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::crypto::derive_vault_key;
+use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::domain::attachments;
@@ -160,11 +164,12 @@ fn reference_all(vault: &Vault, ids: &[&str]) {
         .expect("reference");
 }
 
-/// One attachment's downloads after its manifest is in hand.
+/// One attachment's downloads after its manifest and the device directory
+/// are in hand.
 fn download_script(
     fx: &Fixture,
 ) -> Vec<Result<HttpResponse, memry_core::api::errors::TransportError>> {
-    let mut script = vec![response(200, &fx.devices_body), no_presign()];
+    let mut script = vec![no_presign()];
     script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
     script
 }
@@ -288,15 +293,17 @@ async fn the_redriver_reads_its_manifests_in_one_batch() {
     let manifest =
         |fx: &Fixture| serde_json::from_str::<serde_json::Value>(&fx.manifest_body).unwrap();
     // The server has no manifest stored for C, so it is left out.
-    let mut script = vec![response(
-        200,
-        &json!({"manifests": {A: manifest(&a), B: manifest(&b)}}).to_string(),
-    )];
+    let mut script = vec![
+        response(
+            200,
+            &json!({"manifests": {A: manifest(&a), B: manifest(&b)}}).to_string(),
+        ),
+        response(200, &a.devices_body),
+    ];
     script.extend(download_script(&a));
     script.extend(download_script(&b));
-    script.push(response(200, &c.devices_body));
     script.push(response(200, &c.manifest_body));
-    script.extend(download_script(&c).into_iter().skip(1));
+    script.extend(download_script(&c));
     let transport = FakeTransport::new(script);
     let sync = vault.sync(session(transport.clone()));
 
@@ -319,6 +326,11 @@ async fn the_redriver_reads_its_manifests_in_one_batch() {
         singles,
         vec![format!("{BASE}/sync/attachments/{C}/manifest")]
     );
+    assert_eq!(
+        transport.calls_to("/auth/devices").len(),
+        1,
+        "one device directory per re-drive"
+    );
     for (id, fx) in [(A, &a), (B, &b), (C, &c)] {
         let on_disk = std::fs::read(dir.join("images").join(id)).expect("bytes on disk");
         assert_eq!(on_disk, fx.plaintext, "{id}");
@@ -336,11 +348,8 @@ async fn the_redriver_falls_back_to_single_manifest_gets_on_an_older_server() {
         response(200, &a.devices_body),
         response(200, &a.manifest_body),
     ];
-    script.extend(download_script(&a).into_iter().skip(1));
-    for _ in 0..2 {
-        script.push(response(200, &a.devices_body));
-        script.push(not_found());
-    }
+    script.extend(download_script(&a));
+    script.extend([not_found(), not_found()]);
     let transport = FakeTransport::new(script);
     let sync = vault.sync(session(transport.clone()));
 
@@ -351,10 +360,9 @@ async fn the_redriver_falls_back_to_single_manifest_gets_on_an_older_server() {
     assert_eq!((summary.downloaded, summary.failed), (1, 2));
 
     // B and C are still missing; the older server is not asked again.
-    for _ in 0..2 {
-        transport.push(response(200, &a.devices_body));
-        transport.push(not_found());
-    }
+    transport.push(response(200, &a.devices_body));
+    transport.push(not_found());
+    transport.push(not_found());
     let again = sync
         .redrive_attachments(Reachable::Wifi)
         .await
@@ -365,6 +373,11 @@ async fn the_redriver_falls_back_to_single_manifest_gets_on_an_older_server() {
             .calls_to("/sync/attachments/manifests/batch")
             .len(),
         1
+    );
+    assert_eq!(
+        transport.calls_to("/auth/devices").len(),
+        2,
+        "one device directory per re-drive"
     );
 }
 
@@ -384,4 +397,112 @@ async fn a_key_store_error_fails_each_row_and_not_the_redrive() {
 
     assert_eq!((summary.downloaded, summary.failed), (0, 2));
     assert_eq!(transport.call_count(), 0);
+}
+
+/// REVIEW-5523R2 #7 (#5247): one attachment row SQLite cannot read fails
+/// that row, and the rest of the re-drive still downloads.
+#[tokio::test]
+async fn a_row_that_will_not_read_fails_alone() {
+    let (vault, dir) = scratch_vault_named("vault-bad-row");
+    reference_all(&vault, &[A, B, C]);
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .execute(
+                    "UPDATE attachments SET unmetered_only = 'not a flag' WHERE attachment_id = ?1",
+                    [A],
+                )
+                .expect("A's row no longer reads"))
+        })
+        .expect("the update");
+    let [b, c] = [B, C].map(fixture_for);
+    let manifest =
+        |fx: &Fixture| serde_json::from_str::<serde_json::Value>(&fx.manifest_body).unwrap();
+    let mut script = vec![
+        response(
+            200,
+            &json!({"manifests": {B: manifest(&b), C: manifest(&c)}}).to_string(),
+        ),
+        response(200, &b.devices_body),
+    ];
+    script.extend(download_script(&b));
+    script.extend(download_script(&c));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+
+    let summary = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("the re-drive counts the rows");
+
+    assert_eq!((summary.downloaded, summary.failed), (2, 1));
+    let batches = transport.calls_to("/sync/attachments/manifests/batch");
+    assert_eq!(body_json(&batches[0])["attachmentIds"], json!([B, C]));
+    for (id, fx) in [(B, &b), (C, &c)] {
+        let on_disk = std::fs::read(dir.join("images").join(id)).expect("bytes on disk");
+        assert_eq!(on_disk, fx.plaintext, "{id}");
+    }
+}
+
+/// K7 leftover (#5247): a server that answers one id with another
+/// attachment's manifest would land that file under the id asked for.
+#[tokio::test]
+async fn a_manifest_naming_another_attachment_is_refused() {
+    let other = fixture_for(B);
+    let (vault, dir) = scratch_vault();
+    let mut script = vec![
+        response(200, &other.devices_body),
+        response(200, &other.manifest_body),
+    ];
+    script.extend(download_script(&other));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+
+    let error = sync
+        .fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect_err("the manifest names B");
+
+    assert!(
+        matches!(error, SyncError::AttachmentCorrupt { .. }),
+        "{error:?}"
+    );
+    assert_eq!(transport.call_count(), 2, "nothing past the manifest");
+    assert!(!dir.join("images").join(ATTACHMENT).exists());
+}
+
+/// The batch route's map key is the server's word too (#5247).
+#[tokio::test]
+async fn a_batched_manifest_under_another_id_is_refused() {
+    let (vault, dir) = scratch_vault_named("vault-batch-mismatch");
+    reference_all(&vault, &[A, B]);
+    let b = fixture_for(B);
+    let manifest = serde_json::from_str::<serde_json::Value>(&b.manifest_body).unwrap();
+    let mut script = vec![
+        response(
+            200,
+            &json!({"manifests": {A: manifest.clone(), B: manifest}}).to_string(),
+        ),
+        response(200, &b.devices_body),
+    ];
+    // Twice, so a re-drive that took the manifest for A finishes and counts.
+    script.extend(download_script(&b));
+    script.extend(download_script(&b));
+    let sync = vault.sync(session(FakeTransport::new(script)));
+
+    let summary = sync
+        .redrive_attachments(Reachable::Wifi)
+        .await
+        .expect("re-drive");
+
+    assert_eq!((summary.downloaded, summary.failed), (1, 1));
+    assert!(
+        !dir.join("images").join(A).exists(),
+        "B's bytes never land as A"
+    );
+    assert_eq!(
+        std::fs::read(dir.join("images").join(B)).expect("B on disk"),
+        b.plaintext
+    );
 }
