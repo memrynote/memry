@@ -2286,6 +2286,31 @@ describe('notes operations', () => {
       await expect(notes.getFileById(markdown.id)).resolves.toBeNull()
     })
 
+    it('keeps a synced file whose bytes have not downloaded yet (#5616)', async () => {
+      const { getNoteMetadataById, upsertNoteMetadata } = await import('@memry/storage-data')
+      const row = {
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        title: 'report',
+        fileType: 'pdf' as const,
+        mimeType: 'application/pdf',
+        fileSize: 10,
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      }
+      // As a pull leaves it: the attachment id on the canonical row only.
+      upsertNoteMetadata(dataDb.db, { ...row, attachmentId: 'att-report' })
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      insertNoteCache(testDb.db, row)
+
+      await expect(notes.getFileById('synced-pdf')).resolves.toMatchObject({
+        id: 'synced-pdf',
+        path: 'notes/report.pdf',
+        fileType: 'pdf'
+      })
+      expect(getNoteMetadataById(dataDb.db, 'synced-pdf')?.attachmentId).toBe('att-report')
+    })
+
     it('returns the filed voice transcript with audio file metadata', async () => {
       const { insertNoteCache } = await import('@main/database/queries/notes')
       const { inboxItems } = await import('@memry/db-schema/schema/inbox')

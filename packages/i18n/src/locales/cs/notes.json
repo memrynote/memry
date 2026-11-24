@@ -45,6 +45,12 @@
     }
   },
   "page": {
+    "noteFiles": {
+      "downloading": "Stahují se soubory této poznámky…",
+      "failed": "Soubory této poznámky se nepodařilo stáhnout: {error}",
+      "failedFallback": "stažení se nezdařilo",
+      "retry": "Zkusit znovu"
+    },
     "empty": {
       "title": "Není vybrána žádná poznámka",
       "body": "Vyberte poznámku v bočním panelu a zobrazte ji"
