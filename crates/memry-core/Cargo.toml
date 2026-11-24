@@ -125,6 +125,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "api_sync_diagnostics"
+path = "tests/api_sync_diagnostics.rs"
+
+[[test]]
 name = "calendar_feed_memory"
 path = "tests/calendar_feed_memory.rs"
 

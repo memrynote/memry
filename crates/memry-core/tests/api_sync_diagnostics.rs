@@ -6,9 +6,10 @@
 //! `AuthSession`, SQLite and update log; only the transport and the secure
 //! store are fakes.
 
-use crate::http_fakes;
+mod http_fakes;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -33,6 +34,8 @@ const BASE: &str = "https://sync.example.com";
 const MASTER_KEY: [u8; 32] = [7u8; 32];
 const SIGNING_SEED: [u8; 32] = [11u8; 32];
 
+static SCRATCH: AtomicU64 = AtomicU64::new(0);
+
 type Answer = Result<HttpResponse, TransportError>;
 
 fn vault_with_side(label: &str, transport: Arc<FakeTransport>) -> (Vault, Db, Arc<AuthSession>) {
@@ -48,7 +51,12 @@ fn vault_with_side(label: &str, transport: Arc<FakeTransport>) -> (Vault, Db, Ar
     store
         .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
         .expect("plant the signing key");
-    let dir: PathBuf = crate::support::scratch_dir(&format!("api-sync-diagnostics-{label}")).keep();
+    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
+    let dir: PathBuf = std::env::temp_dir().join(format!(
+        "memry-api-sync-diagnostics-{label}-{}-{unique}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
     let session = Arc::new(

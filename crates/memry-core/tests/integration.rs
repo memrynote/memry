@@ -48,8 +48,6 @@ mod api_search_file_text;
 mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
-#[path = "api_sync_diagnostics.rs"]
-mod api_sync_diagnostics;
 #[path = "api_sync_drain.rs"]
 mod api_sync_drain;
 #[path = "api_sync_oversized_update.rs"]
