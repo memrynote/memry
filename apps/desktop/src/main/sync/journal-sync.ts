@@ -32,7 +32,14 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
     cached: NoteMetadata | undefined,
     clock: VectorClock,
     _date: string
-  ): JournalSyncPayload {
+  ): JournalSyncPayload | null {
+    // No row: the CLI deleted the day and queued its delete when the server
+    // had seen it, or the day never left this device. A delete ticked from no
+    // clock would be ordered against nothing a peer holds (#5693).
+    if (!cached) {
+      log.warn('Journal day not found in cache for delete enqueue')
+      return null
+    }
     // A tombstone deliberately carries NO user-visible data, matching notes:
     // the date stays off the wire, since journal-handler.applyDelete resolves
     // the day from the local row (`existing.journalDate`). A receiver reads
@@ -43,9 +50,9 @@ export class JournalSyncService extends ContentSyncService<JournalSyncPayload, [
     // out of this string to stamp the server-side item version.
     return {
       clock,
-      bodyStateVector: this.bodyStateVector(cached?.id),
-      createdAt: cached?.createdAt,
-      modifiedAt: cached?.modifiedAt
+      bodyStateVector: this.bodyStateVector(cached.id),
+      createdAt: cached.createdAt,
+      modifiedAt: cached.modifiedAt
     }
   }
 

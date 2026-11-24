@@ -21,6 +21,7 @@ import path from 'path'
 import * as Y from 'yjs'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { syncPendingDeletes } from '@memry/db-schema/schema/sync-pending-deletes'
 import { SyncQueueManager } from '@memry/sync-client/queue'
@@ -118,6 +119,7 @@ import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { flushPendingLocalDeletes } from './local-mutations'
 import { coverQueuedContentDeletes } from './local-doc-delete'
+import { isKnownNote, landNoteBody } from './note-body-apply'
 import { syncNoteDelete } from '../notes/runtime-effects'
 import { enqueueJournalDelete } from '../journal/runtime-effects'
 
@@ -322,7 +324,7 @@ describe('a note delete sent after the fact, pulled by a peer with text it never
     initJournalSyncService({ queue, getDeviceId: () => DEVICE_A })
     cliDelete(DAY)
 
-    // With no row, the raise queues a delete ticked from no clock; the CLI's replaces it.
+    // With no row, the raise queues nothing; the CLI's delete goes.
     await enqueueJournalDelete(DAY.id, DAY.journalDate)
 
     const sent = queuedDelete(DAY)
@@ -364,5 +366,101 @@ describe('a note delete sent after the fact, pulled by a peer with text it never
       expect.objectContaining({ type: 'note', itemId: NOTE.id })
     )
     expect(asClientDb(deviceA.db).select().from(syncPendingDeletes).all()).toHaveLength(1)
+  })
+
+  it('keeps the text a pull brought between the CLI delete and the watcher unlink', async () => {
+    seedNote(deviceA, 'Old\n')
+    // The index row the watcher drops only once it handles the unlink.
+    const at = '2026-10-01T08:00:00.000Z'
+    index.db
+      .insert(noteCache)
+      .values({ id: NOTE.id, path: NOTE.path, title: NOTE.title, createdAt: at, modifiedAt: at })
+      .run()
+    store.set(NOTE.id, [held])
+    startNoteSync()
+    cliDelete()
+
+    // A's pull brings B's text, pushed long before, ahead of the watcher.
+    const db = asSyncDb(deviceA.db)
+    await landNoteBody(
+      {
+        provider: getCrdtProvider(),
+        isKnownNote: (id) => isKnownNote(db, id),
+        onMissingBase: () => {}
+      },
+      NOTE.id,
+      [peerText]
+    )
+    await syncNoteDelete(NOTE.id)
+
+    expect(await peerPulls(queuedDelete())).toEqual(keptCopy)
+  })
+
+  it.each([
+    ['never synced', {}],
+    ['local-only', { clock: { [DEVICE_A]: 4 }, localOnly: true }]
+  ])('sends no delete for a %s journal day the CLI deleted', async (_name, row) => {
+    asClientDb(deviceA.db)
+      .insert(noteMetadata)
+      .values({
+        id: DAY.id,
+        path: DAY.path,
+        title: DAY.title,
+        journalDate: DAY.journalDate,
+        fileType: 'markdown',
+        createdAt: '2026-10-01T08:00:00.000Z',
+        modifiedAt: '2026-10-01T08:00:00.000Z',
+        ...row
+      })
+      .run()
+    startNoteSync()
+    initJournalSyncService({ queue, getDeviceId: () => DEVICE_A })
+    deleteNoteRowQueuingSyncDelete(asClientDb(deviceA.db), DAY.id)
+
+    // The watcher's unlink of the CLI's file, which finds no row.
+    await enqueueJournalDelete(DAY.id, DAY.journalDate)
+
+    expect(queue.peek(10)).toEqual([])
+  })
+
+  it('tries a delete it cannot cover once per database, not at every runtime start', async () => {
+    seedNote(deviceA, 'Old\n')
+    cliDelete()
+
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+
+    const warned = logger.warn.mock.calls.filter(([message]) =>
+      String(message).includes('no body vector')
+    )
+    expect(warned).toHaveLength(1)
+  })
+
+  it('covers the other queued deletes when one fails, and logs it', async () => {
+    seedNote(deviceA, 'Old\n')
+    seedNote(deviceA, 'Old\n', DAY)
+    store.set(NOTE.id, [held])
+    store.set(DAY.id, [held])
+    cliDelete(DAY)
+    cliDelete()
+    const provider = getCrdtProvider()
+    const withDocLoaded = provider.withDocLoaded.bind(provider)
+    vi.spyOn(provider, 'withDocLoaded').mockImplementation(async (noteId, step) => {
+      if (noteId === DAY.id) throw new Error('disk I/O error')
+      await withDocLoaded(noteId, step)
+    })
+
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+
+    const payloads = asClientDb(deviceA.db).select().from(syncPendingDeletes).all()
+    const vectorOf = (id: string): unknown =>
+      (JSON.parse(payloads.find((p) => p.itemId === id)!.payload) as Record<string, unknown>)
+        .bodyStateVector
+    expect(vectorOf(NOTE.id)).toEqual(expect.any(String))
+    expect(vectorOf(DAY.id)).toBeUndefined()
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('queued note delete'),
+      expect.objectContaining({ itemId: DAY.id })
+    )
   })
 })
