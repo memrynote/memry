@@ -63,7 +63,7 @@ import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
-import { recoverFolderMoves } from './move-directory'
+import { recoverStrandedFolderMoves } from './move-directory'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { watchLockedAttachments } from '../vault-locks/attachment-watch'
@@ -488,12 +488,12 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   }
   if (isStale()) return
 
-  // Before the replay: a folder move a crash interrupted left its files where
-  // no walk sees them, and the replay would delete their notes.
+  // Before the removal replay, which would take the files a failed folder move
+  // left in its hidden staging directory for deletes (#5695).
   try {
-    await recoverFolderMoves(vaultPath)
+    await recoverStrandedFolderMoves(vaultPath)
   } catch (error) {
-    logger.error('Finishing folder moves a crash interrupted failed:', error)
+    logger.error('Putting back the entries of a failed folder move failed:', error)
     trackMainError('vault', 'recover_folder_moves', error)
   }
   if (isStale()) return

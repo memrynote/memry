@@ -86,11 +86,8 @@ import {
   queueEmbeddedVaultFiles,
   unlinkTasksFromDeletedNote
 } from '../notes/runtime-effects'
-import {
-  isAppFolderChange,
-  syncFolderConfigDelete,
-  syncFolderConfigDiscovered
-} from '../notes/folder-config-effects'
+import { syncFolderConfigDelete, syncFolderConfigDiscovered } from '../notes/folder-config-effects'
+import { isAppFolderChange } from './app-folder-changes'
 import { normalizeRelativePath, openVaultFile } from '../lib/paths'
 import { createTreeFolderFilter } from './folder-visibility'
 import { recordActivity, recordSkippedFile, toActivityPath } from './activity-log'
@@ -1472,71 +1469,57 @@ export class VaultWatcher {
           ? null
           : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt)))
 
-      const onRealDelete = async (): Promise<void> => {
-        if (keepUnpaired) return
-        // A folder the app is moving entry by entry, which re-keys the rows
-        // only once every file moved (#2206): the delete stays pending, and
-        // pairable with the file's add, until the move settles.
-        if (isAppFolderChange(relativePath)) {
-          trackPendingDelete(
-            cached.id,
-            cached.contentHash ?? '',
-            relativePath,
-            onRealDelete,
-            statKey
-          )
-          return
-        }
-        // The note was moved, not deleted: a folder rename or a synced move
-        // re-keyed its canonical row before the index followed.
-        const canonicalPath = findCanonicalNotePath(cached.id)
-        if (canonicalPath !== null && canonicalPath !== relativePath) return
-        if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
-        // A locked note removed outside the app gets its locked text back
-        // instead of a delete that would reach every device (#2606).
-        if (
-          isNoteLocked(cached.id, relativePath) &&
-          (await restoreLockedNoteFile(cached.id, null))
-        ) {
-          return
-        }
-        // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
-        if (isJournal && journalDate) {
-          await enqueueJournalDelete(cached.id, journalDate)
-        } else {
-          await syncNoteDelete(cached.id)
-        }
-
-        deleteNoteFromCache(db, cached.id)
-        void flushProjectionEvents()
-        // A folder delete and a file removed outside the app both land here,
-        // and neither goes through `deleteNoteCommand`.
-        void unlinkTasksFromDeletedNote(cached.id)
-
-        recordActivity({ kind: 'removed', source: 'watcher', path: relativePath })
-
-        // Emit delete event
-        emitEvent(NotesChannels.events.DELETED, {
-          id: cached.id,
-          path: relativePath,
-          source: 'external'
-        })
-
-        // Also emit journal event if this is a journal entry
-        if (isJournal && journalDate) {
-          emitEvent(JournalChannels.events.ENTRY_DELETED, {
-            date: journalDate,
-            source: 'external'
-          })
-        }
-
-        await Promise.resolve()
-      }
       trackPendingDelete(
         cached.id,
         cached.contentHash ?? '',
         relativePath,
-        onRealDelete,
+        async () => {
+          if (keepUnpaired) return
+          // The note was moved, not deleted: a folder rename or a synced move
+          // re-keyed its canonical row before the index followed.
+          const canonicalPath = findCanonicalNotePath(cached.id)
+          if (canonicalPath !== null && canonicalPath !== relativePath) return
+          if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
+          // A locked note removed outside the app gets its locked text back
+          // instead of a delete that would reach every device (#2606).
+          if (
+            isNoteLocked(cached.id, relativePath) &&
+            (await restoreLockedNoteFile(cached.id, null))
+          ) {
+            return
+          }
+          // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
+          if (isJournal && journalDate) {
+            await enqueueJournalDelete(cached.id, journalDate)
+          } else {
+            await syncNoteDelete(cached.id)
+          }
+
+          deleteNoteFromCache(db, cached.id)
+          void flushProjectionEvents()
+          // A folder delete and a file removed outside the app both land here,
+          // and neither goes through `deleteNoteCommand`.
+          void unlinkTasksFromDeletedNote(cached.id)
+
+          recordActivity({ kind: 'removed', source: 'watcher', path: relativePath })
+
+          // Emit delete event
+          emitEvent(NotesChannels.events.DELETED, {
+            id: cached.id,
+            path: relativePath,
+            source: 'external'
+          })
+
+          // Also emit journal event if this is a journal entry
+          if (isJournal && journalDate) {
+            emitEvent(JournalChannels.events.ENTRY_DELETED, {
+              date: journalDate,
+              source: 'external'
+            })
+          }
+
+          await Promise.resolve()
+        },
         statKey,
         deferred
       )

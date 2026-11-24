@@ -10,7 +10,7 @@ import { enqueueLocalSyncUpdate } from './local-mutations'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
 import { clearCaseTwinForeignBytes, holdsCaseTwinForeignBytes } from '../vault/case-twin-bytes'
-import { isAppFolderChange, settleAppFolderChanges } from '../notes/folder-config-effects'
+import { settleAppFolderChanges } from '../vault/app-folder-changes'
 import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
 import { SupersededDownloadError } from './attachment-errors'
@@ -82,8 +82,7 @@ async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean>
     if (onDisk !== null) return after?.identity === file.identity
     if (after?.identity === null) {
       // Gone after the hash too: nothing there holds other bytes.
-      if (!isAppFolderChange(after.relativePath)) return true
-      await settleAppFolderChanges(after.relativePath)
+      if (!(await settleAppFolderChanges(after.relativePath))) return true
       file = await fileAtRowPath(db, noteId)
       continue
     }

@@ -39,6 +39,7 @@ import {
   buildFileIdentityKey,
   buildStatRenameKey
 } from './rename-tracker'
+import { withAppFolderChange } from './app-folder-changes'
 
 describe('rename-tracker', () => {
   let indexDb: TestDatabaseResult
@@ -95,6 +96,33 @@ describe('rename-tracker', () => {
 
     expect(onRealDelete).toHaveBeenCalledTimes(1)
     expect(hasPendingDeletes()).toBe(false)
+  })
+
+  it('holds a delete under a folder the app is moving until the move ends (#5695)', async () => {
+    vi.useFakeTimers()
+    const timed = vi.fn().mockResolvedValue(undefined)
+    const deferred = vi.fn().mockResolvedValue(undefined)
+    const rescan = createDeferredDeletes()
+    let finishMove = (): void => {}
+    const move = withAppFolderChange(
+      ['Big'],
+      () => new Promise<void>((resolve) => (finishMove = resolve))
+    )
+
+    trackPendingDelete('note-1', 'hash-1', 'Big/Sub/a.md', timed)
+    trackPendingDelete('note-2', 'hash-2', 'Big/b.md', deferred, null, rescan)
+    await settleDeferredDeletes(rescan)
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(timed).not.toHaveBeenCalled()
+    expect(deferred).not.toHaveBeenCalled()
+    // The moved file's add still pairs with its delete as a rename.
+    expect(checkForRename('hash-1', 'Renamed/Sub/a.md')).toMatchObject({ id: 'note-1' })
+
+    finishMove()
+    await move
+    await vi.advanceTimersByTimeAsync(500)
+    expect(deferred).toHaveBeenCalledTimes(1)
   })
 
   // ==========================================================================

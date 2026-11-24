@@ -6,9 +6,13 @@
 
 import path from 'path'
 import { existsSync } from 'fs'
-import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'fs/promises'
+import { mkdir, readFile, readdir, rename, rm, rmdir } from 'fs/promises'
 import { randomBytes } from 'crypto'
-import { withTransientFsRetry } from './file-ops'
+import { z } from 'zod'
+import { atomicWrite, withTransientFsRetry } from './file-ops'
+import { getMemryDir } from './init'
+import { clearStrandedFolders, holdStrandedFolder } from './app-folder-changes'
+import { resolveVaultFile } from '../lib/paths'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('MoveDirectory')
@@ -31,8 +35,54 @@ function isCaseOnlyRename(from: string, to: string): boolean {
 
 type UndoStep = () => Promise<unknown>
 
+const STAGING_PREFIX = '.memry-move-'
+
+/** A move's id, 6 random bytes in lowercase hex: its record's name and its staging directory's. */
+const MOVE_ID = /^[0-9a-f]{12}$/
+
+/** The ids of the moves running in this process, which a vault open leaves alone. */
+const runningMoves = new Set<string>()
+
+/** `/`-separated names only: no empty, `.` or `..` name, so nothing absolute either. */
+const VaultRelativePath = z
+  .string()
+  .refine((p) =>
+    p.split('/').every((name) => !['', '.', '..'].includes(name) && !name.includes('\\'))
+  )
+
 /**
- * Move the directory `from` to `to`, where `to` does not exist yet.
+ * A move going entry by entry, recorded in `.memry/moves/<id>.json` until it
+ * ends, as `/`-separated vault-relative paths. This is the Tauri app's shipped
+ * vault format (`crates/memry-desktop/src/vault/move_journal.rs`), written
+ * byte for byte as its serde output, `{"version":1,"from":…,"staging":…}`, so
+ * a move either app left half done is put back by whichever opens the vault
+ * next. Tauri adds `shown` (a visible folder it put leftovers in) and leaves
+ * `from` out of a record that only shows a staging directory; both read here.
+ */
+const FolderMoveRecordSchema = z.object({
+  version: z.number(),
+  from: VaultRelativePath.optional(),
+  staging: VaultRelativePath
+})
+type FolderMoveRecord = z.infer<typeof FolderMoveRecordSchema>
+
+function moveRecordDir(vaultPath: string): string {
+  return path.join(getMemryDir(vaultPath), 'moves')
+}
+
+async function removeMoveRecord(recordPath: string): Promise<void> {
+  try {
+    await rm(recordPath, { force: true })
+  } catch (error) {
+    // A record left behind finds its staging directory gone at the next open,
+    // which then removes it.
+    logger.warn(`Could not remove a folder move record: ${errnoCode(error) ?? 'unknown'}`)
+  }
+}
+
+/**
+ * Move the vault folder `from` to `to` (vault-relative), where `to` does not
+ * exist yet.
  *
  * On Windows the vault watcher holds an open handle on every directory it
  * watches, and Windows refuses to rename a directory while anything beneath it
@@ -52,101 +102,150 @@ type UndoStep = () => Promise<unknown>
  *
  * All or nothing: a step that fails undoes every step before it and the
  * original error is thrown, so a failed move never leaves a folder split in two.
- *
- * A crash mid-move leaves the moved entries in the staging directory, which
- * no index walk sees, while their rows still name the old paths: the next
- * open would sync each note's delete. So the move records its staging
- * directory in the vault's `.memry/folder-moves` until it is gone, and
- * `recoverFolderMoves` finishes the move at the next open, before the removals
- * are replayed and pair each moved file with its row.
+ * When an undo step fails too, or the app quits mid-move, the entries already
+ * moved stay in the staging directory, hidden from the watcher, while the rows
+ * still name `from`. The move's record keeps `from` app-owned, so no unlink
+ * under it becomes a delete, and the next open puts the entries back
+ * (`recoverStrandedFolderMoves`).
  */
-export async function moveDirectory(from: string, to: string, vaultRoot: string): Promise<void> {
+export async function moveDirectory(vaultPath: string, from: string, to: string): Promise<void> {
+  const fromAbs = path.join(vaultPath, from)
+  const toAbs = path.join(vaultPath, to)
+  const relative = (abs: string): string => path.relative(vaultPath, abs).split(path.sep).join('/')
   try {
-    await rename(from, to)
+    await rename(fromAbs, toAbs)
     return
   } catch (error) {
     // An existing destination would be merged into by the entry-wise move;
     // leave that refusal to the caller exactly as the plain rename gave it.
     // A case-only rename (`journal` -> `Journal`) names the source itself on a
     // case-insensitive filesystem, so `to` "existing" is not a merge.
-    if (!isLockedTreeError(error) || (existsSync(to) && !isCaseOnlyRename(from, to))) throw error
+    if (!isLockedTreeError(error) || (existsSync(toAbs) && !isCaseOnlyRename(from, to))) {
+      throw error
+    }
   }
 
   const id = randomBytes(6).toString('hex')
-  const staging = path.join(path.dirname(to), `.memry-move-${id}`)
-  const journal = path.join(journalDir(vaultRoot), `${id}.json`)
-  const relative = (p: string): string => path.relative(vaultRoot, p).split(path.sep).join('/')
-  await mkdir(journalDir(vaultRoot), { recursive: true })
-  await writeFile(journal, JSON.stringify({ staging: relative(staging), to: relative(to) }))
-  const undo: UndoStep[] = []
-
+  const stagingAbs = path.join(path.dirname(toAbs), `${STAGING_PREFIX}${id}`)
+  const recordPath = path.join(moveRecordDir(vaultPath), `${id}.json`)
+  const record = { version: 1, from: relative(fromAbs), staging: relative(stagingAbs) }
+  runningMoves.add(id)
   try {
-    await moveEntries(from, staging, undo)
-    await withTransientFsRetry(() => rename(staging, to), 'moveDirectory')
-  } catch (error) {
-    await runUndo(undo)
-    throw error
+    // Before the staging directory exists, so no crash leaves one unrecorded.
+    await atomicWrite(recordPath, JSON.stringify(record))
+    const undo: UndoStep[] = []
+    try {
+      await moveEntries(fromAbs, stagingAbs, undo)
+      await withTransientFsRetry(() => rename(stagingAbs, toAbs), 'moveDirectory')
+    } catch (error) {
+      if (await runUndo(undo)) await removeMoveRecord(recordPath)
+      else holdStrandedFolder(record.from)
+      throw error
+    }
+    await removeMoveRecord(recordPath)
   } finally {
-    // Kept while an undo that failed leaves entries in the staging directory.
-    if (!existsSync(staging)) await rm(journal, { force: true })
+    runningMoves.delete(id)
   }
-}
-
-function journalDir(vaultRoot: string): string {
-  return path.join(vaultRoot, '.memry', 'folder-moves')
 }
 
 /**
- * Vault open: finish each entry-wise move a crash interrupted. Its staging
- * directory becomes the moved folder, and what the move had not reached stays
- * in the old one, so no file is lost and the removal replay re-keys each
- * moved note's row instead of deleting it.
+ * Vault open, before the removal replay: finish each move a crash or a failed
+ * undo left recorded, in the one direction its state allows.
+ *
+ * - Its staging directory is there: the move never reached its last step, the
+ *   rename of the staging directory to `to`, and the rows still name `from`.
+ *   It rolls back: every staged entry goes back into `from`, merging into a
+ *   subfolder the move had split, so no folder stays in two places. Nothing is
+ *   replaced, and whatever is at `to` is left alone. A record has no `to`, so
+ *   finishing the move forward would be a guess.
+ * - Its staging directory is gone: the move ended (its folder is at `to`, and
+ *   the replay re-keys each row to its moved file, rolling forward) or was
+ *   fully undone. Only the record goes.
+ *
+ * A move that cannot be put back keeps its source app-owned for this session,
+ * so none of its notes' removals syncs as a delete, and is tried again at the
+ * next open. A record this build cannot act on stays for the app that wrote
+ * it; a newer version's keeps its source held the same way.
  */
-export async function recoverFolderMoves(vaultRoot: string): Promise<void> {
-  let names: string[]
-  try {
-    names = await readdir(journalDir(vaultRoot))
-  } catch (error) {
-    if (errnoCode(error) === 'ENOENT') return
-    throw error
-  }
-  for (const name of names) {
-    const journal = path.join(journalDir(vaultRoot), name)
-    const move = parseJournal(await readFile(journal, 'utf8'), vaultRoot)
-    if (!move) {
-      logger.error('Could not read the record of an interrupted folder move')
-      continue
-    }
-    const { staging, to } = move
-    if (existsSync(staging)) {
-      if (existsSync(to)) {
-        logger.error('An interrupted folder move cannot finish: its destination exists')
-        continue
+export async function recoverStrandedFolderMoves(vaultPath: string): Promise<void> {
+  clearStrandedFolders()
+  const recordDir = moveRecordDir(vaultPath)
+  if (!existsSync(recordDir)) return
+
+  for (const name of await readdir(recordDir)) {
+    const id = name.endsWith('.json') ? name.slice(0, -'.json'.length) : ''
+    if (!MOVE_ID.test(id) || runningMoves.has(id)) continue
+    const recordPath = path.join(recordDir, name)
+    let record: FolderMoveRecord | null = null
+    try {
+      record = parseMoveRecord(await readFile(recordPath, 'utf8'))
+      if (!record) {
+        logger.error('Leaving a folder move record this build cannot read')
+      } else if (record.version !== 1) {
+        logger.error(`Leaving a version ${record.version} folder move record`)
+        if (record.from !== undefined) holdStrandedFolder(record.from)
+      } else if (record.from === undefined || !(await isOwnMove(vaultPath, id, record))) {
+        logger.error('Leaving a folder move record that names no source of its own')
+      } else {
+        const stagingAbs = path.join(vaultPath, record.staging)
+        if (existsSync(stagingAbs)) await putBack(stagingAbs, path.join(vaultPath, record.from))
+        await removeMoveRecord(recordPath)
       }
-      await rename(staging, to)
-      logger.warn('Finished a folder move a crash interrupted')
+    } catch (error) {
+      logger.error(`Could not put back a failed folder move: ${errnoCode(error) ?? 'unknown'}`)
+      if (record?.from !== undefined) holdStrandedFolder(record.from)
     }
-    await rm(journal, { force: true })
   }
 }
 
-/** A move's absolute paths. Null unless its staging directory is a sibling of `to` in the vault. */
-function parseJournal(text: string, vaultRoot: string): { staging: string; to: string } | null {
-  let value: unknown
+/** `rel` is `folder` or inside it, in any letter case. */
+function within(rel: string, folder: string): boolean {
+  return `${rel.toLowerCase()}/`.startsWith(`${folder.toLowerCase()}/`)
+}
+
+/**
+ * The checks the Tauri sweep makes before it puts anything back: the staging
+ * directory is the record's own (`.memry-move-<its id>`), the source is in
+ * neither it nor `.memry` (in any letter case), and no path leads out of the
+ * vault, through a link either.
+ */
+async function isOwnMove(
+  vaultPath: string,
+  id: string,
+  { from, staging }: FolderMoveRecord
+): Promise<boolean> {
+  if (from === undefined || path.posix.basename(staging) !== `${STAGING_PREFIX}${id}`) return false
+  if (within(from, staging) || within(from, '.memry')) return false
+  for (const rel of [from, staging]) {
+    if ((await resolveVaultFile(vaultPath, rel)).kind === 'outside') return false
+  }
+  return true
+}
+
+function parseMoveRecord(text: string): FolderMoveRecord | null {
   try {
-    value = JSON.parse(text)
+    const parsed = FolderMoveRecordSchema.safeParse(JSON.parse(text))
+    return parsed.success ? parsed.data : null
   } catch {
+    // Not JSON: left in place like a record the schema refuses.
     return null
   }
-  if (typeof value !== 'object' || value === null) return null
-  if (!('staging' in value) || typeof value.staging !== 'string') return null
-  if (!('to' in value) || typeof value.to !== 'string') return null
-  const staging = path.resolve(vaultRoot, value.staging)
-  const to = path.resolve(vaultRoot, value.to)
-  const inVault = path.relative(vaultRoot, to)
-  if (!inVault || inVault.startsWith('..') || path.isAbsolute(inVault)) return null
-  if (path.dirname(staging) !== path.dirname(to)) return null
-  return /^\.memry-move-[0-9a-f]{12}$/.test(path.basename(staging)) ? { staging, to } : null
+}
+
+/**
+ * Move every entry of `staged` back into `source`, merging into a directory
+ * the move had split. An entry `source` already has again is left where it is,
+ * so nothing is overwritten and the staging directory stays for the next try.
+ */
+async function putBack(staged: string, source: string): Promise<void> {
+  await mkdir(source, { recursive: true })
+  for (const entry of await readdir(staged, { withFileTypes: true })) {
+    const from = path.join(staged, entry.name)
+    const to = path.join(source, entry.name)
+    if (!existsSync(to)) await withTransientFsRetry(() => rename(from, to), 'moveDirectory')
+    else if (entry.isDirectory()) await putBack(from, to)
+  }
+  await withTransientFsRetry(() => rmdir(staged), 'moveDirectory')
 }
 
 async function moveEntries(from: string, to: string, undo: UndoStep[]): Promise<void> {
@@ -179,15 +278,19 @@ async function moveEntries(from: string, to: string, undo: UndoStep[]): Promise<
   undo.push(() => mkdir(from))
 }
 
-async function runUndo(undo: UndoStep[]): Promise<void> {
+/** Whether every step was undone. */
+async function runUndo(undo: UndoStep[]): Promise<boolean> {
+  let undone = true
   for (const step of undo.toReversed()) {
     try {
       await step()
     } catch (error) {
+      undone = false
       // Only the errno — never the path, which is note-derived.
       logger.error(
         `Could not undo a step of a failed folder move: ${errnoCode(error) ?? 'unknown'}`
       )
     }
   }
+  return undone
 }

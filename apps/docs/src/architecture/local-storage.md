@@ -30,7 +30,9 @@ no user keys has no YAML block at all.
   preserves note identity.
 - **External renames match by content hash.** The file watcher pairs a delete with a following add
   inside a short window using the cached content hash (identical-content collisions match FIFO),
-  since files carry no embedded id to match on.
+  since files carry no embedded id to match on. A removal under a folder the app itself is moving
+  or deleting waits until that change ends, however long it takes, because the app re-keys or
+  deletes those rows itself (`src/main/vault/app-folder-changes.ts`).
 - **A vanished vault is not a deleted vault.** A vault on a removable or network drive that is
   away for a moment, or a vault folder renamed away, makes the watcher see every file removed at
   once. A removal becomes a delete only while `<vault>/.memry/data.db` is still a file
