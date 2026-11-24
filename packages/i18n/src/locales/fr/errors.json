@@ -220,6 +220,7 @@
     "renameCaseTwins": "Ce dossier contient des notes qui partagent un fichier avec une note dont le nom de dossier ne diffère que par la casse. Renommez ou déplacez d’abord ces notes, puis renommez le dossier.",
     "deleteFailed": "Impossible de supprimer le dossier",
     "deleteCaseTwins": "Ce dossier et un dossier portant le même nom écrit autrement, par exemple avec une autre casse, ne forment qu’un seul dossier sur le disque, donc le supprimer supprimerait les notes des deux. Supprimez plutôt une à une les notes dont vous n’avez pas besoin.",
+    "deleteWindowsName": "Le nom de ce dossier se termine par un point ou un espace, que Windows ignore, donc le supprimer pourrait aussi supprimer un autre dossier. Supprimez plutôt une à une les notes qu’il contient.",
     "setConfigFailed": "Impossible d'enregistrer la configuration du dossier"
   },
   "folderView": {
