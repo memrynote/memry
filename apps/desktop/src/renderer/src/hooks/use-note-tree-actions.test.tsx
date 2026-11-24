@@ -81,6 +81,7 @@ vi.mock('@/services/notes-service', () => ({
     create: vi.fn(),
     getFolderTemplate: vi.fn(),
     renameFolder: vi.fn(),
+    checkFolderDelete: vi.fn(),
     deleteFolder: vi.fn(),
     getFolderConfig: vi.fn(),
     setFolderConfig: vi.fn(),
@@ -196,6 +197,7 @@ describe('useNoteTreeActions', () => {
       note: createNote('created', 'Other/New note.md')
     })
     vi.mocked(notesService.renameFolder).mockResolvedValue(true)
+    vi.mocked(notesService.checkFolderDelete).mockResolvedValue({ success: true })
     vi.mocked(notesService.deleteFolder).mockResolvedValue({ success: true })
     vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
@@ -976,6 +978,24 @@ describe('useNoteTreeActions', () => {
       })
       expect(mutations.deleteNote.mutateAsync).toHaveBeenCalledWith('page-a')
       expect(notesService.deleteFolder).toHaveBeenCalledWith('Work/Note A')
+    })
+
+    it('deletes nothing in the selection when its folder delete would be refused', async () => {
+      vi.mocked(notesService.checkFolderDelete).mockResolvedValue({
+        success: false,
+        error: 'errors:folder.deleteCaseTwins'
+      })
+      const { result, mutations } = renderPaired({ selectedIds: ['work-a', 'folder-Work/Note A'] })
+
+      act(() => result.current.handleBulkDelete())
+      expect(result.current.notesToDelete).toEqual([workA, pageA])
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+      expect(notesService.deleteFolder).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('errors:folder.deleteCaseTwins')
     })
   })
 })

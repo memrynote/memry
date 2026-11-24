@@ -216,7 +216,7 @@
     "renameFailed": "Failed to rename folder",
     "renameCaseTwins": "This folder holds notes that share a file with a note whose folder name differs only in case. Rename or move those notes first, then rename the folder.",
     "deleteFailed": "Failed to delete folder",
-    "deleteCaseTwins": "This folder and a folder whose name differs only in case are one folder on disk, so deleting it would delete the notes in both. Delete the notes you don't need one by one instead.",
+    "deleteCaseTwins": "This folder and a folder with the same name spelled differently, such as in another case, are one folder on disk, so deleting it would delete the notes in both. Delete the notes you don't need one by one instead.",
     "setConfigFailed": "Failed to set folder config"
   },
   "folderView": {

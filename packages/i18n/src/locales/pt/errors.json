@@ -216,7 +216,7 @@
     "renameFailed": "Não foi possível renomear a pasta",
     "renameCaseTwins": "Esta pasta contém notas que compartilham um arquivo com uma nota cujo nome de pasta difere apenas em maiúsculas e minúsculas. Renomeie ou mova essas notas primeiro e, depois, renomeie a pasta.",
     "deleteFailed": "Não foi possível excluir a pasta",
-    "deleteCaseTwins": "Esta pasta e uma pasta cujo nome difere apenas em maiúsculas e minúsculas são uma única pasta no disco, então excluí-la excluiria as notas de ambas. Em vez disso, exclua uma a uma as notas de que você não precisa.",
+    "deleteCaseTwins": "Esta pasta e uma pasta com o mesmo nome escrito de outra forma, por exemplo com outras maiúsculas e minúsculas, são uma única pasta no disco, então excluí-la excluiria as notas de ambas. Em vez disso, exclua uma a uma as notas de que você não precisa.",
     "setConfigFailed": "Não foi possível definir a configuração da pasta"
   },
   "folderView": {

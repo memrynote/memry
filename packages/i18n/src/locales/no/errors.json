@@ -216,7 +216,7 @@
     "renameFailed": "Kunne ikke gi mappen nytt navn",
     "renameCaseTwins": "Denne mappen inneholder notater som deler fil med et notat der mappenavnet bare skiller seg ved store og små bokstaver. Gi disse notatene nytt navn eller flytt dem først, og gi deretter mappen nytt navn.",
     "deleteFailed": "Kunne ikke slette mappen",
-    "deleteCaseTwins": "Denne mappen og en mappe der navnet bare skiller seg ved store og små bokstaver, er én mappe på disken, så hvis du sletter den, slettes notatene i begge. Slett heller notatene du ikke trenger, ett om gangen.",
+    "deleteCaseTwins": "Denne mappen og en mappe med samme navn stavet annerledes, for eksempel med andre store og små bokstaver, er én mappe på disken, så hvis du sletter den, slettes notatene i begge. Slett heller notatene du ikke trenger, ett om gangen.",
     "setConfigFailed": "Kunne ikke lagre mappeoppsettet"
   },
   "folderView": {

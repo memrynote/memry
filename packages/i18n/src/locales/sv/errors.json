@@ -216,7 +216,7 @@
     "renameFailed": "Det gick inte att byta namn på mappen",
     "renameCaseTwins": "Den här mappen innehåller anteckningar som delar fil med en anteckning vars mappnamn bara skiljer sig i versaler och gemener. Byt namn på eller flytta de anteckningarna först, och byt sedan namn på mappen.",
     "deleteFailed": "Det gick inte att radera mappen",
-    "deleteCaseTwins": "Den här mappen och en mapp vars namn bara skiljer sig i versaler och gemener är samma mapp på disken, så om du tar bort den tas anteckningarna i båda bort. Ta i stället bort de anteckningar du inte behöver en i taget.",
+    "deleteCaseTwins": "Den här mappen och en mapp med samma namn stavat annorlunda, till exempel med andra versaler och gemener, är samma mapp på disken, så om du tar bort den tas anteckningarna i båda bort. Ta i stället bort de anteckningar du inte behöver en i taget.",
     "setConfigFailed": "Det gick inte att spara mappinställningarna"
   },
   "folderView": {

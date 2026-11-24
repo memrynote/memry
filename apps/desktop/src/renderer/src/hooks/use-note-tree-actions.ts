@@ -764,6 +764,24 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
       setIsDeleting(true)
       try {
+        // Main refuses some folder deletes (#5642). Ask first, so a refusal
+        // leaves the paired note and the rest of the selection in place.
+        for (const folderPath of foldersToDelete) {
+          const check = await notesService.checkFolderDelete(folderPath)
+          if (!check.success) {
+            toast.error(
+              extractErrorMessage(
+                check.error,
+                getI18n().getFixedT(null, 'errors')('folder.deleteFailed')
+              )
+            )
+            setIsDeleteDialogOpen(false)
+            setNotesToDelete([])
+            setFoldersToDelete([])
+            return
+          }
+        }
+
         // The tasks go only if every note they came from did: a note that
         // survived its delete still shows them.
         let everyDeleteSucceeded = true

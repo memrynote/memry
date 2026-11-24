@@ -1194,6 +1194,9 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
   for (const [which, folderPath] of [
     ['the old-spelling folder of a twin', 'Supernotes'],
+    ['the old-spelling folder of a twin with a trailing slash', 'Supernotes/'],
+    ['the old-spelling folder of a twin as ./Supernotes', './Supernotes'],
+    ['the old-spelling folder of a twin as Supernotes/.', 'Supernotes/.'],
     ['the folder on disk while a twin is filed in another spelling', 'SuperNotes']
   ] as const) {
     it(`deleting ${which} is refused and deletes nothing`, async () => {
@@ -1203,6 +1206,20 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
 
       expect({ response, ...folderOnDisk() }).toEqual({
         response: { success: false, error: 'errors:folder.deleteCaseTwins' },
+        ...UNDELETED
+      })
+    }, 30_000)
+  }
+
+  for (const vaultRoot of ['', '.', '/']) {
+    it(`deleting the vault itself as '${vaultRoot}' is refused and deletes nothing (#5653)`, async () => {
+      await twinInOldSpelling()
+
+      const response = await deleteFolderFromSidebar(vaultRoot)
+
+      expect({ response, memry: fs.existsSync(vault.memryDir), ...folderOnDisk() }).toEqual({
+        response: { success: false, error: 'Not a vault folder that can be deleted' },
+        memry: true,
         ...UNDELETED
       })
     }, 30_000)

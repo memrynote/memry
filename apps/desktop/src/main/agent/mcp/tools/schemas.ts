@@ -11,6 +11,8 @@ import {
   MAX_EDIT_ELEMENTS
 } from '@memry/contracts/canvas-draw'
 import { CalendarDateSchema } from '@memry/contracts/calendar-date'
+import { vaultFolderPath } from '../../../lib/paths'
+import { normalizeFolderPath } from './folder-paths'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 import { strictDeep } from '@memry/contracts/strict-schema'
 
@@ -303,7 +305,14 @@ const LOOSE_TOOL_SCHEMAS = {
     description: 'Rename a note folder. Requires user approval.'
   },
   vault_delete_folder: {
-    input: z.object({ path: z.string().min(1) }),
+    input: z.object({
+      path: z
+        .string()
+        .min(1)
+        .refine((path) => vaultFolderPath(normalizeFolderPath(path)) !== null, {
+          message: 'Name a folder inside the vault, not the vault itself or a path outside it'
+        })
+    }),
     description: 'Delete a note folder and its contents. Requires user approval.'
   },
   vault_create_task: {

@@ -312,6 +312,7 @@ export interface MainIpcInvokeHandlers {
   "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<AttachmentRenameResult>>
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<AttachmentResolveResult>>
   "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
+  "notes:check-folder-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:cluster": (...args: [{ noteIds: string[]; }]) => Awaited<Promise<NoteClustersResponse>>
   "notes:create": (...args: [{ title: string; plainChecklists?: boolean | undefined; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; properties?: Record<string, unknown> | undefined; emoji?: string | null | undefined; }]) => Awaited<Promise<{ success: true; note: Note; }> | { success: false; error: string }>
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
