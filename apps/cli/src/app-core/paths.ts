@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { normalizeJournalFolder, parseVaultFolder } from '@memry/storage-vault'
+import {
+  normalizeJournalFolder,
+  parseVaultFolder,
+  windowsTrimsFolderName
+} from '@memry/storage-vault'
 import { errorCode } from './errno.ts'
 
 export interface VaultConfig {
@@ -54,9 +58,9 @@ export function isPlainSegment(value: string): boolean {
 
 /**
  * The vault folder a command that writes there names, as note rows name it. Throws
- * `Refusing to <action>` for what desktop's rule (`parseVaultFolder`) does not read as a
- * folder inside the vault, and for a path through a link, which can lead anywhere outside
- * it (#5658). The vault itself is `''` when `allowRoot`. A leading `/` is vault-relative
+ * `Refusing to <action>` for what desktop's rules (`parseVaultFolder`,
+ * `windowsTrimsFolderName`) do not read as a folder inside the vault, and for a path
+ * through a link, which can lead anywhere outside it (#5658). The vault itself is `''` when `allowRoot`. A leading `/` is vault-relative
  * in the CLI, a shipped contract, so it is stripped before the shared rule. The links are
  * found by an `lstat` of each existing segment, as Tauri's `plain_folders` refuses them:
  * a realpath comparison would also trip on another case spelling, which macOS resolves.
@@ -69,15 +73,15 @@ export async function vaultFolder(
 ): Promise<string> {
   const parsed = parseVaultFolder(normalizePath(requested))
   if (parsed.kind === 'root' && allowRoot) return ''
-  if (parsed.kind === 'windowsAlias') {
-    throw new Error(
-      `Refusing to ${action}: "${requested}" ends in a dot or a space, which Windows drops, so it names another folder.`
-    )
-  }
   if (parsed.kind !== 'folder') {
     throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
   }
   const folder = parsed.path
+  if (windowsTrimsFolderName(folder)) {
+    throw new Error(
+      `Refusing to ${action}: "${requested}" ends in a dot or a space, which Windows drops, so it names another folder.`
+    )
+  }
   const segments = folder.split('/')
   for (let index = 1; index <= segments.length; index += 1) {
     const walked = segments.slice(0, index).join('/')

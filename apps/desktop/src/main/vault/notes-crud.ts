@@ -76,7 +76,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { openVaultFile, readVaultFile } from '../lib/paths'
-import { vaultFolderPath } from '@memry/storage-vault'
+import { vaultFolderPath, windowsTrimsFolderName } from '@memry/storage-vault'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -1042,6 +1042,8 @@ export function checkFolderDelete(requestedPath: string): string {
   if (folderPath === null) {
     throw new NoteError('Not a vault folder that can be deleted', NoteErrorCode.INVALID_PATH)
   }
+  // Windows reads `Work.` as `Work`, so the rm would remove that folder.
+  if (windowsTrimsFolderName(folderPath)) throw new Error('errors:folder.deleteWindowsName')
   assertFolderTreeWritable(folderPath)
   assertFolderDeleteKeepsCaseTwins(folderPath)
   return folderPath
