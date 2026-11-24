@@ -64,7 +64,7 @@
     "downloadFailed": "添付ファイルをダウンロードできませんでした",
     "downloadGone": "このファイルは同期サーバーにもうありません。",
     "downloadMissing": "このファイルはまだ同期サーバーにありません。明日もう一度開いて確認してください。",
-    "downloadNeedsSync": "同期が実行されていないため、このファイルをダウンロードできません。",
+    "downloadNeedsSync": "同期が実行されていないため、このファイルをダウンロードできません。同期が実行されると自動的にダウンロードされます。",
     "downloadProgressFailed": "ダウンロードの進捗を取得できませんでした",
     "exceedsMaxSize": "ファイルが大きすぎます：{size} は上限の {limit} を超えています",
     "exceedsPlanLimit": "ファイルがプランの上限を超えています：{size}（上限 {limit}）",

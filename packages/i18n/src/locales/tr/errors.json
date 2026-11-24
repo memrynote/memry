@@ -64,7 +64,7 @@
     "downloadFailed": "Ek indirilemedi",
     "downloadGone": "Bu dosya artık eşitleme sunucusunda değil.",
     "downloadMissing": "Bu dosya henüz eşitleme sunucusunda değil. Kontrol etmek için yarın yeniden açın.",
-    "downloadNeedsSync": "Eşitleme çalışmıyor, bu yüzden bu dosya indirilemiyor.",
+    "downloadNeedsSync": "Eşitleme çalışmıyor, bu yüzden bu dosya indirilemiyor. Eşitleme çalıştığında kendiliğinden indirilir.",
     "downloadProgressFailed": "İndirme ilerlemesi alınamadı",
     "exceedsMaxSize": "Dosya çok büyük: {size}, {limit} sınırını aşıyor",
     "exceedsPlanLimit": "Dosya, planınızın izin verdiğinden büyük: {size}, {limit} sınırını aşıyor",

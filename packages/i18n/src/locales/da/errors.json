@@ -64,7 +64,7 @@
     "downloadFailed": "Kunne ikke hente den vedhæftede fil",
     "downloadGone": "Denne fil er ikke længere på synkroniseringsserveren.",
     "downloadMissing": "Denne fil er ikke på synkroniseringsserveren endnu. Åbn den igen i morgen for at tjekke.",
-    "downloadNeedsSync": "Synkronisering kører ikke, så denne fil kan ikke hentes.",
+    "downloadNeedsSync": "Synkronisering kører ikke, så denne fil kan ikke hentes. Den hentes automatisk, når synkroniseringen kører.",
     "downloadProgressFailed": "Kunne ikke hente downloadstatus",
     "exceedsMaxSize": "Filen er for stor: {size} overskrider grænsen på {limit}",
     "exceedsPlanLimit": "Filen er større, end dit abonnement tillader: {size} overskrider {limit}",

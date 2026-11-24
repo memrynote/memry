@@ -571,6 +571,7 @@ const createMockApi = () => ({
   onMainInvoke: vi.fn().mockReturnValue(() => {}),
   respondToMainInvoke: vi.fn(),
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
+  onSyncStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onTagsProgress: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),

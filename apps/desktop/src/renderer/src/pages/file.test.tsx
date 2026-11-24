@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
+import { APP_QUERY_DEFAULT_OPTIONS } from '@/lib/query-client-options'
 import { FilePage } from './file'
 
 // The reveal action's label branches on platform. Pin macOS so these
@@ -245,7 +247,7 @@ describe('FilePage', () => {
     vi.mocked(window.api.syncAttachments.downloadNoteFiles).mockResolvedValueOnce({
       success: false,
       error: 'This file is no longer on the sync server.',
-      canRetry: false
+      retry: 'none'
     })
     renderWithProviders(<FilePage fileId="file-1" />)
 
@@ -253,6 +255,41 @@ describe('FilePage', () => {
       await screen.findByText('This file is no longer on the sync server.')
     ).toBeInTheDocument()
     expect(screen.queryByText('phaseF.pagesFile.tryAgain')).toBeNull()
+  })
+
+  // A file restored at launch opens before the sync runtime exists.
+  it('shows the file once sync runs, with no click (#5616)', async () => {
+    let syncStatusChanged: Parameters<typeof window.api.onSyncStatusChanged>[0] = () => undefined
+    vi.mocked(window.api.onSyncStatusChanged).mockImplementation((listener) => {
+      syncStatusChanged = listener
+      return () => undefined
+    })
+    const downloadNoteFiles = vi.mocked(window.api.syncAttachments.downloadNoteFiles)
+    downloadNoteFiles.mockResolvedValueOnce({
+      success: false,
+      error: "Sync isn't running, so this file can't be downloaded.",
+      retry: 'whenSyncRuns'
+    })
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    expect(await screen.findByText(/Sync isn't running/)).toBeInTheDocument()
+    expect(screen.queryByText('phaseF.pagesFile.tryAgain')).toBeNull()
+    act(() => syncStatusChanged({ status: 'syncing', pendingCount: 0 }))
+
+    expect(await screen.findByTestId('pdf-viewer')).toBeInTheDocument()
+    expect(downloadNoteFiles).toHaveBeenCalledTimes(2)
+  })
+
+  // Main paces the server's 404s; the app's default query retry would ask twice.
+  it('asks main once per open, under the app query defaults (#5616)', async () => {
+    const downloadNoteFiles = vi.mocked(window.api.syncAttachments.downloadNoteFiles)
+    downloadNoteFiles.mockResolvedValueOnce({ success: false, error: 'R2 unavailable' })
+    renderWithProviders(<FilePage fileId="file-1" />, {
+      queryClient: new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
+    })
+
+    expect(await screen.findByText('R2 unavailable')).toBeInTheDocument()
+    expect(downloadNoteFiles).toHaveBeenCalledTimes(1)
   })
 
   it('renders file project chips with itemType file', async () => {

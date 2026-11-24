@@ -64,7 +64,7 @@
     "downloadFailed": "Nie udało się pobrać załącznika",
     "downloadGone": "Tego pliku nie ma już na serwerze synchronizacji.",
     "downloadMissing": "Tego pliku nie ma jeszcze na serwerze synchronizacji. Otwórz go ponownie jutro, aby sprawdzić.",
-    "downloadNeedsSync": "Synchronizacja nie działa, więc nie można pobrać tego pliku.",
+    "downloadNeedsSync": "Synchronizacja nie działa, więc nie można pobrać tego pliku. Zostanie pobrany automatycznie, gdy synchronizacja zacznie działać.",
     "downloadProgressFailed": "Nie udało się odczytać postępu pobierania",
     "exceedsMaxSize": "Plik jest zbyt duży: {size} przekracza limit {limit}",
     "exceedsPlanLimit": "Plik jest większy, niż pozwala twój plan: {size} przekracza {limit}",

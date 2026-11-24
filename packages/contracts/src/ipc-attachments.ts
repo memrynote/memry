@@ -59,11 +59,19 @@ export interface DownloadNoteFilesInput {
   noteId: string
 }
 
+/**
+ * What can still bring a file that did not arrive: asking again `now` (Try
+ * again), the sync runtime starting (`whenSyncRuns`: sync has not started yet,
+ * the vault is held, or the plan has no sync), or `none`: the server no longer
+ * has the file, or answered 404 inside its retry window.
+ */
+export type NoteFilesRetry = 'now' | 'whenSyncRuns' | 'none'
+
 export interface DownloadNoteFilesResult {
   success: boolean
   error?: string
-  /** False when asking again cannot help: the server no longer has the file, or answered 404 inside its retry window. */
-  canRetry?: boolean
+  /** Set on a failure. */
+  retry?: NoteFilesRetry
 }
 
 export interface GetDownloadProgressInput {

@@ -1228,9 +1228,14 @@ across devices:
   and sends no request, so opens never spend the three 404 probes that give a
   reference up faster than the pull does. A file the server has answered as
   gone three times is reported whatever the setting, and not requested. Neither
-  404 answer offers Try again (`canRetry: false`). With no sync runtime (a held
+  404 answer offers Try again (`retry: 'none'`). With no sync runtime (a held
   vault, a plan without sync, sync not started) the call asks the server
-  nothing and reports that sync is not running. With auto-download on, the call
+  nothing and reports that sync is not running (`retry: 'whenSyncRuns'`, no
+  Try again). The note page and the file page then ask again on each sync
+  status change, so a note restored at launch downloads once the runtime
+  starts. The note page also asks again on a status change while it shows
+  nothing, which downloads a file a pull adds to the open note; a failure that
+  offers Try again waits for the click. With auto-download on, the call
   requests nothing. Each request holds its own claim on the download
   (`DownloadClaim`), and only its holder can release it, so a pull's request
   settling late cannot free a download an open took. Opening a binary note

@@ -14,9 +14,11 @@ import { attachmentDownloadFailures, noteMetadata } from '@memry/db-schema'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import {
   isDownloadAbandoned,
+  markDownloadRequested,
   pruneUnresolvableReferences,
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { setSetting } from '../database/queries/settings'
@@ -27,7 +29,8 @@ const h = vi.hoisted(() => ({
   sent: [] as Array<{ channel: string; payload: unknown }>,
   download: vi.fn(),
   /** The running sync runtime's monitor; null while sync is not running. */
-  network: null as object | null
+  network: null as object | null,
+  token: vi.fn<() => Promise<string | null>>()
 }))
 
 vi.mock('electron', () => ({
@@ -54,7 +57,7 @@ vi.mock('../sync/attachments', () => ({
   }),
   AttachmentTooLargeError: class AttachmentTooLargeError extends Error {}
 }))
-vi.mock('../sync/token-manager', () => ({ getValidAccessToken: async () => 'token' }))
+vi.mock('../sync/token-manager', () => ({ getValidAccessToken: () => h.token() }))
 vi.mock('../database/client', () => ({
   getDatabase: () => h.db,
   isDatabaseInitialized: () => true
@@ -83,7 +86,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const notFound = (): Error =>
   Object.assign(new Error('Failed to fetch manifest'), { statusCode: 404 })
 
-type Result = { success: boolean; error?: string; canRetry?: boolean }
+type Result = { success: boolean; error?: string; retry?: string }
 const openNote = (noteId: string): Promise<Result> =>
   invokeHandler<Result>(SYNC_CHANNELS.DOWNLOAD_NOTE_FILES, { noteId })
 
@@ -130,6 +133,7 @@ beforeEach(() => {
   resetAttachmentDownloadSession()
   h.sent = []
   h.download.mockReset()
+  h.token.mockReset().mockResolvedValue('token')
   h.network = Object.assign(new EventEmitter(), { online: true })
   h.db = createTestDataDb()
   h.vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-files-'))
@@ -194,7 +198,7 @@ describe('sync:download-note-files with auto-download off', () => {
     await expect(openNote('bin-1')).resolves.toEqual({
       success: false,
       error: 'R2 unavailable',
-      canRetry: true
+      retry: 'now'
     })
     expect(fs.existsSync(pdfPath())).toBe(false)
     const failure = h.db.select().from(attachmentDownloadFailures).get()
@@ -214,7 +218,7 @@ describe('sync:download-note-files with auto-download off', () => {
     expect(result).toEqual({
       success: false,
       error: expect.stringMatching(/no longer on the sync server/),
-      canRetry: false
+      retry: 'none'
     })
     expect(h.download).not.toHaveBeenCalled()
   })
@@ -230,7 +234,7 @@ describe('sync:download-note-files with auto-download off', () => {
       await expect(openNote('note-1')).resolves.toEqual({
         success: false,
         error: expect.stringMatching(/isn't on the sync server yet/),
-        canRetry: false
+        retry: 'none'
       })
     }
 
@@ -244,18 +248,44 @@ describe('sync:download-note-files with auto-download off', () => {
     expect(h.download).toHaveBeenCalledTimes(2)
   })
 
-  it('asks the server nothing while sync is not running, and says why', async () => {
+  it('asks the server nothing while sync is not running, then downloads once it runs', async () => {
     h.network = null
     serveFiles()
 
-    const result = await openNote('bin-1')
-
-    expect(result).toEqual({
+    await expect(openNote('bin-1')).resolves.toEqual({
       success: false,
-      error: expect.stringMatching(/Sync isn't running/),
-      canRetry: true
+      error: expect.stringMatching(/Sync isn't running.+once sync runs/),
+      retry: 'whenSyncRuns'
     })
     expect(h.download).not.toHaveBeenCalled()
+
+    // The sync runtime starts; the open asks again (the renderer, on the status change).
+    h.network = Object.assign(new EventEmitter(), { online: true })
+    await expect(openNote('bin-1')).resolves.toEqual({ success: true })
+    expect(fs.readFileSync(pdfPath())).toEqual(PDF)
+  })
+
+  // A pull's request for a file is released before it waits for a token, so
+  // an open of the note right then claims and downloads it instead of finding
+  // it held by a request that downloads nothing.
+  it('downloads a file a suppressed pull request still waits on a token for', async () => {
+    serveFiles()
+    // A token asked for during the pull's request never comes.
+    let pulling = true
+    h.token.mockImplementation(() =>
+      pulling ? new Promise<string | null>(() => undefined) : Promise.resolve('token')
+    )
+    attachmentEvents.emitDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'att-embed',
+      diskPath: path.join(h.vaultPath, 'attachments', 'note-1'),
+      intoDir: true,
+      claim: markDownloadRequested('note-1', 'att-embed')!
+    })
+    pulling = false
+
+    await expect(openNote('note-1')).resolves.toEqual({ success: true })
+    expect(fs.readFileSync(imagePath())).toEqual(PNG)
   })
 })
 
@@ -278,7 +308,7 @@ describe('sync:download-note-files with auto-download on', () => {
     await expect(openNote('bin-1')).resolves.toEqual({
       success: false,
       error: expect.stringMatching(/no longer on the sync server/),
-      canRetry: false
+      retry: 'none'
     })
   })
 })

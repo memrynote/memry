@@ -14,7 +14,8 @@ import {
   DownloadAttachmentSchema,
   DownloadNoteFilesSchema,
   GetDownloadProgressSchema,
-  type DownloadNoteFilesResult
+  type DownloadNoteFilesResult,
+  type NoteFilesRetry
 } from '@memry/contracts/ipc-attachments'
 
 import {
@@ -541,8 +542,8 @@ export function registerAttachmentHandlers(): void {
         ...gone.map(() => notOnServer('gone')),
         ...(wanted.length > 0 ? await requestNoteFiles(db, wanted) : [])
       ]
-      // Try again shows while any file can still arrive, with that failure.
-      const shown = failures.find((failure) => failure.canRetry) ?? failures[0]
+      // While any file can still arrive, the failure says how.
+      const shown = failures.find((failure) => failure.retry !== 'none') ?? failures[0]
       return shown ? { success: false, ...shown } : { success: true }
     },
     'errors:attachment.downloadFailed'
@@ -736,10 +737,10 @@ export function registerAttachmentHandlers(): void {
   })
 }
 
-/** Why a file an open asked for did not arrive, and whether asking again can help. */
+/** Why a file an open asked for did not arrive, and what can still bring it. */
 interface NoteFileFailure {
   error: string
-  canRetry: boolean
+  retry: NoteFilesRetry
 }
 
 /**
@@ -748,7 +749,7 @@ interface NoteFileFailure {
  */
 function notOnServer(missing: 'gone' | 'missing'): NoteFileFailure {
   const key = missing === 'gone' ? 'downloadGone' : 'downloadMissing'
-  return { error: getMainI18n().t(`errors:attachment.${key}`), canRetry: false }
+  return { error: getMainI18n().t(`errors:attachment.${key}`), retry: 'none' }
 }
 
 /** Download the files an open is waiting on, each on its own claim. */
@@ -758,12 +759,15 @@ async function requestNoteFiles(
 ): Promise<NoteFileFailure[]> {
   // No sync runtime: the vault is held (kept local, another account's), the
   // plan has no sync, or sync has not started. The server would refuse, so it
-  // is not asked, the same as the save-time upload above.
+  // is not asked, the same as the save-time upload above. The open asks again
+  // once sync runs.
   if (!getNetworkMonitor()) {
-    return [{ error: getMainI18n().t('errors:attachment.downloadNeedsSync'), canRetry: true }]
+    return [
+      { error: getMainI18n().t('errors:attachment.downloadNeedsSync'), retry: 'whenSyncRuns' }
+    ]
   }
   if (!(await getValidAccessToken())) {
-    return [{ error: getMainI18n().t('errors:auth.notAuthenticated'), canRetry: true }]
+    return [{ error: getMainI18n().t('errors:auth.notAuthenticated'), retry: 'now' }]
   }
   const failures = await Promise.all(
     files.map(async (file): Promise<NoteFileFailure | null> => {
@@ -773,7 +777,7 @@ async function requestNoteFiles(
       const error = claim ? await materializeDownload({ ...file, claim }, 'interactive') : null
       const missing = missingDownload(db, file.noteId, file.attachmentId)
       if (missing) return notOnServer(missing)
-      return error === null ? null : { error, canRetry: true }
+      return error === null ? null : { error, retry: 'now' }
     })
   )
   return failures.filter((failure) => failure !== null)

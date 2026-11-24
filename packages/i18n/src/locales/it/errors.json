@@ -64,7 +64,7 @@
     "downloadFailed": "Download dell'allegato non riuscito",
     "downloadGone": "Questo file non è più sul server di sincronizzazione.",
     "downloadMissing": "Questo file non è ancora sul server di sincronizzazione. Riaprilo domani per controllare.",
-    "downloadNeedsSync": "La sincronizzazione non è attiva, quindi non è possibile scaricare questo file.",
+    "downloadNeedsSync": "La sincronizzazione non è attiva, quindi non è possibile scaricare questo file. Verrà scaricato automaticamente quando la sincronizzazione sarà attiva.",
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",
     "exceedsMaxSize": "File troppo grande: {size} supera il limite di {limit}",
     "exceedsPlanLimit": "Il file è più grande di quanto consenta il tuo piano: {size} supera {limit}",

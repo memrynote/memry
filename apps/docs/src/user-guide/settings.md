@@ -43,7 +43,9 @@ download in the background as notes sync. Turn it off to save disk space and ban
 downloads only when you open the note that holds it, or the file itself. The note shows
 **Downloading this note's files…** while it waits. If a download fails, the note says why and
 offers **Try again**. A file page shows the error with a retry button. Sync must be running for a
-file to download. A file the sync server does not have yet is checked again when you open it the
+file to download. A note or file you open before sync runs, such as one restored at launch, downloads
+its files on its own once sync starts. An open note also downloads a file that sync adds to it.
+A file the sync server does not have yet is checked again when you open it the
 next day, and a file the server no longer has shows that message with no retry button.
 Known limits: while the device is offline the message stays until it is back online,
 and opening a journal day does not download its files.

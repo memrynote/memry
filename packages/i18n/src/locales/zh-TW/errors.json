@@ -64,7 +64,7 @@
     "downloadFailed": "附件下載失敗",
     "downloadGone": "此檔案已不在同步伺服器上。",
     "downloadMissing": "此檔案還不在同步伺服器上。請明天再開啟查看。",
-    "downloadNeedsSync": "同步未執行，因此無法下載此檔案。",
+    "downloadNeedsSync": "同步未執行，因此無法下載此檔案。同步開始執行後，它會自動下載。",
     "downloadProgressFailed": "無法取得下載進度",
     "exceedsMaxSize": "檔案過大：{size} 超過 {limit} 的上限",
     "exceedsPlanLimit": "檔案超過你的方案允許的大小：{size} 超過 {limit}",

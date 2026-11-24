@@ -64,7 +64,7 @@
     "downloadFailed": "Preuzimanje privitka nije uspjelo",
     "downloadGone": "Ova datoteka više nije na poslužitelju za sinkronizaciju.",
     "downloadMissing": "Ova datoteka još nije na poslužitelju za sinkronizaciju. Otvorite je ponovno sutra da provjerite.",
-    "downloadNeedsSync": "Sinkronizacija nije pokrenuta pa se ova datoteka ne može preuzeti.",
+    "downloadNeedsSync": "Sinkronizacija nije pokrenuta pa se ova datoteka ne može preuzeti. Preuzet će se sama čim sinkronizacija bude pokrenuta.",
     "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
     "exceedsMaxSize": "Datoteka je prevelika: {size} premašuje ograničenje od {limit}",
     "exceedsPlanLimit": "Datoteka je veća nego što vaš plan dopušta: {size} premašuje {limit}",

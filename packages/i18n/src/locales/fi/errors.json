@@ -64,7 +64,7 @@
     "downloadFailed": "Liitteen lataaminen epäonnistui",
     "downloadGone": "Tätä tiedostoa ei ole enää synkronointipalvelimella.",
     "downloadMissing": "Tätä tiedostoa ei ole vielä synkronointipalvelimella. Avaa se uudelleen huomenna tarkistaaksesi.",
-    "downloadNeedsSync": "Synkronointi ei ole käynnissä, joten tätä tiedostoa ei voi ladata.",
+    "downloadNeedsSync": "Synkronointi ei ole käynnissä, joten tätä tiedostoa ei voi ladata. Se latautuu itsestään, kun synkronointi on käynnissä.",
     "downloadProgressFailed": "Latauksen edistymisen hakeminen epäonnistui",
     "exceedsMaxSize": "Tiedosto on liian suuri: {size} ylittää rajan {limit}",
     "exceedsPlanLimit": "Tiedosto on suurempi kuin tilauksesi sallii: {size} ylittää rajan {limit}",

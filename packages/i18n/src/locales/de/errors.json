@@ -64,7 +64,7 @@
     "downloadFailed": "Der Anhang konnte nicht heruntergeladen werden",
     "downloadGone": "Diese Datei ist nicht mehr auf dem Sync-Server.",
     "downloadMissing": "Diese Datei ist noch nicht auf dem Sync-Server. Öffne sie morgen noch einmal, um nachzusehen.",
-    "downloadNeedsSync": "Die Synchronisierung läuft nicht, daher kann diese Datei nicht heruntergeladen werden.",
+    "downloadNeedsSync": "Die Synchronisierung läuft nicht, daher kann diese Datei nicht heruntergeladen werden. Sie wird automatisch heruntergeladen, sobald die Synchronisierung läuft.",
     "downloadProgressFailed": "Der Downloadfortschritt konnte nicht abgerufen werden",
     "exceedsMaxSize": "Datei zu groß: {size} überschreitet das Limit von {limit}",
     "exceedsPlanLimit": "Die Datei ist größer, als dein Tarif erlaubt: {size} überschreitet {limit}",

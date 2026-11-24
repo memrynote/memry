@@ -3,6 +3,7 @@ import { AlertCircle, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import type { NoteFilesRetry } from '@memry/contracts/ipc-attachments'
 
 /**
  * A note that misses no file answers at once. Showing the notice only past this
@@ -10,16 +11,21 @@ import { useT } from '@memry/i18n/renderer'
  */
 const SHOW_DOWNLOADING_AFTER_MS = 300
 
+/** `failure` is main's error message, or what the IPC call threw. */
+type DownloadState = 'idle' | 'downloading' | { failure: unknown; retry: NoteFilesRetry }
+
 /**
- * `failure` is main's error message, or what the IPC call threw. `canRetry` is
- * false when asking again cannot help, such as a file the server no longer has.
+ * A sync pass can bring a file the open note lacks: sync starting, or a pull
+ * that names a new file. A failure Try again or the server settles waits.
  */
-type DownloadState = 'idle' | 'downloading' | { failure: unknown; canRetry: boolean }
+const asksOnSync = (state: DownloadState): boolean =>
+  state === 'idle' || (typeof state === 'object' && state.retry === 'whenSyncRuns')
 
 /**
  * With attachment auto-download off, a note's files stay on the server until
  * the note is opened (#5616). Mounting this asks main for them and shows the
- * outcome; each block re-renders on its own once its file lands. Mount it with
+ * outcome, and each sync status change asks again while a sync pass can bring
+ * one; each block re-renders on its own once its file lands. Mount it with
  * `key={noteId}` so another note starts from a clean state.
  */
 export function NoteFilesDownloadNotice({ noteId }: { noteId: string }): React.JSX.Element {
@@ -50,25 +56,32 @@ function NoteFilesDownload({
 
   useEffect(() => {
     let current = true
-    const timer = setTimeout(() => {
-      if (current) setState('downloading')
-    }, SHOW_DOWNLOADING_AFTER_MS)
-    void (async () => {
-      let next: DownloadState
+    let asking = false
+    let settled: DownloadState = 'idle'
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const ask = async (): Promise<void> => {
+      asking = true
+      timer = setTimeout(() => {
+        if (current) setState('downloading')
+      }, SHOW_DOWNLOADING_AFTER_MS)
       try {
         const result = await window.api.syncAttachments.downloadNoteFiles({ noteId })
-        next = result.success
-          ? 'idle'
-          : { failure: result.error, canRetry: result.canRetry !== false }
+        settled = result.success ? 'idle' : { failure: result.error, retry: result.retry ?? 'now' }
       } catch (err) {
-        next = { failure: err, canRetry: true }
+        settled = { failure: err, retry: 'now' }
       }
       clearTimeout(timer)
-      if (current) setState(next)
-    })()
+      asking = false
+      if (current) setState(settled)
+    }
+    void ask()
+    const unsubscribe = window.api.onSyncStatusChanged(() => {
+      if (!asking && asksOnSync(settled)) void ask()
+    })
     return () => {
       current = false
       clearTimeout(timer)
+      unsubscribe()
     }
   }, [noteId])
 
@@ -93,7 +106,7 @@ function NoteFilesDownload({
     >
       <AlertCircle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 break-words">{t('page.noteFiles.failed', { error })}</span>
-      {state.canRetry && (
+      {state.retry === 'now' && (
         <Button
           variant="ghost"
           size="sm"

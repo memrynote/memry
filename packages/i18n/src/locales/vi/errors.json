@@ -64,7 +64,7 @@
     "downloadFailed": "Không thể tải xuống tệp đính kèm",
     "downloadGone": "Tệp này không còn trên máy chủ đồng bộ.",
     "downloadMissing": "Tệp này chưa có trên máy chủ đồng bộ. Hãy mở lại vào ngày mai để kiểm tra.",
-    "downloadNeedsSync": "Đồng bộ không chạy nên không thể tải xuống tệp này.",
+    "downloadNeedsSync": "Đồng bộ không chạy nên không thể tải xuống tệp này. Tệp sẽ tự tải xuống khi đồng bộ chạy.",
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
     "exceedsMaxSize": "Tệp quá lớn: {size} vượt quá giới hạn {limit}",
     "exceedsPlanLimit": "Tệp lớn hơn mức gói của bạn cho phép: {size} vượt quá {limit}",
