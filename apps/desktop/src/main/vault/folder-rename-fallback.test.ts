@@ -420,6 +420,32 @@ describe('a folder rename that moves entry by entry (#5695)', () => {
     expect(fs.readdirSync(vault.path).filter((name) => name.startsWith('.memry-move-'))).toEqual([])
   }, 60_000)
 
+  it('puts back a note whose name was taken meanwhile as a conflict copy, and lets go of the folder', async () => {
+    writeNotes('Big', 30)
+    await openVault()
+    const before = rowsByPath().canonical
+
+    emulateWindowsMove({ failAfter: 15, stuck: (name) => name === 'Note 3.md' })
+    await expect(renameFolder('Big', 'Renamed')).resolves.toMatchObject({ success: false })
+    await settle()
+    fs.writeFileSync(abs('Big/Note 3.md'), '# Written since\n')
+
+    fsHooks.beforeRename = null
+    await closeVault()
+    await openVault()
+
+    expect(fs.readFileSync(abs('Big/Note 3.md'), 'utf8')).toBe('# Written since\n')
+    expect(fs.readFileSync(abs('Big/Note 3 (conflict copy).md'), 'utf8')).toContain('body')
+    expect(stagingDirs()).toEqual([])
+    expect(moveRecords()).toEqual([])
+
+    // The folder is the user's again: a delete outside the app syncs.
+    fs.rmSync(abs('Big/Note 6.md'))
+    await outlastRenameWindow()
+    await settle()
+    expect(syncedNoteDeletes()).toEqual([before.get('Big/Note 6.md')])
+  }, 60_000)
+
   it('holds the deletes a rescan settles while the move runs', async () => {
     const paths = writeNotes('Big', 60)
     await openVault()

@@ -198,13 +198,7 @@ describe('moveDirectory', () => {
     fs.writeFileSync(path.join(root, 'Beta/b.md'), 'written since')
     await recoverStrandedFolderMoves(root)
 
-    expect(fs.readFileSync(path.join(root, 'Beta/b.md'), 'utf8')).toBe('written since')
-    expect(tree()).toContain('Beta/Gamma/Deep/deep.md')
-    expect(isAppFolderChange('Beta/Gamma/g.md')).toBe(true)
-
-    fs.rmSync(path.join(root, 'Beta/b.md'))
-    await recoverStrandedFolderMoves(root)
-
+    // The name taken meanwhile keeps its file; the note comes back beside it.
     expect(tree()).toEqual([
       'Beta/',
       'Beta/EmptyChild/',
@@ -212,10 +206,13 @@ describe('moveDirectory', () => {
       'Beta/Gamma/Deep/',
       'Beta/Gamma/Deep/deep.md',
       'Beta/Gamma/g.md',
+      'Beta/b (conflict copy).md',
       'Beta/b.md',
       'Delta/'
     ])
-    expect(fs.readFileSync(path.join(root, 'Beta/b.md'), 'utf8')).toBe('Beta/b.md')
+    expect(fs.readFileSync(path.join(root, 'Beta/b.md'), 'utf8')).toBe('written since')
+    expect(fs.readFileSync(path.join(root, 'Beta/b (conflict copy).md'), 'utf8')).toBe('Beta/b.md')
+    expect(fs.readdirSync(path.join(root, '.memry/moves'))).toEqual([])
     expect(isAppFolderChange('Beta/Gamma/g.md')).toBe(false)
   })
 
@@ -249,6 +246,7 @@ describe('recoverStrandedFolderMoves', () => {
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'move-recovery-'))
     windows.held = false
+    windows.lockedFiles.clear()
     windows.stagingLocked = false
     windows.beforeRename = null
     write('Beta/b.md')
@@ -258,6 +256,72 @@ describe('recoverStrandedFolderMoves', () => {
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true })
+  })
+
+  it('moves what cannot go back into a visible folder, and lets go of the source', async () => {
+    fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
+    write('Beta/Gamma/other.md')
+    windows.lockedFiles.add('g.md')
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta (incomplete move)/',
+      'Beta (incomplete move)/Gamma/',
+      'Beta (incomplete move)/Gamma/g.md',
+      'Beta/',
+      'Beta/Gamma/',
+      'Beta/Gamma/other.md',
+      'Beta/b.md'
+    ])
+    expect(fs.existsSync(recordPath())).toBe(false)
+    expect(isAppFolderChange('Beta/b.md')).toBe(false)
+  })
+
+  it('shows a staging directory no record names, wherever it is', async () => {
+    write('Delta/.memry-move-ba9876543210/d.md')
+    write('Moved folder (incomplete move)/taken.md')
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toEqual([
+      'Beta/',
+      'Beta/b.md',
+      'Delta/',
+      'Delta/Moved folder (incomplete move)/',
+      'Delta/Moved folder (incomplete move)/d.md',
+      'Moved folder (incomplete move 2)/',
+      'Moved folder (incomplete move 2)/Gamma/',
+      'Moved folder (incomplete move 2)/Gamma/g.md',
+      'Moved folder (incomplete move)/',
+      'Moved folder (incomplete move)/taken.md'
+    ])
+  })
+
+  it.each([
+    {
+      kind: 'a link',
+      make: () => {
+        const target = path.join(root, 'record.json')
+        fs.writeFileSync(target, JSON.stringify({ version: 1, from: 'Beta', staging }))
+        fs.symlinkSync(target, recordPath())
+      }
+    },
+    {
+      kind: 'longer than 4 KiB',
+      make: () =>
+        fs.writeFileSync(
+          recordPath(),
+          JSON.stringify({ version: 1, from: 'Beta', staging }).padEnd(4097, ' ')
+        )
+    }
+  ])('reads no record that is $kind, and shows its folder', async ({ make }) => {
+    make()
+
+    await recoverStrandedFolderMoves(root)
+
+    expect(tree()).toContain('Moved folder (incomplete move)/Gamma/g.md')
+    expect(tree()).not.toContain('Beta/Gamma/g.md')
   })
 
   it('puts back a move the Tauri app recorded', async () => {
@@ -280,18 +344,18 @@ describe('recoverStrandedFolderMoves', () => {
     { record: { version: 1, from: `${staging}/Beta`, staging }, held: false },
     { record: { version: 1, from: '../Beta', staging }, held: false },
     { record: 'not json', held: false }
-  ])('leaves alone a record it cannot act on: $record', async ({ record, held }) => {
+  ])('shows the folder of a record it cannot act on: $record', async ({ record, held }) => {
     const text = typeof record === 'string' ? record : JSON.stringify(record)
     fs.writeFileSync(recordPath(), text)
 
     await recoverStrandedFolderMoves(root)
 
     expect(tree()).toEqual([
-      `${staging}/`,
-      `${staging}/Gamma/`,
-      `${staging}/Gamma/g.md`,
       'Beta/',
-      'Beta/b.md'
+      'Beta/b.md',
+      'Moved folder (incomplete move)/',
+      'Moved folder (incomplete move)/Gamma/',
+      'Moved folder (incomplete move)/Gamma/g.md'
     ])
     expect(fs.readFileSync(recordPath(), 'utf8')).toBe(text)
     expect(isAppFolderChange('Beta/b.md')).toBe(held)
