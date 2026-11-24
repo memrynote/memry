@@ -220,6 +220,7 @@
     "renameCaseTwins": "Deze map bevat notities die een bestand delen met een notitie waarvan de mapnaam alleen in hoofdletters en kleine letters verschilt. Wijzig eerst de naam van die notities of verplaats ze, en wijzig daarna de naam van de map.",
     "deleteFailed": "Kan de map niet verwijderen",
     "deleteCaseTwins": "Deze map en een map met dezelfde naam die anders is gespeld, bijvoorbeeld met andere hoofdletters en kleine letters, zijn op de schijf één map, dus als je hem verwijdert, worden de notities in beide verwijderd. Verwijder in plaats daarvan de notities die je niet nodig hebt een voor een.",
+    "deleteWindowsName": "De naam van deze map eindigt op een punt of een spatie, die Windows negeert, dus als je hem verwijdert, kan er ook een andere map worden verwijderd. Verwijder in plaats daarvan de notities erin een voor een.",
     "setConfigFailed": "Kan de mapinstellingen niet opslaan"
   },
   "folderView": {

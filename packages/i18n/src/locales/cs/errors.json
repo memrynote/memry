@@ -220,6 +220,7 @@
     "renameCaseTwins": "Tato složka obsahuje poznámky, které sdílejí soubor s poznámkou, jejíž název složky se liší jen velikostí písmen. Nejprve tyto poznámky přejmenujte nebo přesuňte a pak složku přejmenujte.",
     "deleteFailed": "Nepodařilo se smazat složku",
     "deleteCaseTwins": "Tato složka a složka se stejným názvem zapsaným jinak, například jinou velikostí písmen, jsou na disku jedna složka, takže jejím smazáním byste smazali poznámky v obou. Místo toho smažte nepotřebné poznámky jednu po druhé.",
+    "deleteWindowsName": "Název této složky končí tečkou nebo mezerou, kterou Windows ignoruje, takže jejím smazáním byste mohli smazat i jinou složku. Místo toho smažte poznámky v ní jednu po druhé.",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
   "folderView": {

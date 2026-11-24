@@ -220,6 +220,7 @@
     "renameCaseTwins": "Folder ini berisi catatan yang berbagi file dengan catatan yang nama foldernya hanya berbeda huruf besar dan kecilnya. Ganti nama atau pindahkan catatan tersebut terlebih dahulu, lalu ganti nama folder.",
     "deleteFailed": "Gagal menghapus folder",
     "deleteCaseTwins": "Folder ini dan folder dengan nama yang sama tetapi ditulis berbeda, misalnya dengan huruf besar dan kecil yang lain, adalah satu folder di disk, jadi menghapusnya akan menghapus catatan di keduanya. Sebagai gantinya, hapus satu per satu catatan yang tidak Anda perlukan.",
+    "deleteWindowsName": "Nama folder ini diakhiri titik atau spasi, yang diabaikan Windows, jadi menghapusnya bisa ikut menghapus folder lain. Sebagai gantinya, hapus catatan di dalamnya satu per satu.",
     "setConfigFailed": "Gagal menyetel konfigurasi folder"
   },
   "folderView": {

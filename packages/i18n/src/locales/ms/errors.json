@@ -220,6 +220,7 @@
     "renameCaseTwins": "Folder ini mengandungi nota yang berkongsi fail dengan nota yang nama foldernya hanya berbeza dari segi huruf besar dan kecil. Namakan semula atau pindahkan nota tersebut dahulu, kemudian namakan semula folder.",
     "deleteFailed": "Gagal memadamkan folder",
     "deleteCaseTwins": "Folder ini dan folder dengan nama yang sama tetapi ditulis secara berbeza, contohnya dengan huruf besar dan kecil yang lain, ialah satu folder pada cakera, jadi memadamkannya akan memadamkan nota dalam kedua-duanya. Sebaliknya, padamkan nota yang tidak anda perlukan satu demi satu.",
+    "deleteWindowsName": "Nama folder ini berakhir dengan titik atau ruang, yang diabaikan oleh Windows, jadi memadamkannya boleh turut memadamkan folder lain. Sebaliknya, padamkan nota di dalamnya satu demi satu.",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },
   "folderView": {

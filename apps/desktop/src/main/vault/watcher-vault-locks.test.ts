@@ -146,16 +146,19 @@ describe('watcher, app writes and read-only locks (#2606)', () => {
     expect(mocks.restoreLockedNoteFile).toHaveBeenCalledWith('note-locked', 'outside edit\n')
   })
 
-  it("leaves the echo of a locked note's own write alone", async () => {
-    const file = path.join(vault.path, paths['note-locked'])
-    appWrites(file, 'locked text\n')
-
-    await watcherFor().handleFileChange(file)
-
-    expect(mocks.restoreLockedNoteFile).not.toHaveBeenCalled()
-  })
-
   const isWritable = (file: string): boolean => (fs.statSync(file).mode & 0o200) !== 0
+
+  for (const handler of ['handleFileAdd', 'handleFileChange'] as const) {
+    it(`${handler} leaves the echo of a locked note's own write alone`, async () => {
+      const file = path.join(vault.path, paths['note-locked'])
+      appWrites(file, 'locked text\n')
+
+      await watcherFor()[handler](file)
+
+      expect(mocks.restoreLockedNoteFile).not.toHaveBeenCalled()
+      expect(isWritable(file)).toBe(true)
+    })
+  }
 
   it.skipIf(process.platform === 'win32')(
     'a file moved into a locked folder from outside becomes read-only',
