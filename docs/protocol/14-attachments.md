@@ -508,7 +508,7 @@ it.
 **Core: an owed upload outlives the purge.** In the core, a pulled delete that
 purges a note's body keeps the note's owed uploads, each with its row and its
 local bytes, and logs how many it kept
-(`crates/memry-core/src/sync/apply.rs:303-311`). A sync pass uploads nothing
+(`crates/memry-core/src/sync/apply.rs:305-313`). A sync pass uploads nothing
 for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
 Desktop's outbox does not wait for a revive: it skips a local-only note's rows
 and a stray's, never a deleted note's
