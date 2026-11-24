@@ -914,17 +914,27 @@ document to its vault `.md` file and re-indexes it for search.
   store call. After a stall it stops asking the store, because y-leveldb queues every
   later call behind the stalled one, and flushes the write-backs once more, so a pass
   whose debounce fired during the wait finishes before the close. A pass that takes in
-  an outside edit waits for the store to hold it (`whenPersisted`); once the close has
-  started, that wait also gives up after 2 s and the pass fails, its file left as the
-  outside edit made it. The close then logs `CRDT store stalled` with the notes whose
-  writes the store has not confirmed, before it asks the store to close, which is
-  queued behind those writes, so they land if the store recovers. The closing vault's
-  files hold every edit the write-back wrote, but the store may never hold them, and
-  a file whose hash is the baseline is never taken in: the next session's first pass
-  would write the older stored doc over it. So the close marks each unstored note's
-  baseline stale, and the doc's first open takes the file in as an edit made while
-  the app was closed (`ingestOfflineEdit`). A note whose last pass failed keeps its
-  baseline: its file lacks the doc's edits, which only the store can still hold.
+  an outside edit waits for the store to hold it (`whenPersisted`); once a close has
+  started, that wait gives up after 2 s, logs its note, and the pass fails, its file
+  left as the outside edit made it. A quit starts the close (`beginClose()`) before it
+  flushes the write-backs, so the quit's budget is never spent on a stalled store. The
+  close then logs `CRDT store stalled` with the notes whose writes the store has not
+  confirmed, before it asks the store to close, which is queued behind those writes,
+  so they land if the store recovers. The final snapshot push of a vault switch or a
+  sign-out is bounded like a quit's (`SHUTDOWN_FINAL_SNAPSHOT_PUSH_MS`), and logs the
+  notes it did not push.
+- **A file counts as the doc's only once the store holds it** — the write-back writes
+  the live doc, which runs ahead of the store while its updates are on their way, and
+  a stalled store may never hold them. A file whose hash is the baseline is never taken
+  in, so the next session's first pass would write the older stored doc over it. While
+  the note's updates are still storing, the write-back records the file's real hash in
+  `content_hash` (the watcher's rename match needs it) and `unstored-file` in
+  `pending_write_hash`, and clears the marker once `whenPersisted` resolves
+  (`recordDocFile`). A session that ends first, by a close, a quit cut short, a forced
+  exit or a crash, leaves the marker, and the doc's first open takes the file in as an
+  edit made while the app was closed (`ingestOfflineEdit`). A pass whose file write
+  fails drops the marker: its file lacks the doc's edits, which only the store can
+  still hold.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the

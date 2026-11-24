@@ -31,8 +31,10 @@ import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
-import { insertNoteCache } from '../database/queries/notes'
+import { getNoteCacheById, insertNoteCache } from '../database/queries/notes'
 import { generateContentHash } from '../vault/frontmatter'
+import { checkForRename, clearAllPendingDeletes, trackPendingDelete } from '../vault/rename-tracker'
+import { pushFinalSnapshots } from './final-snapshot-push'
 import type * as PersistenceModule from './crdt-persistence'
 import type * as LoggerModule from '../lib/logger'
 
@@ -51,8 +53,11 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: vi.fn()
 }))
 
-/** Error lines logged in any scope. */
+/** Error and warning lines logged in any scope. */
 const errors = vi.hoisted(() => [] as Array<{ scope: string; message: unknown; context: unknown }>)
+const warnings = vi.hoisted(
+  () => [] as Array<{ scope: string; message: unknown; context: unknown }>
+)
 vi.mock('../lib/logger', async (importOriginal) => {
   const actual = await importOriginal<typeof LoggerModule>()
   return {
@@ -63,6 +68,10 @@ vi.mock('../lib/logger', async (importOriginal) => {
         error: (message: unknown, context?: unknown) => {
           errors.push({ scope, message, context })
           scoped.error(message, context)
+        },
+        warn: (message: unknown, context?: unknown) => {
+          warnings.push({ scope, message, context })
+          scoped.warn(message, context)
         }
       })
     }
@@ -77,13 +86,19 @@ const store = vi.hoisted(() => ({
   /** Runs inside the next stored update. */
   nextUpdate: null as null | (() => Promise<void>),
   /** The tail of each opened store's call queue. */
-  queues: [] as Promise<unknown>[]
+  queues: [] as Promise<unknown>[],
+  /** The store's LevelDB lock is held: an open finds no store. */
+  locked: false,
+  /** `destroy` calls made, and those the store ran. */
+  destroyCalls: 0,
+  destroysRun: 0
 }))
 vi.mock('./crdt-persistence', async (importOriginal) => {
   const actual = await importOriginal<typeof PersistenceModule>()
   return {
     ...actual,
     openCrdtPersistence: async () => {
+      if (store.locked) return null
       // y-leveldb runs every call of a store through one queue (`_transact`),
       // so a call that holds holds every later one.
       const queue = store.queues.push(Promise.resolve()) - 1
@@ -116,7 +131,12 @@ vi.mock('./crdt-persistence', async (importOriginal) => {
           transact(async () => {
             store.updates.delete(noteId)
           }),
-        destroy: () => transact(async () => {}),
+        destroy: () => {
+          store.destroyCalls++
+          return transact(async () => {
+            store.destroysRun++
+          })
+        },
         getMeta: () => transact(async () => undefined),
         setMeta: () => transact(async () => {})
       }
@@ -335,6 +355,29 @@ async function openTypedDay(): Promise<string> {
   return id
 }
 
+/**
+ * The next session: the process ended without closing the vault (a quit cut
+ * short, a forced exit, a crash), and the store opens afresh with what it holds.
+ */
+async function restart(): Promise<void> {
+  resetWritebackState()
+  resetCrdtProvider()
+  store.queues = []
+  await getCrdtProvider().initPersistence()
+}
+
+/** Types into the day while the store stalls, and lets its pass write `file`. */
+async function typeIntoStalledStore(id: string, text: string, file: string): Promise<Hold> {
+  const storing = holdNextStoreUpdate()
+  type(id, text)
+  await storing.reached
+  for (let step = 0; step < 200; step++) {
+    if (fs.readFileSync(file, 'utf8').includes(text.trim())) break
+    await tick()
+  }
+  return storing
+}
+
 describe('a keystroke while the vault closes', () => {
   let vaultA: OpenVault
   let vaultB: OpenVault
@@ -469,7 +512,11 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     store.nextFlush = null
     store.nextUpdate = null
     store.queues = []
+    store.locked = false
+    store.destroyCalls = 0
+    store.destroysRun = 0
     errors.length = 0
+    warnings.length = 0
     vaultA = makeVault('writeback-store-stall-a')
     bind(vaultA)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
@@ -478,6 +525,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
   })
 
   afterEach(() => {
+    clearAllPendingDeletes()
     resetWritebackState()
     resetCrdtProvider()
     vi.useRealTimers()
@@ -602,5 +650,155 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
 
     expect(bodyText(doc)).toContain('From A. Typed. Outside.')
+  })
+
+  it('the stall log is out while the store still holds its close', async () => {
+    const id = await openTypedDay()
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    await settle(closing)
+
+    expect.soft(stalledStoreLogs()).toEqual([expect.objectContaining({ stalledFlushNoteId: id })])
+    expect.soft(store.destroyCalls).toBe(1)
+    expect(store.destroysRun).toBe(0)
+  })
+
+  it('a reopen that finds the store still locked says which note stalled it', async () => {
+    const id = await openTypedDay()
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    await settle(closing)
+    store.locked = true
+    await getCrdtProvider().initPersistence()
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        message: 'A store call stalled at the last vault close; this session runs in memory',
+        context: { stalledFlushNoteId: id }
+      })
+    )
+  })
+
+  it('a quit cut short behind a stalled store keeps both days for the next session (Q1)', async () => {
+    const dayA = await openTypedDay()
+    const dayB = await openDay(OTHER_DATE)
+    await flushPendingWritebacks()
+    indexDay(vaultA, dayA)
+    const writtenB = indexDay(vaultA, dayB, OTHER_DATE)
+
+    // Day A: the store stalls on a keystroke, whose pass writes it to the file.
+    await typeIntoStalledStore(dayA, ' More.', dayFile(vaultA))
+    expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+    // Day B: an outside edit, then a keystroke whose pass takes the edit in,
+    // which waits on the store.
+    fs.writeFileSync(dayFile(vaultA, OTHER_DATE), writtenB.replace('From A.', 'From A. Outside.'))
+    type(dayB, ' Typed.')
+    for (let step = 0; step < 12; step++) await tick()
+
+    // The quit's flush-writebacks step.
+    getCrdtProvider().beginClose()
+    const flush = { done: false }
+    void flushPendingWritebacks().then(() => (flush.done = true))
+    for (let step = 0; step < 200 && !flush.done; step++) await tick()
+    expect(flush.done).toBe(true)
+    expect.soft(warnings).toContainEqual(
+      expect.objectContaining({
+        message: 'A store wait gave up: the CRDT store stalled while the vault closed',
+        context: expect.objectContaining({ noteId: dayB })
+      })
+    )
+
+    // The quit's budget ends before the vault closes.
+    await restart()
+    const docA = await getCrdtProvider().open(dayA, EDITOR_WINDOW)
+    const docB = await getCrdtProvider().open(dayB, EDITOR_WINDOW)
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(docA)).toBe('From A. Typed. More.')
+    expect.soft(dayBody(vaultA)).toContain('From A. Typed. More.')
+    expect.soft(bodyText(docB)).toContain('From A. Outside.')
+    expect(dayBody(vaultA, OTHER_DATE)).toContain('From A. Outside.')
+  })
+
+  it('a forced exit after a write the stalled store never held keeps the edit', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+
+    await typeIntoStalledStore(id, ' More.', dayFile(vaultA))
+    expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+
+    await restart()
+    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+    type(id, ' Again.')
+    await settle(flushPendingWritebacks())
+
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More. Again.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Again.')
+  })
+
+  it('records the written file as stored once the store recovers', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+
+    const storing = await typeIntoStalledStore(id, ' More.', dayFile(vaultA))
+    storing.release()
+    await Promise.all(store.queues)
+    await tick()
+
+    const written = fs.readFileSync(dayFile(vaultA), 'utf8')
+    expect(getNoteCacheById(vaultA.indexDb.db, id)).toMatchObject({
+      contentHash: generateContentHash(written),
+      pendingWriteHash: null
+    })
+  })
+
+  it('an outside rename after a stalled close keeps the note (R1)', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    type(id, ' More.')
+    await settle(closing)
+
+    // The watcher's unlink of the day, then the add of its moved file.
+    const cached = getNoteCacheById(vaultA.indexDb.db, id)
+    const onRealDelete = vi.fn(async () => {})
+    trackPendingDelete(id, cached?.contentHash ?? '', `journal/${DATE}.md`, onRealDelete, null)
+    const moved = fs.readFileSync(dayFile(vaultA), 'utf8')
+
+    expect(checkForRename(generateContentHash(moved), 'journal/moved.md')).toMatchObject({ id })
+    expect(onRealDelete).not.toHaveBeenCalled()
+  })
+
+  it('bounds the final snapshot push of a vault switch behind a stalled store (S1)', async () => {
+    await getCrdtProvider().init(
+      undefined,
+      vi.fn(async () => {})
+    )
+    const id = await openTypedDay()
+    const storing = holdNextStoreUpdate()
+    type(id, ' More.')
+    await storing.reached
+
+    const push = { done: false }
+    void pushFinalSnapshots().then(() => (push.done = true))
+    for (let step = 0; step < 200 && !push.done; step++) await tick()
+
+    expect(push.done).toBe(true)
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        message: 'Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred',
+        context: expect.objectContaining({ unpushedNoteIds: [id] })
+      })
+    )
   })
 })

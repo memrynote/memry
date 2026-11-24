@@ -48,7 +48,7 @@ import { openVaultFile } from '../lib/paths'
 import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
-import { markBaselineStale, recordBaseline } from './writeback-baseline'
+import { recordBaseline } from './writeback-baseline'
 import { isBinaryNote } from './note-body-apply'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
 import { seedFragment } from './converter-worker-bridge'
@@ -1701,7 +1701,7 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
-    this.closing.abort()
+    this.beginClose()
     // The note whose store call stalled. y-leveldb runs every store call
     // through one queue, so each later call waits behind it: the close stops
     // asking the store, and the write-back puts the edits in this vault's files.
@@ -1827,6 +1827,15 @@ export class CrdtProvider {
       }
     }
     return pushed
+  }
+
+  /** Notes whose snapshot bytes no push has sent yet. */
+  unpushedSnapshotNoteIds(): string[] {
+    const ids: string[] = []
+    for (const [noteId, entry] of this.docs) {
+      if (entry.pendingSnapshotBytes > 0 && this.sendsBody(entry)) ids.push(noteId)
+    }
+    return ids
   }
 
   /**
@@ -2562,32 +2571,57 @@ export class CrdtProvider {
    * ahead of what a restart's doc holds (sync/writeback-baseline.ts).
    */
   async whenPersisted(noteId: string): Promise<void> {
-    await this.untilStoredOrClose(this.persisting.get(noteId))
+    await this.untilStoredOrClose(noteId, this.persisting.get(noteId))
     // A closed doc reopens from the store, so only a live doc holds the gap.
     const doc = this.docs.get(noteId)?.doc
     if (doc && this.storeOwed.delete(noteId)) {
       this.persistUpdate(noteId, Y.encodeStateAsUpdate(doc))
     }
-    await this.untilStoredOrClose(this.persisting.get(noteId))
+    await this.untilStoredOrClose(noteId, this.persisting.get(noteId))
   }
 
   /**
-   * `stored`, or a rejection once a vault close has waited
+   * Whether an update of the note is still on its way to the store, or the
+   * store missed one: a restart's doc may lack what the live doc holds
+   * (`recordDocFile`, sync/writeback-baseline.ts).
+   */
+  isStoring(noteId: string): boolean {
+    return this.persistence !== null && (this.persisting.has(noteId) || this.storeOwed.has(noteId))
+  }
+
+  /**
+   * Starts a close: from here every `whenPersisted` wait gives up after
+   * `STORE_CALL_CLOSE_WAIT_MS` and logs its note. A quit calls it before it
+   * flushes the write-backs, whose passes wait on the store, so a stalled
+   * store cannot eat the quit's budget (#5698); `destroy` calls it too.
+   */
+  beginClose(): void {
+    this.closing.abort()
+  }
+
+  /**
+   * `stored`, or a rejection once a close has waited
    * `STORE_CALL_CLOSE_WAIT_MS` for it: a write-back pass that took in an
    * outside edit waited here behind a stalled store, and held the close
-   * forever (#5698). The note stays unstored, which the close reports.
+   * forever (#5698). The note stays unstored, and its baseline says so.
    */
-  private async untilStoredOrClose(stored: Promise<void> | undefined): Promise<void> {
+  private async untilStoredOrClose(
+    noteId: string,
+    stored: Promise<void> | undefined
+  ): Promise<void> {
     if (!stored) return
     const closing = this.closing.signal
     let timer: ReturnType<typeof setTimeout> | undefined
     let giveUp!: () => void
     const gaveUp = new Promise<never>((_, reject) => {
       giveUp = () => {
-        timer = setTimeout(
-          () => reject(new Error('The CRDT store stalled while the vault closed')),
-          STORE_CALL_CLOSE_WAIT_MS
-        )
+        timer = setTimeout(() => {
+          log.warn('A store wait gave up: the CRDT store stalled while the vault closed', {
+            noteId,
+            waitMs: STORE_CALL_CLOSE_WAIT_MS
+          })
+          reject(new Error('The CRDT store stalled while the vault closed'))
+        }, STORE_CALL_CLOSE_WAIT_MS)
       }
       if (closing.aborted) giveUp()
       else closing.addEventListener('abort', giveUp, { once: true })
@@ -2634,13 +2668,9 @@ export class CrdtProvider {
   }
 
   /**
-   * Logs the notes whose writes a stalled store never confirmed, and marks
-   * their baselines stale. The write-back wrote each one's doc to its file,
-   * which the store may never hold: the next session's doc is older, and with
-   * the file's hash as its baseline the next pass wrote that older doc over
-   * the file. Stale, the file reads as an outside edit at the doc's first open
-   * (`ingestOfflineEdit`). Not for a note whose last pass failed: its file
-   * lacks the doc's edits, and only the store can still hold them.
+   * Logs the notes whose writes a stalled store never confirmed. Their files
+   * already say so: the write-back records a file as stored only once the
+   * store holds its bytes (`recordDocFile`, sync/writeback-baseline.ts).
    */
   private reportStalledStore(stalledOn: string | null): void {
     const unstoredNoteIds = [...new Set([...this.persisting.keys(), ...this.storeOwed])]
@@ -2650,20 +2680,6 @@ export class CrdtProvider {
       waitMs: STORE_CALL_CLOSE_WAIT_MS
     })
     stalledStoreAtClose = stalledOn ?? unstoredNoteIds[0] ?? null
-    for (const noteId of unstoredNoteIds) {
-      if (crdtWriteback().lastPassFailed(noteId)) continue
-      try {
-        markBaselineStale(getIndexDatabase(), noteId)
-      } catch (err) {
-        log.error(
-          'Could not mark an unstored note for re-ingest; its next pass may write an older doc',
-          {
-            noteId,
-            error: err
-          }
-        )
-      }
-    }
   }
 
   /**

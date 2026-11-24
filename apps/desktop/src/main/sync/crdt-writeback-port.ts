@@ -21,8 +21,6 @@ export interface CrdtWritebackPort {
   writebackNow(noteId: string, doc: Y.Doc): Promise<void>
   /** Feed a file edited while the app was closed into the note's doc (#5319). */
   ingestOfflineEdit(noteId: string): Promise<void>
-  /** Whether the note's last pass failed, so its file lacks the doc's edits. */
-  lastPassFailed(noteId: string): boolean
   /** Write the note's doc to its file again after a body writer's file write failed. */
   retryWriteback(noteId: string): void
   flushPendingWritebacks(): Promise<void>
