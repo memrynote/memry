@@ -369,7 +369,7 @@ pull, downloads it over the note's vault file
   queues it with the referenced ones
   (`crates/memry-core/src/domain/attachments.rs:554-571`) and writes the bytes
   to `images/<attachmentId>`
-  (`crates/memry-core/src/api/sync/attachments_io.rs:397-405`).
+  (`crates/memry-core/src/api/sync/attachments_io.rs:401-420`).
 - **A replacement is a new id.** A peer that replaces the file uploads it
   afresh, and attachment ids are random per upload
   (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:20-23`). A
