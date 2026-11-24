@@ -141,8 +141,9 @@ in `pack_index.documents` (migration 0024), and the purge reads that column, so 
 note's older revisions in any pack built before its last snapshot write and leaves every other
 pack alone. A body kind that still lists a pack built before migration 0024, whose `documents` is
 NULL, is dropped whole and its watermark reset instead, as every purge did before; the rebuild
-records `documents`, so the next purge is scoped. A rewrite that cannot read its pack or loses its
-commit twice resets the kind the same way. Until a rewrite commits, a fresh device fetches the
+records `documents`, so the next purge is scoped. A rewrite that loses its commit twice resets the
+kind the same way. So does one that cannot read its pack, unless another pass has already finished
+that rewrite, which leaves nothing to redo. Until a rewrite commits, a fresh device fetches the
 other bodies of that pack item by item. A compaction run that selected the old snapshot before the
 purge cannot publish it: it inserts the `pack_index` row and advances the watermark in one batch,
 guarded on every packed snapshot row still existing with the packed blob and its note not dead.
