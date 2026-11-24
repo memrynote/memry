@@ -100,6 +100,7 @@ const RESTAMP: &str = "vaultRestamp";
 /// The device that restamped a record and the clock the record had before. A value of any other
 /// shape is no restamp.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Restamp {
     device: String,
     base: VectorClock,

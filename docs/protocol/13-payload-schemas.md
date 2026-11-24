@@ -1207,12 +1207,13 @@ refetches it once another core build runs (§13.2).
    `vaultId` to the bound server vault id (#5535) changes nothing else under
    one tick of its clock id, and states that id and the clock the record had
    before as `vaultRestamp`: `{"device": <clock id>, "base": <clock>}`
-   (`crates/memry-core/src/sync/server_vault.rs:98-106`, `:196-200`). A record
+   (`crates/memry-core/src/sync/server_vault.rs:98-107`, `:197-201`). A record
    is a restamp only while its `clock` equals that base ticked once by that
    device and the base is not empty. A marker a later edit carries along is
    inert: the edit ticks again, and a desktop that stored the marker without
-   applying the restamp ticks its own id. A marker of any other shape is no
-   restamp (`server_vault.rs:215-225`). On a concurrent clock, a remote restamp whose
+   applying the restamp ticks its own id. A marker of any other shape, an
+   extra key included, is no restamp (`server_vault.rs:100-107`, `:216-226`).
+   On a concurrent clock, a remote restamp whose
    base the live local canvas is strictly after leaves the local canvas as it
    is under the merged clock, re-queued, and a local restamp whose base the
    remote is strictly after takes the remote's canvas. Neither writes a

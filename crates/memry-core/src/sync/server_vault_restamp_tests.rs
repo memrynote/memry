@@ -393,6 +393,55 @@ fn a_restamp_marker_over_an_empty_base_is_no_restamp() {
     .expect("pull");
 }
 
+/// A peer's drawing and a concurrent record carrying the marker that this side pulls, so the
+/// record is held to [`super::restamp_superseded`] against `{RESTAMPER: 1, DEVICE: 1}`. Returns
+/// how many canvases this side then holds.
+fn drawing_then_pull(before: Value, newer: Value) -> i64 {
+    let (db, _dir) = open("restamp-marker-receiver");
+    db.call_blocking(move |conn| {
+        pull(conn, vec![remote("canvas", "c", &before)])?;
+        canvas::update(conn, "c", &scene_edit(PEER_INK), DEVICE, NOW + 2)?;
+        assert_eq!(
+            payload(conn, "canvas", "c")["clock"],
+            json!({ RESTAMPER: 1, DEVICE: 1 })
+        );
+        pull(conn, vec![remote("canvas", "c", &newer)])?;
+        assert_eq!(payload(conn, "canvas", "c")["scene"], newer["scene"]);
+        Ok(canvas_count(conn))
+    })
+    .expect("pull")
+}
+
+/// VERIFY-5621 finding 1: a newer marker with a key a restamp never states may describe more than
+/// `vaultId`, so it is no restamp, and the drawing its record carries keeps a conflict copy.
+#[test]
+fn a_restamp_marker_with_an_extra_key_is_no_restamp() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas", "c", canvas_written_by_restamper);
+    let mut newer = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas", "c")))
+        .expect("read");
+    newer["scene"] = json!(r#"{"elements":[{"id":"newer-ink"}]}"#);
+    newer["vaultRestamp"]["changed"] = json!(["vaultId", "scene"]);
+    assert_eq!(newer["clock"], json!({ RESTAMPER: 2 }));
+    assert_eq!(drawing_then_pull(before, newer), 2, "a conflict copy");
+}
+
+/// VERIFY-5621: the first form of the marker stated the base alone, as `vaultRestampBase`. A record
+/// carrying it at its base ticked once is no restamp, and a peer's drawing keeps a conflict copy.
+#[test]
+fn a_legacy_restamp_base_at_one_tick_past_it_still_gets_a_conflict_copy() {
+    let (peer, _peer_dir, before) = restamped_peer("canvas", "c", canvas_written_by_restamper);
+    let mut legacy = peer
+        .call_blocking(|conn| Ok(payload(conn, "canvas", "c")))
+        .expect("read");
+    let object = legacy.as_object_mut().expect("an object");
+    let marker = object.remove("vaultRestamp").expect("a marker");
+    object.insert("vaultRestampBase".into(), marker["base"].clone());
+    assert_eq!(legacy["vaultRestampBase"], json!({ RESTAMPER: 1 }));
+    assert_eq!(legacy["clock"], json!({ RESTAMPER: 2 }));
+    assert_eq!(drawing_then_pull(before, legacy), 2, "a conflict copy");
+}
+
 /// REVIEW-5581 low 1, folders: a peer's icon set before it pulled the folder's restamp stays, and
 /// a restamp desktop's schema refuses is refused first.
 #[test]
