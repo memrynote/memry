@@ -39,6 +39,7 @@ vi.mock('../database/client', async (importOriginal) => ({
 vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local',
   getCrdtProvider: () => ({
+    isStoring: () => false,
     getDoc: (noteId: string) => state.docs.get(noteId),
     recordOwedFullState: vi.fn(),
     purge: vi.fn(async () => {})

@@ -242,6 +242,7 @@ const runtimeMocks = vi.hoisted(() => {
       setSnapshotDeferral: vi.fn(),
       readSyncableState: vi.fn(async () => new Uint8Array([7])),
       pushAllSnapshots: vi.fn(),
+      unpushedSnapshotNoteIds: vi.fn(() => []),
       reportEditorWaits: vi.fn(),
       destroy: vi.fn()
     },
@@ -1698,7 +1699,7 @@ describe('sync runtime', () => {
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
     expect(runtimeMocks.logWarn).toHaveBeenCalledWith(
       'Pre-shutdown CRDT snapshot push cut short; remaining snapshots deferred',
-      { timeoutMs: 20 }
+      { timeoutMs: 20, unpushedNoteIds: [] }
     )
   })
 

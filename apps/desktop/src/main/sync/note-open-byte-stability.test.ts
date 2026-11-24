@@ -88,7 +88,7 @@ vi.mock('../lib/logger', () => ({ createLogger: () => mocks.logger }))
 // crdt-provider itself reaches for `app.getPath` and the CRDT store; write-back
 // only ever asks it "is there a newer doc for this note?".
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn() })
+  getCrdtProvider: () => ({ isStoring: () => false, getDoc: () => undefined, close: vi.fn() })
 }))
 
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainLog: vi.fn() }))

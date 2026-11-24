@@ -68,6 +68,7 @@ vi.mock('../sync/crdt-provider', () => {
     open: async (id: string) => docs.get(id),
     closeIfInactive: async () => {},
     whenPersisted: async () => {},
+    isStoring: () => false,
     withDocLoaded: async (_id: string, enqueue: () => void) => enqueue(),
     purge: vi.fn()
   }

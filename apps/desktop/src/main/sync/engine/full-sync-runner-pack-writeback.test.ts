@@ -98,7 +98,12 @@ vi.mock('../local-mutations', () => ({
 
 // Write-back asks the provider only for a newer doc of the same note.
 vi.mock('../crdt-provider', () => ({
-  getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn(), purge: vi.fn() })
+  getCrdtProvider: () => ({
+    isStoring: () => false,
+    getDoc: () => undefined,
+    close: vi.fn(),
+    purge: vi.fn()
+  })
 }))
 
 // The body under test is plain text; the BlockNote schema is not what this

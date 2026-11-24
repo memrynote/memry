@@ -70,7 +70,8 @@ const getProviderDocMock = vi.fn()
 const getCrdtProviderMock = vi.fn(() => ({
   initPersistence: initPersistenceMock,
   getOpenNoteIds: getOpenNoteIdsMock,
-  getDoc: getProviderDocMock
+  getDoc: getProviderDocMock,
+  beginClose: vi.fn()
 }))
 const stopSyncRuntimeMock = vi.fn(async () => undefined)
 const flushPendingWritebacksMock = vi.fn(async () => undefined)
