@@ -62,7 +62,7 @@
     "uploadFailed": "Prijenos privitka nije uspio",
     "uploadProgressFailed": "Dohvaćanje napretka prijenosa nije uspjelo",
     "downloadFailed": "Preuzimanje privitka nije uspjelo",
-    "downloadGone": "Ova datoteka više nije na poslužitelju za sinkronizaciju.",
+    "downloadGone": "Ova datoteka više nije na poslužitelju za sinkronizaciju. Ako se još nalazi na drugom uređaju, ponovno je dodajte s tog uređaja.",
     "downloadMissing": "Ova datoteka još nije na poslužitelju za sinkronizaciju. Otvorite je ponovno sutra da provjerite.",
     "downloadNeedsSync": "Sinkronizacija nije pokrenuta pa se ova datoteka ne može preuzeti. Preuzet će se sama čim sinkronizacija bude pokrenuta.",
     "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
