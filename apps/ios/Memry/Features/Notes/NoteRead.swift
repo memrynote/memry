@@ -61,6 +61,10 @@ final class NoteReadViewModel {
 
     private(set) var phase: Phase = .loading
     private(set) var fetch: Fetch = .idle
+    /// A binary note's own file (#5668), or `nil` for a note with a body.
+    /// Read and fetched in `NoteFileRead.swift`.
+    var file: NoteFile?
+    var fileFetch: Fetch = .idle
     /// The rendered body. Empty means "nothing to draw", which the screen
     /// resolves against `preview`: a body that is present and empty, a body
     /// that was never pulled, and a reader that cannot walk blocks are three
@@ -177,6 +181,12 @@ final class NoteReadViewModel {
         var stale = hasLoaded
         await loadIfNeeded()
         guard hasLoaded else { return }
+        // A binary note has no body to pull: its file is the content.
+        if file != nil {
+            if fileFetch == .idle { await fetchFile() }
+            if stale { await load(quietly: true) }
+            return
+        }
         if case let .ready(detail) = phase, !detail.body.present {
             if fetch == .idle { await fetchBody() }
             return
@@ -334,6 +344,8 @@ final class NoteReadViewModel {
         // measurement of one, and `LogDetail` has no shape that says "the body
         // was present" without also saying how long it is.
         Log.storage.info("read one note")
+        // Before `.ready`, so a binary note never draws as a missing body.
+        await loadFile()
         phase = .ready(detail)
         await loadBlocks()
         await loadMetadata()

@@ -350,6 +350,34 @@ and the manifest's `filename` is that path's last segment
   device that took it, as before. A capture whose file never uploaded has no
   `attachmentId`.
 
+### 14.7.3 A binary note's own file (#5668)
+
+**Normative.** A `note` payload whose `fileType` is `pdf`, `image`, `audio` or
+`video` has no CRDT body, and its `attachmentId` names the one attachment that
+is the note's content (`packages/contracts/src/sync-payloads.ts:352-354`;
+chapter 13 §13.7.1). It is resolved and verified by the chain of §14.7, chunk
+hashes and `manifest.checksum` included
+(`crates/memry-core/src/protocol/attachments.rs:421`). Desktop pushes the id
+with the file fields (`apps/desktop/src/main/sync/note-sync.ts:73-83`) and, on
+pull, downloads it over the note's vault file
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:750-757`).
+
+- **A receiver downloads every live note's `attachmentId`**, under the same
+  metered policy as a referenced attachment. It does not gate on the stored
+  `fileType`, which desktop's restore does not trust either
+  (`apps/desktop/src/main/sync/binary-note-restore.ts:143-151`). The core
+  queues it with the referenced ones
+  (`crates/memry-core/src/domain/attachments.rs:554-571`) and writes the bytes
+  to `images/<attachmentId>`
+  (`crates/memry-core/src/api/sync/attachments_io.rs:397-405`).
+- **A replacement is a new id.** A peer that replaces the file uploads it
+  afresh, and attachment ids are random per upload
+  (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:20-23`). A
+  receiver keeps the old bytes until the new ones land. Desktop holds the
+  note's file and keeps a change that is on no server as a conflict copy
+  (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:33-57`).
+  The core keys bytes by id, so the old file stays beside the new one.
+
 ## 14.8 Quota, and never dereferencing — Q14.3
 
 **Normative.** **Quota is reserved against ciphertext size, not plaintext**,

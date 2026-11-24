@@ -280,7 +280,9 @@ struct NoteReadView: View {
                         model: model, detail: detail, metadataModel: metadataModel,
                         // Immediate: a drawn first block takes the caret in
                         // the Return's own turn, before the title lets go.
-                        returnToBody: editorModel.canEdit ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
+                        // A binary note has no body to type into.
+                        returnToBody: editorModel.canEdit && model.file == nil
+                            ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
                     )
                     NotePageContent(
                         model: model,
