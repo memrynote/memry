@@ -1,9 +1,9 @@
 /**
- * A vault close flushes the armed write-backs, then drops the write-back
- * state. A keystroke that lands while that flush writes arms one more pass. It
- * belongs to the closing vault; armed past the close, it fired into whichever
- * vault was open by then, and a journal day has the same id in every vault
- * (#5247 OL-M35).
+ * A vault close flushes the armed write-backs and stores the docs, then drops
+ * the write-back state. A keystroke that lands during either step arms one
+ * more pass. It belongs to the closing vault; armed past the close, it fired
+ * into whichever vault was open by then, and a journal day has the same id in
+ * every vault (#5247 OL-M35).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
@@ -31,6 +31,7 @@ import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { flushPendingWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
+import type * as PersistenceModule from './crdt-persistence'
 
 vi.mock('electron', () => {
   const mockWindow = { isDestroyed: () => false, webContents: { send: vi.fn() } }
@@ -46,6 +47,44 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncDelete: vi.fn(),
   enqueueLocalSyncUpdate: vi.fn()
 }))
+
+/** The CRDT store, in memory, for a provider whose persistence is initialized. */
+const store = vi.hoisted(() => ({
+  updates: new Map<string, Uint8Array[]>(),
+  /** Runs inside the next doc flush. */
+  nextFlush: null as null | (() => Promise<void>)
+}))
+vi.mock('./crdt-persistence', async (importOriginal) => {
+  const actual = await importOriginal<typeof PersistenceModule>()
+  return {
+    ...actual,
+    openCrdtPersistence: async () => ({
+      getYDoc: async (noteId: string) => {
+        const doc = new Y.Doc()
+        for (const update of store.updates.get(noteId) ?? []) Y.applyUpdate(doc, update)
+        return doc
+      },
+      storeUpdate: async (noteId: string, update: Uint8Array) => {
+        store.updates.set(noteId, [...(store.updates.get(noteId) ?? []), update])
+      },
+      flushDocument: async () => {
+        const flush = store.nextFlush
+        store.nextFlush = null
+        await flush?.()
+      },
+      clearDocument: async (noteId: string) => {
+        store.updates.delete(noteId)
+      },
+      destroy: () => {},
+      getMeta: async () => undefined,
+      setMeta: async () => {}
+    })
+  }
+})
+vi.mock('./crdt-store-path', () => ({
+  prepareVaultCrdtStore: async () => ({ storagePath: '/unused', vaultUuid: 'vault-a' })
+}))
+vi.mock('./crdt-store-epoch', () => ({ reconcileCrdtStoreEpoch: async () => false }))
 
 const DATE = '2026-05-10'
 const EDITOR_WINDOW = 7
@@ -109,23 +148,64 @@ function type(noteId: string, text: string): void {
   getCrdtProvider().applyIpcUpdate(noteId, update, EDITOR_WINDOW)
 }
 
-/** Holds the next write of `file` until released. */
-function holdNextWrite(file: string): { reached: Promise<void>; release: () => void } {
+interface Hold {
+  reached: Promise<void>
+  release: () => void
+  /** Resolves once `reached`, then waits for `release`. */
+  wait: () => Promise<void>
+}
+
+function hold(): Hold {
   let release!: () => void
-  const held = new Promise<void>((resolve) => (release = resolve))
+  const busy = new Promise<void>((resolve) => (release = resolve))
   let reach!: () => void
   const reached = new Promise<void>((resolve) => (reach = resolve))
+  return {
+    reached,
+    release,
+    wait: async () => {
+      reach()
+      await busy
+    }
+  }
+}
+
+/** Holds the next write of `file`. */
+function holdNextWrite(file: string): Hold {
+  const write = hold()
   const realWrite = fileOps.atomicWrite
   let holdNext = true
   vi.spyOn(fileOps, 'atomicWrite').mockImplementation(async (target, content) => {
     if (holdNext && target === file) {
       holdNext = false
-      reach()
-      await held
+      await write.wait()
     }
     return realWrite(target, content)
   })
-  return { reached, release }
+  return write
+}
+
+/** Holds the next store flush of a doc. */
+function holdNextStoreFlush(): Hold {
+  const flush = hold()
+  store.nextFlush = flush.wait
+  return flush
+}
+
+/** Creates the day in vault A, its doc open as the editor seeded it. */
+async function openDay(): Promise<string> {
+  await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'From A.' })
+  const id = resolveJournalEntryId(DATE)
+  const doc = getCrdtProvider().getDoc(id) as Y.Doc
+  await markdownToYFragment('From A.', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  return id
+}
+
+async function openTypedDay(): Promise<string> {
+  const id = await openDay()
+  type(id, ' Typed.')
+  return id
 }
 
 describe('a keystroke while the vault closes', () => {
@@ -133,6 +213,8 @@ describe('a keystroke while the vault closes', () => {
   let vaultB: OpenVault
 
   beforeEach(() => {
+    store.updates.clear()
+    store.nextFlush = null
     vaultA = makeVault('writeback-vault-close-a')
     vaultB = makeVault('writeback-vault-close-b')
     bind(vaultA)
@@ -154,13 +236,7 @@ describe('a keystroke while the vault closes', () => {
   })
 
   it('lands in the closing vault, and never in the same day of the next vault', async () => {
-    await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'From A.' })
-    const id = resolveJournalEntryId(DATE)
-    const doc = getCrdtProvider().getDoc(id) as Y.Doc
-    // The editor seeds the body it opened with.
-    await markdownToYFragment('From A.', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    type(id, ' Typed.')
+    const id = await openTypedDay()
 
     // The close flushes that pass; the editor sends one more keystroke while
     // the pass writes the file.
@@ -182,5 +258,45 @@ describe('a keystroke while the vault closes', () => {
     expect.soft(dayBody(vaultA)).toContain('From A. Typed. More.')
     expect.soft(dayBody(vaultB)).toContain('From B.')
     expect.soft(dayBody(vaultB)).not.toContain('From A.')
+  })
+
+  it('lands in the closing vault when it arrives while the close stores the docs', async () => {
+    await getCrdtProvider().initPersistence()
+    const id = await openTypedDay()
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    type(id, ' More.')
+    storing.release()
+    await closing
+
+    expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+  })
+
+  it('lands a closed day whose file write failed in the closing vault', async () => {
+    await getCrdtProvider().initPersistence()
+    const id = await openDay()
+    // The editor closes the day; its doc stays in the store.
+    await getCrdtProvider().closeIfInactive(id)
+
+    // The body save feeds the closed day's doc, then its file write fails.
+    const realGuard = fileOps.beforeGuardedWrite
+    let failNext = true
+    vi.spyOn(fileOps, 'beforeGuardedWrite').mockImplementation(async (target) => {
+      if (failNext && target === dayFile(vaultA)) {
+        failNext = false
+        throw new Error('disk full')
+      }
+      return realGuard(target)
+    })
+    await expect(
+      invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, { date: DATE, content: 'Rewritten.' })
+    ).rejects.toThrow('disk full')
+    expect(getCrdtProvider().getDoc(id)).toBeUndefined()
+
+    await closeVault()
+
+    expect(dayBody(vaultA)).toContain('Rewritten.')
   })
 })
