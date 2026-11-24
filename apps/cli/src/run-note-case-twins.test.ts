@@ -103,15 +103,22 @@ function dropRow(vaultPath: string, id: string): void {
 
 /** The shared file's bytes and mtime, both rows, and the index tables. */
 async function twinState(vaultPath: string, ids: string[]) {
-  const file = path.join(vaultPath, 'SuperNotes/Real.md')
-  const { mtimeNs } = await fs.stat(file, { bigint: true })
-  const sha256 = createHash('sha256')
-    .update(await fs.readFile(file))
-    .digest('hex')
+  // One handle, so the mtime and the bytes come from the same file.
+  const handle = await fs.open(path.join(vaultPath, 'SuperNotes/Real.md'))
+  let file: { sha256: string; mtimeNs: bigint }
+  try {
+    const { mtimeNs } = await handle.stat({ bigint: true })
+    const sha256 = createHash('sha256')
+      .update(await handle.readFile())
+      .digest('hex')
+    file = { sha256, mtimeNs }
+  } finally {
+    await handle.close()
+  }
   const databases = openDatabases(vaultPath)
   try {
     return {
-      file: { sha256, mtimeNs },
+      file,
       rows: ids.map((id) => getNoteMetadataById(databases.dataDb, id) ?? null),
       noteCache: databases.indexDb.select().from(noteCache).all(),
       noteNames: databases.indexDb.select().from(noteNames).all()

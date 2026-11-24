@@ -26,7 +26,7 @@ import { flushProjectionEvents } from '../projections'
 import { clearUpload } from '../sync/attachment-outbox'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { settleCrdtBodyDebts } from '../sync/engine/crdt-body-debts'
-import { isAttachmentStoreRow } from './attachments'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
 import { deleteNoteFromCache } from './note-sync'
 import { emitNoteEvent } from './notes-io'
 

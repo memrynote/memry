@@ -22,7 +22,7 @@ import {
   closeIndexDatabase
 } from '../database'
 import { parseNote } from './frontmatter'
-import { isInAttachmentStore } from './attachments'
+import { isInAttachmentStore } from '@memry/shared/attachment-store'
 import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import {

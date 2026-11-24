@@ -277,6 +277,12 @@ Every device remembers the clock of each delete it makes or applies for such an 
 happens strictly after the delete: the server accepts it inside retention too, a stale copy from a
 device that missed the delete is refused or merged rather than applied over it, and the device's
 own late tombstone does not delete it.
+A note or journal delete the desktop sends later carries the body vector of the doc it held
+(`bodyStateVector`, protocol chapter 05 §5.8), so a peer keeps text the delete never covered as an
+inbox copy. Its own deferred delete writes the vector into `sync_pending_deletes` before the doc is
+purged. A delete the CLI queued (it cannot read the doc) takes the vector when the watcher sees the
+CLI's unlink, which also sends it right away, or, when the desktop was closed, at the next runtime
+start before the first pull (`coverQueuedContentDeletes`). With no doc, the delete goes without one.
 At runtime start the desktop replays the deletes it still owes (`sync_pending_deletes`), except for
 such an id that has a live local row again: that delete is retired instead, so a re-create made
 while sync was off, or before its delete's clock was recorded, is pushed live rather than deleted on

@@ -387,7 +387,12 @@ at 9:30 looks seen under the 60 s rule. A `note` or `journal` delete therefore
 puts an optional `bodyStateVector` inside its encrypted payload: the standard
 base64 of the Yjs v1 state vector of the deleter's body doc at delete time
 (desktop: the loaded doc, `ContentSyncService.bodyStateVector`; the core: its
-whole update log, `body_state_vector`). It is no text, travels end to end
+whole update log, `body_state_vector`). A delete desktop sends later, one
+deferred while sync was off or one the CLI queued (which reads no doc), takes
+the vector into its pending row before the doc is purged
+(`apps/desktop/src/main/sync/pending-deletes.ts:150`); one the CLI queued while
+desktop was closed takes it at the next sync start, before the first pull
+(`apps/desktop/src/main/sync/local-doc-delete.ts:83`). It is no text, travels end to end
 encrypted, and needs no server, D1 or envelope change. The receiver compares it
 with its own body state: desktop with the merged state vector of every body
 update the server confirmed from it (`note_body_sync.pushed_state_vector`, data
