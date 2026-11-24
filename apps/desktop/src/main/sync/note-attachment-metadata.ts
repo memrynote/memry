@@ -110,7 +110,9 @@ export function recordUploadedAttachment(
  * Binary note `noteId`'s attachment `attachmentId`, whose bytes hash to
  * `sha256`, landed on its file: bytes a server holds (#5598). The file holds
  * the note's own bytes only while the row still names that attachment; a
- * newer record keeps the file held until its own lands (#5580).
+ * newer record keeps the file held until its own lands (#5580). A row dropped
+ * while the bytes landed gets nothing recorded: its marks went with it
+ * (REVIEW-5662).
  */
 export function recordDownloadedFileSize(
   noteId: string,
@@ -119,24 +121,28 @@ export function recordDownloadedFileSize(
   sha256: string
 ): void {
   const db = getDatabase()
+  const note = getNoteMetadataById(db, noteId)
+  if (!note) return
   updateNoteCache(getIndexDatabase(), noteId, { fileSize })
   updateNoteMetadata(db, noteId, { fileSize })
   recordLandedBinaryHash(db, noteId, sha256)
-  if (getNoteMetadataById(db, noteId)?.attachmentId === attachmentId) {
-    clearCaseTwinForeignBytes(db, noteId)
-  }
+  if (note.attachmentId === attachmentId) clearCaseTwinForeignBytes(db, noteId)
 }
 
 /**
  * Before attachment `attachmentId` lands on binary note `noteId`'s file:
  * throws when a newer record named another attachment while it downloaded,
- * so older bytes never land where the row names newer ones (#5580).
+ * so older bytes never land where the row names newer ones (#5580), and when
+ * the note's row is gone, so a deleted note's file never comes back as a new
+ * note (REVIEW-5662).
  */
 export function assertOwnAttachmentLands(
   db: DrizzleDb,
   noteId: string,
   attachmentId: string
 ): void {
-  const own = getNoteMetadataById(db, noteId)?.attachmentId
-  if (own && own !== attachmentId) throw new SupersededDownloadError(noteId, attachmentId)
+  const note = getNoteMetadataById(db, noteId)
+  if (!note || (note.attachmentId && note.attachmentId !== attachmentId)) {
+    throw new SupersededDownloadError(noteId, attachmentId)
+  }
 }

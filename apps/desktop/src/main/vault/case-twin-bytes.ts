@@ -20,8 +20,9 @@
  *   server then. A mark is read and written alone, so marking many notes and
  *   landing each note's bytes stay linear (#5580). Builds before kept every
  *   mark in one JSON object under `caseTwinForeignBytes`; the first touch
- *   moves its entries to their rows. A released build also wrote `{sha256}`
- *   of a kept conflict copy into a mark; it still reads as known bytes.
+ *   moves its entries to their rows. An unreleased build (#5591, #5626) also
+ *   wrote `{sha256}` of a kept conflict copy into a mark; it still reads as
+ *   known bytes.
  *
  * @module vault/case-twin-bytes
  */
@@ -213,6 +214,11 @@ export function recordHeldCaseTwinChange(db: DrizzleDb, diskPath: string): void 
   const folded = foldNotePath(diskPath)
   if (held.has(folded)) return
   writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_HELD_CHANGES, [...held, folded])
+}
+
+/** Whether the watcher held a change to this shared file. */
+export function hasHeldCaseTwinChange(db: DrizzleDb, diskPath: string): boolean {
+  return readHeld(db).has(foldNotePath(diskPath))
 }
 
 /** Whether a change to this shared file was held, forgetting it. */
