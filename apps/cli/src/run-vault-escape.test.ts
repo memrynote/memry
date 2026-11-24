@@ -84,7 +84,7 @@ const OUTSIDE = /^Refusing to .+: ".+" is the vault itself or outside it\.$/
 const LINK =
   /^Refusing to .+: ".+" is a link, and a path through a link can lead outside the vault\.$/
 const WINDOWS_ALIAS =
-  /^Refusing to .+: ".+" ends in a dot or a space, which Windows drops, so it names another folder\.$/
+  /^Refusing to .+: ".+" ends in a dot or a space, which Windows drops, so it names another (?:folder|file)\.$/
 
 test('folders delete refuses the vault root and paths that leave it, with its own message', async () => {
   for (const folder of ['/', '.', 'SuperNotes/..', '..', '../outside/data', '../outside/gone']) {
@@ -556,3 +556,97 @@ test('inbox file --folder / files an image into the vault root', async () => {
     'Shot.png'
   )
 })
+
+test('notes attachments by path lists what notes attach by path stored', async () => {
+  const { world, vaultPath, note } = await makeWorld()
+  await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+  const added = await cli(vaultPath, 'notes', 'attach', note.path, path.join(world, 'shot.png'))
+  assert.equal(added.code, 0, added.stderr)
+  const listed = await cli(vaultPath, 'notes', 'attachments', note.path)
+  assert.equal(listed.code, 0, listed.stderr)
+  const files = JSON.parse(listed.stdout.at(-1) ?? '[]') as Array<{ path: string }>
+  assert.deepEqual(
+    files.map((file) => path.posix.dirname(file.path)),
+    [`attachments/${note.id}`]
+  )
+})
+
+const NOT_A_NOTE_ID = /^Refusing to list attachments: ".+" is not a note id\.$/
+
+test('notes attachments refuses a folder that is no note id', async () => {
+  for (const owner of ['../../outside/data', '../out/data']) {
+    await assertRefused(['notes', 'attachments', owner], NOT_A_NOTE_ID)
+  }
+})
+
+test(
+  'notes attachments refuses an attachments folder that is a link',
+  { skip: skipLinks },
+  async () => {
+    await assertRefused(({ note }) => ['notes', 'attachments', note.id], LINK, {
+      setup: linkAttachmentsOutside
+    })
+  }
+)
+
+test('on Windows, attach --existing refuses a file name ending in a dot or a space', async () => {
+  for (const filename of ['a.png.', 'a.png ']) {
+    await assertRefused(
+      ({ note }) => [
+        'notes',
+        'attach',
+        'SuperNotes/Real.md',
+        '--existing',
+        `${note.id}/${filename}`
+      ],
+      WINDOWS_ALIAS,
+      {
+        platform: 'win32',
+        setup: async ({ vaultPath, note }) => {
+          await fs.mkdir(path.join(vaultPath, 'attachments', note.id), { recursive: true })
+          await fs.writeFile(path.join(vaultPath, 'attachments', note.id, filename), 'png-bytes')
+        }
+      }
+    )
+  }
+})
+
+test('vault update-config refuses a note or journal folder outside the vault', async () => {
+  const { vaultPath } = await makeWorld()
+  const configPath = path.join(vaultPath, '.memry', 'config.json')
+  const before = await fs.readFile(configPath, 'utf-8')
+  for (const update of [{ defaultNoteFolder: '../escaped' }, { journalFolder: '../escaped' }]) {
+    const result = await cli(vaultPath, 'vault', 'update-config', JSON.stringify(update))
+    assert.equal(result.code, 1, result.stderr)
+    assert.deepEqual(result.stdout, [])
+    assert.match(result.stderr, OUTSIDE)
+  }
+  assert.equal(await fs.readFile(configPath, 'utf-8'), before)
+})
+
+test('vault update-config refuses a note folder through a link', { skip: skipLinks }, async () => {
+  await assertRefused(['vault', 'update-config', '{"defaultNoteFolder":"out/new"}'], LINK)
+})
+
+test(
+  'opening a vault warns about a configured folder it refuses to create',
+  { skip: skipLinks },
+  async () => {
+    const { world, vaultPath } = await makeWorld()
+    const configPath = path.join(vaultPath, '.memry', 'config.json')
+    const config = JSON.parse(await fs.readFile(configPath, 'utf-8')) as object
+    await fs.writeFile(configPath, JSON.stringify({ ...config, defaultNoteFolder: 'out/new' }))
+    const written: string[] = []
+    const write = process.stderr.write.bind(process.stderr)
+    process.stderr.write = (chunk: string | Uint8Array) => {
+      written.push(String(chunk))
+      return true
+    }
+    const listed = await cli(vaultPath, 'notes', 'list').finally(() => {
+      process.stderr.write = write
+    })
+    assert.equal(listed.code, 0, listed.stderr)
+    assert.match(written.join(''), /Warning: .*Refusing to create folder: "out" is a link/)
+    assert.deepEqual((await fs.readdir(path.join(world, 'outside'))).toSorted(), ['data'])
+  }
+)

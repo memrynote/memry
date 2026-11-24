@@ -113,6 +113,11 @@ export async function vaultFile(
   if (parseVaultFolder(file).kind !== 'folder') {
     throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
   }
+  if (windowsTrimsFolderName(file)) {
+    throw new Error(
+      `Refusing to ${action}: "${requested}" ends in a dot or a space, which Windows drops, so it names another file.`
+    )
+  }
   const folder = await vaultFolder(vaultPath, path.posix.dirname(file), action, { allowRoot: true })
   const absolute = path.join(vaultPath, folder, path.posix.basename(file))
   const stat = await fs.lstat(absolute).catch((error: unknown) => {
@@ -179,9 +184,9 @@ export async function writeVaultConfig(vaultPath: string, config: VaultConfig): 
   await ensureVaultFolders(vaultPath, config)
 }
 
-// A folder `vaultFolder` refuses, such as one through a link, is skipped: making it here
-// would create folders outside the vault (#5717). A command that writes there refuses with
-// its own error.
+// A folder `vaultFolder` refuses, such as one through a link, is skipped with a warning:
+// making it here would create folders outside the vault (#5717). A command that writes
+// there refuses with its own error.
 async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promise<void> {
   const folders = [
     config.defaultNoteFolder,
@@ -192,7 +197,11 @@ async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promi
   for (const requested of folders) {
     const folder = await vaultFolder(vaultPath, requested, 'create folder', {
       allowRoot: true
-    }).catch(() => null)
+    }).catch((error: unknown) => {
+      if (!(error instanceof Error) || !error.message.startsWith('Refusing to')) throw error
+      process.stderr.write(`Warning: vault ${vaultPath}: ${error.message} Skipped.\n`)
+      return null
+    })
     if (folder) await fs.mkdir(path.join(vaultPath, folder), { recursive: true })
   }
 }
