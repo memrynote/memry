@@ -571,6 +571,25 @@ test('notes attachments by path lists what notes attach by path stored', async (
   )
 })
 
+test('notes attachments lists the attachments of a note whose file is gone', async () => {
+  const { world, vaultPath, note } = await makeWorld()
+  await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+  const added = await cli(vaultPath, 'notes', 'attach', note.id, path.join(world, 'shot.png'))
+  assert.equal(added.code, 0, added.stderr)
+  // The index still holds the note's row.
+  await fs.rm(path.join(vaultPath, note.path))
+  for (const owner of [note.id, note.path]) {
+    const listed = await cli(vaultPath, 'notes', 'attachments', owner)
+    assert.equal(listed.code, 0, listed.stderr)
+    const files = JSON.parse(listed.stdout.at(-1) ?? '[]') as Array<{ path: string }>
+    assert.deepEqual(
+      files.map((file) => path.posix.dirname(file.path)),
+      [`attachments/${note.id}`],
+      owner
+    )
+  }
+})
+
 const NOT_A_NOTE_ID = /^Refusing to list attachments: ".+" is not a note id\.$/
 
 test('notes attachments refuses a folder that is no note id', async () => {
@@ -648,5 +667,33 @@ test(
     assert.equal(listed.code, 0, listed.stderr)
     assert.match(written.join(''), /Warning: .*Refusing to create folder: "out" is a link/)
     assert.deepEqual((await fs.readdir(path.join(world, 'outside'))).toSorted(), ['data'])
+  }
+)
+
+test(
+  'opening a vault fails on a configured folder it cannot create',
+  {
+    skip:
+      (process.platform === 'win32' || process.getuid?.() === 0) &&
+      'chmod does not deny root or Windows'
+  },
+  async () => {
+    const { vaultPath } = await makeWorld()
+    const configPath = path.join(vaultPath, '.memry', 'config.json')
+    const config = JSON.parse(await fs.readFile(configPath, 'utf-8')) as object
+    await fs.writeFile(configPath, JSON.stringify({ ...config, defaultNoteFolder: 'locked/new' }))
+    const locked = path.join(vaultPath, 'locked')
+    await fs.mkdir(locked)
+    // No search permission: checking `locked/new` for a link fails with EACCES.
+    await fs.chmod(locked, 0o000)
+    let listed: Awaited<ReturnType<typeof cli>>
+    try {
+      listed = await cli(vaultPath, 'notes', 'list')
+    } finally {
+      await fs.chmod(locked, 0o755)
+    }
+    assert.equal(listed.code, 1)
+    assert.deepEqual(listed.stdout, [])
+    assert.match(listed.stderr, /EACCES/)
   }
 )
