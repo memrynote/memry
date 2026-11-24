@@ -2220,6 +2220,23 @@ describe('notes operations', () => {
 
         expect(fs.existsSync(folderPath)).toBe(false)
       })
+
+      // Windows reads a peer's `Work.` as `Work`, so the delete is refused, with
+      // copy the user can act on rather than an untranslated sentence.
+      it('refuses on Windows a folder whose name ends in a dot or space, and deletes nothing', async () => {
+        const platform = process.platform
+        Object.defineProperty(process, 'platform', { value: 'win32' })
+        const folderPath = path.join(tempVault.path, 'Work.')
+        fs.mkdirSync(folderPath)
+        try {
+          await expect(notes.deleteFolder('Work.')).rejects.toThrow(
+            'errors:folder.deleteWindowsName'
+          )
+          expect(fs.existsSync(folderPath)).toBe(true)
+        } finally {
+          Object.defineProperty(process, 'platform', { value: platform })
+        }
+      })
     })
   })
 
