@@ -261,13 +261,13 @@ from the body (`apps/desktop/src/main/sync/note-attachment-metadata.ts:14-23`).
 for**, whether the manifest came from the single GET or under that id's key in
 a batch answer (§14.5.2). It refuses after the signature check and decrypt and
 before it requests a chunk or writes a byte
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:202`;
-`apps/desktop/src/main/sync/attachments.ts:407`, called at `:826`). The
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:245`;
+`apps/desktop/src/main/sync/attachments.ts:409`, called at `:828`). The
 signature does not catch this: a server that answers with another attachment's
 manifest sends one that some vault device validly signed, and a reader that
 took it would land that file's bytes under this id (#5652). A reader that reads
 chunk hashes from a manifest for any other purpose MUST refuse it the same way
-(`apps/desktop/src/main/sync/attachments.ts:1335`). Desktop reads them to free
+(`apps/desktop/src/main/sync/attachments.ts:1357`). Desktop reads them to free
 a deleted note's chunks, which would free the other attachment's, and to check
 a revived note (§14.8.2), which would take the other attachment's live chunks
 for this one's (#5664).
@@ -277,7 +277,7 @@ NOT count it toward abandoning the download or pruning the reference, as it
 counts a 404, and MUST keep the work for a later pass. The core raises it as
 `SyncError::AttachmentCorrupt` (`crates/memry-core/src/api/errors.rs:402`), and
 its re-drive counts the row failed and leaves it missing
-(`crates/memry-core/src/api/sync/attachment_fetch.rs:101-102`, `:134`). Desktop
+(`crates/memry-core/src/api/sync/attachment_fetch.rs:122-123`, `:155`). Desktop
 throws a plain `Error`, which `markDownloadFailed` classifies as transient
 (`packages/sync-client/src/attachment-download-state.ts:117-127`). The
 deleted-asset release keeps its record
