@@ -35,6 +35,11 @@ export const ErrorCodes = {
   SYNC_ITEM_NOT_FOUND: 'SYNC_ITEM_NOT_FOUND',
   SYNC_VERSION_CONFLICT: 'SYNC_VERSION_CONFLICT',
   SYNC_INVALID_SIGNATURE: 'SYNC_INVALID_SIGNATURE',
+  // A per-item rejection: the item signature verified but its delete
+  // attestation did not (protocol 04 §4.8.4). Distinct from
+  // SYNC_INVALID_SIGNATURE, which clients read as a device-key mismatch.
+  // Builds before #5247 B17b treat it as an unknown per-item refusal.
+  SYNC_INVALID_DELETE_ATTESTATION: 'SYNC_INVALID_DELETE_ATTESTATION',
   SYNC_INVALID_CURSOR: 'SYNC_INVALID_CURSOR',
   SYNC_BATCH_TOO_LARGE: 'SYNC_BATCH_TOO_LARGE',
   // A single push item the record schema refuses. Reported per item in
