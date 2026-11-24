@@ -187,9 +187,16 @@ impl VaultSync {
             });
         }
         // Already here: landed by the fetch this one waited for, or before it.
-        if let Some(local_path) = cached.and_then(|row| row.local_path)
+        // A file of another length than the manifest's plaintext is torn or
+        // foreign, and is downloaded over.
+        if let Some(row) = cached
+            && let Some(local_path) = row.local_path
+            && let Some(manifest) = row.manifest.as_deref()
+            && let Ok(manifest) =
+                serde_json::from_str::<protocol::attachment_manifest::AttachmentManifest>(manifest)
             && let Ok(file) = std::fs::metadata(self.images_file(&local_path))
             && file.is_file()
+            && file.len() == manifest.size
         {
             return Ok(AttachmentFetchSummary {
                 downloaded: true,
