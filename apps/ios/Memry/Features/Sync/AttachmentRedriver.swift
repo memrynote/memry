@@ -4,9 +4,10 @@ import MemryCore
 /// Retries missing attachment downloads (#3261) and syncs the Inbox's files
 /// (#4157) after each sync pass and when the network path changes. The core
 /// owns which attachments are missing or pending and whether a path may fetch
-/// them (FR-045); this passes the current path as this device's Download
-/// attachments setting judges it (#5644, `AttachmentDownloadPath.swift`),
-/// keeps calls from overlapping, and relays what changed.
+/// them (FR-045); this passes the current path, keeps calls from overlapping,
+/// and relays what changed. Note attachments follow this device's Download
+/// attachments setting (#5644, `AttachmentDownloadPath.swift`). Inbox files do
+/// not, as on desktop (`apps/desktop/src/main/inbox/attachment-sync.ts`).
 @MainActor
 final class AttachmentRedriver {
     /// Posted when Inbox files were written to disk, for the Inbox to re-read.
@@ -37,12 +38,13 @@ final class AttachmentRedriver {
     }
 
     func redrive() async {
-        let reachable = setting().backgroundPath(on: reachability())
-        guard reachable != .offline, !running else { return }
+        let observed = reachability()
+        guard observed != .offline, !running else { return }
         running = true
         defer { running = false }
-        await redriveNoteAttachments(reachable)
-        await syncInboxFiles(reachable)
+        let notes = setting().backgroundPath(on: observed)
+        if notes != .offline { await redriveNoteAttachments(notes) }
+        await syncInboxFiles(observed)
     }
 
     private func redriveNoteAttachments(_ reachable: Reachable) async {

@@ -126,12 +126,14 @@ struct InboxFileRedriveTests {
         #expect(filler.inboxSyncs == [.cellular])
     }
 
-    /// #5644: Never still runs the pass, so this device's captures upload,
-    /// but on a path the core judges metered, so no file downloads.
-    @Test func never_uploads_inbox_files_and_downloads_none() async {
+    /// #5644: Inbox files download whatever the Download attachments
+    /// setting, as desktop's do (`attachment-sync.ts`), so the pass always
+    /// carries the observed path.
+    @Test(arguments: AttachmentDownload.allCases, [Reachable.wifi, .cellular])
+    func the_inbox_pass_ignores_the_setting(setting: AttachmentDownload, observed: Reachable) async {
         let filler = InboxFilesFiller()
-        await redriver(filler, reachable: .wifi, setting: .never).redrive()
-        #expect(filler.inboxSyncs == [.cellular])
+        await redriver(filler, reachable: observed, setting: setting).redrive()
+        #expect(filler.inboxSyncs == [observed])
     }
 
     @Test func offline_syncs_no_inbox_files() async {
@@ -310,8 +312,8 @@ struct InboxPictureFallbackTests {
     }
 }
 
-// #5644: with Never or On Wi-Fi the background pass leaves another device's
-// capture without its file here, and opening the capture downloads it.
+// #5644: on a metered path the background pass defers another device's
+// capture file (FR-045), and opening the capture downloads it.
 @MainActor
 @Suite("Inbox file on open", .serialized)
 struct InboxOpenedFileTests {
@@ -323,8 +325,7 @@ struct InboxOpenedFileTests {
     /// not on this device.
     private func remoteCapture(
         _ filler: InboxFilesFiller,
-        observed: Reachable,
-        setting: AttachmentDownload
+        observed: Reachable
     ) async throws -> (InboxStore, InboxItemRecord) {
         let scratch = try InboxTestVault()
         let store = InboxStore(
@@ -332,7 +333,6 @@ struct InboxOpenedFileTests {
             filler: filler, transcription: .scripted
         )
         store.reachability = { observed }
-        store.downloadSetting = { setting }
         _ = await store.captureFile(data: Self.onePixelPNG, filename: "[agent] photo.png", mimeType: "image/png")
         var item = try #require(store.items.first)
         item.attachmentId = "att-remote"
@@ -341,9 +341,9 @@ struct InboxOpenedFileTests {
         return (store, item)
     }
 
-    @Test func opening_downloads_the_file_on_a_metered_path_and_the_rest_follow_the_setting() async throws {
+    @Test func opening_downloads_the_file_on_a_metered_path_and_the_rest_stay_deferred() async throws {
         let filler = InboxFilesFiller()
-        let (store, item) = try await remoteCapture(filler, observed: .cellular, setting: .never)
+        let (store, item) = try await remoteCapture(filler, observed: .cellular)
 
         await store.downloadFile(of: item)
 
@@ -354,7 +354,7 @@ struct InboxOpenedFileTests {
 
     @Test func offline_asks_for_nothing() async throws {
         let filler = InboxFilesFiller()
-        let (store, item) = try await remoteCapture(filler, observed: .offline, setting: .always)
+        let (store, item) = try await remoteCapture(filler, observed: .offline)
 
         await store.downloadFile(of: item)
 
@@ -366,7 +366,7 @@ struct InboxOpenedFileTests {
     @Test func a_failed_download_is_shown_and_places_nothing() async throws {
         let filler = InboxFilesFiller()
         filler.failFetch()
-        let (store, item) = try await remoteCapture(filler, observed: .wifi, setting: .never)
+        let (store, item) = try await remoteCapture(filler, observed: .wifi)
 
         await store.downloadFile(of: item)
 

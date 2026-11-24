@@ -11,25 +11,28 @@ import MemryCore
 // API marks one yet. The setting is said in that vocabulary rather than
 // re-argued here:
 //
-// | Setting  | Background (redrive, Inbox pass) | Opened by the user |
-// | -------- | -------------------------------- | ------------------ |
-// | Always   | any usable path, as unmetered    | any usable path    |
-// | On Wi-Fi | the observed path                | any usable path    |
-// | Never    | any usable path, as metered      | any usable path    |
+// | Setting  | Note redrive (background)     | Opened by the user |
+// | -------- | ----------------------------- | ------------------ |
+// | Always   | any usable path, as unmetered | any usable path    |
+// | On Wi-Fi | the observed path             | any usable path    |
+// | Never    | none                          | any usable path    |
 //
-// The observed path is already metered on cellular, a hotspot and Low Data
-// Mode (`PathReachability.classify`). Nothing here deletes bytes this device
-// holds.
+// The Inbox pass takes the observed path whatever the setting, as desktop
+// downloads Inbox files whatever its toggle
+// (`apps/desktop/src/main/inbox/attachment-sync.ts`). The observed path is
+// already metered on cellular, a hotspot and Low Data Mode
+// (`PathReachability.classify`). Nothing here deletes bytes this device holds.
 
 extension AttachmentDownload {
-    /// The path a download nobody asked for is judged against.
+    /// The path a note attachment nobody opened is judged against. `.offline`
+    /// downloads nothing, so the redriver skips the call.
     func backgroundPath(on observed: Reachable) -> Reachable {
         guard observed != .offline else { return .offline }
         switch self {
         case .always: return .wifi
         case .wifi: return observed
-        // Not `.offline`: the Inbox pass still uploads and releases.
-        case .never: return .cellular
+        // Not `.cellular`: a row marked for metered data would download.
+        case .never: return .offline
         }
     }
 

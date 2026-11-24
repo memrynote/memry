@@ -61,12 +61,8 @@ final class InboxStore {
     /// Each opened capture's file download that is running or failed, by
     /// capture id (#5644). Written only by `downloadFile(of:)`.
     var fileDownloads: [String: AttachmentFetchState] = [:]
-    /// The path a file download is judged against, and this device's
-    /// Download attachments setting. Replaced in tests.
+    /// The path a file download is judged against. Replaced in tests.
     @ObservationIgnored var reachability: @Sendable () -> Reachable = { PathReachability.forAttachments.current() }
-    @ObservationIgnored var downloadSetting: @MainActor () -> AttachmentDownload = {
-        LocalSettings.shared.attachmentDownload
-    }
     var toast: InboxToast?
     private(set) var failure: UserFacingError?
     /// The vault's sync scheduler (`requestVaultSync`): debounced, one pass at
