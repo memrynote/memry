@@ -12,15 +12,16 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use tokio::task::JoinSet;
 use tokio::time::Instant;
 
-use crate::api::errors::ApiError;
 use crate::storage::{Db, nested_tx};
 use crate::sync::body_debt;
-use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
+use crate::sync::body_pull::{
+    BodyPull, BodyPullError, BodyPullReport, MAX_RATE_LIMIT_PAUSES, PROBE_CHUNK, Probed,
+    RateLimitPauses,
+};
 use crate::sync::first_sync_store::{
     owe_live_documents, read_meta, recent_document_ids, write_meta,
 };
@@ -45,20 +46,6 @@ pub const BODY_CONCURRENCY_ELEVATED: usize = 4;
 /// so a second one would only buy 429s.
 pub const BODY_CONCURRENCY_STEADY: usize = 1;
 
-/// The longest `Retry-After` the bodies pass waits out itself. `crdt_pull` is a
-/// sixty-second fixed window, so anything longer is not this limiter and is
-/// returned to the caller instead of sat through.
-pub const MAX_RATE_LIMIT_PAUSE_S: u64 = 60;
-
-/// How many 429 pauses one bodies pass takes before it gives up and returns
-/// the error. The run is resumable, so giving up loses no work; the bound only
-/// stops a server that keeps refusing from holding the pass open forever.
-pub const MAX_RATE_LIMIT_PAUSES: u32 = 8;
-
-/// How many 429s each probe chunk waits out (#5570). One refused chunk of a
-/// hundred documents holding no cursor costs two hundred route pulls; a wait
-/// costs at most the window. Past it the chunk falls back to those pulls.
-const PROBE_RATE_LIMIT_PAUSES: u32 = 2;
 impl FirstSync {
     /// Bodies from packs, once (`pack_bootstrap/bodies.rs`). Answers whether
     /// the phase settled or owed every live document, which makes the debts
@@ -216,11 +203,14 @@ async fn pull_parallel(
     progress: &Arc<dyn ProgressSink>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
+    // One budget for the whole pass (#5423): the probes and the document
+    // pulls wait out the same 429s in a row, never a budget per chunk.
+    let mut pauses = RateLimitPauses::new(MAX_RATE_LIMIT_PAUSES);
     let mut probed = HashMap::new();
     for chunk in window.chunks(PROBE_CHUNK) {
         probed.extend(
             bodies
-                .probe(chunk, &mut report.requests, PROBE_RATE_LIMIT_PAUSES)
+                .probe(chunk, &mut report.requests, &mut pauses)
                 .await?,
         );
     }
@@ -242,6 +232,7 @@ async fn pull_parallel(
         total,
         current.len() as u64,
         probed,
+        pauses,
         Arc::clone(progress),
     ));
     let mut running = JoinSet::new();
@@ -282,7 +273,7 @@ struct QueueState {
     pending: VecDeque<String>,
     completed: u64,
     paused_until: Option<Instant>,
-    pauses: u32,
+    pauses: RateLimitPauses,
 }
 
 impl BodyQueue {
@@ -293,6 +284,7 @@ impl BodyQueue {
         total: u64,
         completed: u64,
         probed: HashMap<String, Probed>,
+        pauses: RateLimitPauses,
         progress: Arc<dyn ProgressSink>,
     ) -> Self {
         if completed > 0 {
@@ -307,7 +299,7 @@ impl BodyQueue {
                 pending: pending.into(),
                 completed,
                 paused_until: None,
-                pauses: 0,
+                pauses,
             }),
             total,
             probed: Mutex::new(probed),
@@ -330,12 +322,20 @@ impl BodyQueue {
             .remove(doc_id)
     }
 
-    /// The next document, after any pause another worker's 429 set.
-    async fn next(&self) -> Option<String> {
+    /// The next document, after any pause a 429 set. The wait is `bodies`'s,
+    /// which a paused driver cuts; a cut wait is not slept again for the same
+    /// pause, and the next request answers the driver's pause.
+    async fn next(&self, bodies: &BodyPull) -> Option<String> {
+        let mut waited = None;
         loop {
             let until = self.lock().paused_until;
             match until {
-                Some(until) if until > Instant::now() => tokio::time::sleep_until(until).await,
+                Some(until) if until > Instant::now() && waited != Some(until) => {
+                    waited = Some(until);
+                    bodies
+                        .wait(until.saturating_duration_since(Instant::now()))
+                        .await;
+                }
                 _ => return self.lock().pending.pop_front(),
             }
         }
@@ -343,8 +343,13 @@ impl BodyQueue {
 
     /// Counted and reported under the lock, so two workers finishing together
     /// can never report their counts out of order and move the bar backwards.
-    fn finished(&self) {
+    /// `answered`: the pull sent a request the server answered, so the 429s
+    /// in a row start again.
+    fn finished(&self, answered: bool) {
         let mut state = self.lock();
+        if answered {
+            state.pauses.answered();
+        }
         state.completed += 1;
         self.progress.progress(FirstSyncProgress {
             phase: FirstSyncPhase::Bodies,
@@ -354,14 +359,17 @@ impl BodyQueue {
     }
 
     /// Puts a rate-limited document back at the front and pauses every worker
-    /// until the window turns. `false` once the pass has paused too often.
-    fn rate_limited(&self, doc_id: String, retry_after_s: u64) -> bool {
-        let mut state = self.lock();
-        state.pauses += 1;
-        if state.pauses > MAX_RATE_LIMIT_PAUSES {
+    /// until the window turns. `false` for any other error, and once the pass
+    /// has waited out [`MAX_RATE_LIMIT_PAUSES`] 429s in a row.
+    fn rate_limited(&self, doc_id: String, error: &BodyPullError) -> bool {
+        let BodyPullError::Api { source } = error else {
             return false;
-        }
-        let until = Instant::now() + Duration::from_secs(retry_after_s);
+        };
+        let mut state = self.lock();
+        let Some(wait) = state.pauses.take(source) else {
+            return false;
+        };
+        let until = Instant::now() + wait;
         state.paused_until = Some(
             state
                 .paused_until
@@ -385,7 +393,7 @@ async fn body_worker(
     queue: Arc<BodyQueue>,
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
-    while let Some(doc_id) = queue.next().await {
+    while let Some(doc_id) = queue.next(&bodies).await {
         match bodies.pull_with(&doc_id, queue.take_probed(&doc_id)).await {
             Ok(part) => {
                 // The bodies pass owed this document before the pull; only a
@@ -401,32 +409,16 @@ async fn body_worker(
                 if part.merged() && part.baselines + part.updates == 0 {
                     bodies.tell_observers_of(vec![doc_id]).await;
                 }
+                let answered = part.requests > 0;
                 report.absorb(part);
-                queue.finished();
+                queue.finished(answered);
             }
             Err(error) => {
-                let Some(wait_s) = rate_limit_pause(&error) else {
-                    return Err(error);
-                };
-                if !queue.rate_limited(doc_id, wait_s) {
+                if !queue.rate_limited(doc_id, &error) {
                     return Err(error);
                 }
             }
         }
     }
     Ok(report)
-}
-
-/// The pause a 429 asks for, when it is one the pass may wait out itself.
-fn rate_limit_pause(error: &BodyPullError) -> Option<u64> {
-    let BodyPullError::Api {
-        source: ApiError::RateLimited { retry_after_s, .. },
-    } = error
-    else {
-        return None;
-    };
-    // A 429 without `Retry-After` still means "not now"; one second is the
-    // server's own floor (`Math.max(retryAfter, 1)`).
-    let wait_s = retry_after_s.unwrap_or(1).max(1);
-    (wait_s <= MAX_RATE_LIMIT_PAUSE_S).then_some(wait_s)
 }

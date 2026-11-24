@@ -272,6 +272,14 @@ impl HttpClient {
         Arc::clone(&self.transport)
     }
 
+    /// Sleeps through this client's [`Sleeper`], so a caller's own wait ends
+    /// where the client's retry sleeps end (a paused driver's), rounded up to
+    /// whole milliseconds so it never ends early.
+    pub(crate) async fn sleep(&self, wait: std::time::Duration) {
+        let ms = u64::try_from(wait.as_micros().div_ceil(1_000)).unwrap_or(u64::MAX);
+        self.sleeper.sleep_ms(ms).await;
+    }
+
     /// Sends a request, running the ladder. Returns the 2xx response or the
     /// classified failure.
     pub async fn send(&self, request: ApiRequest) -> Result<HttpResponse, ApiError> {

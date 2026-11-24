@@ -244,6 +244,11 @@ impl Reconciler {
         self.reported.remove(rel);
     }
 
+    /// A consumer gave the file reported new at `rel` the note `note_id` ([`Reported::name`]).
+    pub fn named(&mut self, rel: &str, note_id: &str) {
+        self.reported.name(rel, note_id);
+    }
+
     /// The root itself was touched: if it is gone the vault is away.
     pub fn check_reachable(&mut self) {
         if !is_vault_reachable(&self.root) {

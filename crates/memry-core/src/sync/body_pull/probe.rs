@@ -11,7 +11,7 @@ use crate::protocol::http::RetryPolicy;
 use crate::sync::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use crate::sync::store;
 
-use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT, crdt_cursor_scope, waited_out_429};
+use super::{BodyPull, BodyPullError, CRDT_UPDATES_PAGE_LIMIT, RateLimitPauses, crdt_cursor_scope};
 
 /// What the probe learned about one document.
 #[derive(Debug, Default)]
@@ -44,17 +44,17 @@ impl BodyPull {
     /// tighter rate limit, and an old server may not have it; either way each
     /// document is pulled as before, through its own routes.
     ///
-    /// `pauses` is how many 429s the probe waits out before it gives up
-    /// (#5570). The first sync's bodies pass waits: without a probe, a
-    /// document holding no cursor costs a snapshot GET and an updates GET, so
-    /// a refused probe of a hundred empty-body documents became two hundred
-    /// route pulls. A pass's body step passes `0`: it runs under the pass
-    /// gate and must not hold the push behind a wait.
+    /// `pauses` are the 429s the probe may still wait out (#5570), the whole
+    /// bodies pass's in a first sync (#5423). The first sync waits: without a
+    /// probe, a document holding no cursor costs a snapshot GET and an
+    /// updates GET, so a refused probe of a hundred empty-body documents
+    /// became two hundred route pulls. A pass's body step waits none: it runs
+    /// under the pass gate and must not hold the push behind a wait.
     pub(in crate::sync) async fn probe(
         &self,
         doc_ids: &[String],
         requests: &mut usize,
-        pauses: u32,
+        pauses: &mut RateLimitPauses,
     ) -> Result<HashMap<String, Probed>, BodyPullError> {
         // The server refuses a batch naming an id twice.
         let mut ids: Vec<String> = Vec::new();
@@ -88,7 +88,6 @@ impl BodyPull {
             .iter()
             .map(|(doc_id, cursor)| json!({ "noteId": doc_id, "since": cursor.unwrap_or(0) }))
             .collect();
-        let mut paused = 0;
         let body = loop {
             // Counted against the caller's per-pass budget like any other request.
             *requests += 1;
@@ -99,9 +98,14 @@ impl BodyPull {
                 // through its own routes, so waiting through backoff buys nothing.
                 .retry(RetryPolicy::never());
             match self.http.send_json::<Json>(request).await {
-                Ok(body) => break body,
-                Err(error) if waited_out_429(&error, &mut paused, pauses).await => {}
-                Err(_) => return Ok(HashMap::new()),
+                Ok(body) => {
+                    pauses.answered();
+                    break body;
+                }
+                Err(error) => match pauses.take(&error) {
+                    Some(wait) => self.wait(wait).await,
+                    None => return Ok(HashMap::new()),
+                },
             }
         };
         // An older server sends no `snapshotMeta` key at all, so an empty
