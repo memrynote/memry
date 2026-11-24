@@ -62,7 +62,7 @@
     "uploadFailed": "Nabigo ang pag-upload ng attachment",
     "uploadProgressFailed": "Hindi makuha ang progreso ng pag-upload",
     "downloadFailed": "Nabigo ang pag-download ng attachment",
-    "downloadGone": "Wala na sa sync server ang file na ito.",
+    "downloadGone": "Wala na sa sync server ang file na ito. Kung nasa ibang device pa ito, idagdag itong muli mula sa device na iyon.",
     "downloadMissing": "Wala pa sa sync server ang file na ito. Buksan ito ulit bukas para tingnan.",
     "downloadNeedsSync": "Hindi tumatakbo ang sync, kaya hindi ma-download ang file na ito. Kusa itong mada-download kapag tumatakbo na ang sync.",
     "downloadProgressFailed": "Hindi makuha ang progreso ng pag-download",

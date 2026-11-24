@@ -62,7 +62,7 @@
     "uploadFailed": "Opplasting av vedlegget mislyktes",
     "uploadProgressFailed": "Kunne ikke hente opplastingsstatus",
     "downloadFailed": "Nedlasting av vedlegget mislyktes",
-    "downloadGone": "Denne filen finnes ikke lenger på synkroniseringsserveren.",
+    "downloadGone": "Denne filen finnes ikke lenger på synkroniseringsserveren. Hvis en annen enhet fortsatt har den, legg den til på nytt fra den enheten.",
     "downloadMissing": "Denne filen er ikke på synkroniseringsserveren ennå. Åpne den igjen i morgen for å sjekke.",
     "downloadNeedsSync": "Synkronisering kjører ikke, så denne filen kan ikke lastes ned. Den lastes ned av seg selv når synkroniseringen kjører.",
     "downloadProgressFailed": "Kunne ikke hente nedlastingsstatus",

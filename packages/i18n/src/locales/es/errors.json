@@ -62,7 +62,7 @@
     "uploadFailed": "No se pudo subir el archivo adjunto",
     "uploadProgressFailed": "No se pudo obtener el progreso de la subida",
     "downloadFailed": "No se pudo descargar el archivo adjunto",
-    "downloadGone": "Este archivo ya no está en el servidor de sincronización.",
+    "downloadGone": "Este archivo ya no está en el servidor de sincronización. Si otro dispositivo todavía lo tiene, vuelve a añadirlo desde ese dispositivo.",
     "downloadMissing": "Este archivo aún no está en el servidor de sincronización. Vuelve a abrirlo mañana para comprobarlo.",
     "downloadNeedsSync": "La sincronización no está activa, así que no se puede descargar este archivo. Se descargará automáticamente cuando la sincronización esté activa.",
     "downloadProgressFailed": "No se pudo obtener el progreso de la descarga",
