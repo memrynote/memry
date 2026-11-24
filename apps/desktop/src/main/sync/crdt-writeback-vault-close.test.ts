@@ -29,9 +29,10 @@ import { parseJournalEntry } from '../vault/journal'
 import { registerJournalHandlers } from '../ipc/journal-handlers'
 import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
-import { flushPendingWritebacks, resetWritebackState } from './crdt-writeback'
+import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
 import type * as PersistenceModule from './crdt-persistence'
+import type * as LoggerModule from '../lib/logger'
 
 vi.mock('electron', () => {
   const mockWindow = { isDestroyed: () => false, webContents: { send: vi.fn() } }
@@ -48,37 +49,71 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: vi.fn()
 }))
 
+/** Error lines logged in any scope. */
+const errors = vi.hoisted(() => [] as Array<{ scope: string; message: unknown; context: unknown }>)
+vi.mock('../lib/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof LoggerModule>()
+  return {
+    ...actual,
+    createLogger: (scope: string) => {
+      const scoped = actual.createLogger(scope)
+      return Object.assign(Object.create(scoped), {
+        error: (message: unknown, context?: unknown) => {
+          errors.push({ scope, message, context })
+          scoped.error(message, context)
+        }
+      })
+    }
+  }
+})
+
 /** The CRDT store, in memory, for a provider whose persistence is initialized. */
 const store = vi.hoisted(() => ({
   updates: new Map<string, Uint8Array[]>(),
   /** Runs inside the next doc flush. */
-  nextFlush: null as null | (() => Promise<void>)
+  nextFlush: null as null | (() => Promise<void>),
+  /** The tail of each opened store's call queue. */
+  queues: [] as Promise<unknown>[]
 }))
 vi.mock('./crdt-persistence', async (importOriginal) => {
   const actual = await importOriginal<typeof PersistenceModule>()
   return {
     ...actual,
-    openCrdtPersistence: async () => ({
-      getYDoc: async (noteId: string) => {
-        const doc = new Y.Doc()
-        for (const update of store.updates.get(noteId) ?? []) Y.applyUpdate(doc, update)
-        return doc
-      },
-      storeUpdate: async (noteId: string, update: Uint8Array) => {
-        store.updates.set(noteId, [...(store.updates.get(noteId) ?? []), update])
-      },
-      flushDocument: async () => {
-        const flush = store.nextFlush
-        store.nextFlush = null
-        await flush?.()
-      },
-      clearDocument: async (noteId: string) => {
-        store.updates.delete(noteId)
-      },
-      destroy: () => {},
-      getMeta: async () => undefined,
-      setMeta: async () => {}
-    })
+    openCrdtPersistence: async () => {
+      // y-leveldb runs every call of a store through one queue (`_transact`),
+      // so a call that holds holds every later one.
+      const queue = store.queues.push(Promise.resolve()) - 1
+      const transact = <T>(call: () => Promise<T>): Promise<T> => {
+        const run = store.queues[queue].then(call)
+        store.queues[queue] = run.catch(() => {})
+        return run
+      }
+      return {
+        getYDoc: (noteId: string) =>
+          transact(async () => {
+            const doc = new Y.Doc()
+            for (const update of store.updates.get(noteId) ?? []) Y.applyUpdate(doc, update)
+            return doc
+          }),
+        storeUpdate: (noteId: string, update: Uint8Array) =>
+          transact(async () => {
+            store.updates.set(noteId, [...(store.updates.get(noteId) ?? []), update])
+          }),
+        flushDocument: () =>
+          transact(async () => {
+            const flush = store.nextFlush
+            store.nextFlush = null
+            await flush?.()
+          }),
+        clearDocument: (noteId: string) =>
+          transact(async () => {
+            store.updates.delete(noteId)
+          }),
+        destroy: () => transact(async () => {}),
+        getMeta: () => transact(async () => undefined),
+        setMeta: () => transact(async () => {})
+      }
+    }
   }
 })
 vi.mock('./crdt-store-path', () => ({
@@ -87,6 +122,7 @@ vi.mock('./crdt-store-path', () => ({
 vi.mock('./crdt-store-epoch', () => ({ reconcileCrdtStoreEpoch: async () => false }))
 
 const DATE = '2026-05-10'
+const OTHER_DATE = '2026-05-11'
 const EDITOR_WINDOW = 7
 
 interface OpenVault {
@@ -121,12 +157,12 @@ function bind(open: OpenVault): void {
   vi.spyOn(databaseClient, 'getIndexDatabase').mockReturnValue(open.indexDb.db)
 }
 
-function dayFile(open: OpenVault): string {
-  return path.join(open.vault.path, 'journal', `${DATE}.md`)
+function dayFile(open: OpenVault, date = DATE): string {
+  return path.join(open.vault.path, 'journal', `${date}.md`)
 }
 
-function dayBody(open: OpenVault): string {
-  return parseJournalEntry(fs.readFileSync(dayFile(open), 'utf8'), DATE).content
+function dayBody(open: OpenVault, date = DATE): string {
+  return parseJournalEntry(fs.readFileSync(dayFile(open, date), 'utf8'), date).content
 }
 
 function firstText(node: Y.XmlFragment | Y.XmlElement): Y.XmlText {
@@ -135,6 +171,17 @@ function firstText(node: Y.XmlFragment | Y.XmlElement): Y.XmlText {
     if (child instanceof Y.XmlElement) return firstText(child)
   }
   throw new Error('no text in the doc')
+}
+
+function bodyText(doc: Y.Doc): string {
+  return firstText(doc.getXmlFragment(CRDT_FRAGMENT_NAME)).toString()
+}
+
+/** The day's body as the store holds it. */
+function storedBody(noteId: string): string {
+  const doc = new Y.Doc()
+  for (const update of store.updates.get(noteId) ?? []) Y.applyUpdate(doc, update)
+  return bodyText(doc)
 }
 
 /** A keystroke from the editor window, sent as `crdt:apply-update` sends it. */
@@ -185,6 +232,30 @@ function holdNextWrite(file: string): Hold {
   return write
 }
 
+/** Fails every write of `file` until `stop`. */
+function failWrites(file: string): { stop: () => void } {
+  const realWrite = fileOps.atomicWrite
+  let failing = true
+  vi.spyOn(fileOps, 'atomicWrite').mockImplementation(async (target, content) => {
+    if (failing && target === file) throw new Error('disk full')
+    return realWrite(target, content)
+  })
+  return { stop: () => (failing = false) }
+}
+
+/** Fails the next guarded write of `file`, before it writes. */
+function failNextGuardedWrite(file: string): void {
+  const realGuard = fileOps.beforeGuardedWrite
+  let failNext = true
+  vi.spyOn(fileOps, 'beforeGuardedWrite').mockImplementation(async (target) => {
+    if (failNext && target === file) {
+      failNext = false
+      throw new Error('disk full')
+    }
+    return realGuard(target)
+  })
+}
+
 /** Holds the next store flush of a doc. */
 function holdNextStoreFlush(): Hold {
   const flush = hold()
@@ -192,13 +263,38 @@ function holdNextStoreFlush(): Hold {
   return flush
 }
 
+/** Advances the fake clock one step, then lets the real I/O between its timers run. */
+async function tick(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(250)
+  await new Promise((resolve) => setImmediate(resolve))
+}
+
+/** Runs the fake clock until `work` settles. */
+async function settle<T>(work: Promise<T>): Promise<T> {
+  const finished = work.then(
+    () => true,
+    () => true
+  )
+  let settled = false
+  while (!settled) settled = await Promise.race([finished, tick().then(() => false)])
+  return work
+}
+
+function stalledStoreLogs(): unknown[] {
+  return errors
+    .filter(
+      ({ message }) => message === 'CRDT store stalled; the vault closed without waiting for it'
+    )
+    .map(({ context }) => context)
+}
+
 /** Creates the day in vault A, its doc open as the editor seeded it. */
-async function openDay(): Promise<string> {
-  await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date: DATE, content: 'From A.' })
-  const id = resolveJournalEntryId(DATE)
+async function openDay(date = DATE): Promise<string> {
+  await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date, content: 'From A.' })
+  const id = resolveJournalEntryId(date)
   const doc = getCrdtProvider().getDoc(id) as Y.Doc
   await markdownToYFragment('From A.', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   return id
 }
 
@@ -215,6 +311,8 @@ describe('a keystroke while the vault closes', () => {
   beforeEach(() => {
     store.updates.clear()
     store.nextFlush = null
+    store.queues = []
+    errors.length = 0
     vaultA = makeVault('writeback-vault-close-a')
     vaultB = makeVault('writeback-vault-close-b')
     bind(vaultA)
@@ -281,15 +379,7 @@ describe('a keystroke while the vault closes', () => {
     await getCrdtProvider().closeIfInactive(id)
 
     // The body save feeds the closed day's doc, then its file write fails.
-    const realGuard = fileOps.beforeGuardedWrite
-    let failNext = true
-    vi.spyOn(fileOps, 'beforeGuardedWrite').mockImplementation(async (target) => {
-      if (failNext && target === dayFile(vaultA)) {
-        failNext = false
-        throw new Error('disk full')
-      }
-      return realGuard(target)
-    })
+    failNextGuardedWrite(dayFile(vaultA))
     await expect(
       invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, { date: DATE, content: 'Rewritten.' })
     ).rejects.toThrow('disk full')
@@ -298,5 +388,139 @@ describe('a keystroke while the vault closes', () => {
     await closeVault()
 
     expect(dayBody(vaultA)).toContain('Rewritten.')
+  })
+
+  it('lands a closed day whose save failed while the close wrote another day', async () => {
+    await getCrdtProvider().initPersistence()
+    const id = await openDay()
+    await getCrdtProvider().closeIfInactive(id)
+    const otherId = await openDay(OTHER_DATE)
+    type(otherId, ' Typed.')
+
+    // The close's write-back flush writes the other day. Meanwhile the closed
+    // day's body save feeds its doc, then its file write fails, which arms a
+    // retry for the closed doc.
+    const write = holdNextWrite(dayFile(vaultA, OTHER_DATE))
+    const closing = closeVault()
+    await write.reached
+    failNextGuardedWrite(dayFile(vaultA))
+    await expect(
+      invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, { date: DATE, content: 'Rewritten.' })
+    ).rejects.toThrow('disk full')
+    write.release()
+    await closing
+
+    expect.soft(dayBody(vaultA, OTHER_DATE)).toContain('From A. Typed.')
+    expect.soft(dayBody(vaultA)).toContain('Rewritten.')
+  })
+
+  it('the flush of a quit lands a keystroke typed while its own pass wrote', async () => {
+    const id = await openTypedDay()
+
+    const write = holdNextWrite(dayFile(vaultA))
+    const flushing = flushPendingWritebacks()
+    await write.reached
+    type(id, ' More.')
+    write.release()
+    await flushing
+
+    expect.soft(dayBody(vaultA)).toContain('From A. Typed. More.')
+    expect.soft(hasArmedWritebacks()).toBe(false)
+  })
+})
+
+describe('a CRDT store that stalls while the vault closes (#5698)', () => {
+  let vaultA: OpenVault
+
+  beforeEach(async () => {
+    store.updates.clear()
+    store.nextFlush = null
+    store.queues = []
+    errors.length = 0
+    vaultA = makeVault('writeback-store-stall-a')
+    bind(vaultA)
+    vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
+    registerJournalHandlers()
+    await getCrdtProvider().initPersistence()
+  })
+
+  afterEach(() => {
+    resetWritebackState()
+    resetCrdtProvider()
+    vi.useRealTimers()
+    resetIpcMocks()
+    vi.restoreAllMocks()
+    vaultA.indexDb.close()
+    vaultA.dataDb.close()
+    vaultA.vault.cleanup()
+  })
+
+  it('closes the vault with the keystroke in its file, and the store keeps it for the reopen', async () => {
+    const id = await openTypedDay()
+
+    // The store never answers the close's flush. A keystroke lands behind it.
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    type(id, ' More.')
+    await settle(closing)
+
+    expect.soft(dayBody(vaultA)).toContain('From A. Typed. More.')
+    expect.soft(storedBody(id)).not.toContain('More.')
+    expect
+      .soft(stalledStoreLogs())
+      .toEqual([expect.objectContaining({ stalledFlushNoteId: id, unstoredNoteIds: [id] })])
+
+    // The store recovers, and lands the keystroke before its close.
+    storing.release()
+    await Promise.all(store.queues)
+    await getCrdtProvider().initPersistence()
+    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+
+    expect(bodyText(doc)).toBe('From A. Typed. More.')
+  })
+
+  it('waits for the pass a debounce started while the store stalled', async () => {
+    const id = await openTypedDay()
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    const write = holdNextWrite(dayFile(vaultA))
+    type(id, ' More.')
+    let closed = false
+    void closing.then(() => (closed = true))
+    // Well past the debounce and every store wait of the close.
+    for (let step = 0; step < 40; step++) await tick()
+    await write.reached
+
+    expect.soft(closed).toBe(false)
+    write.release()
+    await settle(closing)
+    expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+  })
+
+  it('keeps a keystroke whose file write failed for the reopen, which writes it back', async () => {
+    const id = await openTypedDay()
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    const disk = failWrites(dayFile(vaultA))
+    type(id, ' More.')
+    await settle(closing)
+    disk.stop()
+
+    expect.soft(dayBody(vaultA)).not.toContain('More.')
+    expect.soft(stalledStoreLogs()).toHaveLength(1)
+
+    storing.release()
+    await Promise.all(store.queues)
+    await getCrdtProvider().initPersistence()
+    await getCrdtProvider().open(id, EDITOR_WINDOW)
+    type(id, ' Again.')
+    await flushPendingWritebacks()
+
+    expect(dayBody(vaultA)).toContain('From A. Typed. More. Again.')
   })
 })

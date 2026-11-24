@@ -45,6 +45,7 @@ import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
 import { getVaultRoot } from '../vault/notes-io'
 import { refusesCaseTwinFile } from '../vault/note-sync'
 import { openVaultFile } from '../lib/paths'
+import { completeWithin, SHUTDOWN_CLOSE_VAULT_RESERVE_MS } from '../shutdown-sequence'
 import { OutsideVaultError } from '../lib/errors'
 import { parseNote } from '../vault/frontmatter'
 import { recordBaseline } from './writeback-baseline'
@@ -90,6 +91,15 @@ const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
+/**
+ * How long a vault close waits for one CRDT store call (#5698). A call past it
+ * is stalled, not slow: a quit reserves this much for the provider's store
+ * flush and the whole vault close behind it, and the close's other bounded
+ * waits sit at the same scale (`HELD_WORK_CAP_MS`, 1,500 ms;
+ * `FLUSH_WINDOW_TIMEOUT_MS`, 2,000 ms). Per call, so a close that stores many
+ * docs is never cut short while the store makes progress.
+ */
+const STORE_CALL_CLOSE_WAIT_MS = SHUTDOWN_CLOSE_VAULT_RESERVE_MS
 /** How long an editor open with no store waits for the server body merge to answer (#2544). */
 export const EDITOR_OPEN_MERGE_TIMEOUT_MS = 3_000
 
@@ -1683,18 +1693,21 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
+    // The note whose store call stalled. y-leveldb runs every store call
+    // through one queue, so each later call waits behind it: the close stops
+    // asking the store, and the write-back puts the edits in this vault's files.
+    let stalledOn: string | null = null
     // An editor update that lands while the docs are stored arms another
     // write-back pass, which belongs to this vault's file.
     do {
       await crdtWriteback().flushPendingWritebacks()
       this.networkBatcher.flushAll()
 
-      for (const [noteId] of this.docs) {
-        try {
-          await this.flushDoc(noteId)
-        } catch (err) {
-          log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
-        }
+      if (stalledOn === null) {
+        stalledOn = await this.storeOpenDocsForClose()
+        // A debounce that fired during the wait started a pass the flush above
+        // never saw. This flush awaits it, so no pass outlives the close.
+        if (stalledOn !== null) await crdtWriteback().flushPendingWritebacks()
       }
     } while (crdtWriteback().hasArmedWritebacks())
     // No await from the check above to the clear below: an update after the
@@ -1705,10 +1718,22 @@ export class CrdtProvider {
     this.docs.clear()
 
     if (this.persistence) {
-      try {
-        await this.persistence.destroy()
-      } catch (err) {
-        log.warn('Failed to close CRDT persistence on destroy', { error: err })
+      const persistence = this.persistence
+      // Queued behind every write still in the store, which lands first if
+      // the store recovers.
+      const closing = Promise.resolve()
+        .then(() => persistence.destroy())
+        .catch((err: unknown) => {
+          log.warn('Failed to close CRDT persistence on destroy', { error: err })
+        })
+      const closed = await completeWithin(closing, STORE_CALL_CLOSE_WAIT_MS)
+      if (stalledOn !== null || !closed) {
+        log.error('CRDT store stalled; the vault closed without waiting for it', {
+          stalledFlushNoteId: stalledOn ?? undefined,
+          storeClosed: closed,
+          unstoredNoteIds: [...new Set([...this.persisting.keys(), ...this.storeOwed])],
+          waitMs: STORE_CALL_CLOSE_WAIT_MS
+        })
       }
       this.persistence = null
     }
@@ -2572,6 +2597,20 @@ export class CrdtProvider {
         log.error('Failed to flush doc', { noteId, error: err })
       })
     }
+  }
+
+  /**
+   * Stores each open doc for a close, one call at a time. Resolves the note
+   * whose call outlived `STORE_CALL_CLOSE_WAIT_MS`, or null.
+   */
+  private async storeOpenDocsForClose(): Promise<string | null> {
+    for (const [noteId] of this.docs) {
+      const flushed = this.flushDoc(noteId).catch((err: unknown) => {
+        log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+      })
+      if (!(await completeWithin(flushed, STORE_CALL_CLOSE_WAIT_MS))) return noteId
+    }
+    return null
   }
 
   private async flushDoc(noteId: string): Promise<void> {
