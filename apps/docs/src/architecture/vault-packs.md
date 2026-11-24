@@ -347,7 +347,11 @@ out of the listing and rewrites it the same way. The rewrite keeps only the entr
 so the tombstone stays and the older versions of the record go. A pack that keeps an entry is listed again
 under its old range and coverage (migration 0027 keeps the coverage on the `pack_replaced_objects` row). A
 pack that keeps nothing is not listed again: its coverage moves to the neighbouring listed record pack in the
-same batch, or the record kind is reset when there is none, so the coverage chain never keeps a hole. Every replaced record object of the
+same batch, so the coverage chain never keeps a hole. Its neighbour may itself wait for a rewrite, as when
+the first two packs of the chain both held only the deleted note. The pass then runs the first pack's rewrite
+again after the others: the second has by then handed its coverage to the third, which takes the first's too.
+When no rewrite of the pass can give it a neighbour, the record kind is reset, unless the pass settled a rewrite
+and left more for the next pass, which may list that neighbour. Every replaced record object of the
 vault is made due at once, so the same 900-second deadline holds. The tombstone shed
 (`cleanupExpiredTombstones`) does the same before it turns a tombstone into a marker. It takes the record
 packs holding the item out of the listing and enqueues a compaction message to rewrite them, and that
