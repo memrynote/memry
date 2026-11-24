@@ -110,7 +110,7 @@ export class CaseTwinLeaveNotReadyError extends PendingSyncIntentError {
   constructor(leavingId: string) {
     super('note', leavingId)
     this.name = 'CaseTwinLeaveNotReadyError'
-    this.message = "The case twin left on this note's file is not ready for it yet"
+    this.message = 'Another save of a note on this shared file is still running; try again'
   }
 }
 
@@ -151,6 +151,36 @@ export async function prepareCaseTwinLeave(
   const ids = [...(rebuildsSurvivor ? twins : []), ...(movesLeaving ? [leavingId] : [])]
   await Promise.all(ids.map(prepareOnce))
   await takeWritebackTurn(leavingId, async () => {})
+}
+
+/**
+ * A local delete of `leavingId` off its shared file: the prepare, then the
+ * sync delete whose step (`inStep`) writes the survivor's file, queues the
+ * tombstone and runs `dropRows`. A save of the note that started while the
+ * delete awaited stops the step with nothing changed; the delete then runs once
+ * more, after the prepare waits out that save's turn.
+ */
+export async function deleteCaseTwin(
+  vaultPath: string,
+  relativePath: string,
+  leavingId: string,
+  syncDelete: (inStep: (enqueueTombstone: () => void) => void) => Promise<void>,
+  dropRows: () => void
+): Promise<void> {
+  const leave = async (): Promise<void> => {
+    await prepareCaseTwinLeave(vaultPath, relativePath, leavingId)
+    await syncDelete((enqueueTombstone) => {
+      planCaseTwinLeave(vaultPath, relativePath, leavingId)()
+      enqueueTombstone()
+      dropRows()
+    })
+  }
+  try {
+    await leave()
+  } catch (error) {
+    if (!(error instanceof CaseTwinLeaveNotReadyError)) throw error
+    await leave()
+  }
 }
 
 function prepareOnce(id: string): Promise<void> {
@@ -219,7 +249,7 @@ export function planCaseTwinMove(
     own = { content: raw, frontmatter: parsed.frontmatter, markdown: parsed.content }
   } else {
     const prepared = preparedBodies.get(leavingId) ?? notReady()
-    own = ownFile(indexDb, leavingId, leaving.title, cached.cover, prepared)
+    own = ownFile(indexDb, leavingId, leaving.title, cached.cover, prepared, raw)
   }
   const absolutePath = toAbsolutePath(newRelativePath)
   const moved = { content: own.content, frontmatter: own.frontmatter, markdown: own.markdown }
@@ -296,10 +326,14 @@ function planLeave(
   // the other twin's bytes back under the survivor's baseline.
   if (hasPendingVaultFileOp(absolutePath)) throw new CaseTwinLeaveNotReadyError(leavingId)
 
-  const own = ownFile(indexDb, survivorId, survivor.title, cached.cover, prepared)
+  const own = ownFile(indexDb, survivorId, survivor.title, cached.cover, prepared, raw)
+  // The leaving twin's own bytes are its doc's, never the survivor's history.
+  // Bytes neither twin holds are an edit no doc has: the survivor keeps a copy.
+  const leaving = getNoteCacheById(indexDb, leavingId)
+  const keepsCopy = leaving === undefined || !holdsOwnBytes(raw, leaving)
   const leave = (): void => {
     if (raw !== own.content) {
-      createSnapshot(survivorId, raw, survivor.title, SnapshotReasons.SIGNIFICANT)
+      if (keepsCopy) createSnapshot(survivorId, raw, survivor.title, SnapshotReasons.SIGNIFICANT)
       updateNoteCache(indexDb, survivorId, { pendingWriteHash: generateContentHash(own.content) })
     }
     writeNoteFileNow(absolutePath, own.content)

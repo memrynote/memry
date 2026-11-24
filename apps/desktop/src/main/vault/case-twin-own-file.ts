@@ -23,7 +23,7 @@ import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
 import { getDatabase, type getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { generateContentHash, serializeNote, type NoteFrontmatter } from './frontmatter'
+import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
 
 export interface PreparedBody {
   /** Null for a doc with no body: the file keeps the header alone. */
@@ -80,18 +80,23 @@ export function holdsOwnBytes(
   return onDisk === cached.contentHash || onDisk === cached.pendingWriteHash
 }
 
-/** A note's header as its index rows hold it, which a split writes to its own file. */
+/**
+ * A note's header as its index rows hold it, which a split writes to its own
+ * file. A property of `file`'s header that stores as the row does keeps its
+ * YAML type (`getNoteFileProperties`).
+ */
 export function indexedHeader(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cover: string | null
+  cover: string | null,
+  file?: NoteFrontmatter
 ): NoteFrontmatter {
   return applyRemoteFrontmatter(
     {},
     {
       tags: getNoteHeaderTags(indexDb, noteId),
-      properties: getNoteFileProperties(indexDb, noteId),
+      properties: getNoteFileProperties(indexDb, noteId, file),
       aliases: getAliasesForNotes(indexDb, [noteId]).get(noteId) ?? [],
       ...(cover !== null ? { cover: { ref: cover } } : {}),
       title
@@ -99,16 +104,21 @@ export function indexedHeader(
   )
 }
 
-/** A note's own file: its prepared doc body under a header rebuilt from its index rows. */
+/**
+ * A note's own file: its prepared doc body under a header rebuilt from its
+ * index rows, with the YAML types of the shared file's `raw` header.
+ */
 export function ownFile(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
   cachedCover: string | null | undefined,
-  prepared: PreparedBody
+  prepared: PreparedBody,
+  raw: string | null
 ): OwnTwinFile & { cover: string | null } {
   const cover = isCoverValue(cachedCover) ? cachedCover : null
-  const header = indexedHeader(indexDb, noteId, title, cover)
+  const file = raw === null ? undefined : parseNote(raw).frontmatter
+  const header = indexedHeader(indexDb, noteId, title, cover, file)
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''

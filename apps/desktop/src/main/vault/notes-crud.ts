@@ -26,8 +26,7 @@ import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
   assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
-  planCaseTwinLeave,
-  prepareCaseTwinLeave,
+  deleteCaseTwin,
   sharesCaseTwinFile
 } from './case-twin-file'
 import {
@@ -930,24 +929,25 @@ export async function deleteNote(id: string, syncDelete: SyncNoteDelete): Promis
     // A case twin's file is the other twin's too (#5495): only this row goes,
     // and the file becomes the survivor's own in the step that drops it and
     // queues the tombstone. Nothing before the step changes anything.
-    await prepareCaseTwinLeave(vaultPath, cached.path, id)
-    await syncDelete((enqueueTombstone) => {
-      planCaseTwinLeave(vaultPath, cached.path, id)()
-      enqueueTombstone()
-      dropRows()
-    })
+    await deleteCaseTwin(vaultPath, cached.path, id, syncDelete, dropRows)
   } else {
-    await syncDelete()
     // A twin that arrived while the delete awaited has its body in this file.
+    await syncDelete((enqueueTombstone) => {
+      if (sharesCaseTwinFile(vaultPath, cached.path)) {
+        throw new NoteError(
+          'Another note now shares this file; try the delete again',
+          NoteErrorCode.DELETE_FAILED,
+          id
+        )
+      }
+      enqueueTombstone()
+    })
     if (sharesCaseTwinFile(vaultPath, cached.path)) {
-      throw new NoteError(
-        'Another note now shares this file; try the delete again',
-        NoteErrorCode.DELETE_FAILED,
-        id
-      )
+      logger.warn('A case twin arrived on a deleted note’s file; the file stays the twin’s', { id })
+    } else if (!isAttachmentStoreRow(cached)) {
+      // A stray row's file is the attachment store's, not this row's (#5607).
+      await deleteFile(toAbsolutePath(cached.path))
     }
-    // A stray row's file is the attachment store's, not this row's (#5607).
-    if (!isAttachmentStoreRow(cached)) await deleteFile(toAbsolutePath(cached.path))
     dropRows()
   }
 
