@@ -92,19 +92,23 @@ export async function vaultFolder(
   return folder
 }
 
-/**
- * The `.folder.md` a folder template or view write targets. `''`, `.` and `/` are the vault
- * root, as in desktop's `getFolderConfigPath`; any other folder goes through `vaultFolder` (#5679).
- */
-export async function folderConfigFile(
+/** `vaultFolder` for a command that also takes the vault root, `''`, `.` or `/`, as `''` (#5679). */
+export async function vaultFolderOrRoot(
   vaultPath: string,
   requested: string,
   action: string
 ): Promise<string> {
   const normalized = normalizePath(requested)
-  const folder =
-    normalized === '' || normalized === '.' ? '' : await vaultFolder(vaultPath, requested, action)
-  return path.join(vaultPath, folder, '.folder.md')
+  return normalized === '' || normalized === '.' ? '' : vaultFolder(vaultPath, requested, action)
+}
+
+/** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root. */
+export async function folderConfigFile(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  return path.join(vaultPath, await vaultFolderOrRoot(vaultPath, requested, action), '.folder.md')
 }
 
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars

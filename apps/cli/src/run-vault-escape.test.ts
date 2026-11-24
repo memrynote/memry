@@ -194,9 +194,13 @@ test(
   }
 )
 
-/** Every command that writes a folder's `.folder.md`, for one folder argument. */
-function folderConfigWrites(folder: string): string[][] {
+/** Every command that reads or writes a folder's `.folder.md`, for one folder argument. */
+function folderConfigCommands(folder: string): string[][] {
   return [
+    ['folders', 'template', folder],
+    ['folder-view', 'config', folder],
+    ['folder-view', 'views', folder],
+    ['folder-view', 'properties', folder],
     ['folders', 'template', folder, '--clear'],
     ['folder-view', 'set-config', folder, '{"icon":"x"}'],
     ['folder-view', 'set-view', folder, '{"name":"Table","type":"table"}'],
@@ -206,7 +210,7 @@ function folderConfigWrites(folder: string): string[][] {
 
 test('folders template and folder-view refuse a folder outside the vault', async () => {
   for (const folder of ['..', '../escaped', '../outside/data', 'SuperNotes/../..']) {
-    for (const command of folderConfigWrites(folder)) await assertRefused(command, OUTSIDE)
+    for (const command of folderConfigCommands(folder)) await assertRefused(command, OUTSIDE)
   }
 })
 
@@ -215,7 +219,7 @@ test(
   { skip: skipLinks },
   async () => {
     for (const folder of ['out', 'out/new', 'zz/outside/data']) {
-      for (const command of folderConfigWrites(folder)) await assertRefused(command, LINK)
+      for (const command of folderConfigCommands(folder)) await assertRefused(command, LINK)
     }
   }
 )
@@ -223,7 +227,7 @@ test(
 test('folders template and folder-view still write the vault root for . and /', async () => {
   const { vaultPath } = await makeWorld()
   for (const folder of ['.', '/']) {
-    for (const command of folderConfigWrites(folder)) {
+    for (const command of folderConfigCommands(folder)) {
       const result = await cli(vaultPath, ...command)
       assert.equal(result.code, 0, `${command.join(' ')}: ${result.stderr}`)
     }
@@ -264,4 +268,111 @@ test('inbox file refuses a folder through a link', { skip: skipLinks }, async ()
       }
     )
   }
+})
+
+test('inbox file takes . as the vault root for an image and a text item', async () => {
+  const world = await makeWorld()
+  const imageId = await captureImage(world)
+  const image = await cli(world.vaultPath, 'inbox', 'file', imageId, '--folder', '.')
+  assert.equal(image.code, 0, image.stderr)
+  assert.equal(
+    (JSON.parse(image.stdout.at(-1) ?? '{}') as { filedTo?: string }).filedTo,
+    'Shot.png'
+  )
+
+  const captured = await cli(world.vaultPath, 'inbox', 'capture', 'Loose thought')
+  const textId = (JSON.parse(captured.stdout.at(-1) ?? '{}') as { id: string }).id
+  const text = await cli(world.vaultPath, 'inbox', 'file', textId, '--folder', '.')
+  assert.equal(text.code, 0, text.stderr)
+  assert.equal(
+    (JSON.parse(text.stdout.at(-1) ?? '{}') as { filedTo?: string }).filedTo,
+    'Loose thought.md'
+  )
+})
+
+/** The `notes import-files` and `projects import-files` forms of one import into `folder`. */
+function importCommands(folder: string) {
+  let projectId = ''
+  const source = ({ world }: World) => path.join(world, 'outside', 'data', 'keep.md')
+  return [
+    {
+      command: (world: World) => ['notes', 'import-files', source(world), '--folder', folder],
+      setup: undefined
+    },
+    {
+      command: (world: World) => [
+        'projects',
+        'import-files',
+        projectId,
+        source(world),
+        '--folder',
+        folder
+      ],
+      setup: async ({ vaultPath }: World) => {
+        const created = await cli(vaultPath, 'projects', 'create', 'Imports')
+        assert.equal(created.code, 0, created.stderr)
+        projectId = (JSON.parse(created.stdout.at(-1) ?? '{}') as { id: string }).id
+      }
+    }
+  ]
+}
+
+test('notes and projects import-files refuse a folder outside the vault', async () => {
+  for (const folder of ['..', '../outside', 'SuperNotes/../..']) {
+    for (const { command, setup } of importCommands(folder)) {
+      await assertRefused(command, OUTSIDE, setup)
+    }
+  }
+})
+
+test(
+  'notes and projects import-files refuse a folder through a link',
+  { skip: skipLinks },
+  async () => {
+    for (const folder of ['out', 'out/new', 'zz/outside']) {
+      for (const { command, setup } of importCommands(folder)) {
+        await assertRefused(command, LINK, setup)
+      }
+    }
+  }
+)
+
+test('canvas create refuses a canvas folder through a link', { skip: skipLinks }, async () => {
+  for (const folder of ['cv', 'cv/deeper']) {
+    await assertRefused(
+      ['canvas', 'create', '--title', 'C', '--folder', folder],
+      LINK,
+      async ({ vaultPath }) => {
+        await fs.mkdir(path.join(vaultPath, 'canvases'))
+        await fs.symlink(path.join('..', '..', 'outside'), path.join(vaultPath, 'canvases', 'cv'))
+      }
+    )
+  }
+  await assertRefused(['canvas', 'create', '--title', 'C'], LINK, async ({ vaultPath }) => {
+    await fs.symlink(path.join('..', 'outside'), path.join(vaultPath, 'canvases'))
+  })
+})
+
+test('notes attach refuses an attachments folder that is a link', { skip: skipLinks }, async () => {
+  const attach = ({ world, note }: World) => [
+    'notes',
+    'attach',
+    note.id,
+    path.join(world, 'shot.png')
+  ]
+  await assertRefused(attach, LINK, async ({ world, vaultPath, note }) => {
+    await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+    await fs.symlink(
+      path.join('..', '..', 'outside', 'data'),
+      path.join(vaultPath, 'attachments', note.id)
+    )
+  })
+  await assertRefused(attach, LINK, async ({ world, vaultPath }) => {
+    await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+    await fs.rm(path.join(vaultPath, 'attachments'), { recursive: true })
+    await fs.symlink('../outside', path.join(vaultPath, 'attachments'))
+    // Opening the vault makes `attachments/images` and `attachments/files`, through the link too.
+    await fs.mkdir(path.join(world, 'outside', 'images'))
+    await fs.mkdir(path.join(world, 'outside', 'files'))
+  })
 })

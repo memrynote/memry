@@ -105,12 +105,9 @@ const BUILT_IN = [
   { id: 'wordCount', displayName: 'WordCount', type: 'number' }
 ]
 
-// Folder paths are vault-relative (#1204), matching desktop's
-// `getFolderConfigPath`: `.folder.md` sits directly under `<vault>/<folder>`.
-function configPath(vaultPath: string, folderPath: string): string {
-  const normalized = normalizePath(folderPath)
-  return path.join(vaultPath, normalized, '.folder.md')
-}
+// Folder paths are vault-relative (#1204): `.folder.md` sits directly under `<vault>/<folder>`.
+const configFile = (vaultPath: string, folderPath: string) =>
+  folderConfigFile(vaultPath, folderPath, 'open folder view')
 
 function normalizeConfig(value: Record<string, unknown>, folderPath: string): FolderViewConfig {
   return {
@@ -141,8 +138,9 @@ function normalizeConfig(value: Record<string, unknown>, folderPath: string): Fo
 }
 
 async function readConfig(vaultPath: string, folderPath: string): Promise<FolderViewConfig | null> {
+  const target = await configFile(vaultPath, folderPath)
   try {
-    const raw = await fs.readFile(configPath(vaultPath, folderPath), 'utf-8')
+    const raw = await fs.readFile(target, 'utf-8')
     return normalizeConfig(parseMarkdownNote(raw).frontmatter, folderPath)
   } catch {
     return null
@@ -168,7 +166,7 @@ async function writeConfig(
     frontmatter.summaries = config.summaries
   }
 
-  const target = await folderConfigFile(vaultPath, folderPath, 'write folder view')
+  const target = await configFile(vaultPath, folderPath)
   await fs.mkdir(path.dirname(target), { recursive: true })
   await fs.writeFile(target, writeMarkdownNote(frontmatter, ''), 'utf-8')
 }

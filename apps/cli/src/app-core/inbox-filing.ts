@@ -16,7 +16,7 @@ import {
 import type { DataDb } from './database.ts'
 import type { FoldersService } from './folders.ts'
 import type { NotesService } from './notes.ts'
-import { normalizePath, vaultFolder } from './paths.ts'
+import { normalizePath, vaultFolderOrRoot } from './paths.ts'
 import { errorCode } from './errno.ts'
 
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
@@ -344,9 +344,7 @@ export function createInboxFilingService({
   async function fileOne(id: string, rawFolder: string, extraTags: string[]) {
     try {
       // `fileBinary` moves the file here, and a link on the way would take it out of the vault (#5679).
-      const folder = normalizePath(rawFolder)
-        ? await vaultFolder(vaultPath, rawFolder, 'file inbox item')
-        : ''
+      const folder = await vaultFolderOrRoot(vaultPath, rawFolder, 'file inbox item')
       const item = getItem(id)
       if (!item) return { success: false, filedTo: null, error: 'Inbox item not found' }
       if (item.filedAt) {
