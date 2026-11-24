@@ -333,7 +333,7 @@ impl VaultSync {
         Ok(true)
     }
 
-    fn images_file(&self, local_path: &str) -> std::path::PathBuf {
+    pub(super) fn images_file(&self, local_path: &str) -> std::path::PathBuf {
         std::path::PathBuf::from(&self.directory)
             .join("images")
             .join(local_path)

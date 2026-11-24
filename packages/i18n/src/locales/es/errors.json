@@ -220,6 +220,7 @@
     "renameCaseTwins": "Esta carpeta contiene notas que comparten un archivo con una nota cuyo nombre de carpeta solo difiere en mayúsculas y minúsculas. Cambia el nombre de esas notas o muévelas primero y, después, cambia el nombre de la carpeta.",
     "deleteFailed": "No se pudo eliminar la carpeta",
     "deleteCaseTwins": "Esta carpeta y otra con el mismo nombre escrito de otra forma, por ejemplo con otras mayúsculas y minúsculas, son una sola carpeta en el disco, así que eliminarla eliminaría las notas de ambas. Elimina una a una las notas que no necesites.",
+    "deleteWindowsName": "El nombre de esta carpeta termina en un punto o un espacio, que Windows ignora, así que eliminarla podría eliminar también otra carpeta. Elimina una a una las notas que contiene.",
     "setConfigFailed": "No se pudo guardar la configuración de la carpeta"
   },
   "folderView": {
