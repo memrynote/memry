@@ -8,7 +8,7 @@
 //! one download keeps a broken picture until someone edits the note.
 
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use tokio::sync::{OnceCell, Semaphore};
@@ -37,6 +37,27 @@ static MANIFEST_BATCH_UNSUPPORTED: LazyLock<Mutex<HashMap<String, Instant>>> =
 /// One queue per vault, shared by every `VaultSync` the shell mints for it.
 static DOWNLOAD_GATES: LazyLock<Mutex<HashMap<String, Arc<Semaphore>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// The fetch running for each attachment, keyed `<vault>/<attachment>`. A
+/// second fetch of it waits, then finds the first one's file instead of
+/// downloading it again, as desktop's `DownloadQueue` joins the transfer in
+/// flight. Weak, so a finished fetch leaves no entry behind.
+static IN_FLIGHT: LazyLock<Mutex<HashMap<String, Weak<tokio::sync::Mutex<()>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn attachment_gate(vault_id: &str, attachment_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+    let mut gates = IN_FLIGHT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    gates.retain(|_, gate| gate.strong_count() > 0);
+    let key = format!("{vault_id}/{attachment_id}");
+    let gate = gates
+        .get(&key)
+        .and_then(Weak::upgrade)
+        .unwrap_or_else(|| Arc::new(tokio::sync::Mutex::new(())));
+    gates.insert(key, Arc::downgrade(&gate));
+    gate
+}
 
 fn download_gate(vault_id: &str) -> Arc<Semaphore> {
     // A poisoned map only means another thread panicked while inserting; the
@@ -149,6 +170,9 @@ impl VaultSync {
         prefetched: Option<EncryptedAttachmentManifest>,
         directory: &OnceCell<account::DeviceDirectory>,
     ) -> Result<AttachmentFetchSummary, SyncError> {
+        let _in_flight = attachment_gate(&self.vault_id, &attachment_id)
+            .lock_owned()
+            .await;
         let wanted = attachment_id.clone();
         let cached = self
             .db
@@ -160,6 +184,25 @@ impl VaultSync {
                 deferred: true,
                 bytes: 0,
                 local_path: cached.and_then(|row| row.local_path),
+            });
+        }
+        // Already here: landed by the fetch this one waited for, or before it.
+        // A file of another length than the manifest's plaintext is torn or
+        // foreign, and is downloaded over.
+        if let Some(row) = cached
+            && let Some(local_path) = row.local_path
+            && let Some(manifest) = row.manifest.as_deref()
+            && let Ok(manifest) =
+                serde_json::from_str::<protocol::attachment_manifest::AttachmentManifest>(manifest)
+            && let Ok(file) = std::fs::metadata(self.images_file(&local_path))
+            && file.is_file()
+            && file.len() == manifest.size
+        {
+            return Ok(AttachmentFetchSummary {
+                downloaded: true,
+                deferred: false,
+                bytes: file.len(),
+                local_path: Some(local_path),
             });
         }
 

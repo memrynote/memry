@@ -119,6 +119,26 @@ describe('DownloadQueue', () => {
     expect(paced).toHaveLength(2)
   })
 
+  it("spends a manifest read outside the queue from its transfers' pacing budget", async () => {
+    vi.useFakeTimers()
+    const fn = vi.fn(async (id: string, _p: string, opts?: { pace?: () => Promise<void> }) => {
+      await opts?.pace?.()
+      return makeResult(id)
+    })
+    const q = new DownloadQueue(fn, undefined, new DownloadPacer(1, 50))
+
+    await q.pace()
+    let downloaded = false
+    void q.enqueue({ ownerId: 'n1', attachmentId: 'a1', targetPath: '/p1' }).then(() => {
+      downloaded = true
+    })
+
+    await vi.advanceTimersByTimeAsync(49)
+    expect(downloaded).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(downloaded).toBe(true)
+  })
+
   it('pauses everything on 429 honouring Retry-After, then resumes', async () => {
     vi.useFakeTimers()
     let calls = 0
