@@ -116,15 +116,13 @@ export async function linkUnlinkedMentionInSource(input: {
     throw new NoteError(`Note not found: ${missing}`, NoteErrorCode.NOT_FOUND, missing)
   }
   assertNoteWritable(source.id, source.path)
-  const raw = await readVaultFile(getVaultRoot(), source.path)
-  if (raw === null) return false
-  const { block, body } = splitFrontmatterBlock(raw)
-  const linked = linkUnlinkedMention(body, target.names, input.ordinal, target.title)
-  if (linked === null) return false
-  await landSourceRewrite(db, source, {
+  return landSourceRewrite(db, source, {
     path: source.path,
     title: source.title,
-    content: (block ?? '') + linked
+    rewrite: (raw) => {
+      const { block, body } = splitFrontmatterBlock(raw)
+      const linked = linkUnlinkedMention(body, target.names, input.ordinal, target.title)
+      return linked === null ? null : (block ?? '') + linked
+    }
   })
-  return true
 }

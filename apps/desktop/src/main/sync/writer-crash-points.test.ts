@@ -463,14 +463,14 @@ describe("Memry's own body writers stopped at each crash point, then restarted (
     it(`landSourceRewrite: crash ${step}, restart, remote edit`, async () => {
       const id = `link-${step}`
       const notePath = `Links/${step}.md`
-      const indexed = await seedNote(id, notePath, '# Source\n\nSee [[Old Title]] here.')
+      await seedNote(id, notePath, '# Source\n\nSee [[Old Title]] here.')
       const cached = getNoteCacheById(h.indexDb as never, id) as NoteCache
       arm(step)
       await runUntilCrash(() =>
         landSourceRewrite(h.indexDb as never, cached, {
           path: notePath,
           title: cached.title,
-          content: indexed.replace('[[Old Title]]', '[[New Title]]')
+          rewrite: (raw) => raw.replace('[[Old Title]]', '[[New Title]]')
         })
       )
       expectCrashReached(step, `/vault/${notePath}`, 'New Title')
@@ -653,7 +653,7 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
   it('a link rewrite on a closed doc whose file write fails once rejects, and the write-back fixes the file', async () => {
     const id = 'closed-rewrite'
     const notePath = 'Src/a.md'
-    const indexed = await seedNote(id, notePath, '# Inbox\n\nFirst line.')
+    await seedNote(id, notePath, '# Inbox\n\nFirst line.')
     await getCrdtProvider().close(id, 1)
     const cached = getNoteCacheById(h.indexDb as never, id) as NoteCache
     h.failWrite = true
@@ -661,7 +661,7 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
       landSourceRewrite(h.indexDb as never, cached, {
         path: notePath,
         title: cached.title,
-        content: indexed.replace('First line.', 'First line fixed.')
+        rewrite: (raw) => raw.replace('First line.', 'First line fixed.')
       })
     )
     h.failWrite = false
