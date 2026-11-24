@@ -371,10 +371,15 @@ async function typeIntoStalledStore(id: string, text: string, file: string): Pro
   const storing = holdNextStoreUpdate()
   type(id, text)
   await storing.reached
-  for (let step = 0; step < 200; step++) {
-    if (fs.readFileSync(file, 'utf8').includes(text.trim())) break
-    await tick()
-  }
+  // The pass's file write is real I/O: a loaded runner needs more event-loop
+  // turns than a fixed count, so wait on real time and step the fake clock.
+  await vi.waitFor(
+    async () => {
+      await tick()
+      expect(fs.readFileSync(file, 'utf8')).toContain(text.trim())
+    },
+    { timeout: 10_000, interval: 10 }
+  )
   return storing
 }
 
