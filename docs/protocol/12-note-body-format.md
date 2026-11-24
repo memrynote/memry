@@ -249,7 +249,7 @@ verbatim when unedited (`packages/app-core/src/markdown.ts:62-68`), and
   push carries `content` only on `create`
   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:63`). The core puts
   the caller's `content` into the create payload unchanged
-  (`crates/memry-core/src/domain/notes/mod.rs:206`), and a note made from a template carries the
+  (`crates/memry-core/src/domain/notes/mod.rs:210`), and a note made from a template carries the
   template's `content` the same way, after `{{title}}` substitution
   (`crates/memry-core/src/domain/templates.rs:138`).
   Desktop writes a new remote note's file as `serializeNote(frontmatter, data.content)`

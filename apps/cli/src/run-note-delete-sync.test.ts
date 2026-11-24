@@ -5,7 +5,12 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
 
-import { syncDevices, syncPendingDeletes, syncTombstoneClocks } from '@memry/db-schema/data-schema'
+import {
+  deletedAssetReleases,
+  syncDevices,
+  syncPendingDeletes,
+  syncTombstoneClocks
+} from '@memry/db-schema/data-schema'
 import { getNoteMetadataById, updateNoteMetadata, upsertNoteMetadata } from '@memry/storage-data'
 
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -248,4 +253,30 @@ test('notes delete commits while desktop writes the database mid-delete', async 
     cli.close()
     desktop.close()
   }
+})
+
+// Desktop's delete records the note's attachments so its release runner frees
+// them on the server after the grace period (`recordLocalItemDelete`). The
+// watcher's unlink after a CLI delete finds no row to read them from (#5693).
+test('notes delete records the note attachments for release', async () => {
+  const vaultPath = path.join(testRoot, `vault-${process.pid}-${randomUUID()}`)
+  await fs.mkdir(vaultPath)
+  const { id } = binary(vaultPath, 'notes', 'create', 'Scans', '--content', 'body') as {
+    id: string
+  }
+  withDatabases(vaultPath, ({ dataDb }) =>
+    updateNoteMetadata(dataDb, id, { attachmentReferences: ['att-1', 'att-2'] })
+  )
+  const before = Date.now()
+
+  assert.deepEqual(binary(vaultPath, 'notes', 'delete', id, '--yes'), { success: true })
+
+  const releases = withDatabases(vaultPath, ({ dataDb }) =>
+    dataDb.select().from(deletedAssetReleases).all()
+  )
+  assert.deepEqual(
+    releases.map(({ itemType, itemId, attachmentIds }) => ({ itemType, itemId, attachmentIds })),
+    [{ itemType: 'note', itemId: id, attachmentIds: ['att-1', 'att-2'] }]
+  )
+  assert.ok(releases[0].deletedAt >= before)
 })

@@ -274,11 +274,35 @@ export async function landBodyEdit(
     appends?: boolean
   }
 ): Promise<string> {
-  assertNoteWritable(noteId, steps.notePath)
-  const fed = await steps.feed().catch((err: unknown) => {
+  const fed = await feedBodyEdit(noteId, steps.notePath, steps.feed)
+  return writeFedBodyEdit(indexDb, noteId, fileContent, fed, steps)
+}
+
+/**
+ * `landBodyEdit`'s first half, for a writer that writes in the note's
+ * write-back turn: the feed can wait on the store, so it runs before the turn
+ * and the writer reads the note's path again in it (#5690).
+ */
+export async function feedBodyEdit(
+  noteId: string,
+  notePath: string,
+  feed: () => Promise<boolean>
+): Promise<boolean> {
+  assertNoteWritable(noteId, notePath)
+  return feed().catch((err: unknown) => {
     log.error('Could not store a body change in its doc; nothing was written', { noteId, err })
     throw err
   })
+}
+
+/** `landBodyEdit`'s second half: writes the file once `feedBodyEdit` resolved `fed`. */
+export async function writeFedBodyEdit(
+  indexDb: IndexDb,
+  noteId: string,
+  fileContent: string,
+  fed: boolean,
+  steps: { write: () => Promise<void>; appends?: boolean }
+): Promise<string> {
   if (!fed) {
     await steps.write()
     return baselineBeforeFeed(indexDb, noteId, fileContent)
