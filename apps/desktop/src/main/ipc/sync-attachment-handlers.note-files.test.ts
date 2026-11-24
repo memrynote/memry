@@ -18,12 +18,14 @@ import {
   isDownloadAbandoned,
   markDownloadOwed,
   markDownloadRequested,
+  holdsDownload,
   pruneUnresolvableReferences,
   resetAttachmentDownloadSession
 } from '@memry/sync-client/attachment-download-state'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
+import { clearInMemoryAuthState } from './in-memory-auth-state'
 import { setSetting } from '../database/queries/settings'
 import { recordAttachmentFile } from '../sync/attachment-files'
 import { SupersededDownloadError } from '../sync/attachment-errors'
@@ -680,6 +682,48 @@ describe('sync:download-note-files with auto-download on', () => {
       expect.objectContaining({ id: 'note-1::att-embed', reason: 'transient', attempts: 0 }),
       expect.objectContaining({ id: 'note-2::att-note-2', reason: 'transient', attempts: 0 })
     ])
+  })
+
+  // VERIFY-5722: the same vault's database stays open across a runtime
+  // restart, so which database is open cannot tell the sessions apart.
+  it('writes nothing into the next session for a transfer that settles after a same-vault restart', async () => {
+    setAutoDownload(true)
+    const landBinary = holdNextTransfer()
+    pullAsksForBinaryFile()
+    await settle()
+
+    resetAttachmentDownloadSession()
+    await clearAttachmentState(0)
+    const next = markDownloadRequested('bin-1', 'att-bin')!
+    landBinary()
+    await settle()
+
+    expect(holdsDownload(next)).toBe(true)
+    expect(recordDownloadedFileSize).not.toHaveBeenCalled()
+    expect(materialized()).toEqual([])
+    expect(failureRows()).toEqual([
+      expect.objectContaining({ id: 'bin-1::att-bin', reason: 'transient', attempts: 0 })
+    ])
+  })
+
+  it('writes nothing into the next session for a transfer that settles after a logout', async () => {
+    setAutoDownload(true)
+    const landBinary = holdNextTransfer()
+    pullAsksForBinaryFile()
+    await settle()
+
+    resetAttachmentDownloadSession()
+    vi.useFakeTimers()
+    clearInMemoryAuthState()
+    await vi.advanceTimersByTimeAsync(DOWNLOAD_SETTLE_TIMEOUT_MS)
+    vi.useRealTimers()
+    const next = markDownloadRequested('bin-1', 'att-bin')!
+    landBinary()
+    await settle()
+
+    expect(holdsDownload(next)).toBe(true)
+    expect(recordDownloadedFileSize).not.toHaveBeenCalled()
+    expect(materialized()).toEqual([])
   })
 
   // The downloader drops a binary note's bytes its note no longer names, its

@@ -2302,7 +2302,7 @@ app.on('before-quit', (event) => {
           shutdownLog.info('stopping sync runtime (skip final push for update)...')
           return stopSyncRuntime({
             skipFinalSync: true,
-            downloadSettleTimeoutMs: shutdownDownloadSettleMs(deadline)
+            downloadSettleTimeoutMs: () => shutdownDownloadSettleMs(deadline)
           })
         }
         // The final push is bounded so it cannot eat the budget the provider
@@ -2310,7 +2310,7 @@ app.on('before-quit', (event) => {
         shutdownLog.info('stopping sync runtime...')
         return stopSyncRuntime({
           finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline),
-          downloadSettleTimeoutMs: shutdownDownloadSettleMs(deadline)
+          downloadSettleTimeoutMs: () => shutdownDownloadSettleMs(deadline)
         })
       }
     },

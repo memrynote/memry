@@ -17,10 +17,12 @@ export interface StopSyncRuntimeOptions {
    */
   finalSyncTimeoutMs?: number
   /**
-   * Upper bound on the wait for the attachment downloads the stop aborts.
+   * Upper bound on the wait for the attachment downloads the stop aborts, read
+   * once the final push is over: quit derives it from the time left then, so
+   * the two waits cannot add up past close-vault's reserve (VERIFY-5722).
    * Omitted: `DOWNLOAD_SETTLE_TIMEOUT_MS`. Never unbounded (REVIEW-5722).
    */
-  downloadSettleTimeoutMs?: number
+  downloadSettleTimeoutMs?: () => number
 }
 
 export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise<void> {

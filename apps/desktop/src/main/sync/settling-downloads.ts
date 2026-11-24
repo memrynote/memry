@@ -13,8 +13,8 @@ const logger = createLogger('SettlingDownloads')
  * Invariant (REVIEW-5722): teardown never waits unbounded; a download
  * outliving its session writes nothing. A teardown owes every pull's request
  * still unsettled while its vault's database is open, then waits for them a
- * bounded time. One settling after that database closed or another vault's
- * opened writes nothing: its owed row stands in for it.
+ * bounded time. One settling after that wait stopped, that database closed or
+ * another vault's opened writes nothing: its owed row stands in for it.
  */
 export interface SettlingDownload {
   readonly noteId: string
@@ -24,12 +24,19 @@ export interface SettlingDownload {
   readonly db: DataDb | null
   /** Its outcome, or the owed row that stands in for it, is written. */
   recorded: boolean
+  /** A teardown stopped waiting for it: its session is over. */
+  cut: boolean
 }
 
 const settlingDownloads = new Map<Promise<string | null>, SettlingDownload>()
 
-/** Its vault's database closed, or another vault's opened, since it was requested. */
+/**
+ * A teardown stopped waiting for it, or its vault's database closed or another
+ * vault's opened since it was requested. The open database alone cannot tell
+ * sessions apart: a same-vault restart or a logout keeps it (VERIFY-5722).
+ */
 export function outlived(download: SettlingDownload): boolean {
+  if (download.cut) return true
   return download.db !== null && !(isDatabaseInitialized() && getDatabase() === download.db)
 }
 
@@ -43,7 +50,8 @@ export function trackDownload(
     attachmentId: event.attachmentId,
     source,
     db: isDatabaseInitialized() ? getDatabase() : null,
-    recorded: false
+    recorded: false,
+    cut: false
   }
   const settled = work(download)
   settlingDownloads.set(settled, download)
@@ -76,10 +84,20 @@ export function oweUnsettledDownloads(): void {
   }
 }
 
+/**
+ * Invariant (VERIFY-5722): a download that outlives its wait or its session
+ * writes nothing; quit never spends close-vault's reserve. Waits for the
+ * downloads unsettled now, at most `ms`; every one still unsettled then is cut,
+ * so it records nothing into whichever session comes next. One a later session
+ * requests is not this wait's to cut.
+ */
 export async function settleDownloadsWithin(ms: number): Promise<void> {
-  if (settlingDownloads.size === 0) return
-  if (await completeWithin(Promise.allSettled(settlingDownloads.keys()), ms)) return
+  const waitedOn = new Map(settlingDownloads)
+  if (waitedOn.size === 0) return
+  if (await completeWithin(Promise.allSettled(waitedOn.keys()), ms)) return
+  const unsettled = [...waitedOn].filter(([settled]) => settlingDownloads.has(settled))
+  for (const [, download] of unsettled) download.cut = true
   logger.warn('Stopped waiting for downloads; they record nothing when they settle', {
-    unsettled: [...settlingDownloads.values()].map((d) => `${d.noteId}::${d.attachmentId}`)
+    unsettled: unsettled.map(([, d]) => `${d.noteId}::${d.attachmentId}`)
   })
 }

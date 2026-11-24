@@ -2284,7 +2284,7 @@ describe('main index phase2 exports', () => {
     // Update path skips the unbounded final network push.
     expect(stopSyncRuntimeMock).toHaveBeenCalledWith({
       skipFinalSync: true,
-      downloadSettleTimeoutMs: expect.any(Number)
+      downloadSettleTimeoutMs: expect.any(Function)
     })
     expect(app.quit).not.toHaveBeenCalled()
     expect(app.exit).not.toHaveBeenCalled()
@@ -2425,7 +2425,7 @@ describe('main index phase2 exports', () => {
     expect(flushActivityLogMock).toHaveBeenCalled()
     expect(stopSyncRuntimeMock).toHaveBeenCalledWith({
       finalSyncTimeoutMs: expect.any(Number),
-      downloadSettleTimeoutMs: expect.any(Number)
+      downloadSettleTimeoutMs: expect.any(Function)
     })
 
     // #when the telemetry cap passes

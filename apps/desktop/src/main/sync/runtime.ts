@@ -1128,7 +1128,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   setOnTokenRefreshed(null)
   setOnSessionEnded(null)
 
-  const downloadsSettled = resetSyncServiceSingletons(options?.downloadSettleTimeoutMs)
+  const downloadsSettled = resetSyncServiceSingletons(options?.downloadSettleTimeoutMs?.())
 
   if (!active) {
     await getCrdtProvider()
