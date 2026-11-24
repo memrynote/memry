@@ -39,6 +39,7 @@ struct InboxDetailView: View {
                     VStack(alignment: .leading, spacing: Tokens.Space.inset) {
                         header(item)
                         InboxDetailContent(item: item, store: store, editable: !isArchived && !isFiled)
+                            .task(id: item.id) { await store.downloadFile(of: item) }
                     }
                     .measuredColumn(Tokens.Size.reading)
                     .padding(.horizontal, InboxLayout.edge)

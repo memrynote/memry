@@ -54,9 +54,9 @@ final class NoteReadViewModel {
 
     /// The current network path, for FR-045's metered policy.
     ///
-    /// Optional because nothing constructs a `PathReachability` in production
-    /// yet. The **policy** is never here either way — it is the core's, in
-    /// `may_download` — so this only supplies the observation.
+    /// Optional so a test can leave it out. An opened note judges any usable
+    /// path unmetered (`AttachmentDownload.openedPath`); the per-attachment
+    /// policy stays the core's, in `may_download`.
     let reachability: (any Reachability)?
 
     private(set) var phase: Phase = .loading
@@ -88,6 +88,9 @@ final class NoteReadViewModel {
     /// download so a picture becomes visible **without the note being
     /// recreated**, which is what FR-045 asks for in as many words.
     private(set) var attachments: [String: BlockAttachment] = [:]
+    /// Each on-open download that is running or failed, by attachment id
+    /// (#5644). Written only by `fetchWaitingAttachments`.
+    var attachmentFetches: [String: AttachmentFetchState] = [:]
     /// The note's tags and typed properties, or `nil` while they are unread.
     ///
     /// `nil` and "read, and it has none" are different: the first draws

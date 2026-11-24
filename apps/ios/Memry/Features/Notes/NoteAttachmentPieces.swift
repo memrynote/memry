@@ -167,11 +167,49 @@ struct AttachmentPlaceholder: View {
     let symbol: String
     let label: String
     let detail: String
+    var busy = false
 
     var body: some View {
-        AttachmentCard(symbol: symbol, label: label, detail: detail)
+        AttachmentCard(symbol: symbol, label: label, detail: detail, busy: busy)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(label), \(detail)")
+    }
+}
+
+extension EnvironmentValues {
+    /// The note page whose on-open downloads a placeholder shows (#5644).
+    /// `nil` off a note page, where a placeholder only says it is waiting.
+    @Entry var attachmentDownloads: NoteReadViewModel?
+}
+
+/// A placeholder for bytes not on this device, with the note page's on-open
+/// download of them (#5644): waiting, downloading, or failed with what to do.
+struct WaitingAttachment: View {
+    let id: String?
+    let symbol: String
+    let label: String
+    let detail: String
+    @Environment(\.attachmentDownloads) private var downloads
+
+    var body: some View {
+        switch id.flatMap({ downloads?.attachmentFetches[$0] }) {
+        case nil:
+            AttachmentPlaceholder(symbol: symbol, label: label, detail: detail)
+        case .downloading:
+            AttachmentPlaceholder(symbol: symbol, label: label, detail: "Downloading…", busy: true)
+        case let .failed(error):
+            VStack(alignment: .leading, spacing: Tokens.Space.small) {
+                AttachmentPlaceholder(
+                    symbol: "exclamationmark.triangle",
+                    label: label,
+                    detail: "Couldn't download. \(error.text)"
+                )
+                if error.recourse == .retry, let downloads {
+                    Button("Try again") { Task { await downloads.fetchWaitingAttachments() } }
+                        .memrySecondaryAction()
+                }
+            }
+        }
     }
 }
 
@@ -179,6 +217,7 @@ struct AttachmentCard: View {
     let symbol: String
     let label: String
     let detail: String
+    var busy = false
 
     var body: some View {
         HStack(spacing: Tokens.Space.medium) {
@@ -196,6 +235,10 @@ struct AttachmentCard: View {
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
             Spacer(minLength: 0)
+            if busy {
+                ProgressView()
+                    .accessibilityHidden(true)
+            }
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -57,13 +57,15 @@ struct NoteImageView: View {
 
     @ViewBuilder
     private var picture: some View {
-        switch NoteAttachmentBinding.of(url, resolve) {
+        let binding = NoteAttachmentBinding.of(url, resolve)
+        switch binding {
         case let .file(path, label, _):
             LocalImage(path: path, label: label, maxWidth: previewWidth)
         case let .remote(address):
             RemoteImage(address: address, label: label)
         case .waiting, .waitingFor:
-            AttachmentPlaceholder(
+            WaitingAttachment(
+                id: binding.attachmentId,
                 symbol: "photo",
                 label: label,
                 detail: "Not downloaded yet"
@@ -115,7 +117,8 @@ struct NoteAttachmentView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch NoteAttachmentBinding.of(url, resolve) {
+        let binding = NoteAttachmentBinding.of(url, resolve)
+        switch binding {
         case let .file(path, filename, _):
             if let media {
                 let type = mimeType ?? UTType(filenameExtension: (filename as NSString).pathExtension)?.preferredMIMEType
@@ -157,7 +160,8 @@ struct NoteAttachmentView: View {
         case let .remote(address):
             LinkCardRowPublic(url: address, title: label, subtitle: measured, symbol: symbol)
         case .waiting, .waitingFor:
-            AttachmentPlaceholder(
+            WaitingAttachment(
+                id: binding.attachmentId,
                 symbol: symbol,
                 label: label,
                 detail: measured.map { "\($0) · not downloaded yet" } ?? "Not downloaded yet"

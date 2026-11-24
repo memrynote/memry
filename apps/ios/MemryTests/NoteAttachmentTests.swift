@@ -61,6 +61,7 @@ private final class ScriptedAttachments: NotesReading, @unchecked Sendable {
 private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable {
     private let summary: AttachmentFetchSummary
     private let calls = Mutex<[String]>([])
+    private let paths = Mutex<[Reachable]>([])
     private let onFetch: (@Sendable () -> Void)?
 
     init(summary: AttachmentFetchSummary, onFetch: (@Sendable () -> Void)? = nil) {
@@ -69,6 +70,8 @@ private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable 
     }
 
     var fetched: [String] { calls.withLock { $0 } }
+    /// The path each fetch was judged against.
+    var judged: [Reachable] { paths.withLock { $0 } }
 
     func isFirstSyncComplete() async throws -> Bool { true }
     func firstSync(
@@ -83,8 +86,46 @@ private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable 
         reachable: Reachable
     ) async throws -> AttachmentFetchSummary {
         calls.withLock { $0.append(attachmentId) }
+        paths.withLock { $0.append(reachable) }
         onFetch?()
         return summary
+    }
+}
+
+/// A filler whose one fetch waits until the test lets it finish, so the test
+/// can see the screen while the download runs.
+private final class GatedAttachmentFiller: VaultFilling, @unchecked Sendable {
+    private let calls = Mutex(0)
+    private let (entered, enter) = AsyncStream<Void>.makeStream()
+    private let (gate, open) = AsyncStream<Void>.makeStream()
+    private let failure: SyncError
+
+    init(failure: SyncError) { self.failure = failure }
+
+    var fetches: Int { calls.withLock { $0 } }
+
+    func waitUntilFetching() async {
+        for await _ in entered { return }
+    }
+
+    func finish() { open.yield() }
+
+    func isFirstSyncComplete() async throws -> Bool { true }
+    func firstSync(
+        progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+    ) async throws -> FirstSyncSummary { .none }
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
+    }
+
+    func fetchAttachment(
+        attachmentId: String,
+        reachable: Reachable
+    ) async throws -> AttachmentFetchSummary {
+        calls.withLock { $0 += 1 }
+        enter.yield()
+        for await _ in gate { break }
+        throw failure
     }
 }
 
@@ -186,6 +227,82 @@ struct NoteAttachmentTests {
             return
         }
         #expect(attachment.localPath == "att-1")
+        #expect(model.attachmentFetches.isEmpty, "a landed download still shows as running")
+    }
+
+    /// #5644, `SettingsCopy.downloadFooter`: "An attachment you open always
+    /// downloads." Opening judges the path unmetered whatever the setting, so
+    /// the core's unmetered-only default does not hold an opened picture back.
+    @Test("opening a note downloads its pictures on a metered path")
+    func openingDownloadsOnAMeteredPath() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: "att-1")
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .cellular)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.judged == [.wifi])
+    }
+
+    @Test("opening a note offline asks for nothing")
+    func openingOfflineAsksNothing() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil)
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .offline)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.fetched.isEmpty)
+        #expect(model.attachmentFetches.isEmpty)
+    }
+
+    /// The placeholder goes from "Not downloaded yet" to downloading to the
+    /// failure, and a second run while the first downloads asks for nothing.
+    @Test("an on-open download shows while it runs and after it fails")
+    func onOpenDownloadIsVisible() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = GatedAttachmentFiller(failure: .Locked)
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+        #expect(model.attachmentFetches.isEmpty)
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        #expect(model.attachmentFetches["att-1"] == .downloading)
+
+        await model.fetchWaitingAttachments()
+        #expect(filler.fetches == 1, "a second run fetched bytes already downloading")
+
+        filler.finish()
+        await first.value
+        #expect(model.attachmentFetches["att-1"] == .failed(ErrorMapping.userFacing(SyncError.Locked)))
+        #expect(
+            NoteAttachmentBinding.of("picture.png") { model.attachments[$0] ?? .unknown }
+                == .waitingFor("att-1"),
+            "a failed download keeps its placeholder"
+        )
     }
 
     /// A picture waiting for an unmetered path is the feature working. The

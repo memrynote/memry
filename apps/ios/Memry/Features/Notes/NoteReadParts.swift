@@ -235,35 +235,48 @@ extension NoteReadViewModel {
     /// existing views rather than rebuilding the screen, which is what keeps
     /// the reader's scroll position.
     ///
-    /// **Deferred is not failure.** On a metered path the core answers
-    /// `deferred` and writes nothing; the placeholder simply stays, which is
-    /// the feature working rather than an error to report.
+    /// **Opening is asking** (#5644). The user opened this note, so its
+    /// attachments download on any usable path whatever the Download
+    /// attachments setting (`SettingsCopy.downloadFooter`). Offline asks
+    /// nothing; the sync pass after a reconnect runs this again. A deferred
+    /// answer is not an error: the placeholder stays.
+    ///
+    /// Each download shows in `attachmentFetches` while it runs and after it
+    /// fails, and every exit clears `.downloading`. An attachment another run
+    /// is already downloading is skipped, so the pass-triggered run and Try
+    /// again never fetch the same bytes twice.
     ///
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
     func fetchWaitingAttachments() async {
         guard let filler else { return }
         // The screen passes `PathReachability.forAttachments`. With none, the
-        // documented answer for "we have not seen a path" is `.cellular`:
-        // usable, metered, and the honest unknown, so an unmetered-only
-        // attachment defers rather than spending a stranger's data plan.
-        let reachable = reachability?.current() ?? PathReachability.unknownPath
+        // answer for "we have not seen a path" is usable (`unknownPath`).
+        let reachable = AttachmentDownload.openedPath(
+            on: reachability?.current() ?? PathReachability.unknownPath
+        )
+        guard reachable != .offline else { return }
 
+        var waiting: [String] = []
+        for case let .bound(attachment) in attachments.values
+            where attachment.localPath == nil && !waiting.contains(attachment.attachmentId) {
+            waiting.append(attachment.attachmentId)
+        }
         var landed = false
-        for (_, binding) in attachments {
-            guard case let .bound(attachment) = binding,
-                  attachment.localPath == nil
-            else { continue }
+        for id in waiting where attachmentFetches[id] != .downloading {
+            attachmentFetches[id] = .downloading
             do {
-                let summary = try await filler.fetchAttachment(
-                    attachmentId: attachment.attachmentId,
-                    reachable: reachable
-                )
+                let summary = try await filler.fetchAttachment(attachmentId: id, reachable: reachable)
+                attachmentFetches[id] = nil
                 if summary.downloaded { landed = true }
             } catch {
-                if Task.isCancelled { return }
+                if Task.isCancelled {
+                    attachmentFetches[id] = nil
+                    return
+                }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("an attachment could not be fetched", .code(mapped.code))
+                attachmentFetches[id] = .failed(mapped)
             }
         }
 

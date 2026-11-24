@@ -43,14 +43,37 @@ struct AttachmentRedriveWiringTests {
 
     @Test func the_redrive_carries_the_current_path_so_the_metered_policy_applies() async {
         let filler = RecordingRedrives()
-        await AttachmentRedriver(filler: filler, reachability: { .cellular }).redrive()
-        await AttachmentRedriver(filler: filler, reachability: { .wifi }).redrive()
+        await AttachmentRedriver(filler: filler, reachability: { .cellular }, setting: { .wifi }).redrive()
+        await AttachmentRedriver(filler: filler, reachability: { .wifi }, setting: { .wifi }).redrive()
         #expect(filler.reachables == [.cellular, .wifi])
     }
 
-    @Test func offline_does_not_redrive() async {
+    @Test(arguments: AttachmentDownload.allCases)
+    func offline_does_not_redrive(setting: AttachmentDownload) async {
         let filler = RecordingRedrives()
-        await AttachmentRedriver(filler: filler, reachability: { .offline }).redrive()
+        await AttachmentRedriver(filler: filler, reachability: { .offline }, setting: { setting }).redrive()
         #expect(filler.reachables.isEmpty)
+    }
+
+    /// #5644: the Download attachments setting picks the path the core's
+    /// metered policy judges a background download against. The core defers
+    /// every unmetered-only row on `.cellular` and every row is one, so Never
+    /// downloads nothing on Wi-Fi and Always downloads on cellular.
+    @Test(arguments: [
+        (AttachmentDownload.never, Reachable.wifi, Reachable.cellular),
+        (.never, .cellular, .cellular),
+        (.wifi, .wifi, .wifi),
+        (.wifi, .cellular, .cellular),
+        (.always, .wifi, .wifi),
+        (.always, .cellular, .wifi)
+    ])
+    func the_setting_picks_the_path_a_background_download_is_judged_on(
+        setting: AttachmentDownload,
+        observed: Reachable,
+        judged: Reachable
+    ) async {
+        let filler = RecordingRedrives()
+        await AttachmentRedriver(filler: filler, reachability: { observed }, setting: { setting }).redrive()
+        #expect(filler.reachables == [judged])
     }
 }

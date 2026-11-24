@@ -3,9 +3,10 @@ import MemryCore
 
 /// Retries missing attachment downloads (#3261) and syncs the Inbox's files
 /// (#4157) after each sync pass and when the network path changes. The core
-/// owns which attachments are missing or pending and whether this path may
-/// fetch them (FR-045); this only passes the current path, keeps calls from
-/// overlapping, and relays what changed.
+/// owns which attachments are missing or pending and whether a path may fetch
+/// them (FR-045); this passes the current path as this device's Download
+/// attachments setting judges it (#5644, `AttachmentDownloadPath.swift`),
+/// keeps calls from overlapping, and relays what changed.
 @MainActor
 final class AttachmentRedriver {
     /// Posted when Inbox files were written to disk, for the Inbox to re-read.
@@ -19,21 +20,24 @@ final class AttachmentRedriver {
 
     private let filler: any VaultFilling
     private let reachability: @Sendable () -> Reachable
+    private let setting: @MainActor () -> AttachmentDownload
     private let center: NotificationCenter
     private var running = false
 
     init(
         filler: any VaultFilling,
         reachability: @escaping @Sendable () -> Reachable = { PathReachability.forAttachments.current() },
+        setting: @escaping @MainActor () -> AttachmentDownload = { LocalSettings.shared.attachmentDownload },
         center: NotificationCenter = .default
     ) {
         self.filler = filler
         self.reachability = reachability
+        self.setting = setting
         self.center = center
     }
 
     func redrive() async {
-        let reachable = reachability()
+        let reachable = setting().backgroundPath(on: reachability())
         guard reachable != .offline, !running else { return }
         running = true
         defer { running = false }

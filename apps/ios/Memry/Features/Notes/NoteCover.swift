@@ -223,9 +223,12 @@ struct NoteCoverBand: View {
         do {
             let summary = try await filler.fetchAttachment(
                 attachmentId: attachment.attachmentId,
-                reachable: reachability?.current() ?? PathReachability.unknownPath
+                // The note is open, so its cover downloads on any usable path (#5644).
+                reachable: AttachmentDownload.openedPath(
+                    on: reachability?.current() ?? PathReachability.unknownPath
+                )
             )
-            // Deferred on a metered path is the policy working: the wash stays.
+            // Deferred offline: the wash stays.
             guard summary.downloaded else { return .waiting }
         } catch {
             Log.sync.error("a cover could not be fetched", .code(ErrorMapping.userFacing(error).code))

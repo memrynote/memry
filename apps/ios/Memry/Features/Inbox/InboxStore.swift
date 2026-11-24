@@ -58,6 +58,15 @@ final class InboxStore {
     private(set) var hidden: Set<String> = [] { didSet { countBadge() } }
     /// Rows captured in this session, for the fresh-capture fade.
     private(set) var fresh: Set<String> = []
+    /// Each opened capture's file download that is running or failed, by
+    /// capture id (#5644). Written only by `downloadFile(of:)`.
+    var fileDownloads: [String: AttachmentFetchState] = [:]
+    /// The path a file download is judged against, and this device's
+    /// Download attachments setting. Replaced in tests.
+    @ObservationIgnored var reachability: @Sendable () -> Reachable = { PathReachability.forAttachments.current() }
+    @ObservationIgnored var downloadSetting: @MainActor () -> AttachmentDownload = {
+        LocalSettings.shared.attachmentDownload
+    }
     var toast: InboxToast?
     private(set) var failure: UserFacingError?
     /// The vault's sync scheduler (`requestVaultSync`): debounced, one pass at
