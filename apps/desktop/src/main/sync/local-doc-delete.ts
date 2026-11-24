@@ -73,17 +73,41 @@ export async function deleteDocLocally(noteId: string, raiseTombstone: () => voi
 }
 
 /**
+ * Per database: the queued delete rows a cover already tried (#5693). Keyed on
+ * the row, not the id: a journal day's id recurs, and its next delete carries
+ * a new payload, so it is tried once too.
+ */
+const coverTried = new WeakMap<DrizzleDb, Set<string>>()
+
+/**
  * Gives every pending note or journal delete with no body vector the vector of
  * the doc this device still holds, then purges the doc: the CLI's delete made
  * while desktop was closed (#5661). Runs at a sync runtime start, before the
  * first pull: a pull drops body updates for an id with no row
  * (`landNoteBody`), so the doc holds exactly what this device had when the
  * note was deleted. `flushPendingLocalDeletes` sends the deletes after.
+ *
+ * Each queued row is tried once per database: after a try the doc is purged, so a
+ * delete still uncovered stays so, and the manifest check retires it later.
+ * A delete that fails is logged and the others still run, so sync starts.
  */
 export async function coverQueuedContentDeletes(db: DrizzleDb): Promise<void> {
+  const tried = coverTried.get(db) ?? new Set<string>()
+  coverTried.set(db, tried)
   for (const item of listUncoveredContentDeletes(db)) {
-    // A live row retires the delete in the flush; its doc is the note's.
-    if (isSupersededByLiveRow(db, item.type, item.itemId)) continue
-    await coverThenPurge(db, item.itemId, () => {})
+    const row = `${item.type}\0${item.itemId}\0${item.payload}`
+    if (tried.has(row)) continue
+    try {
+      // A live row retires the delete in the flush; its doc is the note's.
+      if (isSupersededByLiveRow(db, item.type, item.itemId)) continue
+      await coverThenPurge(db, item.itemId, () => {})
+      tried.add(row)
+    } catch (error) {
+      log.error('Could not cover a queued note delete; it goes out with no body vector', {
+        type: item.type,
+        itemId: item.itemId,
+        error
+      })
+    }
   }
 }
