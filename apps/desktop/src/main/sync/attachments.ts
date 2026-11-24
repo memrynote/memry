@@ -395,6 +395,24 @@ const fromB64 = (s: string): Uint8Array =>
   // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   sodium.from_base64(s, sodium.base64_variants.ORIGINAL)
 
+/**
+ * §14.7: the attachment id is the manifest's own `id`, as memry-core's
+ * fetch_with_manifest checks. A server answer naming another attachment, from
+ * the single GET or under a batch key, is refused before anything acts on it: a
+ * download would land that file under this id (#5652), and a deleted-asset
+ * release would free that attachment's chunks on the server (#5664). A plain
+ * Error, so markDownloadFailed counts it transient (never abandoned or pruned)
+ * and every chunkHashesOf caller keeps its work for a later pass.
+ */
+function requireOwnManifest(attachmentId: string, manifest: AttachmentManifest): void {
+  if (manifest.id === attachmentId) return
+  log.warn('manifest names another attachment; refusing it', {
+    attachmentId,
+    manifestId: manifest.id
+  })
+  throw new Error(`Manifest names attachment ${manifest.id}, not ${attachmentId}`)
+}
+
 export class AttachmentSyncService {
   private deps: AttachmentSyncDeps
   private activeUploads = new Map<string, UploadState>()
@@ -415,10 +433,10 @@ export class AttachmentSyncService {
       ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
     })
     this.prefetch = new AttachmentDownloadPrefetch({
-      chunkHashesOf: async (encrypted) => {
+      chunkHashesOf: async (attachmentId, encrypted) => {
         const vaultKey = await deps.getVaultKey()
         if (!vaultKey) throw new Error('Vault is locked — no vault key')
-        return this.manifestChunkHashes(encrypted, vaultKey)
+        return this.manifestChunkHashes(attachmentId, encrypted, vaultKey)
       }
     })
   }
@@ -808,6 +826,8 @@ export class AttachmentSyncService {
     let trackedProgress: TransferProgress | null = null
 
     try {
+      // Before any chunk request or write.
+      requireOwnManifest(attachmentId, manifest)
       const totalChunks = manifest.chunks.length
       // Embedded-attachment flow: the caller only knows the note's attachments
       // directory — the filename lives in the (signed, decrypted) manifest.
@@ -1292,7 +1312,8 @@ export class AttachmentSyncService {
    * The server chunk hashes of an uploaded attachment, read from its signed
    * manifest, for freeing a deleted note's attachments (#3015). An empty list
    * means the server has no manifest for the id, so there is nothing to free.
-   * Any other failure throws, and the caller keeps the work for a later pass.
+   * Any other failure throws, a manifest naming another attachment included,
+   * and the caller keeps the work for a later pass.
    */
   async chunkHashesOf(attachmentId: string): Promise<string[]> {
     const [token, vaultKey] = await this.requireAuth()
@@ -1303,29 +1324,31 @@ export class AttachmentSyncService {
       if (err instanceof SyncServerError && err.statusCode === 404) return []
       throw err
     }
-    return this.manifestChunkHashes(encrypted, vaultKey)
+    return this.manifestChunkHashes(attachmentId, encrypted, vaultKey)
   }
 
   /**
    * The whole-file sha256 of an uploaded attachment, read from its signed
    * manifest (#5608). Throws when the server has no manifest for the id, or
-   * it cannot be fetched or verified.
+   * it cannot be fetched or verified, or it names another attachment.
    */
   async checksumOf(attachmentId: string, netOpts: DownloadNetOptions): Promise<string> {
     const [token, vaultKey] = await this.requireAuth()
     const encrypted = await this.fetchManifest(token, attachmentId, netOpts)
-    return (await this.verifiedManifest(encrypted, vaultKey)).checksum
+    return (await this.verifiedManifest(attachmentId, encrypted, vaultKey)).checksum
   }
 
   private async manifestChunkHashes(
+    attachmentId: string,
     encrypted: EncryptedAttachmentManifest,
     vaultKey: Uint8Array
   ): Promise<string[]> {
-    const manifest = await this.verifiedManifest(encrypted, vaultKey)
+    const manifest = await this.verifiedManifest(attachmentId, encrypted, vaultKey)
     return manifest.chunks.map((chunk) => chunk.encryptedHash)
   }
 
   private async verifiedManifest(
+    attachmentId: string,
     encrypted: EncryptedAttachmentManifest,
     vaultKey: Uint8Array
   ): Promise<AttachmentManifest> {
@@ -1333,6 +1356,7 @@ export class AttachmentSyncService {
     if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
     const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
     secureCleanup(fileKey)
+    requireOwnManifest(attachmentId, manifest)
     return manifest
   }
 
