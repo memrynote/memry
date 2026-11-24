@@ -700,7 +700,12 @@ describe('dirty-recovery', () => {
     const recovered: string[] = []
     const journalAdapters = {
       getLocal: (type: string) =>
-        type === 'journal' ? { enqueueUpdate: (id: string) => recovered.push(id) } : undefined
+        type === 'journal'
+          ? {
+              enqueueUpdate: (id: string) => recovered.push(id),
+              enqueueRecoveredUpdate: (id: string) => recovered.push(id)
+            }
+          : undefined
     } as unknown as Parameters<typeof recoverDirtyItems>[1]
 
     const insertJournal = (values: Record<string, unknown>): void => {

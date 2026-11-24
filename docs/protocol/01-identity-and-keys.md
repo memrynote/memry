@@ -486,9 +486,11 @@ pass settles them. The decision is a pure function of five facts
    and the ack still reads as edited
    (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:278`): an
    edit made outside the app is neither ticked nor queued until the next
-   start's dirty sweep queues it under a fresh clock
+   start's dirty sweep queues it, under a fresh clock when the row carries a
+   `syncedAt` older than its `modifiedAt`, and at its stored clock when it
+   carries none, which every journal a build before this rule acked does
    (`apps/desktop/src/main/sync/journal-day-merge.ts:221`,
-   `apps/desktop/src/main/sync/dirty-recovery.ts:286`). Otherwise
+   `apps/desktop/src/main/sync/dirty-recovery.ts:328`). Otherwise
    desktop counts every holder tag, its day file's: it keeps no snapshot of
    the tags last synced. The core counts the tags absent from the snapshot
    of `F`'s row taken before its first unpushed edit, kept in `meta` under
@@ -600,7 +602,15 @@ there lives only in its Yjs state
   So a tag the deleting device saw and removed from `j<D>` comes back
   through a desktop device that also edited `F` offline or outside the
   app, and not through the core. An ack only marks clean what the server
-  holds: the dirty sweep re-pushes an edit made outside the app under a
-  fresh clock, which a tombstone of `F` refuses as delete-wins and never
-  acks as a replay, so neither client drops a tag the deleting device
-  never saw.
+  holds once `F` carries a `syncedAt`: the dirty sweep re-pushes an edit
+  made outside the app under a fresh clock, which a tombstone of `F`
+  refuses as delete-wins and never acks as a replay, so neither client
+  drops a tag the deleting device never saw.
+- A journal a desktop build before this rule acked carries no `syncedAt`, so
+  its first start under this rule replays it at its stored clock instead of
+  re-clocking it. Re-clocking would push every such journal as a new write
+  concurrent with any unpushed peer edit, which the peer's merge would
+  overwrite. The replay's ack stamps the row. Until then, an edit made to
+  it outside the app is acked as a replay and stamped clean without
+  reaching the server, as every start of those builds did, and a tombstone
+  of it can drop that edit's tags.

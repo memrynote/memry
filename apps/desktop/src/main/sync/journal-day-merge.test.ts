@@ -993,7 +993,8 @@ describe('runJournalDayMerges', () => {
     it.each([
       ['in the ack millisecond, day first', 0, 'day first'],
       ['in the ack millisecond, tombstone first', 0, 'tombstone first'],
-      ['before the ack, day first', 5, 'day first']
+      ['before the ack, day first', 5, 'day first'],
+      ['before the ack, tombstone first', 5, 'tombstone first']
     ] as const)(
       'keeps a tag added outside the app during its push, %s',
       async (_c, ackLag, order) => {
@@ -1026,6 +1027,72 @@ describe('runJournalDayMerges', () => {
       expect(sweep().journals).toBe(0)
       expect(queue.getPendingCount()).toBe(0)
       expect(clockOf()).toEqual({ me: 2 })
+    })
+
+    // A build before #5659 acked journal pushes without stamping `syncedAt`, so
+    // every journal it pushed reaches the upgraded build at `syncedAt` null.
+    describe('on the first start after an upgrade', () => {
+      const queuedClock = (): Record<string, number> =>
+        (JSON.parse(queue.peek(1)[0]?.payload ?? '{}') as { clock: Record<string, number> }).clock
+
+      it('replays an acked unstamped journal at its stored clock', () => {
+        foreignRow({ me: 1 }, { body: holderFile(['a']) })
+
+        expect(sweep().journals).toBe(1)
+        expect(clockOf()).toEqual({ me: 1 })
+        expect(queuedClock()).toEqual({ me: 1 })
+      })
+
+      // This database plays both devices: first the upgraded one, holding the
+      // day at `{me: 1}` with a shipped-build ack (no stamp), then the peer,
+      // holding it with an unpushed tag edit at `{me: 1, b: 1}`.
+      it("leaves a peer's unpushed tag edit standing", () => {
+        journalHandler.applyUpsert(
+          ctx,
+          DAY,
+          { date: DATE, content: 'held\n', tags: ['a'] },
+          { me: 1 }
+        )
+        data.db.update(noteMetadata).set({ syncedAt: null }).where(eq(noteMetadata.id, DAY)).run()
+        expect(sweep().journals).toBe(1)
+        const pushed = queuedClock()
+        for (const row of queue.peek(10)) queue.markSuccess(row.id)
+
+        expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a'])
+        fs.writeFileSync(
+          path.join(vaultPath, DAY_PATH),
+          dayFile().replace('  - a\n', '  - a\n  - peer\n')
+        )
+        data.db
+          .update(noteMetadata)
+          .set({ clock: { me: 1, b: 1 } })
+          .where(eq(noteMetadata.id, DAY))
+          .run()
+        journalHandler.applyUpsert(ctx, DAY, { date: DATE, content: null, tags: ['a'] }, pushed)
+
+        expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(['a', 'peer'])
+      })
+
+      it('pushes nothing for it once acked, and an edit after that under a fresh clock', () => {
+        foreignRow({ me: 1 }, { body: holderFile(['a', 'b']) })
+        expect(sweep().journals).toBe(1)
+        answer(build())
+
+        expect(sweep().journals).toBe(0)
+        expect(queue.getPendingCount()).toBe(0)
+        expect(clockOf()).toEqual({ me: 1 })
+
+        fs.writeFileSync(path.join(vaultPath, DAY_PATH), holderFile(['a', 'b', 'c']))
+        data.db
+          .update(noteMetadata)
+          .set({ modifiedAt: '2026-06-09T10:00:00.000Z' })
+          .where(eq(noteMetadata.id, FOREIGN))
+          .run()
+
+        expect(sweep().journals).toBe(1)
+        expect(clockOf()).toEqual({ me: 2 })
+        expect(queuedClock()).toEqual({ me: 2 })
+      })
     })
   })
 })
