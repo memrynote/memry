@@ -47,6 +47,7 @@ import { recordAttachmentFile } from './attachment-files'
 import { listPendingUploads } from './attachment-outbox'
 import { noteRevived, settleRevivedNotes } from './note-attachment-revival'
 import { DownloadQueue } from './download-queue'
+import { sha256OfFile } from '../vault/file-sha256'
 
 const MIB = 1024 * 1024
 // nonce(24) + Poly1305 tag(16) — mirrors the server's CHUNK_CRYPTO_OVERHEAD.
@@ -512,6 +513,27 @@ describe('an upload whose bytes the note already has on the server', () => {
 
     expect(second.attachmentId).not.toBe(first.attachmentId)
     expect(initiates.count).toBe(1)
+  }, 120_000)
+})
+
+// #5608: a peer's replace of a binary note with no synced hash compares its file
+// with the manifest checksum of the attachment the note named.
+describe('the checksum of an uploaded attachment', () => {
+  it('reads the sha256 the file hashes to from its manifest, and fails for an id the server lacks', async () => {
+    const user = await seedUser({
+      plan: 'believer',
+      status: 'active',
+      maxFileSize: 200 * MIB,
+      storageLimit: 50 * 1024 * MIB
+    })
+    const svc = new AttachmentSyncService(createDeps(user))
+    const src = await writeTempFile('p.png', randomBytes(64 * 1024))
+    const { attachmentId } = await svc.uploadAttachment('note-1', src)
+
+    const pace = vi.fn(async () => {})
+    expect(await svc.checksumOf(attachmentId, { pace })).toBe(await sha256OfFile(src))
+    await expect(svc.checksumOf(randomUUID(), { pace })).rejects.toMatchObject({ statusCode: 404 })
+    expect(pace).toHaveBeenCalledTimes(2)
   }, 120_000)
 })
 
