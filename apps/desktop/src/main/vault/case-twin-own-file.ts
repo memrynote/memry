@@ -17,13 +17,14 @@ import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/share
 import {
   getAliasesForNotes,
   getNoteFileProperties,
-  getNoteHeaderTags
+  getNoteHeaderTags,
+  getNoteSnapshots
 } from '@main/database/queries/notes'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { applyRemoteFrontmatter } from '../sync/item-handlers/note-handler-frontmatter'
 import { getDatabase, type getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { generateContentHash, serializeNote, type NoteFrontmatter } from './frontmatter'
+import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
 
 export interface PreparedBody {
   /** Null for a doc with no body: the file keeps the header alone. */
@@ -80,18 +81,23 @@ export function holdsOwnBytes(
   return onDisk === cached.contentHash || onDisk === cached.pendingWriteHash
 }
 
-/** A note's header as its index rows hold it, which a split writes to its own file. */
+/**
+ * A note's header as its index rows hold it, which a split writes to its own
+ * file. A property of `file`'s header that stores as the row does keeps its
+ * YAML type (`getNoteFileProperties`).
+ */
 export function indexedHeader(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cover: string | null
+  cover: string | null,
+  file?: NoteFrontmatter
 ): NoteFrontmatter {
   return applyRemoteFrontmatter(
     {},
     {
       tags: getNoteHeaderTags(indexDb, noteId),
-      properties: getNoteFileProperties(indexDb, noteId),
+      properties: getNoteFileProperties(indexDb, noteId, file),
       aliases: getAliasesForNotes(indexDb, [noteId]).get(noteId) ?? [],
       ...(cover !== null ? { cover: { ref: cover } } : {}),
       title
@@ -99,16 +105,46 @@ export function indexedHeader(
   )
 }
 
-/** A note's own file: its prepared doc body under a header rebuilt from its index rows. */
+/**
+ * The header of a note's own last file, when one of its versions holds the
+ * bytes its baseline names. The shared file's header may be the other twin's,
+ * so it never stands in.
+ */
+function ownLastHeader(
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  noteId: string,
+  baseline: { contentHash?: string | null; pendingWriteHash?: string | null }
+): NoteFrontmatter | undefined {
+  const hashes = new Set([baseline.contentHash, baseline.pendingWriteHash])
+  const version = getNoteSnapshots(indexDb, noteId).find((snapshot) =>
+    hashes.has(snapshot.contentHash)
+  )
+  return version ? parseNote(version.fileContent).frontmatter : undefined
+}
+
+/**
+ * A note's own file: its prepared doc body under a header rebuilt from its
+ * index rows, with the YAML types of its own last header (`ownLastHeader`).
+ */
 export function ownFile(
   indexDb: ReturnType<typeof getIndexDatabase>,
   noteId: string,
   title: string,
-  cachedCover: string | null | undefined,
+  cached: {
+    cover?: string | null
+    contentHash?: string | null
+    pendingWriteHash?: string | null
+  },
   prepared: PreparedBody
 ): OwnTwinFile & { cover: string | null } {
-  const cover = isCoverValue(cachedCover) ? cachedCover : null
-  const header = indexedHeader(indexDb, noteId, title, cover)
+  const cover = isCoverValue(cached.cover) ? cached.cover : null
+  const header = indexedHeader(
+    indexDb,
+    noteId,
+    title,
+    cover,
+    ownLastHeader(indexDb, noteId, cached)
+  )
   const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
   if (writing) header[WRITING_FRONTMATTER_KEY] = writing
   const markdown = prepared.body?.markdown ?? ''
