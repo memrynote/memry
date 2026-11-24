@@ -100,7 +100,8 @@ vi.mock('./sync/crdt-provider', () => ({
     updateMeta: mocks.updateMeta,
     setNoteLocalOnly: vi.fn(),
     purge: mocks.purge,
-    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue()
+    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue(),
+    getStateVector: () => null
   })
 }))
 
@@ -108,7 +109,8 @@ vi.mock('./sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
   enqueueLocalSyncDelete: mocks.enqueueLocalSyncDelete,
-  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems
+  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems,
+  sendPendingContentDelete: vi.fn()
 }))
 
 vi.mock('./projections', () => ({
