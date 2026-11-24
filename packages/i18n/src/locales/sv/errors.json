@@ -62,7 +62,7 @@
     "uploadFailed": "Uppladdningen av bilagan misslyckades",
     "uploadProgressFailed": "Det gick inte att hämta uppladdningsförloppet",
     "downloadFailed": "Nedladdningen av bilagan misslyckades",
-    "downloadGone": "Den här filen finns inte längre på synkservern.",
+    "downloadGone": "Den här filen finns inte längre på synkservern. Om en annan enhet fortfarande har den, lägg till den igen från den enheten.",
     "downloadMissing": "Den här filen finns inte på synkservern än. Öppna den igen i morgon för att kontrollera.",
     "downloadNeedsSync": "Synkroniseringen körs inte, så den här filen kan inte laddas ned. Den laddas ned automatiskt när synkroniseringen körs.",
     "downloadProgressFailed": "Det gick inte att hämta nedladdningsförloppet",

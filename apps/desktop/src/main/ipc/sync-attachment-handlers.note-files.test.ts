@@ -22,6 +22,7 @@ import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { setSetting } from '../database/queries/settings'
+import { recordAttachmentFile } from '../sync/attachment-files'
 
 const h = vi.hoisted(() => ({
   db: null as unknown as TestDataDb,
@@ -85,6 +86,8 @@ const PNG = Buffer.from('png bytes')
 const DAY_MS = 24 * 60 * 60 * 1000
 const notFound = (): Error =>
   Object.assign(new Error('Failed to fetch manifest'), { statusCode: 404 })
+/** Every request the fake transport serves settles on microtasks. */
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 type Result = { success: boolean; error?: string; retry?: string }
 const openNote = (noteId: string): Promise<Result> =>
@@ -265,6 +268,31 @@ describe('sync:download-note-files with auto-download off', () => {
     expect(fs.readFileSync(pdfPath())).toEqual(PDF)
   })
 
+  // A note from before the attachment record (#2651) has no record of its
+  // embeds, and a held vault or a plan without sync never runs sync.
+  it('owes nothing while sync is off when every file an unrecorded note embeds is on disk', async () => {
+    h.network = null
+    fs.mkdirSync(path.dirname(imagePath()), { recursive: true })
+    fs.writeFileSync(imagePath(), PNG)
+
+    await expect(openNote('note-1')).resolves.toEqual({ success: true })
+
+    fs.rmSync(imagePath())
+    await expect(openNote('note-1')).resolves.toMatchObject({
+      success: false,
+      retry: 'whenSyncRuns'
+    })
+
+    // A record names exactly which file is the attachment's: gone, it is owed.
+    fs.writeFileSync(imagePath(), PNG)
+    const recorded = path.join(path.dirname(imagePath()), 'old.png')
+    recordAttachmentFile(h.db, h.vaultPath, 'note-1', recorded, 'att-embed')
+    await expect(openNote('note-1')).resolves.toMatchObject({
+      success: false,
+      retry: 'whenSyncRuns'
+    })
+  })
+
   // A pull's request for a file is released before it waits for a token, so
   // an open of the note right then claims and downloads it instead of finding
   // it held by a request that downloads nothing.
@@ -299,6 +327,39 @@ describe('sync:download-note-files with auto-download on', () => {
 
     expect(h.download).not.toHaveBeenCalled()
     expect(fs.existsSync(imagePath())).toBe(false)
+  })
+
+  // The runtime teardown drops every claim, and the next runtime's pull asks
+  // again: the server's 404 counts once, not once per runtime.
+  it('counts one 404 for a pull request that waited for its token across a runtime restart', async () => {
+    setAutoDownload(true)
+    h.download.mockRejectedValue(notFound())
+    let grantToken: (token: string) => void = () => undefined
+    h.token.mockReturnValueOnce(
+      new Promise((resolve) => {
+        grantToken = resolve
+      })
+    )
+    const pullAsks = (): void => {
+      attachmentEvents.emitDownloadNeeded({
+        noteId: 'note-1',
+        attachmentId: 'att-embed',
+        diskPath: path.join(h.vaultPath, 'attachments', 'note-1'),
+        intoDir: true,
+        claim: markDownloadRequested('note-1', 'att-embed')!
+      })
+    }
+
+    pullAsks()
+    resetAttachmentDownloadSession()
+    clearAttachmentState()
+    pullAsks()
+    await settle()
+    grantToken('token')
+    await settle()
+
+    expect(h.download).toHaveBeenCalledTimes(1)
+    expect(h.db.select().from(attachmentDownloadFailures).get()?.attempts).toBe(1)
   })
 
   it('reports a file the server no longer has, which the pull never downloaded', async () => {

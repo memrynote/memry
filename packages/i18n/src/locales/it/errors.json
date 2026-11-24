@@ -62,7 +62,7 @@
     "uploadFailed": "Caricamento dell'allegato non riuscito",
     "uploadProgressFailed": "Impossibile recuperare l'avanzamento del caricamento",
     "downloadFailed": "Download dell'allegato non riuscito",
-    "downloadGone": "Questo file non è più sul server di sincronizzazione.",
+    "downloadGone": "Questo file non è più sul server di sincronizzazione. Se un altro dispositivo lo ha ancora, aggiungilo di nuovo da quel dispositivo.",
     "downloadMissing": "Questo file non è ancora sul server di sincronizzazione. Riaprilo domani per controllare.",
     "downloadNeedsSync": "La sincronizzazione non è attiva, quindi non è possibile scaricare questo file. Verrà scaricato automaticamente quando la sincronizzazione sarà attiva.",
     "downloadProgressFailed": "Impossibile recuperare l'avanzamento del download",

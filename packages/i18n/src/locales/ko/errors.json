@@ -62,7 +62,7 @@
     "uploadFailed": "첨부 파일을 업로드하지 못했습니다.",
     "uploadProgressFailed": "업로드 진행 상황을 가져오지 못했습니다.",
     "downloadFailed": "첨부 파일을 다운로드하지 못했습니다.",
-    "downloadGone": "이 파일은 더 이상 동기화 서버에 없습니다.",
+    "downloadGone": "이 파일은 더 이상 동기화 서버에 없습니다. 다른 기기에 아직 있다면 그 기기에서 다시 추가하세요.",
     "downloadMissing": "이 파일은 아직 동기화 서버에 없습니다. 내일 다시 열어 확인하세요.",
     "downloadNeedsSync": "동기화가 실행 중이 아니어서 이 파일을 다운로드할 수 없습니다. 동기화가 실행되면 자동으로 다운로드됩니다.",
     "downloadProgressFailed": "다운로드 진행 상황을 가져오지 못했습니다.",

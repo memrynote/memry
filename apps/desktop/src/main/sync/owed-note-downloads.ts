@@ -3,15 +3,45 @@ import path from 'node:path'
 import { getNoteMetadataById } from '@memry/storage-data'
 import type { NoteFileDownload } from '@memry/sync-client/attachment-events'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { readVaultFileSync } from '../lib/paths'
+import { createLogger } from '../lib/logger'
 import { getNoteAttachmentsDir } from '../vault/attachments'
-import { recordedFileOf } from './attachment-files'
+import {
+  existingFiles,
+  isRecordedAttachment,
+  recordedFileOf,
+  referencedVaultFiles
+} from './attachment-files'
+
+const logger = createLogger('OwedNoteDownloads')
+
+/**
+ * Whether the note's body embeds a vault file and every one it embeds is on
+ * disk. A body that embeds none says nothing about the note's references.
+ */
+function bodyEmbedsOnDisk(vaultPath: string, note: { id: string; path: string }): boolean {
+  if (!note.path.endsWith('.md')) return false
+  let markdown: string | null
+  try {
+    markdown = readVaultFileSync(vaultPath, note.path)
+  } catch (err) {
+    logger.warn('Could not read the note body; its unrecorded embeds count as owed', {
+      noteId: note.id,
+      err
+    })
+    return false
+  }
+  if (markdown === null) return false
+  const files = referencedVaultFiles(markdown, vaultPath, note.path, note.id)
+  return files.length > 0 && existingFiles(files).length === files.length
+}
 
 /**
  * The files a note names that this device does not hold (#5616): a binary
  * note's own file, and each embedded attachment with no recorded file on disk.
  * Read from local state only, so opening a note that misses nothing sends no
- * request. An embed never recorded here (a note from before the record, #2651)
- * is listed too: the downloader skips a file already on disk at its size.
+ * request. An embed no record names (a note from before the record, #2651) is
+ * listed only while a file the body embeds is missing.
  */
 export function owedNoteDownloads(
   db: DrizzleDb,
@@ -33,8 +63,13 @@ export function owedNoteDownloads(
       })
     }
   }
+  let embedsOnDisk: boolean | undefined
   for (const attachmentId of note.attachmentReferences ?? []) {
     if (recordedFileOf(db, vaultPath, noteId, attachmentId)) continue
+    if (!isRecordedAttachment(db, noteId, attachmentId)) {
+      embedsOnDisk ??= bodyEmbedsOnDisk(vaultPath, note)
+      if (embedsOnDisk) continue
+    }
     owed.push({
       noteId,
       attachmentId,

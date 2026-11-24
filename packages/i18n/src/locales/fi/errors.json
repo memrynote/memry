@@ -62,7 +62,7 @@
     "uploadFailed": "Liitteen lähettäminen epäonnistui",
     "uploadProgressFailed": "Lähetyksen edistymisen hakeminen epäonnistui",
     "downloadFailed": "Liitteen lataaminen epäonnistui",
-    "downloadGone": "Tätä tiedostoa ei ole enää synkronointipalvelimella.",
+    "downloadGone": "Tätä tiedostoa ei ole enää synkronointipalvelimella. Jos se on vielä toisella laitteella, lisää se uudelleen siltä laitteelta.",
     "downloadMissing": "Tätä tiedostoa ei ole vielä synkronointipalvelimella. Avaa se uudelleen huomenna tarkistaaksesi.",
     "downloadNeedsSync": "Synkronointi ei ole käynnissä, joten tätä tiedostoa ei voi ladata. Se latautuu itsestään, kun synkronointi on käynnissä.",
     "downloadProgressFailed": "Latauksen edistymisen hakeminen epäonnistui",

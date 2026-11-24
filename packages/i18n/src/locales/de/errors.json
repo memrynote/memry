@@ -62,7 +62,7 @@
     "uploadFailed": "Der Anhang konnte nicht hochgeladen werden",
     "uploadProgressFailed": "Der Uploadfortschritt konnte nicht abgerufen werden",
     "downloadFailed": "Der Anhang konnte nicht heruntergeladen werden",
-    "downloadGone": "Diese Datei ist nicht mehr auf dem Sync-Server.",
+    "downloadGone": "Diese Datei ist nicht mehr auf dem Sync-Server. Wenn ein anderes Gerät sie noch hat, füge sie von dort erneut hinzu.",
     "downloadMissing": "Diese Datei ist noch nicht auf dem Sync-Server. Öffne sie morgen noch einmal, um nachzusehen.",
     "downloadNeedsSync": "Die Synchronisierung läuft nicht, daher kann diese Datei nicht heruntergeladen werden. Sie wird automatisch heruntergeladen, sobald die Synchronisierung läuft.",
     "downloadProgressFailed": "Der Downloadfortschritt konnte nicht abgerufen werden",

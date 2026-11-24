@@ -1222,7 +1222,11 @@ across devices:
   (`apps/desktop/src/main/ipc/sync-attachment-handlers.ts`). Main lists what
   this device lacks from local state only (`owed-note-downloads.ts`): a binary
   note's own file when it is not on disk, and each referenced attachment with
-  no recorded file on disk. A note that lacks nothing sends no request. Each
+  no recorded file on disk. A note from before the attachment record (#2651)
+  has no record of its embeds, so an attachment no record names counts as held
+  while every file the note body embeds is on disk. Without that, such a note
+  in a held vault showed "Sync isn't running" for files it already had. A note
+  that lacks nothing sends no request. Each
   file goes through the download queue as `interactive`, so it jumps queued
   background work, and lands with the same steps as a pull's download (record,
   rename to the body's name, `ATTACHMENT_MATERIALIZED`). The call resolves when
@@ -1242,7 +1246,10 @@ across devices:
   offers Try again waits for the click. With auto-download on, the call
   requests nothing. Each request holds its own claim on the download
   (`DownloadClaim`), and only its holder can release it, so a pull's request
-  settling late cannot free a download an open took. Opening a binary note
+  settling late cannot free a download an open took. A sync runtime restart
+  drops every claim, so a pull's request still waiting for its access token
+  when the runtime restarts asks for nothing: the new runtime's request for the
+  same file is the only one, and a 404 counts once. Opening a binary note
   whose file has not downloaded keeps its row: `getFileById` drops a row with a
   missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a

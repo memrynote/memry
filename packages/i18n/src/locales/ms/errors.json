@@ -62,7 +62,7 @@
     "uploadFailed": "Muat naik lampiran gagal",
     "uploadProgressFailed": "Gagal mengambil kemajuan muat naik",
     "downloadFailed": "Muat turun lampiran gagal",
-    "downloadGone": "Fail ini tiada lagi pada pelayan penyegerakan.",
+    "downloadGone": "Fail ini tiada lagi pada pelayan penyegerakan. Jika peranti lain masih mempunyainya, tambahkannya semula dari peranti itu.",
     "downloadMissing": "Fail ini belum ada pada pelayan penyegerakan. Buka semula esok untuk menyemak.",
     "downloadNeedsSync": "Penyegerakan tidak berjalan, jadi fail ini tidak dapat dimuat turun. Fail ini dimuat turun dengan sendirinya sebaik sahaja penyegerakan berjalan.",
     "downloadProgressFailed": "Gagal mengambil kemajuan muat turun",

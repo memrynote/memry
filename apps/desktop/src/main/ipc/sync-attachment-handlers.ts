@@ -55,6 +55,7 @@ import {
 import {
   claimRequestedDownload,
   clearAttachmentDownloadFailure,
+  holdsDownload,
   markDownloadFailed,
   markDownloadSucceeded,
   missingDownload,
@@ -732,6 +733,9 @@ export function registerAttachmentHandlers(): void {
     }
     void (async () => {
       const token = await getValidAccessToken()
+      // The sync runtime restarted during the wait, and whoever asks in the new
+      // one holds the download: asking too would count the server's 404 twice.
+      if (!holdsDownload(event.claim)) return
       if (!token) return releaseDownloadAttempt(event.claim)
       await materializeDownload(event, 'eager')
     })()
