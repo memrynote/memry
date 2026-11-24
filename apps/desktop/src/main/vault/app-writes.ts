@@ -30,7 +30,7 @@
 
 import { createHash } from 'crypto'
 import { createReadStream, statSync } from 'fs'
-import { foldNotePath } from '@memry/storage-data'
+import { foldNotePath } from '@memry/storage-data/note-metadata-repository'
 
 /** What a writer puts in a file: its text (UTF-8), its bytes, or their sha256 in hex. */
 export type AppBytes = string | Uint8Array | { sha256: string }
