@@ -14,9 +14,12 @@ use memry_core::domain::canvas::{self, NewCanvas};
 use memry_core::domain::canvas_folder;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::storage::Db;
 use memry_core::sync::outbox;
 use memry_desktop::account::AccountService;
-use memry_desktop::account::binding::{Applied, BindingChoice, BindingState};
+use memry_desktop::account::binding::{
+    Applied, BindingChoice, BindingMode, BindingState, StoredBinding, write_binding,
+};
 use memry_desktop::account::session_events::{self, AccountEvent};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::registry::config::AppConfig;
@@ -370,27 +373,7 @@ async fn a_merge_restamps_the_canvases_made_before_it_once_and_never_a_deleted_o
         })
         .unwrap();
     }
-    let stated = |item_type: &'static str, id: &'static str| {
-        db.read_blocking(move |conn| {
-            let payload: String = conn
-                .query_row(
-                    "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-                    [item_type, id],
-                    |row| row.get(0),
-                )
-                .unwrap();
-            let queued: i64 = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM outbox WHERE item_type = ?1 AND item_id = ?2",
-                    [item_type, id],
-                    |row| row.get(0),
-                )
-                .unwrap();
-            let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
-            Ok((payload["vaultId"].as_str().unwrap().to_owned(), queued))
-        })
-        .unwrap()
-    };
+    let stated = |item_type, id| stated(&db, item_type, id);
 
     let Applied::Held(state) = account
         .apply_open_vault_binding(&open, session.registry())
@@ -427,5 +410,108 @@ async fn a_merge_restamps_the_canvases_made_before_it_once_and_never_a_deleted_o
         stated("canvas_folder", "cvf_work"),
         (HOME.to_owned(), 0),
         "once"
+    );
+}
+
+/// The `vaultId` `(item_type, id)` states and how many outbox rows it has.
+fn stated(db: &Db, item_type: &'static str, id: &'static str) -> (String, i64) {
+    db.read_blocking(move |conn| {
+        let payload: String = conn
+            .query_row(
+                "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                [item_type, id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let queued: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_type = ?1 AND item_id = ?2",
+                [item_type, id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        Ok((payload["vaultId"].as_str().unwrap().to_owned(), queued))
+    })
+    .unwrap()
+}
+
+/// #5535 at a start (REVIEW-5581 low 2): a vault a build before the restamp bound for sync left
+/// bound with no restamp flag and a canvas stating the local id. The next start's
+/// `Decision::Start { bind: false }` restamps and queues it once, and the start after queues
+/// nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_start_restamps_a_vault_bound_before_the_restamp_once() {
+    const HOME: &str = "0b9e4c27-5f1a-4d83-a6e2-7c4d1f8b3a95";
+    let mut server = Server::start();
+    let store = device_key::with_device_key();
+    let (_dir, account, _) = new_account(&mut server, store.clone(), super::account::EMAIL).await;
+    let vault_dir = tempfile::tempdir().unwrap();
+    let session = open_session(&vault_dir);
+    let open = session.current().unwrap();
+    let local = open.vault.id();
+    let device = account.session().local_device_id().unwrap();
+    let db = open.vault.db_handle();
+    {
+        let local = local.clone();
+        let device = device.clone();
+        db.call_blocking(move |conn| {
+            let new = NewCanvas {
+                id: Some("drawn"),
+                title: Some("drawn"),
+                owner_note_id: None,
+                scene: None,
+                folder: None,
+                icon: None,
+            };
+            canvas::create(conn, &new, &local, &device, 1)?;
+            conn.execute("DELETE FROM outbox", []).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    }
+    let binding = StoredBinding {
+        user_id: account.session().account_user_id().unwrap(),
+        mode: BindingMode::Sync,
+    };
+    write_binding(&open, session.registry(), &binding, Some(HOME)).unwrap();
+    open.vault.bind_server_vault(HOME).unwrap();
+    assert_eq!(stated(&db, "canvas", "drawn"), (local, 0));
+
+    for (start, queued) in [("first start", 1), ("next start", 0)] {
+        let applied = account
+            .apply_open_vault_binding(&open, session.registry())
+            .await
+            .unwrap();
+        assert_eq!(applied, Applied::Start, "{start}");
+        assert_eq!(
+            stated(&db, "canvas", "drawn"),
+            (HOME.to_owned(), queued),
+            "{start}"
+        );
+        db.call_blocking(|conn| {
+            conn.execute("DELETE FROM outbox", []).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    }
+    // The start's restamp states its device and base, so a peer reads it as a restamp.
+    let marker = db
+        .read_blocking(|conn| {
+            let payload: String = conn
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = 'canvas' AND item_id = 'drawn'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let payload: serde_json::Value = serde_json::from_str(&payload).unwrap();
+            Ok(payload["vaultRestamp"].clone())
+        })
+        .unwrap();
+    let base = std::collections::BTreeMap::from([(device.clone(), 1)]);
+    assert_eq!(
+        marker,
+        serde_json::json!({ "device": device, "base": base })
     );
 }
