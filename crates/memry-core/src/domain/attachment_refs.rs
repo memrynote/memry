@@ -2,11 +2,14 @@
 //!
 //! `notes.attachment_references` is the owner, what each note's payload says
 //! (§14.7). A row's `note_refs` derives from those lists, and
-//! [`merge_note_references`] is its one writer: every projection of a `note`
-//! merges in the projecting transaction (#5675), and
-//! [`crate::sync::note_refs_heal`] adds the references of the notes a build
-//! before that applied. The re-drive (`attachments::missing_downloads`) walks
-//! these rows.
+//! [`merge_note_references`] is its one writer (#5675): a pulled page merges
+//! the notes it applied once, after its records ([`merge_page`]), a local
+//! write that changes a list or deletes a note merges in its own transaction,
+//! and [`crate::sync::note_refs_heal`] adds the references of the notes a
+//! build before that applied. The re-drive (`attachments::missing_downloads`)
+//! walks these rows.
+
+use std::collections::HashMap;
 
 use rusqlite::{Connection, OptionalExtension as _};
 
@@ -20,10 +23,9 @@ fn failed(error: rusqlite::Error) -> StorageError {
 
 /// Merges a note's `attachmentReferences` into the cache.
 ///
-/// The one writer of `note_refs`, which derives from the note's list. Every
-/// projection of a `note` calls it in the projecting transaction (#5675), so
-/// a peer's picture is a row the re-drive sees once its note lands. A deleted
-/// note passes `Some(&[])`: it wants none of its pictures.
+/// The one writer of `note_refs`, which derives from the note's list (#5675),
+/// so a peer's picture is a row the re-drive sees once its note lands. A
+/// deleted note passes `Some(&[])`: it wants none of its pictures.
 ///
 /// **Called before `notes.attachment_references` takes the new list.** Each
 /// merge leaves exactly its list naming the note, so the list still stored
@@ -46,12 +48,94 @@ pub fn merge_note_references(
         // forget what another sender told us.
         return Ok(());
     };
+    let stored = conn
+        .prepare_cached("SELECT attachment_references FROM notes WHERE id = ?1")
+        .and_then(|mut statement| statement.query_row([note_id], |row| row.get(0)).optional())
+        .map_err(failed)?;
+    let named = naming(conn, note_id, stored)?;
+    merge_named(conn, note_id, &named, references)
+}
 
+/// The stored lists of a page's notes, read before any record of the page
+/// applies. A note this device does not hold yet has no entry.
+pub(crate) struct StoredLists(HashMap<String, Option<String>>);
+
+/// Reads [`StoredLists`] for `note_ids` in one statement.
+pub(crate) fn stored_lists(
+    conn: &Connection,
+    note_ids: &[&str],
+) -> Result<StoredLists, StorageError> {
+    if note_ids.is_empty() {
+        return Ok(StoredLists(HashMap::new()));
+    }
+    let ids = serde_json::to_string(note_ids).unwrap_or_else(|_| "[]".to_owned());
+    conn.prepare_cached(
+        "SELECT id, attachment_references FROM notes
+         WHERE id IN (SELECT value FROM json_each(?1))",
+    )
+    .and_then(|mut statement| {
+        statement
+            .query_map([ids], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<Result<_, _>>()
+    })
+    .map(StoredLists)
+    .map_err(failed)
+}
+
+/// Merges the lists the page's applied notes now carry, after its last record.
+///
+/// Each record applies in its own savepoint, and two attachment pages written
+/// there spill the savepoint journal to a temp file for the rest of the page
+/// (#5675). Here the rows are written once per page, in the page's
+/// transaction. The lists are read as the page left them, so a record that was
+/// skipped or rolled back changes no row. `before` bounds the rows to drop
+/// each note from, as the stored list does in [`merge_note_references`].
+pub(crate) fn merge_page(
+    conn: &Connection,
+    before: &StoredLists,
+    applied: &[String],
+) -> Result<(), StorageError> {
+    if applied.is_empty() {
+        return Ok(());
+    }
+    let ids = serde_json::to_string(applied).unwrap_or_else(|_| "[]".to_owned());
+    let after: Vec<(String, Option<String>, Option<i64>)> = conn
+        .prepare_cached(
+            "SELECT id, attachment_references, deleted_at FROM notes
+             WHERE id IN (SELECT value FROM json_each(?1))",
+        )
+        .and_then(|mut statement| {
+            statement
+                .query_map([ids], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+                .collect::<Result<_, _>>()
+        })
+        .map_err(failed)?;
+    for (note_id, list, deleted_at) in after {
+        // The projector writes a list it read as a string array, and NULL for
+        // one the sender left out: "does not know" leaves the rows alone.
+        let references = match deleted_at {
+            Some(_) => Vec::new(),
+            None => match list.and_then(|json| serde_json::from_str(&json).ok()) {
+                Some(references) => references,
+                None => continue,
+            },
+        };
+        let named = naming(conn, &note_id, before.0.get(&note_id).cloned())?;
+        merge_named(conn, &note_id, &named, &references)?;
+    }
+    Ok(())
+}
+
+/// Drops `note_id` from the `named` rows `references` no longer lists, then
+/// adds it to each of `references`.
+fn merge_named(
+    conn: &Connection,
+    note_id: &str,
+    named: &[String],
+    references: &[String],
+) -> Result<(), StorageError> {
     // A reference the note no longer carries stops pointing at it.
-    for attachment_id in naming(conn, note_id)?
-        .iter()
-        .filter(|id| !references.contains(id))
-    {
+    for attachment_id in named.iter().filter(|id| !references.contains(id)) {
         let Some(mut refs) = stored_refs(conn, attachment_id)? else {
             continue;
         };
@@ -68,13 +152,13 @@ pub fn merge_note_references(
     Ok(())
 }
 
-/// The rows that may name `note_id`: its stored list, or a scan when the
-/// stored list is absent. A note not yet in `notes` is named by none.
-fn naming(conn: &Connection, note_id: &str) -> Result<Vec<String>, StorageError> {
-    let stored: Option<Option<String>> = conn
-        .prepare_cached("SELECT attachment_references FROM notes WHERE id = ?1")
-        .and_then(|mut statement| statement.query_row([note_id], |row| row.get(0)).optional())
-        .map_err(failed)?;
+/// The rows that may name `note_id`, from its `stored` list: that list, or a
+/// scan when it is absent. A note not yet in `notes` (`None`) is named by none.
+fn naming(
+    conn: &Connection,
+    note_id: &str,
+    stored: Option<Option<String>>,
+) -> Result<Vec<String>, StorageError> {
     match stored {
         None => Ok(Vec::new()),
         Some(list) => match list.and_then(|json| serde_json::from_str(&json).ok()) {

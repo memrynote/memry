@@ -384,7 +384,7 @@ for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:186`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:384`, called from
-`crates/memry-core/src/sync/apply.rs:283`).
+`crates/memry-core/src/sync/apply.rs:300`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,
@@ -468,7 +468,7 @@ pass settles them. The decision is a pure function of five facts
    snapshot (`:301`, called from `crates/memry-core/src/sync/outbox.rs:466`),
    and the clock check rules out a snapshot that an older build pushed past.
    A pulled tombstone reads the tags before it drops `F`'s queued upsert
-   (`crates/memry-core/src/sync/apply.rs:283`). A holder that `j<D>`
+   (`crates/memry-core/src/sync/apply.rs:300`). A holder that `j<D>`
    displaces after a tombstone is weighed against that tombstone again.
    Before any tombstone, every holder tag counts (`:327`). A later record replaces the
    record tags kept, for the same reason

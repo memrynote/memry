@@ -48,7 +48,8 @@ use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
-    attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects, settings, tasks,
+    attachment_refs, attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects,
+    settings, tasks,
 };
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
@@ -137,6 +138,9 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
 /// conflict copy is clocked under.
+///
+/// The attachment rows of the notes it applied are written once, after the
+/// last record and outside each record's savepoint (#5675).
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
@@ -144,6 +148,15 @@ pub(crate) fn apply_page(
     clock_device: Option<&str>,
 ) -> Result<ApplyTotals, StorageError> {
     let mut totals = ApplyTotals::default();
+    let note_ids: Vec<&str> = pending
+        .iter()
+        .filter(
+            |item| matches!(item, Pending::Record(record) if record.item_type == notes::ITEM_TYPE),
+        )
+        .map(Pending::item_id)
+        .collect();
+    let stored_lists = attachment_refs::stored_lists(conn, &note_ids)?;
+    let mut applied_notes = Vec::new();
     for item in pending {
         match item {
             Pending::Tombstone {
@@ -194,6 +207,9 @@ pub(crate) fn apply_page(
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
                             totals.applied_documents.push(record.item_id.clone());
                         }
+                        if record.item_type == notes::ITEM_TYPE {
+                            applied_notes.push(record.item_id.clone());
+                        }
                     }
                     ApplyOutcome::Skipped => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
@@ -202,6 +218,7 @@ pub(crate) fn apply_page(
             }
         }
     }
+    attachment_refs::merge_page(conn, &stored_lists, &applied_notes)?;
     Ok(totals)
 }
 

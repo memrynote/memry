@@ -2,7 +2,7 @@
 //!
 //! Before #5675 applying a note wrote `notes.attachment_references` and no
 //! cache row, so the re-drive never fetched a peer's picture and no block
-//! could bind it. A note applied since then gets its rows in the projecting
+//! could bind it. A note applied since then gets its rows in its page's
 //! transaction. This merges every live note's stored list once, under
 //! [`META_NOTE_REFS_HEAL`], so a device that applied its notes on an older
 //! build gets the rows it never wrote. Adding a reference a row already names

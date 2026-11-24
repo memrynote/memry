@@ -268,10 +268,14 @@ note no longer lists or a note that was deleted. The receiver downloads the
 wanted ones under its metered policy (§14.6). Desktop requests each reference
 as it applies the note
 (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:176`). The Rust
-core merges the list into its attachment cache in the projecting transaction
-(`crates/memry-core/src/storage/repositories/projectors/notes.rs:105`,
-`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
-`crates/memry-core/src/domain/attachment_refs.rs:39`), and its re-drive walks
+core merges the lists of a pulled page's notes into its attachment cache once,
+in the page's transaction after its last record
+(`crates/memry-core/src/sync/apply.rs:221`,
+`crates/memry-core/src/domain/attachment_refs.rs:93`). A pulled delete, a
+local delete and a local list edit merge in their own transaction
+(`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
+`crates/memry-core/src/domain/notes/mod.rs:193`,
+`crates/memry-core/src/domain/notes/attachments.rs:72`). The re-drive walks
 those rows (`crates/memry-core/src/domain/attachments.rs:475`). A body block
 names its file by the manifest's filename, and a recorded id has none until its
 manifest is read, so the block cannot bind before then
@@ -529,7 +533,7 @@ it.
 **Core: an owed upload outlives the purge.** In the core, a pulled delete that
 purges a note's body keeps the note's owed uploads, each with its row and its
 local bytes, and logs how many it kept
-(`crates/memry-core/src/sync/apply.rs:305-313`). A sync pass uploads nothing
+(`crates/memry-core/src/sync/apply.rs:322-330`). A sync pass uploads nothing
 for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
 Desktop's outbox does not wait for a revive: it skips a local-only note's rows
 and a stray's, never a deleted note's

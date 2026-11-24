@@ -10,6 +10,8 @@
 //! | the re-drive fetches a pulled note's picture           | desktop pull, rows on apply  |
 //! | opening the note names, binds and fetches it           | Download attachments = Never |
 //! | a pulled edit moves the reference                      | §14.7, one owner of note_refs   |
+//! | a stale pulled edit moves no reference                 | a skipped record writes no row |
+//! | a picture removed here is no longer wanted             | local list edits merge too   |
 //! | a deleted note wants none of its pictures              | rows follow the note         |
 //! | an upgraded device gets rows for notes it applied      | one-time backfill            |
 
@@ -375,6 +377,57 @@ async fn a_pulled_edit_moves_the_reference() {
         "the old picture is not this note's"
     );
     assert_eq!(row(&vault, SECOND).expect("a row").note_refs, [NOTE]);
+    assert_eq!(missing(&vault), [SECOND]);
+}
+
+#[tokio::test]
+async fn a_stale_pulled_edit_moves_no_reference() {
+    let (vault, _dir) = scratch_vault();
+    let mut script = first_sync_script(&[FIRST]);
+    script[4] = response(200, &json!({ "items": [note(&[FIRST], 2)] }).to_string());
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    // A peer's older copy, which names another picture: the page skips it.
+    transport.push(devices());
+    transport.push(changes(2, 11));
+    transport.push(response(
+        200,
+        &json!({ "items": [note(&[SECOND], 1)] }).to_string(),
+    ));
+    transport.push(response(200, &json!({"notes": {}}).to_string()));
+    transport.push(error_response(404, "NOT_FOUND", "no snapshot"));
+    sync.sync_now().await.expect("the pass");
+
+    assert_eq!(row(&vault, FIRST).expect("a row").note_refs, [NOTE]);
+    assert!(row(&vault, SECOND).is_none(), "the stale list wrote no row");
+    assert_eq!(missing(&vault), [FIRST]);
+}
+
+#[tokio::test]
+async fn a_picture_removed_here_is_no_longer_wanted() {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(&[FIRST, SECOND]));
+    let sync = vault.sync(session(transport));
+    sync.first_sync(None).await.expect("the first sync");
+    assert_eq!(missing(&vault).len(), 2);
+
+    // What removing the picture's block on this device writes.
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            memry_core::domain::notes::remove_attachment_reference(conn, NOTE, FIRST, DEVICE, 2)
+        })
+        .expect("the removal")
+        .expect("the list changed");
+
+    assert!(
+        row(&vault, FIRST)
+            .expect("the row stays")
+            .note_refs
+            .is_empty()
+    );
     assert_eq!(missing(&vault), [SECOND]);
 }
 

@@ -1064,7 +1064,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:301`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:318`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.
