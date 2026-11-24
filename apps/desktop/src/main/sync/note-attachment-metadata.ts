@@ -53,19 +53,29 @@ export async function recordUploadedFile(
  * one, and the bytes last landed or uploaded the same (#5617): a landing
  * records its bytes, which shows it where the identity cannot, as on a
  * filesystem with no inode numbers. A change made during the hash keeps this
- * upload off too, and its own upload records it.
+ * upload off too, and its own upload records it. A hash that found nothing
+ * proves nothing while the file is still there: it moved as the hash opened
+ * it, and is hashed again where the row names it now.
  */
 async function fileHoldsUpload(noteId: string, sha256: string): Promise<boolean> {
   const db = getDatabase()
+  // Read before the hash: a landing during it clears the mark, and one of the
+  // last synced bytes on a file whose identity cannot see it leaves no other trace.
   if (holdsCaseTwinForeignBytes(db, noteId)) return false
   const synced = readSyncedBinaryHash(db, noteId)
-  const before = await fileAtRowPath(db, noteId)
-  if (!before) return false
-  // Hashed off the main thread: a vault's first upload hashes every file (#5608).
-  const onDisk = await hashFileOffThread(before.filePath)
-  if (onDisk !== null && onDisk !== sha256) return false
-  const after = await fileAtRowPath(db, noteId)
-  return after?.identity === before.identity && readSyncedBinaryHash(db, noteId) === synced
+  let file = await fileAtRowPath(db, noteId)
+  while (file) {
+    // Hashed off the main thread: a vault's first upload hashes every file (#5608).
+    const onDisk = await hashFileOffThread(file.filePath)
+    if (onDisk !== null && onDisk !== sha256) return false
+    const after = await fileAtRowPath(db, noteId)
+    if (readSyncedBinaryHash(db, noteId) !== synced) return false
+    if (onDisk !== null) return after?.identity === file.identity
+    // Gone after the hash too: nothing there holds other bytes.
+    if (after?.identity === null) return true
+    file = after
+  }
+  return false
 }
 
 /** Note `noteId`'s file where its row names it. Undefined once the row is gone. */

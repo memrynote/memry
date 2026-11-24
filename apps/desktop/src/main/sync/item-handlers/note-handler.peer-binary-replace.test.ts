@@ -12,6 +12,7 @@ import { createHash } from 'crypto'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import type * as PromisesModule from 'fs/promises'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
@@ -27,22 +28,41 @@ import type { NoteSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
 const hashing = vi.hoisted(() => ({
+  /** Hashes that started. */
+  opens: 0,
+  /** Set: a hash opens its file only when this resolves. */
+  open: null as Promise<void> | null,
   /** Hashes that read their file. */
   reads: 0,
+  /** Set: runs once a hash read its file. */
+  onRead: null as (() => void) | null,
   /** Set: a hash, once it read the file, answers only when this resolves. */
-  answer: null as Promise<void> | null
+  answer: null as Promise<void> | null,
+  /** Set: runs as a stat of a file starts. */
+  onStat: null as ((filePath: string) => void) | null
 }))
 
 vi.mock('../../vault/file-hash-bridge', async () => {
   const { sha256OfFile } = await import('../../vault/file-sha256')
   return {
     hashFileOffThread: async (filePath: string) => {
+      hashing.opens++
+      await hashing.open
       const sha256 = await sha256OfFile(filePath)
       hashing.reads++
+      hashing.onRead?.()
       await hashing.answer
       return sha256
     }
   }
+})
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof PromisesModule>()
+  const stat = ((...args: Parameters<typeof actual.stat>) => {
+    hashing.onStat?.(String(args[0]))
+    return actual.stat(...args)
+  }) as typeof actual.stat
+  return { ...actual, stat }
 })
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
@@ -198,8 +218,12 @@ describe("a peer's replacement of a binary note's bytes", () => {
     // Drops the answers a test queued for reads that never came.
     readChecksum.mockReset()
     paceManifestRead.mockReset()
+    hashing.opens = 0
+    hashing.open = null
     hashing.reads = 0
+    hashing.onRead = null
     hashing.answer = null
+    hashing.onStat = null
     manifests.clear()
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
@@ -644,6 +668,15 @@ describe("a peer's replacement of a binary note's bytes", () => {
     return answer
   }
 
+  /** Holds every hash before it opens its file until the returned call. */
+  function holdOpens(): () => void {
+    let open = (): void => {}
+    hashing.open = new Promise<void>((release) => {
+      open = release
+    })
+    return open
+  }
+
   // The hash read the uploaded bytes before the landing renamed others over them (#5617).
   it.each(['b-bytes', 'old-bytes'])(
     "keeps an upload off the note when the peer's bytes (%s) land while its file hashes",
@@ -689,17 +722,21 @@ describe("a peer's replacement of a binary note's bytes", () => {
   })
 
   // Nothing retries an upload kept off its note: its edit would never sync (#5617).
-  describe('records an upload whose file moved while it hashed', () => {
+  describe.each([
+    ['while it hashed', holdHashes, () => hashing.reads],
+    // The hash opens nothing where the row named the file: no bytes read is no proof.
+    ['as its hash opened', holdOpens, () => hashing.opens]
+  ])('records an upload whose file moved %s', (_when, hold, held) => {
     async function uploadMovedMidHash(move: () => Promise<unknown>): Promise<boolean> {
       seed('img', 'Pictures/p.png', 'old-bytes')
       fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
       updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
-      const answer = holdHashes()
+      const release = hold()
 
       const recorded = recordUploadedFile('img', 'att-local', sha256('local-edit'))
-      await vi.waitFor(() => expect(hashing.reads).toBe(1))
+      await vi.waitFor(() => expect(held()).toBe(1))
       await move()
-      answer()
+      release()
       return recorded
     }
 
@@ -726,6 +763,94 @@ describe("a peer's replacement of a binary note's bytes", () => {
       expect(read('Pictures/renamed.png')).toBe('local-edit')
       expectRecorded()
     })
+  })
+
+  // renameNote renames the file before it updates the row (#5617).
+  it('records an upload whose row moved while the stat after its hash looked at the old path', async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+    const answer = holdHashes()
+
+    const recorded = recordUploadedFile('img', 'att-local', sha256('local-edit'))
+    await vi.waitFor(() => expect(hashing.reads).toBe(1))
+    fs.mkdirSync(abs('Moved'))
+    fs.renameSync(abs('Pictures/p.png'), abs('Moved/p.png'))
+    hashing.onStat = (filePath) => {
+      if (filePath !== abs('Pictures/p.png')) return
+      hashing.onStat = null
+      updateNoteMetadata(asClientDb(data.db), 'img', { path: 'Moved/p.png' })
+    }
+    answer()
+
+    expect(await recorded).toBe(true)
+    expect(attachmentOf('img')).toBe('att-local')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('local-edit'))
+  })
+
+  // The hash's bytes are a no-proof once the file moved: the row's file holds other bytes (#5617).
+  it("keeps a late upload off the note when the peer's landed bytes move as its hash opens", async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'local-edit')
+    updateNoteMetadata(asClientDb(data.db), 'img', { fileSize: 'local-edit'.length })
+    enqueueUpload(asClientDb(data.db), 'img', abs('Pictures/p.png'))
+    expect(pull('img', 'att-b')).toBe('applied')
+    land('img', 'att-b', abs('Pictures/p.png'), 'peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['local-edit'])
+    const open = holdOpens()
+
+    const recorded = recordUploadedFile('img', 'att-local', sha256('local-edit'))
+    await vi.waitFor(() => expect(hashing.opens).toBe(1))
+    expect(pull('img', 'att-b', { dev1: 1, peer: 2 }, 'Moved')).toBe('applied')
+    open()
+
+    expect(await recorded).toBe(false)
+    expect(attachmentOf('img')).toBe('att-b')
+    expect(enqueueLocalSyncUpdate).not.toHaveBeenCalledWith('note', 'img')
+    expect(read('Moved/p.png')).toBe('peer-bytes')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('peer-bytes'))
+  })
+
+  it('keeps a late upload off the note when a newer recorded edit is renamed as its hash opens', async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'edit-one')
+    fs.writeFileSync(abs('Pictures/p.png'), 'edit-two!')
+    expect(await recordUploadedFile('img', 'att-two', sha256('edit-two!'))).toBe(true)
+    const open = holdOpens()
+
+    const recorded = recordUploadedFile('img', 'att-one', sha256('edit-one'))
+    await vi.waitFor(() => expect(hashing.opens).toBe(2))
+    await renameNote('img', 'renamed')
+    open()
+
+    expect(await recorded).toBe(false)
+    expect(attachmentOf('img')).toBe('att-two')
+    expect(read('Pictures/renamed.png')).toBe('edit-two!')
+    expect(readSyncedBinaryHash(asClientDb(data.db), 'img')).toBe(sha256('edit-two!'))
+  })
+
+  // Pulled before the hash, landed while it hashes, the peer's bytes those last synced, on a
+  // file whose identity cannot see the landing: only the mark the pull set shows it (#5617).
+  it('keeps an upload off the note when its file was held as the upload finished', async () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), 'new-bytes')
+    const mtime = 1_700_000_000
+    fs.utimesSync(abs('Pictures/p.png'), mtime, mtime)
+    expect(pull('img', 'att-b')).toBe('applied')
+    const answer = holdHashes()
+    const hashed = new Promise<void>((resolve) => {
+      hashing.onRead = resolve
+    })
+
+    const recorded = recordUploadedFile('img', 'att-local', sha256('new-bytes'))
+    await Promise.race([hashed, recorded])
+    land('img', 'att-b', abs('Pictures/p.png'), 'old-bytes')
+    fs.utimesSync(abs('Pictures/p.png'), mtime, mtime)
+    answer()
+
+    expect(await recorded).toBe(false)
+    expect(attachmentOf('img')).toBe('att-b')
+    expect(read('Pictures/p.png')).toBe('old-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['new-bytes'])
   })
 
   // A file whose identity is its path, size and whole-second mtime: an inode-0 filesystem.
