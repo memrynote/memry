@@ -200,11 +200,12 @@ sending** (`crates/memry-core/src/sync/outbox.rs:426-458`, rationale at `:295-29
 
 Rejection reasons a client MUST handle:
 
-| Reason                 | Meaning                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `SYNC_REPLAY_DETECTED` | §5.7; drop the queued row, the server is ahead                   |
-| `SYNC_DELETE_WINS`     | §5.8; the id is tombstoned and this write did not see the delete |
-| `SYNC_INVALID_ITEM`    | §5.4; the item cannot satisfy the schema — permanent, retire it  |
+| Reason                            | Meaning                                                                                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SYNC_REPLAY_DETECTED`            | §5.7; drop the queued row, the server is ahead                                                                                                        |
+| `SYNC_DELETE_WINS`                | §5.8; the id is tombstoned and this write did not see the delete                                                                                      |
+| `SYNC_INVALID_ITEM`               | §5.4; the item cannot satisfy the schema — permanent, retire it                                                                                       |
+| `SYNC_INVALID_DELETE_ATTESTATION` | chapter 04 §4.8.4; this delete's attestation did not verify. Refuses this item only: the item signature verified, so it is never a device-key failure |
 
 `SYNC_INVALID_ITEM` carries the failing issue after the code, so a client MAY
 log the reason verbatim. The verdict is permanent — resending the same bytes

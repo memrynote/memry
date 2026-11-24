@@ -296,7 +296,7 @@ and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`
 ciphertext. The entry carries no record signature, since the shed deleted the payload it covered.
 Instead, a delete pushed by a current client carries a delete attestation: an Ed25519 signature by
 the deleting device over `{purpose, id, type, deletedAt, clock}` (protocol 04 §4.8.4). The server
-verifies it on push, rejecting a bad one per item as `SYNC_INVALID_SIGNATURE`, and keeps it through
+verifies it on push, rejecting a bad one per item as `SYNC_INVALID_DELETE_ATTESTATION`, and keeps it through
 the shed. It serves the attestation with the entry as `signerDeviceId` and `deleteAttestation`.
 The desktop applies an entry only if the request asked for that id, the type carries a required
 clock, the entry has one, and the attestation verifies under the signer's key over the entry's own
