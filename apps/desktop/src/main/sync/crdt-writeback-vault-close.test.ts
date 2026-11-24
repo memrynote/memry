@@ -31,6 +31,8 @@ import { resolveJournalEntryId } from '../journal/create-entry'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { flushPendingWritebacks, hasArmedWritebacks, resetWritebackState } from './crdt-writeback'
 import { markdownToYFragment } from './blocknote-converter'
+import { insertNoteCache } from '../database/queries/notes'
+import { generateContentHash } from '../vault/frontmatter'
 import type * as PersistenceModule from './crdt-persistence'
 import type * as LoggerModule from '../lib/logger'
 
@@ -72,6 +74,8 @@ const store = vi.hoisted(() => ({
   updates: new Map<string, Uint8Array[]>(),
   /** Runs inside the next doc flush. */
   nextFlush: null as null | (() => Promise<void>),
+  /** Runs inside the next stored update. */
+  nextUpdate: null as null | (() => Promise<void>),
   /** The tail of each opened store's call queue. */
   queues: [] as Promise<unknown>[]
 }))
@@ -97,6 +101,9 @@ vi.mock('./crdt-persistence', async (importOriginal) => {
           }),
         storeUpdate: (noteId: string, update: Uint8Array) =>
           transact(async () => {
+            const stored = store.nextUpdate
+            store.nextUpdate = null
+            await stored?.()
             store.updates.set(noteId, [...(store.updates.get(noteId) ?? []), update])
           }),
         flushDocument: () =>
@@ -263,6 +270,13 @@ function holdNextStoreFlush(): Hold {
   return flush
 }
 
+/** Holds the next stored update of a doc. */
+function holdNextStoreUpdate(): Hold {
+  const update = hold()
+  store.nextUpdate = update.wait
+  return update
+}
+
 /** Advances the fake clock one step, then lets the real I/O between its timers run. */
 async function tick(): Promise<void> {
   await vi.advanceTimersByTimeAsync(250)
@@ -288,6 +302,23 @@ function stalledStoreLogs(): unknown[] {
     .map(({ context }) => context)
 }
 
+/**
+ * Indexes the day as the vault's indexer does, its file the baseline, so the
+ * write-back's outside-edit check runs. Resolves the file.
+ */
+function indexDay(open: OpenVault, id: string, date = DATE): string {
+  const raw = fs.readFileSync(dayFile(open, date), 'utf8')
+  insertNoteCache(open.indexDb.db, {
+    id,
+    path: `journal/${date}.md`,
+    title: date,
+    createdAt: '2026-05-10T00:00:00.000Z',
+    modifiedAt: '2026-05-10T00:00:00.000Z',
+    contentHash: generateContentHash(raw)
+  })
+  return raw
+}
+
 /** Creates the day in vault A, its doc open as the editor seeded it. */
 async function openDay(date = DATE): Promise<string> {
   await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, { date, content: 'From A.' })
@@ -311,6 +342,7 @@ describe('a keystroke while the vault closes', () => {
   beforeEach(() => {
     store.updates.clear()
     store.nextFlush = null
+    store.nextUpdate = null
     store.queues = []
     errors.length = 0
     vaultA = makeVault('writeback-vault-close-a')
@@ -435,6 +467,7 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
   beforeEach(async () => {
     store.updates.clear()
     store.nextFlush = null
+    store.nextUpdate = null
     store.queues = []
     errors.length = 0
     vaultA = makeVault('writeback-store-stall-a')
@@ -522,5 +555,52 @@ describe('a CRDT store that stalls while the vault closes (#5698)', () => {
     await flushPendingWritebacks()
 
     expect(dayBody(vaultA)).toContain('From A. Typed. More. Again.')
+  })
+
+  it('reopens a store that never recovered with the keystroke the close wrote to the file', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    indexDay(vaultA, id)
+
+    const storing = holdNextStoreFlush()
+    const closing = closeVault()
+    await storing.reached
+    type(id, ' More.')
+    await settle(closing)
+
+    // The store never answers again. The next session opens it afresh, with
+    // the doc it holds from before the keystroke.
+    store.queues = []
+    await getCrdtProvider().initPersistence()
+    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+
+    // Its first open takes the file in, so no pass writes the older doc over it.
+    expect.soft(bodyText(doc)).toBe('From A. Typed. More.')
+    expect(dayBody(vaultA)).toContain('From A. Typed. More.')
+  })
+
+  it('closes when a pass takes in an outside edit behind the stalled store', async () => {
+    const id = await openTypedDay()
+    await flushPendingWritebacks()
+    const written = indexDay(vaultA, id)
+
+    // The store stalls on a keystroke; the file changes outside the app, and
+    // the keystroke's pass takes that edit in, which waits on the store.
+    const storing = holdNextStoreUpdate()
+    type(id, ' More.')
+    await storing.reached
+    fs.writeFileSync(dayFile(vaultA), written.replace('From A. Typed.', 'From A. Typed. Outside.'))
+    const close = { done: false }
+    void closeVault().then(() => (close.done = true))
+    for (let step = 0; step < 200 && !close.done; step++) await tick()
+
+    expect(close.done).toBe(true)
+    expect.soft(dayBody(vaultA)).toContain('From A. Typed. Outside.')
+
+    store.queues = []
+    await getCrdtProvider().initPersistence()
+    const doc = await getCrdtProvider().open(id, EDITOR_WINDOW)
+
+    expect(bodyText(doc)).toContain('From A. Typed. Outside.')
   })
 })

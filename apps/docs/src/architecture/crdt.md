@@ -160,7 +160,9 @@ is deliberate: at that point the previous provider has always been destroyed
 `resetCrdtProvider()`), so the directory is never moved out from under an open
 LevelDB lock. The exception is a store that stalled during the close:
 `destroy()` stops waiting for it (see [Markdown Write-Back](#markdown-write-back)),
-and its lock stays held until the stalled call returns.
+and its lock stays held until the stalled call returns. Reopening the same vault
+meanwhile cannot open the store, so that session runs in memory, and logs the note
+the close stalled on (`stalledFlushNoteId`).
 
 The record is written **before** the uuid it describes, for the same reason the
 legacy claim is written before its move:
@@ -911,10 +913,18 @@ document to its vault `.md` file and re-indexes it for search.
   (#5698). `destroy()` waits at most `SHUTDOWN_CLOSE_VAULT_RESERVE_MS` (2 s) for each
   store call. After a stall it stops asking the store, because y-leveldb queues every
   later call behind the stalled one, and flushes the write-backs once more, so a pass
-  whose debounce fired during the wait finishes before the close. It then logs `CRDT
-  store stalled` with the notes whose writes the store has not confirmed. The store's
-  close is queued behind those writes, so they land if the store recovers, and the
-  closing vault's files hold every edit the write-back wrote.
+  whose debounce fired during the wait finishes before the close. A pass that takes in
+  an outside edit waits for the store to hold it (`whenPersisted`); once the close has
+  started, that wait also gives up after 2 s and the pass fails, its file left as the
+  outside edit made it. The close then logs `CRDT store stalled` with the notes whose
+  writes the store has not confirmed, before it asks the store to close, which is
+  queued behind those writes, so they land if the store recovers. The closing vault's
+  files hold every edit the write-back wrote, but the store may never hold them, and
+  a file whose hash is the baseline is never taken in: the next session's first pass
+  would write the older stored doc over it. So the close marks each unstored note's
+  baseline stale, and the doc's first open takes the file in as an edit made while
+  the app was closed (`ingestOfflineEdit`). A note whose last pass failed keeps its
+  baseline: its file lacks the doc's edits, which only the store can still hold.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the

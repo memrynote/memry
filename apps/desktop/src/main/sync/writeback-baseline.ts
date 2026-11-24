@@ -78,6 +78,17 @@ export function recordBaseline(indexDb: IndexDb, noteId: string, raw: string): v
 }
 
 /**
+ * Never a content hash, so the note's file reads as an outside edit (#5698).
+ * For a doc the store may not hold: the next open takes the file in.
+ */
+const STALE_BASELINE = 'stale-baseline'
+
+/** Marks the note's baseline as bytes its stored doc may lack. */
+export function markBaselineStale(indexDb: IndexDb, noteId: string): void {
+  updateNoteCache(indexDb, noteId, { contentHash: STALE_BASELINE, pendingWriteHash: null })
+}
+
+/**
  * Writes `fileContent` with `write`, recording it as the baseline on both
  * sides of the write. A note the index does not hold yet records nothing: its
  * projection is late, and the write-back's own sync to the cache fills it in.

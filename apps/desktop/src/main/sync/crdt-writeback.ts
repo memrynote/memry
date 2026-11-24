@@ -538,6 +538,7 @@ async function flushAll(): Promise<void> {
       ...running,
       ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
         runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
+          failingWritebacks.add(noteId)
           log.error('Write-back failed during shutdown flush', { noteId, error: err })
         })
       ),
@@ -1201,6 +1202,7 @@ async function materializeRetry(noteId: string): Promise<void> {
 
 registerCrdtWritebackPort({
   ingestOfflineEdit,
+  lastPassFailed: (noteId) => failingWritebacks.has(noteId),
   retryWriteback,
   scheduleWriteback,
   cancelWriteback,
