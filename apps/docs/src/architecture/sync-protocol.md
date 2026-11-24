@@ -1221,6 +1221,14 @@ across devices:
   successes) is still in memory and still cleared on runtime teardown, because
   the file is on disk and a re-request is cheap; the verdicts deliberately are
   not, since surviving a sync stop/start is the whole point.
+- **Journal-day pictures** — a journal payload has no `attachmentReferences`.
+  The day's pictures ride a `note` record under the day's id, which the note
+  handler otherwise skips because the row is the journal's
+  (`belongsToOtherType`). On that skip it still merges the record's
+  references into the day's row and asks for the files as for a note, and
+  leaves the journal's path, title and clock alone (#5731). The journal page
+  does not call `sync:download-note-files`, so with auto-download off a
+  peer's journal pictures stay on the server until the setting is on.
 - **Downloads on open** — with attachment auto-download off
   (`sync.attachmentAutoDownload === false`), the pull and the re-drive ask for
   no file, so opening a note or a file asks instead: the note page and the file
