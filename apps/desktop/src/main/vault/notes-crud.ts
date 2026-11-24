@@ -24,6 +24,7 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
   assertFolderRenameKeepsCaseTwins,
+  moveFolderHoldingCaseTwins,
   planCaseTwinLeave,
   prepareCaseTwinLeave,
   sharesCaseTwinFile
@@ -990,7 +991,12 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
+/** A case twin's write-back never runs beside the move (#5643). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  return moveFolderHoldingCaseTwins(oldPath, () => moveFolder(oldPath, newPath))
+}
+
+async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
   assertFolderRenameKeepsCaseTwins(oldPath)
