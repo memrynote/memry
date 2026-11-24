@@ -1165,9 +1165,10 @@ across devices:
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
   a warning logs the count and sends it to telemetry, and the restore never
-  requests that attachment again. A corrupt list is logged and read as empty.
-  In on-demand download mode, or with no access token, the request is released
-  with no failure row and the next runtime start asks again.
+  requests that attachment again. A corrupt list is read as empty, logged,
+  sent to telemetry, and removed, so the next runtime start does not report
+  it again. In on-demand download mode, or with no access token, the request
+  is released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a
@@ -1442,7 +1443,7 @@ fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/b
 URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
 uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
 call, and a caller whose chunk is already in flight waits for that call. A chunk a `200` answer
-leaves out (the vault holds no such chunk) downloads through the proxy, which answers its 404, and
+leaves out (the vault holds no such chunk) is fetched through the proxy, which answers its 404, and
 later calls stop presigning it for other downloads. The batch route charges `blob_download` one
 token per distinct id, so the limit still bounds R2 reads. The bytes still download eagerly, so an
 attachment opens offline after bootstrap as before. A server without the batch route answers 404,

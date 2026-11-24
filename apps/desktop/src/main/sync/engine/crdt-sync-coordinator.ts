@@ -59,6 +59,12 @@ const CRDT_BATCH_MAX_NOTES = 100
  */
 const COLD_PROBE_MIN_NOTES = 20
 
+/**
+ * Owes in a row from which `owesPrunedWalk` logs at info: packaged builds drop
+ * debug lines, and this log is the only sign of a note a peer keeps snapshotting.
+ */
+const PRUNED_WALK_OWES_LOGGED_AT_INFO = 3
+
 /** The server snapshot a walk started from, `null` for none. */
 type WalkBaseline = { revision: string | null; sequenceNum: number } | null
 
@@ -404,7 +410,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * never settled or seeded. A server before #2299 sends no meta, so nothing
    * is owed. A baseline GET without a revision (a server before #2187) is
    * compared by sequence only. Such an owe counts no failure, so a repeat is
-   * logged: it is the only sign of a note a peer keeps snapshotting.
+   * logged, at info from `PRUNED_WALK_OWES_LOGGED_AT_INFO` in a row.
    */
   private owesPrunedWalk(
     noteId: string,
@@ -421,7 +427,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
     const inARow = this.owePrunedWalk(noteId)
     if (inARow > 1) {
-      log.debug('CRDT walk owed again: a newer server snapshot replaced its baseline', {
+      const level = inARow >= PRUNED_WALK_OWES_LOGGED_AT_INFO ? 'info' : 'debug'
+      log[level]('CRDT walk owed again: a newer server snapshot replaced its baseline', {
         noteId,
         owedWalksInARow: inARow,
         baselineSequence: baseline?.sequenceNum ?? null,

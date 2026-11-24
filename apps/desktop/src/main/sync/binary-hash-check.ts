@@ -20,7 +20,7 @@ import { markHeldFileOnServer } from '../vault/case-twin-bytes'
 import { hashFileOffThread } from '../vault/file-hash-bridge'
 import { toAbsolutePath } from '../vault/notes-io'
 import type { DownloadNetOptions } from './attachments'
-import { recordSyncedBinaryHash } from './binary-synced-hash'
+import { recordLandedBinaryHash } from './binary-synced-hash'
 
 const log = createLogger('BinaryHashCheck')
 
@@ -102,7 +102,7 @@ async function compare(
   // A rename since the replace moved the file away from the bytes compared.
   const note = getNoteMetadataById(db, noteId)
   if (!note || toAbsolutePath(note.path) !== filePath) return
-  if (markHeldFileOnServer(db, noteId, onServer)) recordSyncedBinaryHash(db, noteId, onServer)
+  if (markHeldFileOnServer(db, noteId, onServer)) recordLandedBinaryHash(db, noteId, onServer)
 }
 
 /** The time since the replace that counts against its check's deadline. */

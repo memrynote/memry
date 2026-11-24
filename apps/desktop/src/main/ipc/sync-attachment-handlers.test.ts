@@ -151,7 +151,7 @@ vi.mock('../sync/crdt-writeback', () => ({}))
 // tests that exercise the on-demand-only mode.
 const autoDownloadSettings = vi.hoisted(() => ({ enabled: true }))
 vi.mock('../sync/attachment-download-settings', () => ({
-  isAttachmentAutoDownloadEnabled: vi.fn(() => autoDownloadSettings.enabled)
+  downloadsInBackground: vi.fn(() => autoDownloadSettings.enabled)
 }))
 
 const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
