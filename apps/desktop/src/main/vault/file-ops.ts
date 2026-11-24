@@ -6,7 +6,7 @@
  */
 
 import { writeFile, readFile, rename, unlink, mkdir, stat, readdir } from 'fs/promises'
-import { existsSync } from 'fs'
+import { existsSync, lstatSync } from 'fs'
 import { randomBytes } from 'crypto'
 import path from 'path'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -567,11 +567,26 @@ export async function generateUniquePath(basePath: string): Promise<string> {
   return newPath
 }
 
+/**
+ * Whether anything is at `p`. A dangling symlink is: `existsSync` follows it
+ * and reads the path as free, and a copy or write there then fails or lands
+ * at the link's target (VERIFY-5602R3).
+ */
+function isPathOccupied(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch (error) {
+    if (isNodeError(error) && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) return false
+    throw error
+  }
+}
+
 export function generateUniquePathSync(
   basePath: string,
   isPathTaken?: (p: string) => boolean
 ): string {
-  const taken = (p: string) => existsSync(p) || (isPathTaken?.(p) ?? false)
+  const taken = (p: string) => isPathOccupied(p) || (isPathTaken?.(p) ?? false)
   if (!taken(basePath)) return basePath
 
   const dir = path.dirname(basePath)

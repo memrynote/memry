@@ -100,7 +100,8 @@ vi.mock('./sync/crdt-provider', () => ({
     updateMeta: mocks.updateMeta,
     setNoteLocalOnly: vi.fn(),
     purge: mocks.purge,
-    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue()
+    withDocLoaded: async (_id: string, enqueue: () => void) => enqueue(),
+    getStateVector: () => null
   })
 }))
 
@@ -108,7 +109,8 @@ vi.mock('./sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
   enqueueLocalSyncDelete: mocks.enqueueLocalSyncDelete,
-  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems
+  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems,
+  sendPendingContentDelete: vi.fn()
 }))
 
 vi.mock('./projections', () => ({
@@ -341,8 +343,14 @@ describe('main zero-covered runtime surfaces', () => {
   it('records attachment metadata and delegates saved-filter store calls', async () => {
     const attachmentMetadata = await import('./sync/note-attachment-metadata')
     const store = await import('./settings/saved-filters-store')
+    const storage = await import('@memry/storage-data')
 
     attachmentMetadata.recordUploadedAttachment('note-1', 'att-1')
+    // A download records nothing for a note whose row is gone.
+    vi.mocked(storage.getNoteMetadataById).mockReturnValueOnce({
+      id: 'note-1',
+      attachmentId: 'att-1'
+    } as never)
     attachmentMetadata.recordDownloadedFileSize('note-1', 'att-1', 42, 'sha-1')
 
     expect(mocks.updateNoteCache).toHaveBeenCalledWith(mocks.indexDb, 'note-1', {

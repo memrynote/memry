@@ -450,6 +450,8 @@ fn apply_document(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let kept = crate::domain::note_file::keep_own_file(conn, record)?;
+    let record = kept.as_ref().unwrap_or(record);
     match task_merge::document_gate(conn, record)? {
         Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
         Gate::Skip => Ok(Inbound::Skipped),

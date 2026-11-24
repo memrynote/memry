@@ -805,6 +805,70 @@ describe('AttachmentSyncService', () => {
       expect((await fsp.readdir(tmpDir)).filter((name) => name.includes('.mrypart'))).toEqual([])
     })
 
+    // A download a runtime restart dropped is owed, and the re-driver asks for
+    // it even when the new runtime already landed it (VERIFY-5683).
+    describe('a binary note whose file is already on disk', () => {
+      const chunkCalls = (mockFetch: ReturnType<typeof vi.fn>): unknown[] =>
+        mockFetch.mock.calls.filter(([url]) => String(url).includes('/attachments/chunks/'))
+
+      async function fileHolding(bytes: Buffer): Promise<string> {
+        const filePath = path.join(tmpDir, 'files', 'report.pdf')
+        const fsp = await import('node:fs/promises')
+        await fsp.mkdir(path.dirname(filePath), { recursive: true })
+        await fsp.writeFile(filePath, bytes)
+        return filePath
+      }
+
+      it("asks for no chunk and leaves the file alone when it holds the manifest's bytes", async () => {
+        const { deps, mockFetch, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const fsp = await import('node:fs/promises')
+        const before = await fsp.stat(asked)
+        const beforeFileLands = vi.fn(async (filePath: string) => filePath)
+        const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+        const result = await service.downloadAttachment('att-dir', asked, {
+          fileOwnerId: 'note-3'
+        })
+
+        expect(result.filePath).toBe(asked)
+        expect(chunkCalls(mockFetch)).toEqual([])
+        expect((await fsp.stat(asked)).ino).toBe(before.ino)
+        // The landing's checks still run: a superseded download is still dropped.
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+        const sha256 = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
+        expect(beforeFileLands).toHaveBeenCalledWith(asked, 'att-dir', sha256, 'note-3')
+      })
+
+      it('downloads over a file of the same size that holds other bytes', async () => {
+        const { deps, mockFetch, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(Buffer.alloc(plaintext.length, 'X'))
+        const service = new AttachmentSyncService(deps)
+
+        await service.downloadAttachment('att-dir', asked, { fileOwnerId: 'note-3' })
+
+        expect(chunkCalls(mockFetch)).toHaveLength(1)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(asked)).equals(plaintext)).toBe(true)
+      })
+
+      it('downloads to where the landing moves it, whatever the asked file holds', async () => {
+        const { deps, plaintext } = buildDownloadFixture('report.pdf')
+        const asked = await fileHolding(plaintext)
+        const landAt = path.join(tmpDir, 'Report.pdf')
+        const beforeFileLands = vi.fn(async () => landAt)
+        const service = new AttachmentSyncService({ ...deps, beforeFileLands })
+
+        const result = await service.downloadAttachment('att-dir', asked, {
+          fileOwnerId: 'note-3'
+        })
+
+        expect(result.filePath).toBe(landAt)
+        const fsp = await import('node:fs/promises')
+        expect((await fsp.readFile(landAt)).equals(plaintext)).toBe(true)
+      })
+    })
+
     it('reports progress to the per-call callback instead of the shared slot', async () => {
       // #given a transfer that passes its own callback while the shared slot is set
       const { deps } = buildDownloadFixture('per-call.pdf')

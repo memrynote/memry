@@ -123,6 +123,9 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
         try await reader?.attachments(id: await dayId(id)) ?? []
     }
 
+    /// A day carries no file fields (§13.7.2), so it always has a body.
+    func file(id: String) async throws -> NoteFile? { nil }
+
     func linkedTasks(noteId: String) async throws -> [LinkedTask] {
         try await reader?.linkedTasks(noteId: await dayId(noteId)) ?? []
     }

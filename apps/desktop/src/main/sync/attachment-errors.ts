@@ -34,8 +34,9 @@ export class TextInMediaFileError extends UnsendableAttachmentError {
 
 /**
  * A downloaded attachment that is no longer its note's own: a newer record
- * named another attachment while it downloaded (#5580). Landing it would put
- * older bytes on the file the row names newer ones for, so it is dropped.
+ * named another attachment while it downloaded (#5580), or the note's row is
+ * gone (REVIEW-5662). Landing it would put older bytes on the file the row
+ * names newer ones for, or bring a deleted note's file back, so it is dropped.
  */
 export class SupersededDownloadError extends Error {
   constructor(noteId: string, attachmentId: string) {
