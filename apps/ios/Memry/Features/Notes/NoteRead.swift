@@ -92,8 +92,7 @@ final class NoteReadViewModel {
     /// download so a picture becomes visible **without the note being
     /// recreated**, which is what FR-045 asks for in as many words.
     private(set) var attachments: [String: BlockAttachment] = [:]
-    /// Each on-open download that is running or failed, by attachment id
-    /// (#5644). Written only by `fetchWaitingAttachments`.
+    /// On-open downloads running or failed, by id; `fetchWaitingAttachments` writes it (#5644).
     var attachmentFetches: [String: AttachmentFetchState] = [:]
     /// The note's tags and typed properties, or `nil` while they are unread.
     ///
