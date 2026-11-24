@@ -99,9 +99,11 @@ final class NoteReadViewModel {
     private var comments: [ReviewComment] = []
     /// The review marks as this note shows them, each `visibleText` resolved
     /// against its text (`ReviewMarkStyle.resolved`): what the Review list
-    /// lists and the body draws.
+    /// lists and the body draws. A note with no marks reads no text, so a
+    /// view showing them does not redraw on every body change.
     var shownComments: [ReviewComment] {
-        ReviewMarkStyle.resolved(comments, in: exportText)
+        guard !comments.isEmpty else { return [] }
+        return ReviewMarkStyle.resolved(comments, in: exportText)
     }
     /// Each task block's task, by task id, for the row desktop draws.
     private(set) var taskCards: [String: TaskCard] = [:]
