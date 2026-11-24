@@ -1258,7 +1258,15 @@ across devices:
   for the same file is the only one, and a 404 counts once. It records the
   download as owed instead (`markDownloadOwed`), so the re-driver asks for it
   when nothing else does. A failure row the new runtime already wrote keeps its
-  window. Opening a binary note
+  window. A pull's request that is queued or mid-transfer when the runtime
+  restarts settles as `DownloadQueueClearedError` and is owed the same way:
+  the new runtime's pull starts from its cursor, and with auto-download on an
+  open asks for nothing, so without the row the file would land only when its
+  note is pulled again (#5697). The re-driver asks once per owed file. When
+  the file is already there, an embed is found through its attachment record
+  with no request, and a binary note's file that has the manifest's size and
+  sha256 costs one manifest read: no chunk is fetched and nothing is written
+  over it. Opening a binary note
   whose file has not downloaded keeps its row: `getFileById` drops a row with a
   missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a
