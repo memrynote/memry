@@ -152,8 +152,10 @@ vi.mock('../sync/attachment-download-settings', () => ({
 
 const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 vi.mock('../vault/case-twin-file', () => ({
-  landCaseTwinDownload: vi.fn((filePath: string) => filePath),
   releaseAbandonedCaseTwinBytes: vi.fn()
+}))
+vi.mock('../vault/case-twin-landing', () => ({
+  landCaseTwinDownload: vi.fn((filePath: string) => filePath)
 }))
 vi.mock('../vault/attachment-rename', () => ({
   applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
@@ -253,7 +255,8 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { appWriteCheck, resetAppWrites } from '../vault/app-writes'
-import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { releaseAbandonedCaseTwinBytes } from '../vault/case-twin-file'
+import { landCaseTwinDownload } from '../vault/case-twin-landing'
 import {
   clearAttachmentDownloadFailure,
   markDownloadRequested,
