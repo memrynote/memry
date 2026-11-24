@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   PACK_FOOTER_SIZE,
@@ -11,6 +11,7 @@ import {
 } from '@memry/contracts/pack-format'
 
 import {
+  MAX_OPEN_PACK_FILES,
   openPack,
   openPackFile,
   type PackByteSource,
@@ -219,7 +220,7 @@ describe('openPackFile', () => {
   // A fresh device can hold hundreds of packs at once; one fd each ran into
   // macOS's 256-fd soft limit and dropped every pack past it to the routes.
   it.skipIf(process.platform === 'win32')(
-    '#given many opened packs #then no file descriptor stays open between reads',
+    '#given more opened packs than the fd budget #then at most the budget stays open',
     async () => {
       const pack = buildTestPack([
         { id: 'note-a', bytes: bodyOf('a', 1000), meta: { sequenceNum: 2, revision: 'r' } }
@@ -227,19 +228,162 @@ describe('openPackFile', () => {
       const openFds = async (): Promise<number> => (await fs.readdir('/dev/fd')).length
       const before = await openFds()
       const handles: PackFileHandle[] = []
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < MAX_OPEN_PACK_FILES + 4; i++) {
         const file = path.join(dir, `p${i}.pack`)
         await fs.writeFile(file, pack.bytes)
         handles.push(await openPackFile(file))
       }
-      expect(await openFds()).toBe(before)
+      expect(await openFds()).toBeLessThanOrEqual(before + MAX_OPEN_PACK_FILES)
       for (const handle of handles) {
         expect(await handle.readEntry(handle.entries[0])).toEqual(bodyOf('a', 1000))
       }
-      expect(await openFds()).toBe(before)
+      expect(await openFds()).toBeLessThanOrEqual(before + MAX_OPEN_PACK_FILES)
       for (const handle of handles) await handle.close()
+      expect(await openFds()).toBe(before)
     }
   )
+
+  // An open, stat and close per document read was the pack phase's own cost.
+  it('opens the file once for the verify and every entry read', async () => {
+    const pack = buildTestPack(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: `note-${i}`,
+        bytes: bodyOf(String(i), 300),
+        meta: { sequenceNum: i + 1, revision: 'r' }
+      }))
+    )
+    const file = path.join(dir, 'five.pack')
+    await fs.writeFile(file, pack.bytes)
+    const opens = vi.spyOn(fs, 'open')
+
+    try {
+      const handle = await openPackFile(file)
+      for (const [i, entry] of handle.entries.entries()) {
+        expect(await handle.readEntry(entry)).toEqual(bodyOf(String(i), 300))
+      }
+      await handle.close()
+      expect(opens).toHaveBeenCalledTimes(1)
+    } finally {
+      opens.mockRestore()
+    }
+  })
+
+  it('#given closing a file fails #then a failed entry read keeps its own error', async () => {
+    const good = buildTestPack([
+      { id: 'note-a', bytes: bodyOf('a', 200), meta: { sequenceNum: 1, revision: 'r' } }
+    ])
+    const bad = buildTestPack(
+      [{ id: 'note-b', bytes: bodyOf('b', 200), meta: { sequenceNum: 1, revision: 'r' } }],
+      { breakEntryDigestFor: ['note-b'] }
+    )
+    const files: string[] = []
+    for (let i = 0; i <= MAX_OPEN_PACK_FILES; i++) {
+      files.push(path.join(dir, `p${i}.pack`))
+      await fs.writeFile(files[i], i === 0 ? bad.bytes : good.bytes)
+    }
+    const realOpen = fs.open.bind(fs)
+    const closes = vi.fn()
+    // Every close really releases its fd, then reports a failure.
+    const opens = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      const handle = await realOpen(...args)
+      const realClose = handle.close
+      handle.close = async () => {
+        closes()
+        await realClose()
+        throw new Error('close failed')
+      }
+      return handle
+    })
+
+    try {
+      const handles: PackFileHandle[] = []
+      for (const file of files) handles.push(await openPackFile(file))
+      closes.mockClear()
+      // The bad pack's fd is the oldest, so reading it opens it again and
+      // closes another pack's fd past the budget.
+      await expect(handles[0].readEntry(handles[0].entries[0])).rejects.toThrow(
+        'pack entry checksum mismatch'
+      )
+      expect(closes).toHaveBeenCalled()
+      for (const handle of handles) await handle.close()
+    } finally {
+      opens.mockRestore()
+    }
+  })
+
+  // Windows refuses to remove a file with an open handle, so the run's rm must
+  // not start while a close the budget began is still running.
+  it('#given the budget is closing a pack file #then closing the pack waits for that close', async () => {
+    const pack = buildTestPack([
+      { id: 'note-a', bytes: bodyOf('a', 200), meta: { sequenceNum: 1, revision: 'r' } }
+    ])
+    const files: string[] = []
+    for (let i = 0; i <= MAX_OPEN_PACK_FILES; i++) {
+      files.push(path.join(dir, `p${i}.pack`))
+      await fs.writeFile(files[i], pack.bytes)
+    }
+    const realOpen = fs.open.bind(fs)
+    const { promise: closeStarted, resolve: startClose } = Promise.withResolvers<void>()
+    const { promise: closeGoes, resolve: releaseClose } = Promise.withResolvers<void>()
+    const opens = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      const handle = await realOpen(...args)
+      if (String(args[0]) !== files[0]) return handle
+      const realClose = handle.close
+      handle.close = async () => {
+        startClose()
+        await closeGoes
+        await realClose()
+      }
+      return handle
+    })
+
+    try {
+      const handles: PackFileHandle[] = []
+      for (const file of files.slice(0, MAX_OPEN_PACK_FILES)) {
+        handles.push(await openPackFile(file))
+      }
+      // One file past the budget: its read closes the oldest, p0.
+      const last = openPackFile(files[MAX_OPEN_PACK_FILES])
+      await closeStarted
+      const closing = handles[0].close().then(() => 'closed')
+      const settled = await Promise.race([
+        closing,
+        new Promise((resolve) => setImmediate(() => resolve('pending')))
+      ])
+      expect(settled).toBe('pending')
+      releaseClose()
+      await closing
+      handles.push(await last)
+      for (const handle of handles) await handle.close()
+    } finally {
+      releaseClose()
+      opens.mockRestore()
+    }
+  })
+
+  it('#given stat and close both fail #then opening reports the stat error', async () => {
+    const file = path.join(dir, 'stat.pack')
+    await fs.writeFile(file, Buffer.alloc(100))
+    const realOpen = fs.open.bind(fs)
+    const opens = vi.spyOn(fs, 'open').mockImplementation(async (...args) => {
+      const handle = await realOpen(...args)
+      const realClose = handle.close
+      handle.stat = async () => {
+        throw new Error('stat failed')
+      }
+      handle.close = async () => {
+        await realClose()
+        throw new Error('close failed')
+      }
+      return handle
+    })
+
+    try {
+      await expect(openPackFile(file)).rejects.toThrow('stat failed')
+    } finally {
+      opens.mockRestore()
+    }
+  })
 
   it('closes the file handle when opening fails', async () => {
     const file = path.join(dir, 'bad.pack')
