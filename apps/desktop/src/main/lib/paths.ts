@@ -38,6 +38,27 @@ export function normalizeRelativePath(relativePath: string): string {
 }
 
 /**
+ * `folderPath` as note rows name the folder: `/` separators, no `.` or empty
+ * segments, no trailing `/`, so `./Work/` and `Work\` are `Work` (#5642).
+ * Null for the vault itself (`''`, `.`, `/`) and for a path that leaves it
+ * (`..`, an absolute path), which a recursive delete must never reach (#5653).
+ * On Windows a name ending in a dot or a space is null too: Windows drops
+ * them, so `Work.` there is the folder `Work`.
+ */
+export function vaultFolderPath(folderPath: string): string | null {
+  const folder = path.posix.normalize(normalizeRelativePath(folderPath)).replace(/\/+$/, '')
+  const outside =
+    folder === '' ||
+    folder === '.' ||
+    folder === '..' ||
+    folder.startsWith('../') ||
+    path.win32.isAbsolute(folder)
+  const windowsAlias =
+    process.platform === 'win32' && folder.split('/').some((segment) => /[. ]$/.test(segment))
+  return outside || windowsAlias ? null : folder
+}
+
+/**
  * Calculates relative path from vault root.
  * Returns null if the path is outside the vault.
  */

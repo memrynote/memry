@@ -8,6 +8,7 @@
 //! | ------------------------------------------------------ | --------------------- |
 //! | a bare `SYNC_DELETE_WINS` keeps the row                 | §5.8, #5338, #5406    |
 //! | delete-wins with an attested marker deletes, records T | §5.8, §5.12.3, #5406  |
+//! | delete-wins with a v2 marker in this vault deletes      | §4.8.4, #5247         |
 //! | delete-wins with a forged marker keeps the row          | §5.12.3, #5406        |
 //! | a re-create after the delete is not deleted again       | §5.8 client rule      |
 //! | an id two sent items share deletes neither              | §5.12.1, #5406        |
@@ -274,6 +275,28 @@ async fn a_delete_wins_with_an_attested_marker_deletes_the_row() {
         1,
         "the tombstone clock is recorded"
     );
+}
+
+/// #5247: a marker attested v2 in the vault the pull syncs deletes the row as
+/// a v1 one does (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_delete_wins_with_a_v2_marker_in_this_vault_deletes_the_row() {
+    let db = scratch_db("attested-v2");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![
+        response(200, &delete_wins("t1")),
+        response(
+            200,
+            &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+        ),
+    ]);
+    let report = coordinator(&db, transport)
+        .drain_wave()
+        .await
+        .expect("the wave");
+    assert!(task_deleted(&db, "t1"));
+    assert_eq!(report.deleted_locally, 1);
+    assert_eq!(count(&db, "SELECT COUNT(*) FROM outbox"), 0);
 }
 
 #[tokio::test]
