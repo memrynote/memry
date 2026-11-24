@@ -219,6 +219,7 @@
     "renameFailed": "Nie udało się zmienić nazwy folderu",
     "renameCaseTwins": "Ten folder zawiera notatki, które współdzielą plik z notatką, której nazwa folderu różni się tylko wielkością liter. Najpierw zmień nazwy tych notatek lub je przenieś, a potem zmień nazwę folderu.",
     "deleteFailed": "Nie udało się usunąć folderu",
+    "deleteCaseTwins": "Ten folder i folder o tej samej nazwie zapisanej inaczej, na przykład inną wielkością liter, to na dysku jeden folder, więc usunięcie go usunęłoby notatki z obu. Zamiast tego usuń niepotrzebne notatki pojedynczo.",
     "setConfigFailed": "Nie udało się zapisać konfiguracji folderu"
   },
   "folderView": {

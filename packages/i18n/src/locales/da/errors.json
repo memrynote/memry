@@ -219,6 +219,7 @@
     "renameFailed": "Kunne ikke omdøbe mappen",
     "renameCaseTwins": "Denne mappe indeholder noter, der deler fil med en note, hvis mappenavn kun adskiller sig ved store og små bogstaver. Omdøb eller flyt de noter først, og omdøb derefter mappen.",
     "deleteFailed": "Kunne ikke slette mappen",
+    "deleteCaseTwins": "Denne mappe og en mappe med samme navn stavet anderledes, f.eks. med andre store og små bogstaver, er én mappe på disken, så hvis du sletter den, slettes noterne i begge. Slet i stedet de noter, du ikke har brug for, én ad gangen.",
     "setConfigFailed": "Kunne ikke gemme mappeindstillingerne"
   },
   "folderView": {

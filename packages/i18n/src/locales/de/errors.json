@@ -219,6 +219,7 @@
     "renameFailed": "Der Ordner konnte nicht umbenannt werden",
     "renameCaseTwins": "Dieser Ordner enthält Notizen, die eine Datei mit einer Notiz teilen, deren Ordnername sich nur in der Groß- und Kleinschreibung unterscheidet. Benenne diese Notizen zuerst um oder verschiebe sie, und benenne dann den Ordner um.",
     "deleteFailed": "Der Ordner konnte nicht gelöscht werden",
+    "deleteCaseTwins": "Dieser Ordner und ein Ordner mit demselben, anders geschriebenen Namen, etwa in anderer Groß- und Kleinschreibung, sind auf der Festplatte ein Ordner. Wenn du ihn löschst, werden die Notizen in beiden gelöscht. Lösche stattdessen die Notizen, die du nicht brauchst, einzeln.",
     "setConfigFailed": "Die Ordnerkonfiguration konnte nicht gespeichert werden"
   },
   "folderView": {

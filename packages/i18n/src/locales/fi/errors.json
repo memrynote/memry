@@ -219,6 +219,7 @@
     "renameFailed": "Kansion uudelleennimeäminen epäonnistui",
     "renameCaseTwins": "Tässä kansiossa on muistiinpanoja, jotka jakavat tiedoston sellaisen muistiinpanon kanssa, jonka kansion nimi eroaa vain kirjainkoon osalta. Nimeä nämä muistiinpanot uudelleen tai siirrä ne ensin ja nimeä sitten kansio uudelleen.",
     "deleteFailed": "Kansion poistaminen epäonnistui",
+    "deleteCaseTwins": "Tämä kansio ja kansio, jonka nimi on sama mutta kirjoitettu eri tavalla, esimerkiksi eri kirjainkoolla, ovat levyllä sama kansio, joten sen poistaminen poistaisi molempien muistiinpanot. Poista sen sijaan tarpeettomat muistiinpanot yksi kerrallaan.",
     "setConfigFailed": "Kansion asetusten tallentaminen epäonnistui"
   },
   "folderView": {

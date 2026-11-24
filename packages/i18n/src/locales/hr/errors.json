@@ -219,6 +219,7 @@
     "renameFailed": "Preimenovanje mape nije uspjelo",
     "renameCaseTwins": "Ova mapa sadrži bilješke koje dijele datoteku s bilješkom čiji se naziv mape razlikuje samo po velikim i malim slovima. Najprije preimenujte ili premjestite te bilješke, a zatim preimenujte mapu.",
     "deleteFailed": "Brisanje mape nije uspjelo",
+    "deleteCaseTwins": "Ova mapa i mapa istog naziva drukčije napisanog, primjerice drugim velikim i malim slovima, na disku su jedna mapa, pa bi se njezinim brisanjem izbrisale bilješke u obje. Umjesto toga izbrišite jednu po jednu bilješke koje vam ne trebaju.",
     "setConfigFailed": "Postavljanje konfiguracije mape nije uspjelo"
   },
   "folderView": {

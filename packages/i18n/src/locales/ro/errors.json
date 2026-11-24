@@ -219,6 +219,7 @@
     "renameFailed": "Nu s-a putut redenumi dosarul",
     "renameCaseTwins": "Acest folder conține notițe care împart un fișier cu o notiță al cărei nume de folder diferă doar prin majuscule și minuscule. Redenumește sau mută mai întâi acele notițe, apoi redenumește folderul.",
     "deleteFailed": "Nu s-a putut șterge dosarul",
+    "deleteCaseTwins": "Acest folder și un folder cu același nume scris altfel, de exemplu cu alte majuscule și minuscule, sunt un singur folder pe disc, așa că ștergerea lui ar șterge notițele din amândouă. Șterge în schimb, pe rând, notițele de care nu ai nevoie.",
     "setConfigFailed": "Nu s-a putut seta configurația dosarului"
   },
   "folderView": {
