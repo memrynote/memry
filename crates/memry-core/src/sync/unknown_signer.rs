@@ -24,8 +24,9 @@
 //! still unverifiable, a coded 4xx kept as [`ApiError::Status`]) counts toward
 //! [`MAX_FAILURES`], which still bounds the hold. Nothing else counts: transport,
 //! 5xx, 429, a 200 that is no pull envelope, a 4xx with no code (a portal's), a
-//! 4xx that arrives as its own [`ApiError`] variant (401, a revoked device, 402,
-//! 426): it is about the session, device or plan, not the record.
+//! 4xx that arrives as its own [`ApiError`] variant (any 401, a revoked device,
+//! a 402 vault limit, a 403 with writes disabled, a 409 device limit, a 426
+//! upgrade-required): it is about the session, device or plan, not the record.
 //!
 //! The settings item reuses the hold (#5433): an edit over a deleted
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
