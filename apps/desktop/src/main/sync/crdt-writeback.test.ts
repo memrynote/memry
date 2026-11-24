@@ -1315,7 +1315,7 @@ describe('crdt-writeback per-vault state reset', () => {
     vi.useRealTimers()
   })
 
-  it('drops app writes, network-update marks and debug state on vault teardown', () => {
+  it('drops app writes, network-update marks, debug state and armed passes on vault teardown', () => {
     // #given — a vault session that populated every module-level per-note map
     recordAppWrite('/vault-a/notes/One.md', 'one')()
     recordNetworkUpdate('note-1')
@@ -1326,10 +1326,10 @@ describe('crdt-writeback per-vault state reset', () => {
     expect(getWritebackDebugState('note-1')).not.toBeNull()
 
     // #when — the vault is closed (CrdtProvider.destroy)
-    cancelPendingWritebacks()
     resetWritebackState()
 
     // #then — nothing from the old vault survives into the next one
+    expect(hasPendingWriteback('note-1')).toBe(false)
     expect(wasRecentNetworkUpdate('note-1')).toBe(false)
     expect(getWritebackDebugState('note-1')).toBeNull()
     expect(getWritebackStateSizes()).toEqual({

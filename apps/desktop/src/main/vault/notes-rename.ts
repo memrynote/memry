@@ -16,7 +16,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { generateContentHash, parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
-import { syncNoteToCache, syncFileToCache } from './note-sync'
+import { persistNoteToCache, syncNoteToCache, syncFileToCache } from './note-sync'
 import { planCaseTwinMove, prepareCaseTwinLeave, sharesCaseTwinFile } from './case-twin-file'
 import {
   ensureDirectory,
@@ -79,9 +79,9 @@ async function leaveCaseTwinFile(
   await prepareCaseTwinLeave(vaultPath, existing.path, existing.id, true)
   const cached = getNoteCacheById(getIndexDatabase(), existing.id)
   const move = planCaseTwinMove(vaultPath, existing.path, existing.id, newRelativePath)
+  let publish: (() => void) | undefined
   move((moved) => {
-    syncNoteToCache(
-      getIndexDatabase(),
+    publish = persistNoteToCache(
       {
         id: existing.id,
         path: newRelativePath,
@@ -96,8 +96,10 @@ async function leaveCaseTwinFile(
         emoji: cached?.emoji ?? null
       },
       { isNew: false }
-    )
+    ).publish
   })
+  // After the step's transaction commits: the index never takes a row move it rolled back.
+  publish?.()
 }
 
 export async function renameNote(id: string, newTitle: string): Promise<Note> {

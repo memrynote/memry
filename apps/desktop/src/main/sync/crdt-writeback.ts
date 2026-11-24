@@ -18,7 +18,7 @@ import { writingFrontmatterOf } from '@memry/shared'
 import { mergeFrontmatter, mergeJournalFrontmatter } from './crdt-writeback-frontmatter'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
-import { utcNow } from '@memry/shared/utc'
+import { laterEditTime, writebackModifiedAt } from './crdt-writeback-edit-time'
 import { atomicWrite, ensureDirectory } from '../vault/file-ops'
 import { appWriteCount, recordAppWrite, resetAppWrites } from '../vault/app-writes'
 import { readVaultFile, refuseOutsideVaultSync } from '../lib/paths'
@@ -112,6 +112,8 @@ interface WritebackCost {
 
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
+/** Closed notes whose doc a failed body write left ahead of the file (`retryWriteback`). */
+const pendingRetries = new Map<string, ReturnType<typeof setTimeout>>()
 /** The turn (a pass or a frontmatter writer) running, or queued behind a running one, for each note. */
 const runningPasses = new Map<string, Promise<unknown>>()
 /** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
@@ -234,36 +236,6 @@ function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
   if (!live || live === captured) return captured
   log.debug('Write-back doc was superseded; serializing the live doc', { noteId })
   return live
-}
-
-/**
- * The edit time a pass stamps on the note (#2515). A local edit happened now.
- * A remote pass is no edit made here: it keeps the row's time, moved forward
- * only to the server time of the remote edit it merged, never backwards. A
- * snapshot, a pack or an older peer's update carries no such time, so a
- * re-pull or a re-serialized body leaves the note where it was.
- */
-function writebackModifiedAt(
-  current: string | null | undefined,
-  local: boolean,
-  remoteEditedAtMs: number | undefined
-): string {
-  if (local) return utcNow()
-  const remoteMs =
-    remoteEditedAtMs !== undefined && Number.isFinite(remoteEditedAtMs) && remoteEditedAtMs > 0
-      ? remoteEditedAtMs
-      : undefined
-  const currentMs = current ? Date.parse(current) : NaN
-  if (!current || !Number.isFinite(currentMs)) {
-    return remoteMs !== undefined ? new Date(remoteMs).toISOString() : utcNow()
-  }
-  return remoteMs !== undefined && remoteMs > currentMs ? new Date(remoteMs).toISOString() : current
-}
-
-function laterEditTime(a: number | undefined, b: number | undefined): number | undefined {
-  if (a === undefined) return b
-  if (b === undefined) return a
-  return Math.max(a, b)
 }
 
 /**
@@ -481,7 +453,14 @@ export function cancelPendingWritebacks(): void {
     clearTimeout(timer)
   }
   pendingTimers.clear()
+  for (const timer of pendingRetries.values()) clearTimeout(timer)
+  pendingRetries.clear()
   lastWritebackCost.clear()
+}
+
+/** Whether a pass is armed: a debounced one, or a closed note's retry. */
+export function hasArmedWritebacks(): boolean {
+  return pendingTimers.size > 0 || pendingRetries.size > 0
 }
 
 /**
@@ -510,9 +489,19 @@ export function getWritebackStateSizes(): {
  * ids that no longer exist here — into the next session, and each successive
  * vault would add to it. Called from `CrdtProvider.destroy()`, which is the
  * one point every vault close, vault switch and sync-runtime stop goes through.
+ *
+ * `destroy()` flushes until no pass is armed and drops its docs without an
+ * await in between, so none is armed here. The cancel guards that: left
+ * armed, a pass would fire into whichever vault is open by then, and a journal
+ * day has the same id in every vault.
  */
 export function resetWritebackState(): void {
-  lastWritebackCost.clear()
+  if (hasArmedWritebacks()) {
+    log.warn('Vault teardown dropped armed write-backs; their docs are in the CRDT store', {
+      noteIds: [...pendingTimers.keys(), ...pendingRetries.keys()]
+    })
+  }
+  cancelPendingWritebacks()
   resetAppWrites()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
@@ -533,20 +522,28 @@ export async function flushPendingWritebacks(): Promise<void> {
 }
 
 async function flushAll(): Promise<void> {
-  const pending = Array.from(pendingTimers.entries())
-  pendingTimers.clear()
-  for (const [, { timer }] of pending) clearTimeout(timer)
-  // Passes already running are awaited too: one converting on the worker is
-  // seconds from its write, and a quit that skipped it would lose that edit.
-  const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
-  await Promise.all([
-    ...running,
-    ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
-      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
-        log.error('Write-back failed during shutdown flush', { noteId, error: err })
-      })
-    )
-  ])
+  // Until none is armed: a keystroke that lands while a pass converts arms
+  // the next one, and a vault close that left it armed would drop it.
+  do {
+    const pending = Array.from(pendingTimers.entries())
+    pendingTimers.clear()
+    for (const [, { timer }] of pending) clearTimeout(timer)
+    const retries = Array.from(pendingRetries.entries())
+    pendingRetries.clear()
+    for (const [, timer] of retries) clearTimeout(timer)
+    // Passes already running are awaited too: one converting on the worker is
+    // seconds from its write, and a quit that skipped it would lose that edit.
+    const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
+    await Promise.all([
+      ...running,
+      ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
+        runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
+          log.error('Write-back failed during shutdown flush', { noteId, error: err })
+        })
+      ),
+      ...retries.map(([noteId]) => materializeRetry(noteId))
+    ])
+  } while (hasArmedWritebacks())
   if (heldWork.size === 0) return
   // Its owner reports a failure; the flush only waits for it.
   const held = Promise.all(Array.from(heldWork.keys(), (work) => work.catch(() => {})))
@@ -1186,11 +1183,20 @@ async function writebackJournal(
 function retryWriteback(noteId: string): void {
   const doc = getCrdtProvider().getDoc(noteId)
   if (doc) return scheduleWriteback(noteId, doc, 'local')
-  setTimeout(() => {
-    getCrdtProvider()
-      .materialize(noteId)
-      .catch((err: unknown) => reportWritebackFailure(noteId, err))
+  clearTimeout(pendingRetries.get(noteId))
+  const timer = setTimeout(() => {
+    pendingRetries.delete(noteId)
+    void materializeRetry(noteId)
   }, writebackDelayMs(noteId))
+  pendingRetries.set(noteId, timer)
+}
+
+async function materializeRetry(noteId: string): Promise<void> {
+  try {
+    await getCrdtProvider().materialize(noteId)
+  } catch (err) {
+    reportWritebackFailure(noteId, err)
+  }
 }
 
 registerCrdtWritebackPort({
@@ -1199,6 +1205,7 @@ registerCrdtWritebackPort({
   scheduleWriteback,
   cancelWriteback,
   flushPendingWritebacks,
+  hasArmedWritebacks,
   resetWritebackState,
   writebackNow
 })

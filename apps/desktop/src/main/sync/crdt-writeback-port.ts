@@ -24,6 +24,8 @@ export interface CrdtWritebackPort {
   /** Write the note's doc to its file again after a body writer's file write failed. */
   retryWriteback(noteId: string): void
   flushPendingWritebacks(): Promise<void>
+  /** Whether a pass is armed: a debounced one, or a closed note's retry. */
+  hasArmedWritebacks(): boolean
   resetWritebackState(): void
 }
 

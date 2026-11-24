@@ -62,7 +62,7 @@
     "uploadFailed": "Nahrávanie prílohy zlyhalo",
     "uploadProgressFailed": "Nepodarilo sa načítať priebeh nahrávania",
     "downloadFailed": "Sťahovanie prílohy zlyhalo",
-    "downloadGone": "Tento súbor už na synchronizačnom serveri nie je.",
+    "downloadGone": "Tento súbor už na synchronizačnom serveri nie je. Ak ho ešte má iné zariadenie, pridajte ho z neho znova.",
     "downloadMissing": "Tento súbor zatiaľ na synchronizačnom serveri nie je. Otvorte ho znova zajtra a skontrolujte to.",
     "downloadNeedsSync": "Synchronizácia nebeží, preto tento súbor nemožno stiahnuť. Stiahne sa sám, keď synchronizácia pobeží.",
     "downloadProgressFailed": "Nepodarilo sa načítať priebeh sťahovania",
