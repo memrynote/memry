@@ -111,6 +111,7 @@ const snapshotPlan = (bytes: Uint8Array): DocumentPlan => ({
       length: 0,
       sha256: new Uint8Array(32)
     },
+    packId: 'p1',
     meta: { sequenceNum: 4, revision: 'r4' },
     read: async () => bytes
   },

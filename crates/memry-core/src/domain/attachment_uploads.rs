@@ -128,9 +128,10 @@ pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageErr
 
 /// Compat: the `meta` key under which #5573 and #5604 builds dated the purge
 /// of an owed upload's note. A #5573 build discards the upload 30 days after
-/// that date, so this build writes none: a downgrade keeps the only copy of
-/// the bytes (#5578). Nothing reads it; a key an older build left goes with
-/// its upload.
+/// that date and dates an undated purge at its first drain. This build writes
+/// none, so a downgrade to #5573 starts that grace at its first drain instead
+/// of discarding the only copy of the bytes at once (#5578). Nothing reads
+/// it; a key an older build left goes with its upload.
 const PURGED_KEY: &str = "attachment_upload.purged_at:";
 
 fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {

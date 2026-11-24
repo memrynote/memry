@@ -10,16 +10,20 @@
  * - `caseTwinLandedHashes`: JSON object from the folded disk path of a shared
  *   file to the sha256 of the bytes a download last landed there: bytes a
  *   server holds (#5585).
- * - `caseTwinForeignBytes`: JSON object from note id to `{sha256}` of its file
- *   when it was marked (or when its change was last kept as a conflict copy),
- *   or null when the file held a change on no server at the split.
+ * - `caseTwinForeignBytes:<noteId>`: one row per marked note, JSON `{sha256}`
+ *   of its file when it was marked (or when its change was last kept as a
+ *   conflict copy), or null when the file held a change on no server then.
+ *   A mark is read and written alone, so marking many notes and landing
+ *   each note's bytes stay linear (#5580). Builds before kept every mark in
+ *   one JSON object under `caseTwinForeignBytes`; the first touch moves its
+ *   entries to their rows.
  *
  * @module vault/case-twin-bytes
  */
 
 import { createHash } from 'crypto'
 import fs from 'fs'
-import { eq } from 'drizzle-orm'
+import { and, eq, gt, lt } from 'drizzle-orm'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { foldNotePath } from '@memry/storage-data'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
@@ -35,6 +39,10 @@ type Key =
   | typeof SYNC_STATE_KEYS.CASE_TWIN_HELD_CHANGES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES
   | typeof SYNC_STATE_KEYS.CASE_TWIN_LANDED_HASHES
+
+const MARK_PREFIX = `${SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES}:`
+/** The first key after every mark row: `;` follows `:`. */
+const MARK_END = `${SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES};`
 
 /** The bytes a mark was taken from, or null when they held a change on no server. */
 export type MarkedFile = { sha256: string } | null
@@ -111,26 +119,85 @@ function toMarkedFile(value: unknown): MarkedFile | undefined {
   return 'size' in value && 'mtimeMs' in value ? null : undefined
 }
 
-/** Each note whose file may hold a case twin's bytes, with the file it was marked at. */
-export function readCaseTwinForeignBytes(db: DrizzleDb): Map<string, MarkedFile> {
-  const marks = readValue(db, SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES)
-  if (marks === undefined) return new Map()
-  if (typeof marks !== 'object' || marks === null || Array.isArray(marks)) {
+/**
+ * Moves the marks an older build kept in one object to their own rows, then
+ * drops the object; a row this build wrote wins. Every mark read and write
+ * calls it first, a point read once the object is gone. A crash before the
+ * drop moves the same entries again.
+ */
+function moveLegacyMarks(db: DrizzleDb): void {
+  const legacy = SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES
+  if (!db.select({ key: syncState.key }).from(syncState).where(eq(syncState.key, legacy)).get()) {
+    return
+  }
+  const marks = readValue(db, legacy)
+  if (
+    marks !== undefined &&
+    (typeof marks !== 'object' || marks === null || Array.isArray(marks))
+  ) {
     log.warn('Case twin foreign bytes are not an object; reading them as empty', {
       type: Array.isArray(marks) ? 'array' : typeof marks
     })
-    return new Map()
-  }
-  return new Map(
-    Object.entries(marks).flatMap(([noteId, value]): Array<[string, MarkedFile]> => {
+  } else if (marks !== undefined) {
+    const updatedAt = new Date()
+    for (const [noteId, value] of Object.entries(marks)) {
       const mark = toMarkedFile(value)
-      return mark === undefined ? [] : [[noteId, mark]]
-    })
-  )
+      if (mark === undefined) continue
+      db.insert(syncState)
+        .values({ key: MARK_PREFIX + noteId, value: JSON.stringify(mark), updatedAt })
+        .onConflictDoNothing()
+        .run()
+    }
+  }
+  db.delete(syncState).where(eq(syncState.key, legacy)).run()
 }
 
-function writeMarks(db: DrizzleDb, marks: Map<string, MarkedFile>): void {
-  writeValue(db, SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES, Object.fromEntries(marks))
+/** A stored mark row; one this build cannot read holds a change, so the landing keeps it. */
+function toMark(noteId: string, value: string): MarkedFile {
+  let mark: MarkedFile | undefined
+  try {
+    mark = toMarkedFile(JSON.parse(value))
+  } catch {
+    mark = undefined
+  }
+  if (mark !== undefined) return mark
+  log.warn('A case twin mark is unreadable; its file is held as changed', { noteId })
+  return null
+}
+
+/**
+ * The file note `noteId` was marked at, or undefined when the note's file
+ * holds its own bytes.
+ */
+export function readCaseTwinForeignBytes(db: DrizzleDb, noteId: string): MarkedFile | undefined {
+  moveLegacyMarks(db)
+  const row = db
+    .select({ value: syncState.value })
+    .from(syncState)
+    .where(eq(syncState.key, MARK_PREFIX + noteId))
+    .get()
+  return row ? toMark(noteId, row.value) : undefined
+}
+
+/** Each note whose file may hold bytes that are not its own. */
+export function listCaseTwinForeignBytes(db: DrizzleDb): string[] {
+  moveLegacyMarks(db)
+  return db
+    .select({ key: syncState.key })
+    .from(syncState)
+    .where(and(gt(syncState.key, MARK_PREFIX), lt(syncState.key, MARK_END)))
+    .all()
+    .map((row) => row.key.slice(MARK_PREFIX.length))
+}
+
+function writeMark(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
+  moveLegacyMarks(db)
+  const value = JSON.stringify(mark)
+  const updatedAt = new Date()
+  db.insert(syncState)
+    .values({ key: MARK_PREFIX + noteId, value, updatedAt })
+    .onConflictDoUpdate({ target: syncState.key, set: { value, updatedAt } })
+    .run()
 }
 
 /** The watcher held an outside change to this shared file (disk spelling). */
@@ -185,26 +252,24 @@ export function takeLandedCaseTwinHash(db: DrizzleDb, diskPath: string): string 
  * on no server; a null mark stays null until the note's own bytes land.
  */
 export function markCaseTwinForeignBytes(db: DrizzleDb, noteId: string, mark: MarkedFile): void {
-  const marks = readCaseTwinForeignBytes(db)
-  marks.set(noteId, marks.get(noteId) === null ? null : mark)
-  writeMarks(db, marks)
+  writeMark(db, noteId, readCaseTwinForeignBytes(db, noteId) === null ? null : mark)
 }
 
 /** The file's bytes, with this sha256, are kept as a conflict copy: a retried landing keeps them once. */
 export function recordConflictCopyKept(db: DrizzleDb, noteId: string, sha256: string): void {
-  const marks = readCaseTwinForeignBytes(db)
-  marks.set(noteId, { sha256 })
-  writeMarks(db, marks)
+  writeMark(db, noteId, { sha256 })
 }
 
 export function holdsCaseTwinForeignBytes(db: DrizzleDb, noteId: string): boolean {
-  return readCaseTwinForeignBytes(db).has(noteId)
+  return readCaseTwinForeignBytes(db, noteId) !== undefined
 }
 
 /** The note's own attachment landed on its file. */
 export function clearCaseTwinForeignBytes(db: DrizzleDb, noteId: string): void {
-  const marks = readCaseTwinForeignBytes(db)
-  if (marks.delete(noteId)) writeMarks(db, marks)
+  moveLegacyMarks(db)
+  db.delete(syncState)
+    .where(eq(syncState.key, MARK_PREFIX + noteId))
+    .run()
 }
 
 /**
