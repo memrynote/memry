@@ -442,9 +442,117 @@ test('notes attach refuses an attachments folder that is a link', { skip: skipLi
       await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
       await fs.rm(path.join(vaultPath, 'attachments'), { recursive: true })
       await fs.symlink('../outside', path.join(vaultPath, 'attachments'))
-      // Opening the vault makes `attachments/images` and `attachments/files`, through the link too.
-      await fs.mkdir(path.join(world, 'outside', 'images'))
-      await fs.mkdir(path.join(world, 'outside', 'files'))
     }
   })
+})
+
+/** Attaches `shot.png` to the note, then moves `attachments` outside and links it back (#5717). */
+async function linkAttachmentsOutside({ world, vaultPath, note }: World): Promise<string> {
+  await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+  const added = await cli(vaultPath, 'notes', 'attach', note.id, path.join(world, 'shot.png'))
+  assert.equal(added.code, 0, added.stderr)
+  await fs.rename(path.join(vaultPath, 'attachments'), path.join(world, 'outside2'))
+  await fs.symlink('../outside2', path.join(vaultPath, 'attachments'))
+  return (JSON.parse(added.stdout.at(-1) ?? '{}') as { filename: string }).filename
+}
+
+test(
+  'notes attachment-rename and attach --existing refuse an attachments folder that is a link',
+  { skip: skipLinks },
+  async () => {
+    let filename = ''
+    const setup = async (world: World) => {
+      filename = await linkAttachmentsOutside(world)
+    }
+    await assertRefused(
+      ({ note }) => ['notes', 'attachment-rename', note.id, filename, 'Moved'],
+      LINK,
+      { setup }
+    )
+    await assertRefused(
+      ({ note }) => [
+        'notes',
+        'attach',
+        'SuperNotes/Real.md',
+        '--existing',
+        `${note.id}/${filename}`
+      ],
+      LINK,
+      { setup }
+    )
+  }
+)
+
+test('notes read-lines and grep refuse a file through a link', { skip: skipLinks }, async () => {
+  const linkFile = async ({ vaultPath }: World) => {
+    await fs.symlink(path.join('..', 'outside', 'data', 'keep.md'), path.join(vaultPath, 'k.md'))
+  }
+  for (const file of ['out/data/keep.md', 'zz/outside/data/keep.md', 'k.md']) {
+    await assertRefused(['notes', 'read-lines', file], LINK, { setup: linkFile })
+    await assertRefused(['notes', 'grep', file, 'Keep'], LINK, { setup: linkFile })
+  }
+})
+
+test('notes read-lines refuses a file outside the vault', async () => {
+  await assertRefused(['notes', 'read-lines', '../outside/data/keep.md'], OUTSIDE)
+})
+
+test(
+  'opening a vault makes no folders through a linked attachments folder',
+  { skip: skipLinks },
+  async () => {
+    const { world, vaultPath } = await makeWorld()
+    await fs.rm(path.join(vaultPath, 'attachments'), { recursive: true })
+    await fs.symlink('../outside', path.join(vaultPath, 'attachments'))
+    const listed = await cli(vaultPath, 'notes', 'list')
+    assert.equal(listed.code, 0, listed.stderr)
+    assert.deepEqual((await fs.readdir(path.join(world, 'outside'))).toSorted(), ['data'])
+  }
+)
+
+test(
+  'notes create without --folder refuses a default note folder through a link',
+  { skip: skipLinks },
+  async () => {
+    await assertRefused(['notes', 'create', 'Loose'], LINK, {
+      setup: async ({ vaultPath }) => {
+        const configPath = path.join(vaultPath, '.memry', 'config.json')
+        const config = JSON.parse(await fs.readFile(configPath, 'utf-8')) as object
+        await fs.writeFile(configPath, JSON.stringify({ ...config, defaultNoteFolder: 'out' }))
+      }
+    })
+  }
+)
+
+test('notes attach by path stores the file under the note id', async () => {
+  const { world, vaultPath, note } = await makeWorld()
+  await fs.writeFile(path.join(world, 'shot.png'), 'png-bytes')
+  const added = await cli(vaultPath, 'notes', 'attach', note.path, path.join(world, 'shot.png'))
+  assert.equal(added.code, 0, added.stderr)
+  const { path: stored } = JSON.parse(added.stdout.at(-1) ?? '{}') as { path: string }
+  assert.equal(path.posix.dirname(stored), `attachments/${note.id}`)
+})
+
+test("notes create --folder '' lands in the default note folder", async () => {
+  const { vaultPath } = await makeWorld()
+  const created = await cli(vaultPath, 'notes', 'create', 'T', '--folder', '')
+  assert.equal(created.code, 0, created.stderr)
+  assert.equal((JSON.parse(created.stdout.at(-1) ?? '{}') as { path: string }).path, 'T.md')
+})
+
+test('inbox file --folder / files an image into the vault root', async () => {
+  const world = await makeWorld()
+  const filed = await cli(
+    world.vaultPath,
+    'inbox',
+    'file',
+    await captureImage(world),
+    '--folder',
+    '/'
+  )
+  assert.equal(filed.code, 0, filed.stderr)
+  assert.equal(
+    (JSON.parse(filed.stdout.at(-1) ?? '{}') as { filedTo?: string }).filedTo,
+    'Shot.png'
+  )
 })

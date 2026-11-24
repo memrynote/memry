@@ -100,6 +100,33 @@ export async function vaultFolder(
   return folder
 }
 
+/**
+ * A vault file a command reads or writes in place: its folder passes `vaultFolder`, and the
+ * file itself is no link, which can point anywhere on the disk (#5717). Returns its absolute path.
+ */
+export async function vaultFile(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  const file = normalizePath(requested)
+  if (parseVaultFolder(file).kind !== 'folder') {
+    throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
+  }
+  const folder = await vaultFolder(vaultPath, path.posix.dirname(file), action, { allowRoot: true })
+  const absolute = path.join(vaultPath, folder, path.posix.basename(file))
+  const stat = await fs.lstat(absolute).catch((error: unknown) => {
+    if (errorCode(error) === 'ENOENT') return null
+    throw error
+  })
+  if (stat?.isSymbolicLink()) {
+    throw new Error(
+      `Refusing to ${action}: "${requested}" is a link, and a path through a link can lead outside the vault.`
+    )
+  }
+  return absolute
+}
+
 /** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root (#5679). */
 export async function folderConfigFile(
   vaultPath: string,
@@ -152,12 +179,22 @@ export async function writeVaultConfig(vaultPath: string, config: VaultConfig): 
   await ensureVaultFolders(vaultPath, config)
 }
 
+// A folder `vaultFolder` refuses, such as one through a link, is skipped: making it here
+// would create folders outside the vault (#5717). A command that writes there refuses with
+// its own error.
 async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promise<void> {
-  await fs.mkdir(path.join(vaultPath, config.defaultNoteFolder), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, config.journalFolder), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'images'), { recursive: true })
-  await fs.mkdir(path.join(vaultPath, ATTACHMENTS_DIR, 'files'), { recursive: true })
+  const folders = [
+    config.defaultNoteFolder,
+    config.journalFolder,
+    `${ATTACHMENTS_DIR}/images`,
+    `${ATTACHMENTS_DIR}/files`
+  ]
+  for (const requested of folders) {
+    const folder = await vaultFolder(vaultPath, requested, 'create folder', {
+      allowRoot: true
+    }).catch(() => null)
+    if (folder) await fs.mkdir(path.join(vaultPath, folder), { recursive: true })
+  }
 }
 
 /** `{}` for a missing config.json, `null` for one that cannot be read or parsed. */

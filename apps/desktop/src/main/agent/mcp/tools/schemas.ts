@@ -309,12 +309,15 @@ const LOOSE_TOOL_SCHEMAS = {
       path: z
         .string()
         .min(1)
+        .refine((path) => vaultFolderPath(normalizeFolderPath(path)) !== null, {
+          message: 'Name a folder inside the vault, not the vault itself or a path outside it'
+        })
         .refine(
-          (path) => {
-            const folder = vaultFolderPath(normalizeFolderPath(path))
-            return folder !== null && !windowsTrimsFolderName(folder)
-          },
-          { message: 'Name a folder inside the vault, not the vault itself or a path outside it' }
+          (path) => !windowsTrimsFolderName(vaultFolderPath(normalizeFolderPath(path)) ?? ''),
+          {
+            message:
+              'The folder name ends in a dot or a space, which Windows ignores, so deleting it could delete another folder. Delete the notes in it one by one instead.'
+          }
         )
     }),
     description: 'Delete a note folder and its contents. Requires user approval.'

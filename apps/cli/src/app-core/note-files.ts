@@ -460,7 +460,7 @@ export function createAttachmentsService({
       const filename = uniqueAttachmentFilename(originalName)
       const folder = await vaultFolder(
         vaultPath,
-        `${ATTACHMENTS_DIR}/${noteId}`,
+        `${ATTACHMENTS_DIR}/${note.id}`,
         `attach "${originalName}"`
       )
       const relativePath = `${folder}/${filename}`
