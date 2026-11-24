@@ -115,6 +115,8 @@ const pendingTimers = new Map<string, PendingWriteback>()
 const runningPasses = new Map<string, Promise<unknown>>()
 /** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
 const pendingRepairs = new Map<string, Array<() => Promise<void>>>()
+/** Work a flush waits for after the turns (`holdFlushUntil`). */
+const heldWork = new Set<Promise<unknown>>()
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -315,6 +317,19 @@ export function repairAfterRunningTurn(noteId: string, repair: () => Promise<voi
   if (queued) queued.push(repair)
   else pendingRepairs.set(noteId, [repair])
   void takeWritebackTurn(noteId, async () => {})
+}
+
+/**
+ * Makes a flush wait for `work` after the turns. For a writer's step that must
+ * land before a quit but runs after its turn: a new journal day's sync enqueue
+ * (`writeJournalEntryCreate`). Call it before the turn ends, so a flush that
+ * awaits the turn finds it. `work` must not wait on the CRDT store, since a
+ * flush runs while the store can be stuck (#5475).
+ */
+export function holdFlushUntil(work: Promise<unknown>): void {
+  heldWork.add(work)
+  const release = (): void => void heldWork.delete(work)
+  work.then(release, release)
 }
 
 async function runRepairs(noteId: string): Promise<void> {
@@ -524,6 +539,8 @@ async function flushAll(): Promise<void> {
       })
     )
   ])
+  // Its owner reports a failure; the flush only waits for it.
+  await Promise.all(Array.from(heldWork, (work) => work.catch(() => {})))
 }
 
 /**
