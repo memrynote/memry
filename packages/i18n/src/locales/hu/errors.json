@@ -62,7 +62,7 @@
     "uploadFailed": "Nem sikerült feltölteni a mellékletet",
     "uploadProgressFailed": "Nem sikerült lekérni a feltöltés állapotát",
     "downloadFailed": "Nem sikerült letölteni a mellékletet",
-    "downloadGone": "Ez a fájl már nincs a szinkronizálási szerveren.",
+    "downloadGone": "Ez a fájl már nincs a szinkronizálási szerveren. Ha egy másik eszközön még megvan, adja hozzá újra arról az eszközről.",
     "downloadMissing": "Ez a fájl még nincs a szinkronizálási szerveren. Nyissa meg újra holnap, hogy ellenőrizze.",
     "downloadNeedsSync": "A szinkronizálás nem fut, ezért ez a fájl nem tölthető le. Magától letöltődik, amint a szinkronizálás fut.",
     "downloadProgressFailed": "Nem sikerült lekérni a letöltés állapotát",
@@ -220,6 +220,7 @@
     "renameCaseTwins": "Ez a mappa olyan jegyzeteket tartalmaz, amelyek egy olyan jegyzettel osztoznak egy fájlon, amelynek a mappaneve csak kis- és nagybetűkben tér el. Először nevezd át vagy helyezd át ezeket a jegyzeteket, majd nevezd át a mappát.",
     "deleteFailed": "Nem sikerült törölni a mappát",
     "deleteCaseTwins": "Ez a mappa és egy azonos, de másként írt nevű mappa (például eltérő kis- és nagybetűkkel) a lemezen egyetlen mappa, így a törlése mindkettő jegyzeteit törölné. Inkább egyenként töröld a szükségtelen jegyzeteket.",
+    "deleteWindowsName": "A mappa neve pontra vagy szóközre végződik, amelyet a Windows figyelmen kívül hagy, így a törlése egy másik mappát is törölhet. Inkább egyenként töröld a benne lévő jegyzeteket.",
     "setConfigFailed": "Nem sikerült menteni a mappa beállításait"
   },
   "folderView": {

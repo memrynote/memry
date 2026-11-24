@@ -14,12 +14,17 @@
 //! | a row that will not read fails alone                | one failure never stops it   |
 //! | a manifest naming another attachment is refused     | §14.7 id = manifest id       |
 //! | a batched manifest under another id is refused      | §14.7 id = manifest id       |
+//! | two fetches of one attachment download it once      | in-flight dedupe (#5247)     |
+//! | a waiter downloads what a failed fetch left         | in-flight dedupe, resume     |
+//! | an aborted fetch releases the attachment            | in-flight dedupe (#5247)     |
+//! | a landed file of another length is fetched again    | size = manifest plaintext    |
 
 mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -239,6 +244,195 @@ async fn a_retry_asks_only_for_the_chunks_that_never_landed() {
         !dir.join("images/.partial").join(ATTACHMENT).exists(),
         "landed chunks are cleared once the file is whole"
     );
+}
+
+/// REVIEW-5587: a note page restarted by a sync pass asks again for the
+/// picture its cancelled task is still downloading.
+#[tokio::test]
+async fn two_fetches_of_one_attachment_download_it_once() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-in-flight");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        no_presign(),
+    ];
+    script.extend(fx.chunks.iter().map(|chunk| raw(&chunk.framed)));
+    let expected_calls = script.len();
+    // Each answer is held, so the second fetch starts while the first runs.
+    let transport = FakeTransport::slow(script, 20);
+    let sync = vault.sync(session(transport.clone()));
+
+    let (first, second) = tokio::join!(
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+    );
+
+    for summary in [
+        first.expect("the first fetch"),
+        second.expect("the second fetch"),
+    ] {
+        assert!(summary.downloaded);
+        assert_eq!(summary.local_path.as_deref(), Some(ATTACHMENT));
+        assert_eq!(summary.bytes, fx.plaintext.len() as u64);
+    }
+    assert_eq!(
+        transport.call_count(),
+        expected_calls,
+        "one download, not two"
+    );
+    let images = dir.join("images");
+    assert_eq!(
+        std::fs::read(images.join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
+    );
+    let files: Vec<_> = std::fs::read_dir(&images)
+        .expect("images/")
+        .map(|entry| entry.expect("an entry"))
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
+        .map(|entry| entry.file_name())
+        .collect();
+    assert_eq!(
+        files,
+        vec![ATTACHMENT],
+        "no temporary file is left beside it"
+    );
+}
+
+/// REVIEW-5674: the fetch a second one waited for fails part way. The waiter
+/// downloads the attachment itself and asks only for the chunks the failed
+/// fetch did not land.
+#[tokio::test]
+async fn a_waiter_downloads_what_a_failed_fetch_left() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-waiter-resumes");
+    let transport = FakeTransport::new(vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        no_presign(),
+        raw(&fx.chunks[0].framed),
+        raw(&fx.chunks[1].framed),
+        error_response(404, "NOT_FOUND", "chunk went missing"),
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+        no_presign(),
+        raw(&fx.chunks[2].framed),
+    ]);
+    let sync = vault.sync(session(transport.clone()));
+
+    // The first takes the attachment's gate at its first poll; the second
+    // waits on it.
+    let (first, second) = tokio::join!(
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+    );
+
+    first.expect_err("the third chunk failed");
+    let summary = second.expect("the waiter downloads it");
+    assert!(summary.downloaded);
+    assert_eq!(summary.bytes, fx.plaintext.len() as u64);
+    let chunk_calls: Vec<_> = transport.calls()[6..]
+        .iter()
+        .filter(|call| call.url.contains("/sync/attachments/chunks/"))
+        .map(|call| call.url.clone())
+        .collect();
+    assert_eq!(
+        chunk_calls,
+        vec![format!(
+            "{BASE}/sync/attachments/chunks/{}",
+            fx.chunks[2].reference.encrypted_hash
+        )],
+        "the waiter resumes from the landed chunks"
+    );
+    assert_eq!(
+        std::fs::read(dir.join("images").join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
+    );
+}
+
+/// REVIEW-5674: a page that leaves drops its fetch mid-download. The
+/// attachment's gate goes with it, so the next fetch is not held forever.
+/// The clock is paused: a kept gate idles the runtime and the timeout fires
+/// at once, while each scripted answer's hold passes in virtual time.
+#[tokio::test(start_paused = true)]
+async fn an_aborted_fetch_releases_the_attachment() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-aborted-fetch");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+    ];
+    script.extend(download_script(&fx));
+    let expected_calls = script.len();
+    // Each answer is held, so the first fetch is aborted inside its request.
+    let transport = FakeTransport::slow(script, 20);
+    let sync = vault.sync(session(transport.clone()));
+
+    let aborted = tokio::spawn({
+        let sync = Arc::clone(&sync);
+        async move {
+            sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+                .await
+        }
+    });
+    while transport.call_count() == 0 {
+        tokio::task::yield_now().await;
+    }
+    aborted.abort();
+    assert!(aborted.await.expect_err("aborted").is_cancelled());
+
+    let summary = tokio::time::timeout(
+        Duration::from_secs(600),
+        sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi),
+    )
+    .await
+    .expect("the aborted fetch released the attachment")
+    .expect("the next fetch downloads it");
+
+    assert!(summary.downloaded);
+    assert_eq!(transport.call_count(), expected_calls);
+    assert_eq!(
+        std::fs::read(dir.join("images").join(ATTACHMENT)).expect("bytes on disk"),
+        fx.plaintext
+    );
+}
+
+/// REVIEW-5674: a file at the row's path whose length is not the manifest's
+/// plaintext size, torn or foreign, is downloaded over rather than returned
+/// as the attachment.
+#[tokio::test]
+async fn a_landed_file_of_another_length_is_fetched_again() {
+    let fx = fixture();
+    let (vault, dir) = scratch_vault_named("vault-torn-file");
+    let mut script = vec![
+        response(200, &fx.devices_body),
+        response(200, &fx.manifest_body),
+    ];
+    script.extend(download_script(&fx));
+    let transport = FakeTransport::new(script);
+    let sync = vault.sync(session(transport.clone()));
+    sync.fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect("the first download");
+    let file = dir.join("images").join(ATTACHMENT);
+    std::fs::write(&file, &fx.plaintext[..3]).expect("a torn file");
+    let first_download = transport.call_count();
+
+    transport.push(response(200, &fx.devices_body));
+    transport.push(response(200, &fx.manifest_body));
+    for answer in download_script(&fx) {
+        transport.push(answer);
+    }
+    let summary = sync
+        .fetch_attachment(ATTACHMENT.to_string(), Reachable::Wifi)
+        .await
+        .expect("the download over the torn file");
+
+    assert!(summary.downloaded);
+    assert_eq!(summary.bytes, fx.plaintext.len() as u64);
+    assert!(transport.call_count() > first_download, "downloaded again");
+    assert_eq!(std::fs::read(&file).expect("bytes on disk"), fx.plaintext);
 }
 
 #[tokio::test]

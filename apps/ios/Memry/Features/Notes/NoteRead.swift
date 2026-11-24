@@ -108,6 +108,12 @@ final class NoteReadViewModel {
     /// Each task block's task, by task id, for the row desktop draws.
     private(set) var taskCards: [String: TaskCard] = [:]
     private var hasLoaded = false
+    /// The open's read and walk, which a sync pass's refresh joins rather than
+    /// restarts, which held a large note on `.loading` (#5247). Leaving cancels it.
+    @ObservationIgnored private var opening: Task<Void, Never>?
+    /// `opening` has not had the page's own refresh, whose pull follows the
+    /// open's read. A later refresh may follow a pass that applied after it.
+    @ObservationIgnored private var openAwaitsRefresh = false
 
     init(
         route: NoteRoute,
@@ -161,7 +167,8 @@ final class NoteReadViewModel {
         await load()
     }
 
-    /// Pulls this note's body, then re-reads the note in place.
+    /// Pulls this note's body, then re-reads the note in place. Answers
+    /// whether it read the note again, which can bind pictures to fetch.
     ///
     /// Runs on appear and after every sync pass: a desktop body edit is CRDT
     /// updates with no record, so the pass never pulls it, and applied records
@@ -170,16 +177,22 @@ final class NoteReadViewModel {
     /// fetch is not repeated until the user asks. Offline is not an error for a
     /// present body: the local copy stays.
     ///
-    /// Loads first when the page has not (on open, or after a cancelled
-    /// walk). That read already holds what the pass applied, so it is read
+    /// Joins the open's read when the page has not read the note (on open, or
+    /// after a cancelled walk), and a pass does not cancel it. That read
+    /// already holds what came before it, so the page's own refresh reads
     /// again only when the pull lands something (#5247).
-    func refreshFromRemote() async {
-        var stale = hasLoaded
-        await loadIfNeeded()
-        guard hasLoaded else { return }
+    @discardableResult
+    func refreshFromRemote() async -> Bool {
+        var stale = hasLoaded && !openAwaitsRefresh
+        let read = await opened()
+        openAwaitsRefresh = false
+        await read?.value
+        // A later pass restarted the page's task; its refresh pulls instead.
+        guard !Task.isCancelled, hasLoaded else { return false }
         if case let .ready(detail) = phase, !detail.body.present {
-            if fetch == .idle { await fetchBody() }
-            return
+            guard fetch == .idle else { return false }
+            await fetchBody()
+            return true
         }
         if let filler, fetch != .fetching,
            case let .ready(detail) = phase, detail.body.present {
@@ -191,6 +204,29 @@ final class NoteReadViewModel {
             }
         }
         if stale { await load(quietly: true) }
+        return stale
+    }
+
+    /// Reads and walks the note when the page has not, or joins that read
+    /// while it runs. Leaving the page cancels it; a sync pass does not.
+    func open() async {
+        guard let read = await opened() else { return }
+        await withTaskCancellationHandler { await read.value } onCancel: { read.cancel() }
+    }
+
+    /// The open's read: the one running, a new one when the page has not
+    /// read the note, or `nil`. One that leaving the page cancelled ends first.
+    private func opened() async -> Task<Void, Never>? {
+        while let read = opening, read.isCancelled { await read.value }
+        if let opening { return opening }
+        guard !hasLoaded else { return nil }
+        openAwaitsRefresh = true
+        let read = Task {
+            await load()
+            opening = nil
+        }
+        opening = read
+        return read
     }
 
     /// The rendered body, read after the summary so the title and the dates
@@ -314,9 +350,12 @@ final class NoteReadViewModel {
         do {
             detail = try await reader.read(id: route.id)
         } catch {
-            // Each sync pass cancels `.task(id: vaultSyncPasses)` and
-            // `CoreExecutor` refuses its queued read. Not unreadable: keep the page.
-            if Task.isCancelled { return }
+            // A cancelled page task, whose queued read `CoreExecutor` refuses.
+            // Not unreadable: keep the page, and an open with no read reads again.
+            if Task.isCancelled {
+                if phase == .loading { hasLoaded = false }
+                return
+            }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note could not be read", .code(mapped.code))
             // Retryable, so the next attempt is a real attempt.
@@ -337,33 +376,11 @@ final class NoteReadViewModel {
         phase = .ready(detail)
         await loadBlocks()
         await loadMetadata()
-        await loadVaultNotes()
-    }
-
-    /// The vault's notes, for the wiki-link search (N602).
-    ///
-    /// A failure leaves the list empty rather than failing the screen: not
-    /// being able to search for a link is much smaller than not being able to
-    /// read the note.
-    private func loadVaultNotes() async {
-        do {
-            vaultNotes = try await reader.list()
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's notes could not be listed for linking")
-            vaultNotes = []
-        }
-        do {
-            var colors: [String: String] = [:]
-            let tags = try await reader.tags()
-            for tag in tags {
-                if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
-            }
-            tagColors = colors
-            vaultTagNames = tags.sorted { $0.noteCount > $1.noteCount }.map(\.name)
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's tag colours could not be read")
+        guard let notes = await readVaultNotes() else { return }
+        vaultNotes = notes
+        if let tags = await readVaultTags() {
+            tagColors = tags.colors
+            vaultTagNames = tags.names
         }
     }
 }

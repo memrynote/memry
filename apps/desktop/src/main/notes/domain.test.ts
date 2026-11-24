@@ -1,4 +1,9 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
+import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+
+const dataDb = vi.hoisted(() => ({ db: null as unknown }))
+const enqueueLocalSyncDelete = vi.hoisted(() => vi.fn())
 
 vi.mock('../vault/note-snapshots', async () => await import('../vault/notes'))
 vi.mock('../vault/notes-versions', async () => await import('../vault/notes'))
@@ -10,11 +15,17 @@ vi.mock('../vault/notes', () => ({
   renameNote: vi.fn(),
   moveNote: vi.fn(),
   deleteNote: vi.fn(),
+  checkFolderDelete: vi.fn(),
+  deleteFolder: vi.fn(),
   getNoteById: vi.fn()
 }))
 
 // No index row: every note here is a plain note, never a journal entry.
-vi.mock('../database', () => ({ getIndexDatabase: vi.fn(() => ({})) }))
+vi.mock('../database', () => ({
+  getIndexDatabase: vi.fn(() => ({})),
+  getDatabase: () => dataDb.db
+}))
+vi.mock('../sync/local-mutations', () => ({ enqueueLocalSyncDelete }))
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: vi.fn(() => undefined),
   extractDateFromPath: vi.fn(() => null)
@@ -45,8 +56,10 @@ import {
   renameNoteCommand,
   moveNoteCommand,
   deleteNoteCommand,
+  deleteFolderCommand,
   setNoteLocalOnlyCommand
 } from './domain'
+import { isAppFolderChange } from './folder-config-effects'
 import * as noteVault from '../vault/notes'
 import * as runtimeEffects from './runtime-effects'
 import * as noteSyncState from '../sync/note-sync-state'
@@ -253,5 +266,49 @@ describe('notes domain adapter', () => {
 
     await expect(deleteNoteCommand('note-1')).rejects.toThrow('locked')
     expect(runtimeEffects.syncNoteDelete).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteFolderCommand', () => {
+  let testDb: TestDatabaseResult
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    testDb = createTestDataDb()
+    dataDb.db = testDb.db
+  })
+
+  afterEach(() => {
+    testDb.close()
+  })
+
+  // The watcher and folder_config know the folder as rows name it, `Work`, not
+  // as the caller wrote it (#5642).
+  it('hands the watcher and sync the folder as rows name it, not the path as asked', async () => {
+    for (const folder of ['Work', 'Work/2026', 'Workshop']) {
+      testDb.db
+        .insert(folderConfigs)
+        .values({ path: folder, icon: null, createdAt: 'x', modifiedAt: 'x' })
+        .run()
+    }
+    vi.mocked(noteVault.checkFolderDelete).mockReturnValue('Work')
+    let leftToTheApp = false
+    vi.mocked(noteVault.deleteFolder).mockImplementation(async () => {
+      leftToTheApp = isAppFolderChange('Work')
+    })
+
+    await deleteFolderCommand('./Work/')
+
+    expect({
+      leftToTheApp,
+      rows: testDb.db
+        .select({ path: folderConfigs.path })
+        .from(folderConfigs)
+        .all()
+        .map((row) => row.path),
+      tombstoned: enqueueLocalSyncDelete.mock.calls
+        .map((call) => String(call[1]))
+        .toSorted((a, b) => a.localeCompare(b))
+    }).toEqual({ leftToTheApp: true, rows: ['Workshop'], tombstoned: ['Work', 'Work/2026'] })
   })
 })

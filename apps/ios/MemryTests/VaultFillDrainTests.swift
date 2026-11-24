@@ -157,7 +157,14 @@ struct VaultFillDrainTests {
         }
         #expect(filler.isHeld)
         await fill.sceneChanged(active: false)
-        let back = Task { await fill.sceneChanged(active: true) }
+        // On this actor: the foreground reaches its wait for the round before
+        // the test resumes, so the round ends with the app back in front.
+        let (entered, enter) = AsyncStream<Void>.makeStream()
+        let back = Task {
+            enter.yield()
+            await fill.sceneChanged(active: true)
+        }
+        for await _ in entered { break }
         filler.finish()
         await run.value
         await back.value

@@ -62,7 +62,7 @@
     "uploadFailed": "Không thể tải lên tệp đính kèm",
     "uploadProgressFailed": "Không thể lấy tiến trình tải lên",
     "downloadFailed": "Không thể tải xuống tệp đính kèm",
-    "downloadGone": "Tệp này không còn trên máy chủ đồng bộ.",
+    "downloadGone": "Tệp này không còn trên máy chủ đồng bộ. Nếu thiết bị khác vẫn còn tệp này, hãy thêm lại tệp từ thiết bị đó.",
     "downloadMissing": "Tệp này chưa có trên máy chủ đồng bộ. Hãy mở lại vào ngày mai để kiểm tra.",
     "downloadNeedsSync": "Đồng bộ không chạy nên không thể tải xuống tệp này. Tệp sẽ tự tải xuống khi đồng bộ chạy.",
     "downloadProgressFailed": "Không thể lấy tiến trình tải xuống",
@@ -220,6 +220,7 @@
     "renameCaseTwins": "Thư mục này có các ghi chú dùng chung tệp với một ghi chú có tên thư mục chỉ khác nhau về chữ hoa và chữ thường. Hãy đổi tên hoặc di chuyển các ghi chú đó trước, rồi đổi tên thư mục.",
     "deleteFailed": "Không thể xóa thư mục",
     "deleteCaseTwins": "Thư mục này và một thư mục cùng tên nhưng viết khác, ví dụ khác chữ hoa và chữ thường, là cùng một thư mục trên ổ đĩa, nên xóa nó sẽ xóa ghi chú trong cả hai. Thay vào đó, hãy xóa từng ghi chú mà bạn không cần.",
+    "deleteWindowsName": "Tên thư mục này kết thúc bằng dấu chấm hoặc dấu cách, vốn bị Windows bỏ qua, nên xóa nó có thể xóa luôn một thư mục khác. Thay vào đó, hãy xóa từng ghi chú trong thư mục.",
     "setConfigFailed": "Không thể đặt cấu hình thư mục"
   },
   "folderView": {

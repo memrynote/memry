@@ -30,7 +30,12 @@ import {
   prepareCaseTwinLeave,
   sharesCaseTwinFile
 } from './case-twin-file'
-import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
+import {
+  announceFolderMove,
+  moveFolderHoldingWritebacks,
+  moveIndexedNotesWithFolder,
+  type FolderMovedNote
+} from './folder-move-index'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -75,7 +80,8 @@ import {
 } from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { openVaultFile, readVaultFile, vaultFolderPath } from '../lib/paths'
+import { openVaultFile, readVaultFile } from '../lib/paths'
+import { vaultFolderPath, windowsTrimsFolderName } from '@memry/storage-vault'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -997,7 +1003,14 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
+/** No write-back of a note under the folder runs beside the move (#5643, #5671). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  const moved = await moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  await announceFolderMove(moved)
+  return moved
+}
+
+async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
   assertFolderRenameKeepsCaseTwins(oldPath)
@@ -1041,6 +1054,8 @@ export function checkFolderDelete(requestedPath: string): string {
   if (folderPath === null) {
     throw new NoteError('Not a vault folder that can be deleted', NoteErrorCode.INVALID_PATH)
   }
+  // Windows reads `Work.` as `Work`, so the rm would remove that folder.
+  if (windowsTrimsFolderName(folderPath)) throw new Error('errors:folder.deleteWindowsName')
   assertFolderTreeWritable(folderPath)
   assertFolderDeleteKeepsCaseTwins(folderPath)
   return folderPath

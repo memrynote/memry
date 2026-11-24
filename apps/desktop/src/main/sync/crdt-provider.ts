@@ -1683,16 +1683,22 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
-    await crdtWriteback().flushPendingWritebacks()
-    this.networkBatcher.flushAll()
+    // An editor update that lands while the docs are stored arms another
+    // write-back pass, which belongs to this vault's file.
+    do {
+      await crdtWriteback().flushPendingWritebacks()
+      this.networkBatcher.flushAll()
 
-    for (const [noteId] of this.docs) {
-      try {
-        await this.flushDoc(noteId)
-      } catch (err) {
-        log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+      for (const [noteId] of this.docs) {
+        try {
+          await this.flushDoc(noteId)
+        } catch (err) {
+          log.warn('Failed to flush doc during CRDT destroy', { noteId, error: err })
+        }
       }
-    }
+    } while (crdtWriteback().hasArmedWritebacks())
+    // No await from the check above to the clear below: an update after the
+    // clear finds no doc and cannot arm a pass.
     for (const [, entry] of this.docs) {
       entry.doc.destroy()
     }

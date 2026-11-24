@@ -93,9 +93,9 @@ import {
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
   planCaseTwinMove,
-  sharesCaseTwinFile,
-  updateCaseTwinOffFile
+  sharesCaseTwinFile
 } from '../../vault/case-twin-file'
+import { updateCaseTwinOffFile } from '../../vault/case-twin-off-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
@@ -486,6 +486,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         if (twinMove) {
           const moved = twinMove(() => {
             updateNoteMetadata(ctx.db, itemId, { path: newRelPath })
+            // A write-back takes the note's path from its index row: moved in
+            // the step, and last, so a throw here rolls the data row back.
+            updateNoteCache(indexDb, itemId, { path: newRelPath })
           })
           movedTwinPath = newRelPath
           updateFields.contentHash = generateContentHash(moved.content)

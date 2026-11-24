@@ -210,12 +210,20 @@ export function claimRequestedDownload(
 }
 
 /**
+ * Whether this claim still holds its download. A session reset drops every
+ * claim, and a request made before it is not this session's to carry out.
+ */
+export function holdsDownload(claim: DownloadClaim): boolean {
+  return inFlight.get(claim.key) === claim
+}
+
+/**
  * Drop the in-flight claim without recording an outcome — the request never
  * reached the downloader (no listener, no token, no service), so the next pull
  * must be free to ask again. A claim another requester took since is theirs.
  */
 export function releaseDownloadAttempt(claim: DownloadClaim): void {
-  if (inFlight.get(claim.key) === claim) inFlight.delete(claim.key)
+  if (holdsDownload(claim)) inFlight.delete(claim.key)
 }
 
 /**
