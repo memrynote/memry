@@ -780,10 +780,14 @@ describe('a tags or properties update between a journal write-back read and writ
   const viaIpc = (input: UpdateEntryInput): unknown =>
     h.ipc.get(JournalChannels.invoke.UPDATE_ENTRY)!({}, input)
   // The journal page's properties panel saves through properties:set and properties:merge.
-  const setProperties = (date: string, properties: Record<string, unknown>): unknown =>
-    h.ipc.get(PropertiesChannels.invoke.SET)!({}, { entityId: `j${date}`, properties })
-  const mergeProperties = (date: string, values: Record<string, unknown>): unknown =>
-    h.ipc.get(PropertiesChannels.invoke.MERGE)!({}, { entityId: `j${date}`, values })
+  const setProperties = async (date: string, properties: Record<string, unknown>): Promise<void> =>
+    expect(
+      await h.ipc.get(PropertiesChannels.invoke.SET)!({}, { entityId: `j${date}`, properties })
+    ).toMatchObject({ success: true })
+  const mergeProperties = async (date: string, values: Record<string, unknown>): Promise<void> =>
+    expect(
+      await h.ipc.get(PropertiesChannels.invoke.MERGE)!({}, { entityId: `j${date}`, values })
+    ).toMatchObject({ success: true })
   const agent = (): ReturnType<typeof createJournalHandles> =>
     createJournalHandles(h.indexDb as never)
   // The last case has no day file: the pass writes it (as a pulled record's

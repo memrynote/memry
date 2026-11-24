@@ -32,7 +32,9 @@ import { extractFolderFromPath } from '../sync/note-sync'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const hold = vi.hoisted(() => ({
-  next: null as null | { reached: () => void; release: Promise<void> }
+  next: null as null | { reached: () => void; release: Promise<void> },
+  /** The content of every file write that has landed. */
+  landed: [] as string[]
 }))
 
 vi.mock('electron', () => {
@@ -62,7 +64,8 @@ vi.mock('./file-ops', async (importOriginal) => {
         next.reached()
         await next.release
       }
-      return actual.atomicWrite(...args)
+      await actual.atomicWrite(...args)
+      hold.landed.push(args[1])
     }
   }
 })
@@ -100,6 +103,7 @@ describe('a note tags or properties edit between a write-back read and write (#5
 
   afterEach(async () => {
     hold.next = null
+    hold.landed = []
     resetWritebackState()
     await stopProjectionRuntime()
     vi.restoreAllMocks()
@@ -189,6 +193,10 @@ describe('a note tags or properties edit between a write-back read and write (#5
     ).toBe('applied')
   }
   const gap = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10))
+  // A body update queues its frontmatter turn right after its write beside the
+  // body lands, with no file I/O in between.
+  const bodyWriteLanded = (body: string): Promise<void> =>
+    vi.waitFor(() => expect(hold.landed.some((file) => file.includes(body))).toBe(true))
 
   it('a local tag edit queued before a remote tags update keeps both', async () => {
     const onDisk = await raceWithPass(async (note) => {
@@ -232,7 +240,7 @@ describe('a note tags or properties edit between a write-back read and write (#5
             })
           if (localFirst) {
             const queued = local()
-            await gap()
+            await bodyWriteLanded('More.')
             remoteTags(note, ['keep'])
             await queued
           } else {
