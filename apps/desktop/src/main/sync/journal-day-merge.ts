@@ -27,6 +27,8 @@ import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { deleteNoteMetadata, getNoteMetadataById, getNoteMetadataByPath } from '@memry/storage-data'
+import type { NoteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { foldTag } from '@memry/shared/tag-fold'
 import { createLogger } from '../lib/logger'
 import { getIndexDatabase } from '../database/client'
 import { deleteNoteCache, getNoteCacheByPath } from '../database/queries/notes'
@@ -73,15 +75,15 @@ export interface OwedJournalDayMerge {
   tags?: string[]
   /**
    * The clock of the local row `tags` were read from, merged across
-   * sightings. Absent in an owed merge an older build wrote, whose tags all
-   * count as unpushed.
+   * sightings. Absent in an owed merge an older build wrote, and when the row
+   * was edited since its sync: its tags all count as unpushed.
    */
   holderClock?: VectorClock | null
   /**
    * The holder tags the device that deleted the foreign id may never have
    * seen, weighed against its tombstone's clock (`unpushedHolderTags`). Added
    * when the id was deleted elsewhere. Absent until a tombstone is weighed:
-   * every holder tag counts.
+   * every holder tag counts. Later weighings add to it.
    */
   unpushedTags?: string[]
   /**
@@ -115,9 +117,7 @@ export function oweJournalDayMerge(db: DrizzleDb, merge: OwedJournalDayMerge): v
     kept?.holderClock && merge.holderClock
       ? mergeClocks(kept.holderClock, merge.holderClock)
       : (merge.holderClock ?? kept?.holderClock ?? undefined)
-  // A weighing replaces the last one: the holder's tags as they are now,
-  // against the newest tombstone.
-  const unpushedTags = merge.unpushedTags ?? kept?.unpushedTags
+  const unpushedTags = addWeighing(kept?.unpushedTags, merge.unpushedTags)
   const value = JSON.stringify({
     ...merge,
     clock,
@@ -149,10 +149,12 @@ export function markOwedJournalDayMergeDeleted(
 ): void {
   const owed = listOwedJournalDayMerges(db).find((merge) => merge.foreignId === foreignId)
   if (!owed) return
-  const unpushedTags =
+  const unpushedTags = addWeighing(
+    owed.unpushedTags,
     owed.tags && owed.holderClock
       ? unpushedHolderTags(db, foreignId, owed.tags, owed.holderClock, tombstone ?? {})
-      : owed.unpushedTags
+      : undefined
+  )
   db.update(syncState)
     .set({
       value: JSON.stringify({ ...owed, deleted: true, unpushedTags }),
@@ -160,6 +162,19 @@ export function markOwedJournalDayMergeDeleted(
     })
     .where(eq(syncState.key, KEY_PREFIX + foreignId))
     .run()
+}
+
+/**
+ * The first weighing sets the unpushed list and later ones add to it. What a
+ * weighing reads is gone after the first: the tombstone drops the holder's
+ * queued edit, and `j<D>` removes its row (REVIEW-5691). No list is kept
+ * before a weighing, so the union never keeps a tag from before the first.
+ */
+function addWeighing(
+  kept: string[] | undefined,
+  weighed: string[] | undefined
+): string[] | undefined {
+  return kept && weighed ? mergeTagLists(kept, weighed) : (weighed ?? kept)
 }
 
 /**
@@ -197,15 +212,22 @@ function unpushedHolderTags(
 
 /**
  * A local holder's tags as its owed merge keeps them: weighed against
- * `tombstone`, by default the one recorded for it, when there is one.
+ * `tombstone`, by default the one recorded for it, when there is one. A row
+ * edited since its sync holds an edit that neither its clock nor the queue
+ * may show: one made outside the app is never ticked, and is queued only by
+ * the next start's dirty sweep (REVIEW-5691). It has no clock to weigh, so
+ * every tag counts.
  */
 export function holderTags(
   db: DrizzleDb,
   holderId: string,
   tags: string[],
-  holderClock: VectorClock | null,
+  row: Pick<NoteMetadata, 'clock' | 'syncedAt' | 'modifiedAt'> | undefined,
   tombstone: VectorClock | null = readTombstoneClock(db, 'journal', holderId)
 ): Pick<OwedJournalDayMerge, 'tags' | 'holderClock' | 'unpushedTags'> {
+  // The dirty sweep's test (`recoverDirtyJournals`).
+  const edited = !row?.syncedAt || row.modifiedAt > row.syncedAt
+  const holderClock = edited ? null : (row.clock ?? null)
   return {
     tags,
     holderClock,
@@ -307,6 +329,17 @@ export async function drainJournalDayMerges(deps: JournalDayMergeDeps): Promise<
   return settled
 }
 
+/** Whether `j<date>`'s day file lacks one of `tags`, by the tag fold. */
+function dayLacksTag(db: DrizzleDb, date: string, tags: string[]): boolean {
+  if (tags.length === 0) return false
+  const held =
+    getNoteMetadataByPath(db, getJournalRelativePath(date))?.id === generateJournalId(date)
+      ? readDayTags(date)
+      : []
+  const keys = new Set(held.map(foldTag))
+  return tags.some((tag) => !keys.has(foldTag(tag)))
+}
+
 /** `j<date>` has no row here and this device recorded its tombstone. */
 function dayDeleted(db: DrizzleDb, targetId: string): boolean {
   return !getNoteMetadataById(db, targetId) && readTombstoneClock(db, 'journal', targetId) !== null
@@ -334,8 +367,9 @@ async function mergeOne(deps: JournalDayMergeDeps, merge: OwedJournalDayMerge): 
   const tags = merge.deleted
     ? (merge.unpushedTags ?? merge.tags ?? [])
     : mergeTagLists(merge.tags ?? [], merge.recordTags ?? [])
-  // A deleted id's unpushed tags exist nowhere else: they merge with no body.
-  const carriesTags = merge.deleted === true && tags.length > 0
+  // A tag the day lacks may exist nowhere else, as one added offline to a
+  // blank holder: it merges with no body (#5659, #5699).
+  const carriesTags = dayLacksTag(deps.db, merge.date, tags)
   const hasBody =
     bodyPulled &&
     (Boolean(fallback?.trim()) || (await deps.hasBody(merge.foreignId)) || carriesTags)
@@ -453,7 +487,7 @@ export async function ensureJournalDay(db: DrizzleDb, date: string): Promise<voi
       date,
       clock: row?.clock ?? null,
       fallbackMarkdown: readDayBody(date),
-      ...holderTags(db, holder.id, readDayTags(date), row?.clock ?? null)
+      ...holderTags(db, holder.id, readDayTags(date), row)
     })
     removeJournalRow(db, holder.id)
   } else if (readDayBody(date)?.trim()) {

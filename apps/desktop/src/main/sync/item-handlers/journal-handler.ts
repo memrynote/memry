@@ -96,9 +96,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         clock: holder?.clock ?? null,
         // The day's file is about to be written over.
         fallbackMarkdown: plan.removeHolder ? readDayBody(date) : null,
-        ...(plan.removeHolder
-          ? holderTags(ctx.db, foreignId, readDayTags(date), holder?.clock ?? null)
-          : {})
+        ...(plan.removeHolder ? holderTags(ctx.db, foreignId, readDayTags(date), holder) : {})
       })
     }
     if (plan.removeHolder && holder) removeJournalRow(ctx.db, holder.id)
@@ -216,13 +214,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
         date: existing.journalDate,
         clock: existing.clock ?? null,
         deleted: true,
-        ...holderTags(
-          ctx.db,
-          itemId,
-          readDayTags(existing.journalDate),
-          existing.clock ?? null,
-          clock ?? {}
-        )
+        ...holderTags(ctx.db, itemId, readDayTags(existing.journalDate), existing, clock ?? {})
       })
       return 'applied'
     }

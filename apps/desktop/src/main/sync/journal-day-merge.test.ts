@@ -173,7 +173,11 @@ describe('runJournalDayMerges', () => {
   /** What a pre-fix build left: a foreign row holding the day, and its file. */
   const foreignRow = (
     clock: Record<string, number> | null,
-    { body = 'minted here\n', indexed = false } = {}
+    {
+      body = 'minted here\n',
+      indexed = false,
+      syncedAt = null
+    }: { body?: string; indexed?: boolean; syncedAt?: string | null } = {}
   ): void => {
     fs.writeFileSync(path.join(vaultPath, DAY_PATH), body)
     const row = {
@@ -186,7 +190,7 @@ describe('runJournalDayMerges', () => {
     }
     data.db
       .insert(noteMetadata)
-      .values({ ...row, journalDate: DATE, clock })
+      .values({ ...row, journalDate: DATE, clock, syncedAt })
       .run()
     if (indexed)
       index.db
@@ -661,6 +665,36 @@ describe('runJournalDayMerges', () => {
     expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
   })
 
+  // A live blank holder whose only content is a tag added offline: `j<D>`
+  // displaces it and no tombstone comes (#5699). A tag the day lacks merges
+  // it, tombstone and all; one the day holds leaves nothing to merge.
+  it.each([
+    ['lacks', ['a'], ['a', 'c'], true],
+    ['holds in another case', ['a', 'C'], ['a', 'C'], false]
+  ] as const)(
+    'keeps an offline tag of a blank live holder the day %s',
+    async (_case, dayTags, expected, tombstoned) => {
+      foreignRow(
+        { me: 2 },
+        { body: '---\ntags:\n  - a\n  - c\n---\n', syncedAt: '2026-06-09T07:00:00.000Z' }
+      )
+      journalHandler.applyUpsert(
+        ctx,
+        DAY,
+        { date: DATE, content: '', tags: [...dayTags] },
+        { b: 2 }
+      )
+
+      await drain()
+
+      expect(parseJournalEntry(dayFile(), DATE).frontmatter.tags).toEqual(expected)
+      expect(listOwedJournalDayMerges(ctx.db)).toEqual([])
+      expect(listPendingDeletes(ctx.db).map((row) => row.itemId)).toEqual(
+        tombstoned ? [FOREIGN] : []
+      )
+    }
+  )
+
   it('owes nothing again when its own tombstoned foreign id is redelivered', async () => {
     journalHandler.applyUpsert(ctx, FOREIGN, { date: DATE, content: 'theirs\n' }, { b: 1 })
     typed(FOREIGN, 'written elsewhere')
@@ -681,24 +715,36 @@ describe('runJournalDayMerges', () => {
       const record = (value: unknown): Uint8Array => new TextEncoder().encode(JSON.stringify(value))
 
       it.each([
-        // trace, F's tags and text here, F's tick here, an edit queued, B's day tags, redelivered, end state
+        // trace, F's tags and text here, F's tick here, an edit queued, F's row edited since its sync, B's day tags, redelivered, end state
         [
           'a: a pushed tag the delete overwrote',
           ['a', 'b', 'c'],
           'held',
           2,
           false,
+          false,
           ['a', 'b'],
           false,
           ['a', 'b', 'c']
         ],
-        ['B4: a tag B removed after the merge', ['a', 'b'], 'held', 1, false, ['a'], false, ['a']],
+        [
+          'B4: a tag B removed after the merge',
+          ['a', 'b'],
+          'held',
+          1,
+          false,
+          false,
+          ['a'],
+          false,
+          ['a']
+        ],
         [
           'c1: a tag added offline',
           ['a', 'b', 'c'],
           'held',
           2,
           true,
+          false,
           ['a', 'b'],
           false,
           ['a', 'b', 'c']
@@ -709,6 +755,7 @@ describe('runJournalDayMerges', () => {
           'held',
           2,
           true,
+          false,
           ['a', 'b'],
           true,
           ['a', 'b', 'c']
@@ -719,15 +766,67 @@ describe('runJournalDayMerges', () => {
           'held',
           3,
           true,
+          false,
           ['a', 'b'],
           false,
           ['a', 'b', 'c', 'd']
         ],
-        ['c4: a tag added offline to a blank day', ['c'], '', 2, true, ['a'], false, ['a', 'c']]
-      ])('%s', async (_trace, held, text, tick, queued, dayTags, redeliver, expected) => {
+        [
+          'c4: a tag added offline to a blank day',
+          ['c'],
+          '',
+          2,
+          true,
+          false,
+          ['a'],
+          false,
+          ['a', 'c']
+        ],
+        // An edit queued with no tick, as the dirty sweep re-queues one: the
+        // tombstone drops it after the first weighing (REVIEW-5691).
+        [
+          'R0: a recovered edit, queued with no tick',
+          ['a', 'b', 'x'],
+          'held',
+          1,
+          true,
+          false,
+          ['a', 'b'],
+          false,
+          ['a', 'b', 'x']
+        ],
+        [
+          'R1: a recovered edit, the tombstone delivered again',
+          ['a', 'b', 'x'],
+          'held',
+          1,
+          true,
+          false,
+          ['a', 'b'],
+          true,
+          ['a', 'b', 'x']
+        ],
+        // A tag added outside the app: the watcher marks the row edited and
+        // neither queues nor ticks it (REVIEW-5691).
+        [
+          'R2: a tag added outside the app, nothing queued',
+          ['a', 'b', 'x'],
+          'held',
+          1,
+          false,
+          true,
+          ['a', 'b'],
+          false,
+          ['a', 'b', 'x']
+        ]
+      ])('%s', async (_trace, held, text, tick, queued, edited, dayTags, redeliver, expected) => {
         foreignRow(
           { me: tick },
-          { body: `---\ntags:\n${held.map((t) => `  - ${t}\n`).join('')}---\n${text}\n` }
+          {
+            body: `---\ntags:\n${held.map((t) => `  - ${t}\n`).join('')}---\n${text}\n`,
+            // `modifiedAt` is 08:00.
+            syncedAt: edited ? '2026-06-09T07:00:00.000Z' : '2026-06-09T08:00:00.000Z'
+          }
         )
         if (queued) {
           data.db

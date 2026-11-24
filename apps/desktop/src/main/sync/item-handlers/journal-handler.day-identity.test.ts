@@ -135,6 +135,7 @@ describe("a journal id that is not its day's j<date>", () => {
         fileType: 'markdown',
         journalDate: DATE,
         clock: { minter: 2 },
+        syncedAt: '2026-06-09T08:00:00.000Z',
         createdAt: '2026-06-09T08:00:00.000Z',
         modifiedAt: '2026-06-09T08:00:00.000Z'
       })

@@ -1131,6 +1131,56 @@ async fn a_deleted_blank_holder_still_brings_its_offline_tag_to_the_day() {
     assert_eq!(tags, vec!["a", "b", "c"]);
 }
 
+/// A live blank `F` whose only content is a tag added offline: `j<D>`
+/// displaces it and no tombstone comes. A tag the day lacks merges `F` with
+/// no body to fold, and `F` is tombstoned like any merged id. With every tag
+/// already in the day, `F` is forgotten and not tombstoned (#5699).
+#[tokio::test]
+async fn a_live_blank_holder_brings_its_offline_tag_to_the_day() {
+    for (tags_of_day, expected, tombstoned) in [
+        (vec!["a"], vec!["a", "c"], true),
+        (vec!["a", "C"], vec!["a", "C"], false),
+    ] {
+        let db = scratch_db("live-holder-blank-tags");
+        db.call_blocking(move |conn| {
+            let held = record(FOREIGN, &tagged_payload("", &["a"], json!({"device-b": 2})));
+            sync_items::apply_remote(conn, &held, 1)?;
+            let tags = ["a", "c"].map(str::to_owned);
+            metadata::set_tags(conn, DATE, &tags, "device-a", 2)?;
+            let day = record(
+                CANONICAL,
+                &tagged_payload("", &tags_of_day, json!({"device-c": 1})),
+            );
+            assert_eq!(
+                apply_inbound_on(conn, &day, 3, Some("device-a"))?,
+                ApplyOutcome::Applied
+            );
+            Ok(())
+        })
+        .unwrap();
+
+        let report = journal_day_merge::drain(&db, &bodies_for(&db, &[None]), "device-a")
+            .await
+            .unwrap();
+
+        assert_eq!(report.settled, vec![FOREIGN.to_owned()]);
+        db.call_blocking(move |conn| {
+            assert_eq!(day_tags(conn), expected);
+            let deletes = outbox(conn)
+                .iter()
+                .filter(|row| row.0 == FOREIGN && row.1 == "delete")
+                .count();
+            assert_eq!(deletes, usize::from(tombstoned));
+            if tombstoned {
+                assert_eq!(upserts_of(conn, FOREIGN), 0, "the tombstone replaces it");
+            }
+            assert!(journal_day_merge::owed(conn)?.is_empty());
+            Ok(())
+        })
+        .unwrap();
+    }
+}
+
 /// Desktop B merged `F`, then the user removed `b` from the day before B
 /// pushed. Desktop's queue coalesces the edit into the queued `j<D>`, ahead
 /// of `F`'s delete, so `j<D>` without `b` arrives first and displaces the
