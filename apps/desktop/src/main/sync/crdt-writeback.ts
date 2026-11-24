@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import { createLogger } from '../lib/logger'
+import { completeWithin } from '../shutdown-sequence'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
@@ -115,8 +116,14 @@ const pendingTimers = new Map<string, PendingWriteback>()
 const runningPasses = new Map<string, Promise<unknown>>()
 /** Repairs that run at the start of a note's next turn (`repairAfterRunningTurn`). */
 const pendingRepairs = new Map<string, Array<() => Promise<void>>>()
-/** Work a flush waits for after the turns (`holdFlushUntil`). */
-const heldWork = new Set<Promise<unknown>>()
+/** Work a flush waits for after the turns (`holdFlushUntil`), to the label the log names it by. */
+const heldWork = new Map<Promise<unknown>, string>()
+/**
+ * How long a flush waits for held work. A held journal create waits on the
+ * projection lane, which a stuck projection holds for good, and a quit, a vault
+ * close and a journal format change all flush.
+ */
+const HELD_WORK_CAP_MS = 1_500
 /**
  * Bumped by `cancelWriteback`. A pass that was already converting when its
  * note was deleted sees the change and does not write the file back.
@@ -320,14 +327,15 @@ export function repairAfterRunningTurn(noteId: string, repair: () => Promise<voi
 }
 
 /**
- * Makes a flush wait for `work` after the turns. For a writer's step that must
- * land before a quit but runs after its turn: a new journal day's sync enqueue
- * (`writeJournalEntryCreate`). Call it before the turn ends, so a flush that
- * awaits the turn finds it. `work` must not wait on the CRDT store, since a
- * flush runs while the store can be stuck (#5475).
+ * Makes a flush wait for `work` after the turns, for up to `HELD_WORK_CAP_MS`.
+ * For a writer's step that must land before a quit but can run outside a turn:
+ * a new journal day's sync enqueue (`writeJournalEntryCreate`). Call it before
+ * the writer starts, so a flush that begins meanwhile finds it. `label` names
+ * the work in the log when a flush stops waiting for it. `work` must not wait
+ * on the CRDT store, since a flush runs while the store can be stuck (#5475).
  */
-export function holdFlushUntil(work: Promise<unknown>): void {
-  heldWork.add(work)
+export function holdFlushUntil(work: Promise<unknown>, label: string): void {
+  heldWork.set(work, label)
   const release = (): void => void heldWork.delete(work)
   work.then(release, release)
 }
@@ -539,8 +547,12 @@ async function flushAll(): Promise<void> {
       })
     )
   ])
+  if (heldWork.size === 0) return
   // Its owner reports a failure; the flush only waits for it.
-  await Promise.all(Array.from(heldWork, (work) => work.catch(() => {})))
+  const held = Promise.all(Array.from(heldWork.keys(), (work) => work.catch(() => {})))
+  if (!(await completeWithin(held, HELD_WORK_CAP_MS))) {
+    log.warn('Flush stopped waiting for held work', { held: Array.from(heldWork.values()) })
+  }
 }
 
 /**
