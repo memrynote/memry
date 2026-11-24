@@ -62,7 +62,7 @@
     "uploadFailed": "Uploaden van de bijlage mislukt",
     "uploadProgressFailed": "Kan de uploadvoortgang niet ophalen",
     "downloadFailed": "Downloaden van de bijlage mislukt",
-    "downloadGone": "Dit bestand staat niet meer op de synchronisatieserver.",
+    "downloadGone": "Dit bestand staat niet meer op de synchronisatieserver. Als een ander apparaat het nog heeft, voeg het dan opnieuw toe vanaf dat apparaat.",
     "downloadMissing": "Dit bestand staat nog niet op de synchronisatieserver. Open het morgen opnieuw om te controleren.",
     "downloadNeedsSync": "Synchronisatie is niet actief, dus dit bestand kan niet worden gedownload. Het wordt vanzelf gedownload zodra synchronisatie actief is.",
     "downloadProgressFailed": "Kan de downloadvoortgang niet ophalen",

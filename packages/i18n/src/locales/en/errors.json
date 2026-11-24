@@ -62,7 +62,7 @@
     "uploadFailed": "Attachment upload failed",
     "uploadProgressFailed": "Failed to fetch upload progress",
     "downloadFailed": "Attachment download failed",
-    "downloadGone": "This file is no longer on the sync server.",
+    "downloadGone": "This file is no longer on the sync server. If another device still has it, add it again from that device.",
     "downloadMissing": "This file isn't on the sync server yet. Open it again tomorrow to check.",
     "downloadNeedsSync": "Sync isn't running, so this file can't be downloaded. It downloads on its own once sync runs.",
     "downloadProgressFailed": "Failed to fetch download progress",

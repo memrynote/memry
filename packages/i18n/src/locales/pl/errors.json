@@ -62,7 +62,7 @@
     "uploadFailed": "Nie udało się przesłać załącznika",
     "uploadProgressFailed": "Nie udało się odczytać postępu przesyłania",
     "downloadFailed": "Nie udało się pobrać załącznika",
-    "downloadGone": "Tego pliku nie ma już na serwerze synchronizacji.",
+    "downloadGone": "Tego pliku nie ma już na serwerze synchronizacji. Jeśli inne urządzenie nadal go ma, dodaj go ponownie z tego urządzenia.",
     "downloadMissing": "Tego pliku nie ma jeszcze na serwerze synchronizacji. Otwórz go ponownie jutro, aby sprawdzić.",
     "downloadNeedsSync": "Synchronizacja nie działa, więc nie można pobrać tego pliku. Zostanie pobrany automatycznie, gdy synchronizacja zacznie działać.",
     "downloadProgressFailed": "Nie udało się odczytać postępu pobierania",
