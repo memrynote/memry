@@ -223,16 +223,16 @@ async function uniqueDestination(
 // `targetFolder` is vault-relative, the same contract as desktop's
 // `importFiles` since #1204; an import with no target lands under
 // `defaultNoteFolder`.
-function resolveTargetFolder(vaultPath: string, config: VaultConfig, targetFolder = ''): string {
-  const vaultRoot = path.resolve(vaultPath)
-  const target = path.resolve(
-    vaultRoot,
-    normalizePath(targetFolder) || normalizePath(config.defaultNoteFolder)
+async function resolveTargetFolder(
+  vaultPath: string,
+  config: VaultConfig,
+  targetFolder = ''
+): Promise<string> {
+  const requested = normalizePath(targetFolder) ? targetFolder : config.defaultNoteFolder
+  return path.join(
+    vaultPath,
+    await vaultFolder(vaultPath, requested, 'import files', { allowRoot: true })
   )
-  if (target !== vaultRoot && !target.startsWith(`${vaultRoot}${path.sep}`)) {
-    throw new Error('Import target must stay inside the vault')
-  }
-  return target
 }
 
 function escapeHtml(text: string): string {
@@ -458,7 +458,12 @@ export function createAttachmentsService({
       }
 
       const filename = uniqueAttachmentFilename(originalName)
-      const relativePath = normalizePath(path.join(ATTACHMENTS_DIR, noteId, filename))
+      const folder = await vaultFolder(
+        vaultPath,
+        `${ATTACHMENTS_DIR}/${noteId}`,
+        `attach "${originalName}"`
+      )
+      const relativePath = `${folder}/${filename}`
       const absolutePath = path.join(vaultPath, relativePath)
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
       await fs.copyFile(sourcePath, absolutePath)
@@ -557,7 +562,7 @@ export function createImportFilesService({
   dataDb: DataDb
 }) {
   return async function importFiles(input: ImportFilesInput): Promise<ImportFilesResult> {
-    const targetDir = resolveTargetFolder(vaultPath, config, input.targetFolder)
+    const targetDir = await resolveTargetFolder(vaultPath, config, input.targetFolder)
     await fs.mkdir(targetDir, { recursive: true })
 
     const errors: string[] = []
