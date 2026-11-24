@@ -7,6 +7,7 @@
  */
 
 import { foldTag } from '@memry/shared/tag-fold'
+import { getNoteMetadataById } from '@memry/storage-data'
 import path from 'path'
 import fs from 'fs/promises'
 import type { Stats } from 'fs'
@@ -587,8 +588,13 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
   try {
     await fs.access(absolutePath)
   } catch {
-    deleteNoteFromCache(db, id)
-    return null
+    // A synced file whose bytes have not downloaded yet (auto-download off,
+    // #5616) is not stale: the file page fetches it. Its attachment id lives
+    // on the canonical row; the index row never carries one.
+    if (!getNoteMetadataById(getDatabase(), id)?.attachmentId) {
+      deleteNoteFromCache(db, id)
+      return null
+    }
   }
 
   const filedVoice =

@@ -93,7 +93,8 @@ import {
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
   planCaseTwinMove,
-  sharesCaseTwinFile
+  sharesCaseTwinFile,
+  updateCaseTwinOffFile
 } from '../../vault/case-twin-file'
 import {
   healBinaryNoteRecord,
@@ -189,20 +190,23 @@ function requestEmbeddedAttachmentDownloads(
     // Skips what is already in flight, what already downloaded this session,
     // and what the server has answered 404 for — that last one persisted, so a
     // sync stop/start or a relaunch no longer replays the dead request.
-    if (!shouldAttemptDownload(db, itemId, attachmentId)) continue
-    markDownloadRequested(itemId, attachmentId)
+    const claim = shouldAttemptDownload(db, itemId, attachmentId)
+      ? markDownloadRequested(itemId, attachmentId)
+      : null
+    if (!claim) continue
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
       intoDir: true,
-      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+      claim
     })
     // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
     // on sync-runtime restart, sign-out/in and token churn, so a dropped emit
     // has no downloader to report an outcome. Release the claim immediately or
     // the attachment is never asked for again for the life of the process.
-    if (!delivered) releaseDownloadAttempt(itemId, attachmentId)
+    if (!delivered) releaseDownloadAttempt(claim)
   }
 }
 
@@ -471,8 +475,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         // A case twin's file is the other twin's too (#5498). Planned before
         // anything here changes: a throw fails the item with nothing moved, and
         // a not-ready one is retried by the pull. Its own file lands at the new
-        // path in one step with the other twin's, and the frontmatter below is
-        // applied to it in place.
+        // path in one step with the other twin's and its canonical row, and the
+        // frontmatter below is applied to it in place.
         const twinMove = sharesCaseTwinFile(notesDir, existing.path)
           ? planCaseTwinMove(notesDir, existing.path, itemId, newRelPath)
           : null
@@ -480,7 +484,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         updateFields.path = newRelPath
 
         if (twinMove) {
-          const moved = twinMove()
+          const moved = twinMove(() => {
+            updateNoteMetadata(ctx.db, itemId, { path: newRelPath })
+          })
           movedTwinPath = newRelPath
           updateFields.contentHash = generateContentHash(moved.content)
           settleRemoteNoteFileSync(itemId, newAbsPath, newRelPath, moved.content)
@@ -549,7 +555,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           })
         }
       }
-      if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
+      // The file a case twin shares may hold the other twin's bytes (#5561).
+      const offFile =
+        !needsPathUpdate && rewritesFrontmatter
+          ? updateCaseTwinOffFile(getVaultRoot(), existing.path, itemId, frontmatterPatch)
+          : null
+      if (offFile) {
+        writtenAliases = { kind: 'read', aliases: extractAliases(offFile.frontmatter, newTitle) }
+        if (coverPresent) {
+          recordAppliedNoteCover(ctx.db, itemId, offFile.frontmatter)
+          updateFields.cover = offFile.cover
+        }
+      } else if ((!needsPathUpdate || movedTwinPath !== null) && rewritesFrontmatter) {
         // emoji is sidecar-only state — never a reason to rewrite the file
         const filePath = movedTwinPath ?? existing.path
         const absPath = toAbsolutePath(filePath)
@@ -593,7 +610,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       const indexed = noteCacheExists(indexDb, itemId)
       const indexTags =
         indexed && tagsChanged && remoteTags
-          ? withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
+          ? offFile
+            ? offFile.tags
+            : withLocalBodyTags(remoteTags, updateFields.path ?? existing.path)
           : undefined
 
       if (indexTags) {
@@ -731,14 +750,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         modifiedAt
       })
 
-      if (data.attachmentId) {
+      // Null while another request holds the download, such as an open (#5616).
+      const claim = data.attachmentId ? markDownloadRequested(itemId, data.attachmentId) : null
+      if (data.attachmentId && claim) {
         const recencyMs = data.modifiedAt ? Date.parse(data.modifiedAt) : NaN
-        attachmentEvents.emitDownloadNeeded({
+        const delivered = attachmentEvents.emitDownloadNeeded({
           noteId: itemId,
           attachmentId: data.attachmentId,
           diskPath: absolutePath,
-          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
+          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {}),
+          claim
         })
+        if (!delivered) releaseDownloadAttempt(claim)
       }
 
       ctx.emit(NotesChannels.events.CREATED, {

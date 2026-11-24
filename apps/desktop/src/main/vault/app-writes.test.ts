@@ -11,6 +11,16 @@ import {
   resetAppWrites
 } from './app-writes'
 
+function fileSystemIgnoresCase(): boolean {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
+  try {
+    fs.writeFileSync(path.join(dir, 'probe'), '')
+    return fs.existsSync(path.join(dir, 'PROBE'))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 describe('app writes (#5605)', () => {
   let dir: string
   let file: string
@@ -74,6 +84,36 @@ describe('app writes (#5605)', () => {
 
     expect(await fileHoldsAppWrite(file)).toBe(true)
   })
+
+  // REVIEW-5632 (1): case twins write the file they share, each by its own
+  // spelling, and a write superseded only the records of its own spelling.
+  it.runIf(fileSystemIgnoresCase())(
+    "takes a twin's earlier write, put back after the other twin's write, as an edit",
+    async () => {
+      const twin = path.join(dir, 'NOTE.md')
+      appWrites('# A\n')
+      const landed = recordAppWrite(twin, '# B\n')
+      fs.writeFileSync(twin, '# B\n')
+      landed()
+      expect(await fileHoldsAppWrite(twin)).toBe(true)
+
+      fs.writeFileSync(file, '# A\n')
+      expect([await fileHoldsAppWrite(file), await fileHoldsAppWrite(twin)]).toEqual([false, false])
+    }
+  )
+
+  it.runIf(!fileSystemIgnoresCase())(
+    'keeps the echo of each of two files whose names differ only in case',
+    async () => {
+      const other = path.join(dir, 'NOTE.md')
+      appWrites('# A\n')
+      const landed = recordAppWrite(other, '# B\n')
+      fs.writeFileSync(other, '# B\n')
+      landed()
+
+      expect([await fileHoldsAppWrite(file), await fileHoldsAppWrite(other)]).toEqual([true, true])
+    }
+  )
 
   it('owns any bytes a hash-less move put there until the record expires', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
