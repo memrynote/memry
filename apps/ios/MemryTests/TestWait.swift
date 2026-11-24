@@ -33,7 +33,10 @@ final class Changes: Sendable {
         while !condition(), !Task.isCancelled {
             let id = UUID()
             await withTaskCancellationHandler {
-                await withCheckedContinuation { continuation in
+                // Explicit: the operation closure does not inherit `isolation`
+                // on every toolchain, and the body below calls the caller's
+                // `condition`, which traps the host off its actor (#5484).
+                await withCheckedContinuation(isolation: isolation) { continuation in
                     waiters.withLock { $0[id] = continuation }
                     // Checked again after registering: a change between the
                     // loop's check and the registration would wake nobody.
