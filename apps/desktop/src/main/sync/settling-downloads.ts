@@ -86,7 +86,9 @@ export function oweUnsettledDownloads(): void {
 
 /**
  * Invariant (VERIFY-5722): a download that outlives its wait or its session
- * writes nothing; quit never spends close-vault's reserve. Waits for the
+ * writes nothing: it does every await first, then checks outlived() once, with
+ * no await between the outlived() check and the writes. Quit never spends
+ * close-vault's reserve. Waits for the
  * downloads unsettled now, at most `ms`; every one still unsettled then is cut,
  * so it records nothing into whichever session comes next. One a later session
  * requests is not this wait's to cut.

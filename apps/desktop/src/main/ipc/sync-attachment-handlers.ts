@@ -905,33 +905,35 @@ async function downloadAndRecord(
       ...(recencyHint !== undefined ? { recencyHint } : {})
     })
     if (outlived(download)) return writesNothing()
-    markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
-    download.recorded = true
+    let placed = result.filePath
     // The manifest froze this file's name at upload, so a device that
     // materializes it after an in-app rename (#1714) gets the OLD name.
     // The note body is the authority — rename to what it asks for before
     // anything is told the file exists.
     if (intoDir && isDatabaseInitialized()) {
       const vaultPath = getVaultStatus().path
-      const placed = vaultPath
-        ? await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
-        : result.filePath
-      if (outlived(download)) return writesNothing()
-      recordFile(noteId, placed, attachmentId)
+      if (vaultPath) {
+        placed = await placeDownloadedFile(getDatabase(), vaultPath, noteId, result.filePath)
+      }
       await applyDownloadedAttachmentName(noteId, placed)
     }
+    // Embedded attachments land inside attachments/<noteId>/ — the note's
+    // own fileSize (a binary-note concept) must not be overwritten by them.
+    const size = intoDir ? null : (await fs.promises.stat(result.filePath)).size
+    // VERIFY-5722R2: no await between this check and the writes below, so a
+    // cut can never land after the owed row is cleared and before the outcome.
+    if (outlived(download)) return writesNothing()
+    markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
+    download.recorded = true
+    if (intoDir) recordFile(noteId, placed, attachmentId)
     // The bytes are on disk now, but a note that is already open resolved
     // its attachment URLs when its blocks were built and never asks again.
     // Without this the file is invisible until the app is restarted —
     // reopening the note does not help, the editor never unmounts.
     broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, { noteId })
-    // Embedded attachments land inside attachments/<noteId>/ — the note's
-    // own fileSize (a binary-note concept) must not be overwritten by them.
-    if (!intoDir) {
-      const stats = await fs.promises.stat(result.filePath)
-      if (outlived(download)) return writesNothing()
+    if (size !== null) {
       if (isDatabaseInitialized()) {
-        recordDownloadedFileSize(noteId, attachmentId, stats.size, result.manifest.checksum)
+        recordDownloadedFileSize(noteId, attachmentId, size, result.manifest.checksum)
       }
       landed?.()
     }

@@ -32,6 +32,8 @@ import { SupersededDownloadError } from '../sync/attachment-errors'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
 import { DOWNLOAD_SETTLE_TIMEOUT_MS } from '../sync/attachment-outbox'
 import { recordDownloadedFileSize } from '../sync/note-attachment-metadata'
+import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
+import { fileTextNoteChanged } from '../file-text'
 
 const h = vi.hoisted(() => ({
   db: null as unknown as TestDataDb,
@@ -231,6 +233,7 @@ beforeEach(() => {
   h.dbOpen = true
   h.download.mockReset()
   vi.mocked(recordDownloadedFileSize).mockClear()
+  vi.mocked(fileTextNoteChanged).mockClear()
   h.token.mockReset().mockResolvedValue('token')
   for (const log of Object.values(h.log)) log.mockClear()
   h.network = Object.assign(new EventEmitter(), { online: true })
@@ -704,6 +707,61 @@ describe('sync:download-note-files with auto-download on', () => {
     expect(failureRows()).toEqual([
       expect.objectContaining({ id: 'bin-1::att-bin', reason: 'transient', attempts: 0 })
     ])
+  })
+
+  // VERIFY-5722R2: a cut that lands during the settle's own awaits (the name
+  // reconcile, the size stat) must record nothing either; the owed row stands.
+  it('writes nothing for an embed whose session ends while its name is reconciled', async () => {
+    setAutoDownload(true)
+    serveFiles()
+    let reconciled: () => void = () => undefined
+    vi.mocked(applyDownloadedAttachmentName).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          reconciled = resolve
+        })
+    )
+    pullAsksForEmbed()
+    await settle()
+
+    resetAttachmentDownloadSession()
+    await clearAttachmentState(0)
+    reconciled()
+    await settle()
+
+    expect(materialized()).toEqual([])
+    expect(fileTextNoteChanged).not.toHaveBeenCalled()
+    expect(failureRows()).toEqual([expect.objectContaining({ id: 'note-1::att-embed' })])
+  })
+
+  it('owes a binary note file whose session ends while its size is read', async () => {
+    setAutoDownload(true)
+    serveFiles()
+    const stat = fs.promises.stat
+    let statRead: () => void = () => undefined
+    const held = vi.spyOn(fs.promises, 'stat').mockImplementation(async (target) => {
+      if (target === pdfPath()) {
+        await new Promise<void>((resolve) => {
+          statRead = resolve
+        })
+      }
+      return stat(target)
+    })
+    try {
+      pullAsksForBinaryFile()
+      await settle()
+
+      resetAttachmentDownloadSession()
+      await clearAttachmentState(0)
+      statRead()
+      await settle()
+    } finally {
+      held.mockRestore()
+    }
+
+    expect(recordDownloadedFileSize).not.toHaveBeenCalled()
+    expect(materialized()).toEqual([])
+    expect(failureRows()).toEqual([expect.objectContaining({ id: 'bin-1::att-bin' })])
   })
 
   it('writes nothing into the next session for a transfer that settles after a logout', async () => {
