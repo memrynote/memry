@@ -167,6 +167,45 @@ describe('unlinked mentions (#3320)', () => {
     ).toBe(false)
   })
 
+  /** Link `ordinal` while `during` changes the source's file as the feed runs; the file after it. */
+  async function linkWhileFileChanges(body: string, ordinal: number, during: string) {
+    const target = await notes.createNote({ title: 'Alpha', content: 'Body.' })
+    const source = await notes.createNote({ title: 'Log', content: body })
+    await projections.flushProjectionEvents()
+    const before = readVaultFile(source.path)
+    crdtMocks.feedExternalEditToCrdt.mockImplementationOnce(async () => {
+      fs.writeFileSync(path.join(tempVault.path, source.path), before.replace(body, during))
+      return true
+    })
+    const linked = await mentions.linkUnlinkedMentionInSource({
+      sourceId: source.id,
+      targetId: target.id,
+      ordinal
+    })
+    return { linked, file: readVaultFile(source.path), before: before.replace(body, during) }
+  }
+
+  // VERIFY-5719 low 2: the doc links the mention picked in the bytes read
+  // before the feed; the file must not link a different one.
+  it('leaves the file alone when a body change during the feed moves the picked mention', async () => {
+    const { linked, file, before } = await linkWhileFileChanges(
+      'Alpha one.\n\nAlpha two.',
+      0,
+      'Gone one.\n\nAlpha two.'
+    )
+    expect({ linked, file }).toEqual({ linked: true, file: before })
+  })
+
+  it('links the picked mention when a body change during the feed leaves it in place', async () => {
+    const { linked, file } = await linkWhileFileChanges(
+      'Alpha one.\n\nAlpha two.',
+      0,
+      'Alpha one.\n\nAlpha two.\n\nTyped meanwhile.'
+    )
+    expect(linked).toBe(true)
+    expect(file).toContain('[[Alpha]] one.\n\nAlpha two.\n\nTyped meanwhile.')
+  })
+
   it('tells the reference filters which sources are journal entries and their tags', async () => {
     const target = await notes.createNote({ title: 'Project X', content: 'Body.' })
     await notes.createNote({ title: 'Spec', content: 'See [[Project X]].', tags: ['work'] })
