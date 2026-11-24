@@ -16,8 +16,8 @@ interface PresignFetch {
 }
 
 export interface AttachmentDownloadPrefetchDeps {
-  /** The chunk hashes inside a verified, decrypted manifest. */
-  chunkHashesOf: (manifest: EncryptedAttachmentManifest) => Promise<string[]>
+  /** The chunk hashes inside the verified, decrypted manifest of `attachmentId`. */
+  chunkHashesOf: (attachmentId: string, manifest: EncryptedAttachmentManifest) => Promise<string[]>
 }
 
 /**
@@ -184,7 +184,8 @@ export class AttachmentDownloadPrefetch {
         if (!manifest) continue
         this.prefetched.set(id, { manifest, fetchedAt })
         try {
-          for (const h of await this.deps.chunkHashesOf(manifest)) this.unarmed.set(h, fetchedAt)
+          for (const h of await this.deps.chunkHashesOf(id, manifest))
+            this.unarmed.set(h, fetchedAt)
         } catch (err) {
           // The download verifies the manifest again and reports the failure.
           log.debug('prefetched manifest did not verify', { attachmentId: id, err })
