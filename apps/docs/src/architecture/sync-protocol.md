@@ -1205,7 +1205,11 @@ across devices:
   (note, attachment). Only the outcome writes here: the request itself no longer
   counts as a result, so a 404 and a success are no longer the same event. A
   transient failure (5xx, network, decrypt) keeps its retry on an exponential
-  backoff from one minute. A `404`/`410` — the server saying it does not have
+  backoff from one minute. So does a manifest whose `id` is not the attachment
+  asked for, from the single GET or under a batch key: the download refuses it
+  before any chunk request or write, as memry-core does, because landing it
+  would put another file's bytes under this id, and a server mix-up is no
+  evidence the blob is gone. A `404`/`410` — the server saying it does not have
   this blob — is re-probed at most once a day, three times, and then never
   automatically again. Session state (in-flight claims and this session's
   successes) is still in memory and still cleared on runtime teardown, because
@@ -1298,7 +1302,11 @@ attachment's id is dropped from the note, and its local file is queued for
 upload again, which adds the new id and pushes the note. Holds would not cover
 this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
-loses it.
+loses it. Both this check and the 30-day release read an attachment's chunks
+from its signed manifest, and both refuse a manifest whose `id` is not the
+attachment asked for (#5664): dereferencing its chunks would free another
+attachment's. The release then frees nothing and keeps its record, and the
+check stays pending, until the server answers with the right manifest.
 
 ### Binary note records pushed as markdown
 
