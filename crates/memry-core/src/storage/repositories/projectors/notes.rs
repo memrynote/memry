@@ -19,6 +19,7 @@
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::domain::attachment_refs;
 
 use super::super::schema::{Field, Kind, Object, ProjectionError, read_fields};
 use super::{ItemContext, clock_text, failed, instant, json, strings, text, text_or_default};
@@ -90,6 +91,16 @@ pub fn project_note(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
+    // The cache rows follow the list (#5675): without them the re-drive never
+    // fetches a peer's picture. Rows only; no manifest is read. Before the
+    // upsert, because the merge reads the list it replaces. A deleted note
+    // wants none of its pictures.
+    let references = match item.deleted_at {
+        Some(_) => Some(Vec::new()),
+        None => json(view, "attachmentReferences").map(|_| strings(view, "attachmentReferences")),
+    };
+    attachment_refs::merge_note_references(conn, item.item_id, references.as_deref())?;
+
     conn.prepare_cached(
         "INSERT INTO notes (
              id, title, folder_path, emoji, file_type, mime_type, attachment_id,

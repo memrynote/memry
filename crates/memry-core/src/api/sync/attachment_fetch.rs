@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::{OnceCell, Semaphore};
 
-use crate::protocol::attachment_manifest::EncryptedAttachmentManifest;
+use crate::protocol::attachment_manifest::{AttachmentManifest, EncryptedAttachmentManifest};
 
 #[allow(unused_imports)]
 use super::*;
@@ -136,6 +136,113 @@ impl VaultSync {
         }
         Ok(summary)
     }
+
+    /// Reads the manifest of each attachment `note_id` references that has no
+    /// name on this device yet, so `Notes::attachment_for_block` binds the
+    /// block naming it (#5675). A block names its file by the manifest's
+    /// filename, and a row a pulled note created has none until a manifest is
+    /// read. Manifests only: the bytes still go through
+    /// [`Self::fetch_attachment`].
+    ///
+    /// The shell calls it when the user opens the note, whatever the Download
+    /// attachments setting. Answers how many it named; one that will not
+    /// read is logged and asked again on the next open.
+    pub async fn fetch_note_manifests(&self, note_id: String) -> Result<u32, SyncError> {
+        let unnamed: Vec<String> = self
+            .db
+            .call(move |conn| attachments::for_note(conn, &note_id))
+            .await?
+            .into_iter()
+            .filter(|row| row.filename.is_none())
+            .map(|row| row.attachment_id)
+            .collect();
+        if unnamed.is_empty() {
+            return Ok(0);
+        }
+        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
+        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        let signers = DirectorySigners(account::device_directory(&self.session.http()).await?);
+        let mut batch = self.batch_manifests(&unnamed).await;
+        let mut named = 0;
+        for attachment_id in unnamed {
+            let opened = match batch.remove(&attachment_id) {
+                Some(envelope) => {
+                    protocol_attachments::open_manifest(&envelope, &vault_key, &signers)
+                }
+                None => {
+                    protocol_attachments::fetch_manifest(
+                        &self.session.http(),
+                        &self.vault_id,
+                        &attachment_id,
+                        &vault_key,
+                        &signers,
+                    )
+                    .await
+                }
+            };
+            let manifest = match opened {
+                Ok((manifest, _)) if manifest.id == attachment_id => manifest,
+                Ok((manifest, _)) => {
+                    eprintln!(
+                        "memry-core: naming attachment {attachment_id}: the manifest names {}",
+                        manifest.id
+                    );
+                    continue;
+                }
+                Err(error) => {
+                    eprintln!("memry-core: naming attachment {attachment_id}: {error}");
+                    continue;
+                }
+            };
+            let row = ManifestRow::of(&manifest)?;
+            self.db
+                .call(move |conn| row.put(conn, &attachment_id))
+                .await?;
+            named += 1;
+        }
+        Ok(named)
+    }
+}
+
+/// What the cache row records of an opened manifest.
+struct ManifestRow {
+    text: String,
+    /// Ciphertext, because §14.8 reserves quota against it and the cache
+    /// budget is measured in the same figure.
+    remote_size: i64,
+    filename: String,
+    mime_type: String,
+}
+
+impl ManifestRow {
+    fn of(manifest: &AttachmentManifest) -> Result<Self, SyncError> {
+        let json = protocol::attachment_manifest::manifest_json(manifest).map_err(|error| {
+            SyncError::AttachmentCorrupt {
+                what: error.to_string(),
+            }
+        })?;
+        Ok(Self {
+            text: String::from_utf8_lossy(&json).into_owned(),
+            remote_size: manifest
+                .chunks
+                .iter()
+                .map(|chunk| chunk.size as i64 + 24 + 16)
+                .sum(),
+            filename: manifest.filename.clone(),
+            mime_type: manifest.mime_type.clone(),
+        })
+    }
+
+    fn put(&self, conn: &rusqlite::Connection, attachment_id: &str) -> Result<(), StorageError> {
+        attachments::put_manifest(
+            conn,
+            attachment_id,
+            &self.text,
+            self.remote_size,
+            &self.filename,
+            &self.mime_type,
+        )
+    }
 }
 
 impl VaultSync {
@@ -213,35 +320,13 @@ impl VaultSync {
             .await?;
         let local_path = self.write_bytes(&attachment_id, &bytes)?;
 
-        let manifest_json =
-            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
-                SyncError::AttachmentCorrupt {
-                    what: error.to_string(),
-                }
-            })?;
-        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
-        // Ciphertext, because §14.8 reserves quota against it and the cache
-        // budget is measured in the same figure.
-        let remote_size: i64 = manifest
-            .chunks
-            .iter()
-            .map(|chunk| chunk.size as i64 + 24 + 16)
-            .sum();
+        let row = ManifestRow::of(&manifest)?;
         let id = attachment_id.clone();
-        let filename = manifest.filename.clone();
-        let mime_type = manifest.mime_type.clone();
         let stored = local_path.clone();
         let now = now_ms();
         self.db
             .call(move |conn| {
-                attachments::put_manifest(
-                    conn,
-                    &id,
-                    &manifest_text,
-                    remote_size,
-                    &filename,
-                    &mime_type,
-                )?;
+                row.put(conn, &id)?;
                 attachments::record_download(conn, &id, &stored, now)?;
                 Ok(())
             })
@@ -295,6 +380,19 @@ impl VaultSync {
             })
             .map(|(id, _)| id.clone())
             .collect();
+        Ok(self.batch_manifests(&ids).await)
+    }
+
+    /// The manifests of `ids` in one batch call per [`MANIFEST_BATCH_CAP`]
+    /// (§14.5.2). Empty when fewer than two are asked for, when the device is
+    /// locked, or when the server has no batch route; the caller then fetches
+    /// each manifest alone, and those single fetches report a failed batch.
+    ///
+    /// [`MANIFEST_BATCH_CAP`]: protocol_attachments::MANIFEST_BATCH_CAP
+    async fn batch_manifests(
+        &self,
+        ids: &[String],
+    ) -> HashMap<String, EncryptedAttachmentManifest> {
         let unsupported = MANIFEST_BATCH_UNSUPPORTED
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -303,7 +401,7 @@ impl VaultSync {
         // A key that cannot be read fails each row on its own, as before.
         let unlocked = matches!(self.session.master_key(), Ok(Some(_)));
         if ids.len() < 2 || unsupported || !unlocked {
-            return Ok(HashMap::new());
+            return HashMap::new();
         }
         let mut manifests = HashMap::new();
         for chunk in ids.chunks(protocol_attachments::MANIFEST_BATCH_CAP) {
@@ -325,7 +423,7 @@ impl VaultSync {
                 Err(_) => break,
             }
         }
-        Ok(manifests)
+        manifests
     }
 }
 
