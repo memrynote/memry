@@ -102,7 +102,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
-import { holdsBinaryChange } from './case-twin-bytes'
+import { holdsBinaryChange } from './case-twin-hold'
 
 const logger = createLogger('Watcher')
 
