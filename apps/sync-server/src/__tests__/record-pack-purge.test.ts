@@ -5,6 +5,7 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import { cleanupExpiredTombstones } from '../services/cleanup'
+import { storeSnapshot } from '../services/crdt-snapshot-write'
 import { compactOneRange, compactVault } from '../services/pack-compaction'
 import { parsePack } from '../services/pack-format'
 import { deleteReplacedPackObjects } from '../services/pack-replaced-objects'
@@ -195,6 +196,11 @@ const listedRecordPacks = () =>
 const coverage = () =>
   listedRecordPacks().map(({ cover_from: from, cover_through: through }) => [from, through])
 
+const coverOf = (pack: { cover_from: number | null; cover_through: number | null }) => ({
+  cover_from: pack.cover_from,
+  cover_through: pack.cover_through
+})
+
 /** Runs the passes a compaction message runs first (pack-message-passes.ts). */
 const messagePasses = async (): Promise<void> => {
   await rewritePurgedPacks(harness.db, storage, SCOPE)
@@ -202,6 +208,12 @@ const messagePasses = async (): Promise<void> => {
 }
 
 const pastRetention = () => vi.setSystemTime(Date.now() + (RETENTION_DAYS + 1) * 86_400 * 1000)
+
+const pendingRewrites = () =>
+  harness.raw
+    .prepare(`SELECT pack_key FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
+    .pluck()
+    .all()
 
 const shedRow = (id: string) =>
   harness.raw.prepare('SELECT blob_key FROM sync_items WHERE item_id = ?').get(id) as {
@@ -367,6 +379,132 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
         .prepare(`SELECT COUNT(*) AS n FROM pack_replaced_objects WHERE replaced_by = 'rewrite'`)
         .get()
     ).toEqual({ n: 0 })
+  })
+
+  // VERIFY-5452 #3: the first emptied pack found no listed neighbour, because
+  // the second still waited for its rewrite, so the pass reset the record kind.
+  // REVIEW-5636 #2, #7: three packs take three rounds, and each retry read and
+  // parsed the pack object again.
+  it('emptied record packs at the start of the chain hand their coverage to the pack after them, reading each object once', async () => {
+    const app = buildApp()
+    const versions: string[] = []
+    for (const tick of [1, 2, 3]) {
+      const operation = tick === 1 ? 'create' : 'update'
+      await push(app, { id: 'note-a', type: 'note', tick, operation })
+      await compactAll()
+      versions.push(blobKey('note-a'))
+    }
+    await push(app, { id: 'task-keep', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(4)
+    const get = vi.spyOn(storage, 'get')
+
+    await push(app, { id: 'note-a', type: 'note', tick: 4, operation: 'delete' })
+
+    for (const { pack_key: key } of before.slice(0, 3)) {
+      expect(get.mock.calls.filter(([read]) => read === key)).toHaveLength(1)
+    }
+    for (const version of versions) expect(await heldBy(version)).toEqual([])
+    expect(listedRecordPacks()).toEqual([
+      { pack_key: before[3].pack_key, cover_from: 0, cover_through: before[3].cover_through }
+    ])
+  })
+
+  // REVIEW-5636 #3: the other queue's pass handed the first pack's coverage on
+  // and deleted its object between two rounds; the retry read the object, found
+  // it missing and reset the kind that pass had just settled.
+  it('a retry whose rewrite a concurrent pass settled leaves the record packs listed', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'update' })
+    await compactAll()
+    await push(app, { id: 'task-keep', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    const [, second, kept] = listedRecordPacks()
+    const settled = harness.raw.prepare(
+      `SELECT 1 FROM pack_replaced_objects WHERE pack_key = ? AND replaced_by = 'purge'`
+    )
+    const batch = harness.db.batch.bind(harness.db)
+    let raced = false
+    vi.spyOn(harness.db, 'batch').mockImplementation(async (statements) => {
+      const results = await batch(statements)
+      if (!raced && settled.get(second.pack_key)) {
+        raced = true
+        await messagePasses()
+      }
+      return results
+    })
+
+    await push(app, { id: 'note-a', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(raced).toBe(true)
+    expect(listedRecordPacks()).toEqual([{ ...kept, cover_from: 0 }])
+  })
+
+  // REVIEW-5636 #4: the pass settled one rewrite and left two for the next
+  // pass, one of them the neighbour an emptied pack waited for, and reset the
+  // record kind anyway.
+  it('an emptied pack whose neighbour waits for the next pass hands its coverage on there instead of resetting the kind', async () => {
+    const app = buildApp()
+    await push(app, { id: 'task-gone', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    for (const tick of [1, 2, 3]) {
+      const operation = tick === 1 ? 'create' : 'update'
+      await push(app, { id: 'note-a', type: 'note', tick, operation })
+      await compactAll()
+    }
+    await push(app, { id: 'task-next', type: 'task', tick: 1, operation: 'create' })
+    await compactAll()
+    await push(
+      app,
+      { id: 'task-gone', type: 'task', tick: 2, operation: 'delete' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    await compactAll()
+    const before = listedRecordPacks()
+    expect(before).toHaveLength(6)
+    pastRetention()
+    // The shed takes the task's two packs out first; the note's purge then adds
+    // its three, so the pass runs four of the five rewrites.
+    expect(await cleanupExpiredTombstones(harness.db, storage, env)).toBe(0)
+    vi.setSystemTime(Date.now() + 1000)
+
+    await push(app, { id: 'note-a', type: 'note', tick: 4, operation: 'delete' })
+
+    expect(listedRecordPacks()).toEqual([before[4], expect.objectContaining(coverOf(before[5]))])
+    expect(pendingRewrites()).toHaveLength(4)
+
+    await messagePasses()
+
+    expect(pendingRewrites()).toEqual([])
+    expect(coverage()).toEqual([
+      [0, before[4].cover_through],
+      [before[5].cover_from, before[5].cover_through]
+    ])
+    expect(await heldBy('note:note-a@')).toEqual([])
+  })
+
+  // REVIEW-5636 #7: no later pass runs the rewrite, so the reset still settles it.
+  it('a pass that settled a rewrite and leaves none for later resets the kind for an emptied pack with no neighbour', async () => {
+    const app = buildApp()
+    await push(app, { id: 'note-a', type: 'note', tick: 1, operation: 'create' })
+    const version = blobKey('note-a')
+    const snapshot = new Uint8Array([0xe1, 0xe2, 0xe3]).buffer
+    await storeSnapshot(harness.db, storage, USER_ID, VAULT_ID, 'note-a', DEVICE_ID, snapshot)
+    await compactAll()
+    expect(listedRecordPacks()).toHaveLength(1)
+    expect(
+      harness.raw
+        .prepare(`SELECT COUNT(*) AS n FROM pack_index WHERE item_kind = 'crdt_snapshot'`)
+        .get()
+    ).toEqual({ n: 1 })
+
+    await push(app, { id: 'note-a', type: 'note', tick: 2, operation: 'delete' })
+
+    expect(pendingRewrites()).toEqual([])
+    expect(await heldBy(version)).toEqual([])
   })
 
   it('a rollup whose input coverage changed after its plan does not swap', async () => {

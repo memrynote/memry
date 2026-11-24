@@ -62,6 +62,7 @@ vi.mock('./crdt-writeback-port', async () => {
 })
 vi.mock('./crdt-writeback', () => ({
   takeWritebackTurn: (_id: string, run: () => Promise<unknown>) => run(),
+  holdFlushUntil: vi.fn(),
   writebackNow: vi.fn()
 }))
 vi.mock('../projections', () => ({

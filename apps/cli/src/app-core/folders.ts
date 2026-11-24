@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { caseTwinUnderFolder } from './case-twins.ts'
 import type { DataDb } from './database.ts'
+import { errorCode } from './errno.ts'
 import { ATTACHMENTS_DIR, CANVAS_DIR, normalizePath, type VaultConfig } from './paths.ts'
 
 export interface FolderRecord {
@@ -54,6 +55,30 @@ async function walkFolders(
   return folders
 }
 
+/**
+ * Whether each segment is an entry of its parent under exactly that name, as Tauri's
+ * `spelled_on_disk` (crates/memry-desktop/src/notes/folder_delete.rs) checks. A case- or
+ * Unicode-form-blind disk (macOS, Windows) resolves another spelling to the same folder.
+ */
+async function spelledOnDisk(root: string, segments: string[]): Promise<boolean> {
+  let dir = root
+  for (const segment of segments) {
+    if (!(await fs.readdir(dir)).includes(segment)) return false
+    dir = path.join(dir, segment)
+  }
+  return true
+}
+
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await fs.lstat(target)
+    return true
+  } catch (error) {
+    if (errorCode(error) === 'ENOENT') return false
+    throw error
+  }
+}
+
 /** Vault-relative folders the desktop notes tree lists. */
 export function listTreeFolders(vaultPath: string, config: VaultConfig): Promise<string[]> {
   return walkFolders(vaultPath, createTreeFolderFilter(config))
@@ -95,8 +120,16 @@ export function createFoldersService({
       return { path: newNormalized }
     },
     async delete(folderPath) {
-      const normalized = normalizePath(folderPath)
-      await fs.rm(path.join(root, normalized), { recursive: true, force: true })
+      const target = path.join(root, normalizePath(folderPath))
+      // Unchecked, `supernotes` would delete `SuperNotes` with every note in it (#5648), and `/`
+      // the whole vault, which no readdir lists. A missing folder stays a no-op.
+      const segments = path.relative(root, target).split(path.sep)
+      if ((await pathExists(target)) && !(await spelledOnDisk(root, segments))) {
+        throw new Error(
+          `Refusing to delete folder "${folderPath}": the disk spells it differently, so it would delete another folder with all of its notes. Pass the path exactly as "memrynote folders list" prints it.`
+        )
+      }
+      await fs.rm(target, { recursive: true, force: true })
       return true
     }
   }

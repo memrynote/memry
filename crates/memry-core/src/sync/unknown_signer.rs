@@ -20,10 +20,10 @@
 //!
 //! Only a well-formed answer that leaves the id out counts toward
 //! [`MAX_RETRIES`]: anything else would give up on a record over a server
-//! hiccup (#5502). An unusable answer about the request (a dropped page, a
-//! record still unverifiable, a malformed body, a 4xx) counts toward
-//! [`MAX_FAILURES`], which still bounds the hold; an answer about the network
-//! or the server's health (transport, 5xx, 429) counts nothing.
+//! hiccup (#5502). The server's unusable answer about the request (a record
+//! still unverifiable, a 4xx with its error code) counts toward
+//! [`MAX_FAILURES`], which still bounds the hold. Nothing else counts: transport,
+//! 5xx, 429, a 200 that is no pull envelope, a 4xx with no code (a portal's).
 //!
 //! The settings item reuses the hold (#5433): an edit over a deleted
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
@@ -58,8 +58,8 @@ use super::pull::{PullError, PullLoop, PullReport};
 /// stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-/// Re-pulls that failed (not for the network or the server's health) or came
-/// back unverifiable before a hold gives up. Stored after a `/` in the `meta`
+/// Re-pulls the server refused (a 4xx with its error code) or answered
+/// unverifiable before a hold gives up. Stored after a `/` in the `meta`
 /// value; an older build parses such a value as 0 and keeps holding.
 pub(crate) const MAX_FAILURES: u32 = 50;
 
@@ -151,23 +151,23 @@ enum Counted {
 
 /// Classifies a re-pull. Only a page that decoded, held no unverifiable
 /// record and left an id out shows the server has no copy; a record that
-/// resolved its hold has already dropped its `meta` row.
+/// resolved its hold has already dropped its `meta` row. A captive portal or
+/// proxy answers a 200 that is no pull envelope (a page, `{}`) or a 4xx with
+/// no error code (403, 407): off the server's network, these count nothing,
+/// or they would release a hold (VERIFY-5447 r4 #8).
 fn counted(result: &Result<PullReport, PullError>) -> Counted {
     match result {
-        Ok(report)
-            if report.uncovered > 0
-                && report.corrupt == 0
-                && report.dropped_pages == 0
-                && !report.refused =>
-        {
-            Counted::Attempt
-        }
+        Ok(report) if report.corrupt > 0 || report.refused => Counted::Failure,
+        Ok(report) if report.dropped_pages > 0 => Counted::Nothing,
+        Ok(report) if report.uncovered > 0 => Counted::Attempt,
         Ok(_) => Counted::Failure,
         Err(PullError::Api {
-            source: ApiError::MalformedResponse { .. },
-        }) => Counted::Failure,
-        Err(PullError::Api {
-            source: ApiError::Status { status, .. },
+            source:
+                ApiError::Status {
+                    status,
+                    code: Some(_),
+                    ..
+                },
         }) if (400..500).contains(status) && *status != 429 => Counted::Failure,
         Err(_) => Counted::Nothing,
     }
