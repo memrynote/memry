@@ -510,9 +510,19 @@ export function getWritebackStateSizes(): {
  * ids that no longer exist here — into the next session, and each successive
  * vault would add to it. Called from `CrdtProvider.destroy()`, which is the
  * one point every vault close, vault switch and sync-runtime stop goes through.
+ *
+ * That flush runs every armed pass, so a pass still armed here was armed
+ * after it, while the docs were being flushed to the CRDT store. Left armed,
+ * it would fire into whichever vault is open by then: a journal day has the
+ * same id in every vault.
  */
 export function resetWritebackState(): void {
-  lastWritebackCost.clear()
+  if (pendingTimers.size > 0) {
+    log.warn('Vault teardown dropped armed write-backs; their docs are in the CRDT store', {
+      noteIds: Array.from(pendingTimers.keys())
+    })
+  }
+  cancelPendingWritebacks()
   resetAppWrites()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
@@ -533,20 +543,24 @@ export async function flushPendingWritebacks(): Promise<void> {
 }
 
 async function flushAll(): Promise<void> {
-  const pending = Array.from(pendingTimers.entries())
-  pendingTimers.clear()
-  for (const [, { timer }] of pending) clearTimeout(timer)
-  // Passes already running are awaited too: one converting on the worker is
-  // seconds from its write, and a quit that skipped it would lose that edit.
-  const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
-  await Promise.all([
-    ...running,
-    ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
-      runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
-        log.error('Write-back failed during shutdown flush', { noteId, error: err })
-      })
-    )
-  ])
+  // Until none is armed: a keystroke that lands while a pass converts arms
+  // the next one, and a vault close that left it armed would drop it.
+  do {
+    const pending = Array.from(pendingTimers.entries())
+    pendingTimers.clear()
+    for (const [, { timer }] of pending) clearTimeout(timer)
+    // Passes already running are awaited too: one converting on the worker is
+    // seconds from its write, and a quit that skipped it would lose that edit.
+    const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
+    await Promise.all([
+      ...running,
+      ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
+        runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
+          log.error('Write-back failed during shutdown flush', { noteId, error: err })
+        })
+      )
+    ])
+  } while (pendingTimers.size > 0)
   if (heldWork.size === 0) return
   // Its owner reports a failure; the flush only waits for it.
   const held = Promise.all(Array.from(heldWork.keys(), (work) => work.catch(() => {})))

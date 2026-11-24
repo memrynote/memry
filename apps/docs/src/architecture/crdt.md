@@ -896,7 +896,11 @@ document to its vault `.md` file and re-indexes it for search.
   at roughly a tenth of wall clock instead of saturating a core while the user types.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
-  destroyed, which covers vault switch.
+  destroyed, which covers vault switch. The flush repeats until no pass is armed, so a
+  keystroke that lands while a flushed pass converts still reaches the closing vault's
+  file. `resetWritebackState()` then cancels any pass armed after the flush and logs its
+  note ids: the doc is already in the CRDT store, and a timer left armed would fire into
+  whichever vault is open next, where a journal day has the same id.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
