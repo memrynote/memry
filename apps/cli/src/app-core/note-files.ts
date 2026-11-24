@@ -19,7 +19,7 @@ import {
   vaultFolder,
   type VaultConfig
 } from './paths.ts'
-import type { NotesService } from './notes.ts'
+import { getMetadata, type NotesService } from './notes.ts'
 import { propertiesFromFrontmatter } from './note-properties.ts'
 import { errorCode } from './errno.ts'
 
@@ -511,9 +511,10 @@ export function createAttachmentsService({
     },
 
     async list(noteId) {
-      // `add` stores under the note's id, so a path resolves to it. A plain id with no note
-      // still names its folder, which outlives a deleted note.
-      const owner = (await notes.get(noteId))?.id ?? noteId
+      // `add` stores under the note's id, so a path resolves to it through the index row,
+      // which still lists a note whose file is gone. A plain id with no note still names
+      // its folder, which outlives a deleted note.
+      const owner = getMetadata(dataDb, noteId)?.id ?? noteId
       if (!isPlainSegment(owner)) {
         throw new Error(`Refusing to list attachments: "${noteId}" is not a note id.`)
       }

@@ -26,6 +26,7 @@ import {
   getInboundLinkSourceIds,
   getNoteCacheById,
   getNoteProperties,
+  getNoteSnapshots,
   getNoteTags,
   getPropertyType,
   insertNoteCache,
@@ -187,7 +188,7 @@ import {
   renameFolderCommand,
   renameNoteCommand
 } from '../notes/domain'
-import { atomicWrite, safeRead } from './file-ops'
+import { atomicWrite, safeRead, setVaultFileWriteGuard } from './file-ops'
 import { moveDirectory } from './move-directory'
 import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
@@ -198,8 +199,12 @@ import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
 import { beginPageApply, writeNoteFileNow, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
+import { createSnapshot } from './note-snapshots'
+import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { registerNotesHandlers } from '../ipc/notes-handlers'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
+
+const realAtomicWrite = vi.mocked(atomicWrite).getMockImplementation()!
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -247,6 +252,7 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     data.close()
     vault.cleanup()
     vi.clearAllMocks()
+    vi.mocked(atomicWrite).mockImplementation(realAtomicWrite)
   })
 
   /**
@@ -515,6 +521,99 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }).toEqual({ exists: false, rows: ['lower', 'upper'] })
   }, 30_000)
 
+  /** Note upper alone on the file, as before its twin arrives. */
+  async function lone(): Promise<void> {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('upper', 'SUPERNOTES/a.md', UPPER)
+    await openVault()
+  }
+
+  it('a delete that finds a twin arrived before its tombstone changes nothing', async () => {
+    await lone()
+    let loaded = (): void => {}
+    unavailable.set(
+      'upper',
+      new Promise<never>((resolve) => (loaded = () => resolve(undefined as never)))
+    )
+    const deleting = deleteNoteCommand('upper')
+    await vi.waitFor(() =>
+      expect(getCrdtProvider().withDocLoaded).toHaveBeenCalledWith('upper', expect.any(Function))
+    )
+    seed('lower', 'SuperNotes/a.md', LOWER)
+    unavailable.delete('upper')
+    loaded()
+
+    await expect(deleting).rejects.toBeInstanceOf(NoteError)
+    expect({
+      file: shared(),
+      rows: rowIds(),
+      deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }).toEqual({ file: LOWER, rows: ['lower', 'upper'], deletes: [] })
+  }, 30_000)
+
+  it('a delete that finds a twin arrived after its tombstone leaves the file to the twin', async () => {
+    await lone()
+    let purged = (): void => {}
+    vi.mocked(getCrdtProvider().purge).mockImplementationOnce(
+      () => new Promise<void>((resolve) => (purged = resolve))
+    )
+    const deleting = deleteNoteCommand('upper')
+    await vi.waitFor(() => expect(getCrdtProvider().purge).toHaveBeenCalledWith('upper'))
+    seed('lower', 'SuperNotes/a.md', LOWER)
+    purged()
+    await deleting
+
+    expect({
+      file: shared(),
+      rows: rowIds(),
+      deletes: vi.mocked(enqueueLocalSyncDelete).mock.calls
+    }).toEqual({ file: LOWER, rows: ['lower'], deletes: [['note', 'upper']] })
+  }, 30_000)
+
+  it('a delete that finds a twin arrived right before its unlink leaves the file to the twin', async () => {
+    await lone()
+    // The twin lands while the unlink awaits the lock check.
+    setVaultFileWriteGuard({
+      beforeWrite: async () => {
+        seed('lower', 'SuperNotes/a.md', LOWER)
+        return null
+      },
+      afterWrite: async () => {}
+    })
+    try {
+      await deleteNoteCommand('upper')
+    } finally {
+      setVaultFileWriteGuard(null)
+    }
+
+    expect({ file: shared(), rows: rowIds() }).toEqual({ file: LOWER, rows: ['lower'] })
+  }, 30_000)
+
+  const snapshotsOf = (id: string) =>
+    getNoteSnapshots(index.db, id).map((snapshot) => snapshot.fileContent)
+
+  it("a twin delete keeps the deleted twin's bytes out of the survivor's history", async () => {
+    await twins()
+
+    await deleteNoteCommand('upper')
+
+    expect({ file: shared(), lower: snapshotsOf('lower') }).toEqual({ file: LOWER, lower: [] })
+  }, 30_000)
+
+  it("a twin delete keeps bytes no twin holds in the survivor's history", async () => {
+    await twins()
+    await stopWatcher()
+    const outside = '# a\n\noutside edit\n'
+    fs.writeFileSync(path.join(vault.path, 'Supernotes/a.md'), outside)
+
+    await deleteNoteCommand('upper')
+
+    expect({ file: shared(), lower: snapshotsOf('lower') }).toEqual({
+      file: LOWER,
+      lower: [outside]
+    })
+  }, 30_000)
+
   it('deleting the last twin removes the shared file', async () => {
     await twins()
 
@@ -765,6 +864,23 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
+  it("a twin delete keeps the survivor's cover removal pending", async () => {
+    await headerTwins()
+    const db = asClientDb(data.db)
+    // Lower's cover reached the server, then was removed here; its null waits for the ack.
+    recordAppliedNoteCover(db, 'lower', { cover: 'wash:sage' })
+    expect(noteCoverForPush(db, 'lower', {})).toBeNull()
+    updateNoteCache(index.db, 'lower', { cover: null })
+
+    await deleteNoteCommand('upper')
+
+    const frontmatter = parseNote(shared()).frontmatter
+    expect({ cover: frontmatter.cover, push: noteCoverForPush(db, 'lower', frontmatter) }).toEqual({
+      cover: undefined,
+      push: null
+    })
+  }, 30_000)
+
   it('a survivor with an empty doc keeps its own header and never the deleted twin body', async () => {
     await headerTwins()
     docs.set('lower', new Y.Doc())
@@ -807,6 +923,77 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
+  const QUOTED = "---\nwhen: '2026-01-02'\nids: '[1,2]'\nat: 2026-01-03\n---\n"
+  const TYPED = '---\nwhen: 2026-01-02\nids: [1,2]\n---\n'
+
+  /**
+   * Twins whose own files carry `lowerOwn` and `upperOwn`, upper's bytes
+   * on disk, with lower's property rows indexed from its own header. A
+   * version of lower's own bytes is kept when `lowerVersion`. Returns lower's
+   * own header.
+   */
+  async function propertyTwins(lowerOwn: string, upperOwn: string, lowerVersion: boolean) {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('lower', 'SuperNotes/a.md', lowerOwn + LOWER)
+    seed('upper', 'SUPERNOTES/a.md', upperOwn + UPPER)
+    await openVault()
+    const own = parseNote(lowerOwn + LOWER)
+    setNoteProperties(index.db, 'lower', extractProperties(own.frontmatter), (name, value) =>
+      getPropertyType(index.db, name, value, inferPropertyType)
+    )
+    if (lowerVersion) {
+      createSnapshot('lower', lowerOwn + LOWER, 'a', SnapshotReasons.CLOSE)
+    }
+    docs.set('lower', await docOf(LOWER))
+    docs.set('upper', await docOf(UPPER))
+    return own.frontmatter
+  }
+
+  // A quoted string that spells a date or JSON is stored as the date's or the
+  // list's text: the rebuilt header keeps the string the survivor's own last
+  // file holds, which a version of it keeps.
+  for (const [name, upperHeader] of [
+    ['shares its header', QUOTED],
+    ['has no header', '']
+  ] as const) {
+    it(`a twin delete keeps the survivor's quoted strings when the leaving twin ${name}`, async () => {
+      const own = await propertyTwins(QUOTED, upperHeader, true)
+
+      await deleteNoteCommand('upper')
+
+      expect(parseNote(shared()).frontmatter).toEqual(own)
+      expect(shared()).toBe(serializeNote(own, LOWER))
+    }, 30_000)
+  }
+
+  // The leaving twin's header is not the survivor's: its quoted strings never
+  // type the survivor's dates and lists.
+  it("a twin delete keeps the survivor's dates and lists the leaving twin quotes", async () => {
+    const own = await propertyTwins(TYPED, QUOTED, false)
+
+    await deleteNoteCommand('upper')
+
+    expect(parseNote(shared()).frontmatter).toEqual(own)
+  }, 30_000)
+
+  it("a twin move keeps its dates and lists the staying twin's header quotes", async () => {
+    const own = await propertyTwins(TYPED, QUOTED, false)
+
+    await renameNoteCommand('lower', 'b')
+
+    const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
+    expect(parseNote(moved).frontmatter).toMatchObject(own)
+  }, 30_000)
+
+  it('a twin move keeps its own quoted strings from its own version', async () => {
+    const own = await propertyTwins(QUOTED, TYPED, true)
+
+    await renameNoteCommand('lower', 'b')
+
+    const moved = fs.readFileSync(path.join(vault.path, 'SuperNotes/b.md'), 'utf8')
+    expect(parseNote(moved).frontmatter).toMatchObject(own)
+  }, 30_000)
+
   /** Holds twin upper's next file write until `release`; resolves `reached` when it gets there. */
   function holdUpperWrite() {
     let release = (): void => {}
@@ -840,9 +1027,12 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     await held.atWrite
 
     const deleted = deleteNoteCommand('upper')
-    // Long enough for the delete to reach its step if nothing held it back.
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    held.release()
+    try {
+      // Long enough for the delete to reach its step if nothing held it back.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      held.release()
+    }
     await pass
     await deleted
     await flushProjectionEvents()
@@ -850,6 +1040,37 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect(upperGone()).toEqual({ file: LOWER, rows: ['lower'], indexed: null })
     expect(vi.mocked(enqueueLocalSyncDelete).mock.calls).toEqual([['note', 'upper']])
     expect(await afterDelete('lower')).toMatchObject({ file: LOWER, rows: ['lower'], crossed: [] })
+  }, 30_000)
+
+  // A save that starts while the delete awaits its doc meets the delete's step.
+  it("a twin delete whose step meets the twin's write-back runs again after it", async () => {
+    await twins()
+    let loaded = (): void => {}
+    unavailable.set(
+      'upper',
+      new Promise<never>((resolve) => (loaded = () => resolve(undefined as never)))
+    )
+    const deleted = deleteNoteCommand('upper')
+    await vi.waitFor(() =>
+      expect(getCrdtProvider().withDocLoaded).toHaveBeenCalledWith('upper', expect.any(Function))
+    )
+    const held = holdUpperWrite()
+    const pass = writeBack('upper', UPPER_EDITED)
+    try {
+      await held.atWrite
+      unavailable.delete('upper')
+      loaded()
+      // Long enough for the delete's step to meet the write-back's turn.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      held.release()
+    }
+    await pass
+    await deleted
+    await flushProjectionEvents()
+
+    expect(upperGone()).toEqual({ file: LOWER, rows: ['lower'], indexed: null })
+    expect(vi.mocked(enqueueLocalSyncDelete).mock.calls).toEqual([['note', 'upper']])
   }, 30_000)
 
   it("a peer's twin delete waits while the twin's write-back is in flight", async () => {
