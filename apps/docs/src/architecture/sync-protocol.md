@@ -1128,9 +1128,29 @@ across devices:
   dropped before the online and token gate, so that happens offline too.
 - **Files that can never upload** — an empty file, and a media file that
   holds text instead of media, fail the same way on every retry, so the upload
-  refuses them before any request and its caller drops the queued row. An
-  empty file drops silently. A media file that holds text is reported: a
-  vault-activity failure and an upload-failed toast that says why.
+  refuses them before any request and its caller drops the queued row
+  (`refuseUpload`). Dropping the row alone was not enough: the next re-drive's
+  backfill found the file on disk with no record and no row, queued it, and
+  the drain dropped it again, every five minutes (#5606). So the drop also
+  remembers the file's size and mtime in `sync_state.attachmentUploadRefusals`,
+  keyed by its absolute path, and `queueUploadIfAbsent`, which both backfill
+  routes, the write-time hook and a revived note's re-upload (#3054) go
+  through, offers no empty file and no file whose size and mtime still match
+  a refusal. A write changes them, and the
+  next pass offers the file again. A refusal whose file changed or is gone is
+  let go at the next refusal. Sign-out clears `sync_state`, so after the next
+  sign-in each refused file is offered and refused once more. An empty file
+  drops silently. A media file that holds text is reported: a vault-activity
+  failure and an upload-failed toast that says why, once per refusal rather
+  than on every re-drive. The drain's summary log counts dropped rows by
+  reason (`droppedBy`: `deleted`, `EmptyAttachmentError`,
+  `TextInMediaFileError`). `saveAttachment` never writes an empty attachment
+  in the first place: it returns an error the editor shows as a toast, and
+  the editor takes back out the block that the paste or drop put in the note
+  before the upload (`removeFailedUploadBlock`), as it does for any failed
+  upload. On Windows, Chromium hands a paste `image.png` with no bytes when it cannot
+  open the clipboard or decode the image on it, and the editor used to write
+  that and embed a broken image.
   "Text instead of media" means the extension has a known signature (SVG and
   unknown types are never judged), the leading bytes do not match it, and the
   file is at most 16 MiB, has no NUL byte and decodes as UTF-8. Before #5414 the
@@ -1145,8 +1165,10 @@ across devices:
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
   a warning logs the count and sends it to telemetry, and the restore never
-  requests that attachment again. A corrupt list is logged and read as empty. In on-demand download mode, or with no access token, the request is
-  released with no failure row and the next runtime start asks again.
+  requests that attachment again. A corrupt list is read as empty, logged,
+  sent to telemetry, and removed, so the next runtime start does not report
+  it again. In on-demand download mode, or with no access token, the request
+  is released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a
@@ -1420,10 +1442,12 @@ queue now hands the service the ids it will start next. The first download that 
 fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/batch`. Presigned
 URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
 uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
-call, and a caller whose chunk is already in flight waits for that call. The batch route charges
-`blob_download` one token per distinct id, so the limit still bounds R2 reads. The bytes still
-download eagerly, so an attachment opens offline after bootstrap as before. A server without the
-batch route answers 404, and the desktop then fetches each manifest alone for 10 minutes.
+call, and a caller whose chunk is already in flight waits for that call. A chunk a `200` answer
+leaves out (the vault holds no such chunk) is fetched through the proxy, which answers its 404, and
+later calls stop presigning it for other downloads. The batch route charges `blob_download` one
+token per distinct id, so the limit still bounds R2 reads. The bytes still download eagerly, so an
+attachment opens offline after bootstrap as before. A server without the batch route answers 404,
+and the desktop then fetches each manifest alone for 10 minutes.
 
 `GET /auth/devices` is the key directory every client verifies item and CRDT signatures against,
 not the device-management list (`GET /devices`, which hides revoked devices). It keeps revoked

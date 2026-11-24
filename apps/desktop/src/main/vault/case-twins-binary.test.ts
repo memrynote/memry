@@ -94,7 +94,7 @@ import {
 } from '../database/client'
 import { getStatus } from './index'
 import { enqueueLocalSyncUpdate } from '../sync/local-mutations'
-import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { recordAppWrite } from './app-writes'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -103,7 +103,7 @@ import {
 } from '../projections'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
-import { startWatcher, stopWatcher } from './watcher'
+import { getWatcher, startWatcher, stopWatcher } from './watcher'
 import { landCaseTwinDownload, releaseAbandonedCaseTwinBytes } from './case-twin-file'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { redriveAttachmentDownloads } from '../sync/attachment-download-redriver'
@@ -203,8 +203,9 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     insertNoteCache(index.db, { ...fields, contentHash: null })
     const absolutePath = path.join(vault.path, relativePath)
     fs.mkdirSync(path.dirname(absolutePath), { recursive: true })
-    markWritebackIgnored(absolutePath)
+    const landed = recordAppWrite(absolutePath, bytes)
     fs.writeFileSync(absolutePath, bytes)
+    landed()
   }
 
   const rows = () =>
@@ -267,7 +268,8 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
   /** A download of note `id`'s attachment, asked for at `requestedPath`, as the downloader lands it. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): string {
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
-    markWritebackIgnored(at)
+    // The downloader records the verified file's hash and never reports it landed.
+    recordAppWrite(at, { sha256: sha256(bytes) })
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
     return at
@@ -511,6 +513,24 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     await copyPushed('Supernotes/p (conflict copy).png')
   }, 60_000)
 
+  // #5624: a landing is marked by the twin's spelling, and the watcher asks by
+  // the disk's. Taken as an outside change, the landing was held, and the next
+  // split kept the landed bytes as a conflict copy.
+  it("a download landing under a twin's spelling is not held as a change to the shared file", async () => {
+    twins('SUPERNOTES')
+    await startWatcher(vault.path)
+    // Past the window of the seeds' own writes.
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 10_000 })
+    try {
+      land('twin-a', 'att-twin-a', abs('Supernotes/p.png'), 'a2-bytes')
+      await getWatcher()['handleFileChange'](abs('SUPERNOTES/p.png'))
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(heldChanges()).toEqual([])
+  }, 30_000)
+
   it('a change the watcher has not seen is kept as a conflict copy when the bytes land', () => {
     twins('Supernotes')
     // Written while the app was closed, or with its event still on the way.
@@ -528,13 +548,13 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
     expect(read('Supernotes/p.png')).toBe('a-bytes')
   })
 
-  const foreignMarks = (): unknown =>
+  const foreignMark = (noteId: string): unknown =>
     JSON.parse(
       data.db
         .select({ value: syncState.value })
         .from(syncState)
-        .where(eq(syncState.key, 'caseTwinForeignBytes'))
-        .get()?.value ?? '{}'
+        .where(eq(syncState.key, `caseTwinForeignBytes:${noteId}`))
+        .get()?.value ?? '"no mark"'
     )
 
   it('a change whose event arrives after the split is kept as a conflict copy', async () => {
@@ -547,7 +567,7 @@ describe.runIf(fileSystemIgnoresCase())('binary case twins sharing one file', ()
       // The size both twins recorded, and its event still on the way at the split.
       fs.writeFileSync(abs('Supernotes/p.png'), 'h-bytes')
       expect(applyPeerUpdate({ folderPath: 'Other' })).toBe('applied')
-      expect(foreignMarks()).toMatchObject({ 'twin-a': null })
+      expect(foreignMark('twin-a')).toBeNull()
     } finally {
       vi.useRealTimers()
     }

@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Nu s-a putut aplica șablonul",
     "appendBlocksFailed": "Nu s-a putut muta blocul în acea notiță",
     "appendIntoCaseTwin": "Acea notiță are același fișier cu o notiță al cărei nume diferă doar prin majuscule și minuscule. Redenumește una dintre ele, apoi mută din nou blocul.",
+    "appendIntoBinary": "Un bloc poate fi mutat doar într-o notiță, nu într-o imagine, un PDF sau un fișier audio ori video.",
     "caseTwinMoveRefused": "Această notiță își împarte fișierul cu o notiță al cărei nume diferă doar prin majuscule și minuscule, așa că nu poate fi mutată în acest mod. Redenumește sau mută cealaltă notiță ori șterge copia de care nu ai nevoie.",
     "exportPdfFailed": "Nu s-a putut exporta în PDF",
     "exportHtmlFailed": "Nu s-a putut exporta în HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Fișier prea mare: {size} depășește limita de {limit}",
     "exceedsPlanLimit": "Fișierul este mai mare decât permite planul: {size} depășește {limit}",
     "emptyFile": "Nu se poate încărca un fișier gol",
+    "emptyNotAttached": "Acest fișier este gol, așa că nu a fost atașat. Dacă ați lipit o imagine, copiați-o din nou și lipiți-o.",
     "textInMediaFile": "Acest fișier conține text în loc de conținutul media indicat de nume"
   },
   "crdt": {

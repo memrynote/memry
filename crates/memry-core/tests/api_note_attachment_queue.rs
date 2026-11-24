@@ -540,25 +540,35 @@ async fn a_detach_after_a_crashed_upload_still_releases_its_chunks() {
 /// A year, far past the 30-day grace #5573 gave a purged note's picture.
 const A_YEAR_MS: i64 = 365 * 24 * 60 * 60 * 1000;
 
-/// Moves the purge this device recorded for `id` (#5573's
-/// `attachment_upload.purged_at:<id>`) `ms` into the past, as if the drain ran
-/// that long after the pulled delete.
-fn age_the_purge(app: &Launch, id: &str, ms: i64) {
+/// Dates the purge of `id`'s note a year back under the key a #5573 or #5604
+/// build wrote (`attachment_upload.purged_at:<id>`), as if one ran the
+/// pulled delete before this build.
+fn plant_an_old_purge(app: &Launch, id: &str) {
     let key = format!("attachment_upload.purged_at:{id}");
-    let changed = app
-        .vault
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("after 1970")
+        .as_millis() as i64;
+    app.vault
         .db_handle()
         .call_blocking(move |conn| {
             conn.execute(
-                "UPDATE meta SET value = CAST(value AS INTEGER) - ?2 WHERE key = ?1",
-                rusqlite::params![key, ms],
+                "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+                rusqlite::params![key, (now - A_YEAR_MS).to_string()],
             )
             .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
             })
         })
-        .expect("age the purge");
-    assert_eq!(changed, 1, "the pulled delete recorded its purge");
+        .expect("plant the purge");
+}
+
+fn purge_dates(app: &Launch, id: &str) -> i64 {
+    count(
+        app,
+        "SELECT COUNT(*) FROM meta WHERE key = 'attachment_upload.purged_at:' || ?1",
+        id,
+    )
 }
 
 fn count(app: &Launch, sql: &'static str, id: &str) -> i64 {
@@ -602,7 +612,7 @@ async fn a_purged_notes_picture_is_kept_however_long_the_note_stays_gone() {
     let id = app.attach(&note).await.expect("kept for later");
 
     deliver_a_delete(&app.vault.db_handle(), &note).await;
-    age_the_purge(&app, &id, A_YEAR_MS);
+    plant_an_old_purge(&app, &id);
     let drained = app
         .sync
         .upload_queued_attachments()
@@ -619,6 +629,22 @@ async fn a_purged_notes_picture_is_kept_however_long_the_note_stays_gone() {
     assert_eq!(owed(&app, &id), 1, "the upload stays owed");
 }
 
+/// A pulled delete dates nothing for a downgrade to act on: a #5573 build
+/// discards an owed upload 30 days after its `attachment_upload.purged_at`
+/// date, and these bytes are the only copy.
+#[tokio::test]
+async fn a_pulled_delete_leaves_no_purge_date_an_older_build_would_discard_by() {
+    let (dir, store) = (scratch_dir(), store());
+    let app = launch(&dir, &store, vec![Err(TransportError::Offline)]);
+    let note = app.note(&store);
+    let id = app.attach(&note).await.expect("kept for later");
+
+    deliver_a_delete(&app.vault.db_handle(), &note).await;
+
+    assert_eq!(purge_dates(&app, &id), 0);
+    assert_eq!(owed(&app, &id), 1, "the upload stays owed");
+}
+
 /// A purged note that another device revives under the same id (§14.8.2),
 /// even long after the purge, gets its picture back: the next pass uploads
 /// the kept bytes once, under the attachment's id, and references it.
@@ -630,7 +656,7 @@ async fn a_note_revived_long_after_its_purge_uploads_its_kept_picture_once() {
         let note = app.note(&store);
         let id = app.attach(&note).await.expect("kept for later");
         deliver_a_delete(&app.vault.db_handle(), &note).await;
-        age_the_purge(&app, &id, A_YEAR_MS);
+        plant_an_old_purge(&app, &id);
         app.sync.upload_queued_attachments().await.expect("drain");
         assert_eq!(
             app.transport.call_count(),
@@ -655,6 +681,11 @@ async fn a_note_revived_long_after_its_purge_uploads_its_kept_picture_once() {
         BYTES
     );
     assert_eq!(owed(&app, &id), 0);
+    assert_eq!(
+        purge_dates(&app, &id),
+        0,
+        "the old date goes with the upload"
+    );
 
     let calls = app.transport.call_count();
     app.sync.upload_queued_attachments().await.expect("again");

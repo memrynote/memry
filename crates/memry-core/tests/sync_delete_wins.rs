@@ -16,6 +16,7 @@
 //! | an edit over a kept marker deletes and sends none       | §5.12.3, #5406        |
 //! | a write newer than the marker pushes normally           | §5.12.3, #5406        |
 //! | a local delete forgets the marker                       | §5.8 re-create, #5406 |
+//! | a marker with no vault id to check it in defers         | §4.8.4, #5247         |
 
 mod http_fakes;
 
@@ -156,9 +157,17 @@ impl RecordCipher for Directory {
     }
 }
 
+/// The vault every coordinator here pulls, unless a test says otherwise.
+const VAULT: &str = "vault-1";
+
 /// The purged marker of task `id` at `cursor`, clock `{device-a: 2}`,
-/// attested by `device-a` unless `forged`.
+/// attested v1 by `device-a` unless `forged`.
 fn marker(id: &str, cursor: i64, forged: bool) -> Json {
+    marker_in(id, cursor, forged, None)
+}
+
+/// [`marker`], attested v2 in `vault` when one is given.
+fn marker_in(id: &str, cursor: i64, forged: bool, vault: Option<&str>) -> Json {
     let clock: VectorClock = [("device-a".to_owned(), 2)].into();
     let deleted_at = 1_700_000_000_000i64;
     let claim = DeleteClaim {
@@ -167,7 +176,7 @@ fn marker(id: &str, cursor: i64, forged: bool) -> Json {
         clock: &clock,
         deleted_at: if forged { deleted_at + 1 } else { deleted_at },
     };
-    let attestation = delete_attestation::sign(&claim, None, &signer().1).expect("signed");
+    let attestation = delete_attestation::sign(&claim, vault, &signer().1).expect("signed");
     json!({"id": id, "type": "task", "deletedAt": deleted_at, "clock": clock,
            "serverCursor": cursor, "signerDeviceId": "device-a",
            "deleteAttestation": attestation})
@@ -180,6 +189,10 @@ fn pull_answer(markers: Vec<Json>) -> String {
 }
 
 fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
+    coordinator_in(db, transport, Some(VAULT))
+}
+
+fn coordinator_in(db: &Db, transport: Arc<FakeTransport>, vault: Option<&str>) -> PushCoordinator {
     let http = Arc::new(HttpClient::new(
         transport,
         "https://sync.example",
@@ -192,6 +205,10 @@ fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
         Arc::new(Directory),
     )
     .with_clock_device("device-b");
+    let pull = match vault {
+        Some(vault) => pull.with_vault(vault),
+        None => pull,
+    };
     PushCoordinator::new(
         http,
         db.clone(),
@@ -321,6 +338,35 @@ async fn a_failed_by_id_pull_defers_the_item_and_not_the_wave() {
         response(404, r#"{"error":"NOT_FOUND"}"#),
     ]);
     let report = coordinator(&db, transport)
+        .drain_wave()
+        .await
+        .expect("the wave survives");
+    assert!(!task_deleted(&db, "t1"));
+    assert_eq!(report.rejected, 1);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT COUNT(*) FROM outbox WHERE last_error IS NOT NULL"
+        ),
+        1
+    );
+}
+
+/// #5247: a pull with no vault id cannot check a v2 attestation. Checked as
+/// v1 only, the marker is refused and the edit acked over the server's delete;
+/// instead the item waits, as for a failed pull (chapter 04 §4.8.4).
+#[tokio::test]
+async fn a_marker_with_no_vault_id_to_check_it_in_defers_the_item() {
+    let db = scratch_db("no-vault");
+    edited_task(&db, "t1", 5);
+    let transport = FakeTransport::new(vec![
+        response(200, &delete_wins("t1")),
+        response(
+            200,
+            &pull_answer(vec![marker_in("t1", 9, false, Some(VAULT))]),
+        ),
+    ]);
+    let report = coordinator_in(&db, transport, None)
         .drain_wave()
         .await
         .expect("the wave survives");

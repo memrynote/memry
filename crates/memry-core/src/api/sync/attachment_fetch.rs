@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
-use tokio::sync::Semaphore;
+use tokio::sync::{OnceCell, Semaphore};
 
 use crate::protocol::attachment_manifest::EncryptedAttachmentManifest;
 
@@ -109,7 +109,7 @@ impl VaultSync {
         attachment_id: String,
         reachable: Reachable,
     ) -> Result<AttachmentFetchSummary, SyncError> {
-        self.fetch_with_manifest(attachment_id, reachable, None)
+        self.fetch_with_manifest(attachment_id, reachable, None, &OnceCell::new())
             .await
     }
 
@@ -139,10 +139,13 @@ impl VaultSync {
         // (§14.5.2). The doc comments above feed the UniFFI checksums.
         let window: Vec<String> = missing.into_iter().take(REDRIVE_BATCH_LIMIT).collect();
         let mut prefetched = self.prefetch_manifests(&window, reachable).await?;
+        // One device directory for the whole call, read by the first row that
+        // downloads, so a deferred or locked re-drive still sends nothing.
+        let directory = OnceCell::new();
         for attachment_id in window {
             let manifest = prefetched.remove(&attachment_id);
             match self
-                .fetch_with_manifest(attachment_id, reachable, manifest)
+                .fetch_with_manifest(attachment_id, reachable, manifest, &directory)
                 .await
             {
                 Ok(fetch) if fetch.downloaded => summary.downloaded += 1,
@@ -158,12 +161,14 @@ impl VaultSync {
 
 impl VaultSync {
     /// [`Self::fetch_attachment`], opening `prefetched` when a batch already
-    /// read this attachment's manifest instead of fetching it alone.
+    /// read this attachment's manifest instead of fetching it alone, and
+    /// resolving signers from `directory`, which the first download fills.
     async fn fetch_with_manifest(
         &self,
         attachment_id: String,
         reachable: Reachable,
         prefetched: Option<EncryptedAttachmentManifest>,
+        directory: &OnceCell<account::DeviceDirectory>,
     ) -> Result<AttachmentFetchSummary, SyncError> {
         let _in_flight = attachment_gate(&self.vault_id, &attachment_id)
             .lock_owned()
@@ -208,9 +213,11 @@ impl VaultSync {
 
         let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
-        let directory = account::device_directory(&self.session.http()).await?;
+        let directory = directory
+            .get_or_try_init(|| async { account::device_directory(&self.session.http()).await })
+            .await?;
 
-        let signers = DirectorySigners(directory);
+        let signers = DirectorySigners(directory.clone());
         let (manifest, file_key) = match prefetched {
             Some(envelope) => protocol_attachments::open_manifest(&envelope, &vault_key, &signers),
             None => {
@@ -225,6 +232,17 @@ impl VaultSync {
             }
         }
         .map_err(attachment_error)?;
+        // §14.7: the attachment id is the manifest's own `id`. A manifest that
+        // names another attachment, by a single GET or under a batch key,
+        // would land that file under this id.
+        if manifest.id != attachment_id {
+            return Err(SyncError::AttachmentCorrupt {
+                what: format!(
+                    "manifest names attachment {}, not {attachment_id}",
+                    manifest.id
+                ),
+            });
+        }
 
         let bytes = self
             .download_chunks(&attachment_id, &manifest, &file_key)
@@ -287,19 +305,30 @@ impl VaultSync {
         reachable: Reachable,
     ) -> Result<HashMap<String, EncryptedAttachmentManifest>, SyncError> {
         let wanted = window.to_vec();
+        // A row that will not read stays out of the batch and fails on its
+        // own in `fetch_with_manifest`, so the rest still download.
         let rows = self
             .db
             .call(move |conn| {
                 Ok(wanted
                     .iter()
-                    .map(|id| attachments::get(conn, id))
-                    .collect::<Result<Vec<_>, _>>())
+                    .map(|id| {
+                        attachments::get(conn, id)
+                            .inspect_err(|error| {
+                                eprintln!("memry-core: attachment re-drive: reading {id}: {error}");
+                            })
+                            .ok()
+                    })
+                    .collect::<Vec<_>>())
             })
-            .await??;
+            .await?;
         let ids: Vec<String> = window
             .iter()
             .zip(&rows)
-            .filter(|(_, row)| may_download(row.as_ref(), reachable))
+            .filter(|(_, row)| {
+                row.as_ref()
+                    .is_some_and(|row| may_download(row.as_ref(), reachable))
+            })
             .map(|(id, _)| id.clone())
             .collect();
         let unsupported = MANIFEST_BATCH_UNSUPPORTED

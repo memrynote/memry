@@ -154,6 +154,23 @@ export function listCaseTwinIds(vaultPath: string, relativePath: string, noteId:
 }
 
 /**
+ * The paths of the case twins sharing the file at `relativePath`, in any
+ * spelling, or none when the file is not shared. The disk is read only when
+ * another row folds to the path, so a file with no twin costs a watcher event
+ * no I/O (#5624).
+ */
+export function listCaseTwinPaths(vaultPath: string, relativePath: string): string[] {
+  const dataDb = getCanonicalDb()
+  if (!dataDb || !volumeIgnoresCase(vaultPath)) return []
+  if (listNoteMetadataByFoldedPath(dataDb, relativePath).length < 2) return []
+  // Callers name the file by the row's spelling; the rows are matched to
+  // the disk's. A file that is not there holds no body to take.
+  const onDisk = diskCaseOf(vaultPath, relativePath)
+  const rows = onDisk === null ? [] : listRowsOnFile(dataDb, vaultPath, onDisk)
+  return rows.length > 1 ? rows.map((row) => row.path) : []
+}
+
+/**
  * The identity the vault already holds for the file at `relativePath`, given
  * in the disk's spelling, if it holds one.
  *
@@ -222,10 +239,7 @@ export function refusesCaseTwinFile(
   relativePath: string,
   noteId: string
 ): boolean {
-  // Callers name the file by the row's spelling; the rows are matched to
-  // the disk's. A file that is not there holds no body to take.
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  if (onDisk === null || !findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile) return false
+  if (listCaseTwinPaths(vaultPath, relativePath).length === 0) return false
   log.warn('A file shared with a case twin stays out of the doc', { noteId, path: relativePath })
   return true
 }

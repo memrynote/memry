@@ -126,27 +126,13 @@ pub fn note_title(conn: &Connection, note_id: &str) -> Result<String, StorageErr
     .map_err(failed)
 }
 
-/// When a pulled delete purged the note of an owed upload, in `meta`. No
-/// migration: an older build ignores the key. Nothing decides on it: no
-/// signal says a note is gone for good, so the upload stays owed (#5578).
-/// Kept so a purge can be dated, and readable by #5573's builds.
+/// Compat: the `meta` key under which #5573 and #5604 builds dated the purge
+/// of an owed upload's note. A #5573 build discards the upload 30 days after
+/// that date and dates an undated purge at its first drain. This build writes
+/// none, so a downgrade to #5573 starts that grace at its first drain instead
+/// of discarding the only copy of the bytes at once (#5578). Nothing reads
+/// it; a key an older build left goes with its upload.
 const PURGED_KEY: &str = "attachment_upload.purged_at:";
-
-/// A pulled delete purged `note_id` here at `now_ms`. Its owed uploads stay
-/// owed, bytes and row with them, until the note is revived and they go up,
-/// or the picture is detached: the server keeps the note's row and accepts a
-/// create over its marker at any age (§5.12.3), so no time makes the note
-/// gone for good, and these bytes are the only copy. Returns how many are
-/// kept.
-pub fn mark_purged(conn: &Connection, note_id: &str, now_ms: i64) -> Result<usize, StorageError> {
-    conn.execute(
-        "INSERT INTO meta (key, value) \
-         SELECT ?1 || attachment_id, ?2 FROM note_attachment_uploads WHERE note_id = ?3 \
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        params![PURGED_KEY, now_ms.to_string(), note_id],
-    )
-    .map_err(failed)
-}
 
 fn forget_purge(conn: &Connection, attachment_id: &str) -> Result<(), StorageError> {
     conn.execute(

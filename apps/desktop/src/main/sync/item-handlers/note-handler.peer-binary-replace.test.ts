@@ -13,6 +13,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -90,7 +91,7 @@ import {
   getIndexDatabase as getClientIndexDatabase
 } from '../../database/client'
 import { getStatus } from '../../vault/index'
-import { markWritebackIgnored } from '../crdt-writeback'
+import { recordAppWrite } from '../../vault/app-writes'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
 import {
   flushProjectionEvents,
@@ -187,8 +188,9 @@ describe("a peer's replacement of a binary note's bytes", () => {
     upsertNoteMetadata(asClientDb(data.db), fields)
     insertNoteCache(index.db, { ...fields, contentHash: null })
     fs.mkdirSync(path.dirname(abs(relativePath)), { recursive: true })
-    markWritebackIgnored(abs(relativePath))
+    const written = recordAppWrite(abs(relativePath), bytes)
     fs.writeFileSync(abs(relativePath), bytes)
+    written()
     if (landed) recordDownloadedFileSize(id, `att-${id}`, bytes.length, sha256(bytes))
   }
 
@@ -215,7 +217,8 @@ describe("a peer's replacement of a binary note's bytes", () => {
   /** The downloader landing an asked-for attachment: `beforeFileLands`, the rename, the size. */
   function land(id: string, attachmentId: string, requestedPath: string, bytes: string): void {
     const at = landCaseTwinDownload(requestedPath, attachmentId, sha256(bytes), id)
-    markWritebackIgnored(at)
+    // The downloader records the verified file's hash and never reports it landed.
+    recordAppWrite(at, { sha256: sha256(bytes) })
     fs.writeFileSync(at, bytes)
     recordDownloadedFileSize(id, attachmentId, bytes.length, sha256(bytes))
   }
@@ -383,6 +386,61 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(conflictCopies('Pictures')).toEqual(['edit-during-download'])
   }, 30_000)
 
+  it('keeps no conflict copy when the change it merged with left the bytes alone', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    // An icon or a rename changed here; its push is not on the server yet.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 2 } })
+
+    expect(pull('img', 'att-new')).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  /** Bytes this device uploaded at clock `{dev1: 1}`: its next push, at dev1 2, carries them. */
+  function uploadHere(bytes: string): void {
+    data.db
+      .insert(syncDevices)
+      .values({
+        id: 'dev1',
+        name: 'This Mac',
+        platform: 'macos',
+        appVersion: '0.0.0',
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: 'key'
+      })
+      .run()
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), bytes)
+    recordUploadedAttachment('img', 'att-up', sha256(bytes))
+  }
+
+  it('keeps no conflict copy of uploaded bytes the merged record has seen', () => {
+    uploadHere('up-bytes!')
+    // Pushed at dev1 2, then renamed here at dev1 3.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 3 } })
+
+    expect(pull('img', 'att-new', { dev1: 2, peer: 1 })).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  it('keeps uploaded bytes the merged record has not seen as a conflict copy', () => {
+    uploadHere('up-bytes!')
+    // Its push, at dev1 2, is not on the server yet.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 2 } })
+
+    expect(pull('img', 'att-new', { dev1: 1, peer: 1 })).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['up-bytes!'])
+  })
+
   it('drops an older replacement that finishes after a newer one landed', () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     expect(pull('img', 'att-b')).toBe('applied')
@@ -418,7 +476,7 @@ describe("a peer's replacement of a binary note's bytes", () => {
     seed('img', 'Pictures/p.png', 'old-bytes')
     expect(pull('img', 'att-b')).toBe('applied')
     const at = landCaseTwinDownload(abs('Pictures/p.png'), 'att-b', sha256('b-bytes'), 'img')
-    markWritebackIgnored(at)
+    recordAppWrite(at, { sha256: sha256('b-bytes') })
     fs.writeFileSync(at, 'b-bytes')
     // A newer replacement applies before the landing records its size.
     expect(pull('img', 'att-c', { dev1: 1, peer: 2 })).toBe('applied')

@@ -31,6 +31,7 @@
     "appendBlocksFailed": "Failed to move the block to that note",
     "caseTwinMoveRefused": "This note shares its file with a note whose name differs only in case, so it can't be moved this way. Rename or move the other note, or delete the copy you don't need.",
     "appendIntoCaseTwin": "That note shares its file with a note whose name differs only in case. Rename one of them, then move the block again.",
+    "appendIntoBinary": "A block can only move into a note, not into an image, PDF, audio or video file.",
     "exportPdfFailed": "Failed to export PDF",
     "exportHtmlFailed": "Failed to export HTML",
     "restoreVersionFailed": "Failed to restore version",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "File too large: {size} exceeds {limit} limit",
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
     "emptyFile": "Cannot upload empty file",
+    "emptyNotAttached": "This file is empty, so it was not attached. If you pasted an image, copy it again and paste it.",
     "textInMediaFile": "This file holds text instead of the media its name says"
   },
   "crdt": {

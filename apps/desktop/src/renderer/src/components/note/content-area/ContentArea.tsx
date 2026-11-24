@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { removeFailedUploadBlock } from './failed-upload-block'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -47,7 +48,7 @@ import {
   CRITIC_MARKUP_MARKS_ARRAY,
   readCriticMarkupMarksFromYDoc,
   serializeCriticMarkup,
-  writeCriticMarkupMarksToYDoc
+  updateCriticMarkupMarksInYDoc
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
@@ -508,11 +509,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const firedDatePillAnchors = useFiredDatePillAnchors(noteId)
   useTriggeredDatePills(editorContainerRef, firedDatePillAnchors)
   const reviewMarksRef = useRef(review?.marks ?? [])
+  const reviewPlainMarkdownRef = useRef(review?.plainMarkdown ?? '')
   const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
-  const skipNextCriticMarkupYjsWriteRef = useRef(false)
   const isReviewEnabled = Boolean(review)
   const onReviewEditorReady = review?.onEditorReady
   const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
+  const onDocBindingChange = review?.onDocBindingChange
 
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
@@ -605,6 +607,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         // BlockNote's upload tab only shows a generic "upload failed" line, so
         // the real reason (too large, type not allowed) never reached the user.
         toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        removeFailedUploadBlock(editorRef.current, blockId)
         throw error
       }
     },
@@ -735,7 +738,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   })
 
   // Hook #2: Content sync (initial load + debounced change handler)
-  const { handleChange, flushPendingMarkdown } = useEditorSync({
+  const { handleChange, flushPendingMarkdown, readMarkdown } = useEditorSync({
     editor,
     noteId,
     notePath,
@@ -780,50 +783,52 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   useEffect(() => {
     reviewMarksRef.current = review?.marks ?? []
+    reviewPlainMarkdownRef.current = review?.plainMarkdown ?? ''
     reviewMarkdownToEditorOffsetRef.current = review?.getEditorOffsetForMarkdownSourceOffset
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const tiptap = (editor as any)._tiptapEditor
     if (!tiptap?.view?.dispatch) return
     tiptap.view.dispatch(tiptap.state.tr.setMeta('criticMarkupDecorations', true))
-  }, [editor, review?.getEditorOffsetForMarkdownSourceOffset, review?.marks])
+  }, [editor, review?.getEditorOffsetForMarkdownSourceOffset, review?.marks, review?.plainMarkdown])
 
+  // Bound to the doc, the doc owns the marks: the review state shows what the
+  // doc holds, from the first render on and after every change to it, whoever
+  // made it. It never writes its own copy back; the binding below takes only
+  // the user's own changes.
   useEffect(() => {
     if (!isReviewEnabled || !yjsDoc) return undefined
 
     const array = yjsDoc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
     const applyYjsMarks = (): void => {
-      const nextMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
-      skipNextCriticMarkupYjsWriteRef.current = true
-      onReplaceMarksFromYjs?.(nextMarks)
+      onReplaceMarksFromYjs?.(readCriticMarkupMarksFromYDoc(yjsDoc))
     }
-
-    const currentYjsMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
-    if (currentYjsMarks.length > 0 || reviewMarksRef.current.length === 0) {
-      applyYjsMarks()
-    } else {
-      writeCriticMarkupMarksToYDoc(yjsDoc, reviewMarksRef.current)
-    }
-
+    applyYjsMarks()
     array.observe(applyYjsMarks)
     return () => {
       array.unobserve(applyYjsMarks)
     }
   }, [isReviewEnabled, onReplaceMarksFromYjs, yjsDoc])
 
+  // Bound to the doc, the editor saves no markdown (`useEditorSync`). The review
+  // state then saves no body either: it reads the editor's text when it needs
+  // it, and writes its own changes to the doc's marks.
   useEffect(() => {
-    if (!isReviewEnabled || !yjsDoc) return
-    if (skipNextCriticMarkupYjsWriteRef.current) {
-      skipNextCriticMarkupYjsWriteRef.current = false
-      return
-    }
-    writeCriticMarkupMarksToYDoc(yjsDoc, review?.marks ?? [])
-  }, [isReviewEnabled, review?.marks, yjsDoc])
+    if (!onDocBindingChange || !yjsFragment || !yjsDoc) return undefined
+    onDocBindingChange({
+      readBody: readMarkdown,
+      // Another device's changes too: they move the text under the offsets.
+      onBodyChange: (listener) => editor.onChange(() => listener()),
+      updateMarks: (changes) => updateCriticMarkupMarksInYDoc(yjsDoc, changes)
+    })
+    return () => onDocBindingChange(null)
+  }, [editor, onDocBindingChange, readMarkdown, yjsDoc, yjsFragment])
 
   useEffect(() => {
     if (!isReviewEnabled) return undefined
 
     const plugin = createCriticMarkupDecorationPlugin(
       () => reviewMarksRef.current,
+      () => reviewPlainMarkdownRef.current,
       (sourceOffset) => reviewMarkdownToEditorOffsetRef.current?.(sourceOffset) ?? null
     )
     return registerEditorPlugin(editor, plugin)

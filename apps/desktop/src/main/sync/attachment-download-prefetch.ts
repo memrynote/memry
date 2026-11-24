@@ -39,7 +39,10 @@ export class AttachmentDownloadPrefetch {
   private readonly inflight = new Map<string, Promise<void>>()
   /** Ids a download took a manifest for; a later batch leaves them out. */
   private readonly taken = new Map<string, number>()
-  /** Chunk hashes of batched downloads that have no URL yet, with when they were added. */
+  /**
+   * Chunk hashes of batched downloads no call has asked for with a 200 answer
+   * yet, with when they were added.
+   */
   private readonly unarmed = new Map<string, number>()
   private readonly urls = new Map<string, { url: string; expiresAtMs: number }>()
   private readonly presignFetches = new Set<PresignFetch>()
@@ -98,10 +101,14 @@ export class AttachmentDownloadPrefetch {
       hashes,
       done: (async () => {
         const window = await fetchWindow([...hashes])
-        for (const [h, url] of window?.urls ?? []) {
-          this.urls.set(h, { url, expiresAtMs: window!.expiresAtMs })
-          this.unarmed.delete(h)
+        if (!window) return
+        for (const [h, url] of window.urls) {
+          this.urls.set(h, { url, expiresAtMs: window.expiresAtMs })
         }
+        // A 200 answer settles every hash it was asked. One it leaves out is a
+        // chunk the vault does not hold, so other downloads stop offering it;
+        // its own download asks once more, then takes the proxy.
+        for (const h of hashes) this.unarmed.delete(h)
       })()
     }
     this.presignFetches.add(fetch)

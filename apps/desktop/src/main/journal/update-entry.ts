@@ -26,13 +26,18 @@ import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
-import { applyHeaderTagEdit } from '../vault/frontmatter'
+import { applyHeaderTagEdit, mergeTagLists } from '../vault/frontmatter'
 import { foldTag } from '@memry/shared/tag-fold'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
-import { createJournalEntry, resolveJournalEntryId } from './create-entry'
+import {
+  finishJournalEntryCreate,
+  resolveJournalEntryId,
+  writeJournalEntryCreate,
+  type WrittenJournalCreate
+} from './create-entry'
 import { enqueueJournalUpdate } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
 
@@ -40,18 +45,24 @@ const logger = createLogger('Journal:Update')
 
 /**
  * Frontmatter is written in the entry's write-back turn, so a pass never
- * writes back the frontmatter it read before it (#5472). A body update feeds
- * the doc first (`landBodyEdit`) outside the turn, since the feed can wait on
- * the store; the re-arm after a pass restores its body but not the tags or
- * properties written beside it, so those are written again in the turn
- * (#5479).
+ * writes back the frontmatter it read before it (#5472). A turn does file I/O
+ * and index writes only: the quit flush awaits every turn, so nothing in one
+ * waits on the CRDT store (#5475). A body update feeds the doc first
+ * (`landBodyEdit`) outside the turn, since the feed can wait on the store; the
+ * re-arm after a pass restores its body but not the tags or properties written
+ * beside it, so those are written again in the turn (#5479). An update that
+ * creates the entry writes the file in the turn too, since a pass writes a day
+ * file that does not exist yet (`materialize`), and seeds the doc after it.
  */
 export async function updateJournalEntry(input: UpdateEntryInput): Promise<JournalEntry> {
   const id = resolveJournalEntryId(input.date)
   if (input.content === undefined) {
-    return takeWritebackTurn(id, async () => (await writeJournalUpdate(input)).entry)
+    const { entry, created } = await takeWritebackTurn(id, () => writeJournalUpdate(input))
+    if (created) await finishJournalEntryCreate(created)
+    return entry
   }
-  const { entry, tagsBefore } = await writeJournalUpdate(input)
+  const { entry, tagsBefore, created } = await writeJournalUpdate(input)
+  if (created) await finishJournalEntryCreate(created)
   const added = entry.tags.filter((tag) => !tagsBefore.includes(tag))
   const removed = tagsBefore.filter((tag) => !entry.tags.includes(tag))
   const tagEdit: HeaderTagEdit | undefined =
@@ -68,23 +79,27 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
  * in the entry's turn, so a tag edit queued ahead of this keeps its tags.
  * Never call from inside a turn of the entry: it waits for that turn.
  */
-export function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
-  return takeWritebackTurn(resolveJournalEntryId(date), async () => {
+export async function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
+  const created = await takeWritebackTurn(resolveJournalEntryId(date), async () => {
     const kept = (await readJournalEntry(date))?.tags ?? []
-    // By tag key, and keeping `kept` as written: a file holding case variants
-    // (`Work`, `work`) must not hide a tag that is missing.
-    const keys = new Set(kept.map((tag) => foldTag(tag.trim())))
-    const added = applyHeaderTagEdit([], {
-      add: tags.filter((tag) => !keys.has(foldTag(tag.trim())))
-    })
-    if (added.length > 0) await writeJournalUpdate({ date, tags: [...kept, ...added] })
+    // A union by the tag fold, untrimmed, as core `set_tags` dedupes
+    // (protocol §13.7.7, the `no-trim-in-fold` vector): one spelling per tag,
+    // the first the file holds, so a file holding `Work` and `work` is written
+    // with `Work`, and ` Work ` is a tag of its own.
+    const held = new Set(kept.map(foldTag))
+    if (tags.every((tag) => held.has(foldTag(tag)))) return null
+    return (await writeJournalUpdate({ date, tags: mergeTagLists(kept, tags) })).created ?? null
   })
+  if (created) await finishJournalEntryCreate(created)
 }
 
 /**
  * Writes the tag edit and `properties` over the entry's file body, when its
  * file lacks them. The edit, not the whole list, so a tags save queued ahead
- * of this turn keeps its tags.
+ * of this turn keeps its tags. `properties` stays the whole record the caller
+ * sent, as `updateJournalEntry` takes it, so a properties save queued ahead of
+ * this turn loses the keys that record lacks. Accepted (#5247): the caller's
+ * record wins whole, and `patchJournalProperties` is the per-key write.
  */
 async function rewriteJournalFrontmatter(
   date: string,
@@ -104,10 +119,14 @@ async function rewriteJournalFrontmatter(
   if (fileContent !== previousFile) await writeJournalUpdate({ date, tags, properties })
 }
 
-/** Resolves the written entry and the tags the file held before. */
+/**
+ * Resolves the written entry and the tags the file held before. With no file
+ * it writes a new entry, and the caller runs `finishJournalEntryCreate` for it
+ * (`created`) outside any write-back turn.
+ */
 async function writeJournalUpdate(
   input: UpdateEntryInput
-): Promise<{ entry: JournalEntry; tagsBefore: string[] }> {
+): Promise<{ entry: JournalEntry; tagsBefore: string[]; created?: WrittenJournalCreate }> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -122,13 +141,13 @@ async function writeJournalUpdate(
     ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
     : givenTags
   if (!existing) {
-    const entry = await createJournalEntry({
+    const created = await writeJournalEntryCreate({
       date: input.date,
       content: input.content ?? '',
       tags: newTags,
       properties: input.properties
     })
-    return { entry, tagsBefore: [] }
+    return { entry: created.entry, tagsBefore: [], created }
   }
 
   const newContent = input.content ?? existing.content

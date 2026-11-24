@@ -388,10 +388,10 @@ struct OfflineLaunchTests {
         #expect(selection.phase == .opened(summary("a", "Work")))
         #expect(selection.registryNotice == nil)
         #expect(opener.openedVaultIds == ["b", "a"])
-        #expect(selection.openVaultRemoved)
+        #expect(selection.removedVault?.summary.id == "b")
 
         selection.dismissRemovedVaultNotice()
-        #expect(!selection.openVaultRemoved)
+        #expect(selection.removedVault == nil)
     }
 
     @Test("a refusal during a re-read keeps the vault and the offline notice")

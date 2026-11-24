@@ -576,8 +576,7 @@ describe('deleted note attachment release against the real sync-server', () => {
             getSyncServerUrl: () => baseUrl,
             getVaultId: () => 'default',
             fetchFn: (input, init) => fetch(input, init)
-          }),
-        markWritebackIgnored: () => {}
+          })
       })
 
     now += 29 * 24 * 60 * 60 * 1000

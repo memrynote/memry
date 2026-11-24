@@ -117,7 +117,8 @@ uses it. Desktop and the CLI always keep attachments in `attachments/<noteId>/`
 nested folder named `attachments` (Obsidian's per-folder attachments layout) is the user's own,
 and its notes are indexed like any other (#3161). A vault
 whose config names another folder keeps its files there; that folder is indexed like any other
-vault folder.
+vault folder. [Note rows made of attachment files](#note-rows-made-of-attachment-files) covers
+how the skip is decided.
 
 The cache is validated against the file itself, not against a list of known writers:
 
@@ -462,6 +463,79 @@ Two properties that matter more than the arithmetic:
 
 - **A move that changes nothing writes nothing.** A rename inside one folder, or a move that leaves every ref resolving, skips the file write entirely — no `mtime` churn, no snapshot, no sync traffic. A percent-encoded ref keeps its original escapes rather than being re-encoded.
 - **The open editor is corrected too.** Main owns the note's Y.Doc and keys it by note id, so a move never invalidates it; the doc would still hold the pre-move body and the next CRDT write-back would put it straight back over the corrected file. `moveNote` pushes the rewritten body into the live doc with `replaceNoteBodyInCrdt` right after the write, the same order `applyTemplateToNote` uses.
+
+A block's **Move to** appends markdown to the end of the target note's file, so its target is
+always a markdown note. The picker leaves out image, PDF, audio and video notes, and
+`appendBlocksToNote` refuses one with `errors:note.appendIntoBinary`, which the editor shows
+as a toast. The block stays in its note. Before this refusal, a block moved into a binary note
+was written as markdown over the file's bytes. Both sides decide with `isBinaryNoteRow`
+(`packages/shared/src/file-types.ts`), so a binary row that an older build saved as markdown
+is refused too.
+
+### Note rows made of attachment files
+
+No note lives in the vault-root `attachments` folder. The indexer and the watcher skip it, and
+one check, `isInAttachmentStore` in `src/main/vault/attachments.ts`, decides that for the
+indexer's walk, the watcher's `ignored` matcher and the watcher's add handler. The check reads
+the path relative to the vault with either separator.
+
+A read by path makes no note there either. `getNoteByPath` (`src/main/vault/notes-crud.ts`)
+answers `notes.getByPath`, from the app and from an agent through `vault_desktop_read`. For a
+path the index does not hold, it reads the file and indexes it as a markdown note. It does that
+only for a `.md` file outside the attachment store. Any other path with no row reads as not
+found (`null`) and gets no row. Before this check, `notes.getByPath` on
+`attachments/host/k3f9x2-photo.png` made a markdown note of the image, with the image's bytes as
+its text. An image, PDF, audio or video file in a note folder gets its binary row from the
+indexer or the watcher. A path that has a row still reads that row.
+
+Builds before this check missed the folder on Windows. Chokidar hands the matcher paths with
+forward slashes there, and those builds compared them to a path with backslashes. So every
+image or PDF pasted into a note on Windows became a note of its own. For example, a paste into
+the note `host` wrote `attachments/host/k3f9x2-photo.png`, and the watcher then made an image
+note with that path. That note synced, and every device that pulled the record made a row for
+it too (#5607).
+
+These stray rows are cleaned up on each device, locally:
+
+- **At vault open**, `forgetStrayAttachmentRows` (`src/main/vault/stray-attachment-rows.ts`)
+  removes every binary row whose path is in the attachment store. It removes the index and
+  canonical rows, the sidebar position, the queued sync items and uploads, the owed CRDT
+  bodies and the CRDT doc. It also removes the `attachment_files` and `note_body_sync` rows
+  keyed by the stray's id, which record the upload and the body pushes the server took for
+  it. Every reader of those rows looks up a note this device still syncs, and the stray's id
+  is declined, so nothing reads them again. The host note's rows for the same file stay. It
+  runs before the removal replay, which would otherwise take a
+  stray row whose file went missing for a delete. It needs the CRDT store, so with no store
+  open the rows stay until the next open. With no stray row it does nothing, so it runs at
+  every open.
+- **No file is touched.** The file is the embed of the note that pasted it, and that note
+  still shows it.
+- **No delete is synced.** A peer on an older build unlinks a deleted note's file when it
+  applies the delete, and here that file is another note's embed. The pass records each id as
+  declined (`declinedSyncRefs` in `sync_state`), so the manifest check does not fetch the
+  record back. The note handler declines a binary record whose folder is in the attachment
+  store, so a pull does not make the row again. A delete of such an id that arrives later is
+  skipped: there is no row, and no file is touched.
+- **The server keeps the records and their blobs.** Each stray record also uploaded a copy of
+  the file. The server stores ciphertext, so it cannot tell a stray from a note, and a device
+  can remove one only by syncing a delete, which a peer on an older build applies by
+  unlinking the file another note embeds.
+
+A stray row this device still holds is protected the same way. The sync runtime starts beside
+the vault-open pass, and with no CRDT store open the pass waits for the next open, so nothing
+of a stray leaves the device whichever runs first:
+
+- The record push retires a queued record of a stray unsent (`retireStrayAttachmentRecords`
+  in `src/main/sync/engine/push-stray-guard.ts`), whatever queued it: an older build, a
+  recovery pass or an edit.
+- The note-body outbox drops a binary note's queued body rows unsent. An older build queued
+  them for the doc it made of one.
+- The upload outbox skips a stray's upload.
+- Deleting a stray on this device drops the row and keeps the file, and queues no delete, now
+  or deferred: the "never leaves this device" switch (`staysOnDevice` in
+  `src/main/sync/content-sync-base.ts`) covers a stray as it covers a local-only note. The
+  delete frees none of its blob either.
+- A peer's delete that applies here drops the row and keeps the file (`isAttachmentStoreRow`).
 
 ### Text colors in markdown
 

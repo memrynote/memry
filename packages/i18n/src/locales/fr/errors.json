@@ -30,6 +30,7 @@
     "applyTemplateFailed": "Impossible d'appliquer le modèle",
     "appendBlocksFailed": "Impossible de déplacer le bloc vers cette note",
     "appendIntoCaseTwin": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse. Renommez l’une des deux, puis déplacez à nouveau le bloc.",
+    "appendIntoBinary": "Un bloc ne peut être déplacé que vers une note, pas vers une image, un PDF ou un fichier audio ou vidéo.",
     "caseTwinMoveRefused": "Cette note partage son fichier avec une note dont le nom ne diffère que par la casse : elle ne peut donc pas être déplacée ainsi. Renommez ou déplacez l’autre note, ou supprimez la copie dont vous n’avez pas besoin.",
     "exportPdfFailed": "Impossible d'exporter en PDF",
     "exportHtmlFailed": "Impossible d'exporter en HTML",
@@ -65,6 +66,7 @@
     "exceedsMaxSize": "Fichier trop volumineux : {size} dépasse la limite de {limit}",
     "exceedsPlanLimit": "Fichier plus volumineux que ne l'autorise votre forfait : {size} dépasse {limit}",
     "emptyFile": "Impossible d'envoyer un fichier vide",
+    "emptyNotAttached": "Ce fichier est vide, il n'a donc pas été joint. Si vous avez collé une image, copiez-la à nouveau puis collez-la.",
     "textInMediaFile": "Ce fichier contient du texte au lieu du média qu’indique son nom"
   },
   "crdt": {

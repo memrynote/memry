@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { broadcast, enqueueCreate, initCrdt, syncCache, flush, disk } = vi.hoisted(() => ({
-  disk: { previousFile: null as string | null, baseline: undefined as string | undefined },
+  disk: {
+    previousFile: null as string | null,
+    baseline: undefined as string | undefined,
+    written: null as null | { content: string; tags?: string[] }
+  },
   broadcast: vi.fn(),
   enqueueCreate: vi.fn(),
   initCrdt: vi.fn().mockResolvedValue(undefined),
@@ -12,24 +16,33 @@ const { broadcast, enqueueCreate, initCrdt, syncCache, flush, disk } = vi.hoiste
 vi.mock('electron', () => ({ BrowserWindow: { getAllWindows: () => [] } }))
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: broadcast }))
 vi.mock('../database', () => ({ getIndexDatabase: () => ({}), getDatabase: () => ({}) }))
-vi.mock('../vault/journal', () => ({
-  writeJournalEntryWithContent: vi.fn(async (date: string, content: string, tags?: string[]) => ({
-    entry: {
-      id: `journal-${date}`,
-      date,
-      content,
-      wordCount: 1,
-      characterCount: content.length,
-      tags: tags ?? [],
-      createdAt: '2026-08-12T00:00:00.000Z',
-      modifiedAt: '2026-08-12T00:00:00.000Z'
-    },
-    fileContent: content,
-    frontmatter: { date },
-    previousFile: disk.previousFile
-  })),
-  getJournalRelativePath: (date: string) => `journal/${date}.md`
-}))
+vi.mock('../vault/journal', () => {
+  const entryOf = (date: string, content: string, tags?: string[]) => ({
+    id: `journal-${date}`,
+    date,
+    content,
+    wordCount: 1,
+    characterCount: content.length,
+    tags: tags ?? [],
+    createdAt: '2026-08-12T00:00:00.000Z',
+    modifiedAt: '2026-08-12T00:00:00.000Z'
+  })
+  return {
+    writeJournalEntryWithContent: vi.fn(async (date: string, content: string, tags?: string[]) => {
+      disk.written = { content, tags }
+      return {
+        entry: entryOf(date, content, tags),
+        fileContent: content,
+        frontmatter: { date },
+        previousFile: disk.previousFile
+      }
+    }),
+    readJournalEntry: vi.fn(async (date: string) =>
+      disk.written ? entryOf(date, disk.written.content, disk.written.tags) : null
+    ),
+    getJournalRelativePath: (date: string) => `journal/${date}.md`
+  }
+})
 vi.mock('../vault/journal-cache-sync', () => ({ syncJournalCache: syncCache }))
 vi.mock('../projections', () => ({ flushProjectionEvents: flush }))
 vi.mock('./runtime-effects', () => ({
@@ -64,6 +77,7 @@ describe('createJournalEntry', () => {
     vi.clearAllMocks()
     disk.previousFile = null
     disk.baseline = undefined
+    disk.written = null
   })
 
   // A create can land on a day file that already exists (an ipc create over

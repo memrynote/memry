@@ -224,7 +224,7 @@ Caps:
 (`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
 caller's vault is absent from `urls`, and the client fetches that chunk through
 the proxied GET, which reports its 404
-(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+(`apps/sync-server/src/routes/blob.ts:812-830`). The route never answers 404 for
 a missing hash, because desktop reads a 404 here as "presign unavailable"
 (`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
 requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
@@ -463,7 +463,7 @@ the iOS core hold nothing past the probe of §14.8.2.
 
 ### 14.8.2 Revived notes re-upload freed attachments (#3054)
 
-**Client behaviour, desktop only; no wire, D1 or format change.** A note's
+**Client behaviour; no wire, D1 or format change.** On desktop, a note's
 attachments are freed by dereference 30 days after the delete, unless the note
 is live again on the deleting device by then
 (`apps/desktop/src/main/sync/deleted-asset-release.ts:276`). A device whose
@@ -493,14 +493,34 @@ references, in the next upload re-drive
 - For each attachment that is gone, the device drops the id from the note's
   `attachmentReferences`, so the upload's dedup cannot reuse its still-present
   manifest, and queues its local file in the upload outbox
-  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-99`). The upload
+  (`apps/desktop/src/main/sync/note-attachment-revival.ts:91-100`). The upload
   adds the new id and pushes the note, as any upload does
-  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`).
+  (`apps/desktop/src/main/sync/note-attachment-metadata.ts:10`). An empty
+  file, or one the uploader refused and nobody has written since, is not
+  queued, because it would be refused again
+  (`apps/desktop/src/main/sync/attachment-outbox.ts:136-150`).
 
 Chunk holds are not used for this: a hold ends with the grace period, so a
 peer offline for longer than that would still revive a note whose chunks are
 gone. Pending checks live in memory, so a restart before a check settles loses
 it.
+
+**Core: an owed upload outlives the purge.** In the core, a pulled delete that
+purges a note's body keeps the note's owed uploads, each with its row and its
+local bytes, and logs how many it kept
+(`crates/memry-core/src/sync/apply.rs:303-311`). A sync pass uploads nothing
+for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
+Desktop's outbox does not wait for a revive: it skips a local-only note's rows
+and a stray's, never a deleted note's
+(`apps/desktop/src/main/sync/attachment-outbox.ts:265-270`), and uploads a
+queued file while it exists (`:300`).
+No age ends the wait, because the server accepts a create over the note's
+marker at any age (§5.12.3) and those bytes are the only copy
+(`crates/memry-core/src/api/sync/note_uploads.rs:25-33`). After a same-id
+revive, the next pass uploads the kept bytes once under the attachment's own
+id, and the transaction that adds the note's reference ends the debt
+(`crates/memry-core/src/api/sync/note_uploads.rs:380-387`). A detach ends it
+too, and nothing uploads (`crates/memry-core/src/api/sync/attachments_io.rs:82-83`).
 
 **Disposition of Q14.3: answered (safe; quota is consumed by uploads only).**
 

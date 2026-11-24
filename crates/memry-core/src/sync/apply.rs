@@ -302,7 +302,7 @@ fn apply_tombstone(
         let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
         // A same-id revive can still want the note's unsent pictures (§14.8.2).
         if item_type == notes::ITEM_TYPE {
-            let kept = attachment_uploads::mark_purged(&txn, item_id, now_ms)?;
+            let kept = attachment_uploads::ids_for_note(&txn, item_id)?.len();
             if kept > 0 {
                 eprintln!(
                     "memry-core: attachment uploads: note {item_id} was deleted elsewhere; its {kept} unsent picture(s) stay here until it is revived or they are detached"

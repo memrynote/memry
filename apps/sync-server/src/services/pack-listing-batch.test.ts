@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { compactOneRange } from './pack-compaction'
 import { packSha256 } from './pack-format'
-import { deleteReplacedPackObjects } from './pack-replaced-objects'
+import { ALWAYS } from './pack-index-write'
+import { deleteReplacedPackObjects, packKindReset } from './pack-replaced-objects'
 import { rollupKind } from './pack-rollup'
 import { PACK_SETTLE_SECONDS } from './pack-sizing'
 
@@ -105,6 +106,14 @@ const afterFirstDueSelect = (step: () => Promise<void>): void => {
   })
 }
 
+/** A build whose listing batch lost its response and then committed: listed, and recorded as unlisted. */
+const listAfterLostResponse = async (): Promise<void> => {
+  await writeRecord(1)
+  const commit = failNextBatch('after')
+  await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
+  await commit()
+}
+
 const buildRecordPacks = async (count: number): Promise<void> => {
   for (let i = 1; i <= count; i++) {
     await writeRecord(i)
@@ -152,11 +161,7 @@ describe('a listing batch that throws (REVIEW-5277 P3)', () => {
   // #5247: the catch read the row, found it absent and deleted the object; the
   // commit then landed and listed a pack with no object.
   it('build: a commit that lands after the error keeps its listed object', async () => {
-    await writeRecord(1)
-    const commit = failNextBatch('after')
-
-    await expect(compactOneRange(harness.db, storage, SCOPE, 'record')).rejects.toThrow('D1_ERROR')
-    await commit()
+    await listAfterLostResponse()
     await deleteReplacedPackObjects(harness.db, storage, SCOPE)
 
     expect(listedKeys()).toHaveLength(1)
@@ -195,6 +200,51 @@ describe('a listing batch that throws (REVIEW-5277 P3)', () => {
 
     expect(listedKeys()).toHaveLength(1)
     expect(await packKeys()).toEqual(listedKeys())
+  })
+
+  // VERIFY-5449 r2 #2: the stale-record delete probed pack_index by pack_key
+  // alone, which no index covers, so D1 read the whole table per stale key.
+  it('the deletion pass reads pack_index through its vault index, never a table scan', async () => {
+    await listAfterLostResponse()
+    const prepared: Array<{ sql: string; values: unknown[] }> = []
+    const prepare = harness.db.prepare.bind(harness.db)
+    vi.spyOn(harness.db, 'prepare').mockImplementation((sql) => {
+      const statement = prepare(sql)
+      const bind = statement.bind.bind(statement)
+      statement.bind = (...values) => {
+        prepared.push({ sql, values })
+        return bind(...values)
+      }
+      return statement
+    })
+
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+
+    expect(unlisted()).toEqual([])
+    expect(prepared.some(({ sql }) => sql.includes('DELETE FROM pack_replaced_objects'))).toBe(true)
+    for (const { sql, values } of prepared) {
+      const plan = harness.raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...values) as Array<{
+        detail: string
+      }>
+      expect(
+        plan.map((row) => row.detail).filter((detail) => /^SCAN (p|pack_index)\b/.test(detail))
+      ).toEqual([])
+    }
+  })
+
+  // A listed pack's record is dropped as stale only while the pack is still
+  // listed at the delete: a reset in between made it the record of a due object.
+  it('a reset between the select and the stale-record delete keeps the record, so the next pass deletes the object', async () => {
+    await listAfterLostResponse()
+    afterFirstDueSelect(async () => {
+      await harness.db.batch(packKindReset(harness.db, SCOPE, 'record', ALWAYS))
+    })
+
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+    await deleteReplacedPackObjects(harness.db, storage, SCOPE)
+
+    expect(listedKeys()).toEqual([])
+    expect(await packKeys()).toEqual([])
   })
 
   it('build: a committed batch keeps its listed object', async () => {

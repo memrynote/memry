@@ -217,6 +217,33 @@ describe('a queued edit of an item a pulled delete removed (#5428)', () => {
       expect(s.deps.queue.getSize()).toBe(0)
     })
 
+    it('still sends the edit of a soft-deleted tag category when its clock happens after the row clock', async () => {
+      const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
+      s.db
+        .insert(tagCategories)
+        .values({ id: 'cat-1', name: 'Work', clock: { 'device-1': 3, 'device-2': 1 } })
+        .run()
+      const handler = getHandler('tag_category')!
+      s.deps.queue.enqueue({
+        type: 'tag_category',
+        itemId: 'cat-1',
+        operation: 'update',
+        payload: handler.buildPushPayload!(s.db, 'cat-1', '', 'update')!
+      })
+      s.db.delete(syncQueue).where(eq(syncQueue.itemId, 'work')).run()
+      // No shipped apply path stores this row: applyDelete keeps a clock at or
+      // after the queued edit's. Written directly to pin the re-create escape.
+      s.db
+        .update(tagCategories)
+        .set({ deletedAt: new Date().toISOString(), clock: { 'device-1': 1, 'device-2': 1 } })
+        .where(eq(tagCategories.id, 'cat-1'))
+        .run()
+
+      await s.engine.push()
+
+      expect(s.pushed()).toEqual(['cat-1:update'])
+    })
+
     it('sends the edit as before when the local row lookup throws', async () => {
       const s = await sessionWithQueuedTagEdit({ 'device-1': 2 })
       removedByOlderBuild(s)

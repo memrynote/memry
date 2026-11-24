@@ -51,8 +51,8 @@ struct VaultListView: View {
     /// the phone is still correct, it is simply not the whole story.
     private func opened(_ vault: Vault, _ summary: VaultSummary) -> some View {
         VStack(spacing: 0) {
-            if model.openVaultRemoved {
-                RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+            if let removed = model.removedVault {
+                RemovedVaultNotice(export: removed, dismiss: model.dismissRemovedVaultNotice)
                     .padding(.horizontal, Tokens.Space.screenInline)
                     .padding(.vertical, Tokens.Space.inset)
             }
@@ -124,8 +124,8 @@ struct VaultListView: View {
     private var selection: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                if model.openVaultRemoved {
-                    RemovedVaultNotice(dismiss: model.dismissRemovedVaultNotice)
+                if let removed = model.removedVault {
+                    RemovedVaultNotice(export: removed, dismiss: model.dismissRemovedVaultNotice)
                 }
                 switch model.phase {
                 case .loading:
@@ -230,24 +230,6 @@ private struct RegistryNotice: View {
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.inset)
         .background(Tokens.Canvas.background.color)
-    }
-}
-
-/// The vault open offline was removed from the account while this device was
-/// away. Its files are still here; nothing on this screen deletes them.
-private struct RemovedVaultNotice: View {
-    let dismiss: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text("That vault was removed from your account. Its copy stays on this \(ThisDevice.noun).")
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .multilineTextAlignment(.leading)
-            Button("Dismiss", action: dismiss)
-                .memrySecondaryAction()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
