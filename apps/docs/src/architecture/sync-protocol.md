@@ -1165,9 +1165,10 @@ across devices:
   (#5415). When a restore lands and the file still holds text, the server blob
   is text too: its attachment id goes into `sync_state.binaryNoteTextBlobs`,
   a warning logs the count and sends it to telemetry, and the restore never
-  requests that attachment again. A corrupt list is logged and read as empty.
-  In on-demand download mode, or with no access token, the request is released
-  with no failure row and the next runtime start asks again.
+  requests that attachment again. A corrupt list is read as empty, logged,
+  sent to telemetry, and removed, so the next runtime start does not report
+  it again. In on-demand download mode, or with no access token, the request
+  is released with no failure row and the next runtime start asks again.
 - **Unreachable vault** — a missing file counts as deleted only while its
   vault is reachable: `<vault>/.memry/data.db` is a file and the folder of the
   row's note exists. A vault on a removable or network drive that is away for a
@@ -1204,7 +1205,11 @@ across devices:
   (note, attachment). Only the outcome writes here: the request itself no longer
   counts as a result, so a 404 and a success are no longer the same event. A
   transient failure (5xx, network, decrypt) keeps its retry on an exponential
-  backoff from one minute. A `404`/`410` — the server saying it does not have
+  backoff from one minute. So does a manifest whose `id` is not the attachment
+  asked for, from the single GET or under a batch key: the download refuses it
+  before any chunk request or write, as memry-core does, because landing it
+  would put another file's bytes under this id, and a server mix-up is no
+  evidence the blob is gone. A `404`/`410` — the server saying it does not have
   this blob — is re-probed at most once a day, three times, and then never
   automatically again. Session state (in-flight claims and this session's
   successes) is still in memory and still cleared on runtime teardown, because
@@ -1267,7 +1272,11 @@ attachment's id is dropped from the note, and its local file is queued for
 upload again, which adds the new id and pushes the note. Holds would not cover
 this: a hold ends with the 30-day grace period, and a device can stay offline
 longer. The pending checks live in memory, so a restart before one settles
-loses it.
+loses it. Both this check and the 30-day release read an attachment's chunks
+from its signed manifest, and both refuse a manifest whose `id` is not the
+attachment asked for (#5664): dereferencing its chunks would free another
+attachment's. The release then frees nothing and keeps its record, and the
+check stays pending, until the server answers with the right manifest.
 
 ### Binary note records pushed as markdown
 
@@ -1442,7 +1451,7 @@ fetches it with up to 99 queued ones through `POST /sync/attachments/manifests/b
 URLs go into one cache keyed by chunk hash, with their expiry. A chunk with no live URL presigns the
 uncovered chunks of its own download first, then those of the batched downloads, up to 1,024 per
 call, and a caller whose chunk is already in flight waits for that call. A chunk a `200` answer
-leaves out (the vault holds no such chunk) downloads through the proxy, which answers its 404, and
+leaves out (the vault holds no such chunk) is fetched through the proxy, which answers its 404, and
 later calls stop presigning it for other downloads. The batch route charges `blob_download` one
 token per distinct id, so the limit still bounds R2 reads. The bytes still download eagerly, so an
 attachment opens offline after bootstrap as before. A server without the batch route answers 404,

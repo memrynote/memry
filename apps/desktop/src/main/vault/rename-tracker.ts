@@ -68,6 +68,11 @@ export function createDeferredDeletes(): DeferredDeletes {
   return new Set()
 }
 
+type IdentityStats = Pick<
+  Stats,
+  'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'
+>
+
 export interface RenameMatch {
   id: string
   oldPath: string
@@ -334,17 +339,30 @@ export function buildStatRenameKey(
  * same second would share it, so no file gets a key once the startup probe
  * (`probeBirthtime`) finds that. Until the probe answers, a birthtime equal to
  * the ctime counts as none; after it found real birthtimes, a fresh file whose
- * birthtime and ctime share a timestamp tick keeps its key.
+ * birthtime and ctime share a timestamp tick keeps its key. The probe answers
+ * once per process; `birthtime-probe.ts` says when that answer goes stale, and
+ * `buildAddedFileIdentityKey` keeps a stale answer from pairing a wrong file.
  */
-export function buildFileIdentityKey(
-  stats: Pick<Stats, 'dev' | 'ino' | 'birthtime' | 'birthtimeMs' | 'ctimeMs' | 'size' | 'mtime'>
-): string | null {
+export function buildFileIdentityKey(stats: IdentityStats): string | null {
   const born = stats.birthtime.getTime()
   if (!stats.ino || !born) return null
   const realBirthtime = birthtimeIsReal()
   if (realBirthtime === false) return null
   if (realBirthtime === null && stats.birthtimeMs === stats.ctimeMs) return null
   return `ino:${stats.dev}:${stats.ino}:${born}:${stats.size}:${stats.mtime.getTime()}`
+}
+
+/**
+ * Identity key of the file an `add` reports. A renamed file's ctime is past its
+ * birthtime: the rename, or a write after its creation, moved it. On Linux an
+ * add whose birthtime equals its ctime therefore gets no key. Once libuv falls
+ * back to stat(2) after the probe found real birthtimes, every birthtime is
+ * the ctime, so no add pairs by identity, and an unrelated file written on a
+ * deleted note's freed inode in the same second never takes that note over.
+ */
+export function buildAddedFileIdentityKey(stats: IdentityStats): string | null {
+  if (process.platform === 'linux' && stats.birthtimeMs === stats.ctimeMs) return null
+  return buildFileIdentityKey(stats)
 }
 
 /**

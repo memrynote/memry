@@ -170,10 +170,34 @@ describe('restoreOverwrittenBinaryNotesWith (#5415)', () => {
     })
   })
 
-  it('still restores files when the remembered text-blob list is corrupt', async () => {
+  function storeCorruptTextBlobList() {
     testDb.sqlite
       .prepare('INSERT INTO sync_state (key, value, updated_at) VALUES (?, ?, ?)')
       .run('binaryNoteTextBlobs', '{not json', Date.now())
+  }
+
+  it('restores files over a corrupt text-blob list and reports the list once', async () => {
+    storeCorruptTextBlobList()
+    const { file } = seedBinaryNote('Sunset.png', WRITEBACK_MARKDOWN)
+
+    expect(await restore()).toEqual({ requested: 1 })
+    expect(fs.readFileSync(file)).toEqual(PNG)
+
+    // The next runtime start finds no corrupt list to report again.
+    resetAttachmentDownloadSession()
+    expect(await restore()).toEqual({ requested: 0 })
+    expect(trackMainLog).toHaveBeenCalledTimes(1)
+    expect(trackMainLog).toHaveBeenCalledWith('warn', {
+      scope: 'BinaryNoteRestore',
+      action: 'binary_note_text_blobs_corrupt'
+    })
+  })
+
+  it('still restores files when the corrupt text-blob list cannot be removed', async () => {
+    storeCorruptTextBlobList()
+    testDb.sqlite.exec(
+      "CREATE TRIGGER keep_sync_state BEFORE DELETE ON sync_state BEGIN SELECT RAISE(ABORT, 'disk is read-only'); END"
+    )
     const { file } = seedBinaryNote('Sunset.png', WRITEBACK_MARKDOWN)
 
     expect(await restore()).toEqual({ requested: 1 })

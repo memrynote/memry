@@ -52,7 +52,7 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
-  buildFileIdentityKey,
+  buildAddedFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
@@ -102,7 +102,7 @@ import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
 import { diskCaseOf } from './disk-case'
-import { holdsBinaryChange } from './case-twin-bytes'
+import { holdsBinaryChange } from './case-twin-hold'
 
 const logger = createLogger('Watcher')
 
@@ -986,7 +986,7 @@ export class VaultWatcher {
     const scan = await scanMarkdownFile(absolutePath, 0)
     const contentHash = scan?.contentHash ?? null
     const statKeys = [
-      buildFileIdentityKey(stats),
+      buildAddedFileIdentityKey(stats),
       buildStatRenameKey(stats.size, stats.mtime.toISOString())
     ]
 

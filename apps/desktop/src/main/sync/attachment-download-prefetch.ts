@@ -16,8 +16,8 @@ interface PresignFetch {
 }
 
 export interface AttachmentDownloadPrefetchDeps {
-  /** The chunk hashes inside a verified, decrypted manifest. */
-  chunkHashesOf: (manifest: EncryptedAttachmentManifest) => Promise<string[]>
+  /** The chunk hashes inside the verified, decrypted manifest of `attachmentId`. */
+  chunkHashesOf: (attachmentId: string, manifest: EncryptedAttachmentManifest) => Promise<string[]>
 }
 
 /**
@@ -39,7 +39,10 @@ export class AttachmentDownloadPrefetch {
   private readonly inflight = new Map<string, Promise<void>>()
   /** Ids a download took a manifest for; a later batch leaves them out. */
   private readonly taken = new Map<string, number>()
-  /** Chunk hashes of batched downloads that have no URL yet, with when they were added. */
+  /**
+   * Chunk hashes of batched downloads no call has asked for with a 200 answer
+   * yet, with when they were added.
+   */
   private readonly unarmed = new Map<string, number>()
   private readonly urls = new Map<string, { url: string; expiresAtMs: number }>()
   private readonly presignFetches = new Set<PresignFetch>()
@@ -102,8 +105,9 @@ export class AttachmentDownloadPrefetch {
         for (const [h, url] of window.urls) {
           this.urls.set(h, { url, expiresAtMs: window.expiresAtMs })
         }
-        // A hash the answer leaves out gets no URL from a later call either;
-        // only its own download asks again, then takes the proxy.
+        // A 200 answer settles every hash it was asked. One it leaves out is a
+        // chunk the vault does not hold, so other downloads stop offering it;
+        // its own download asks once more, then takes the proxy.
         for (const h of hashes) this.unarmed.delete(h)
       })()
     }
@@ -180,7 +184,8 @@ export class AttachmentDownloadPrefetch {
         if (!manifest) continue
         this.prefetched.set(id, { manifest, fetchedAt })
         try {
-          for (const h of await this.deps.chunkHashesOf(manifest)) this.unarmed.set(h, fetchedAt)
+          for (const h of await this.deps.chunkHashesOf(id, manifest))
+            this.unarmed.set(h, fetchedAt)
         } catch (err) {
           // The download verifies the manifest again and reports the failure.
           log.debug('prefetched manifest did not verify', { attachmentId: id, err })

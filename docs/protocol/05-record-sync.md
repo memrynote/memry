@@ -918,7 +918,7 @@ what `decryptPullBatch` verified (`apps/desktop/src/main/sync/engine/pull-coordi
 and attested markers (`pull-coordinator.ts:818`, applied at `:913`) apply.
 Rust core manifest reconcile: `crates/memry-core/src/sync/first_sync/reconcile.rs:103`
 pulls each unlisted row declaring `purged_tombstones`
-(`crates/memry-core/src/sync/pull/shared_apply.rs:57`), deletes only
+(`crates/memry-core/src/sync/pull/shared_apply.rs:64`), deletes only
 through a verified delete or a marker whose attestation verifies
 (`crates/memry-core/src/sync/purged_markers.rs:148`, `delete_attestation::verify`), and
 keeps and logs the rest (`reconcile.rs:114`). Rust core page pull: every

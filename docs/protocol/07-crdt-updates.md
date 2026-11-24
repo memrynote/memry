@@ -18,7 +18,7 @@ as a note**. **Its document id is the journal record's `id`.**
 
 Desktop mints that id as `j<YYYY-MM-DD>` when it creates a day
 (`apps/desktop/src/main/lib/id.ts:20`), but an existing canonical row's id wins
-(`apps/desktop/src/main/journal/create-entry.ts:40-46`:
+(`apps/desktop/src/main/journal/create-entry.ts:46-62`:
 `canonical?.id ?? cached?.id ?? generateJournalId(date)`).
 
 **A client MUST use the id carried by the `journal` record and MUST NOT derive

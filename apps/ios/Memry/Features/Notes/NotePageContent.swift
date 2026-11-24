@@ -207,7 +207,7 @@ struct NotePageContent<EmptyBody: View>: View {
                 .accessibilityHidden(true)
         }
         // Read only (N604): §12.5.1 forbids writing them.
-        ReviewCommentsSection(comments: inspectorShown ? [] : model.comments)
+        ReviewCommentsSection(comments: inspectorShown ? [] : model.shownComments)
             // On a view that is always present, so the first block typed
             // into an empty note is seen too.
             .onChange(of: model.blocks, initial: true) { syncInlineTags() }
@@ -302,7 +302,7 @@ struct NotePageEnvironment: ViewModifier {
             .environment(\.noteTasks, taskBridge)
             .environment(
                 \.reviewMarks,
-                ReviewMarkStyle.unambiguous(model.comments, in: model.exportText)
+                ReviewMarkStyle.unambiguous(model.shownComments, in: model.exportText)
             )
     }
 }
