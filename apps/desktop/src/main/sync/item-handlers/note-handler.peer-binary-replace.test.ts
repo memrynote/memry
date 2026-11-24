@@ -13,6 +13,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -384,6 +385,61 @@ describe("a peer's replacement of a binary note's bytes", () => {
     expect(read('Pictures/p.png')).toBe('peer-bytes')
     expect(conflictCopies('Pictures')).toEqual(['edit-during-download'])
   }, 30_000)
+
+  it('keeps no conflict copy when the change it merged with left the bytes alone', () => {
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    // An icon or a rename changed here; its push is not on the server yet.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 2 } })
+
+    expect(pull('img', 'att-new')).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  /** Bytes this device uploaded at clock `{dev1: 1}`: its next push, at dev1 2, carries them. */
+  function uploadHere(bytes: string): void {
+    data.db
+      .insert(syncDevices)
+      .values({
+        id: 'dev1',
+        name: 'This Mac',
+        platform: 'macos',
+        appVersion: '0.0.0',
+        linkedAt: new Date(),
+        isCurrentDevice: true,
+        signingPublicKey: 'key'
+      })
+      .run()
+    seed('img', 'Pictures/p.png', 'old-bytes')
+    fs.writeFileSync(abs('Pictures/p.png'), bytes)
+    recordUploadedAttachment('img', 'att-up', sha256(bytes))
+  }
+
+  it('keeps no conflict copy of uploaded bytes the merged record has seen', () => {
+    uploadHere('up-bytes!')
+    // Pushed at dev1 2, then renamed here at dev1 3.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 3 } })
+
+    expect(pull('img', 'att-new', { dev1: 2, peer: 1 })).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual([])
+  })
+
+  it('keeps uploaded bytes the merged record has not seen as a conflict copy', () => {
+    uploadHere('up-bytes!')
+    // Its push, at dev1 2, is not on the server yet.
+    updateNoteMetadata(asClientDb(data.db), 'img', { clock: { dev1: 2 } })
+
+    expect(pull('img', 'att-new', { dev1: 1, peer: 1 })).toBe('conflict')
+    land('img', 'att-new', abs('Pictures/p.png'), 'peer-bytes')
+
+    expect(read('Pictures/p.png')).toBe('peer-bytes')
+    expect(conflictCopies('Pictures')).toEqual(['up-bytes!'])
+  })
 
   it('drops an older replacement that finishes after a newer one landed', () => {
     seed('img', 'Pictures/p.png', 'old-bytes')

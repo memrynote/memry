@@ -302,12 +302,18 @@ import { atomicWrite } from '../vault/file-ops'
 import { landSourceRewrite } from '../vault/rename-link-rewrite'
 import { updateJournalEntry } from '../journal/update-entry'
 import { createJournalHandles } from '../agent/mcp/tools/journal-handles'
-import { updateJournalProperties } from '../journal/properties'
 import { registerJournalHandlers } from '../ipc/journal-handlers'
+import { registerPropertiesHandlers } from '../ipc/properties-handlers'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
+import { PropertiesChannels } from '@memry/contracts/properties-api'
 import type { UpdateEntryInput } from '@memry/contracts/journal-api'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
-import { deleteNoteCache, getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
+import {
+  deleteNoteCache,
+  getNoteCacheById,
+  insertNoteCache,
+  updateNoteCache
+} from '@main/database/queries/notes'
 import type { NewNoteCache, NoteCache } from '@memry/db-schema/schema/notes-cache'
 
 beforeAll(() => {
@@ -766,31 +772,54 @@ describe('a body writer whose lock check, file write or store fails (D-DOC-FIRST
 // so the write-back's re-arm cannot see it. It waits for the running pass
 // instead of landing between its read and its write (#5472).
 describe('a tags or properties update between a journal write-back read and write (#5472)', () => {
-  beforeAll(registerJournalHandlers)
+  beforeAll(() => {
+    registerJournalHandlers()
+    registerPropertiesHandlers()
+  })
   beforeEach(disarm)
   const viaIpc = (input: UpdateEntryInput): unknown =>
     h.ipc.get(JournalChannels.invoke.UPDATE_ENTRY)!({}, input)
+  // The journal page's properties panel saves through properties:set and properties:merge.
+  const setProperties = async (date: string, properties: Record<string, unknown>): Promise<void> =>
+    expect(
+      await h.ipc.get(PropertiesChannels.invoke.SET)!({}, { entityId: `j${date}`, properties })
+    ).toMatchObject({ success: true })
+  const mergeProperties = async (date: string, values: Record<string, unknown>): Promise<void> =>
+    expect(
+      await h.ipc.get(PropertiesChannels.invoke.MERGE)!({}, { entityId: `j${date}`, values })
+    ).toMatchObject({ success: true })
   const agent = (): ReturnType<typeof createJournalHandles> =>
     createJournalHandles(h.indexDb as never)
   // The last case has no day file: the pass writes it (as a pulled record's
   // `materialize` does), and the save creates the entry only after that pass.
-  const cases: Array<[string, (date: string) => unknown, string, boolean?]> = [
-    ['IPC journal tags save', (date) => viaIpc({ date, tags: ['focus'] }), 'focus'],
+  const cases: Array<[string, (date: string) => unknown, string[], boolean?]> = [
+    ['IPC journal tags save', (date) => viaIpc({ date, tags: ['focus'] }), ['focus']],
     [
-      'IPC journal properties save',
-      (date) => updateJournalProperties(date, { mood: 'calm' }),
-      'mood: calm'
+      'IPC properties:set on the entry',
+      (date) => setProperties(date, { mood: 'calm' }),
+      ['mood: calm']
     ],
-    ['agent journal.update tags', (date) => agent().update({ date, tags: ['focus'] }), 'focus'],
+    // Each merge reads the file in the entry's turn, so the second keeps the
+    // first's key instead of the record both read before the pass wrote.
+    [
+      'two IPC properties:merge calls',
+      (date) =>
+        Promise.all([
+          mergeProperties(date, { mood: 'calm' }),
+          mergeProperties(date, { energy: 'high' })
+        ]),
+      ['mood: calm', 'energy: high']
+    ],
+    ['agent journal.update tags', (date) => agent().update({ date, tags: ['focus'] }), ['focus']],
     [
       'agent journal.update properties',
       (date) => agent().update({ date, properties: { mood: 'calm' } }),
-      'mood: calm'
+      ['mood: calm']
     ],
     [
       'IPC journal tags save of a day with no file',
       (date) => viaIpc({ date, tags: ['focus'] }),
-      'focus',
+      ['focus'],
       true
     ]
   ]
@@ -800,6 +829,7 @@ describe('a tags or properties update between a journal write-back read and writ
       const id = `j${date}`
       const notePath = `Journal/${date}.md`
       await seedNote(id, notePath, 'Morning.')
+      updateNoteCache(h.indexDb as never, id, { date })
       const doc = await restart(id)
       if (noFile) h.files.delete(`/vault/${notePath}`)
       Y.applyUpdate(doc, editOf(doc, 'Morning.', ' Typed.'))
@@ -821,7 +851,7 @@ describe('a tags or properties update between a journal write-back read and writ
       await settle(id)
       const md = (await yDocToMarkdown(doc, CRDT_FRAGMENT_NAME, { notePath }))!
       expect.soft(md).toContain('Morning. Typed.')
-      expect.soft(h.files.get(`/vault/${notePath}`)).toContain(kept)
+      for (const line of kept) expect.soft(h.files.get(`/vault/${notePath}`)).toContain(line)
       expect.soft(h.files.get(`/vault/${notePath}`)).toContain('Morning. Typed.')
     })
   })

@@ -17,6 +17,49 @@ export function markdownSourceOffsetToEditorOffset(
   return buildOffsetMap(markdown).sourceToEditor[sourceOffset] ?? null
 }
 
+/** The editor text `markdown[start, end)` renders as: `**bold** x` gives `bold x`. */
+export function markdownSourceRangeEditorText(
+  markdown: string,
+  start: number,
+  end: number
+): string | null {
+  if (start < 0 || end < start || end > markdown.length) return null
+  return editorTextBetween(markdown, buildOffsetMap(markdown), start, end)
+}
+
+/**
+ * The editor text a slice of markdown shows when the text around it is not at
+ * hand: `start **bold` shows `start bold`. Of a link or code span the slice
+ * cuts through, only the words show.
+ */
+export function markdownSliceEditorText(slice: string): string {
+  const shown = editorTextBetween(slice, computeOffsetMap(slice), 0, slice.length) ?? slice
+  return shown
+    .replace(/^([^[\]]*)\]\([^)\s]*\)/, '$1')
+    .replace(/^([^[\]]*)\]\]/, '$1')
+    .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)$/, '$1')
+    .replace(/!?\[([^\]]*)$/, '$1')
+    .replaceAll('`', '')
+}
+
+function editorTextBetween(
+  markdown: string,
+  map: OffsetMap,
+  start: number,
+  end: number
+): string | null {
+  const from = map.sourceToEditor[start]
+  const to = map.sourceToEditor[end]
+  if (from === null || to === null) return null
+  let text = ''
+  for (let offset = from; offset < to; offset++) {
+    const source = map.editorToSource[offset]
+    if (source === null || source === undefined) return null
+    text += markdown[source]
+  }
+  return text
+}
+
 export function editorOffsetToMarkdownSourceOffset(
   markdown: string,
   editorOffset: number
@@ -73,7 +116,18 @@ export function proseMirrorVisibleText(doc: ProseMirrorDocLike): string {
   return proseMirrorTextBetween(doc, 0, proseMirrorDocContentSize(doc))
 }
 
+// The decorations map every mark through the same text on every editor
+// transaction, and the text changes far less often than that.
+let lastOffsetMap: { markdown: string; map: OffsetMap } | null = null
+
 function buildOffsetMap(markdown: string): OffsetMap {
+  if (lastOffsetMap?.markdown !== markdown) {
+    lastOffsetMap = { markdown, map: computeOffsetMap(markdown) }
+  }
+  return lastOffsetMap.map
+}
+
+function computeOffsetMap(markdown: string): OffsetMap {
   const sourceToEditor: Array<number | null> = Array(markdown.length + 1).fill(null)
   const editorToSource: Array<number | null> = []
 

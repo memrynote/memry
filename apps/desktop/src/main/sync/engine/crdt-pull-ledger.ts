@@ -122,7 +122,8 @@ export class CrdtPullLedger {
   /**
    * Walks in a row a newer server snapshot cut short, per note. That owe counts
    * no failure, so a note under steady snapshot churn stays owed with no other
-   * trace (#5247). Session only; a walk that settles the note clears it.
+   * trace (#5247). Session only; a walk that settles the note clears it, and
+   * so does dropping the note from the pull.
    */
   private prunedWalkOwes = new Map<string, number>()
 
@@ -460,6 +461,7 @@ export class CrdtPullLedger {
     if (this.pendingPulls.has(noteId)) return
     this.unmergedRemoteNotes.delete(noteId)
     this.sessionFlagGenerations.delete(noteId)
+    this.prunedWalkOwes.delete(noteId)
   }
 
   /**
@@ -472,6 +474,7 @@ export class CrdtPullLedger {
     if (dropped.length === 0) return
     const stillOwed = this.debts.settle(dropped)
     for (const noteId of dropped) {
+      this.prunedWalkOwes.delete(noteId)
       if (stillOwed.has(noteId)) continue
       this.unmergedRemoteNotes.delete(noteId)
       this.deferredPulls.delete(noteId)
