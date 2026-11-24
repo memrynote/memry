@@ -11,12 +11,13 @@ import {
   link,
   lstat,
   mkdir,
-  readFile,
+  open,
   readdir,
   rename,
   rm,
   rmdir,
-  unlink
+  unlink,
+  type FileHandle
 } from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { z } from 'zod'
@@ -269,12 +270,36 @@ function recordPathOf(vaultPath: string, id: string): string {
 
 /**
  * The record at `recordPath` when it is one: a regular file, never followed
- * through a link or opened as a FIFO, of at most `RECORD_MAX_BYTES`.
+ * through a link or opened as a FIFO, of at most `RECORD_MAX_BYTES`. The
+ * checks run on the opened file, so nothing swapped in after them is read:
+ * `O_NOFOLLOW` refuses a link where the platform has it, `O_NONBLOCK` keeps a
+ * FIFO from blocking, and the path must still name the file that was opened
+ * (Windows has no `O_NOFOLLOW`).
  */
 async function readMoveRecord(recordPath: string): Promise<FolderMoveRecord | null> {
-  const stat = await lstat(recordPath)
-  if (!stat.isFile() || stat.size > RECORD_MAX_BYTES) return null
-  return parseMoveRecord(await readFile(recordPath, 'utf8'))
+  let handle: FileHandle
+  try {
+    handle = await open(
+      recordPath,
+      constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)
+    )
+  } catch (error) {
+    if (errnoCode(error) === 'ELOOP') return null // a link
+    throw error
+  }
+  try {
+    const stat = await handle.stat({ bigint: true })
+    const named = await lstat(recordPath, { bigint: true })
+    if (!stat.isFile() || !named.isFile() || named.ino !== stat.ino || named.dev !== stat.dev) {
+      return null
+    }
+    const bytes = Buffer.alloc(RECORD_MAX_BYTES + 1)
+    const { bytesRead } = await handle.read(bytes, 0, bytes.length, 0)
+    if (bytesRead > RECORD_MAX_BYTES) return null
+    return parseMoveRecord(bytes.subarray(0, bytesRead).toString('utf8'))
+  } finally {
+    await handle.close()
+  }
 }
 
 /**

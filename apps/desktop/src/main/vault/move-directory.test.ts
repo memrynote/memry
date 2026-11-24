@@ -425,8 +425,10 @@ describe('recoverStrandedFolderMoves', () => {
   it('never replaces a file that lands at a put-back target just before it goes back', async () => {
     fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
     write(`${staging}/c.md`)
+    let landed = false
     windows.beforeMove = async (from) => {
-      if (path.basename(from) === 'c.md' && !fs.existsSync(path.join(root, 'Beta/c.md'))) {
+      if (path.basename(from) === 'c.md' && !landed) {
+        landed = true
         fs.writeFileSync(path.join(root, 'Beta/c.md'), 'landed')
       }
     }
@@ -444,8 +446,10 @@ describe('recoverStrandedFolderMoves', () => {
     fs.writeFileSync(recordPath(), JSON.stringify({ version: 1, from: 'Beta', staging }))
     write(`${staging}/b.md`)
     const landing = path.join(root, 'Beta/b (conflict copy).md')
+    let landed = false
     windows.beforeMove = async (from) => {
-      if (path.basename(from) === 'b.md' && !fs.existsSync(landing)) {
+      if (path.basename(from) === 'b.md' && !landed) {
+        landed = true
         fs.writeFileSync(landing, 'landed')
       }
     }
