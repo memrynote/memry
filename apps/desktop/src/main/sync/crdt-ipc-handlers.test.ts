@@ -105,6 +105,7 @@ vi.mock('./crdt-writeback-port', () => ({
     scheduleWriteback: vi.fn(),
     cancelWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
+    hasArmedWritebacks: () => false,
     resetWritebackState: vi.fn(),
     writebackNow: vi.fn()
   })
