@@ -354,8 +354,10 @@ export function buildFileIdentityKey(stats: IdentityStats): string | null {
 
 /**
  * Identity key of the file an `add` reports. A renamed file's ctime is past its
- * birthtime: the rename, or a write after its creation, moved it. On Linux an
- * add whose birthtime equals its ctime therefore gets no key. Once libuv falls
+ * birthtime: the rename, or a write after its creation, moved it, except a
+ * file created and renamed within one timestamp tick. On Linux an add whose
+ * birthtime equals its ctime therefore gets no key, and that file's rename
+ * only misses its identity match. Once libuv falls
  * back to stat(2) after the probe found real birthtimes, every birthtime is
  * the ctime, so no add pairs by identity, and an unrelated file written on a
  * deleted note's freed inode in the same second never takes that note over.

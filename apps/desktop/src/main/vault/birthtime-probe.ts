@@ -13,9 +13,10 @@
  * file written right after its creation already has a birthtime equal to its
  * ctime. Identity keys then carry the ctime as the birthtime, and with 1 s
  * timestamps a file written on a deleted note's freed inode the same second
- * shares its whole key. A rename moves the file's ctime, so on Linux an add
- * whose birthtime equals its ctime gets no key (`buildAddedFileIdentityKey`):
- * a stale answer can only miss a rename, never pair a wrong file.
+ * shares its whole key. A rename moves the file's ctime, except a file
+ * created and renamed within one timestamp tick, so on Linux an add whose
+ * birthtime equals its ctime gets no key (`buildAddedFileIdentityKey`): a
+ * stale answer can only miss a rename, never pair a wrong file.
  *
  * @module vault/birthtime-probe
  */
