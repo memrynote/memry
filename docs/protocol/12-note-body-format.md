@@ -155,7 +155,11 @@ on open, and the #3871 race remains for those bodies.
 every shell over it. Such a client:
 
 - MUST NOT parse or serialise BlockNote markdown, except through `markdown_seed` for the two
-  writes of §12.1.0;
+  writes of §12.1.0, and for the display exception below;
+- MAY strip inline markdown markers from a review mark's `visibleText` and `originalText`
+  (§12.5.1) for display only: to list the words a mark covers and to find them on screen. It
+  MUST NOT use the result to place a mark (its `start` and `end`) or write it anywhere
+  (`apps/ios/Memry/Features/Notes/ReviewMarkStyle.swift:55` (`shownText`), `:33` (`resolved`));
 - carries a create's `content` and a template's body verbatim (§12.2 carve-out A);
 - duplicates a note by copying its document, never by serialising it. The core snapshots each
   top-level block into the copy and sends `content: ''`

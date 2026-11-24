@@ -12,6 +12,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
+import sodium from 'libsodium-wrappers-sumo'
+import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { canvasAssets, deletedAssetReleases, inboxItems, noteMetadata } from '@memry/db-schema'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { createCanvas, deleteCanvas, updateCanvas } from '../canvas/store'
@@ -21,6 +23,10 @@ import {
   type AssetServiceContext
 } from '../canvas/assets/asset-service'
 import { dereferenceChunks } from '../canvas/assets/attachment-dereference'
+import { encrypt, wrapFileKey } from '../crypto/encryption'
+import { generateFileKey } from '../crypto/keys'
+import { signPayload } from '../crypto/signatures'
+import { AttachmentSyncService, type EncryptedAttachmentManifest } from './attachments'
 import { recordDeletedItemAssets, releaseExpiredDeletedAssets } from './deleted-asset-release'
 
 const warn = vi.hoisted(() => vi.fn())
@@ -89,6 +95,64 @@ const release = () =>
     dereference,
     releaseHolds: async () => ({ ok: true })
   })
+
+/**
+ * A sync server holding one signed manifest per id, whose one chunk is
+ * `chunk-of-<id>`. `servedAs` maps a requested id to the attachment whose
+ * manifest the server answers with instead.
+ */
+async function manifestServer(ids: string[]) {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+  await sodium.ready
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+  const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+  const vaultKey = generateFileKey()
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
+  const signer = sodium.crypto_sign_keypair()
+  const manifests = new Map<string, EncryptedAttachmentManifest>()
+  for (const id of ids) {
+    const fileKey = generateFileKey()
+    const manifest = {
+      id,
+      filename: `${id}.bin`,
+      mimeType: 'application/octet-stream',
+      size: 1,
+      checksum: '',
+      chunks: [{ index: 0, hash: '', encryptedHash: `chunk-of-${id}`, size: 1 }],
+      chunkSize: 1,
+      createdAt: now
+    }
+    const body = encrypt(new TextEncoder().encode(JSON.stringify(manifest)), fileKey)
+    const key = wrapFileKey(fileKey, vaultKey)
+    const signed = {
+      encryptedManifest: toB64(body.ciphertext),
+      manifestNonce: toB64(body.nonce),
+      encryptedFileKey: toB64(key.wrappedKey),
+      keyNonce: toB64(key.nonce)
+    }
+    const signature = signPayload(signed, CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST, signer.privateKey)
+    manifests.set(id, { ...signed, manifestSignature: toB64(signature), signerDeviceId: 'd1' })
+  }
+  const servedAs = new Map<string, string>()
+  const service = new AttachmentSyncService({
+    getAccessToken: async () => 'token',
+    getVaultKey: async () => vaultKey,
+    getSigningKeys: async () => ({
+      secretKey: signer.privateKey.slice(),
+      publicKey: signer.publicKey,
+      deviceId: 'd1'
+    }),
+    getDevicePublicKey: async () => signer.publicKey,
+    getSyncServerUrl: () => 'http://sync.test',
+    getVaultPath: () => vaultPath,
+    fetchFn: async (input: string | URL | Request): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      const id = url.slice('http://sync.test/sync/attachments/'.length, -'/manifest'.length)
+      return Response.json(manifests.get(servedAs.get(id) ?? id))
+    }
+  })
+  return { service, servedAs }
+}
 
 /** A live canvas whose scene holds one externalized image with these bytes. */
 async function canvasWithImage(title: string, bytes: string) {
@@ -331,6 +395,37 @@ describe('deleted note attachments', () => {
       expect.any(String),
       expect.objectContaining({ attachmentId: 'a-bad' })
     )
+  })
+
+  it("frees nothing while the server answers with another attachment's manifest, and retries later (#5664)", async () => {
+    const server = await manifestServer(['a-1', 'a-2'])
+    server.servedAs.set('a-1', 'a-2')
+    insertNote('gone', ['a-1'])
+    recordDeletedItemAssets(db, 'note', 'gone', now)
+    db.delete(noteMetadata).where(eq(noteMetadata.id, 'gone')).run()
+    advance(31)
+    const releaseFromServer = () =>
+      releaseExpiredDeletedAssets({
+        db,
+        vaultPath,
+        now: () => now,
+        chunkHashesOf: (id) => server.service.chunkHashesOf(id),
+        dereference,
+        releaseHolds: async () => ({ ok: true })
+      })
+
+    expect(await releaseFromServer()).toBe(0)
+    expect(dereferenced).toEqual([])
+    expect(releaseRows()).toHaveLength(1)
+    expect(warn).toHaveBeenCalledWith(expect.any(String), {
+      attachmentId: 'a-1',
+      manifestId: 'a-2'
+    })
+
+    server.servedAs.clear()
+    expect(await releaseFromServer()).toBe(1)
+    expect(dereferenced).toEqual([['chunk-of-a-1']])
+    expect(releaseRows()).toEqual([])
   })
 
   it('frees nothing for a note that is live again', async () => {

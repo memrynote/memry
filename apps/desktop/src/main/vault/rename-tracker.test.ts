@@ -35,6 +35,7 @@ import {
   getPendingDeleteCount,
   createDeferredDeletes,
   settleDeferredDeletes,
+  buildAddedFileIdentityKey,
   buildFileIdentityKey,
   buildStatRenameKey
 } from './rename-tracker'
@@ -212,6 +213,61 @@ describe('rename-tracker', () => {
       ).toBeNull()
     } finally {
       probe.real = null
+    }
+  })
+
+  // After the probe found real birthtimes, libuv can fall back to stat(2) for
+  // the rest of the process and report the ctime as every birthtime (#5247
+  // A24). With 1 s timestamps a file written on a deleted note's freed inode
+  // the same second then shares the note's whole key.
+  it('pairs no add by identity once Linux stat reports the ctime as birthtime', async () => {
+    vi.useFakeTimers()
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true })
+    probe.real = true
+    try {
+      const second = new Date('2026-01-12T00:00:01.000Z')
+      const deleted = {
+        dev: 1,
+        ino: 42,
+        birthtime: second,
+        birthtimeMs: second.getTime(),
+        ctimeMs: second.getTime(),
+        size: 20,
+        mtime: second
+      }
+      const onRealDelete = vi.fn().mockResolvedValue(undefined)
+      trackPendingDelete(
+        'note-a',
+        'hash-a',
+        'notes/a.md',
+        onRealDelete,
+        buildFileIdentityKey(deleted)
+      )
+
+      const unrelated = { ...deleted }
+      const unrelatedKeys = [buildAddedFileIdentityKey(unrelated)]
+      expect(checkForRename('hash-b', 'notes/b.md', unrelatedKeys)).toBeNull()
+      await vi.advanceTimersByTimeAsync(500)
+      expect(onRealDelete).toHaveBeenCalledOnce()
+
+      // With statx a rename moves the ctime past the real birthtime.
+      const born = new Date('2026-01-10T00:00:00.000Z')
+      const changed = { ...deleted, birthtime: born, birthtimeMs: born.getTime() }
+      trackPendingDelete(
+        'note-c',
+        'stale-hash',
+        'notes/c.md',
+        vi.fn(),
+        buildFileIdentityKey(changed)
+      )
+      const renamed = { ...changed, ctimeMs: second.getTime() + 5 }
+      expect(
+        checkForRename('new-hash', 'notes/c-renamed.md', [buildAddedFileIdentityKey(renamed)])
+      ).toMatchObject({ id: 'note-c' })
+    } finally {
+      probe.real = null
+      if (platform) Object.defineProperty(process, 'platform', platform)
     }
   })
 
