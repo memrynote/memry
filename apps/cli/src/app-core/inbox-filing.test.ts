@@ -113,6 +113,14 @@ test('inbox file moves a binary capture into the folder and removes the inbox co
   await assert.rejects(fs.stat(path.join(vault, item.attachmentPath)))
 })
 
+test('inbox file --folder . files the note at the vault root', async () => {
+  const vault = await makeVault()
+  const item = await capture(vault, 'Say hello', '--title', 'hello')
+  const filed = await runOk<{ filedTo: string }>(vault, ['inbox', 'file', item.id, '--folder', '.'])
+  assert.equal(filed.filedTo, 'hello.md')
+  assert.match(await fs.readFile(path.join(vault, 'hello.md'), 'utf-8'), /Say hello/)
+})
+
 test('inbox file refuses a folder outside the vault and a missing --folder', async () => {
   const vault = await makeVault()
   const item = await capture(vault, 'x')

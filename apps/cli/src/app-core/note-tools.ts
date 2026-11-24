@@ -19,7 +19,7 @@ import { extractWikiLinks } from '@memry/shared/wiki-target'
 import type { DataDb } from './database.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import type { NotesService } from './notes.ts'
-import { folderConfigFile, normalizePath, vaultFolderOrRoot } from './paths.ts'
+import { folderConfigFile, normalizePath, vaultFolder } from './paths.ts'
 import type { TemplatesService } from './templates.ts'
 import { iterateFileLines, MAX_LINE_CHARS } from './note-large-file.ts'
 
@@ -440,7 +440,9 @@ export function createNoteToolsService({
     // template wins, and `inherit: false` stops the climb.
     async getFolderTemplate(folderPath) {
       const folder = folderArg(folderPath)
-      let current = await vaultFolderOrRoot(vaultPath, folderPath, 'read folder template')
+      let current = await vaultFolder(vaultPath, folderPath, 'read folder template', {
+        allowRoot: true
+      })
       while (true) {
         const config = await readFolderTemplateOf(current)
         if (config.template) return { folder, template: config.template }

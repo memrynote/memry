@@ -33992,12 +33992,19 @@ enum SyncError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     case AttachmentUnverified(deviceId: String
     )
     /**
-     * The bytes arrived and were not the bytes the manifest describes.
+     * The attachment's bytes or its manifest were not what chapter 14 requires.
      *
-     * A failed chunk hash, a failed whole-file checksum, or a chunk that
-     * would not decrypt. Separate from `AttachmentUnverified` because the
-     * manifest was trustworthy and the transfer was not, so a retry is
-     * reasonable here and is not there.
+     * On a download: a chunk that failed its hash or size check, would not
+     * decrypt, or never arrived; an assembled file that failed its whole-file
+     * checksum; a manifest that would not decode, decrypt or parse; or a
+     * manifest whose `id` names another attachment than the one asked for
+     * (§14.7). Separate from `AttachmentUnverified` because no signature
+     * failed: the server sent the wrong bytes or the wrong manifest, so a
+     * retry is reasonable here and is not there.
+     *
+     * On an upload: a file that needs more chunks than a session allows
+     * (§14.2), or a manifest that would not seal. The upload counts these as
+     * refused and does not retry them.
      */
     case AttachmentCorrupt(what: String
     )

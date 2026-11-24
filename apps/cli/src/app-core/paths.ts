@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { normalizeJournalFolder } from '@memry/storage-vault'
+import {
+  normalizeJournalFolder,
+  parseVaultFolder,
+  windowsTrimsFolderName
+} from '@memry/storage-vault'
 import { errorCode } from './errno.ts'
 
 export interface VaultConfig {
@@ -53,26 +57,30 @@ export function isPlainSegment(value: string): boolean {
 }
 
 /**
- * The vault folder a command that writes there names, `/`-separated with no `.` or
- * `..` segments. Throws `Refusing to <action>` for the vault itself, for a path that
- * leaves it, and for a path through a link, which can lead anywhere outside it (#5658).
- * The lexical rule is desktop's `vaultFolderPath` (#5647). The links are found by an
- * `lstat` of each existing segment, as Tauri's `plain_folders` refuses them: a realpath
- * comparison would also trip on another case spelling, which macOS resolves.
+ * The vault folder a command that writes there names, as note rows name it. Throws
+ * `Refusing to <action>` for what desktop's rules (`parseVaultFolder`,
+ * `windowsTrimsFolderName`) do not read as a folder inside the vault, and for a path
+ * through a link, which can lead anywhere outside it (#5658). The vault itself is `''` when `allowRoot`. A leading `/` is vault-relative
+ * in the CLI, a shipped contract, so it is stripped before the shared rule. The links are
+ * found by an `lstat` of each existing segment, as Tauri's `plain_folders` refuses them:
+ * a realpath comparison would also trip on another case spelling, which macOS resolves.
  */
 export async function vaultFolder(
   vaultPath: string,
   requested: string,
-  action: string
+  action: string,
+  { allowRoot = false }: { allowRoot?: boolean } = {}
 ): Promise<string> {
-  const folder = path.posix.normalize(normalizePath(requested))
-  if (
-    folder === '.' ||
-    folder === '..' ||
-    folder.startsWith('../') ||
-    path.win32.isAbsolute(folder)
-  ) {
+  const parsed = parseVaultFolder(normalizePath(requested))
+  if (parsed.kind === 'root' && allowRoot) return ''
+  if (parsed.kind !== 'folder') {
     throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
+  }
+  const folder = parsed.path
+  if (windowsTrimsFolderName(folder)) {
+    throw new Error(
+      `Refusing to ${action}: "${requested}" ends in a dot or a space, which Windows drops, so it names another folder.`
+    )
   }
   const segments = folder.split('/')
   for (let index = 1; index <= segments.length; index += 1) {
@@ -92,23 +100,14 @@ export async function vaultFolder(
   return folder
 }
 
-/** `vaultFolder` for a command that also takes the vault root, `''`, `.` or `/`, as `''` (#5679). */
-export async function vaultFolderOrRoot(
-  vaultPath: string,
-  requested: string,
-  action: string
-): Promise<string> {
-  const normalized = normalizePath(requested)
-  return normalized === '' || normalized === '.' ? '' : vaultFolder(vaultPath, requested, action)
-}
-
-/** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root. */
+/** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root (#5679). */
 export async function folderConfigFile(
   vaultPath: string,
   requested: string,
   action: string
 ): Promise<string> {
-  return path.join(vaultPath, await vaultFolderOrRoot(vaultPath, requested, action), '.folder.md')
+  const folder = await vaultFolder(vaultPath, requested, action, { allowRoot: true })
+  return path.join(vaultPath, folder, '.folder.md')
 }
 
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars

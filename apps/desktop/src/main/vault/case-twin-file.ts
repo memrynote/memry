@@ -28,13 +28,13 @@
  *
  * A peer's frontmatter update of a twin whose bytes are not on the file goes
  * to its index rows only, with the body tags of its own doc
- * (`updateCaseTwinOffFile`, #5561).
+ * (`case-twin-off-file.ts`, #5561).
  *
- * The survivor's header is rebuilt from its index rows: header tags,
- * properties, aliases, and the cover ref. An image cover's framing and credit
- * live only in the file, so the rebuilt file has the bare ref, and the next
- * push leaves the cover out until it changes here (`recordRebuiltNoteCover`):
- * peers keep the framing.
+ * The survivor's header is rebuilt from its index rows (`case-twin-own-file.ts`):
+ * header tags, properties, aliases, and the cover ref. An image cover's framing
+ * and credit live only in the file, so the rebuilt file has the bare ref, and
+ * the next push leaves the cover out until it changes here
+ * (`recordRebuiltNoteCover`): peers keep the framing.
  *
  * A binary survivor (`isBinaryNoteRow`) has no doc to rebuild a file from, and
  * its bytes are not markdown: its leave keeps the file as it is (#5562).
@@ -64,32 +64,15 @@ import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { hasWritebackTurn, scheduleWriteback, takeWritebackTurn } from '../sync/crdt-writeback'
 import { recordAppWrite } from './app-writes'
-import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { clearOwedFileBody, owesFileBody } from '../sync/crdt-owed-file-body'
 import { recordBaseline } from '../sync/writeback-baseline'
 import { hasPendingVaultFileOp, writeNoteFileNow } from '../sync/bulk-apply'
 import { PendingSyncIntentError } from '../sync/pending-sync-intent-error'
-import type { NoteBody } from '../sync/writing-markdown'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
-import { COVER_FRONTMATTER_KEY, isCoverValue } from '@memry/shared/cover-image'
 import { isBinaryNoteRow } from '@memry/shared/file-types'
-import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
-import { toWritingFrontmatterValue, WRITING_FRONTMATTER_KEY } from '@memry/shared'
-import {
-  getAliasesForNotes,
-  getNoteCacheById,
-  getNoteFileProperties,
-  getNoteHeaderTags,
-  updateNoteCache,
-  type NoteTagSet
-} from '@main/database/queries/notes'
+import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
 import { foldNotePath, getNoteMetadataById } from '@memry/storage-data'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
-import {
-  applyRemoteFrontmatter,
-  type RemoteFrontmatterPatch
-} from '../sync/item-handlers/note-handler-frontmatter'
 import { recordRebuiltNoteCover } from '../sync/item-handlers/note-cover-sync'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -107,7 +90,15 @@ import {
   takeLandedCaseTwinHash,
   type MarkedFile
 } from './case-twin-bytes'
-import { generateContentHash, parseNote, serializeNote, type NoteFrontmatter } from './frontmatter'
+import {
+  convertBody,
+  holdsOwnBytes,
+  ownFile,
+  sameStateVector,
+  type OwnTwinFile,
+  type PreparedBody
+} from './case-twin-own-file'
+import { generateContentHash, parseNote } from './frontmatter'
 import { findCanonicalNoteForFile, listCaseTwinIds, syncNoteToCache } from './note-sync'
 import { getVaultRoot, toAbsolutePath } from './notes-io'
 import { createSnapshot } from './notes-versions'
@@ -123,19 +114,9 @@ export class CaseTwinLeaveNotReadyError extends PendingSyncIntentError {
   }
 }
 
-interface PreparedBody {
-  /** Null for a doc with no body: the file keeps the header alone. */
-  body: NoteBody | null
-  /** The doc's state vector when converted. */
-  converted: Uint8Array
-}
-
 /** A twin's doc as file body, by note id, for its next `planCaseTwinLeave` or `planCaseTwinMove`. */
 const preparedBodies = new Map<string, PreparedBody>()
 const preparing = new Map<string, Promise<void>>()
-/** A twin's doc as file body, by note id, for its next off-file tag update; taken once. */
-const offFileBodies = new Map<string, PreparedBody>()
-const convertingOffFile = new Set<string>()
 
 /** Whether a case twin shares this note's file. Ask before the note's row leaves it. */
 export function sharesCaseTwinFile(vaultPath: string, relativePath: string): boolean {
@@ -184,37 +165,6 @@ async function prepareBody(noteId: string): Promise<void> {
   preparedBodies.set(noteId, await convertBody(noteId))
 }
 
-async function convertBody(noteId: string): Promise<PreparedBody> {
-  const provider = getCrdtProvider()
-  const live = provider.getDoc(noteId)
-  try {
-    const doc = live ?? (await provider.open(noteId, undefined, { skipSeed: true }))
-    try {
-      if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) {
-        return { body: null, converted: Y.encodeStateVector(doc) }
-      }
-      const convert = await readyWritebackConverter()
-      const converted = Y.encodeStateVector(doc)
-      const notePath = getNoteMetadataById(getDatabase(), noteId)?.path ?? ''
-      // No file to restore spellings from: the bytes there may be the other twin's.
-      const conversion = await convert(doc, notePath, async () => null)
-      if (conversion.kind === 'unrepresentable' || conversion.body === null) {
-        throw new Error(`The doc cannot be written as markdown (${conversion.kind})`)
-      }
-      return { body: conversion.body, converted }
-    } finally {
-      if (!live) await provider.closeIfInactive(noteId)
-    }
-  } catch (error) {
-    throw new NoteError(
-      'A note on this shared file could not be written; nothing was changed',
-      NoteErrorCode.WRITE_FAILED,
-      noteId,
-      { cause: error }
-    )
-  }
-}
-
 /**
  * Call right before the step that drops `leavingId`'s row from the file, with
  * no await between. Throws, with nothing changed, when the file cannot be
@@ -233,13 +183,6 @@ export function planCaseTwinLeave(
   return planLeave(vaultPath, relativePath, leavingId, null).leave
 }
 
-/** What a twin moved off a shared file now has at its new path. */
-export interface MovedTwinFile {
-  content: string
-  frontmatter: NoteFrontmatter
-  markdown: string
-}
-
 /**
  * `planCaseTwinLeave` for a rename or move of `leavingId` to `newRelativePath`
  * (#5498): the step also writes the leaving twin's own file there, with its
@@ -251,9 +194,10 @@ export interface MovedTwinFile {
  * file after the step, and its row back on the shared file (#5610).
  *
  * The step's `moveRow` moves the caller's row to the new path, in one
- * data-DB transaction: a throw in it leaves the row on the shared file, and
- * must come before anything outside that database (the local move publishes
- * its index row last). A throw after the moving twin's file is written
+ * data-DB transaction: a throw in it leaves the row on the shared file. A
+ * write outside that database comes last in it (the peer's index row path),
+ * or after the step returns (the local move's index event). A throw after the
+ * moving twin's file is written
  * removes that file: no row names it, and the next vault open would list it
  * as a new note.
  */
@@ -262,14 +206,14 @@ export function planCaseTwinMove(
   relativePath: string,
   leavingId: string,
   newRelativePath: string
-): (moveRow: (moved: MovedTwinFile) => void) => MovedTwinFile {
+): (moveRow: (moved: OwnTwinFile) => void) => OwnTwinFile {
   const { leave, raw, notReady } = planLeave(vaultPath, relativePath, leavingId, newRelativePath)
   const dataDb = getDatabase()
   const indexDb = getIndexDatabase()
   const leaving = getNoteMetadataById(dataDb, leavingId)
   const cached = getNoteCacheById(indexDb, leavingId)
   if (!leaving || !cached) throw new CaseTwinLeaveNotReadyError(leavingId)
-  let own: MovedTwinFile & { cover?: string | null }
+  let own: OwnTwinFile & { cover?: string | null }
   if (raw !== null && holdsOwnBytes(raw, cached)) {
     const parsed = parseNote(raw)
     own = { content: raw, frontmatter: parsed.frontmatter, markdown: parsed.content }
@@ -392,135 +336,6 @@ function planLeave(
   return { leave, raw, notReady }
 }
 
-/** Whether `raw` is the bytes a note's index row records as its own. */
-function holdsOwnBytes(
-  raw: string,
-  cached: { contentHash?: string | null; pendingWriteHash?: string | null }
-): boolean {
-  const onDisk = generateContentHash(raw)
-  return onDisk === cached.contentHash || onDisk === cached.pendingWriteHash
-}
-
-/** A note's header as its index rows hold it, which a split writes to its own file. */
-function indexedHeader(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  title: string,
-  cover: string | null
-): NoteFrontmatter {
-  return applyRemoteFrontmatter(
-    {},
-    {
-      tags: getNoteHeaderTags(indexDb, noteId),
-      properties: getNoteFileProperties(indexDb, noteId),
-      aliases: getAliasesForNotes(indexDb, [noteId]).get(noteId) ?? [],
-      ...(cover !== null ? { cover: { ref: cover } } : {}),
-      title
-    }
-  )
-}
-
-/** A peer's frontmatter update of a case twin whose bytes are not on the file it shares. */
-export interface OffFileTwinUpdate {
-  /** The twin's header from its index rows, with the update applied. */
-  frontmatter: NoteFrontmatter
-  /** The cover ref of that header, for the twin's index row. */
-  cover: string | null
-  /**
-   * Its tag rows when the update changes its tags: the header's, and the body
-   * tags of its own doc, as the body on the file is the other twin's.
-   */
-  tags?: NoteTagSet
-}
-
-/**
- * A peer's frontmatter-only update of note `noteId` (#5561). While case twins
- * share its file and the bytes there are not its own, patching them puts the
- * other twin's body under this note's header, and that twin's aliases and
- * body tags into this note's index rows. The file stays as it is, and the
- * update goes to the header the note's index rows hold, which a split writes
- * to its own file (`ownFile`). Returns that update, or null when the file
- * takes it in place: the file is not shared, or holds the note's own bytes.
- * An update of its tags throws `PendingSyncIntentError` until its doc's body
- * is converted, for the body tags; the pull retries it.
- */
-export function updateCaseTwinOffFile(
-  vaultPath: string,
-  relativePath: string,
-  noteId: string,
-  patch: RemoteFrontmatterPatch
-): OffFileTwinUpdate | null {
-  if (!sharesCaseTwinFile(vaultPath, relativePath)) return null
-  const indexDb = getIndexDatabase()
-  const cached = getNoteCacheById(indexDb, noteId)
-  const raw = readVaultFileSync(vaultPath, relativePath)
-  if (raw !== null && cached && holdsOwnBytes(raw, cached)) return null
-  const cachedCover = cached?.cover
-  const cover = isCoverValue(cachedCover) ? cachedCover : null
-  const frontmatter = applyRemoteFrontmatter(
-    indexedHeader(indexDb, noteId, patch.title, cover),
-    patch
-  )
-  const patchedCover = frontmatter[COVER_FRONTMATTER_KEY]
-  const tags = patch.tags
-  return {
-    frontmatter,
-    cover: isCoverValue(patchedCover) ? patchedCover : null,
-    tags: tags && {
-      header: tags,
-      inline: extractInlineTagsFromMarkdown(takeOffFileBody(noteId).body?.markdown ?? '')
-    }
-  }
-}
-
-/**
- * Twin `noteId`'s own body, converted from its doc for this call. Throws
- * `PendingSyncIntentError` while it converts, and when the live doc changed
- * since; a doc that cannot convert is logged and tried again on the retry.
- */
-function takeOffFileBody(noteId: string): PreparedBody {
-  const prepared = offFileBodies.get(noteId)
-  offFileBodies.delete(noteId)
-  const live = getCrdtProvider().getDoc(noteId)
-  if (prepared && (!live || sameStateVector(Y.encodeStateVector(live), prepared.converted))) {
-    return prepared
-  }
-  if (!convertingOffFile.has(noteId)) {
-    convertingOffFile.add(noteId)
-    convertBody(noteId)
-      .then(
-        (converted) => offFileBodies.set(noteId, converted),
-        (error: unknown) => {
-          log.error('Could not read the own body of a case twin off its shared file', {
-            noteId,
-            error
-          })
-          trackMainError('notes', 'case_twin_off_file_body', error)
-        }
-      )
-      .finally(() => convertingOffFile.delete(noteId))
-  }
-  throw new PendingSyncIntentError('note', noteId)
-}
-
-/** A note's own file: its prepared doc body under a header rebuilt from its index rows. */
-function ownFile(
-  indexDb: ReturnType<typeof getIndexDatabase>,
-  noteId: string,
-  title: string,
-  cachedCover: string | null | undefined,
-  prepared: PreparedBody
-): MovedTwinFile & { cover: string | null } {
-  const cover = isCoverValue(cachedCover) ? cachedCover : null
-  const header = indexedHeader(indexDb, noteId, title, cover)
-  const writing = prepared.body ? toWritingFrontmatterValue(prepared.body.writing) : undefined
-  if (writing) header[WRITING_FRONTMATTER_KEY] = writing
-  const markdown = prepared.body?.markdown ?? ''
-  const serialized = serializeNote(header, markdown)
-  const content = serialized.endsWith('\n') ? serialized : `${serialized}\n`
-  return { content, frontmatter: header, markdown, cover }
-}
-
 /**
  * Refuse a folder rename that would strand a case twin (#5498). The rename
  * carries the rows spelled with the folder's exact name. A twin spelled with
@@ -528,20 +343,43 @@ function ownFile(
  * would put both twins on one path.
  */
 export function assertFolderRenameKeepsCaseTwins(folderPath: string): void {
+  const vaultPath = getVaultRoot()
+  const stranded = otherSpellingPaths(folderPath).some((path) =>
+    sharesCaseTwinFile(vaultPath, path)
+  )
+  if (stranded) throw new Error('errors:folder.renameCaseTwins')
+}
+
+/**
+ * Refuse a folder delete that would remove a note filed under another spelling
+ * of the folder (#5642). The sidebar draws a folder for each spelling the rows
+ * have, but a case-insensitive disk keeps them all in one folder: deleting
+ * `Supernotes` recursively removed `SuperNotes/real.md`. The delete runs only
+ * when the disk spells the folder as asked, in case and Unicode form, and no
+ * row spelled with the folder in another case has its file in it.
+ */
+export function assertFolderDeleteKeepsCaseTwins(folderPath: string): void {
+  const vaultPath = getVaultRoot()
+  const onDisk = diskCaseOf(vaultPath, folderPath)
+  if (onDisk === null) return
+  const exact = `${folderPath}/`
+  const removesOtherSpelling =
+    onDisk !== folderPath ||
+    otherSpellingPaths(folderPath).some((path) => diskCaseOf(vaultPath, path)?.startsWith(exact))
+  if (removesOtherSpelling) throw new Error('errors:folder.deleteCaseTwins')
+}
+
+/** Note paths under `folderPath` in another case or Unicode form, not under its exact spelling. */
+function otherSpellingPaths(folderPath: string): string[] {
   const exact = `${folderPath}/`
   const folded = foldNotePath(exact)
-  const vaultPath = getVaultRoot()
-  const stranded = getDatabase()
+  return getDatabase()
     .select({ path: noteMetadata.path })
     .from(noteMetadata)
     .all()
-    .some(
-      ({ path }) =>
-        !path.startsWith(exact) &&
-        foldNotePath(path).startsWith(folded) &&
-        sharesCaseTwinFile(vaultPath, path)
+    .flatMap(({ path }) =>
+      !path.startsWith(exact) && foldNotePath(path).startsWith(folded) ? [path] : []
     )
-  if (stranded) throw new Error('errors:folder.renameCaseTwins')
 }
 
 /**
@@ -666,8 +504,9 @@ function askForOwnBytes(
   diskPath: string
 ): boolean {
   markDownloadOwed(db, noteId, attachmentId)
-  if (!shouldAttemptDownload(db, noteId, attachmentId)) return false
-  const claim = markDownloadRequested(noteId, attachmentId)
+  const claim = shouldAttemptDownload(db, noteId, attachmentId)
+    ? markDownloadRequested(noteId, attachmentId)
+    : null
   if (!claim) return false
   if (attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath, claim })) return true
   releaseDownloadAttempt(claim)
@@ -713,8 +552,4 @@ export function releaseAbandonedCaseTwinBytes(
     noteId,
     attachmentId
   })
-}
-
-function sameStateVector(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === b.length && a.every((byte, i) => byte === b[i])
 }

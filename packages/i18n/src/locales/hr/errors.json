@@ -62,7 +62,7 @@
     "uploadFailed": "Prijenos privitka nije uspio",
     "uploadProgressFailed": "Dohvaćanje napretka prijenosa nije uspjelo",
     "downloadFailed": "Preuzimanje privitka nije uspjelo",
-    "downloadGone": "Ova datoteka više nije na poslužitelju za sinkronizaciju.",
+    "downloadGone": "Ova datoteka više nije na poslužitelju za sinkronizaciju. Ako se još nalazi na drugom uređaju, ponovno je dodajte s tog uređaja.",
     "downloadMissing": "Ova datoteka još nije na poslužitelju za sinkronizaciju. Otvorite je ponovno sutra da provjerite.",
     "downloadNeedsSync": "Sinkronizacija nije pokrenuta pa se ova datoteka ne može preuzeti. Preuzet će se sama čim sinkronizacija bude pokrenuta.",
     "downloadProgressFailed": "Dohvaćanje napretka preuzimanja nije uspjelo",
@@ -219,6 +219,8 @@
     "renameFailed": "Preimenovanje mape nije uspjelo",
     "renameCaseTwins": "Ova mapa sadrži bilješke koje dijele datoteku s bilješkom čiji se naziv mape razlikuje samo po velikim i malim slovima. Najprije preimenujte ili premjestite te bilješke, a zatim preimenujte mapu.",
     "deleteFailed": "Brisanje mape nije uspjelo",
+    "deleteCaseTwins": "Ova mapa i mapa istog naziva drukčije napisanog, primjerice drugim velikim i malim slovima, na disku su jedna mapa, pa bi se njezinim brisanjem izbrisale bilješke u obje. Umjesto toga izbrišite jednu po jednu bilješke koje vam ne trebaju.",
+    "deleteWindowsName": "Naziv ove mape završava točkom ili razmakom, koje Windows zanemaruje, pa bi se njezinim brisanjem mogla izbrisati i druga mapa. Umjesto toga izbrišite jednu po jednu bilješke u njoj.",
     "setConfigFailed": "Postavljanje konfiguracije mape nije uspjelo"
   },
   "folderView": {

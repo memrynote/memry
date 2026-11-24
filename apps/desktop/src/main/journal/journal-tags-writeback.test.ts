@@ -188,6 +188,16 @@ describe.each([
   ['its sync enqueue', holdProjectionLane],
   ['its file write', holdFileWrite]
 ])('a journal create right before a quit, during %s (REVIEW-5633)', (_during, holdCreate) => {
+  // The flush stops waiting for the create after a capped wait. Faked, the
+  // cap never runs out under a slow machine's create (REVIEW-5666).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it.each(creates)('%s: queued for sync while the sync runtime still runs', async (_, create) => {
     const date = '2026-05-11'
     const lane = holdCreate()

@@ -14,9 +14,8 @@ import {
   settings as settingsTable
 } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
-import type { FoldersService } from './folders.ts'
 import type { NotesService } from './notes.ts'
-import { normalizePath, vaultFolderOrRoot } from './paths.ts'
+import { normalizePath, vaultFolder } from './paths.ts'
 import { errorCode } from './errno.ts'
 
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
@@ -211,7 +210,6 @@ export function createInboxFilingService({
   dataDb,
   vaultPath,
   notes,
-  folders,
   calendar,
   reminders,
   inbox
@@ -219,7 +217,6 @@ export function createInboxFilingService({
   dataDb: DataDb
   vaultPath: string
   notes: NotesService
-  folders: FoldersService
   calendar: CalendarService
   reminders: RemindersService
   inbox: InboxService
@@ -344,7 +341,7 @@ export function createInboxFilingService({
   async function fileOne(id: string, rawFolder: string, extraTags: string[]) {
     try {
       // `fileBinary` moves the file here, and a link on the way would take it out of the vault (#5679).
-      const folder = await vaultFolderOrRoot(vaultPath, rawFolder, 'file inbox item')
+      const folder = await vaultFolder(vaultPath, rawFolder, 'file inbox item', { allowRoot: true })
       const item = getItem(id)
       if (!item) return { success: false, filedTo: null, error: 'Inbox item not found' }
       if (item.filedAt) {
@@ -356,11 +353,11 @@ export function createInboxFilingService({
         return { success: true, filedTo: await fileBinary(item, folder, tags) }
       }
 
-      if (folder) await folders.create(folder)
+      // `notes.create` checks the folder and creates it; `.` there is the vault root.
       const note = await notes.create({
         title: noteTitle(item),
         content: noteBody(item),
-        folder: folder || undefined,
+        folder: normalizePath(rawFolder) || undefined,
         tags
       })
       markFiled(id, note.path, 'folder')

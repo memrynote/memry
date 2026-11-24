@@ -24,12 +24,18 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import {
+  assertFolderDeleteKeepsCaseTwins,
   assertFolderRenameKeepsCaseTwins,
   planCaseTwinLeave,
   prepareCaseTwinLeave,
   sharesCaseTwinFile
 } from './case-twin-file'
-import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
+import {
+  announceFolderMove,
+  moveFolderHoldingWritebacks,
+  moveIndexedNotesWithFolder,
+  type FolderMovedNote
+} from './folder-move-index'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -75,6 +81,7 @@ import {
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { openVaultFile, readVaultFile } from '../lib/paths'
+import { vaultFolderPath, windowsTrimsFolderName } from '@memry/storage-vault'
 import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
@@ -996,7 +1003,14 @@ export async function createFolder(folderPath: string): Promise<void> {
   placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
+/** No write-back of a note under the folder runs beside the move (#5643, #5671). */
 export async function renameFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
+  const moved = await moveFolderHoldingWritebacks(oldPath, () => moveFolder(oldPath, newPath))
+  await announceFolderMove(moved)
+  return moved
+}
+
+async function moveFolder(oldPath: string, newPath: string): Promise<FolderMovedNote[]> {
   assertFolderTreeWritable(oldPath)
   assertParentFolderWritable(newPath)
   assertFolderRenameKeepsCaseTwins(oldPath)
@@ -1029,13 +1043,29 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
   return moveIndexedNotesWithFolder(oldPath, newPath)
 }
 
-export async function deleteFolder(folderPath: string): Promise<void> {
+/**
+ * The folder a delete of `requestedPath` removes, as rows name it. Throws the
+ * refusal the delete would meet, with nothing changed: the guards and the
+ * delete must see one path, or `./Supernotes` passes the case-twin guard and
+ * the delete removes `SuperNotes` (#5642).
+ */
+export function checkFolderDelete(requestedPath: string): string {
+  const folderPath = vaultFolderPath(requestedPath)
+  if (folderPath === null) {
+    throw new NoteError('Not a vault folder that can be deleted', NoteErrorCode.INVALID_PATH)
+  }
+  // Windows reads `Work.` as `Work`, so the rm would remove that folder.
+  if (windowsTrimsFolderName(folderPath)) throw new Error('errors:folder.deleteWindowsName')
   assertFolderTreeWritable(folderPath)
-  const notesDir = getVaultRoot()
-  const absPath = path.join(notesDir, folderPath)
+  assertFolderDeleteKeepsCaseTwins(folderPath)
+  return folderPath
+}
 
+export async function deleteFolder(requestedPath: string): Promise<void> {
   const { rm } = await import('fs/promises')
-  await rm(absPath, { recursive: true, force: true })
+  // Right before the delete, so a row filed in another spelling meanwhile is seen.
+  const folderPath = checkFolderDelete(requestedPath)
+  await rm(path.join(getVaultRoot(), folderPath), { recursive: true, force: true })
 
   dropFolderPositions(getDatabase(), folderPath)
 }

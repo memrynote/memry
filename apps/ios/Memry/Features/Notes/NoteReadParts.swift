@@ -251,6 +251,9 @@ extension NoteReadViewModel {
 
         var landed = false
         for (_, binding) in attachments {
+            // A sync pass restarted the page's task, whose next run asks
+            // again; the core joins it to a download still running.
+            guard !Task.isCancelled else { return }
             guard case let .bound(attachment) = binding,
                   attachment.localPath == nil
             else { continue }

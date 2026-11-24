@@ -1,7 +1,7 @@
 import Foundation
 import MemryCore
 
-// The reads that follow a block walk, split from `NoteRead.swift`. Each
+// The reads that follow a note's read, split from `NoteRead.swift`. Each
 // answers `nil` when its task was cancelled, so the page keeps what it drew.
 
 extension NoteReadViewModel {
@@ -49,5 +49,37 @@ extension NoteReadViewModel {
             }
         }
         return loaded
+    }
+
+    /// The vault's notes, for the wiki-link search (N602).
+    ///
+    /// A failure answers an empty list rather than failing the screen: not
+    /// being able to search for a link is much smaller than not being able to
+    /// read the note.
+    func readVaultNotes() async -> [NoteSummary]? {
+        do {
+            return try await reader.list()
+        } catch {
+            if Task.isCancelled { return nil }
+            Log.storage.error("the vault's notes could not be listed for linking")
+            return []
+        }
+    }
+
+    /// Every tag's chosen colour by lowercased name, and every tag name, most
+    /// used first. A failure answers `nil` too: the colours drawn stay.
+    func readVaultTags() async -> (colors: [String: String], names: [String])? {
+        do {
+            var colors: [String: String] = [:]
+            let tags = try await reader.tags()
+            for tag in tags {
+                if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
+            }
+            return (colors, tags.sorted { $0.noteCount > $1.noteCount }.map(\.name))
+        } catch {
+            if Task.isCancelled { return nil }
+            Log.storage.error("the vault's tag colours could not be read")
+            return nil
+        }
     }
 }

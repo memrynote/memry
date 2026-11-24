@@ -17,7 +17,6 @@ import {
   normalizePath,
   safeFilename,
   vaultFolder,
-  vaultFolderOrRoot,
   type VaultConfig
 } from './paths.ts'
 import type { NotesService } from './notes.ts'
@@ -230,7 +229,10 @@ async function resolveTargetFolder(
   targetFolder = ''
 ): Promise<string> {
   const requested = normalizePath(targetFolder) ? targetFolder : config.defaultNoteFolder
-  return path.join(vaultPath, await vaultFolderOrRoot(vaultPath, requested, 'import files'))
+  return path.join(
+    vaultPath,
+    await vaultFolder(vaultPath, requested, 'import files', { allowRoot: true })
+  )
 }
 
 function escapeHtml(text: string): string {

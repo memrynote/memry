@@ -35,11 +35,18 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
+import { NotesChannels } from '@memry/contracts/notes-api'
+import { invokeHandler, mockIpcMain } from '@tests/utils/mock-ipc'
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
-  ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
+  ipcMain: {
+    handle: vi.fn((channel: string, handler: unknown) =>
+      mockIpcMain.handle(channel, handler as Parameters<typeof mockIpcMain.handle>[1])
+    ),
+    removeHandler: vi.fn()
+  },
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn(), trashItem: vi.fn() }
 }))
 vi.mock('../database', () => ({
@@ -116,9 +123,17 @@ vi.mock('./file-ops', async (importOriginal) => {
     atomicWrite: vi.fn(real.atomicWrite as never)
   }
 })
+vi.mock('./move-directory', async (importOriginal) => {
+  const real = await importOriginal<Record<string, unknown>>()
+  return { ...real, moveDirectory: vi.fn(real.moveDirectory as never) }
+})
 vi.mock('./note-sync', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
-  return { ...real, syncNoteToCache: vi.fn(real.syncNoteToCache as never) }
+  return {
+    ...real,
+    syncNoteToCache: vi.fn(real.syncNoteToCache as never),
+    persistNoteToCache: vi.fn(real.persistNoteToCache as never)
+  }
 })
 vi.mock('../projections', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
@@ -157,7 +172,7 @@ import {
 } from '../projections'
 import { extractProperties, generateContentHash, parseNote, serializeNote } from './frontmatter'
 import { inferPropertyType } from './property-type'
-import { syncNoteToCache } from './note-sync'
+import { persistNoteToCache, syncNoteToCache } from './note-sync'
 import { healCaseVariantRows } from './case-variant-heal'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { indexVault } from './indexer'
@@ -172,6 +187,8 @@ import {
   renameNoteCommand
 } from '../notes/domain'
 import { atomicWrite, safeRead } from './file-ops'
+import { moveDirectory } from './move-directory'
+import { readyWritebackConverter } from '../sync/converter-worker-bridge'
 import { enqueueLocalSyncDelete } from '../sync/local-mutations'
 import { noteHandler } from '../sync/item-handlers/note-handler'
 import { noteCoverForPush, recordAppliedNoteCover } from '../sync/item-handlers/note-cover-sync'
@@ -180,6 +197,7 @@ import { NoteError } from '../lib/errors'
 import { openVaultFile } from '../lib/paths'
 import { beginPageApply, writeNoteFileNow, writeSyncedVaultFile } from '../sync/bulk-apply'
 import { prepareCaseTwinLeave } from './case-twin-file'
+import { registerNotesHandlers } from '../ipc/notes-handlers'
 import { COVER_ZOOM_FRONTMATTER_KEY } from '@memry/shared/cover-image'
 
 function fileSystemIgnoresCase(): boolean {
@@ -1344,37 +1362,27 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     }, 30_000)
   }
 
-  /** Fails twin upper's row move to Other/a.md before its canonical row moves. */
-  function failUpperRowSave(): () => void {
-    const real = vi.mocked(syncNoteToCache).getMockImplementation()!
-    vi.mocked(syncNoteToCache).mockImplementation((...args: Parameters<typeof syncNoteToCache>) => {
-      if (args[1].id === 'upper' && args[1].path === 'Other/a.md') throw new Error('index gone')
-      return real(...args)
-    })
-    return () => vi.mocked(syncNoteToCache).mockImplementation(real)
-  }
-
-  /** Fails twin upper's row move to Other/a.md after its canonical row moved (`saveCanonicalNote`). */
-  function failUpperRowPublish(): () => void {
-    const real = vi.mocked(publishProjectionEvent).getMockImplementation()!
-    vi.mocked(publishProjectionEvent).mockImplementation((event) => {
-      if (event.type === 'note.upserted' && event.note.noteId === 'upper') {
-        if (event.note.path === 'Other/a.md') throw new Error('index gone')
+  /** Fails twin upper's row move to Other/a.md, inside its transaction, before or after its canonical row moved. */
+  function failUpperRowMove(when: 'before' | 'after'): () => void {
+    const real = vi.mocked(persistNoteToCache).getMockImplementation()!
+    vi.mocked(persistNoteToCache).mockImplementation(
+      (...args: Parameters<typeof persistNoteToCache>) => {
+        const fails = args[0].id === 'upper' && args[0].path === 'Other/a.md'
+        if (fails && when === 'before') throw new Error('index gone')
+        const persisted = real(...args)
+        if (fails) throw new Error('index gone')
+        return persisted
       }
-      real(event)
-    })
-    return () => vi.mocked(publishProjectionEvent).mockImplementation(real)
+    )
+    return () => vi.mocked(persistNoteToCache).mockImplementation(real)
   }
 
   // REVIEW-5618 (1): a throw after the canonical row moved left the row on a
   // file the step then removed, with the index still on the shared file.
-  for (const [when, fail] of [
-    ['before', failUpperRowSave],
-    ['after', failUpperRowPublish]
-  ] as const) {
+  for (const when of ['before', 'after'] as const) {
     it(`a twin move whose row move throws ${when} the canonical row moves leaves the row and no new file`, async () => {
       await twins()
-      const restore = fail()
+      const restore = failUpperRowMove(when)
       try {
         await expect(moveNoteCommand('upper', 'Other')).rejects.toThrow('index gone')
       } finally {
@@ -1401,6 +1409,67 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       })
     }, 30_000)
   }
+
+  // VERIFY-5618 (7): the local move published its index event inside the row
+  // move's transaction, so a commit that failed left the index on a row move
+  // the data DB rolled back.
+  it("a twin move publishes the moved row's index event once the row move commits", async () => {
+    await twins()
+    const published: boolean[] = []
+    const real = vi.mocked(publishProjectionEvent).getMockImplementation()!
+    vi.mocked(publishProjectionEvent).mockImplementation((event) => {
+      if (event.type === 'note.upserted' && event.note.path === 'Other/a.md') {
+        published.push(data.sqlite.inTransaction)
+      }
+      real(event)
+    })
+    try {
+      await moveNoteCommand('upper', 'Other')
+    } finally {
+      vi.mocked(publishProjectionEvent).mockImplementation(real)
+    }
+
+    expect({
+      row: pathOf('upper'),
+      published: published.length > 0,
+      insideTransaction: published.includes(true)
+    }).toEqual({ row: 'Other/a.md', published: true, insideTransaction: false })
+  }, 30_000)
+
+  // VERIFY-5618 (6): the peer's step moved the data row only, and the index
+  // row followed at the end of the apply. A throw in between, outside a page as
+  // a retried item applies, left the index row on the shared file, and the
+  // twin's next write-back took that file for its own.
+  it("a peer's twin move that throws after its step keeps the index row with its row", async () => {
+    await twins()
+    await prepareCaseTwinLeave(vault.path, 'SUPERNOTES/a.md', 'upper', true)
+    const emit = vi.fn((channel: string) => {
+      if (channel === NotesChannels.events.MOVED) throw new Error('window gone')
+    })
+    expect(() =>
+      noteHandler.applyUpsert(
+        { db: asClientDb(data.db), emit },
+        'upper',
+        { title: 'a', folderPath: 'Other', modifiedAt: '2026-02-01T00:00:00.000Z' },
+        { peer: 1 }
+      )
+    ).toThrow('window gone')
+
+    await writeBack('upper', UPPER_EDITED)
+    expect({
+      row: pathOf('upper'),
+      indexed: getNoteCacheById(index.db, 'upper')?.path,
+      moved: read('Other/a.md'),
+      file: shared(),
+      crossed: crossed()
+    }).toEqual({
+      row: 'Other/a.md',
+      indexed: 'Other/a.md',
+      moved: expect.stringContaining('upper edited [[x]]'),
+      file: expect.stringContaining('lower [[x]]'),
+      crossed: []
+    })
+  }, 30_000)
 
   /** A peer's update of a twin's header tags and cover, as a pull applies it. */
   const applyPeerHeader = (id: 'lower' | 'upper', tags: string[], cover: string) =>
@@ -1452,6 +1521,26 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
     expect(await survivorKeepsOwn('upper')).toEqual([])
   }, 30_000)
 
+  // VERIFY-5618 (8): a doc that cannot convert held the update for good.
+  it("a peer's header update of a twin off the shared file whose doc cannot convert keeps its indexed body tags", async () => {
+    await headerTwins()
+    setNoteTags(index.db, 'lower', { header: ['lowertag'], inline: ['lowinline'] })
+    const store = stall()
+    unavailable.set('lower', store.promise)
+    store.fail()
+
+    await vi.waitFor(() =>
+      expect(applyPeerHeader('lower', ['newtag'], 'wash:moss')).toBe('applied')
+    )
+    await flushProjectionEvents()
+
+    expect({
+      file: shared(),
+      tags: getNoteTags(index.db, 'lower'),
+      cover: getNoteCacheById(index.db, 'lower')?.cover
+    }).toEqual({ file: UPPER_HEAD + UPPER, tags: ['newtag', 'lowinline'], cover: 'wash:moss' })
+  }, 30_000)
+
   it("a peer's header update of the twin on the shared file lands in the file", async () => {
     await headerTwins()
 
@@ -1494,5 +1583,173 @@ describe.runIf(fileSystemIgnoresCase())('case twins sharing one file', () => {
       ...UNMOVED,
       renamed: false
     })
+  }, 30_000)
+
+  // VERIFY-5618 (#5643): a pass of a twin that read its row before a folder
+  // rename writes the old path after the folder moved. It makes the old folder
+  // again with that twin's body alone and puts its row back there, so the
+  // other twin's file holds bytes that are not its own, and the next vault
+  // open feeds them into it.
+  async function folderTwins(): Promise<void> {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'), { recursive: true })
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'Supernotes/A.md', UPPER)
+    await openVault()
+    docs.set('lower', await docOf(LOWER))
+    docs.set('upper', await docOf(UPPER))
+  }
+
+  /** Where the twins and upper's edit are after the rename, then after a vault open. */
+  async function afterFolderRename() {
+    await flushProjectionEvents()
+    const renamed = {
+      rows: [pathOf('lower'), pathOf('upper')],
+      indexed: [
+        getNoteCacheById(index.db, 'lower')?.path,
+        getNoteCacheById(index.db, 'upper')?.path
+      ],
+      file: read('Renamed/a.md'),
+      oldFolder: fs.existsSync(path.join(vault.path, 'Supernotes'))
+    }
+    await openVault()
+    // Lower's write-back, with the file it shares holding upper's edit.
+    await writeBack('lower', LOWER)
+    return { ...renamed, reopened: rowIds(), crossed: crossed() }
+  }
+
+  const RENAMED_WITH_EDIT = {
+    rows: ['Renamed/a.md', 'Renamed/A.md'],
+    indexed: ['Renamed/a.md', 'Renamed/A.md'],
+    file: expect.stringContaining('upper edited [[x]]'),
+    oldFolder: false,
+    reopened: ['lower', 'upper'],
+    crossed: []
+  }
+
+  it("a folder rename waits for a twin's write-back in flight", async () => {
+    await folderTwins()
+    const held = holdUpperWrite()
+    const pass = writeBack('upper', UPPER_EDITED)
+    await held.atWrite
+
+    const renaming = renameFolderCommand('Supernotes', 'Renamed')
+    try {
+      // Long enough for the rename to move the folder if nothing held it back.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      held.release()
+    }
+    await pass
+    await renaming
+
+    expect(await afterFolderRename()).toEqual(RENAMED_WITH_EDIT)
+  }, 30_000)
+
+  it('a twin write-back that starts while its folder moves waits for the rename', async () => {
+    await folderTwins()
+    await stopWatcher()
+    await readyWritebackConverter()
+    let release = (): void => {}
+    let reached = (): void => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    const moved = new Promise<void>((resolve) => (reached = resolve))
+    const real = vi.mocked(moveDirectory).getMockImplementation()!
+    vi.mocked(moveDirectory).mockImplementationOnce(async (from, to) => {
+      await real(from, to)
+      reached()
+      await gate
+    })
+
+    const renaming = renameFolderCommand('Supernotes', 'Renamed')
+    let pass: Promise<void> = Promise.resolve()
+    try {
+      await moved
+      pass = writeBack('upper', UPPER_EDITED)
+      // Long enough for the pass to write if nothing held it back.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      release()
+    }
+    await renaming
+    await pass
+
+    expect(await afterFolderRename()).toEqual(RENAMED_WITH_EDIT)
+  }, 30_000)
+
+  // ==========================================================================
+  // Folder delete (#5642)
+  // ==========================================================================
+
+  const REAL = '# real\n\nreal body\n'
+
+  /** The sidebar's folder delete, through its IPC handler. */
+  async function deleteFolderFromSidebar(folderPath: string) {
+    registerNotesHandlers()
+    return invokeHandler(NotesChannels.invoke.DELETE_FOLDER, folderPath)
+  }
+
+  /**
+   * The disk holds `SuperNotes/` with `a.md` and `real.md`. The twin `upper`
+   * is filed under `Supernotes/`, so the sidebar draws that folder too.
+   */
+  async function twinInOldSpelling(): Promise<void> {
+    fs.mkdirSync(path.join(vault.path, 'SuperNotes'))
+    seed('lower', 'SuperNotes/a.md', LOWER)
+    seed('upper', 'Supernotes/a.md', UPPER)
+    seed('real', 'SuperNotes/real.md', REAL)
+    await openVault()
+  }
+
+  const folderOnDisk = () => {
+    const folder = path.join(vault.path, 'SuperNotes')
+    return {
+      rows: rowIds(),
+      files: fs.existsSync(folder) ? fs.readdirSync(folder).toSorted() : null,
+      real: read('SuperNotes/real.md')
+    }
+  }
+  const UNDELETED = { rows: ['lower', 'real', 'upper'], files: ['a.md', 'real.md'], real: REAL }
+
+  for (const [which, folderPath] of [
+    ['the old-spelling folder of a twin', 'Supernotes'],
+    ['the old-spelling folder of a twin with a trailing slash', 'Supernotes/'],
+    ['the old-spelling folder of a twin as ./Supernotes', './Supernotes'],
+    ['the old-spelling folder of a twin as Supernotes/.', 'Supernotes/.'],
+    ['the folder on disk while a twin is filed in another spelling', 'SuperNotes']
+  ] as const) {
+    it(`deleting ${which} is refused and deletes nothing`, async () => {
+      await twinInOldSpelling()
+
+      const response = await deleteFolderFromSidebar(folderPath)
+
+      expect({ response, ...folderOnDisk() }).toEqual({
+        response: { success: false, error: 'errors:folder.deleteCaseTwins' },
+        ...UNDELETED
+      })
+    }, 30_000)
+  }
+
+  for (const vaultRoot of ['', '.', '/']) {
+    it(`deleting the vault itself as '${vaultRoot}' is refused and deletes nothing (#5653)`, async () => {
+      await twinInOldSpelling()
+
+      const response = await deleteFolderFromSidebar(vaultRoot)
+
+      expect({ response, memry: fs.existsSync(vault.memryDir), ...folderOnDisk() }).toEqual({
+        response: { success: false, error: 'Not a vault folder that can be deleted' },
+        memry: true,
+        ...UNDELETED
+      })
+    }, 30_000)
+  }
+
+  it('deleting a folder that holds twins spelled with its own name deletes it', async () => {
+    fs.mkdirSync(path.join(vault.path, 'Supernotes'))
+    seed('lower', 'Supernotes/a.md', LOWER)
+    seed('upper', 'Supernotes/A.md', UPPER)
+    await openVault()
+
+    expect(await deleteFolderFromSidebar('Supernotes')).toEqual({ success: true })
+    expect(fs.existsSync(path.join(vault.path, 'Supernotes'))).toBe(false)
   }, 30_000)
 })
