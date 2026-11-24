@@ -333,7 +333,7 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   document, so the same batch drops every `crdt_update` pack of the vault and
   resets that kind's pack watermark (`packKindReset`,
   `apps/sync-server/src/services/pack-replaced-objects.ts:47`, called at
-  `apps/sync-server/src/services/document-body-purge.ts:155-158`); without the
+  `apps/sync-server/src/services/document-body-purge.ts:167-170`); without the
   reset, compaction never packs the other documents of a dropped pack again.
   Keying that drop on update rows alone is not enough: a snapshot that claims
   the packed updates prunes their rows (#2299), and the packs still hold them
@@ -1037,7 +1037,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   (§8.12): the same kind, `minCursor` and `maxCursor`, a new key, and every
   entry whose row is still current. The purged document has no rows left, so
   none of its entries is kept (`rewritePurgedPacks`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:337`). The commit is
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:347`). The commit is
   guarded on the rewrite still pending, on every kept entry still current
   (the recheck of chapter 07 §7.15) and on the listing cap (§8.14). The same
   batch makes the old object due at once. A pack left with no current entry
@@ -1049,7 +1049,12 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   prune, purge or listing, resets the kind of the vault instead
   (`packKindReset`): every pack of the kind leaves the listing, every object
   of the kind is due at once, and compaction rebuilds the kind from source
-  rows. The reset sets the kind's watermark to 0 rather than deleting it, so
+  rows. A rewrite that a concurrent pass has already settled resets nothing
+  when it fails to read or verify the old object, for any reason, not only
+  because that pass deleted the object: the row is no longer pending, so the
+  rewrite counts as settled, and the pass logs the failure (`rewriteOne`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:151`).
+  The reset sets the kind's watermark to 0 rather than deleting it, so
   a build in flight under the old watermark loses its compare-and-swap and
   deletes its own object instead of listing above the reset range. No pack's
   other documents stay unpacked. A rollup never merges across the range of a
@@ -1067,10 +1072,17 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   pending, or it listed the rewritten pack, and one guard fails the swap. Or
   its rewrite committed and listed nothing, because no entry of the pack
   stayed current: the rewrite lists a row only when `kept.length > 0` and
-  otherwise only settles the pending row
-  (`apps/sync-server/src/services/pack-purge-rewrite.ts:161`, `:197`, `:207`).
-  No guard fails then, and the swap may commit, which is harmless because the
-  run's range holds only current entries. A purge after the listing read that
+  otherwise settles the pending row
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:171`, `:207`, `:217`),
+  and a `record` pack with a coverage range first hands that range to a
+  listed neighbour (`handOn`,
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:166`, **Record packs**
+  below). Neither guard fails then, and the swap may commit, which is harmless
+  because the run's range holds only current entries. When the neighbour that
+  took the range starts or ends the run, the swap's coverage check fails
+  instead: the run's first `cover_from` and last `cover_through` must be as
+  the plan read them (`apps/sync-server/src/services/pack-rollup.ts:562-563`).
+  A purge after the listing read that
   takes out an input of the run makes `replacePacks` record nothing: it
   records the inputs only while every one is still listed
   (`apps/sync-server/src/services/pack-rollup.ts:504`). When a guard fails
@@ -1078,7 +1090,7 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   (§8.10, **Unlisted objects**).
 - **When rewrites run.** After its batch commits, the purge runs up to
   `PURGE_REWRITES_PER_PASS` = 4 rewrites, oldest first, then the deletion pass
-  of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:204-205`).
+  of §8.12 (`apps/sync-server/src/services/document-body-purge.ts:227-228`).
   Every compaction message and every backfill message of the vault runs the
   same rewrite pass before its first deletion pass (`withReplacedObjectPasses`,
   `apps/sync-server/src/services/pack-message-passes.ts:50`, `:54`). When rewrites or
@@ -1155,17 +1167,17 @@ packs that hold a tombstone before it sheds it (**Record packs**, below, #5247).
   the `record` pack whose `cover_from` is `through` takes `cover_from = from`,
   else the one whose `cover_through` is `from` takes `cover_through =
   through` (`absorbCoverage`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:264`). With neither, the
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:274`). With neither, the
   rewrite stays pending, and the pass runs it again after its other rewrites,
   for as long as each round settles one: a neighbour that was itself a pending
   rewrite has by then listed its new pack or handed its coverage on
   (`rewritePurgedPacks`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:337`). The retry reads
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:347`). The retry reads
   no object, because the pack kept nothing, and only hands the coverage on; a
   rewrite another pass settled meanwhile counts as settled (`handOn`,
-  `apps/sync-server/src/services/pack-purge-rewrite.ts:234`). When a round
+  `apps/sync-server/src/services/pack-purge-rewrite.ts:244`). When a round
   settles none, the pass resets the kind
-  (`apps/sync-server/src/services/pack-purge-rewrite.ts:379`), unless it
+  (`apps/sync-server/src/services/pack-purge-rewrite.ts:389`), unless it
   settled a rewrite and leaves more pending: their neighbour may be among
   those, so the rewrites wait for the next pass, which runs the oldest first.
   A pass that settles none still resets, and a rewrite pending past its grace
