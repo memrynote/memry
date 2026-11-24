@@ -57,14 +57,19 @@ function encrypt(plaintext: Uint8Array, key: Uint8Array): Uint8Array {
 
 /**
  * A server holding attachments of the given chunk counts, with presigning on.
- * A 200 presign answer leaves out the chunks of the `noUrlFor` attachments.
+ * A 200 presign answer leaves out the chunks of the `noUrlFor` attachments, as
+ * the real server does for a chunk the vault does not hold, and the proxy
+ * answers 404 for them. The first presign call answers `failPresignWith`.
  * `servedAs` maps a requested id to the attachment whose manifest the server
  * answers with instead, on the single GET and under the batch key.
  */
 function fakeServer(
   chunkCounts: Record<string, number>,
-  noUrlFor: string[] = [],
-  servedAs = new Map<string, string>()
+  {
+    noUrlFor = [],
+    failPresignWith,
+    servedAs = new Map<string, string>()
+  }: { noUrlFor?: string[]; failPresignWith?: number; servedAs?: Map<string, string> } = {}
 ) {
   const vaultKey = generateFileKey()
   const signer = sodium.crypto_sign_keypair()
@@ -147,6 +152,9 @@ function fakeServer(
       counts.presign++
       const requested = (JSON.parse(init?.body as string) as { chunkHashes: string[] }).chunkHashes
       presignRequests.push(requested)
+      if (failPresignWith && counts.presign === 1) {
+        return new Response(null, { status: failPresignWith })
+      }
       return Response.json({
         urls: Object.fromEntries(
           requested.filter((h) => !unsigned.has(h)).map((h) => [h, `${R2}${h}`])
@@ -156,7 +164,9 @@ function fakeServer(
     }
     if (route.startsWith('chunks/')) {
       counts.proxied++
-      return new Response(Buffer.from(chunks.get(route.slice('chunks/'.length))!))
+      const hash = route.slice('chunks/'.length)
+      if (unsigned.has(hash)) return new Response(null, { status: 404 })
+      return new Response(Buffer.from(chunks.get(hash)!))
     }
     counts.manifestGet++
     const id = route.slice(0, -'/manifest'.length)
@@ -177,6 +187,17 @@ function fakeServer(
     fetchFn
   })
   return { service, counts, files, chunkHashes, presignRequests }
+}
+
+/** One attachment outside the queue; `upcoming` are the ids the queue would start next. */
+async function downloadOne(
+  server: ReturnType<typeof fakeServer>,
+  attachmentId: string,
+  upcoming: string[] = []
+): Promise<void> {
+  const targetPath = path.join(tmpDir, `${attachmentId}.bin`)
+  await server.service.downloadAttachment(attachmentId, targetPath, { upcoming: () => upcoming })
+  expect(Buffer.compare(await readFile(targetPath), server.files.get(attachmentId)!)).toBe(0)
 }
 
 /** Every attachment eagerly through the real queue, as the pull fan-out does. */
@@ -230,25 +251,41 @@ describe('attachment downloads sharing manifest and presign calls (#5329)', () =
   }, 60_000)
 
   it('proxies a chunk a 200 presign answer leaves out and offers it to no other presign call', async () => {
-    const server = fakeServer({ a: 1, b: 1, c: 1 }, ['b'])
+    const server = fakeServer({ a: 1, b: 1, c: 1 }, { noUrlFor: ['b'] })
     const [ha, hb, hc] = ['a', 'b', 'c'].map((id) => server.chunkHashes.get(id)![0])
-    const download = async (attachmentId: string, upcoming: string[] = []): Promise<void> => {
-      const targetPath = path.join(tmpDir, `${attachmentId}.bin`)
-      await server.service.downloadAttachment(attachmentId, targetPath, {
-        upcoming: () => upcoming
-      })
-      expect(Buffer.compare(await readFile(targetPath), server.files.get(attachmentId)!)).toBe(0)
-    }
 
     // a's manifest batch carries b, so a's presign call asks for b's chunk too and gets no URL.
-    await download('a', ['b'])
+    await downloadOne(server, 'a', ['b'])
     // c downloads alone, so its presign call holds only its own chunk.
-    await download('c')
-    await download('b')
+    await downloadOne(server, 'c')
+    // b's own download asks once more, then takes the proxy, which answers 404.
+    await expect(
+      server.service.downloadAttachment('b', path.join(tmpDir, 'b.bin'), { upcoming: () => [] })
+    ).rejects.toThrow(`Failed to download chunk ${hb}`)
 
     expect(server.presignRequests).toEqual([[ha, hb], [hc], [hb]])
     expect(server.counts).toMatchObject({ direct: 2, proxied: 1 })
   })
+
+  it.each([429, 503])(
+    'offers the batched chunks to the next presign call after a %i presign answer',
+    async (status) => {
+      const server = fakeServer({ a: 1, b: 1, c: 1 }, { failPresignWith: status })
+      const [ha, hb, hc] = ['a', 'b', 'c'].map((id) => server.chunkHashes.get(id)![0])
+
+      // a's manifest batch carries b; the presign call for both fails, so a takes the proxy.
+      await downloadOne(server, 'a', ['b'])
+      // c downloads alone, and its call still carries the chunks no 200 answer covered.
+      await downloadOne(server, 'c')
+      await downloadOne(server, 'b')
+
+      expect(server.presignRequests).toEqual([
+        [ha, hb],
+        [hc, ha, hb]
+      ])
+      expect(server.counts).toMatchObject({ presign: 2, direct: 2, proxied: 1 })
+    }
+  )
 
   it('downloads 1,064 attachments with ceil(1064/100) manifest calls and at most as many presign calls', async () => {
     const server = fakeServer(
@@ -269,7 +306,7 @@ describe('a manifest that names another attachment (#5652)', () => {
 
   it('refuses the single GET answer before any chunk request or write, and downloads once the server answers right', async () => {
     const servedAs = new Map([['b', 'a']])
-    const server = fakeServer({ a: 1, b: 1 }, [], servedAs)
+    const server = fakeServer({ a: 1, b: 1 }, { servedAs })
     const targetPath = path.join(tmpDir, 'b.bin')
 
     await expect(server.service.downloadAttachment('b', targetPath)).rejects.toThrow(
@@ -285,7 +322,7 @@ describe('a manifest that names another attachment (#5652)', () => {
   })
 
   it('refuses a batch answer under another attachment key before any chunk request or write', async () => {
-    const server = fakeServer({ a: 1, b: 1, c: 1 }, [], new Map([['b', 'c']]))
+    const server = fakeServer({ a: 1, b: 1, c: 1 }, { servedAs: new Map([['b', 'c']]) })
     await server.service.downloadAttachment('a', path.join(tmpDir, 'a.bin'), {
       upcoming: () => ['b']
     })
@@ -301,7 +338,7 @@ describe('a manifest that names another attachment (#5652)', () => {
   })
 
   it('counts the refusal as transient, so the reference is never abandoned or pruned', async () => {
-    const server = fakeServer({ a: 1, b: 1 }, [], new Map([['b', 'a']]))
+    const server = fakeServer({ a: 1, b: 1 }, { servedAs: new Map([['b', 'a']]) })
     const refusal = await server.service
       .downloadAttachment('b', path.join(tmpDir, 'b.bin'))
       .then(() => null)
