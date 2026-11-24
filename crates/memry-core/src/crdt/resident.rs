@@ -12,6 +12,10 @@
 //! would build the same document, and replays otherwise. Any other writer of
 //! the log, a pull, a fold, a purge, another process, or an authored update
 //! that never committed, costs one replay and never a stale body.
+//!
+//! A kept body is decrypted plaintext, so it goes when its document is purged
+//! (chapter 07 §7.15.1) and when its database closes, as a vault close or a
+//! sign-out does: memory frees what the log no longer holds.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -24,10 +28,9 @@ use super::errors::CrdtError;
 use super::registry::{Document, UpdateSink};
 use super::update_log::Namespace;
 
-/// How many bodies stay decoded: the notes a user moves between. Unit tests
-/// run in parallel in one process, and a body another test evicted would let
-/// a check of the reuse guards pass without reusing anything.
-const KEPT: usize = if cfg!(test) { 1024 } else { 4 };
+/// How many bodies each database keeps decoded: the notes a user moves
+/// between. Counted per database, so one vault's writes never evict another's.
+const KEPT: usize = 4;
 
 static RESIDENT: Mutex<Vec<Resident>> = Mutex::new(Vec::new());
 
@@ -143,6 +146,13 @@ impl Body {
         };
         let mut resident = lock(&RESIDENT);
         resident.retain(|kept| kept.key != key);
+        let mut same_database = 0;
+        resident.retain(|kept| {
+            kept.key.database != key.database || {
+                same_database += 1;
+                same_database < KEPT
+            }
+        });
         resident.insert(
             0,
             Resident {
@@ -151,8 +161,32 @@ impl Body {
                 expected: authored,
             },
         );
-        resident.truncate(KEPT);
     }
+}
+
+/// Drops every body kept for the database at `path`, once it closes.
+pub(crate) fn release_database(path: &str) {
+    drop(forget(|key| key.database == path));
+}
+
+/// Drops `doc_id`'s kept bodies, for a purge of its log.
+pub(crate) fn release_document(conn: &Connection, doc_id: &str) {
+    if let Some(database) = conn.path().filter(|path| !path.is_empty()) {
+        drop(forget(|key| {
+            key.database == database && key.doc_id == doc_id
+        }));
+    }
+}
+
+/// Takes the matching bodies out under the lock, so the caller drops them
+/// after it: a document's drop never runs while the cache is locked.
+fn forget(matches: impl Fn(&Key) -> bool) -> Vec<Resident> {
+    let mut resident = lock(&RESIDENT);
+    let (gone, kept) = std::mem::take(&mut *resident)
+        .into_iter()
+        .partition(|kept| matches(&kept.key));
+    *resident = kept;
+    gone
 }
 
 fn take(key: &Key) -> Option<Resident> {
@@ -264,6 +298,8 @@ fn failed(what: &'static str) -> impl Fn(rusqlite::Error) -> StorageError {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Weak;
+
     use super::*;
     use crate::crdt::markdown_seed::append_markdown_in;
     use crate::crdt::{DocumentRegistry, epoch::HeldBody, extract_text, update_log};
@@ -404,5 +440,84 @@ mod tests {
             })
             .expect("write");
         assert!(!seen.contains("gone"), "{seen}");
+    }
+
+    /// Writes `markdown` to `doc_id` and keeps the body, answering a handle
+    /// that lives exactly as long as the kept document.
+    fn kept(
+        conn: &Connection,
+        doc_id: &str,
+        markdown: &str,
+    ) -> Result<Weak<Document>, StorageError> {
+        let body = checkout(conn, DEVICE, doc_id).map_err(storage)?;
+        body.document()
+            .write(|txn| append_markdown_in(txn, markdown).map(|_| ()))
+            .map_err(storage)?
+            .map_err(storage)?;
+        let update = body.take_authored().remove(0);
+        let failed = |e: rusqlite::Error| StorageError::Failed {
+            what: e.to_string(),
+        };
+        let tx = nested_tx::begin(conn).map_err(failed)?;
+        update_log::append_local_update_in(&tx, doc_id, &update, 1).map_err(storage)?;
+        tx.commit().map_err(failed)?;
+        let weak = Arc::downgrade(&body.document);
+        body.keep(Some(update));
+        Ok(weak)
+    }
+
+    /// A database keeps the four bodies written last: the fifth write
+    /// releases the first, whose next write is rebuilt from its log.
+    #[test]
+    fn a_fifth_body_releases_the_first() {
+        let dir = temp_dir("resident-evict");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        db.call_blocking(|conn| {
+            let docs: Vec<String> = (0..5).map(|n| format!("note-{n}")).collect();
+            let mut weak = Vec::new();
+            for doc in &docs {
+                weak.push(kept(conn, doc, &format!("text of {doc}"))?);
+            }
+            assert!(weak[0].upgrade().is_none(), "first body still held");
+            assert!(weak[1..].iter().all(|kept| kept.upgrade().is_some()));
+
+            let rebuilt = checkout(conn, DEVICE, &docs[0]).map_err(storage)?;
+            let text = extract_text(rebuilt.document()).map_err(storage)?;
+            assert!(text.contains("text of note-0"), "{text}");
+            Ok(())
+        })
+        .expect("write");
+    }
+
+    /// A purge releases the document it purges (chapter 07 §7.15.1).
+    #[test]
+    fn a_purge_releases_the_kept_body() {
+        let dir = temp_dir("resident-purge-release");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        db.call_blocking(|conn| {
+            let purged = kept(conn, DAY, "gone")?;
+            let other = kept(conn, "note-other", "stays")?;
+            update_log::purge_in(conn, DAY).map_err(storage)?;
+            assert!(purged.upgrade().is_none(), "purged body still held");
+            assert!(other.upgrade().is_some());
+            Ok(())
+        })
+        .expect("purge");
+    }
+
+    /// Closing a database, as a vault close or a sign-out does, releases
+    /// every body kept for it.
+    #[test]
+    fn closing_the_database_releases_its_bodies() {
+        let dir = temp_dir("resident-close");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        let clone = db.clone();
+        let weak = db
+            .call_blocking(|conn| kept(conn, DAY, "plaintext"))
+            .expect("write");
+        drop(db);
+        assert!(weak.upgrade().is_some(), "released while a handle is open");
+        drop(clone);
+        assert!(weak.upgrade().is_none(), "body outlived its database");
     }
 }

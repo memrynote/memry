@@ -35,7 +35,23 @@ const STATEMENT_CACHE_CAPACITY: usize = 64;
 /// Cheap to clone: every clone shares the one connection and the one mutex.
 #[derive(Clone)]
 pub struct Db {
-    conn: Arc<Mutex<Connection>>,
+    conn: Arc<Shared>,
+}
+
+struct Shared {
+    conn: Mutex<Connection>,
+    path: Option<String>,
+}
+
+/// The last user of the connection is gone, so the database is closing, as a
+/// vault close or a sign-out closes it: the note bodies kept decoded for it go
+/// with it.
+impl Drop for Shared {
+    fn drop(&mut self) {
+        if let Some(path) = &self.path {
+            crate::crdt::resident::release_database(path);
+        }
+    }
 }
 
 impl Db {
@@ -65,8 +81,15 @@ impl Db {
 
     fn adopt(conn: Connection) -> Result<Self, StorageError> {
         configure(&conn)?;
+        let path = conn
+            .path()
+            .filter(|path| !path.is_empty())
+            .map(str::to_owned);
         Ok(Self {
-            conn: Arc::new(Mutex::new(conn)),
+            conn: Arc::new(Shared {
+                conn: Mutex::new(conn),
+                path,
+            }),
         })
     }
 
@@ -108,8 +131,8 @@ impl Db {
 /// that finds one open finds a dead one: its drop could not roll it back. A
 /// `begin` inside it would open a savepoint whose RELEASE commits nothing, so
 /// it is rolled back first, and the call fails when that fails too.
-fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
-    let guard = conn.lock().map_err(|_| StorageError::Failed {
+fn lock(shared: &Shared) -> Result<MutexGuard<'_, Connection>, StorageError> {
+    let guard = shared.conn.lock().map_err(|_| StorageError::Failed {
         what: "the database mutex was poisoned by a panic in an earlier statement".to_owned(),
     })?;
     if !guard.is_autocommit() {
