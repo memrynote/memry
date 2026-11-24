@@ -126,7 +126,12 @@ describe('pack body applier', () => {
     sequenceNum: number,
     revision: string
   ): DocumentPlan => ({
-    snapshot: { entry: entry(noteId), meta: { sequenceNum, revision }, read: async () => bytes },
+    snapshot: {
+      entry: entry(noteId),
+      packId: 'p1',
+      meta: { sequenceNum, revision },
+      read: async () => bytes
+    },
     updates: [],
     watermark: { appliedSequence: sequenceNum, snapshotRevision: revision }
   })
@@ -138,6 +143,7 @@ describe('pack body applier', () => {
     bytes: Uint8Array
   ): PackedUpdate => ({
     entry: { ...entry(noteId), kind: 'crdt_update' },
+    packId: 'p1',
     sequenceNum,
     signerDeviceId,
     createdAt: 1_700_000_000,

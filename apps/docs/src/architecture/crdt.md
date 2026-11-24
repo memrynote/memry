@@ -644,6 +644,70 @@ ghost, and the hash-tag inline plugin — and any new one must take the same pat
 This only became reachable once every note got a local Y.Doc: before that, a signed-out
 editor fell back to ProseMirror's `history`, whose state survives a view rebuild.
 
+## Comments Change Marks, Never the Body
+
+A comment lives in two places: the doc's `criticMarkupMarks` array, and the file, where
+the write-back serializes it inline as `{==text==}{>>…<<}`. A mark's `start` and `end` are
+offsets into the note's markdown text with the CriticMarkup taken out, and its
+`visibleText` is the markdown they cover: `start **bold` for a comment on "start bold".
+
+While the editor is bound to the doc, the doc owns the marks and the editor owns the text.
+The review state in the renderer (`use-critic-markup-review.ts`) follows both and saves
+neither:
+
+- `ContentArea` observes `criticMarkupMarks` and hands the review state what it holds, on
+  open and after every change, whoever made it. It never writes the review state's copy
+  back. That copy can be the last note's (the note page keeps one review state across
+  notes), or older than a move the write-back made, so writing it put one note's comments
+  into another and undid moves.
+- An add, edit, resolve, delete or undo writes only that change to the array, through the
+  binding `ContentArea` hands over (`ReviewDocBinding`). The write-back puts it in the file.
+- The review state's copy of the text is the editor's markdown, never the file. The file
+  trails the doc: by about a second after typing, and indefinitely after an outside change
+  until the note is reopened. A comment action used to save the whole body from that copy,
+  and main took it as an edit: a paragraph typed after an outside change was gone from
+  every device (#5568). A file refetch used to replace the marks too, and dropped each
+  comment the file had left out.
+- Reading that copy converts the whole note, about 10 ms for 8,000 words, and only marks
+  and a comment draft count in it. So the review state reads it only while the note has a
+  mark or a draft: at once when the first arrives or the draft opens, then 150 ms after
+  each change to the body (`ReviewDocBinding.onBodyChange`, local and remote). While the
+  copy trails the body, Cmd+Z goes to the editor, because the copy cannot tell whether the
+  text changed since the comment action.
+- A new comment takes its range from the editor selection mapped into the editor's
+  markdown, read at that moment, so a comment on words typed a moment ago lands on them.
+- A new note starts the review state over from that note's text before its editor binds.
+
+When the editor is not bound to a doc, it saves markdown itself, and a comment saves the
+body with its marks as before.
+
+### Marks follow the text at write-back
+
+The write-back is the one place that moves marks. It sees both the text the marks were
+placed in, the file it wrote last time, and the text they belong in now, the doc's, for
+this device's edits and every other device's. `critic-mark-anchors.ts` diffs the two and
+carries each mark through the diff before `serializeCriticMarkup` writes it:
+
+- Text typed before a mark shifts it. Text typed inside it grows it, and text deleted
+  inside it shrinks it. Text typed right at either end stays outside it.
+- Two comments on the same word stay on their own copies of it.
+- A comment whose words are all deleted stays as a point where they were, and the pass
+  logs it.
+- A comment added after the last write is not in the file yet. Its offsets count in the
+  file's text when it covers its own words there, and it moves from there.
+
+The device whose edit the pass wrote then puts the moved offsets into the doc, once the
+file holds them, and only for a mark the doc still holds as the pass read it. Every other
+device places the same marks in its own file from the same text and leaves the doc alone.
+If two devices move one mark at once, each replaces its element and the array keeps both;
+every reader takes the first in array order, so all devices show the same one, and the
+next write that touches the array deletes the other. A mark the file cannot hold, because
+its text is gone or another mark covers it, stays in the doc and the rail, and the
+write-back logs it once.
+
+A comment made by an older build holds the words the editor showed (`start bold`). The
+renderer still draws it. The file places it only where its text appears unformatted.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also
@@ -850,8 +914,9 @@ document to its vault `.md` file and re-indexes it for search.
   (protocol §1.9.1). The merge reads the day file's tags in the day's write-back turn
   (`addJournalTags`), so a tag edit queued behind a running pass is not written over, and a
   foreign id deleted elsewhere adds only this device's holder tags, not its record's. It
-  writes one spelling per tag key, the first the file holds, as core `set_tags` does: a file
-  holding `Work` and `work` is written with `Work`.
+  writes one spelling per tag by the tag fold, the first the file holds, as core `set_tags`
+  does: a file holding `Work` and `work` is written with `Work`. The fold keeps whitespace,
+  so a foreign `Work` is added beside `Work`, as core adds it.
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
@@ -879,8 +944,12 @@ document to its vault `.md` file and re-indexes it for search.
   feed can wait on the store and a pass queued behind it could hang the quit flush. An update
   that creates a journal day (a tags save or the day merge's tags, for a day with no file)
   writes the file and its index row in the queue, since a pass writes a day file that does
-  not exist yet (`materialize`). It seeds the doc and queues the create for sync after its
-  turn (`finishJournalEntryCreate`), because seeding reads the store. The re-arm
+  not exist yet (`materialize`). The create's sync enqueue waits for the projection lane,
+  outside the turn, and the write-back flush waits for it (`holdFlushUntil`), so a quit
+  right after a create queues it while the sync runtime still runs. It seeds the doc after
+  its turn (`finishJournalEntryCreate`), because seeding reads the store, then tells the
+  windows the entry as its file holds it then, so a tags save that landed meanwhile is not
+  undone by the older created event. The re-arm
   restores its body but not the tags or properties written beside it, so a body update that
   sets them (a journal save with tags, the agent's `journal.update`, `updateNote` with
   properties) then writes them again over the file's body in the queue: the tags it added and
@@ -1362,6 +1431,16 @@ and flagged, never settled or seeded, and its re-queued pull takes the new snaps
 baseline (protocol chapter 07 §7.8; #5243, #5474, #5477). The single-note pull returns
 `false` there, so the pending-note replay does not push a snapshot. The Rust core takes the
 new baseline in the same walk instead; both end with the same body.
+
+None of that page's updates reach the doc, and the walk requests no further page for the
+note, even when the page says `hasMore`. Such an owe counts no failed pull, so a note a peer
+keeps snapshotting could stay owed pass after pass with no backoff and no stuck state. The
+coordinator counts these owes per note in memory. A walk that settles the note resets the
+count, and so does dropping the note from the pull (no row left, or no longer synced). Each
+owe after the first in a row logs
+`CRDT walk owed again: a newer server snapshot replaced its baseline` with the count and
+both sequences: the second at debug level, and the third and later at info, because
+packaged builds drop debug lines (#5247).
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the

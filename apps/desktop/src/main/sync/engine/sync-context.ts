@@ -240,10 +240,11 @@ export const SYNC_STATE_KEYS = {
    */
   CASE_TWIN_HELD_CHANGES: 'caseTwinHeldChanges',
   /**
-   * JSON object from binary note id to `{sha256}` of its file, or null,
-   * for each note whose file may hold a case twin's bytes after the twins
-   * split (#5560, #5585). The watcher pushes no change to them until the
-   * note's own download lands. Missing reads as empty.
+   * Prefix of one row per binary note whose file may hold bytes that are not
+   * its own (#5560, #5580), `caseTwinForeignBytes:<noteId>`: JSON `{sha256}`
+   * of its file, or null. The watcher pushes no change to them until the
+   * note's own download lands. Missing reads as no hold. Builds before kept
+   * every mark in one JSON object under this key; the first touch moves it.
    */
   CASE_TWIN_FOREIGN_BYTES: 'caseTwinForeignBytes',
   /**

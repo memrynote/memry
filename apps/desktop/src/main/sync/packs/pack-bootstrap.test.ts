@@ -10,8 +10,10 @@ import type { PageApplyHandle } from '../bulk-apply'
 import { SYNC_STATE_KEYS } from '../engine/sync-context'
 import { createPackBodyApplier } from './pack-body-applier'
 import { contiguousAppliedCursor, runPackBootstrap, type PackBootstrapDeps } from './pack-bootstrap'
+import { downloadPackToFile } from './pack-download'
 import { buildTestPack } from './test-pack-builder'
 import type * as HttpClientModule from '../http-client'
+import type * as LoggerModule from '../../lib/logger'
 import { NetworkError, RateLimitError, SyncServerError } from '../http-client'
 
 // The whole point of pack-seeded bodies: not one item-granular CRDT request is
@@ -26,6 +28,20 @@ vi.mock('../http-client', async (importOriginal) => {
   const actual = await importOriginal<typeof HttpClientModule>()
   return { ...actual, ...httpSpies }
 })
+
+const logInfo = vi.hoisted(() => vi.fn())
+vi.mock('../../lib/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof LoggerModule>()
+  return {
+    ...actual,
+    createLogger: () => ({ debug: vi.fn(), info: logInfo, warn: vi.fn(), error: vi.fn() })
+  }
+})
+
+const refusalLines = () =>
+  logInfo.mock.calls
+    .filter(([message]) => String(message).startsWith('Packed bodies refused'))
+    .map(([, context]) => context)
 
 const snapshotBytes = (noteId: string): Uint8Array =>
   new TextEncoder().encode(`ciphertext:${noteId}`)
@@ -199,6 +215,7 @@ describe('runPackBootstrap', () => {
   beforeEach(async () => {
     httpSpies.fetchCrdtSnapshot.mockReset()
     httpSpies.getFromServer.mockReset()
+    logInfo.mockClear()
     tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'memry-pack-boot-'))
   })
 
@@ -805,6 +822,59 @@ describe('runPackBootstrap', () => {
       return { harness, reads }
     }
 
+    // The per-document refusal lines are debug, which the production log drops.
+    it('logs one line per pack with its refused entries counted by reason', async () => {
+      const harness = makeHarness({
+        fetchPackPage: async () =>
+          listResponse([
+            packSummary({ id: 'p-s', maxCursor: 200 }),
+            packSummary({ id: 'p-u1', itemKind: 'crdt_update', maxCursor: 900 }),
+            packSummary({ id: 'p-u2', itemKind: 'crdt_update', maxCursor: 800 })
+          ]),
+        readManifest: async () =>
+          new Map([
+            ...['note-1', 'note-2', 'note-3'].map(
+              (noteId) => [noteId, manifestDoc(noteId, null)] as const
+            ),
+            ['note-4', manifestDoc('note-4', 'r4')] as const
+          ])
+      })
+      harness.packFiles.set(
+        'p-s',
+        buildTestPack(
+          [
+            {
+              id: 'note-4',
+              bytes: snapshotBytes('note-4'),
+              meta: { sequenceNum: 4, revision: 'r4' }
+            }
+          ],
+          { breakEntryDigestFor: ['note-4'] }
+        ).bytes
+      )
+      const unregistered = (noteId: string) => {
+        const entry = updateEntry(noteId, 1)
+        return { ...entry, meta: { ...entry.meta, signerDeviceId: 'device-z' } }
+      }
+      harness.packFiles.set(
+        'p-u1',
+        buildTestPack([unregistered('note-1'), unregistered('note-2')]).bytes
+      )
+      harness.packFiles.set(
+        'p-u2',
+        buildTestPack([updateEntry('note-3', 1)], { breakEntryDigestFor: ['note-3'] }).bytes
+      )
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(result.entriesFailed).toBe(4)
+      expect(refusalLines()).toEqual([
+        { packId: 'p-s', refused: { unreadable: 1 } },
+        { packId: 'p-u1', refused: { unregistered_signer: 2 } },
+        { packId: 'p-u2', refused: { unreadable: 1 } }
+      ])
+    })
+
     it('applies a confirmed snapshot and the contiguous updates above it in one open', async () => {
       const { harness, reads } = harnessWith([
         manifestDoc('note-1', 'r4'),
@@ -828,6 +898,7 @@ describe('runPackBootstrap', () => {
       expect(harness.docs.get('note-2')).toEqual([updateBytes('note-2', 1)])
       expect(harness.watermarks.get('note-2')).toEqual({ appliedSequence: 1 })
       expect(result.updatesApplied).toBe(3)
+      expect(refusalLines()).toEqual([])
       expect(httpSpies.getFromServer).not.toHaveBeenCalled()
     })
 
@@ -1538,11 +1609,110 @@ describe('runPackBootstrap', () => {
       await runPackBootstrap(harness.deps)
 
       // Pack ids come out of a server response body, and the path they build
-      // is both written to and `rm -f`'d.
+      // is both written to and `rm -f`'d. It sits in this run's own directory.
       expect(harness.destPaths).toHaveLength(1)
-      const destPath = harness.destPaths[0]
-      expect(path.dirname(path.resolve(destPath))).toBe(path.resolve(harness.tempDir))
+      const destPath = path.resolve(harness.destPaths[0])
+      expect(path.dirname(path.dirname(destPath))).toBe(path.resolve(harness.tempDir))
       expect(path.basename(destPath)).toBe('______escape.pack')
+    })
+
+    it('#given two runs on one temp dir #then neither touches the other run pack file', async () => {
+      const pack = buildTestPack([
+        { id: 'note-1', bytes: snapshotBytes('note-1'), meta: { sequenceNum: 1, revision: 'a' } }
+      ]).bytes
+      const listing = async () => listResponse([packSummary({ id: 'p1', itemCount: 1 })])
+      const first = makeHarness({ fetchPackPage: listing })
+      const second = makeHarness({ fetchPackPage: listing })
+      first.packFiles.set('p1', pack)
+      second.packFiles.set('p1', pack)
+      const { promise: firstHolds, resolve: holdFirst } = Promise.withResolvers<void>()
+      const { promise: firstGoes, resolve: releaseFirst } = Promise.withResolvers<void>()
+      const download = first.deps.download!
+      first.deps.download = async (options) => {
+        const done = await download(options)
+        holdFirst()
+        await firstGoes
+        return done
+      }
+
+      const firstRun = runPackBootstrap(first.deps)
+      await firstHolds
+      const secondResult = await runPackBootstrap(second.deps)
+      releaseFirst()
+      const firstResult = await firstRun
+
+      expect(secondResult.entriesApplied).toBe(1)
+      expect(firstResult.entriesApplied).toBe(1)
+      expect(first.docs.get('note-1')).toEqual([snapshotBytes('note-1')])
+      expect(await fs.readdir(first.tempDir)).toEqual([])
+    })
+
+    // A crash skips the run's finally, so its directory stays. The next run
+    // continues each listed pack's file instead of downloading it whole again.
+    it('#given a crash left finished and partial pack files #then the next run resumes them and removes the rest', async () => {
+      const harness = makeHarness({
+        fetchPackPage: async () =>
+          listResponse([
+            packSummary({ id: 'p-done', maxCursor: 200, itemCount: 1 }),
+            packSummary({ id: 'p-half', maxCursor: 100, itemCount: 1 })
+          ])
+      })
+      for (const [id, noteId] of [
+        ['p-done', 'note-1'],
+        ['p-half', 'note-2']
+      ]) {
+        harness.packFiles.set(
+          id,
+          buildTestPack([
+            { id: noteId, bytes: snapshotBytes(noteId), meta: { sequenceNum: 1, revision: 'r' } }
+          ]).bytes
+        )
+      }
+      const done = harness.packFiles.get('p-done')!
+      const whole = harness.packFiles.get('p-half')!
+      const half = whole.subarray(0, whole.length >> 1)
+      const crashed = path.join(harness.tempDir, 'run-crashed')
+      await fs.mkdir(crashed, { recursive: true })
+      await fs.writeFile(path.join(crashed, 'p-done.pack'), done)
+      await fs.writeFile(path.join(crashed, 'p-half.pack'), half)
+      await fs.writeFile(path.join(crashed, 'p-gone.pack'), 'a pack no longer listed')
+      // R2's answers to a Range request: 206 with the rest, 416 past the end.
+      const requests: Array<{ id: string; range: string | null; bytes: number }> = []
+      harness.deps.download = (options) =>
+        downloadPackToFile({
+          ...options,
+          fetchFn: async (url, init) => {
+            const id = String(url).split('/').pop()!
+            const bytes = harness.packFiles.get(id)!
+            const range = new Headers(init?.headers).get('Range')
+            const from = range ? Number(/^bytes=(\d+)-$/.exec(range)![1]) : 0
+            const rest = bytes.slice(from)
+            requests.push({ id, range, bytes: rest.length })
+            if (from >= bytes.length) return new Response(null, { status: 416 })
+            return new Response(rest, { status: range ? 206 : 200 })
+          }
+        })
+
+      const result = await runPackBootstrap(harness.deps)
+
+      expect(result.entriesApplied).toBe(2)
+      expect(requests).toEqual([
+        { id: 'p-done', range: `bytes=${done.length}-`, bytes: 0 },
+        { id: 'p-half', range: `bytes=${half.length}-`, bytes: whole.length - half.length }
+      ])
+      expect(await fs.readdir(harness.tempDir)).toEqual([])
+    })
+
+    it('#given pack files a quit or crash left behind #then the next run removes them', async () => {
+      const harness = makeHarness({ fetchPackPage: async () => listResponse([]) })
+      await fs.mkdir(path.join(harness.tempDir, 'run-crashed'), { recursive: true })
+      await fs.writeFile(path.join(harness.tempDir, 'run-crashed', 'p1.pack'), 'partial')
+      await fs.writeFile(path.join(harness.tempDir, 'p2.pack'), 'partial from an older build')
+      await fs.writeFile(path.join(harness.tempDir, 'notes.txt'), 'not a pack file')
+
+      await runPackBootstrap(harness.deps)
+
+      expect(await fs.readdir(harness.tempDir)).toEqual(['notes.txt'])
     })
   })
 
