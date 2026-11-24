@@ -249,6 +249,14 @@ extension NoteReadViewModel {
     /// A single failure does not abandon the rest: one unverifiable manifest
     /// must not stop the other pictures in the note from arriving.
     func fetchWaitingAttachments() async {
+        // Not the caller's task: `NotePageLoad` restarts its task on every
+        // sync pass, and the restarted run skips what the cancelled one is
+        // downloading. Uncancelled, that run still rebinds what lands, which
+        // `loadAttachments` would not do on a cancelled task.
+        await Task { await fetchEachWaitingAttachment() }.value
+    }
+
+    private func fetchEachWaitingAttachment() async {
         guard let filler else { return }
         // The screen passes `PathReachability.forAttachments`. With none, the
         // answer for "we have not seen a path" is usable (`unknownPath`).
@@ -270,10 +278,6 @@ extension NoteReadViewModel {
                 attachmentFetches[id] = nil
                 if summary.downloaded { landed = true }
             } catch {
-                if Task.isCancelled {
-                    attachmentFetches[id] = nil
-                    return
-                }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("an attachment could not be fetched", .code(mapped.code))
                 attachmentFetches[id] = .failed(mapped)

@@ -10,7 +10,14 @@ import Testing
 
 private final class RecordingRedrives: VaultFilling, @unchecked Sendable {
     private let calls = Mutex<[Reachable]>([])
+    private let inboxCalls = Mutex(0)
     var reachables: [Reachable] { calls.withLock { $0 } }
+    var inboxPasses: Int { inboxCalls.withLock { $0 } }
+
+    func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary {
+        inboxCalls.withLock { $0 += 1 }
+        return InboxAttachmentSyncSummary(uploaded: 0, downloaded: 0, deferred: 0, failed: 0, released: 0)
+    }
 
     func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
         calls.withLock { $0.append(reachable) }
@@ -35,10 +42,12 @@ struct AttachmentRedriveWiringTests {
         let filler = RecordingRedrives()
         let vault = try TasksTestVault(filler: filler)
         await vault.store.sync()
-        // The redrive runs after the pass, outside it (#4155).
+        // The redrive runs after the pass, outside it (#4155). Counted by its
+        // Inbox pass, which runs whatever this device's Download attachments
+        // setting (#5644); the setting's note redrive is pinned below.
         let deadline = Date().addingTimeInterval(3)
-        while filler.reachables.isEmpty, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        #expect(filler.reachables.count == 1)
+        while filler.inboxPasses == 0, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(filler.inboxPasses == 1)
     }
 
     @Test func the_redrive_carries_the_current_path_so_the_metered_policy_applies() async {

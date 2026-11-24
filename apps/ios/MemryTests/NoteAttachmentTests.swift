@@ -52,6 +52,8 @@ private final class ScriptedAttachments: NotesReading, @unchecked Sendable {
     func blocks(id: String) async throws -> [Block]? { blocks }
 
     func attachmentForBlock(id: String, url: String) async throws -> BlockAttachment {
+        // As the live reader's `CoreExecutor.run` does.
+        try Task.checkCancellation()
         resolved.withLock { $0.append(url) }
         return bindings.withLock { $0[url] } ?? .unknown
     }
@@ -93,14 +95,19 @@ private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable 
 }
 
 /// A filler whose one fetch waits until the test lets it finish, so the test
-/// can see the screen while the download runs.
+/// can see the screen while the download runs. It lands the bytes when it has
+/// no `failure`, and ignores cancellation as a UniFFI async call does.
 private final class GatedAttachmentFiller: VaultFilling, @unchecked Sendable {
     private let calls = Mutex(0)
     private let (entered, enter) = AsyncStream<Void>.makeStream()
     private let (gate, open) = AsyncStream<Void>.makeStream()
-    private let failure: SyncError
+    private let failure: SyncError?
+    private let onLanded: (@Sendable () -> Void)?
 
-    init(failure: SyncError) { self.failure = failure }
+    init(failure: SyncError?, onLanded: (@Sendable () -> Void)? = nil) {
+        self.failure = failure
+        self.onLanded = onLanded
+    }
 
     var fetches: Int { calls.withLock { $0 } }
 
@@ -124,8 +131,11 @@ private final class GatedAttachmentFiller: VaultFilling, @unchecked Sendable {
     ) async throws -> AttachmentFetchSummary {
         calls.withLock { $0 += 1 }
         enter.yield()
-        for await _ in gate { break }
-        throw failure
+        let gate = gate
+        await Task { for await _ in gate { break } }.value
+        if let failure { throw failure }
+        onLanded?()
+        return AttachmentFetchSummary(downloaded: true, deferred: false, bytes: 100, localPath: attachmentId)
     }
 }
 
@@ -303,6 +313,40 @@ struct NoteAttachmentTests {
                 == .waitingFor("att-1"),
             "a failed download keeps its placeholder"
         )
+    }
+
+    /// `NotePageLoad` restarts its task on every sync pass. A pass that ends
+    /// mid-download cancels the run doing it, and the restarted run skips the
+    /// attachment as already downloading. The picture still appears.
+    @Test("a sync pass that restarts the page mid-download still shows the picture")
+    func restartMidDownloadStillRebinds() async {
+        let reader = ScriptedAttachments(
+            blocks: [imageBlock(url: "picture.png")],
+            bindings: ["picture.png": .bound(attachment: cached(id: "att-1", localPath: nil))]
+        )
+        let filler = GatedAttachmentFiller(failure: nil, onLanded: {
+            reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: "att-1")))
+        })
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+
+        let first = Task { await model.fetchWaitingAttachments() }
+        await filler.waitUntilFetching()
+        first.cancel()
+        await model.fetchWaitingAttachments()
+        filler.finish()
+        await first.value
+
+        #expect(filler.fetches == 1)
+        guard case let .bound(attachment) = model.attachments["picture.png"] else {
+            Issue.record("the attachment did not rebind after its bytes landed")
+            return
+        }
+        #expect(attachment.localPath == "att-1", "the landed picture stayed a placeholder")
+        #expect(model.attachmentFetches.isEmpty)
     }
 
     /// A picture waiting for an unmetered path is the feature working. The
