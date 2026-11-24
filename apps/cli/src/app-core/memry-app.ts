@@ -264,7 +264,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
     dataDb: databases.dataDb,
     indexDb: databases.indexDb
   })
-  const folders = createFoldersService({ vaultPath, config })
+  const folders = createFoldersService({ vaultPath, config, dataDb: databases.dataDb })
   const folderView = createFolderViewService({ vaultPath, config, notes })
   const properties = createPropertiesService({ notes, dataDb: databases.dataDb, vaultPath })
   const tasks = withHeaderStatusSync(createTasksService(databases.dataDb), databases.dataDb, notes)

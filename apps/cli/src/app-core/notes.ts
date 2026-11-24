@@ -24,6 +24,7 @@ import {
   wordCount,
   writeMarkdownNote
 } from '@memry/app-core/markdown'
+import { assertNoteFileUnshared, caseTwinsOnFile } from './case-twins.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
@@ -378,6 +379,7 @@ export function createNotesService({
         // A rename stays in the note's current folder — including the vault
         // root, which the `notePath` fallback would re-root under
         // `defaultNoteFolder`.
+        await assertNoteFileUnshared(dataDb, vaultPath, row, 'rename')
         const folder = noteFolderOf(row.path)
         nextPath = await ensureUniquePath(
           vaultPath,
@@ -447,6 +449,7 @@ export function createNotesService({
       const nextPath =
         relativePath === row.path ? relativePath : await ensureUniquePath(vaultPath, relativePath)
       if (nextPath !== row.path) {
+        await assertNoteFileUnshared(dataDb, vaultPath, row, 'move')
         await fs.mkdir(path.dirname(path.join(vaultPath, nextPath)), { recursive: true })
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))
         // Relative attachment/file refs in the body were written against the old
@@ -564,7 +567,10 @@ export function createNotesService({
     async delete(idOrPath) {
       const row = getMetadata(dataDb, idOrPath)
       if (!row) return false
-      await fs.rm(path.join(vaultPath, row.path), { force: true })
+      // A file case twins share stays with the twin that remains (#5650).
+      if ((await caseTwinsOnFile(dataDb, vaultPath, row)).length === 0) {
+        await fs.rm(path.join(vaultPath, row.path), { force: true })
+      }
       deleteCanonicalNote(dataDb, row.id)
       return true
     },
