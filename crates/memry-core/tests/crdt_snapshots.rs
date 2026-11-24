@@ -36,7 +36,9 @@ use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
 use serde_json::json;
 use yrs::updates::decoder::Decode as _;
-use yrs::{Doc, Map as _, ReadTxn as _, StateVector, Transact as _, Update, XmlTextPrelim};
+use yrs::{
+    Doc, GetString as _, Map as _, ReadTxn as _, StateVector, Transact as _, Update, XmlTextPrelim,
+};
 use yrs::{XmlFragment as _, XmlOut};
 
 static SCRATCH: AtomicU64 = AtomicU64::new(0);
@@ -116,6 +118,17 @@ fn update_with_a_foreign_root() -> Vec<u8> {
         foreign.insert(&mut txn, "kept", "yes");
         body.insert(&mut txn, 0, XmlTextPrelim::new("body"));
     }
+    author
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default())
+}
+
+/// A full-state update holding only a body, written by another author than
+/// [`update_with_a_foreign_root`].
+fn update_with_the_body(text: &str) -> Vec<u8> {
+    let author = Doc::with_client_id(42);
+    let body = author.get_or_insert_xml_fragment("prosemirror");
+    body.insert(&mut author.transact_mut(), 0, XmlTextPrelim::new(text));
     author
         .transact()
         .encode_state_as_update_v1(&StateVector::default())
@@ -559,8 +572,9 @@ async fn a_document_loaded_before_a_purge_refuses_before_the_endpoint() {
 
 /// The retry [`Refusal::PurgedSinceLoad`] asks for: a document reloaded after
 /// the purge, under the epoch captured before its log loads, pushes its
-/// snapshot and stores it for the new body. The revived body is in the log, so
-/// the push checks that the reload replayed it.
+/// snapshot and stores it for the new body. The revived body is in the log and
+/// differs from the purged one, so the push checks that the reload replayed it
+/// and that the stored snapshot holds it.
 #[tokio::test]
 async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
     let db = scratch_db("reloaded-after-purge");
@@ -577,7 +591,7 @@ async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
     })
     .expect("purge");
     db.call_blocking(|conn| {
-        update_log::append_local_update(conn, NOTE, &update_with_a_foreign_root(), 2).map_err(
+        update_log::append_local_update(conn, NOTE, &update_with_the_body("revived"), 2).map_err(
             |error| StorageError::Failed {
                 what: error.to_string(),
             },
@@ -621,8 +635,20 @@ async fn a_document_reloaded_after_a_purge_pushes_its_snapshot() {
         .expect("base64");
     let state = unpack(&packed, NOTE, &VAULT_KEY, &public_key).expect("unpack");
     let row = stored_snapshot(&db, NOTE);
-    assert_eq!(row.snapshot, state, "stored for the new body");
+    assert_eq!(row.snapshot, state, "stored what was pushed");
     assert_eq!(row.last_seq, 4);
+    let reader = Doc::new();
+    reader
+        .transact_mut()
+        .apply_update(Update::decode_v1(&row.snapshot).expect("decode"))
+        .expect("apply");
+    let body = reader.get_or_insert_xml_fragment("prosemirror");
+    let txn = reader.transact();
+    assert_eq!(body.get_string(&txn), "revived", "stored for the new body");
+    assert!(
+        txn.get_map("someFutureRoot").is_none(),
+        "nothing of the purged body"
+    );
 }
 
 fn stored_snapshot_is_absent(db: &Db) -> bool {
