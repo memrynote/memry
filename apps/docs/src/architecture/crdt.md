@@ -896,7 +896,14 @@ document to its vault `.md` file and re-indexes it for search.
   at roughly a tenth of wall clock instead of saturating a core while the user types.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
-  destroyed, which covers vault switch.
+  destroyed, which covers vault switch. The flush repeats until no pass is armed, and
+  `destroy()` repeats the flush and its doc store writes until no pass is armed either.
+  A keystroke that lands while a pass converts or a doc is stored therefore still
+  reaches the closing vault's file, and so does the retry of a closed note whose file
+  write failed (`retryWriteback`). The docs are dropped with no await after the last
+  check, so no later update can arm a pass. `resetWritebackState()` cancels and logs any
+  pass still armed, which guards that rule: a timer left armed would fire into whichever
+  vault is open next, where a journal day has the same id.
 - **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
   of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
   spend the whole shutdown budget and the forced exit would kill the process with the
@@ -947,8 +954,16 @@ document to its vault `.md` file and re-indexes it for search.
   `journal.update`) waits in the same per-note queue, and a pass armed meanwhile waits for it.
   A pass writes back the frontmatter it read, and such an update leaves the doc as it was,
   so one that landed between a pass's read and its write was lost with nothing left to re-arm
-  the pass (#5472). A body update feeds the doc before its file outside the queue, because the
-  feed can wait on the store and a pass queued behind it could hang the quit flush. An update
+  the pass (#5472). A folder rename takes the turn of every note under the folder, all at
+  once, and holds them until the rows are at their new paths (`moveFolderHoldingWritebacks`
+  in `folder-move-index.ts`). A pass takes its note's path from the row it read, so one that
+  read the row before the move wrote the old path after it: the old folder came back with the
+  edit in it, the note's rows moved back there, and the next vault open listed the file at the
+  new path as a second note (#5671). The rename releases the turns before it rewrites the
+  path links to the moved notes, because that rewrite feeds the linking notes' docs and can
+  wait on the store. Folder renames hold their turns one at a time: a rename and one of the
+  folder above it each held a note the other waited for, and neither finished. A body update
+  feeds the doc before its file outside the queue, because the feed can wait on the store and a pass queued behind it could hang the quit flush. An update
   that creates a journal day (a tags save or the day merge's tags, for a day with no file)
   writes the file and its index row in the queue, since a pass writes a day file that does
   not exist yet (`materialize`). The create's sync enqueue waits for the projection lane,

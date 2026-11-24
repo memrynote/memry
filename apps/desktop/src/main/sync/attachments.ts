@@ -234,7 +234,7 @@ export interface AttachmentSyncDeps {
     attachmentId: string,
     sha256: string,
     fileOwnerId?: string
-  ) => string
+  ) => string | Promise<string>
   fetchFn?: FetchFn
 }
 
@@ -292,7 +292,8 @@ async function binaryFetch(
   url: string,
   token: string,
   body?: Uint8Array | string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  signal?: AbortSignal
 ): Promise<Response> {
   const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
@@ -314,7 +315,8 @@ async function binaryFetch(
     response = await fetchImpl(url, {
       method,
       headers,
-      body: fetchBody
+      body: fetchBody,
+      ...(signal ? { signal } : {})
     })
   } catch (err) {
     log.warn('fetch failed', { method, url, err })
@@ -964,12 +966,12 @@ export class AttachmentSyncService {
 
         try {
           landedAt =
-            this.deps.beforeFileLands?.(
+            (await this.deps.beforeFileLands?.(
               destPath,
               attachmentId,
               manifest.checksum,
               opts?.fileOwnerId
-            ) ?? destPath
+            )) ?? destPath
           await rename(partialPath, landedAt)
         } catch (renameErr) {
           if (renameErr instanceof SupersededDownloadError) throw renameErr
@@ -1325,17 +1327,37 @@ export class AttachmentSyncService {
     return this.manifestChunkHashes(attachmentId, encrypted, vaultKey)
   }
 
+  /**
+   * The whole-file sha256 of an uploaded attachment, read from its signed
+   * manifest (#5608). Throws when the server has no manifest for the id, or
+   * it cannot be fetched or verified, or it names another attachment.
+   */
+  async checksumOf(attachmentId: string, netOpts: DownloadNetOptions): Promise<string> {
+    const [token, vaultKey] = await this.requireAuth()
+    const encrypted = await this.fetchManifest(token, attachmentId, netOpts)
+    return (await this.verifiedManifest(attachmentId, encrypted, vaultKey)).checksum
+  }
+
   private async manifestChunkHashes(
     attachmentId: string,
     encrypted: EncryptedAttachmentManifest,
     vaultKey: Uint8Array
   ): Promise<string[]> {
+    const manifest = await this.verifiedManifest(attachmentId, encrypted, vaultKey)
+    return manifest.chunks.map((chunk) => chunk.encryptedHash)
+  }
+
+  private async verifiedManifest(
+    attachmentId: string,
+    encrypted: EncryptedAttachmentManifest,
+    vaultKey: Uint8Array
+  ): Promise<AttachmentManifest> {
     const signer = await this.deps.getDevicePublicKey(encrypted.signerDeviceId)
     if (!signer) throw new Error(`Unknown signer device: ${encrypted.signerDeviceId}`)
     const { manifest, fileKey } = this.decryptManifest(encrypted, vaultKey, signer)
     secureCleanup(fileKey)
     requireOwnManifest(attachmentId, manifest)
-    return manifest.chunks.map((chunk) => chunk.encryptedHash)
+    return manifest
   }
 
   private async fetchManifest(
@@ -1349,7 +1371,14 @@ export class AttachmentSyncService {
     // which is what keeps the permanent-failure classification exact.
     return this.retryingRequest(
       async () => {
-        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        const resp = await binaryFetch(
+          'GET',
+          url,
+          token,
+          undefined,
+          this.deps.fetchFn,
+          netOpts?.signal
+        )
         if (!resp.ok) {
           throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
         }

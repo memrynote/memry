@@ -233,7 +233,8 @@ export interface OutboxDrainDeps {
   vaultPath: string
   /** Null: another path owns this upload and records its outcome; the row is left alone. */
   upload: (noteId: string, diskPath: string) => Promise<UploadedFile | null>
-  onUploaded?: (noteId: string, uploaded: UploadedFile) => void
+  /** Awaited before the row clears: a crash while it records retries the upload. */
+  onUploaded?: (noteId: string, uploaded: UploadedFile, diskPath: string) => void | Promise<void>
   now?: number
 }
 
@@ -342,8 +343,8 @@ export async function drainOutboxWith(deps: OutboxDrainDeps): Promise<{
     try {
       const result = await deps.upload(row.noteId, row.diskPath)
       if (!result) continue
+      await deps.onUploaded?.(row.noteId, result, row.diskPath)
       clearUpload(deps.db, row.noteId, row.diskPath)
-      deps.onUploaded?.(row.noteId, result)
       uploaded++
     } catch (err) {
       if (uploadFileState(deps.db, deps.vaultPath, row) === 'deleted') {
