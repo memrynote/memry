@@ -75,12 +75,12 @@ function wikilinks(content: string): string[] {
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
 }
 
-// `folder` is vault-relative, same contract as desktop's `createNote` since
-// #1204: a note created inside a folder lands in that folder. Only an unplaced
-// note falls back to `defaultNoteFolder` — it is a destination, not a notes
-// root.
+// `folder` is vault-relative ('' is the vault root), same contract as desktop's
+// `createNote` since #1204: a note created inside a folder lands in that folder.
+// Only an unplaced note falls back to `defaultNoteFolder` — it is a
+// destination, not a notes root.
 function notePath(config: VaultConfig, title: string, folder?: string): string {
-  const dir = folder ? normalizePath(folder) : normalizePath(config.defaultNoteFolder)
+  const dir = folder ?? normalizePath(config.defaultNoteFolder)
   return normalizePath(`${dir}/${safeFilename(title)}.md`)
 }
 
@@ -289,10 +289,11 @@ export function createNotesService({
 }): NotesService {
   return {
     async create(input) {
-      const folder =
-        input.folder && normalizePath(input.folder)
-          ? await vaultFolder(vaultPath, input.folder, `create note "${input.title}"`)
-          : input.folder
+      const folder = input.folder
+        ? await vaultFolder(vaultPath, input.folder, `create note "${input.title}"`, {
+            allowRoot: true
+          })
+        : undefined
       const now = new Date().toISOString()
       const relativePath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
       const id = createId('note')
@@ -441,9 +442,9 @@ export function createNotesService({
       const note = await readNote(vaultPath, row)
       // `newFolder` is vault-relative and '' means the vault root — never
       // re-root it through `defaultNoteFolder` (desktop `moveNote` contract).
-      const normalizedFolder = normalizePath(newFolder)
-        ? await vaultFolder(vaultPath, newFolder, `move note "${row.path}"`)
-        : ''
+      const normalizedFolder = await vaultFolder(vaultPath, newFolder, `move note "${row.path}"`, {
+        allowRoot: true
+      })
       const relativePath = normalizePath(
         normalizedFolder
           ? `${normalizedFolder}/${path.basename(row.path)}`

@@ -11,7 +11,7 @@ import {
   MAX_EDIT_ELEMENTS
 } from '@memry/contracts/canvas-draw'
 import { CalendarDateSchema } from '@memry/contracts/calendar-date'
-import { vaultFolderPath } from '../../../lib/paths'
+import { vaultFolderPath } from '@memry/storage-vault'
 import { normalizeFolderPath } from './folder-paths'
 import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 import { strictDeep } from '@memry/contracts/strict-schema'

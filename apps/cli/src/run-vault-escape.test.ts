@@ -53,17 +53,24 @@ async function snapshot(world: string): Promise<string[]> {
 
 type World = Awaited<ReturnType<typeof makeWorld>>
 
-/** Runs the command in a fresh world, so each form starts from the same files. */
+/**
+ * Runs the command in a fresh world, so each form starts from the same files. `platform`
+ * stands in for `process.platform` while the command runs, as desktop's `paths.test.ts` does.
+ */
 async function assertRefused(
   command: string[] | ((world: World) => string[]),
   reason: RegExp,
-  setup?: (world: World) => Promise<void>
+  { setup, platform }: { setup?: (world: World) => Promise<void>; platform?: NodeJS.Platform } = {}
 ) {
   const world = await makeWorld()
   await setup?.(world)
   const args = typeof command === 'function' ? command(world) : command
   const before = await snapshot(world.world)
-  const result = await cli(world.vaultPath, ...args)
+  const actual = process.platform
+  if (platform) Object.defineProperty(process, 'platform', { value: platform })
+  const result = await cli(world.vaultPath, ...args).finally(() => {
+    Object.defineProperty(process, 'platform', { value: actual })
+  })
   const label = args.join(' ')
 
   assert.equal(result.code, 1, `${label} exit code; stderr: ${result.stderr}`)
@@ -76,6 +83,8 @@ async function assertRefused(
 const OUTSIDE = /^Refusing to .+: ".+" is the vault itself or outside it\.$/
 const LINK =
   /^Refusing to .+: ".+" is a link, and a path through a link can lead outside the vault\.$/
+const WINDOWS_ALIAS =
+  /^Refusing to .+: ".+" ends in a dot or a space, which Windows drops, so it names another folder\.$/
 
 test('folders delete refuses the vault root and paths that leave it, with its own message', async () => {
   for (const folder of ['/', '.', 'SuperNotes/..', '..', '../outside/data', '../outside/gone']) {
@@ -126,10 +135,75 @@ test(
 )
 
 test('notes move refuses a folder outside the vault', async () => {
-  for (const folder of ['..', '../outside', '.']) {
+  for (const folder of ['..', '../outside', 'SuperNotes/../..']) {
     await assertRefused(({ note }) => ['notes', 'move', note.id, folder], OUTSIDE)
   }
 })
+
+test('. names the vault root for notes move and notes create', async () => {
+  const { vaultPath, note } = await makeWorld()
+
+  const moved = await cli(vaultPath, 'notes', 'move', note.id, '.')
+  assert.equal(moved.code, 0, moved.stderr)
+  assert.equal((JSON.parse(moved.stdout.at(-1) ?? '{}') as { path?: string }).path, 'Real.md')
+
+  const created = await cli(vaultPath, 'notes', 'create', 'Top', '--folder', './')
+  assert.equal(created.code, 0, created.stderr)
+  assert.equal((JSON.parse(created.stdout.at(-1) ?? '{}') as { path?: string }).path, 'Top.md')
+
+  await fs.access(path.join(vaultPath, 'Real.md'))
+  await fs.access(path.join(vaultPath, 'Top.md'))
+})
+
+// Win32 drops a trailing dot or space, so `SuperNotes.` there is `SuperNotes`, a spelling the
+// rows and the case-twin check do not see (#5647).
+test('on Windows, a folder name ending in a dot or a space is refused', async () => {
+  const onWindows = { platform: 'win32' } as const
+  for (const [from, to] of [
+    ['SuperNotes.', 'Archive'],
+    ['SuperNotes ', 'Archive'],
+    ['SuperNotes', 'Archive.']
+  ]) {
+    await assertRefused(['folders', 'rename', from, to], WINDOWS_ALIAS, onWindows)
+  }
+  for (const folder of ['Archive.', 'Archive /Sub']) {
+    await assertRefused(({ note }) => ['notes', 'move', note.id, folder], WINDOWS_ALIAS, onWindows)
+  }
+})
+
+test(
+  'import start lists the refusal for each note it cannot write',
+  { skip: skipLinks },
+  async () => {
+    const { world, vaultPath } = await makeWorld()
+    const source = path.join(world, 'import')
+    await fs.mkdir(source)
+    await fs.writeFile(path.join(source, 'One.md'), '# One\n')
+    await fs.writeFile(path.join(source, 'Two.md'), '# Two\n')
+    const before = await snapshot(world)
+
+    const result = await cli(
+      vaultPath,
+      'import',
+      'start',
+      'markdown',
+      source,
+      '--folder',
+      'out/imp'
+    )
+
+    // A run that imports nothing still exits 0 (shipped contract); the summary carries each reason.
+    assert.equal(result.code, 0, result.stderr)
+    const summary = JSON.parse(result.stdout.at(-1) ?? '{}') as {
+      imported: number
+      failed: Array<{ item: string; error: string }>
+    }
+    assert.equal(summary.imported, 0)
+    assert.equal(summary.failed.length, 2)
+    for (const entry of summary.failed) assert.match(entry.error, LINK, entry.item)
+    assert.deepEqual(await snapshot(world), before)
+  }
+)
 
 test('notes move refuses a folder through a link', { skip: skipLinks }, async () => {
   for (const folder of ['out/data', 'zz/outside']) {
@@ -154,17 +228,15 @@ test(
   'notes delete-attachment refuses a note folder that is a link',
   { skip: skipLinks },
   async () => {
-    await assertRefused(
-      ['notes', 'delete-attachment', 'note_link', 'keep.md', '--yes'],
-      LINK,
-      async ({ vaultPath }) => {
+    await assertRefused(['notes', 'delete-attachment', 'note_link', 'keep.md', '--yes'], LINK, {
+      setup: async ({ vaultPath }) => {
         await fs.mkdir(path.join(vaultPath, 'attachments'), { recursive: true })
         await fs.symlink(
           path.join('..', '..', 'outside', 'data'),
           path.join(vaultPath, 'attachments', 'note_link')
         )
       }
-    )
+    })
   }
 )
 
