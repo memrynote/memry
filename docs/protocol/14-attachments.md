@@ -304,7 +304,7 @@ local delete and a local list edit merge in their own transaction
 (`crates/memry-core/src/storage/repositories/projectors/mod.rs:206`,
 `crates/memry-core/src/domain/notes/mod.rs:193`,
 `crates/memry-core/src/domain/notes/attachments.rs:72`). The re-drive walks
-those rows (`crates/memry-core/src/domain/attachments.rs:475`). A body block
+those rows (`crates/memry-core/src/domain/attachments.rs:477`). A body block
 names its file by the manifest's filename, and a recorded id has none until its
 manifest is read, so the block cannot bind before then
 (`crates/memry-core/src/domain/attachments.rs:339`). Opening the note reads
@@ -420,7 +420,7 @@ pull, downloads it over the note's vault file
   `fileType`, which desktop's restore does not trust either
   (`apps/desktop/src/main/sync/binary-note-restore.ts:143-151`). The core
   queues it with the referenced ones
-  (`crates/memry-core/src/domain/attachments.rs:554-571`) and writes the bytes
+  (`crates/memry-core/src/domain/attachments.rs:477-494`) and writes the bytes
   to `images/<attachmentId>`
   (`crates/memry-core/src/api/sync/attachments_io.rs:401-420`).
 - **A replacement is a new id.** A peer that replaces the file uploads it
