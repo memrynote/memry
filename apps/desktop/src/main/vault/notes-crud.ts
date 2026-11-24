@@ -94,7 +94,7 @@ import { getFileType, getExtension, isBinaryNoteRow } from '@memry/shared/file-t
 import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
-import { isAttachmentStoreRow, isInAttachmentStore } from './attachments'
+import { isAttachmentStoreRow, isInAttachmentStore } from '@memry/shared/attachment-store'
 import {
   assertFolderTreeWritable,
   assertFolderWritable,

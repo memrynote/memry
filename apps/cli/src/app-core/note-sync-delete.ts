@@ -2,7 +2,7 @@ import type { SyncItemType } from '@memry/contracts/sync-api'
 import { syncPendingDeletes, type NoteMetadata } from '@memry/db-schema/data-schema'
 import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 import { deleteCanonicalNote } from '@memry/domain-notes'
-import { isBinaryNoteRow } from '@memry/shared/file-types'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
@@ -11,15 +11,11 @@ import type { DataDb } from './database.ts'
 
 /**
  * Desktop's `staysOnDevice` (apps/desktop/src/main/sync/content-sync-base.ts):
- * a local-only note, or a binary row in the attachment store, a stray an older
- * Windows build made of a pasted attachment (#5607). Its delete would make a
- * peer unlink the file another note embeds.
+ * a local-only note, or a stray row in the attachment store (#5607), whose
+ * delete would make a peer unlink the file another note embeds.
  */
 function staysOnDevice(row: NoteMetadata): boolean {
-  const relativePath = row.path.replaceAll('\\', '/')
-  const inAttachmentStore =
-    relativePath === 'attachments' || relativePath.startsWith('attachments/')
-  return row.localOnly || (isBinaryNoteRow(row) && inAttachmentStore)
+  return row.localOnly || isAttachmentStoreRow(row)
 }
 
 /**

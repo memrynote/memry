@@ -36,11 +36,8 @@ import { getIndexDatabase } from '../../database/client'
 import { generateNotePath, generateFilePath, generateUniquePathSync } from '../../vault/file-ops'
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
-import {
-  getNoteAttachmentsDir,
-  isAttachmentStoreRow,
-  isInAttachmentStore
-} from '../../vault/attachments'
+import { isAttachmentStoreRow, isInAttachmentStore } from '@memry/shared/attachment-store'
+import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { recordDeclinedRef } from '@memry/sync-client/declined-refs'
 import { getStatus as getVaultStatus } from '../../vault/status'
 import {

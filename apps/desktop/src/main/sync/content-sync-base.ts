@@ -7,7 +7,7 @@ import type Logger from 'electron-log'
 import { getDatabase } from '../database/client'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { nextLocalClock } from '@memry/sync-client/tombstone-clocks'
-import { isAttachmentStoreRow } from '../vault/attachments'
+import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager

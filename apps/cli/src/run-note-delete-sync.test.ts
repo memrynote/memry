@@ -50,7 +50,13 @@ const syncedNote =
     return id
   }
 
-const cases: Array<{ name: string; device: boolean; setup: Setup; queued: string | null }> = [
+const cases: Array<{
+  name: string
+  device: boolean
+  setup: Setup
+  queued: string | null
+  keepsFile?: true
+}> = [
   { name: 'a synced note', device: true, setup: syncedNote(), queued: 'note' },
   {
     name: 'a synced journal day',
@@ -79,17 +85,24 @@ const cases: Array<{ name: string; device: boolean; setup: Setup; queued: string
     queued: null
   },
   {
-    // A stray an older Windows build made of a pasted attachment (#5607): its
-    // delete would make a peer unlink the file another note embeds.
+    // A stray an older Windows build made of a pasted attachment (#5607). Its
+    // file is the one the owner note embeds, so the delete keeps it, and its
+    // tombstone would make a peer unlink it.
     name: 'a stray row in the attachment store',
     device: true,
     setup: async (vaultPath) => {
+      const owner = binary(vaultPath, 'notes', 'create', 'Owner', '--content', 'scan:') as {
+        id: string
+      }
+      const source = path.join(testRoot, `scan-${randomUUID()}.png`)
+      await fs.writeFile(source, 'png bytes')
+      const attached = binary(vaultPath, 'notes', 'attach', owner.id, source) as { path: string }
       const id = `note_${randomUUID()}`
       const now = new Date().toISOString()
       withDatabases(vaultPath, ({ dataDb }) =>
         upsertNoteMetadata(dataDb, {
           id,
-          path: 'attachments/note_owner/scan.png',
+          path: attached.path,
           title: 'scan',
           fileType: 'image',
           createdAt: now,
@@ -99,12 +112,14 @@ const cases: Array<{ name: string; device: boolean; setup: Setup; queued: string
       )
       return id
     },
-    queued: null
+    queued: null,
+    keepsFile: true
   }
 ]
 
-for (const { name, device, setup, queued } of cases) {
-  test(`notes delete of ${name} ${queued ? `queues a ${queued} tombstone` : 'queues no tombstone'}`, async () => {
+for (const { name, device, setup, queued, keepsFile } of cases) {
+  const outcome = `${queued ? `queues a ${queued} tombstone` : 'queues no tombstone'}${keepsFile ? ' and keeps the file' : ''}`
+  test(`notes delete of ${name} ${outcome}`, async () => {
     const vaultPath = path.join(testRoot, `vault-${process.pid}-${randomUUID()}`)
     await fs.mkdir(vaultPath)
     if (device) {
@@ -126,6 +141,7 @@ for (const { name, device, setup, queued } of cases) {
     const id = await setup(vaultPath)
     const before = withDatabases(vaultPath, ({ dataDb }) => getNoteMetadataById(dataDb, id))
     assert.ok(before)
+    const bytes = await fs.readFile(path.join(vaultPath, before.path))
 
     assert.deepEqual(binary(vaultPath, 'notes', 'delete', id, '--yes'), { success: true })
 
@@ -135,7 +151,9 @@ for (const { name, device, setup, queued } of cases) {
       tombstones: dataDb.select().from(syncTombstoneClocks).all()
     }))
     assert.equal(after.row, null)
-    await assert.rejects(fs.access(path.join(vaultPath, before.path)), { code: 'ENOENT' })
+    const file = path.join(vaultPath, before.path)
+    if (keepsFile) assert.deepEqual(await fs.readFile(file), bytes)
+    else await assert.rejects(fs.access(file), { code: 'ENOENT' })
 
     if (!queued) {
       assert.deepEqual(after.pending, [])
