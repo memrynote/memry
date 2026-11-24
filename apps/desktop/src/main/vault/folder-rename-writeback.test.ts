@@ -16,6 +16,7 @@ import path from 'path'
 import * as Y from 'yjs'
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
+import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { createTestVault } from '@tests/utils/test-vault'
 import {
   asClientDb,
@@ -26,10 +27,10 @@ import {
 import { getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import { upsertNoteMetadata } from '@memry/storage-data'
 
-vi.mock('electron', () => ({
+vi.mock('electron', async () => ({
   app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
-  ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
+  ipcMain: (await import('@tests/utils/mock-ipc')).mockIpcMain,
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn(), trashItem: vi.fn() }
 }))
 vi.mock('../database', () => ({
@@ -59,7 +60,7 @@ vi.mock('../sync/local-mutations', () => ({
 }))
 const docs = vi.hoisted(() => new Map<string, unknown>())
 /** A doc the CRDT store cannot hand out yet: `open` waits on this. */
-const stalled = vi.hoisted(() => new Map<string, Promise<never>>())
+const stalled = vi.hoisted(() => new Map<string, Promise<unknown>>())
 vi.mock('../sync/crdt-provider', () => {
   const stub = {
     initForNote: vi.fn(async () => {}),
@@ -73,7 +74,8 @@ vi.mock('../sync/crdt-provider', () => {
     isAwaitingMerge: () => false,
     open: vi.fn(async (id: string) => {
       await stalled.get(id)
-      return docs.get(id)
+      // A closed doc with no body: the feed declines it and writes the file.
+      return docs.get(id) ?? new Y.Doc()
     }),
     withDocLoaded: vi.fn(async (_id: string, run: () => void) => run()),
     closeIfInactive: async () => {},
@@ -127,6 +129,10 @@ import { clearAllPendingDeletes } from './rename-tracker'
 import { renameFolderCommand } from '../notes/domain'
 import { atomicWrite } from './file-ops'
 import { moveDirectory } from './move-directory'
+import { NotesChannels } from '@memry/contracts/notes-api'
+import { invokeHandler } from '@tests/utils/mock-ipc'
+import { registerNotesHandlers, unregisterNotesHandlers } from '../ipc/notes-handlers'
+import { startWatcher, stopWatcher } from './watcher'
 
 const BODY = '# n\n\nplain body\n'
 const EDITED = '# n\n\nplain edited\n'
@@ -155,6 +161,8 @@ describe('a write-back across its folder rename (#5671)', () => {
   })
 
   afterEach(async () => {
+    await stopWatcher()
+    unregisterNotesHandlers()
     docs.clear()
     stalled.clear()
     await stopProjectionRuntime({ drain: true })
@@ -193,15 +201,15 @@ describe('a write-back across its folder rename (#5671)', () => {
     landed()
   }
 
-  /** Holds the note's write of `EDITED` until `release`; `atWrite` settles when it gets there. */
-  function holdEditedWrite() {
+  /** Holds a write of bytes holding `marker` until `release`; `atWrite` settles when it gets there. */
+  function holdEditedWrite(marker = 'plain edited') {
     let release = (): void => {}
     let reached = (): void => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
     const atWrite = new Promise<void>((resolve) => (reached = resolve))
     const real = vi.mocked(atomicWrite).getMockImplementation()!
     vi.mocked(atomicWrite).mockImplementation(async (filePath, content) => {
-      if (content.includes('plain edited')) {
+      if (content.includes(marker)) {
         reached()
         await gate
       }
@@ -217,11 +225,15 @@ describe('a write-back across its folder rename (#5671)', () => {
     await flushProjectionEvents()
   }
 
-  async function writeBack(markdown: string): Promise<void> {
+  async function writeBack(
+    markdown: string,
+    id = 'plain',
+    notePath = 'Folder/n.md'
+  ): Promise<void> {
     const doc = new Y.Doc()
-    await markdownToYFragment(markdown, doc.getXmlFragment('prosemirror'), 'Folder/n.md')
-    docs.set('plain', doc)
-    await writebackNow('plain', doc)
+    await markdownToYFragment(markdown, doc.getXmlFragment('prosemirror'), notePath)
+    docs.set(id, doc)
+    await writebackNow(id, doc)
   }
 
   const read = (relativePath: string) =>
@@ -395,5 +407,241 @@ describe('a write-back across its folder rename (#5671)', () => {
       file: expect.stringContaining('plain edited'),
       top: false
     })
+  }, 30_000)
+
+  /** A note the CRDT store cannot open until `release`. */
+  function stallStore(id: string): () => void {
+    let release = (): void => {}
+    stalled.set(id, new Promise<void>((resolve) => (release = resolve)))
+    return release
+  }
+
+  const opened = (id: string) =>
+    expect(vi.mocked(getCrdtProvider().open).mock.calls.map(([noteId]) => noteId)).toContain(id)
+
+  const renameFolderIpc = (oldPath: string, newPath: string) =>
+    invokeHandler(NotesChannels.invoke.RENAME_FOLDER, { oldPath, newPath })
+
+  /** Indexes the link in a note the vault open skipped: its row already hashes the file. */
+  function indexLinks(id: string, relativePath: string, body: string): void {
+    const parsed = parseNote(body)
+    syncNoteToCache(
+      index.db,
+      {
+        id,
+        path: relativePath,
+        fileContent: body,
+        frontmatter: parsed.frontmatter,
+        parsedContent: parsed.content,
+        title: path.basename(relativePath, '.md'),
+        createdAt: '2026-01-10T00:00:00.000Z',
+        modifiedAt: '2026-01-12T00:00:00.000Z'
+      },
+      { isNew: false }
+    )
+  }
+
+  /** Lets the watcher hear the moves and writes, then drains what it queued. */
+  async function settleWatcher(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await flushProjectionEvents()
+  }
+
+  const rowPaths = () => ({
+    data: data.db
+      .select({ path: noteMetadata.path })
+      .from(noteMetadata)
+      .all()
+      .map((row) => row.path)
+      .toSorted(),
+    index: index.db
+      .select({ path: noteCache.path })
+      .from(noteCache)
+      .all()
+      .map((row) => row.path)
+      .toSorted()
+  })
+
+  describe('a body writer waiting on the store across the rename (#5690)', () => {
+    beforeEach(() => registerNotesHandlers())
+
+    it('a body update lands where its folder moved', async () => {
+      await seedNote()
+      await startWatcher(vault.path)
+      const release = stallStore('plain')
+
+      const updating = invokeHandler(NotesChannels.invoke.UPDATE, {
+        id: 'plain',
+        content: '# n\n\nplain edited\n'
+      })
+      try {
+        await vi.waitFor(() => opened('plain'))
+        expect(await renameFolderIpc('Folder', 'Renamed')).toEqual({ success: true })
+      } finally {
+        release()
+      }
+      expect(await updating).toMatchObject({ success: true, note: { path: 'Renamed/n.md' } })
+      await settleWatcher()
+
+      expect(await afterRename()).toEqual(RENAMED_WITH_EDIT)
+    }, 30_000)
+
+    // REVIEW-5719 (1): the update reads its path in the turn the rename holds,
+    // so the write held at the old path waits for the move instead of racing it.
+    it('a body update held at its write while the folder moves lands where it moved', async () => {
+      await seedNote()
+      await startWatcher(vault.path)
+      const { release, atWrite } = holdEditedWrite()
+
+      const updating = invokeHandler(NotesChannels.invoke.UPDATE, { id: 'plain', content: EDITED })
+      let renaming: Promise<unknown> = Promise.resolve()
+      try {
+        await atWrite
+        renaming = renameFolderIpc('Folder', 'Renamed')
+        // Long enough for the rename to move the folder if nothing held it back.
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      } finally {
+        release()
+      }
+      await updating
+      expect(await renaming).toEqual({ success: true })
+      await settleWatcher()
+
+      expect(await afterRename()).toEqual(RENAMED_WITH_EDIT)
+    }, 30_000)
+
+    // REVIEW-5719 (3): the link rewrite read the source before its feed, so a
+    // tag written while the feed waited on the store was written over.
+    it("a tag written while a rename's link rewrite waits on the store survives it", async () => {
+      const linker = '# l\n\nsee [[Folder/n]]\n'
+      seed('linker', 'B/l.md', linker)
+      await seedNote()
+      indexLinks('linker', 'B/l.md', linker)
+      await flushProjectionEvents()
+      const release = stallStore('linker')
+
+      const renaming = renameFolderIpc('Folder', 'Renamed')
+      try {
+        await vi.waitFor(() => opened('linker'))
+        expect(
+          await invokeHandler(NotesChannels.invoke.UPDATE, {
+            id: 'linker',
+            headerTags: { add: ['kept'], remove: [] }
+          })
+        ).toMatchObject({ success: true })
+      } finally {
+        release()
+      }
+      expect(await renaming).toEqual({ success: true })
+
+      const file = read('B/l.md') ?? ''
+      expect({ tag: file.includes('kept'), link: file.includes('[[Renamed/n]]') }).toEqual({
+        tag: true,
+        link: true
+      })
+    }, 30_000)
+
+    it("a rename's link rewrite lands where the linking note's folder moved", async () => {
+      const linker = '# l\n\nsee [[Folder/n]]\n'
+      seed('linker', 'B/l.md', linker)
+      await seedNote()
+      indexLinks('linker', 'B/l.md', linker)
+      await flushProjectionEvents()
+      await startWatcher(vault.path)
+      const release = stallStore('linker')
+
+      const renaming = renameFolderIpc('Folder', 'Renamed')
+      try {
+        await vi.waitFor(() => opened('linker'))
+        expect(await renameFolderIpc('B', 'B2')).toEqual({ success: true })
+      } finally {
+        release()
+      }
+      expect(await renaming).toEqual({ success: true })
+      await settleWatcher()
+
+      const before = { rows: rowPaths(), oldFolder: fs.existsSync(path.join(vault.path, 'B')) }
+      await openVault()
+      expect({ ...before, file: read('B2/l.md'), reopened: rowPaths().data }).toEqual({
+        rows: { data: ['B2/l.md', 'Renamed/n.md'], index: ['B2/l.md', 'Renamed/n.md'] },
+        oldFolder: false,
+        file: expect.stringContaining('[[Renamed/n]]'),
+        reopened: ['B2/l.md', 'Renamed/n.md']
+      })
+    }, 30_000)
+  })
+
+  // REVIEW-5672R2: a note that turns up while the rename waits out a pass is
+  // held too, so its own pass, which read the old path, writes before the move.
+  it('a note that appears while the rename waits is held before the folder moves', async () => {
+    registerNotesHandlers()
+    await seedNote()
+    await readyWritebackConverter()
+    const first = holdEditedWrite()
+    const pass = writeBack(EDITED)
+    await first.atWrite
+
+    const renaming = renameFolderIpc('Folder', 'Renamed')
+    let late: Promise<void> = Promise.resolve()
+    let releaseLate = (): void => {}
+    try {
+      await new Promise((resolve) => setImmediate(resolve))
+      seed('late', 'Folder/m.md', '# m\n\nlate body\n')
+      const second = holdEditedWrite('late edited')
+      releaseLate = second.release
+      late = writeBack('# m\n\nlate edited\n', 'late', 'Folder/m.md')
+      await second.atWrite
+      first.release()
+      await pass
+      // Long enough for the rename to move the folder if nothing held the late note.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    } finally {
+      first.release()
+      releaseLate()
+    }
+    await late
+    expect(await renaming).toEqual({ success: true })
+
+    expect({
+      rows: rowPaths().data,
+      late: read('Renamed/m.md'),
+      oldFolder: fs.existsSync(path.join(vault.path, 'Folder'))
+    }).toEqual({
+      rows: ['Renamed/m.md', 'Renamed/n.md'],
+      late: expect.stringContaining('late edited'),
+      oldFolder: false
+    })
+  }, 30_000)
+
+  // REVIEW-5672R2: a quit flush also waits for a folder rename queued behind
+  // the one in flight, so the app never quits with a folder moved and its
+  // rows still at the old path.
+  it('a quit flush waits for a rename queued behind one in flight', async () => {
+    registerNotesHandlers()
+    seed('other', 'Other/o.md', '# o\n\nother body\n')
+    await seedNote()
+    const { release, atWrite } = holdEditedWrite()
+    const pass = writeBack(EDITED)
+    await atWrite
+
+    const first = renameFolderIpc('Folder', 'Renamed')
+    const second = renameFolderIpc('Other', 'Other2')
+    let flushed: unknown = null
+    try {
+      await new Promise((resolve) => setImmediate(resolve))
+      const flushing = flushPendingWritebacks().then(() => ({
+        row: data.db.select().from(noteMetadata).where(eq(noteMetadata.id, 'other')).get()?.path,
+        moved: fs.existsSync(path.join(vault.path, 'Other2/o.md'))
+      }))
+      await new Promise((resolve) => setImmediate(resolve))
+      release()
+      flushed = await flushing
+    } finally {
+      release()
+    }
+    await pass
+    await Promise.all([first, second])
+
+    expect(flushed).toEqual({ row: 'Other2/o.md', moved: true })
   }, 30_000)
 })
