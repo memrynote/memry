@@ -34,7 +34,7 @@ use memry_core::api::crypto::derive_vault_key;
 use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
-use memry_core::domain::attachments;
+use memry_core::domain::attachment_refs;
 use memry_core::protocol::attachment_manifest;
 use memry_core::protocol::attachment_upload::{FramedChunk, build_manifest, frame_chunks};
 use memry_core::protocol::auth::DevicePlatform;
@@ -165,7 +165,9 @@ fn reference_all(vault: &Vault, ids: &[&str]) {
     let ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
     vault
         .db_handle()
-        .call_blocking(move |conn| attachments::merge_note_references(conn, "note-1", Some(&ids)))
+        .call_blocking(move |conn| {
+            attachment_refs::merge_note_references(conn, "note-1", Some(&ids))
+        })
         .expect("reference");
 }
 

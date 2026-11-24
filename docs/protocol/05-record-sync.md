@@ -200,11 +200,12 @@ sending** (`crates/memry-core/src/sync/outbox.rs:426-458`, rationale at `:295-29
 
 Rejection reasons a client MUST handle:
 
-| Reason                 | Meaning                                                          |
-| ---------------------- | ---------------------------------------------------------------- |
-| `SYNC_REPLAY_DETECTED` | §5.7; drop the queued row, the server is ahead                   |
-| `SYNC_DELETE_WINS`     | §5.8; the id is tombstoned and this write did not see the delete |
-| `SYNC_INVALID_ITEM`    | §5.4; the item cannot satisfy the schema — permanent, retire it  |
+| Reason                            | Meaning                                                                                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SYNC_REPLAY_DETECTED`            | §5.7; drop the queued row, the server is ahead                                                                                                        |
+| `SYNC_DELETE_WINS`                | §5.8; the id is tombstoned and this write did not see the delete                                                                                      |
+| `SYNC_INVALID_ITEM`               | §5.4; the item cannot satisfy the schema — permanent, retire it                                                                                       |
+| `SYNC_INVALID_DELETE_ATTESTATION` | chapter 04 §4.8.4; this delete's attestation did not verify. Refuses this item only: the item signature verified, so it is never a device-key failure |
 
 `SYNC_INVALID_ITEM` carries the failing issue after the code, so a client MAY
 log the reason verbatim. The verdict is permanent — resending the same bytes
@@ -387,7 +388,12 @@ at 9:30 looks seen under the 60 s rule. A `note` or `journal` delete therefore
 puts an optional `bodyStateVector` inside its encrypted payload: the standard
 base64 of the Yjs v1 state vector of the deleter's body doc at delete time
 (desktop: the loaded doc, `ContentSyncService.bodyStateVector`; the core: its
-whole update log, `body_state_vector`). It is no text, travels end to end
+whole update log, `body_state_vector`). A delete desktop sends later, one
+deferred while sync was off or one the CLI queued (which reads no doc), takes
+the vector into its pending row before the doc is purged
+(`apps/desktop/src/main/sync/pending-deletes.ts:150`); one the CLI queued while
+desktop was closed takes it at the next sync start, before the first pull
+(`apps/desktop/src/main/sync/local-doc-delete.ts:83`). It is no text, travels end to end
 encrypted, and needs no server, D1 or envelope change. The receiver compares it
 with its own body state: desktop with the merged state vector of every body
 update the server confirmed from it (`note_body_sync.pushed_state_vector`, data
@@ -996,7 +1002,7 @@ The non-envelope case is the exception because the fault is on the server.
 tombstone: an id in `deleted` with no verified delete records nothing. The Rust
 core still honours a bare tombstone an older build filed: it is a `sync_items`
 row of type `_tombstone` (`crates/memry-core/src/sync/store.rs:31`), checked
-before an apply (`crates/memry-core/src/sync/apply.rs:172`). The rest of this
+before an apply (`crates/memry-core/src/sync/apply.rs:185`). The rest of this
 section describes those rows.
 
 §5.12.1 establishes that a `deleted[]` entry is an **id with no

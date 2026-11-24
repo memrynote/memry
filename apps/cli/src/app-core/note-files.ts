@@ -223,16 +223,16 @@ async function uniqueDestination(
 // `targetFolder` is vault-relative, the same contract as desktop's
 // `importFiles` since #1204; an import with no target lands under
 // `defaultNoteFolder`.
-function resolveTargetFolder(vaultPath: string, config: VaultConfig, targetFolder = ''): string {
-  const vaultRoot = path.resolve(vaultPath)
-  const target = path.resolve(
-    vaultRoot,
-    normalizePath(targetFolder) || normalizePath(config.defaultNoteFolder)
+async function resolveTargetFolder(
+  vaultPath: string,
+  config: VaultConfig,
+  targetFolder = ''
+): Promise<string> {
+  const requested = normalizePath(targetFolder) ? targetFolder : config.defaultNoteFolder
+  return path.join(
+    vaultPath,
+    await vaultFolder(vaultPath, requested, 'import files', { allowRoot: true })
   )
-  if (target !== vaultRoot && !target.startsWith(`${vaultRoot}${path.sep}`)) {
-    throw new Error('Import target must stay inside the vault')
-  }
-  return target
 }
 
 function escapeHtml(text: string): string {
@@ -458,7 +458,12 @@ export function createAttachmentsService({
       }
 
       const filename = uniqueAttachmentFilename(originalName)
-      const relativePath = normalizePath(path.join(ATTACHMENTS_DIR, noteId, filename))
+      const folder = await vaultFolder(
+        vaultPath,
+        `${ATTACHMENTS_DIR}/${note.id}`,
+        `attach "${originalName}"`
+      )
+      const relativePath = `${folder}/${filename}`
       const absolutePath = path.join(vaultPath, relativePath)
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
       await fs.copyFile(sourcePath, absolutePath)
@@ -506,7 +511,14 @@ export function createAttachmentsService({
     },
 
     async list(noteId) {
-      const dir = path.join(vaultPath, ATTACHMENTS_DIR, noteId)
+      // `add` stores under the note's id, so a path resolves to it. A plain id with no note
+      // still names its folder, which outlives a deleted note.
+      const owner = (await notes.get(noteId))?.id ?? noteId
+      if (!isPlainSegment(owner)) {
+        throw new Error(`Refusing to list attachments: "${noteId}" is not a note id.`)
+      }
+      const folder = await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${owner}`, 'list attachments')
+      const dir = path.join(vaultPath, folder)
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
         const attachments: AttachmentInfo[] = []
@@ -516,7 +528,7 @@ export function createAttachmentsService({
           const stats = await fs.stat(absolutePath)
           attachments.push({
             filename: entry.name,
-            path: normalizePath(path.join(ATTACHMENTS_DIR, noteId, entry.name)),
+            path: `${folder}/${entry.name}`,
             absolutePath,
             size: stats.size,
             mimeType: mimeType(entry.name),
@@ -557,7 +569,7 @@ export function createImportFilesService({
   dataDb: DataDb
 }) {
   return async function importFiles(input: ImportFilesInput): Promise<ImportFilesResult> {
-    const targetDir = resolveTargetFolder(vaultPath, config, input.targetFolder)
+    const targetDir = await resolveTargetFolder(vaultPath, config, input.targetFolder)
     await fs.mkdir(targetDir, { recursive: true })
 
     const errors: string[] = []

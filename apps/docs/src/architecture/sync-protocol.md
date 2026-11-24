@@ -277,6 +277,12 @@ Every device remembers the clock of each delete it makes or applies for such an 
 happens strictly after the delete: the server accepts it inside retention too, a stale copy from a
 device that missed the delete is refused or merged rather than applied over it, and the device's
 own late tombstone does not delete it.
+A note or journal delete the desktop sends later carries the body vector of the doc it held
+(`bodyStateVector`, protocol chapter 05 §5.8), so a peer keeps text the delete never covered as an
+inbox copy. Its own deferred delete writes the vector into `sync_pending_deletes` before the doc is
+purged. A delete the CLI queued (it cannot read the doc) takes the vector when the watcher sees the
+CLI's unlink, which also sends it right away, or, when the desktop was closed, at the next runtime
+start before the first pull (`coverQueuedContentDeletes`). With no doc, the delete goes without one.
 At runtime start the desktop replays the deletes it still owes (`sync_pending_deletes`), except for
 such an id that has a live local row again: that delete is retired instead, so a re-create made
 while sync was off, or before its delete's clock was recorded, is pushed live rather than deleted on
@@ -296,7 +302,7 @@ and `/sync/pull` returns the delete in a `purgedTombstones` list next to `items`
 ciphertext. The entry carries no record signature, since the shed deleted the payload it covered.
 Instead, a delete pushed by a current client carries a delete attestation: an Ed25519 signature by
 the deleting device over `{purpose, id, type, deletedAt, clock}` (protocol 04 §4.8.4). The server
-verifies it on push, rejecting a bad one per item as `SYNC_INVALID_SIGNATURE`, and keeps it through
+verifies it on push, rejecting a bad one per item as `SYNC_INVALID_DELETE_ATTESTATION`, and keeps it through
 the shed. It serves the attestation with the entry as `signerDeviceId` and `deleteAttestation`.
 The desktop applies an entry only if the request asked for that id, the type carries a required
 clock, the entry has one, and the attestation verifies under the signer's key over the entry's own
@@ -1258,7 +1264,15 @@ across devices:
   for the same file is the only one, and a 404 counts once. It records the
   download as owed instead (`markDownloadOwed`), so the re-driver asks for it
   when nothing else does. A failure row the new runtime already wrote keeps its
-  window. Opening a binary note
+  window. A pull's request that is queued or mid-transfer when the runtime
+  restarts settles as `DownloadQueueClearedError` and is owed the same way:
+  the new runtime's pull starts from its cursor, and with auto-download on an
+  open asks for nothing, so without the row the file would land only when its
+  note is pulled again (#5697). The re-driver asks once per owed file. When
+  the file is already there, an embed is found through its attachment record
+  with no request, and a binary note's file that has the manifest's size and
+  sha256 costs one manifest read: no chunk is fetched and nothing is written
+  over it. Opening a binary note
   whose file has not downloaded keeps its row: `getFileById` drops a row with a
   missing file only when the canonical row names no attachment id (#5616).
 - **Reference pruning** — `attachmentReferences` merges union-only, so a

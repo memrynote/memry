@@ -263,6 +263,11 @@ extension NoteReadViewModel {
         )
         guard reachable != .offline else { return }
 
+        // A peer's picture binds only once its manifest names it (#5675).
+        if attachments.values.contains(.unknown) {
+            await nameUnboundAttachments(with: filler)
+        }
+
         var waiting: [String] = []
         for case let .bound(attachment) in attachments.values
             where attachment.localPath == nil && !waiting.contains(attachment.attachmentId) {
@@ -300,6 +305,21 @@ extension NoteReadViewModel {
         return !attachments.values.contains { binding in
             guard case let .bound(attachment) = binding else { return false }
             return attachment.attachmentId == id && attachment.localPath != nil
+        }
+    }
+
+    /// A peer's picture has no name here until its manifest is read, so its
+    /// block resolves to nothing (#5675). Opening the note reads the names,
+    /// whatever the Download attachments setting, and re-resolves.
+    private func nameUnboundAttachments(with filler: any VaultFilling) async {
+        do {
+            if try await filler.fetchNoteManifests(noteId: route.id) > 0 {
+                await loadAttachments()
+            }
+        } catch {
+            if Task.isCancelled { return }
+            let mapped = ErrorMapping.userFacing(error)
+            Log.sync.error("a note's attachments could not be named", .code(mapped.code))
         }
     }
 

@@ -188,7 +188,11 @@ pub fn delete(
         conn,
         &outbox::Change::delete(ITEM_TYPE, note_id),
         now_ms,
-        |tx| tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms),
+        |tx| {
+            // A deleted note wants none of its pictures (#5675).
+            crate::domain::attachment_refs::merge_note_references(tx, note_id, Some(&[]))?;
+            tombstone_local(tx, ITEM_TYPE, note_id, device_id, now_ms)
+        },
     )
 }
 

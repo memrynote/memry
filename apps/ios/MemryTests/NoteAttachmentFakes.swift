@@ -54,18 +54,33 @@ final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable {
     private let summary: AttachmentFetchSummary
     private let calls = Mutex<[String]>([])
     private let paths = Mutex<[Reachable]>([])
+    private let manifestCalls = Mutex<[String]>([])
     private let onFetch: (@Sendable () -> Void)?
+    private let onManifests: (@Sendable () -> UInt32)?
     private let failure: SyncError?
 
-    init(summary: AttachmentFetchSummary, failure: SyncError? = nil, onFetch: (@Sendable () -> Void)? = nil) {
+    init(
+        summary: AttachmentFetchSummary,
+        failure: SyncError? = nil,
+        onFetch: (@Sendable () -> Void)? = nil,
+        onManifests: (@Sendable () -> UInt32)? = nil
+    ) {
         self.summary = summary
         self.failure = failure
         self.onFetch = onFetch
+        self.onManifests = onManifests
     }
 
     var fetched: [String] { calls.withLock { $0 } }
     /// The path each fetch was judged against.
     var judged: [Reachable] { paths.withLock { $0 } }
+    /// Every note whose manifests the model asked for, in order.
+    var named: [String] { manifestCalls.withLock { $0 } }
+
+    func fetchNoteManifests(noteId: String) async throws -> UInt32 {
+        manifestCalls.withLock { $0.append(noteId) }
+        return onManifests?() ?? 0
+    }
 
     func isFirstSyncComplete() async throws -> Bool { true }
     func firstSync(

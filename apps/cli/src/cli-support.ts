@@ -92,7 +92,8 @@ export function parseCli(args: string[]): ParsedCli {
 
     const key = arg.slice(2)
     const next = globals[index + 1]
-    const value = next && !next.startsWith('--') ? next : 'true'
+    // `--folder ''` passes an empty value, not the boolean `true`.
+    const value = next !== undefined && !next.startsWith('--') ? next : 'true'
     if (value !== 'true') index += 1
     flags.set(key, [...(flags.get(key) ?? []), value])
   }

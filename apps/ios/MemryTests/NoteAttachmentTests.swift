@@ -13,6 +13,8 @@ import UIKit
 // | a bound attachment with no bytes yet is still waiting   | placeholder, not a gap  |
 // | bytes that land re-resolve in place                     | FR-045's "without the note being recreated" |
 // | a metered refusal is not an error and keeps the placeholder | FR-045's default    |
+// | opening a note names a peer's picture, then fetches it  | #5675                   |
+// | offline, opening names nothing                          | #5675                   |
 // | a remote url is ordinary content, not a failed download | §Q4                     |
 // | an ambiguous basename is refused, never guessed         | §Q4                     |
 // | only attachment-bearing blocks are resolved             | a bookmark url is not a vault path |
@@ -223,6 +225,58 @@ struct NoteAttachmentTests {
                 == .waitingFor("att-1"),
             "a deferred picture keeps its placeholder"
         )
+    }
+
+    /// #5675: a peer's picture reaches this device as a reference with no
+    /// filename, so its block binds to nothing until the manifest is read.
+    /// Opening the note reads it, the block binds, and its bytes are fetched.
+    @Test("opening a note names a peer's picture, then fetches it")
+    func unnamedPictureIsNamedThenFetched() async {
+        let reader = ScriptedAttachments(blocks: [imageBlock(url: "picture.png")], bindings: [:])
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(
+                downloaded: true, deferred: false, bytes: 100, localPath: "att-1"
+            ),
+            onFetch: { reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: "att-1"))) },
+            onManifests: {
+                reader.rebind("picture.png", to: .bound(attachment: cached(id: "att-1", localPath: nil)))
+                return 1
+            }
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .wifi)
+        )
+        await model.loadIfNeeded()
+        #expect(model.attachments["picture.png"] == .unknown, "no name yet")
+
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.named == ["note-1"])
+        #expect(filler.fetched == ["att-1"], "the newly bound picture is fetched in the same open")
+        guard case let .bound(attachment) = model.attachments["picture.png"] else {
+            Issue.record("the picture did not bind after its manifest was read")
+            return
+        }
+        #expect(attachment.localPath == "att-1")
+    }
+
+    @Test("offline, opening a note names nothing")
+    func offlineNamesNothing() async {
+        let reader = ScriptedAttachments(blocks: [imageBlock(url: "picture.png")], bindings: [:])
+        let filler = ScriptedAttachmentFiller(
+            summary: AttachmentFetchSummary(downloaded: false, deferred: true, bytes: 0, localPath: nil),
+            onManifests: { 1 }
+        )
+        let model = NoteReadViewModel(
+            route: route, reader: reader, filler: filler,
+            reachability: FixedPath(path: .offline)
+        )
+        await model.loadIfNeeded()
+        await model.fetchWaitingAttachments()
+
+        #expect(filler.named.isEmpty)
+        #expect(model.attachments["picture.png"] == .unknown)
     }
 
     /// Q4: desktop refuses to resolve a scheme-bearing url against the vault
