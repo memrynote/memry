@@ -140,6 +140,7 @@ import { resolveJournalEntryId } from '../journal/create-entry'
 import { recordTombstoneClock } from '@memry/sync-client/tombstone-clocks'
 import { _resetBulkApplyForTests } from './bulk-apply'
 import { journalHandler } from './item-handlers/journal-handler'
+import { getRemoteSyncAdapter } from './item-handlers'
 import {
   listOwedJournalDayMerges,
   oweJournalDayMerge,
@@ -739,6 +740,17 @@ describe('runJournalDayMerges', () => {
           ['a']
         ],
         [
+          'B4r: the same, the tombstone delivered again',
+          ['a', 'b'],
+          'held',
+          1,
+          false,
+          false,
+          ['a'],
+          true,
+          ['a']
+        ],
+        [
           'c1: a tag added offline',
           ['a', 'b', 'c'],
           'held',
@@ -820,14 +832,19 @@ describe('runJournalDayMerges', () => {
           ['a', 'b', 'x']
         ]
       ])('%s', async (_trace, held, text, tick, queued, edited, dayTags, redeliver, expected) => {
+        // Minted here and never pulled: only the acked push stamps `syncedAt`.
         foreignRow(
           { me: tick },
-          {
-            body: `---\ntags:\n${held.map((t) => `  - ${t}\n`).join('')}---\n${text}\n`,
-            // `modifiedAt` is 08:00.
-            syncedAt: edited ? '2026-06-09T07:00:00.000Z' : '2026-06-09T08:00:00.000Z'
-          }
+          { body: `---\ntags:\n${held.map((t) => `  - ${t}\n`).join('')}---\n${text}\n` }
         )
+        getRemoteSyncAdapter('journal')?.markPushSynced?.(ctx.db, FOREIGN)
+        if (edited) {
+          data.db
+            .update(noteMetadata)
+            .set({ modifiedAt: new Date(Date.now() + 60_000).toISOString() })
+            .where(eq(noteMetadata.id, FOREIGN))
+            .run()
+        }
         if (queued) {
           data.db
             .insert(syncQueue)

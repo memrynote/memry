@@ -263,6 +263,15 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     return cached
   }
 
+  /**
+   * Stamp the journal as "the server has this state", as notes do. Without it
+   * `syncedAt` recorded only pulls, so every journal minted here read as
+   * edited to the dirty sweep and to the day merge's holder weighing (#5659).
+   */
+  markPushSynced(db: DrizzleDb, itemId: string): void {
+    updateNoteMetadata(db, itemId, { syncedAt: utcNow() })
+  }
+
   buildPushPayload(
     db: DrizzleDb,
     itemId: string,
