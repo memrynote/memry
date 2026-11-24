@@ -54,8 +54,9 @@ let folderMoves: Promise<unknown> = Promise.resolve()
  * the other waited for while it waited for a note the other held. `move` ends
  * once the rows are at their new paths: a quit flush waits for the held
  * turns, so nothing in `move` waits on the CRDT store (#5475). A flush also
- * waits for a rename still queued, which holds no turn yet, so a quit never
- * leaves a folder moved with its rows at the old path.
+ * waits up to the held-work cap for a rename still queued, which holds no
+ * turn yet, so a quit within the cap leaves no folder moved with its rows at
+ * the old path.
  */
 export function moveFolderHoldingWritebacks<T>(
   folderPath: string,

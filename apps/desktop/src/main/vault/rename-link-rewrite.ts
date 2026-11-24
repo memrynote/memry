@@ -157,16 +157,10 @@ async function rewriteSource(
     })
     return
   }
-  const original = await readVaultFile(getVaultRoot(), sourcePath)
-  if (!original) return
-
-  const rewritten = rewriteWikiLinksToNote(original, from, to, otherNoteWithTitleExists)
-  if (rewritten === null) return
-
   await landSourceRewrite(db, cached, {
     path: sourcePath,
     title: sourceId === noteId ? to.title : cached.title,
-    content: rewritten
+    rewrite: (raw) => rewriteWikiLinksToNote(raw, from, to, otherNoteWithTitleExists)
   })
 }
 
@@ -175,30 +169,44 @@ async function rewriteSource(
  * the renderer and the CRDT body (steps 1-4 above). Also used by the
  * unlinked-mention "Link" action.
  *
+ * `rewrite` maps the source's bytes to the rewritten ones, or null when there
+ * is nothing to rewrite; `false` when there was not.
+ *
  * The doc is fed outside the source's write-back turn, since the feed can wait
  * on the store (#5475); the file and the rows are written in the turn, at the
  * path the source has then. A folder rename that ran during the feed moved
  * the file and the rows, and writing the path read before it would make the
- * old folder again and move the rows back (#5690).
+ * old folder again and move the rows back (#5690). The turn rewrites the bytes
+ * the file holds then: a tag or property written during the feed is in them,
+ * and the bytes read before it would write over it.
  */
 export async function landSourceRewrite(
   db: IndexDb,
   cached: NoteCache,
-  source: { path: string; title: string; content: string }
-): Promise<void> {
+  source: { path: string; title: string; rewrite: (raw: string) => string | null }
+): Promise<boolean> {
   const sourceId = cached.id
-  const rewritten = source.content
+  const original = await readVaultFile(getVaultRoot(), source.path)
+  const rewritten = original ? source.rewrite(original) : null
+  if (rewritten === null) return false
   const parsed = parseNote(rewritten, source.path)
   const fed = await feedBodyEdit(sourceId, source.path, () =>
     feedExternalEditToCrdt(sourceId, parsed.content, writingFrontmatterOf(parsed.frontmatter))
   )
-  await takeWritebackTurn(sourceId, async () => {
+  return takeWritebackTurn(sourceId, async () => {
     const sourcePath = currentSourcePath(db, cached, source.path)
     if (sourcePath === null) {
       log.warn('Dropped a link rewrite: its source note was deleted meanwhile', { sourceId })
-      return
+      return false
     }
-    await writeSourceRewrite(db, cached, { ...source, path: sourcePath }, fed)
+    const current = await readVaultFile(getVaultRoot(), sourcePath)
+    const content = current ? source.rewrite(current) : null
+    if (content === null) {
+      log.warn('Dropped a link rewrite: its source no longer holds the link', { sourceId })
+      return false
+    }
+    await writeSourceRewrite(db, cached, { ...source, path: sourcePath, content }, fed)
+    return true
   })
 }
 

@@ -486,6 +486,61 @@ describe('a write-back across its folder rename (#5671)', () => {
       expect(await afterRename()).toEqual(RENAMED_WITH_EDIT)
     }, 30_000)
 
+    // REVIEW-5719 (1): the update reads its path in the turn the rename holds,
+    // so the write held at the old path waits for the move instead of racing it.
+    it('a body update held at its write while the folder moves lands where it moved', async () => {
+      await seedNote()
+      await startWatcher(vault.path)
+      const { release, atWrite } = holdEditedWrite()
+
+      const updating = invokeHandler(NotesChannels.invoke.UPDATE, { id: 'plain', content: EDITED })
+      let renaming: Promise<unknown> = Promise.resolve()
+      try {
+        await atWrite
+        renaming = renameFolderIpc('Folder', 'Renamed')
+        // Long enough for the rename to move the folder if nothing held it back.
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      } finally {
+        release()
+      }
+      await updating
+      expect(await renaming).toEqual({ success: true })
+      await settleWatcher()
+
+      expect(await afterRename()).toEqual(RENAMED_WITH_EDIT)
+    }, 30_000)
+
+    // REVIEW-5719 (3): the link rewrite read the source before its feed, so a
+    // tag written while the feed waited on the store was written over.
+    it("a tag written while a rename's link rewrite waits on the store survives it", async () => {
+      const linker = '# l\n\nsee [[Folder/n]]\n'
+      seed('linker', 'B/l.md', linker)
+      await seedNote()
+      indexLinks('linker', 'B/l.md', linker)
+      await flushProjectionEvents()
+      const release = stallStore('linker')
+
+      const renaming = renameFolderIpc('Folder', 'Renamed')
+      try {
+        await vi.waitFor(() => opened('linker'))
+        expect(
+          await invokeHandler(NotesChannels.invoke.UPDATE, {
+            id: 'linker',
+            headerTags: { add: ['kept'], remove: [] }
+          })
+        ).toMatchObject({ success: true })
+      } finally {
+        release()
+      }
+      expect(await renaming).toEqual({ success: true })
+
+      const file = read('B/l.md') ?? ''
+      expect({ tag: file.includes('kept'), link: file.includes('[[Renamed/n]]') }).toEqual({
+        tag: true,
+        link: true
+      })
+    }, 30_000)
+
     it("a rename's link rewrite lands where the linking note's folder moved", async () => {
       const linker = '# l\n\nsee [[Folder/n]]\n'
       seed('linker', 'B/l.md', linker)
