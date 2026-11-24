@@ -1264,15 +1264,20 @@ across devices:
   for the same file is the only one, and a 404 counts once. It records the
   download as owed instead (`markDroppedDownloadOwed`), so the re-driver asks
   for it when nothing else does. A failure row the new runtime already wrote
-  keeps its window, and a download the new runtime landed or still holds is
-  not owed: the re-driver would write over an edit made since. A pull's
+  keeps its window, and a download the new runtime landed or a pull in it
+  still holds is not owed: the re-driver would write over an edit made since.
+  One an open holds is owed, since a second restart clears it without owing
+  it, and its landing clears the row. A pull's
   request that is queued or mid-transfer when the runtime restarts settles as
   `DownloadQueueClearedError` and is owed the same way: the new runtime's pull
   starts from its cursor, and with auto-download on an open asks for nothing,
   so without the row the file would land only when its note is pulled again
-  (#5697). Disposing the queue aborts running transfers, and the runtime
-  teardown waits until every download has recorded its outcome, so a vault
-  switch closes the databases after the rows are written. The re-driver asks
+  (#5697). The teardown owes every pull's request still unsettled while the
+  vault's databases are open, then aborts running transfers and waits for
+  their outcomes at most a few seconds (on quit, within the shutdown budget).
+  A download that settles after its vault's database closed or another
+  vault's opened writes nothing, so teardown never waits unbounded and a late
+  outcome never lands in the next vault. The re-driver asks
   once per owed file. When the file is already there, an embed is found
   through its attachment record with no request, and a binary note's file
   that has the manifest's size and sha256 costs one manifest read: no chunk is

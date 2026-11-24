@@ -406,7 +406,7 @@ type RegisteredUploader = OutboxDrainDeps['upload']
 let registeredUploader: RegisteredUploader | null = null
 let getDbForDrain: (() => DrizzleDb) | null = null
 let onUploadedForDrain: OutboxDrainDeps['onUploaded'] | null = null
-let registeredQueueReset: (() => Promise<void>) | null = null
+let registeredQueueReset: ((settleWithinMs: number) => Promise<void>) | null = null
 let draining = false
 
 export function registerOutboxUploader(
@@ -428,16 +428,24 @@ export function registerOutboxUploader(
  * the queue can still serve the wrong vault. The IPC layer registers its
  * disposer here; the runtime calls it on every teardown.
  */
-export function registerAttachmentQueueReset(reset: (() => Promise<void>) | null): void {
+export function registerAttachmentQueueReset(
+  reset: ((settleWithinMs: number) => Promise<void>) | null
+): void {
   registeredQueueReset = reset
 }
 
+/** How long a vault switch or sign-out waits for the downloads it stopped. */
+export const DOWNLOAD_SETTLE_TIMEOUT_MS = 3_000
+
 /**
  * No-ops until the IPC layer has registered a disposer. Resolves once the
- * downloads it stopped have recorded their outcomes.
+ * downloads it stopped have recorded their outcomes, or after
+ * `settleWithinMs`: those still running then write nothing (REVIEW-5722).
  */
-export function resetAttachmentQueue(): Promise<void> {
-  return registeredQueueReset?.() ?? Promise.resolve()
+export function resetAttachmentQueue(
+  settleWithinMs: number = DOWNLOAD_SETTLE_TIMEOUT_MS
+): Promise<void> {
+  return registeredQueueReset?.(settleWithinMs) ?? Promise.resolve()
 }
 
 /**

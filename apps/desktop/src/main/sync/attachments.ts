@@ -1450,7 +1450,14 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
     return this.retryingRequest(
       async () => {
-        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        const resp = await binaryFetch(
+          'GET',
+          url,
+          token,
+          undefined,
+          this.deps.fetchFn,
+          netOpts?.signal
+        )
         if (!resp.ok) {
           throw new SyncServerError(`Failed to download chunk ${encryptedHash}`, resp.status)
         }

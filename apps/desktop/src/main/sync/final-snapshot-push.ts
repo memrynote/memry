@@ -16,6 +16,11 @@ export interface StopSyncRuntimeOptions {
    * offline quit already do. Omitted: unbounded, as before.
    */
   finalSyncTimeoutMs?: number
+  /**
+   * Upper bound on the wait for the attachment downloads the stop aborts.
+   * Omitted: `DOWNLOAD_SETTLE_TIMEOUT_MS`. Never unbounded (REVIEW-5722).
+   */
+  downloadSettleTimeoutMs?: number
 }
 
 export async function pushFinalSnapshots(timeoutMs: number | undefined): Promise<void> {

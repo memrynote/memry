@@ -153,6 +153,7 @@ import {
   completeWithin,
   closeVaultDrainTimeoutMs,
   finalSnapshotPushTimeoutMs,
+  shutdownDownloadSettleMs,
   runShutdownSequence,
   SHUTDOWN_HARD_BACKSTOP_MS,
   SHUTDOWN_LAST_CHANCE_MS,
@@ -2299,12 +2300,18 @@ app.on('before-quit', (event) => {
         // unsynced.
         if (isQuitAndInstallRequested()) {
           shutdownLog.info('stopping sync runtime (skip final push for update)...')
-          return stopSyncRuntime({ skipFinalSync: true })
+          return stopSyncRuntime({
+            skipFinalSync: true,
+            downloadSettleTimeoutMs: shutdownDownloadSettleMs(deadline)
+          })
         }
         // The final push is bounded so it cannot eat the budget the provider
         // flush and close-vault behind it need (#2522).
         shutdownLog.info('stopping sync runtime...')
-        return stopSyncRuntime({ finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline) })
+        return stopSyncRuntime({
+          finalSyncTimeoutMs: finalSnapshotPushTimeoutMs(deadline),
+          downloadSettleTimeoutMs: shutdownDownloadSettleMs(deadline)
+        })
       }
     },
     {

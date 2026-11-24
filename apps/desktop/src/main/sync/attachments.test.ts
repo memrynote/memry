@@ -1575,6 +1575,50 @@ describe('terminal transfer phases', () => {
       expect(events.map((e) => e.phase)).toEqual(['decrypting', 'completed'])
     })
   })
+
+  // REVIEW-5722: the queue's dispose() aborts a stalled proxied chunk read.
+  it('abandons a proxied chunk read in flight when its signal aborts', async () => {
+    const vaultKey = generateFileKey()
+    const signingKeypair = sodium.crypto_sign_keypair()
+    const { encManifest } = buildSignedManifest({
+      attachmentId: 'att-stalled',
+      filename: 'stalled.txt',
+      plaintext: Buffer.alloc(256, 'S'),
+      vaultKey,
+      signingKeypair
+    })
+    let chunkAsked = false
+    const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+      if (urlStr.includes('/att-stalled/manifest')) {
+        return new Response(JSON.stringify(encManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (urlStr.includes('/chunks/')) {
+        chunkAsked = true
+        return new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('This operation was aborted', 'AbortError'))
+          )
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+    )
+    const controller = new AbortController()
+
+    const download = service.downloadAttachment('att-stalled', path.join(tmpDir, 'stalled.txt'), {
+      signal: controller.signal
+    })
+    await vi.waitFor(() => expect(chunkAsked).toBe(true))
+    controller.abort()
+
+    await expect(download).rejects.toThrow(/abort/i)
+  })
 })
 
 // ============================================================================
