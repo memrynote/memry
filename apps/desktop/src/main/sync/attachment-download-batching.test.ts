@@ -321,13 +321,14 @@ describe('a manifest that names another attachment (#5652)', () => {
     expect(Buffer.compare(await readFile(targetPath), server.files.get('b')!)).toBe(0)
   })
 
-  it('refuses a batch answer under another attachment key before any chunk request or write', async () => {
+  it('refuses a batch answer under another attachment key, presigning none of its chunks, before any chunk request or write', async () => {
     const server = fakeServer({ a: 1, b: 1, c: 1 }, { servedAs: new Map([['b', 'c']]) })
     await server.service.downloadAttachment('a', path.join(tmpDir, 'a.bin'), {
       upcoming: () => ['b']
     })
     const afterA = { ...noTraffic, manifestBatch: 1, presign: 1, direct: 1 }
     expect(server.counts).toEqual(afterA)
+    expect(server.presignRequests).toEqual([server.chunkHashes.get('a')])
 
     await expect(
       server.service.downloadAttachment('b', path.join(tmpDir, 'b.bin'))
