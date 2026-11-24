@@ -15,7 +15,7 @@ import {
 } from '@memry/db-schema/data-schema'
 import type { DataDb } from './database.ts'
 import type { NotesService } from './notes.ts'
-import { normalizePath } from './paths.ts'
+import { normalizePath, vaultFolder } from './paths.ts'
 import { errorCode } from './errno.ts'
 
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
@@ -164,15 +164,6 @@ function uniquePath(filePath: string): string {
     counter += 1
   }
   return candidate
-}
-
-function safeFolder(folder: string): string {
-  const normalized = normalizePath(folder)
-  if (normalized.split('/').some((segment) => segment === '..')) {
-    throw new Error(`Folder must stay inside the vault: ${folder}`)
-  }
-  if (path.isAbsolute(folder)) throw new Error(`Folder must be vault-relative: ${folder}`)
-  return normalized
 }
 
 const captureMimeByKind: Record<InboxBinaryKind, Record<string, string>> = {
@@ -349,7 +340,8 @@ export function createInboxFilingService({
 
   async function fileOne(id: string, rawFolder: string, extraTags: string[]) {
     try {
-      const folder = safeFolder(rawFolder)
+      // `fileBinary` moves the file here, and a link on the way would take it out of the vault (#5679).
+      const folder = await vaultFolder(vaultPath, rawFolder, 'file inbox item', { allowRoot: true })
       const item = getItem(id)
       if (!item) return { success: false, filedTo: null, error: 'Inbox item not found' }
       if (item.filedAt) {
@@ -365,7 +357,7 @@ export function createInboxFilingService({
       const note = await notes.create({
         title: noteTitle(item),
         content: noteBody(item),
-        folder: folder || undefined,
+        folder: normalizePath(rawFolder) || undefined,
         tags
       })
       markFiled(id, note.path, 'folder')

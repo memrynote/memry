@@ -142,7 +142,9 @@ struct NotePageContent<EmptyBody: View>: View {
             NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
         let preview = NoteBodyPreview.of(detail.body)
-        if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
+        if let file = model.file {
+            NoteFileView(file: file, fetch: model.fileFetch) { Task { await model.fetchFile() } }
+        } else if (model.blocks.isEmpty && model.showsPreview(preview)) || keepsEmptyBody {
             // No blocks to draw. Which of the three reasons it is — never
             // pulled, genuinely empty, or a walk that failed — is the
             // caller's to say.
