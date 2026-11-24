@@ -1,6 +1,7 @@
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { hasPendingUpload } from '../attachment-outbox'
+import { checkUnhashedBinaryFile } from '../binary-hash-check'
 import { readSyncedBinaryHash } from '../binary-synced-hash'
 import {
   hashFile,
@@ -50,8 +51,14 @@ export function planPeerBinaryReplace(
   // merged with a change of this device's, a rename or a replacement, may not
   // have seen bytes this device uploaded: they are kept unless it has.
   const synced = readSyncedBinaryHash(db, note.id, mergedWith)
+  // With none recorded, the file is compared with the attachment it named
+  // (#5608). Not for a merged record: none is also bytes uploaded here that it
+  // has not seen, which match that attachment and are on no peer yet.
+  const unhashed =
+    changed || synced !== undefined || mergedWith !== undefined ? null : note.attachmentId
   return (landingPath) => {
     const sha256 = changed || synced === undefined ? null : hashFile(landingPath)
     markCaseTwinForeignBytes(db, note.id, sha256 !== null && sha256 === synced ? { sha256 } : null)
+    if (unhashed) checkUnhashedBinaryFile(db, note.id, unhashed, landingPath)
   }
 }

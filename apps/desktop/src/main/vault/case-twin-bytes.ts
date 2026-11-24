@@ -328,6 +328,17 @@ export function markCaseTwinForeignBytes(db: DrizzleDb, noteId: string, mark: Ma
   writeMark(db, noteId, readCaseTwinForeignBytes(db, noteId) === null ? null : mark)
 }
 
+/**
+ * Note `noteId`'s file, marked as holding a change on no server, hashes to
+ * `sha256`, bytes a server holds (#5608): the landing keeps only a change made
+ * since. False, with nothing written, when the mark is not null.
+ */
+export function markHeldFileOnServer(db: DrizzleDb, noteId: string, sha256: string): boolean {
+  if (readCaseTwinForeignBytes(db, noteId) !== null) return false
+  writeMark(db, noteId, { sha256 })
+  return true
+}
+
 export function holdsCaseTwinForeignBytes(db: DrizzleDb, noteId: string): boolean {
   return readCaseTwinForeignBytes(db, noteId) !== undefined
 }
