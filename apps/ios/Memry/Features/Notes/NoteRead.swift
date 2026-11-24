@@ -376,33 +376,11 @@ final class NoteReadViewModel {
         phase = .ready(detail)
         await loadBlocks()
         await loadMetadata()
-        await loadVaultNotes()
-    }
-
-    /// The vault's notes, for the wiki-link search (N602).
-    ///
-    /// A failure leaves the list empty rather than failing the screen: not
-    /// being able to search for a link is much smaller than not being able to
-    /// read the note.
-    private func loadVaultNotes() async {
-        do {
-            vaultNotes = try await reader.list()
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's notes could not be listed for linking")
-            vaultNotes = []
-        }
-        do {
-            var colors: [String: String] = [:]
-            let tags = try await reader.tags()
-            for tag in tags {
-                if let color = tag.color, !color.isEmpty { colors[tag.name.lowercased()] = color }
-            }
-            tagColors = colors
-            vaultTagNames = tags.sorted { $0.noteCount > $1.noteCount }.map(\.name)
-        } catch {
-            if Task.isCancelled { return }
-            Log.storage.error("the vault's tag colours could not be read")
+        guard let notes = await readVaultNotes() else { return }
+        vaultNotes = notes
+        if let tags = await readVaultTags() {
+            tagColors = tags.colors
+            vaultTagNames = tags.names
         }
     }
 }
