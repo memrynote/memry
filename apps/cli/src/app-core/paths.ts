@@ -1,6 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { normalizeJournalFolder } from '@memry/storage-vault'
+import {
+  normalizeJournalFolder,
+  parseVaultFolder,
+  windowsTrimsFolderName
+} from '@memry/storage-vault'
 import { errorCode } from './errno.ts'
 
 export interface VaultConfig {
@@ -39,6 +43,71 @@ export function normalizePath(value: string): string {
   while (end > start && normalized[end - 1] === '/') end -= 1
 
   return normalized.slice(start, end)
+}
+
+/** One path segment, such as a note id or a file name: not empty, no separator, not `.` or `..`. */
+export function isPlainSegment(value: string): boolean {
+  return (
+    value.length > 0 &&
+    !value.includes('/') &&
+    !value.includes('\\') &&
+    value !== '.' &&
+    value !== '..'
+  )
+}
+
+/**
+ * The vault folder a command that writes there names, as note rows name it. Throws
+ * `Refusing to <action>` for what desktop's rules (`parseVaultFolder`,
+ * `windowsTrimsFolderName`) do not read as a folder inside the vault, and for a path
+ * through a link, which can lead anywhere outside it (#5658). The vault itself is `''` when `allowRoot`. A leading `/` is vault-relative
+ * in the CLI, a shipped contract, so it is stripped before the shared rule. The links are
+ * found by an `lstat` of each existing segment, as Tauri's `plain_folders` refuses them:
+ * a realpath comparison would also trip on another case spelling, which macOS resolves.
+ */
+export async function vaultFolder(
+  vaultPath: string,
+  requested: string,
+  action: string,
+  { allowRoot = false }: { allowRoot?: boolean } = {}
+): Promise<string> {
+  const parsed = parseVaultFolder(normalizePath(requested))
+  if (parsed.kind === 'root' && allowRoot) return ''
+  if (parsed.kind !== 'folder') {
+    throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
+  }
+  const folder = parsed.path
+  if (windowsTrimsFolderName(folder)) {
+    throw new Error(
+      `Refusing to ${action}: "${requested}" ends in a dot or a space, which Windows drops, so it names another folder.`
+    )
+  }
+  const segments = folder.split('/')
+  for (let index = 1; index <= segments.length; index += 1) {
+    const walked = segments.slice(0, index).join('/')
+    try {
+      if (!(await fs.lstat(path.join(vaultPath, walked))).isSymbolicLink()) continue
+    } catch (error) {
+      const code = errorCode(error)
+      // The rest does not exist yet, so the write creates plain folders there.
+      if (code === 'ENOENT' || code === 'ENOTDIR') break
+      throw error
+    }
+    throw new Error(
+      `Refusing to ${action}: "${walked}" is a link, and a path through a link can lead outside the vault.`
+    )
+  }
+  return folder
+}
+
+/** A folder's `.folder.md`, which desktop's `getFolderConfigPath` also keeps for the vault root (#5679). */
+export async function folderConfigFile(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  const folder = await vaultFolder(vaultPath, requested, action, { allowRoot: true })
+  return path.join(vaultPath, folder, '.folder.md')
 }
 
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars

@@ -140,6 +140,20 @@ function wasDeleted(noteId: string, diskPath: string): boolean {
   return uploadFileState(getDatabase(), vaultPath, { noteId, diskPath }) === 'deleted'
 }
 
+/**
+ * A pull's request a sync runtime restart dropped: owed, the re-driver asks
+ * for it when nothing else does. A row the new runtime wrote keeps its own
+ * window. Never throws: the request it settles is already gone.
+ */
+function oweDownload(noteId: string, attachmentId: string): void {
+  if (!isDatabaseInitialized()) return
+  try {
+    markDownloadOwed(getDatabase(), noteId, attachmentId)
+  } catch (err) {
+    logger.warn('Failed to record a dropped download as owed', { noteId, attachmentId, err })
+  }
+}
+
 function heldAtRecordedPath(noteId: string, attachmentId: string): boolean {
   const vaultPath = getVaultStatus().path
   if (!vaultPath || !isDatabaseInitialized()) return false
@@ -387,9 +401,9 @@ export function clearAttachmentState(): void {
     uploadQueue = null
   }
   if (downloadQueue) {
-    // Rejects queued items with DownloadQueueClearedError; the download-needed
-    // callback releases their claims instead of recording failures, so the next
-    // pull or re-drive is free to request them again.
+    // Rejects queued and running items with DownloadQueueClearedError; the
+    // download-needed callback releases their claims instead of recording
+    // failures, and owes a pull's request so the re-driver asks for it again.
     downloadQueue.dispose()
     downloadQueue = null
   }
@@ -753,14 +767,7 @@ export function registerAttachmentHandlers(): void {
       const token = await getValidAccessToken()
       // The sync runtime restarted during the wait, and whoever asks in the new
       // one holds the download: asking too would count the server's 404 twice.
-      // Owed, the re-driver asks for it when nothing else does; a row the new
-      // runtime wrote keeps its own window.
-      if (!holdsDownload(event.claim)) {
-        if (isDatabaseInitialized()) {
-          markDownloadOwed(getDatabase(), event.noteId, event.attachmentId)
-        }
-        return
-      }
+      if (!holdsDownload(event.claim)) return oweDownload(event.noteId, event.attachmentId)
       if (!token) return releaseDownloadAttempt(event.claim)
       await materializeDownload(event, 'eager')
     })()
@@ -890,7 +897,8 @@ async function materializeDownload(
   } catch (err) {
     if (err instanceof SupersededDownloadError) {
       // A newer record named another attachment while this one
-      // downloaded (#5580): nothing is owed for it any more.
+      // downloaded (#5580), or the note's row is gone (REVIEW-5662):
+      // nothing is owed for it any more.
       logger.info('Dropped a download its note no longer names', { noteId, attachmentId })
       releaseDownloadAttempt(claim)
       if (isDatabaseInitialized()) {
@@ -899,10 +907,12 @@ async function materializeDownload(
       return null
     }
     if (err instanceof DownloadQueueClearedError) {
-      // Queue torn down (vault switch / runtime restart) before the item
-      // ran. Not an outcome — release the claim so the next pull or
-      // re-drive can ask again, and record no failure.
+      // Queue torn down (vault switch / runtime restart) before the transfer
+      // finished. Not an outcome: release the claim and record no failure.
+      // The new runtime's pull starts from its cursor and, with auto-download
+      // on, an open asks for nothing, so a pull's request is owed (#5697).
       releaseDownloadAttempt(claim)
+      if (source === 'eager') oweDownload(noteId, attachmentId)
       return null
     }
     const message = err instanceof Error ? err.message : 'Unknown error'

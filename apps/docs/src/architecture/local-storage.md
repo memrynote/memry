@@ -475,7 +475,7 @@ is refused too.
 ### Note rows made of attachment files
 
 No note lives in the vault-root `attachments` folder. The indexer and the watcher skip it, and
-one check, `isInAttachmentStore` in `src/main/vault/attachments.ts`, decides that for the
+one check, `isInAttachmentStore` in `packages/shared/src/attachment-store.ts`, decides that for the
 indexer's walk, the watcher's `ignored` matcher and the watcher's add handler. The check reads
 the path relative to the vault with either separator.
 
@@ -534,7 +534,8 @@ of a stray leaves the device whichever runs first:
 - Deleting a stray on this device drops the row and keeps the file, and queues no delete, now
   or deferred: the "never leaves this device" switch (`staysOnDevice` in
   `src/main/sync/content-sync-base.ts`) covers a stray as it covers a local-only note. The
-  delete frees none of its blob either.
+  delete frees none of its blob either. The CLI's `notes delete` follows the same rule
+  (`isAttachmentStoreRow`, shared with desktop).
 - A peer's delete that applies here drops the row and keeps the file (`isAttachmentStoreRow`).
 
 ### Text colors in markdown

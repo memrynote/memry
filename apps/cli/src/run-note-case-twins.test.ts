@@ -103,15 +103,22 @@ function dropRow(vaultPath: string, id: string): void {
 
 /** The shared file's bytes and mtime, both rows, and the index tables. */
 async function twinState(vaultPath: string, ids: string[]) {
-  const file = path.join(vaultPath, 'SuperNotes/Real.md')
-  const { mtimeNs } = await fs.stat(file, { bigint: true })
-  const sha256 = createHash('sha256')
-    .update(await fs.readFile(file))
-    .digest('hex')
+  // One handle, so the mtime and the bytes come from the same file.
+  const handle = await fs.open(path.join(vaultPath, 'SuperNotes/Real.md'))
+  let file: { sha256: string; mtimeNs: bigint }
+  try {
+    const { mtimeNs } = await handle.stat({ bigint: true })
+    const sha256 = createHash('sha256')
+      .update(await handle.readFile())
+      .digest('hex')
+    file = { sha256, mtimeNs }
+  } finally {
+    await handle.close()
+  }
   const databases = openDatabases(vaultPath)
   try {
     return {
-      file: { sha256, mtimeNs },
+      file,
       rows: ids.map((id) => getNoteMetadataById(databases.dataDb, id) ?? null),
       noteCache: databases.indexDb.select().from(noteCache).all(),
       noteNames: databases.indexDb.select().from(noteNames).all()
@@ -176,7 +183,8 @@ test('notes rename and move refuse a case twin and change nothing', { skip }, as
 
 test('folders rename refuses a folder holding case twins and moves nothing', { skip }, async () => {
   const { vaultPath, twin } = await makeTwinVault()
-  for (const folder of ['SuperNotes', 'supernotes']) {
+  // The check and the rename see one folder, however the path spells it (#5642).
+  for (const folder of ['SuperNotes', 'supernotes', './SuperNotes', 'SuperNotes//.']) {
     const result = await cli(vaultPath, 'folders', 'rename', folder, 'Archive')
     assert.equal(result.code, 1, folder)
     assert.equal(result.stdout, '', folder)

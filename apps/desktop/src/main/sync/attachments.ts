@@ -381,6 +381,26 @@ function hashFileInto(
   })
 }
 
+/**
+ * Whether the file at `filePath` holds exactly the manifest's bytes. Size
+ * first, then hash: a same-size edit is other bytes.
+ */
+async function holdsManifestBytes(
+  filePath: string,
+  manifest: Pick<AttachmentManifest, 'size' | 'checksum'>
+): Promise<boolean> {
+  try {
+    if ((await stat(filePath)).size !== manifest.size) return false
+    const hashState = sodium.crypto_hash_sha256_init()
+    await hashFileInto(hashState, filePath)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
+    return sodium.to_hex(sodium.crypto_hash_sha256_final(hashState)) === manifest.checksum
+  } catch {
+    // Not on disk, or unreadable: the download replaces it.
+    return false
+  }
+}
+
 // ============================================================================
 // AttachmentSyncService
 // ============================================================================
@@ -402,14 +422,12 @@ const fromB64 = (s: string): Uint8Array =>
  * download would land that file under this id (#5652), and a deleted-asset
  * release would free that attachment's chunks on the server (#5664). A plain
  * Error, so markDownloadFailed counts it transient (never abandoned or pruned)
- * and every chunkHashesOf caller keeps its work for a later pass.
+ * and every chunkHashesOf caller keeps its work for a later pass. It logs
+ * nothing: the caller that gives up the work reports this message once, and
+ * a batch prefetch stays quiet because its download refuses the manifest again.
  */
 function requireOwnManifest(attachmentId: string, manifest: AttachmentManifest): void {
   if (manifest.id === attachmentId) return
-  log.warn('manifest names another attachment; refusing it', {
-    attachmentId,
-    manifestId: manifest.id
-  })
   throw new Error(`Manifest names attachment ${manifest.id}, not ${attachmentId}`)
 }
 
@@ -848,6 +866,25 @@ export class AttachmentSyncService {
           }
         } catch {
           // not on disk yet — proceed with the download
+        }
+      }
+
+      // A binary note's file a re-drive finds already holding these bytes, as
+      // after a runtime restart dropped a request the new one landed
+      // (VERIFY-5683). The landing's checks still run, and only a landing on
+      // this same file skips the chunks: a case twin's lands elsewhere.
+      if (opts?.fileOwnerId !== undefined && (await holdsManifestBytes(destPath, manifest))) {
+        const landAt = await this.deps.beforeFileLands?.(
+          destPath,
+          attachmentId,
+          manifest.checksum,
+          opts.fileOwnerId
+        )
+        if ((landAt ?? destPath) === destPath) {
+          log.debug('binary note file already holds the attachment, skipping download', {
+            attachmentId
+          })
+          return { filePath: destPath, manifest }
         }
       }
 
