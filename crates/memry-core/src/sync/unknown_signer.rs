@@ -21,9 +21,12 @@
 //! Only a well-formed answer that leaves the id out counts toward
 //! [`MAX_RETRIES`]: anything else would give up on a record over a server
 //! hiccup (#5502). The server's unusable answer about the request (a record
-//! still unverifiable, a 4xx with its error code) counts toward
+//! still unverifiable, a coded 4xx kept as [`ApiError::Status`]) counts toward
 //! [`MAX_FAILURES`], which still bounds the hold. Nothing else counts: transport,
-//! 5xx, 429, a 200 that is no pull envelope, a 4xx with no code (a portal's).
+//! 5xx, 429, a 200 that is no pull envelope, a 4xx with no code (a portal's), a
+//! 4xx that arrives as its own [`ApiError`] variant (any 401, a revoked device,
+//! a 402 vault limit, a 403 with writes disabled, a 409 device limit, a 426
+//! upgrade-required): it is about the session, device or plan, not the record.
 //!
 //! The settings item reuses the hold (#5433): an edit over a deleted
 //! payload-less settings row ([`crate::domain::settings::apply`]) records a
@@ -58,9 +61,9 @@ use super::pull::{PullError, PullLoop, PullReport};
 /// stays at this count, given up.
 pub(crate) const MAX_RETRIES: u32 = 5;
 
-/// Re-pulls the server refused (a 4xx with its error code) or answered
-/// unverifiable before a hold gives up. Stored after a `/` in the `meta`
-/// value; an older build parses such a value as 0 and keeps holding.
+/// Re-pulls the server refused (a coded 4xx kept as [`ApiError::Status`]) or
+/// answered unverifiable before a hold gives up. Stored after a `/` in the
+/// `meta` value; an older build parses such a value as 0 and keeps holding.
 pub(crate) const MAX_FAILURES: u32 = 50;
 
 const KEY_PREFIX: &str = "sync.unknown_signer_wait:";
@@ -186,11 +189,18 @@ async fn re_pull(
     ids.sort();
     ids.dedup();
     let result = pull.fetch_ids(&ids).await;
-    if let Err(error) = &result {
-        eprintln!(
+    match &result {
+        Err(error) => eprintln!(
             "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
             ids.len()
-        );
+        ),
+        Ok(report) if report.dropped_pages > 0 => eprintln!(
+            "memry-core: re-pulling {} record(s) of an unknown signer got {} answer(s) \
+             that were no pull envelope",
+            ids.len(),
+            report.dropped_pages
+        ),
+        Ok(_) => {}
     }
     let counted = counted(&result);
     if matches!(counted, Counted::Nothing) {
