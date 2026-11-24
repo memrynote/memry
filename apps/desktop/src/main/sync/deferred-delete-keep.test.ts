@@ -436,6 +436,26 @@ describe('a note delete sent after the fact, pulled by a peer with text it never
     expect(warned).toHaveLength(1)
   })
 
+  it('covers a later CLI delete of a journal day it covered once before', async () => {
+    seedNote(deviceA, 'Old\n', DAY)
+    cliDelete(DAY)
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+    // The server took the delete; the day is written again and held as a doc.
+    asClientDb(deviceA.db).delete(syncPendingDeletes).run()
+    seedNote(deviceA, 'Old\n', DAY)
+    asClientDb(deviceA.db).update(noteMetadata).set({ createdAt: '2026-10-01T10:00:00.000Z' }).run()
+    store.set(DAY.id, [held])
+    cliDelete(DAY)
+
+    // A later sync runtime start in the same session.
+    await coverQueuedContentDeletes(asSyncDb(deviceA.db))
+    startNoteSync()
+    initJournalSyncService({ queue, getDeviceId: () => DEVICE_A })
+    flushPendingLocalDeletes(asSyncDb(deviceA.db))
+
+    expect(await peerPulls(queuedDelete(DAY), DAY)).toEqual([DAY.copy])
+  })
+
   it('covers the other queued deletes when one fails, and logs it', async () => {
     seedNote(deviceA, 'Old\n')
     seedNote(deviceA, 'Old\n', DAY)

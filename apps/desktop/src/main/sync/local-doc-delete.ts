@@ -72,7 +72,11 @@ export async function deleteDocLocally(noteId: string, raiseTombstone: () => voi
   if (rowGone) pending.forEach(sendPendingContentDelete)
 }
 
-/** Per database: the ids whose queued delete a cover already tried (#5693). */
+/**
+ * Per database: the queued delete rows a cover already tried (#5693). Keyed on
+ * the row, not the id: a journal day's id recurs, and its next delete carries
+ * a new payload, so it is tried once too.
+ */
 const coverTried = new WeakMap<DrizzleDb, Set<string>>()
 
 /**
@@ -83,7 +87,7 @@ const coverTried = new WeakMap<DrizzleDb, Set<string>>()
  * (`landNoteBody`), so the doc holds exactly what this device had when the
  * note was deleted. `flushPendingLocalDeletes` sends the deletes after.
  *
- * Each delete is tried once per database: after a try the doc is purged, so a
+ * Each queued row is tried once per database: after a try the doc is purged, so a
  * delete still uncovered stays so, and the manifest check retires it later.
  * A delete that fails is logged and the others still run, so sync starts.
  */
@@ -91,12 +95,13 @@ export async function coverQueuedContentDeletes(db: DrizzleDb): Promise<void> {
   const tried = coverTried.get(db) ?? new Set<string>()
   coverTried.set(db, tried)
   for (const item of listUncoveredContentDeletes(db)) {
-    if (tried.has(item.itemId)) continue
+    const row = `${item.type}\0${item.itemId}\0${item.payload}`
+    if (tried.has(row)) continue
     try {
       // A live row retires the delete in the flush; its doc is the note's.
       if (isSupersededByLiveRow(db, item.type, item.itemId)) continue
       await coverThenPurge(db, item.itemId, () => {})
-      tried.add(item.itemId)
+      tried.add(row)
     } catch (error) {
       log.error('Could not cover a queued note delete; it goes out with no body vector', {
         type: item.type,
