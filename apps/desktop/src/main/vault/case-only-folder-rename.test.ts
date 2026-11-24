@@ -21,8 +21,30 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { insertNoteCache } from '@main/database/queries/notes'
+import { eq } from 'drizzle-orm'
+import type * as PromisesModule from 'fs/promises'
 
+const fsHooks = vi.hoisted(() => ({
+  /** Set: runs before each `fs/promises` rename, which fails when it rejects. */
+  rename: null as ((from: string, to: string) => Promise<void>) | null,
+  /** Set: runs after each `fs/promises` rm. */
+  afterRm: null as (() => Promise<void>) | null
+}))
+
+vi.mock('fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof PromisesModule>()
+  const rename: typeof actual.rename = async (from, to) => {
+    await fsHooks.rename?.(String(from), String(to))
+    return actual.rename(from, to)
+  }
+  const rm: typeof actual.rm = async (...args) => {
+    await actual.rm(...args)
+    await fsHooks.afterRm?.()
+  }
+  return { ...actual, rename, rm }
+})
 vi.mock('electron', () => ({
+  app: { getPath: vi.fn(() => os.tmpdir()), isPackaged: false, getVersion: () => '0.0.0' },
   BrowserWindow: { getAllWindows: vi.fn(() => []) },
   ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
   shell: { openPath: vi.fn(), showItemInFolder: vi.fn(), trashItem: vi.fn() }
@@ -76,8 +98,8 @@ vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn(), trackMainL
 
 import { getDatabase, getIndexDatabase } from '../database'
 import { getStatus } from './index'
-import { syncNoteCreate } from '../notes/runtime-effects'
-import { renameFolderCommand } from '../notes/domain'
+import { syncNoteCreate, syncNoteDelete } from '../notes/runtime-effects'
+import { deleteFolderCommand, renameFolderCommand } from '../notes/domain'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import {
@@ -87,7 +109,9 @@ import {
 } from '../projections'
 import { clearIngestBackfill } from './ingest-backfill'
 import { clearAllPendingDeletes } from './rename-tracker'
-import { startWatcher, stopWatcher } from './watcher'
+import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { renameFolder } from './notes-crud'
+import { recoverFolderMoves } from './move-directory'
 
 function fileSystemIgnoresCase(): boolean {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-case-probe-'))
@@ -125,6 +149,8 @@ describe('folder rename', () => {
   })
 
   afterEach(async () => {
+    fsHooks.rename = null
+    fsHooks.afterRm = null
     await stopWatcher()
     await stopProjectionRuntime({ drain: true })
     clearIngestBackfill()
@@ -154,6 +180,107 @@ describe('folder rename', () => {
 
   const sortedPaths = (rows: Array<{ id: string; path: string }>) =>
     rows.map((row) => [row.id, row.path]).toSorted((a, b) => a[0].localeCompare(b[0]))
+
+  // Windows refuses to rename a folder while the watcher holds a subfolder
+  // open, so the folder moves entry by entry (#2206). A rename that retries
+  // past a lock holds the rows at their old paths after the rename window.
+  it('keeps every note of a folder whose entry-wise move outlasts the rename window', async () => {
+    const ids = ['a', 'b', 'c']
+    ids.forEach((id) => seedNote(id, `Locked/${id === 'c' ? 'Sub/' : ''}${id}.md`))
+    await startWatcher(vault.path)
+    fsHooks.rename = async (from) => {
+      if (from === path.join(vault.path, 'Locked')) {
+        throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+      }
+      if (path.basename(from) === 'b.md') await sleep(1500)
+    }
+
+    await renameFolderCommand('Locked', 'Moved')
+    await sleep(1500)
+    await flushProjectionEvents()
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    const expected = [
+      ['a', 'Moved/a.md'],
+      ['b', 'Moved/b.md'],
+      ['c', 'Moved/Sub/c.md']
+    ]
+    const select = { id: noteMetadata.id, path: noteMetadata.path }
+    expect(sortedPaths(data.db.select(select).from(noteMetadata).all())).toEqual(expected)
+    expect(
+      sortedPaths(index.db.select({ id: noteCache.id, path: noteCache.path }).from(noteCache).all())
+    ).toEqual(expected)
+  }, 15_000)
+
+  // A crash mid-move leaves the moved files in a staging directory no walk sees.
+  it('keeps every note of a folder whose entry-wise move a crash interrupted', async () => {
+    const paths: Record<string, string> = {
+      a: 'Locked/a.md',
+      b: 'Locked/b.md',
+      c: 'Locked/Sub/c.md'
+    }
+    for (const [id, relativePath] of Object.entries(paths)) {
+      seedNote(id, relativePath)
+      // Not hashed yet: the open pairs the row with its moved file by size and mtime.
+      const stats = fs.statSync(path.join(vault.path, relativePath))
+      index.db
+        .update(noteCache)
+        .set({ contentHash: null, fileSize: stats.size, modifiedAt: stats.mtime.toISOString() })
+        .where(eq(noteCache.id, id))
+        .run()
+    }
+    let crashed = false
+    fsHooks.rename = async (from) => {
+      if (from === path.join(vault.path, 'Locked')) {
+        throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' })
+      }
+      // Every entry is in the staging directory, which is about to become the folder.
+      if (path.basename(from).startsWith('.memry-move-')) {
+        crashed = true
+        await new Promise<void>(() => {})
+      }
+    }
+    void renameFolder('Locked', 'Moved')
+    await vi.waitFor(() => expect(crashed).toBe(true))
+    fsHooks.rename = null
+
+    // The next open.
+    await recoverFolderMoves(vault.path)
+    await startWatcher(vault.path)
+    await getWatcher().replayMissedRemovals()
+    await flushProjectionEvents()
+
+    expect(syncNoteDelete).not.toHaveBeenCalled()
+    const expected = [
+      ['a', 'Moved/a.md'],
+      ['b', 'Moved/b.md'],
+      ['c', 'Moved/Sub/c.md']
+    ]
+    const select = { id: noteMetadata.id, path: noteMetadata.path }
+    expect(sortedPaths(data.db.select(select).from(noteMetadata).all())).toEqual(expected)
+    expect(fs.readFileSync(path.join(vault.path, 'Moved/Sub/c.md'), 'utf8')).toBe('c\n')
+  }, 15_000)
+
+  it('deletes every note of a folder the app deletes, once the delete settles', async () => {
+    const ids = ['a', 'b', 'c']
+    ids.forEach((id) => seedNote(id, `Gone/${id === 'c' ? 'Sub/' : ''}${id}.md`))
+    await startWatcher(vault.path)
+    // The removals' rename windows close while the delete is still running.
+    fsHooks.afterRm = () => sleep(1500)
+
+    await deleteFolderCommand('Gone')
+    await vi.waitFor(() => expect(syncNoteDelete).toHaveBeenCalledTimes(ids.length), {
+      timeout: 5000
+    })
+
+    expect(
+      vi
+        .mocked(syncNoteDelete)
+        .mock.calls.map(([id]) => id)
+        .toSorted()
+    ).toEqual(ids)
+    expect(index.db.select().from(noteCache).all()).toEqual([])
+  }, 15_000)
 
   it('moves every note of a folder larger than a projection lane holds', async () => {
     const count = DEFAULT_PROJECTION_QUEUE_LIMIT + 100

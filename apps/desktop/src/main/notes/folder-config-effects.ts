@@ -88,6 +88,7 @@ export function syncFolderConfigSet(folderPath: string, icon: string | null | un
  * instead of tombstoning their rows as an outside delete (#2850).
  */
 const appFolderChanges = new Map<string, number>()
+const runningChanges = new Set<Promise<unknown>>()
 
 export function isAppFolderChange(folderPath: string): boolean {
   for (const owned of appFolderChanges.keys()) {
@@ -96,15 +97,23 @@ export function isAppFolderChange(folderPath: string): boolean {
   return false
 }
 
+/** Settles once no app folder change covers `folderPath`. */
+export async function settleAppFolderChanges(folderPath: string): Promise<void> {
+  while (isAppFolderChange(folderPath)) await Promise.allSettled(runningChanges)
+}
+
 /** Marks `folderPaths` as app-owned until `change` settles. */
 export async function withAppFolderChange<T>(
   folderPaths: string[],
   change: () => Promise<T>
 ): Promise<T> {
   for (const p of folderPaths) appFolderChanges.set(p, (appFolderChanges.get(p) ?? 0) + 1)
+  const running = (async () => await change())()
+  runningChanges.add(running)
   try {
-    return await change()
+    return await running
   } finally {
+    runningChanges.delete(running)
     for (const p of folderPaths) {
       const count = (appFolderChanges.get(p) ?? 1) - 1
       if (count > 0) appFolderChanges.set(p, count)

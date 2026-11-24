@@ -63,6 +63,7 @@ import { onDataDbCorruption } from '../database/data-db-corruption-signal'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { NoteError, NoteErrorCode, VaultError, VaultErrorCode } from '../lib/errors'
 import { getWatcher, startWatcher, stopWatcher } from './watcher'
+import { recoverFolderMoves } from './move-directory'
 import { installVaultLockFileGuard } from '../vault-locks/files'
 import { checkLockedFilesAtOpen } from '../vault-locks/service'
 import { watchLockedAttachments } from '../vault-locks/attachment-watch'
@@ -484,6 +485,16 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
   } catch (error) {
     logger.error('Dropping note rows made of attachment files failed:', error)
     trackMainError('vault', 'stray_attachment_rows', error)
+  }
+  if (isStale()) return
+
+  // Before the replay: a folder move a crash interrupted left its files where
+  // no walk sees them, and the replay would delete their notes.
+  try {
+    await recoverFolderMoves(vaultPath)
+  } catch (error) {
+    logger.error('Finishing folder moves a crash interrupted failed:', error)
+    trackMainError('vault', 'recover_folder_moves', error)
   }
   if (isStale()) return
 

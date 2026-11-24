@@ -63,6 +63,7 @@ function tree(): string[] {
   const walk = (dir: string): void => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const rel = path.relative(root, path.join(dir, entry.name)).split(path.sep).join('/')
+      if (rel === '.memry') continue
       if (entry.isDirectory()) {
         out.push(`${rel}/`)
         walk(path.join(dir, entry.name))
@@ -92,7 +93,7 @@ describe('moveDirectory', () => {
   })
 
   it('moves a folder that holds a subfolder when the directory itself cannot be renamed', async () => {
-    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'))
+    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'), root)
 
     expect(tree()).toEqual([
       'Delta/',
@@ -104,13 +105,15 @@ describe('moveDirectory', () => {
       'Delta/Beta/Gamma/g.md',
       'Delta/Beta/b.md'
     ])
+    // Nothing for the next open to finish.
+    expect(fs.readdirSync(path.join(root, '.memry/folder-moves'))).toEqual([])
   })
 
   it('puts every entry back when one file cannot be moved', async () => {
     windows.lockedFiles.add('g.md')
 
     await expect(
-      moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'))
+      moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'), root)
     ).rejects.toMatchObject({ code: 'EPERM' })
 
     expect(tree()).toEqual([
@@ -126,7 +129,7 @@ describe('moveDirectory', () => {
   })
 
   it('renames a folder that holds a subfolder to a case-only variant of its own name', async () => {
-    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'beta'))
+    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'beta'), root)
 
     expect(fs.readdirSync(root)).toContain('beta')
     expect(fs.readdirSync(root)).not.toContain('Beta')
@@ -138,7 +141,7 @@ describe('moveDirectory', () => {
     write('Delta/Beta/other.md')
 
     await expect(
-      moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'))
+      moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'), root)
     ).rejects.toMatchObject({ code: 'EPERM' })
 
     expect(tree()).toEqual([
@@ -158,7 +161,7 @@ describe('moveDirectory', () => {
   it('renames in one step where nothing holds the tree', async () => {
     windows.held = false
 
-    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'))
+    await moveDirectory(path.join(root, 'Beta'), path.join(root, 'Delta/Beta'), root)
 
     expect(tree()).toEqual([
       'Delta/',

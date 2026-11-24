@@ -1006,7 +1006,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
   const newAbsPath = path.join(notesDir, newPath)
 
   try {
-    await moveDirectory(oldAbsPath, newAbsPath)
+    await moveDirectory(oldAbsPath, newAbsPath, notesDir)
   } catch (error) {
     // The folder was already moved or deleted on disk (another window, sync, a
     // file manager) before the sidebar caught up. The rename still fails for the

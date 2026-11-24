@@ -6,7 +6,7 @@
 
 import path from 'path'
 import { existsSync } from 'fs'
-import { mkdir, readdir, rename, rmdir } from 'fs/promises'
+import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'fs/promises'
 import { randomBytes } from 'crypto'
 import { withTransientFsRetry } from './file-ops'
 import { createLogger } from '../lib/logger'
@@ -52,8 +52,15 @@ type UndoStep = () => Promise<unknown>
  *
  * All or nothing: a step that fails undoes every step before it and the
  * original error is thrown, so a failed move never leaves a folder split in two.
+ *
+ * A crash mid-move leaves the moved entries in the staging directory, which
+ * no index walk sees, while their rows still name the old paths: the next
+ * open would sync each note's delete. So the move records its staging
+ * directory in the vault's `.memry/folder-moves` until it is gone, and
+ * `recoverFolderMoves` finishes the move at the next open, before the removals
+ * are replayed and pair each moved file with its row.
  */
-export async function moveDirectory(from: string, to: string): Promise<void> {
+export async function moveDirectory(from: string, to: string, vaultRoot: string): Promise<void> {
   try {
     await rename(from, to)
     return
@@ -65,7 +72,12 @@ export async function moveDirectory(from: string, to: string): Promise<void> {
     if (!isLockedTreeError(error) || (existsSync(to) && !isCaseOnlyRename(from, to))) throw error
   }
 
-  const staging = path.join(path.dirname(to), `.memry-move-${randomBytes(6).toString('hex')}`)
+  const id = randomBytes(6).toString('hex')
+  const staging = path.join(path.dirname(to), `.memry-move-${id}`)
+  const journal = path.join(journalDir(vaultRoot), `${id}.json`)
+  const relative = (p: string): string => path.relative(vaultRoot, p).split(path.sep).join('/')
+  await mkdir(journalDir(vaultRoot), { recursive: true })
+  await writeFile(journal, JSON.stringify({ staging: relative(staging), to: relative(to) }))
   const undo: UndoStep[] = []
 
   try {
@@ -74,7 +86,67 @@ export async function moveDirectory(from: string, to: string): Promise<void> {
   } catch (error) {
     await runUndo(undo)
     throw error
+  } finally {
+    // Kept while an undo that failed leaves entries in the staging directory.
+    if (!existsSync(staging)) await rm(journal, { force: true })
   }
+}
+
+function journalDir(vaultRoot: string): string {
+  return path.join(vaultRoot, '.memry', 'folder-moves')
+}
+
+/**
+ * Vault open: finish each entry-wise move a crash interrupted. Its staging
+ * directory becomes the moved folder, and what the move had not reached stays
+ * in the old one, so no file is lost and the removal replay re-keys each
+ * moved note's row instead of deleting it.
+ */
+export async function recoverFolderMoves(vaultRoot: string): Promise<void> {
+  let names: string[]
+  try {
+    names = await readdir(journalDir(vaultRoot))
+  } catch (error) {
+    if (errnoCode(error) === 'ENOENT') return
+    throw error
+  }
+  for (const name of names) {
+    const journal = path.join(journalDir(vaultRoot), name)
+    const move = parseJournal(await readFile(journal, 'utf8'), vaultRoot)
+    if (!move) {
+      logger.error('Could not read the record of an interrupted folder move')
+      continue
+    }
+    const { staging, to } = move
+    if (existsSync(staging)) {
+      if (existsSync(to)) {
+        logger.error('An interrupted folder move cannot finish: its destination exists')
+        continue
+      }
+      await rename(staging, to)
+      logger.warn('Finished a folder move a crash interrupted')
+    }
+    await rm(journal, { force: true })
+  }
+}
+
+/** A move's absolute paths. Null unless its staging directory is a sibling of `to` in the vault. */
+function parseJournal(text: string, vaultRoot: string): { staging: string; to: string } | null {
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  } catch {
+    return null
+  }
+  if (typeof value !== 'object' || value === null) return null
+  if (!('staging' in value) || typeof value.staging !== 'string') return null
+  if (!('to' in value) || typeof value.to !== 'string') return null
+  const staging = path.resolve(vaultRoot, value.staging)
+  const to = path.resolve(vaultRoot, value.to)
+  const inVault = path.relative(vaultRoot, to)
+  if (!inVault || inVault.startsWith('..') || path.isAbsolute(inVault)) return null
+  if (path.dirname(staging) !== path.dirname(to)) return null
+  return /^\.memry-move-[0-9a-f]{12}$/.test(path.basename(staging)) ? { staging, to } : null
 }
 
 async function moveEntries(from: string, to: string, undo: UndoStep[]): Promise<void> {

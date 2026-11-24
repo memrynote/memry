@@ -132,5 +132,18 @@ export function nextLocalClock(
       )
       .run()
   }
+  return peekNextLocalClock(db, type, itemId, current, deviceId, operation)
+}
+
+/** The clock `nextLocalClock` mints, with no pending delete retired: what the next local change pushes. */
+export function peekNextLocalClock(
+  db: DrizzleDb,
+  type: RecreatableItemType,
+  itemId: string,
+  current: VectorClock | null | undefined,
+  deviceId: string,
+  operation: 'create' | 'update'
+): VectorClock {
+  const tombstone = readTombstoneClock(db, type, itemId)
   return incrementClock(recreateBaseClock(current, tombstone, operation), deviceId)
 }
