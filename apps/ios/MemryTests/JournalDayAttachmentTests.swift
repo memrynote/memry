@@ -190,8 +190,11 @@ struct JournalDayAttachmentTests {
         let day = try await open(reader, shown: true)
         defer { day.window.isHidden = true }
 
-        // The open pulled the body, which brought nothing.
-        await until { day.filler.pulled >= 1 }
+        // The open read and pulled the body, which brought nothing. Its work
+        // ends before the pass, so nothing from the open sees the picture.
+        await until { day.filler.pulled >= 1 && day.page.read.blocksRead }
+        for _ in 0..<20 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(day.filler.fetched.isEmpty)
         day.filler.landOnNextPull {
             reader.land([paragraph, picture("shot.png")], bindings: ["shot.png": binding("att-1")])
         }
