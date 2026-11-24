@@ -26,7 +26,7 @@ import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite, landBodyEdit } from '../sync/writeback-baseline'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { applyInlineTagEdit } from '../tags/inline-tags'
-import { applyHeaderTagEdit } from '../vault/frontmatter'
+import { applyHeaderTagEdit, mergeTagLists } from '../vault/frontmatter'
 import { foldTag } from '@memry/shared/tag-fold'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { takeWritebackTurn, writebackNow } from '../sync/crdt-writeback'
@@ -35,7 +35,8 @@ import { shouldEmitThrottled } from '../telemetry/throttle'
 import {
   finishJournalEntryCreate,
   resolveJournalEntryId,
-  writeJournalEntryCreate
+  writeJournalEntryCreate,
+  type WrittenJournalCreate
 } from './create-entry'
 import { enqueueJournalUpdate } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
@@ -57,11 +58,11 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
   const id = resolveJournalEntryId(input.date)
   if (input.content === undefined) {
     const { entry, created } = await takeWritebackTurn(id, () => writeJournalUpdate(input))
-    if (created) await finishJournalEntryCreate(entry)
+    if (created) await finishJournalEntryCreate(created)
     return entry
   }
   const { entry, tagsBefore, created } = await writeJournalUpdate(input)
-  if (created) await finishJournalEntryCreate(entry)
+  if (created) await finishJournalEntryCreate(created)
   const added = entry.tags.filter((tag) => !tagsBefore.includes(tag))
   const removed = tagsBefore.filter((tag) => !entry.tags.includes(tag))
   const tagEdit: HeaderTagEdit | undefined =
@@ -81,13 +82,13 @@ export async function updateJournalEntry(input: UpdateEntryInput): Promise<Journ
 export async function addJournalTags(date: string, tags: readonly string[]): Promise<void> {
   const created = await takeWritebackTurn(resolveJournalEntryId(date), async () => {
     const kept = (await readJournalEntry(date))?.tags ?? []
-    // By tag key, as core `set_tags`: one spelling per key, the first the file
-    // holds, so a file holding `Work` and `work` is written with `Work`.
-    const keys = new Set(kept.map((tag) => foldTag(tag.trim())))
-    const next = applyHeaderTagEdit(kept, { add: [...tags] })
-    if (next.every((tag) => keys.has(foldTag(tag.trim())))) return null
-    const written = await writeJournalUpdate({ date, tags: next })
-    return written.created ? written.entry : null
+    // A union by the tag fold, untrimmed, as core `set_tags` dedupes
+    // (protocol §13.7.7, the `no-trim-in-fold` vector): one spelling per tag,
+    // the first the file holds, so a file holding `Work` and `work` is written
+    // with `Work`, and ` Work ` is a tag of its own.
+    const held = new Set(kept.map(foldTag))
+    if (tags.every((tag) => held.has(foldTag(tag)))) return null
+    return (await writeJournalUpdate({ date, tags: mergeTagLists(kept, tags) })).created ?? null
   })
   if (created) await finishJournalEntryCreate(created)
 }
@@ -125,7 +126,7 @@ async function rewriteJournalFrontmatter(
  */
 async function writeJournalUpdate(
   input: UpdateEntryInput
-): Promise<{ entry: JournalEntry; tagsBefore: string[]; created: boolean }> {
+): Promise<{ entry: JournalEntry; tagsBefore: string[]; created?: WrittenJournalCreate }> {
   const db = getIndexDatabase()
   const dataDb = getDatabase()
 
@@ -140,13 +141,13 @@ async function writeJournalUpdate(
     ? applyInlineTagEdit(dataDb, givenTags, input.inlineTags)
     : givenTags
   if (!existing) {
-    const entry = await writeJournalEntryCreate({
+    const created = await writeJournalEntryCreate({
       date: input.date,
       content: input.content ?? '',
       tags: newTags,
       properties: input.properties
     })
-    return { entry, tagsBefore: [], created: true }
+    return { entry: created.entry, tagsBefore: [], created }
   }
 
   const newContent = input.content ?? existing.content
@@ -235,7 +236,7 @@ async function writeJournalUpdate(
     })
   }
 
-  return { entry: syncedEntry, tagsBefore: existing.tags, created: false }
+  return { entry: syncedEntry, tagsBefore: existing.tags }
 }
 
 /**

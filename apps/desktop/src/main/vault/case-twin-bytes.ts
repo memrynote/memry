@@ -1,8 +1,8 @@
 /**
  * Which binary files may hold a case twin's bytes, kept in `sync_state` so a
  * restart keeps the hold (#5522, #5560). `case-twin-file.ts` writes the
- * keys; the hold (`holdsBinaryChange`, `holdsBinaryUpload`) reads them for the
- * watcher and the attachment backfill, and a note's own download landing
+ * keys; the hold (`case-twin-hold.ts`) reads them for the watcher and the
+ * attachment backfill, and a note's own download landing or its row's drop
  * clears it.
  *
  * - `caseTwinHeldChanges`: JSON list of the folded disk paths of shared files
@@ -35,9 +35,6 @@ import { foldNotePath } from '@memry/storage-data'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { SYNC_STATE_KEYS } from '../sync/engine/sync-context'
 import { createLogger } from '../lib/logger'
-import { getDatabase } from '../database'
-import { diskCaseOf } from './disk-case'
-import { findCanonicalNoteForFile } from './note-sync'
 
 const log = createLogger('CaseTwinBytes')
 
@@ -130,7 +127,10 @@ function toMarkedFile(value: unknown): MarkedFile | undefined {
  * Moves the marks an older build kept in one object to their own rows, then
  * drops the object; a row this build wrote wins. Every mark read and write
  * calls it first, a point read once the object is gone. A crash before the
- * drop moves the same entries again.
+ * drop moves the same entries again. Only unreleased builds wrote the object
+ * (#5563 to #5591; no release tag holds them), with entries `{sha256}`, null
+ * or `{size, mtimeMs}`, so an entry of another shape is dropped, not moved
+ * as null.
  */
 function moveLegacyMarks(db: DrizzleDb): void {
   const legacy = SYNC_STATE_KEYS.CASE_TWIN_FOREIGN_BYTES
@@ -326,59 +326,10 @@ export function holdsCaseTwinForeignBytes(db: DrizzleDb, noteId: string): boolea
   return readCaseTwinForeignBytes(db, noteId) !== undefined
 }
 
-/** The note's own attachment landed on its file. */
+/** The note's own attachment landed on its file, or the note's row is gone. */
 export function clearCaseTwinForeignBytes(db: DrizzleDb, noteId: string): void {
   moveLegacyMarks(db)
   db.delete(syncState)
     .where(eq(syncState.key, MARK_PREFIX + noteId))
     .run()
-}
-
-/**
- * Whether the watcher holds an outside change to binary note `noteId`'s file
- * instead of pushing it, logging the hold. Every watcher path that would push
- * the file asks. A file a case twin shares holds one twin's bytes, whichever
- * row the event names (#5522); the change is recorded for the split
- * (`planBinarySurvivor`). After a split, a file that may hold the other twin's
- * bytes is held until the note's own download lands (#5560), which keeps a
- * change since the mark as a conflict copy.
- */
-export function holdsBinaryChange(
-  vaultPath: string,
-  relativePath: string,
-  noteId: string
-): boolean {
-  return holdsBinaryFile(getDatabase(), vaultPath, relativePath, noteId, true)
-}
-
-/**
- * `holdsBinaryChange` for an upload no change event asked for (the attachment
- * backfill): the file is held, and nothing is recorded as changed.
- */
-export function holdsBinaryUpload(
-  db: DrizzleDb,
-  vaultPath: string,
-  relativePath: string,
-  noteId: string
-): boolean {
-  return holdsBinaryFile(db, vaultPath, relativePath, noteId, false)
-}
-
-function holdsBinaryFile(
-  db: DrizzleDb,
-  vaultPath: string,
-  relativePath: string,
-  noteId: string,
-  changed: boolean
-): boolean {
-  const onDisk = diskCaseOf(vaultPath, relativePath)
-  const shared = onDisk !== null && findCanonicalNoteForFile(vaultPath, onDisk)?.sharesFile === true
-  if (shared && changed) recordHeldCaseTwinChange(db, onDisk)
-  if (!shared && !holdsCaseTwinForeignBytes(db, noteId)) return false
-  log.warn("A file that may hold a case twin's bytes is not pushed", {
-    noteId,
-    path: relativePath,
-    reason: shared ? 'shared' : 'foreign'
-  })
-  return true
 }

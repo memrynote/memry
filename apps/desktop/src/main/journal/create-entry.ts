@@ -16,9 +16,14 @@ import { generateJournalId, type JournalEntry } from '@memry/contracts/journal-a
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, getIndexDatabase } from '../database'
-import { writeJournalEntryWithContent, getJournalRelativePath } from '../vault/journal'
+import {
+  writeJournalEntryWithContent,
+  getJournalRelativePath,
+  readJournalEntry
+} from '../vault/journal'
 import { syncJournalCache } from '../vault/journal-cache-sync'
 import { baselineAfterWrite } from '../sync/writeback-baseline'
+import { holdFlushUntil } from '../sync/crdt-writeback'
 import { flushProjectionEvents } from '../projections'
 import { enqueueJournalCreate, initializeJournalCrdt } from './runtime-effects'
 import { getJournalEntryByDate, getNoteCacheByPath } from './store'
@@ -57,19 +62,27 @@ export function findStoredJournalEntry(
 }
 
 export async function createJournalEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {
-  const entry = await writeJournalEntryCreate(input)
-  await finishJournalEntryCreate(entry)
-  return entry
+  const created = await writeJournalEntryCreate(input)
+  await finishJournalEntryCreate(created)
+  return created.entry
+}
+
+/** A written create and its sync enqueue, which `finishJournalEntryCreate` awaits. */
+export interface WrittenJournalCreate {
+  entry: JournalEntry
+  queued: Promise<void>
 }
 
 /**
  * The create's file write and index cache row: file I/O and index writes
- * only, so a caller can run it in the entry's write-back turn. The caller then
- * runs `finishJournalEntryCreate` after the turn.
+ * only, so a caller can run it in the entry's write-back turn. It starts the
+ * sync enqueue and holds the write-back flush on it, so a quit right after the
+ * create queues it while the sync runtime still runs. The caller then runs
+ * `finishJournalEntryCreate` after the turn.
  */
 export async function writeJournalEntryCreate(
   input: CreateJournalEntryInput
-): Promise<JournalEntry> {
+): Promise<WrittenJournalCreate> {
   const db = getIndexDatabase()
   const journalPath = getJournalRelativePath(input.date)
   // Read the cache row before the write, so `isNew` reflects whether the entry
@@ -103,18 +116,35 @@ export async function writeJournalEntryCreate(
     },
     { isNew: !cached }
   )
-  return cacheId === entry.id ? entry : { ...entry, id: cacheId }
+  const created = cacheId === entry.id ? entry : { ...entry, id: cacheId }
+  const queued = queueJournalCreate(created)
+  holdFlushUntil(queued)
+  return { entry: created, queued }
+}
+
+/** Waits on the projection lane, never on the CRDT store. */
+async function queueJournalCreate(entry: JournalEntry): Promise<void> {
+  await flushProjectionEvents()
+  enqueueJournalCreate(entry.id, entry.date)
 }
 
 /**
- * Flushes the projections, queues the create for sync, seeds the doc and
- * tells the windows. The flush and the seed wait on the projection lane and
- * the CRDT store, so this never runs in a write-back turn: the quit flush
- * awaits every turn (#5475).
+ * Waits for the sync enqueue, seeds the doc and tells the windows. The seed
+ * waits on the CRDT store, so this never runs in a write-back turn: the quit
+ * flush awaits every turn (#5475). The windows get the entry as its file holds
+ * it now: a tags save of the day that landed since the create already sent
+ * its `ENTRY_UPDATED`, and the created event must not put the older tags back.
  */
-export async function finishJournalEntryCreate(entry: JournalEntry): Promise<void> {
-  await flushProjectionEvents()
-  enqueueJournalCreate(entry.id, entry.date)
+export async function finishJournalEntryCreate({
+  entry,
+  queued
+}: WrittenJournalCreate): Promise<void> {
+  await queued
   await initializeJournalCrdt(entry.id, entry.date, entry.tags)
-  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, { date: entry.date, entry })
+  const current = await readJournalEntry(entry.date)
+  if (!current) return
+  broadcastToAllWindows(JournalChannels.events.ENTRY_CREATED, {
+    date: entry.date,
+    entry: { ...current, id: entry.id, createdAt: entry.createdAt }
+  })
 }
