@@ -224,7 +224,7 @@ Caps:
 (`packages/contracts/src/blob-api.ts:105-110`). A hash with no `blob_chunks` row in the
 caller's vault is absent from `urls`, and the client fetches that chunk through
 the proxied GET, which reports its 404
-(`apps/sync-server/src/routes/blob.ts:816-826`). The route never answers 404 for
+(`apps/sync-server/src/routes/blob.ts:812-830`). The route never answers 404 for
 a missing hash, because desktop reads a 404 here as "presign unavailable"
 (`apps/desktop/src/main/sync/attachment-presign.ts:83`). `dereference` is rate limited to 20
 requests per 60 s (`apps/sync-server/src/routes/blob.ts:140-144`).
@@ -510,6 +510,10 @@ purges a note's body keeps the note's owed uploads, each with its row and its
 local bytes, and logs how many it kept
 (`crates/memry-core/src/sync/apply.rs:303-311`). A sync pass uploads nothing
 for a note that is not live (`crates/memry-core/src/api/sync/note_uploads.rs:336-345`).
+Desktop's outbox does not wait for a revive: it skips a local-only note's rows
+and a stray's, never a deleted note's
+(`apps/desktop/src/main/sync/attachment-outbox.ts:265-270`), and uploads a
+queued file while it exists (`:300`).
 No age ends the wait, because the server accepts a create over the note's
 marker at any age (§5.12.3) and those bytes are the only copy
 (`crates/memry-core/src/api/sync/note_uploads.rs:25-33`). After a same-id

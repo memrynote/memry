@@ -1,3 +1,4 @@
+import type { VectorClock } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { hasPendingUpload } from '../attachment-outbox'
 import { readSyncedBinaryHash } from '../binary-synced-hash'
@@ -25,15 +26,15 @@ interface BinaryNote {
  * holds a change to it, and `landCaseTwinDownload` keeps a change that is on
  * no server as a conflict copy before the bytes land.
  *
- * Plan before the record moves the file or the row, with `concurrent` for a
- * record that merged with a change of this device's. The step marks the file
- * where it is after the move; then ask.
+ * Plan before the record moves the file or the row, with `mergedWith`, the
+ * record's clock, for a record that merged with a change of this device's.
+ * The step marks the file where it is after the move; then ask.
  */
 export function planPeerBinaryReplace(
   db: DrizzleDb,
   note: BinaryNote,
   remoteAttachmentId: string | null | undefined,
-  concurrent: boolean
+  mergedWith: VectorClock | undefined
 ): ((filePath: string) => void) | null {
   if (!remoteAttachmentId || remoteAttachmentId === note.attachmentId || note.localOnly) return null
   // A shared file holds one twin's bytes; the case twin owner asks for a split twin's own.
@@ -41,13 +42,14 @@ export function planPeerBinaryReplace(
     return null
   }
   const filePath = toAbsolutePath(note.path)
-  // On no server: never uploaded, an upload pending or in flight, or this
-  // device's own concurrent replacement.
-  const changed = concurrent || !note.attachmentId || hasPendingUpload(db, note.id, filePath)
+  // On no server: never uploaded, or an upload pending or in flight.
+  const changed = !note.attachmentId || hasPendingUpload(db, note.id, filePath)
   // Otherwise the file holds bytes a server has only while they hash to those
   // last landed or uploaded here (#5598). With none recorded it may hold a
-  // change made while the app was closed, whatever its size.
-  const synced = readSyncedBinaryHash(db, note.id)
+  // change made while the app was closed, whatever its size. A record that
+  // merged with a change of this device's, a rename or a replacement, may not
+  // have seen bytes this device uploaded: they are kept unless it has.
+  const synced = readSyncedBinaryHash(db, note.id, mergedWith)
   return (landingPath) => {
     const sha256 = changed || synced === undefined ? null : hashFile(landingPath)
     markCaseTwinForeignBytes(db, note.id, sha256 !== null && sha256 === synced ? { sha256 } : null)

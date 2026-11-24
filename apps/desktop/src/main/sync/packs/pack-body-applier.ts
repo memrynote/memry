@@ -60,6 +60,9 @@ type Refusal = 'unregistered_signer' | 'bad_signature' | 'decrypt_failed' | 'no_
 /** A sealed blob's plaintext, or why it was refused. */
 type Opened = Uint8Array | Refusal
 
+/** Why a packed entry went unused, as counted per pack. */
+type Unused = Refusal | 'unreadable' | 'no_key_verified'
+
 export interface PackBodyApplier {
   localWatermark(noteId: string): Promise<BodyWatermark | null>
   /**
@@ -70,6 +73,11 @@ export interface PackBodyApplier {
    * watermark never claims a sequence the doc does not hold.
    */
   applyDocument(noteId: string, plan: DocumentPlan): Promise<BodyWatermark | null>
+  /**
+   * One info line per pack with entries refused since the last call, counted
+   * by reason. The per-document lines are debug, which the production log drops.
+   */
+  logRefusals(): void
 }
 
 /** Each update's bytes, up to the first that cannot be read. */
@@ -112,6 +120,12 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
   // on the order. Kept as a device id, so the key always comes from the
   // current candidate list.
   let lastSignerId: string | null = null
+  const refused = new Map<string, Partial<Record<Unused, number>>>()
+  const countRefusal = (packId: string, reason: Unused): void => {
+    const counts = refused.get(packId) ?? {}
+    counts[reason] = (counts[reason] ?? 0) + 1
+    refused.set(packId, counts)
+  }
 
   const keys = async (): Promise<SignerKeys> => {
     if (!signerKeys) {
@@ -226,13 +240,26 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
       // signer's key, then every readable update under its named signer's key
       // only (chapter 07 §7.14). With no signer to guess, the snapshot walks
       // the keys first, so one that verifies under none costs no update reads.
-      const snapshotBytes = plan.snapshot ? await plan.snapshot.read() : null
+      let snapshotBytes: Uint8Array | null = null
+      if (plan.snapshot) {
+        try {
+          snapshotBytes = await plan.snapshot.read()
+        } catch (error) {
+          log.debug('Packed snapshot unreadable — item GET instead', {
+            noteId,
+            error: error instanceof Error ? error.message : String(error)
+          })
+          countRefusal(plan.snapshot.packId, 'unreadable')
+          return null
+        }
+      }
       const guessSigner =
         snapshotBytes && lastSignerId && candidates.has(lastSignerId) ? lastSignerId : null
       const refuseSnapshot = (): null => {
         log.debug('Packed snapshot verified under no registered device key — item GET instead', {
           noteId
         })
+        if (plan.snapshot) countRefusal(plan.snapshot.packId, 'no_key_verified')
         return null
       }
       let snapshotPlain: Uint8Array | null = null
@@ -241,6 +268,8 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
         if (!snapshotPlain) return refuseSnapshot()
       }
       const updateBytes = await readUpdates(noteId, plan)
+      const unreadable = plan.updates[updateBytes.length]
+      if (unreadable) countRefusal(unreadable.packId, 'unreadable')
       const opened = await openAll(
         [
           ...(snapshotBytes && guessSigner
@@ -291,6 +320,7 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
                 signerDeviceId: update.signerDeviceId,
                 reason: plain
               })
+              countRefusal(update.packId, plain)
             }
             break
           }
@@ -325,6 +355,16 @@ export const createPackBodyApplier = (deps: PackBodyApplierDeps): PackBodyApplie
           /* the doc is flushed either way; a stuck close is not a failed seed */
         })
       }
+    },
+
+    logRefusals: () => {
+      for (const [packId, counts] of refused) {
+        log.info('Packed bodies refused — those documents use their item routes', {
+          packId,
+          refused: counts
+        })
+      }
+      refused.clear()
     }
   }
 }

@@ -290,7 +290,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           ctx.db,
           existing,
           data.attachmentId,
-          resolution.action === 'merge'
+          resolution.action === 'merge' ? remoteClock : undefined
         )
         const newTitle = data.title ?? existing.title
         const titleChanged = newTitle !== existing.title

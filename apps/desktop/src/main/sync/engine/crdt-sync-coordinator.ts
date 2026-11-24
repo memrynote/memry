@@ -403,7 +403,8 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
    * an update above the new snapshot and the next pass downloads it. Owed,
    * never settled or seeded. A server before #2299 sends no meta, so nothing
    * is owed. A baseline GET without a revision (a server before #2187) is
-   * compared by sequence only.
+   * compared by sequence only. Such an owe counts no failure, so a repeat is
+   * logged: it is the only sign of a note a peer keeps snapshotting.
    */
   private owesPrunedWalk(
     noteId: string,
@@ -418,7 +419,15 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     ) {
       return false
     }
-    this.owePendingPull(noteId)
+    const inARow = this.owePrunedWalk(noteId)
+    if (inARow > 1) {
+      log.debug('CRDT walk owed again: a newer server snapshot replaced its baseline', {
+        noteId,
+        owedWalksInARow: inARow,
+        baselineSequence: baseline?.sequenceNum ?? null,
+        snapshotSequence: meta.sequenceNum
+      })
+    }
     return true
   }
 

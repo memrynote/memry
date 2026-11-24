@@ -98,6 +98,7 @@ import {
   clearCaseTwinForeignBytes,
   hashFile,
   holdsCaseTwinForeignBytes,
+  listCaseTwinForeignBytes,
   markCaseTwinForeignBytes,
   readCaseTwinForeignBytes,
   readKeptCaseTwinCopy,
@@ -539,31 +540,40 @@ function requestOwnBytes(
   askForOwnBytes(db, note.id, note.attachmentId, diskPath)
 }
 
+/** Whether the download was asked for now. */
 function askForOwnBytes(
   db: DrizzleDb,
   noteId: string,
   attachmentId: string,
   diskPath: string
-): void {
+): boolean {
   markDownloadOwed(db, noteId, attachmentId)
-  if (!shouldAttemptDownload(db, noteId, attachmentId)) return
+  if (!shouldAttemptDownload(db, noteId, attachmentId)) return false
   markDownloadRequested(noteId, attachmentId)
-  if (!attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath })) {
-    releaseDownloadAttempt(noteId, attachmentId)
-  }
+  if (attachmentEvents.emitDownloadNeeded({ noteId, attachmentId, diskPath })) return true
+  releaseDownloadAttempt(noteId, attachmentId)
+  return false
 }
 
 /**
  * A pulled record update of binary note `noteId`: while its file may hold its
  * case twin's bytes, its own attachment, which the update may have replaced,
- * is asked for again (#5560).
+ * is asked for again (#5560). Returns whether it was asked for now.
  */
-export function askForCaseTwinOwnBytes(db: DrizzleDb, noteId: string): void {
-  if (!holdsCaseTwinForeignBytes(db, noteId)) return
+export function askForCaseTwinOwnBytes(db: DrizzleDb, noteId: string): boolean {
+  if (!holdsCaseTwinForeignBytes(db, noteId)) return false
   const note = getNoteMetadataById(db, noteId)
-  if (note?.attachmentId) {
-    askForOwnBytes(db, noteId, note.attachmentId, toAbsolutePath(note.path))
-  }
+  if (!note?.attachmentId) return false
+  return askForOwnBytes(db, noteId, note.attachmentId, toAbsolutePath(note.path))
+}
+
+/**
+ * Asks again for the own bytes of every binary note whose file is held for
+ * them, past each one's retry window: the re-driver's pass while attachment
+ * auto-download is off (#5580). Returns how many it asked for.
+ */
+export function askForHeldOwnBytes(db: DrizzleDb): number {
+  return listCaseTwinForeignBytes(db).filter((noteId) => askForCaseTwinOwnBytes(db, noteId)).length
 }
 
 /**
@@ -600,8 +610,10 @@ export function releaseAbandonedCaseTwinBytes(
  * landing recorded, the file counts as changed (#5594). Either way the change
  * is kept once while its copy still holds it (`keepChange`). The first bytes
  * to land where twins' rows name no file yet are recorded too
- * (`recordFirstOnTwinFile`). Throws, with nothing landed, when that copy
- * cannot be written: the download is retried.
+ * (`recordFirstOnTwinFile`). It reads the marks of the note whose own file it
+ * is and of the notes on the file it lands on, never every mark (#5580).
+ * Throws, with nothing landed, when that copy cannot be written: the download
+ * is retried.
  */
 export function landCaseTwinDownload(
   filePath: string,
@@ -612,18 +624,20 @@ export function landCaseTwinDownload(
   const db = getDatabase()
   if (fileOwnerId !== undefined) assertOwnAttachmentLands(db, fileOwnerId, attachmentId)
   const vaultPath = getVaultRoot()
-  const marks = readCaseTwinForeignBytes(db)
-  const marked = [...marks.keys()].flatMap((id) => getNoteMetadataById(db, id) ?? [])
-  const owner = marked.find((note) => note.attachmentId === attachmentId)
+  const owner = fileOwnerId === undefined ? undefined : getNoteMetadataById(db, fileOwnerId)
+  const ownerMarked =
+    owner?.attachmentId === attachmentId && holdsCaseTwinForeignBytes(db, owner.id)
   const landAt =
-    owner && foldNotePath(owner.path) !== foldNotePath(toRelativePath(filePath))
+    owner && ownerMarked && foldNotePath(owner.path) !== foldNotePath(toRelativePath(filePath))
       ? join(vaultPath, diskCaseOf(vaultPath, owner.path) ?? owner.path)
       : filePath
   const landsOn = toRelativePath(landAt)
-  const onFile = marked.find((note) => foldNotePath(note.path) === foldNotePath(landsOn))
+  const onFile = listNoteMetadataByFoldedPath(db, landsOn)
+    .map((note) => ({ id: note.id, mark: readCaseTwinForeignBytes(db, note.id) }))
+    .find(({ mark }) => mark !== undefined)
   const shared = sharesCaseTwinFile(vaultPath, landsOn)
   if (onFile) {
-    keepChange(db, landAt, sha256, marks.get(onFile.id)?.sha256, { noteId: onFile.id })
+    keepChange(db, landAt, sha256, onFile.mark?.sha256, { noteId: onFile.id })
   } else if (shared) {
     keepChange(db, landAt, sha256, readLandedCaseTwinHash(db, landsOn), { attachmentId })
     takeHeldCaseTwinChange(db, landsOn)

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { promises as fs } from 'node:fs'
 
@@ -83,7 +84,11 @@ const PACK_RELIST_MIN_INTERVAL_SECONDS = 60
 
 export interface PackBootstrapDeps {
   getAccessToken: () => Promise<string | null>
-  /** Directory for pack temp files. Cleaned on success, failure and abort. */
+  /**
+   * Directory for pack temp files. Each run downloads into a directory of its
+   * own under it, removed on success, failure and abort. The next run resumes
+   * a crashed run's files for the packs it downloads and removes the rest.
+   */
   tempDir: string
   bodies: PackBodyApplier
   readManifest?: typeof readBodyManifest
@@ -282,7 +287,6 @@ interface ApplyCounters {
 interface OpenedPack {
   pack: PackSummary
   handle: PackFileHandle
-  filePath: string
 }
 
 const readUpdateMeta = (entry: PackIndexEntry): CrdtUpdatePackEntryMeta | null => {
@@ -312,10 +316,9 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const parallel = Math.max(1, deps.maxParallelDownloads ?? MAX_PARALLEL_PACK_DOWNLOADS)
 
   const accessToken = await deps.getAccessToken().catch(() => null)
-  if (!accessToken) return emptyResult()
-
-  const listing = await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
-  if (listing.packs.length === 0) return emptyResult()
+  const listing: PackListing = accessToken
+    ? await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
+    : { packs: [], truncated: false }
 
   const resumeFrom = Number(deps.getStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR) ?? '')
   const alreadyCovered = Number.isFinite(resumeFrom) ? resumeFrom : 0
@@ -336,7 +339,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       ? listing.packs.filter((pack) => pack.itemKind === 'record')
       : []
   const packs = [...snapshotPacks, ...updatePacks, ...recordPacks]
-  if (packs.length === 0) return emptyResult()
+  if (packs.length === 0) {
+    await sweepPackTempDir(deps.tempDir, null)
+    return emptyResult()
+  }
 
   log.info('Pack bootstrap starting', {
     packCount: packs.length,
@@ -436,8 +442,10 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     return null
   }
 
-  const tempPathOf = (pack: PackSummary): string =>
-    path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
+  // Two runs never share a file: one's cleanup would delete the other's pack.
+  const runDirName = `${RUN_DIR_PREFIX}${randomUUID()}`
+  const runDir = path.join(deps.tempDir, runDirName)
+  const tempPathOf = (pack: PackSummary): string => path.join(runDir, `${sanitizeId(pack.id)}.pack`)
 
   const fetchOne = async (pack: PackSummary): Promise<PackFetch<OpenedPack>> => {
     const filePath = tempPathOf(pack)
@@ -456,7 +464,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
         ? null
         : curablePauseMs(error, !urlLive(signed, clockSeconds()))
       // A lost pack keeps its partial file: the next try resumes it with a
-      // Range. A gap's file goes now; a lost pack never held is swept below.
+      // Range. A gap's file goes now; a lost pack never held goes with the
+      // run's directory.
       if (lostMs === null) await discard(filePath)
       log.info(
         lostMs === null
@@ -467,7 +476,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       return lostMs === null ? 'gap' : { lostMs }
     }
     try {
-      return { held: { pack, handle: await open(filePath), filePath } }
+      return { held: { pack, handle: await open(filePath) } }
     } catch (error) {
       // Corrupt footer magic, wrong version, bad payload digest, truncated
       // file: the whole pack is discarded and every item in it stays on the
@@ -481,32 +490,35 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     }
   }
 
+  // Registered before it exists, so a concurrent run's sweep spares it.
+  liveRunDirs.add(runDirName)
+  let held: OpenedPack[] = []
   try {
-    await fs.mkdir(deps.tempDir, { recursive: true })
-  } catch (error) {
-    log.info('Could not create the pack temp directory — item-granular bootstrap', { error })
-    return emptyResult()
-  }
+    try {
+      await fs.mkdir(runDir, { recursive: true })
+    } catch (error) {
+      log.info('Could not create the pack temp directory — item-granular bootstrap', { error })
+      return emptyResult()
+    }
+    await sweepPackTempDir(deps.tempDir, {
+      runDir,
+      files: new Set(packs.map((pack) => path.basename(tempPathOf(pack))))
+    })
 
-  emitProgress()
+    emitProgress()
 
-  // Newest range first, bounded parallelism, one pause owner (#5389).
-  const opened = await downloadPacks(packs, {
-    parallel,
-    fetchOne,
-    onPause: () => {
-      relist = null
-    },
-    ...(deps.signal ? { signal: deps.signal } : {}),
-    ...(deps.sleep ? { sleep: deps.sleep } : {})
-  })
+    // Newest range first, bounded parallelism, one pause owner (#5389).
+    const opened = await downloadPacks(packs, {
+      parallel,
+      fetchOne,
+      onPause: () => {
+        relist = null
+      },
+      ...(deps.signal ? { signal: deps.signal } : {}),
+      ...(deps.sleep ? { sleep: deps.sleep } : {})
+    })
 
-  const held = opened.filter((entry): entry is OpenedPack => entry !== null)
-  // A pack still lost after the last pause, or when an abort cut a pause short.
-  for (const [index, pack] of packs.entries()) {
-    if (opened[index] === null) await discard(tempPathOf(pack))
-  }
-  try {
+    held = opened.filter((entry): entry is OpenedPack => entry !== null)
     if (held.length === 0 || deps.signal?.aborted) {
       return { ...emptyResult(), usedPacks: held.length > 0 }
     }
@@ -570,7 +582,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
             continue
           }
           const list = snapshotsOf.get(entry.id) ?? []
-          list.push({ entry, meta, read: readOf(handle, entry) })
+          list.push({ entry, packId: pack.id, meta, read: readOf(handle, entry) })
           snapshotsOf.set(entry.id, list)
         } else if (entry.kind === 'crdt_update' && manifest !== null) {
           const meta = readUpdateMeta(entry)
@@ -581,6 +593,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
           const list = updatesOf.get(entry.id) ?? []
           list.push({
             entry,
+            packId: pack.id,
             sequenceNum: meta.sequenceNum,
             signerDeviceId: meta.signerDeviceId,
             createdAt: meta.createdAt,
@@ -679,6 +692,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     await commitPage()
     emitProgress()
 
+    deps.bodies.logRefusals()
     log.info('Pack bootstrap finished', {
       packsApplied,
       ...counters,
@@ -697,13 +711,18 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
       records: records && { ...records, settledBodies }
     }
   } finally {
-    for (const { handle, filePath } of held) {
+    for (const { handle } of held) {
       await handle.close().catch(() => {
         /* the pack is done with either way */
       })
-      // Success, failure and abort alike: the temp file never survives.
-      await discard(filePath)
     }
+    // Success, failure and abort alike: no temp file survives the run.
+    await fs.rm(runDir, { recursive: true, force: true }).catch((error: unknown) => {
+      log.debug('Could not remove the pack temp directory', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+    liveRunDirs.delete(runDirName)
   }
 }
 
@@ -732,3 +751,53 @@ const readSnapshotMeta = (entry: PackIndexEntry): PackSnapshotMeta | null => {
 
 /** Pack ids are server-generated, but a temp path must never escape its dir. */
 const sanitizeId = (id: string): string => id.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 128)
+
+const RUN_DIR_PREFIX = 'run-'
+
+/** Run directories of the pack phases running in this process. */
+const liveRunDirs = new Set<string>()
+
+/**
+ * Remove what a quit or crash left in the temp dir: run directories no live
+ * run owns, and the `<packId>.pack` files builds before run directories wrote
+ * there. Nothing else in it is touched. A dead run's file for a pack this run
+ * downloads first moves into `resume.runDir`: the download continues it with a
+ * Range (a finished file gets a 416 and no bytes), and the payload digest
+ * still checks it.
+ */
+const sweepPackTempDir = async (
+  tempDir: string,
+  resume: { runDir: string; files: ReadonlySet<string> } | null
+): Promise<void> => {
+  const names = await fs.readdir(tempDir).catch((error: unknown) => {
+    if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+      log.debug('Could not read the pack temp directory', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+    return []
+  })
+  for (const name of names) {
+    const runDir = name.startsWith(RUN_DIR_PREFIX)
+    const stale = runDir ? !liveRunDirs.has(name) : name.endsWith('.pack')
+    if (!stale) continue
+    const at = path.join(tempDir, name)
+    if (runDir && resume) {
+      for (const file of await fs.readdir(at).catch((): string[] => [])) {
+        if (!resume.files.has(file)) continue
+        await fs
+          .rename(path.join(at, file), path.join(resume.runDir, file))
+          .catch((error: unknown) => {
+            log.debug('Could not resume a pack file a crash left', {
+              error: error instanceof Error ? error.message : String(error)
+            })
+          })
+      }
+    }
+    await fs.rm(at, { recursive: true, force: true }).catch((error: unknown) => {
+      log.debug('Could not remove a pack temp file a quit or crash left', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+  }
+}
