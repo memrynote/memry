@@ -11,6 +11,7 @@
 //! | a pulled binary note's file lands byte-identical  | §14.7 chain, desktop pull     |
 //! | the background download waits, opening fetches it | FR-045, Download attachments  |
 //! | a peer replacement lands and keeps the old bytes  | #5626, new attachment id      |
+//! | a markdown record without the file keeps it       | #5419, desktop pull keeps it  |
 
 mod http_fakes;
 
@@ -153,22 +154,50 @@ fn file(attachment_id: &str, plaintext: &[u8]) -> File {
 /// Desktop's binary note record (`note-sync.ts` `buildSnapshotPayload`): no
 /// `content`, no `attachmentReferences`, the file named by `attachmentId`.
 fn binary_note(attachment_id: &str, counter: u64) -> Json {
+    note_record(
+        json!({
+            "title": "Scan",
+            "emoji": null,
+            "fileType": "pdf",
+            "mimeType": "application/pdf",
+            "attachmentId": attachment_id,
+            "folderPath": null,
+            "clock": { DEVICE: counter },
+            "createdAt": OLD,
+            "modifiedAt": OLD,
+        }),
+        counter,
+    )
+}
+
+/// What shipped desktops pushed for a binary note whose row their write-back
+/// had retyped (#5419, `binary-note-record.ts:22-29`): a markdown record that
+/// names no file.
+fn markdown_record_over_binary(counter: u64) -> Json {
+    note_record(
+        json!({
+            "title": "Scan",
+            "content": null,
+            "tags": [],
+            "properties": {},
+            "pinnedTags": [],
+            "emoji": null,
+            "fileType": "markdown",
+            "folderPath": null,
+            "clock": { DEVICE: counter },
+            "createdAt": OLD,
+            "modifiedAt": OLD,
+        }),
+        counter,
+    )
+}
+
+fn note_record(payload: Json, counter: u64) -> Json {
     let (_, secret) = keypair();
     let sealer = AccountSealer::new(
         derive_vault_key(MASTER_KEY.to_vec()).expect("vault key"),
         DeviceSigner::new(DEVICE, secret).expect("a signer"),
     );
-    let payload = json!({
-        "title": "Scan",
-        "emoji": null,
-        "fileType": "pdf",
-        "mimeType": "application/pdf",
-        "attachmentId": attachment_id,
-        "folderPath": null,
-        "clock": { DEVICE: counter },
-        "createdAt": OLD,
-        "modifiedAt": OLD,
-    });
     sealer
         .seal_record(&PendingRecord {
             operation: SyncOperation::Update,
@@ -367,4 +396,33 @@ async fn a_peer_replacement_lands_and_keeps_the_old_bytes() {
         .expect("read")
         .expect("the old row");
     assert_eq!(kept.local_path.as_deref(), Some(FIRST));
+}
+
+#[tokio::test]
+async fn a_markdown_record_without_the_file_keeps_it() {
+    let (vault, _dir) = scratch_vault();
+    let transport = FakeTransport::new(first_sync_script(FIRST));
+    let sync = vault.sync(session(transport.clone()));
+    sync.first_sync(None).await.expect("the first sync");
+
+    transport.push(devices());
+    transport.push(changes(2, 11));
+    transport.push(response(
+        200,
+        &json!({ "items": [markdown_record_over_binary(2)] }).to_string(),
+    ));
+    transport.push(response(200, &json!({"notes": {}}).to_string()));
+    transport.push(error_response(404, "NOT_FOUND", "no snapshot"));
+    sync.sync_now().await.expect("the pass");
+
+    let kept = vault.notes().file(NOTE.to_string()).expect("read");
+    assert_eq!(
+        kept.map(|file| (file.file_type, file.mime_type, file.attachment_id)),
+        Some((
+            "pdf".to_string(),
+            Some("application/pdf".to_string()),
+            FIRST.to_string()
+        )),
+        "the note still opens as its file"
+    );
 }

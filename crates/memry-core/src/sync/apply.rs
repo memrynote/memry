@@ -48,7 +48,8 @@ use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
-    attachment_uploads, calendar_items, canvas, inbox, journal, notes, projects, settings, tasks,
+    attachment_uploads, calendar_items, canvas, inbox, journal, note_file, notes, projects,
+    settings, tasks,
 };
 use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
@@ -448,6 +449,8 @@ fn apply_document(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let kept = note_file::keep_own_file(conn, record)?;
+    let record = kept.as_ref().unwrap_or(record);
     match task_merge::document_gate(conn, record)? {
         Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
         Gate::Skip => Ok(Inbound::Skipped),

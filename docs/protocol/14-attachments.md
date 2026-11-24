@@ -377,6 +377,14 @@ pull, downloads it over the note's vault file
   note's file and keeps a change that is on no server as a conflict copy
   (`apps/desktop/src/main/sync/item-handlers/peer-binary-replace.ts:33-57`).
   The core keys bytes by id, so the old file stays beside the new one.
+- **A record that names no file keeps the note's file.** Shipped desktops
+  pushed a markdown record with no `attachmentId` for a binary note whose row
+  their write-back had retyped
+  (`apps/desktop/src/main/sync/item-handlers/binary-note-record.ts:22-29`). A
+  receiver that holds the note as a file keeps its `attachmentId`, `fileType`
+  and `mimeType` over such a record
+  (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:288`, `:387`;
+  `crates/memry-core/src/domain/note_file.rs:80-111`).
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 
