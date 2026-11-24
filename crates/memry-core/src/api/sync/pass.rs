@@ -33,6 +33,7 @@ use crate::protocol::types::Declaration;
 use crate::sync::body_pull::BodyPull;
 use crate::sync::body_step;
 use crate::sync::journal_day_merge;
+use crate::sync::note_refs_heal;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
 use crate::sync::revive_heal;
@@ -112,6 +113,10 @@ impl VaultSync {
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
         let gate = pass_gate(&self.vault_id);
         let _held = gate.lock().await;
+        // Notes applied before #5675 get their attachment rows, once.
+        self.db
+            .call(|conn| note_refs_heal::merge_applied_notes(conn))
+            .await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

@@ -391,7 +391,7 @@ for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:211`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:402`, called from
-`crates/memry-core/src/sync/apply.rs:283`). A foreign holder that `j<D>`
+`crates/memry-core/src/sync/apply.rs:300`). A foreign holder that `j<D>`
 already displaced is held the same way. That is the order of the deleting
 device's push, `j<D>` and then the tombstone, so it is the common case. The
 core keeps its stored record and its body when its owed merge's date is the
@@ -403,7 +403,7 @@ holder's tags against the tombstone again (step 6).
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:320`; core:
-`crates/memry-core/src/api/sync/pass.rs:135`,
+`crates/memry-core/src/api/sync/pass.rs:140`,
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:127`). The core drains
 only in its steady-state pass; a first sync records owed merges and the next
 pass settles them. The decision is a pure function of five facts
@@ -503,7 +503,7 @@ pass settles them. The decision is a pure function of five facts
    and the clock check rules out a snapshot that an older build pushed past.
    A pulled tombstone reads the tags before it drops `F`'s queued upsert
    (`apps/desktop/src/main/sync/item-handlers/journal-handler.ts:211`; core:
-   `crates/memry-core/src/sync/apply.rs:283`). Before any tombstone, every
+   `crates/memry-core/src/sync/apply.rs:300`). Before any tombstone, every
    holder tag counts (`crates/memry-core/src/sync/journal_day_merge/owed.rs:342`).
    In the core, a weighing replaces the unpushed list an earlier sighting
    kept, so that list never keeps a tag from before the weighing (`:165`).

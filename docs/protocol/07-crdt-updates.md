@@ -1033,7 +1033,7 @@ Consequences a conforming client MUST implement:
   pushes only when that body is pending and its own full state completes it
   (`crates/memry-core/src/sync/revive_heal.rs:65`, `:100`, `:187`). The pass
   runs the heal after the body step and before the push
-  (`crates/memry-core/src/api/sync/pass.rs:145`). Desktop, whose builds
+  (`crates/memry-core/src/api/sync/pass.rs:150`). Desktop, whose builds
   before #5358 kept the deleted doc the same way, judges the same candidates
   (it keeps no epoch, so a day revived since then is read once and found
   healthy) and queues a full-state row on its note-body outbox
@@ -1064,7 +1064,7 @@ update authored on the purged body and pushed after the delete lands on the
 server's dead document, and a later revive of the id pulls it back. The core
 deletes the document's `crdt-update` outbox rows in the tombstone's
 transaction, after the delete-keep copy has read the queue
-(`crates/memry-core/src/sync/apply.rs:301`); desktop drops them in the
+(`crates/memry-core/src/sync/apply.rs:318`); desktop drops them in the
 purge (`apps/desktop/src/main/sync/crdt-provider.ts:1448`, `:2395`). A delete
 the clock rule skips, and a journal day held for the day merge, keep their
 queued updates with their body.
