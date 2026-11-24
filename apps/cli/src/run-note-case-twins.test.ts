@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import { createHash, randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import test from 'node:test'
 
-import { getNoteMetadataById, upsertNoteMetadata } from '@memry/storage-data'
+import { noteCache, noteNames } from '@memry/db-schema/index-schema'
+import { deleteNoteMetadata, getNoteMetadataById, upsertNoteMetadata } from '@memry/storage-data'
 
 import { openDatabases } from './app-core/database.ts'
 import { runCli } from './run.ts'
@@ -35,6 +37,16 @@ async function cli(vaultPath: string, ...args: string[]) {
     stderr: (line) => stderr.push(line)
   })
   return { code, stdout: stdout.join('\n'), stderr: stderr.join('\n') }
+}
+
+/** The shipped `memrynote` binary, run as a user runs it. */
+function binary(vaultPath: string, ...args: string[]) {
+  const result = spawnSync(
+    process.execPath,
+    [path.join(process.cwd(), 'bin/memrynote.mjs'), '--vault', vaultPath, '--json', ...args],
+    { encoding: 'utf8' }
+  )
+  return { code: result.status, stdout: result.stdout.trim(), stderr: result.stderr.trim() }
 }
 
 /**
@@ -79,6 +91,36 @@ function rowPaths(vaultPath: string, ids: string[]): Array<string | null> {
   }
 }
 
+/** Desktop's delete of a twin, which leaves the other note the file (#5650). */
+function dropRow(vaultPath: string, id: string): void {
+  const databases = openDatabases(vaultPath)
+  try {
+    deleteNoteMetadata(databases.dataDb, id)
+  } finally {
+    databases.close()
+  }
+}
+
+/** The shared file's bytes and mtime, both rows, and the index tables. */
+async function twinState(vaultPath: string, ids: string[]) {
+  const file = path.join(vaultPath, 'SuperNotes/Real.md')
+  const { mtimeNs } = await fs.stat(file, { bigint: true })
+  const sha256 = createHash('sha256')
+    .update(await fs.readFile(file))
+    .digest('hex')
+  const databases = openDatabases(vaultPath)
+  try {
+    return {
+      file: { sha256, mtimeNs },
+      rows: ids.map((id) => getNoteMetadataById(databases.dataDb, id) ?? null),
+      noteCache: databases.indexDb.select().from(noteCache).all(),
+      noteNames: databases.indexDb.select().from(noteNames).all()
+    }
+  } finally {
+    databases.close()
+  }
+}
+
 async function vaultFiles(vaultPath: string): Promise<string[]> {
   const entries = await fs.readdir(vaultPath, { recursive: true })
   return entries
@@ -87,35 +129,26 @@ async function vaultFiles(vaultPath: string): Promise<string[]> {
     .toSorted()
 }
 
-test('notes delete of a case twin keeps the file the other twin still uses', { skip }, async () => {
+test('notes delete refuses a case twin and changes nothing', { skip }, async () => {
   const { vaultPath, real, twin } = await makeTwinVault()
+  const before = await twinState(vaultPath, [real.id, twin.id])
 
-  const deleted = await cli(vaultPath, 'notes', 'delete', twin.id, '--yes')
-  assert.equal(deleted.code, 0, deleted.stderr)
-  assert.deepEqual(JSON.parse(deleted.stdout), { success: true })
-  assert.deepEqual(rowPaths(vaultPath, [real.id, twin.id]), ['SuperNotes/Real.md', null])
-  const kept = await cli(vaultPath, 'notes', 'get', real.id)
-  assert.equal(kept.code, 0, kept.stderr)
-  assert.equal((JSON.parse(kept.stdout) as { content: string }).content.trim(), 'keep')
+  for (const id of [twin.id, real.id]) {
+    const result = binary(vaultPath, 'notes', 'delete', id, '--yes')
+    assert.equal(result.code, 1, id)
+    assert.equal(result.stdout, '', id)
+    assert.match(result.stderr, /Refusing to delete note ".+": note ".+" shares its file/)
+    assert.deepEqual(await twinState(vaultPath, [real.id, twin.id]), before, id)
+  }
 
-  // With no twin left, the file is the note's own and goes with it.
-  const last = await cli(vaultPath, 'notes', 'delete', real.id, '--yes')
+  // Once desktop has deleted the twin, the file is the note's own and goes with it.
+  dropRow(vaultPath, twin.id)
+  const last = binary(vaultPath, 'notes', 'delete', real.id, '--yes')
   assert.equal(last.code, 0, last.stderr)
+  assert.deepEqual(JSON.parse(last.stdout), { success: true })
+  assert.deepEqual(rowPaths(vaultPath, [real.id]), [null])
   assert.deepEqual(await vaultFiles(vaultPath), [])
 })
-
-test(
-  'notes delete of the exactly spelled twin keeps the file for the other',
-  { skip },
-  async () => {
-    const { vaultPath, real, twin } = await makeTwinVault()
-
-    const deleted = await cli(vaultPath, 'notes', 'delete', real.id, '--yes')
-    assert.equal(deleted.code, 0, deleted.stderr)
-    assert.deepEqual(rowPaths(vaultPath, [real.id, twin.id]), [null, 'Supernotes/Real.md'])
-    assert.deepEqual(await vaultFiles(vaultPath), ['SuperNotes/Real.md'])
-  }
-)
 
 test('notes rename and move refuse a case twin and change nothing', { skip }, async () => {
   const { vaultPath, real, twin } = await makeTwinVault()
@@ -151,8 +184,8 @@ test('folders rename refuses a folder holding case twins and moves nothing', { s
     assert.deepEqual(await vaultFiles(vaultPath), ['SuperNotes/Real.md'], folder)
   }
 
-  // Once the twin is gone the folder is free to move.
-  assert.equal((await cli(vaultPath, 'notes', 'delete', twin.id, '--yes')).code, 0)
+  // Once desktop has deleted the twin, the folder is free to move.
+  dropRow(vaultPath, twin.id)
   const renamed = await cli(vaultPath, 'folders', 'rename', 'SuperNotes', 'Archive')
   assert.equal(renamed.code, 0, renamed.stderr)
   assert.deepEqual(await vaultFiles(vaultPath), ['Archive/Real.md'])

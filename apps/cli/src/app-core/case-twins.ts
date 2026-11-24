@@ -29,11 +29,7 @@ async function fileIdentity(vaultPath: string, relativePath: string): Promise<st
  * The fold finds candidates and the disk proves them, as desktop's
  * `sharesCaseTwinFile` does (apps/desktop/src/main/vault/case-twin-file.ts).
  */
-export async function caseTwinsOnFile(
-  db: DataDb,
-  vaultPath: string,
-  note: NoteRef
-): Promise<NoteRef[]> {
+async function caseTwinsOnFile(db: DataDb, vaultPath: string, note: NoteRef): Promise<NoteRef[]> {
   const candidates = listNoteMetadataByFoldedPath(db, note.path).filter((row) => row.id !== note.id)
   if (candidates.length === 0) return []
   const file = await fileIdentity(vaultPath, note.path)
@@ -60,12 +56,12 @@ export async function caseTwinUnderFolder(
   return undefined
 }
 
-/** Throws when a rename or move of `note`'s file would take it from a case twin. */
+/** Throws when a delete, rename or move of `note`'s file would take it from a case twin. */
 export async function assertNoteFileUnshared(
   db: DataDb,
   vaultPath: string,
   note: NoteRef,
-  verb: 'rename' | 'move'
+  verb: 'delete' | 'rename' | 'move'
 ): Promise<void> {
   const [twin] = await caseTwinsOnFile(db, vaultPath, note)
   if (!twin) return

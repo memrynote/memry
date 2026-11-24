@@ -24,7 +24,7 @@ import {
   wordCount,
   writeMarkdownNote
 } from '@memry/app-core/markdown'
-import { assertNoteFileUnshared, caseTwinsOnFile } from './case-twins.ts'
+import { assertNoteFileUnshared } from './case-twins.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
@@ -567,10 +567,10 @@ export function createNotesService({
     async delete(idOrPath) {
       const row = getMetadata(dataDb, idOrPath)
       if (!row) return false
-      // A file case twins share stays with the twin that remains (#5650).
-      if ((await caseTwinsOnFile(dataDb, vaultPath, row)).length === 0) {
-        await fs.rm(path.join(vaultPath, row.path), { force: true })
-      }
+      // A row-only delete would leave this note's bytes in the file the twin keeps,
+      // and desktop would ingest them as the twin's edit (#5650).
+      await assertNoteFileUnshared(dataDb, vaultPath, row, 'delete')
+      await fs.rm(path.join(vaultPath, row.path), { force: true })
       deleteCanonicalNote(dataDb, row.id)
       return true
     },
