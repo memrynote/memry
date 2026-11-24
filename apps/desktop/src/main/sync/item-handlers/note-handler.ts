@@ -93,9 +93,9 @@ import {
   planBinaryCaseTwinMove,
   planCaseTwinLeave,
   planCaseTwinMove,
-  sharesCaseTwinFile,
-  updateCaseTwinOffFile
+  sharesCaseTwinFile
 } from '../../vault/case-twin-file'
+import { updateCaseTwinOffFile } from '../../vault/case-twin-off-file'
 import {
   healBinaryNoteRecord,
   isMarkdownRecordOverBinaryNote,
