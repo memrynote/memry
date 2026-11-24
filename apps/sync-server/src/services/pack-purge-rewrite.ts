@@ -153,7 +153,9 @@ const rewriteOne = async (
       .prepare(`SELECT ${waiting.sql} AS pending`)
       .bind(...waiting.bind)
       .first<{ pending: number }>()
-    return row?.pending ? read : true
+    if (row?.pending !== 0) return read
+    logger.info('purge rewrite settled by a concurrent pass', { packKey, reason: read })
+    return true
   }
   for (let attempt = 0; attempt < REWRITE_ATTEMPTS; attempt++) {
     const live = await liveIndexes(db, keptJoin(kind, scope, read.entries))

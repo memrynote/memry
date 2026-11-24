@@ -527,6 +527,46 @@ describe('record packs and the purge promise (#5247, protocol 08 §8.13)', () =>
     expect(device).toEqual(server)
   })
 
+  // REVIEW-5665 #8 (#5247): the inverse of VERIFY-5636 #9. The object is gone
+  // and no pass settled its rewrite, so the read failure resets the kind.
+  it('a rewrite whose pack object is lost while the rewrite is pending resets the record kind, and a fresh device still gets every row', async () => {
+    const app = buildApp()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 1, operation: 'create' },
+      { id: 'task-keep', type: 'task', tick: 1, operation: 'create' }
+    )
+    const firstVersion = blobKey('note-x')
+    await compactAll()
+    await push(
+      app,
+      { id: 'note-x', type: 'note', tick: 2, operation: 'update' },
+      { id: 'task-other', type: 'task', tick: 1, operation: 'create' }
+    )
+    const secondVersion = blobKey('note-x')
+    await compactAll()
+    const [lost] = listedRecordPacks()
+    await storage.delete(lost.pack_key)
+
+    await push(app, { id: 'note-x', type: 'note', tick: 3, operation: 'delete' })
+
+    expect(listedRecordPacks()).toEqual([])
+    expect(pendingRewrites()).toEqual([])
+    const reset = await freshDeviceRecords(app)
+    expect(reset.device).toEqual(reset.server)
+
+    // The first run re-anchors the reset chain, the second builds.
+    await compactAll()
+    await compactAll()
+    const chain = coverage()
+    expect(chain[0][0]).toBe(0)
+    for (let i = 1; i < chain.length; i++) expect(chain[i][0]).toBe(chain[i - 1][1])
+    expect(await heldBy(firstVersion)).toEqual([])
+    expect(await heldBy(secondVersion)).toEqual([])
+    const rebuilt = await freshDeviceRecords(app)
+    expect(rebuilt.device).toEqual(rebuilt.server)
+  })
+
   // REVIEW-5636 #4: the pass settled one rewrite and left two for the next
   // pass, one of them the neighbour an emptied pack waited for, and reset the
   // record kind anyway.
