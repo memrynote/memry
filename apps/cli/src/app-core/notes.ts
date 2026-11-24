@@ -27,7 +27,7 @@ import {
 import { assertNoteFileUnshared } from './case-twins.ts'
 import { aliasesFromFrontmatter } from './note-aliases.ts'
 import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-properties.ts'
-import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import { normalizePath, safeFilename, vaultFolder, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
 export type {
@@ -289,11 +289,12 @@ export function createNotesService({
 }): NotesService {
   return {
     async create(input) {
+      const folder =
+        input.folder && normalizePath(input.folder)
+          ? await vaultFolder(vaultPath, input.folder, `create note "${input.title}"`)
+          : input.folder
       const now = new Date().toISOString()
-      const relativePath = await ensureUniquePath(
-        vaultPath,
-        notePath(config, input.title, input.folder)
-      )
+      const relativePath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
       const id = createId('note')
       // User keys only — Memry identity/dates live in the metadata DB
       const frontmatter = frontmatterWithProperties(
@@ -441,6 +442,8 @@ export function createNotesService({
       // `newFolder` is vault-relative and '' means the vault root — never
       // re-root it through `defaultNoteFolder` (desktop `moveNote` contract).
       const normalizedFolder = normalizePath(newFolder)
+        ? await vaultFolder(vaultPath, newFolder, `move note "${row.path}"`)
+        : ''
       const relativePath = normalizePath(
         normalizedFolder
           ? `${normalizedFolder}/${path.basename(row.path)}`

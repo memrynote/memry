@@ -41,6 +41,57 @@ export function normalizePath(value: string): string {
   return normalized.slice(start, end)
 }
 
+/** One path segment, such as a note id or a file name: not empty, no separator, not `.` or `..`. */
+export function isPlainSegment(value: string): boolean {
+  return (
+    value.length > 0 &&
+    !value.includes('/') &&
+    !value.includes('\\') &&
+    value !== '.' &&
+    value !== '..'
+  )
+}
+
+/**
+ * The vault folder a command that writes there names, `/`-separated with no `.` or
+ * `..` segments. Throws `Refusing to <action>` for the vault itself, for a path that
+ * leaves it, and for a path through a link, which can lead anywhere outside it (#5658).
+ * The lexical rule is desktop's `vaultFolderPath` (#5647). The links are found by an
+ * `lstat` of each existing segment, as Tauri's `plain_folders` refuses them: a realpath
+ * comparison would also trip on another case spelling, which macOS resolves.
+ */
+export async function vaultFolder(
+  vaultPath: string,
+  requested: string,
+  action: string
+): Promise<string> {
+  const folder = path.posix.normalize(normalizePath(requested))
+  if (
+    folder === '.' ||
+    folder === '..' ||
+    folder.startsWith('../') ||
+    path.win32.isAbsolute(folder)
+  ) {
+    throw new Error(`Refusing to ${action}: "${requested}" is the vault itself or outside it.`)
+  }
+  const segments = folder.split('/')
+  for (let index = 1; index <= segments.length; index += 1) {
+    const walked = segments.slice(0, index).join('/')
+    try {
+      if (!(await fs.lstat(path.join(vaultPath, walked))).isSymbolicLink()) continue
+    } catch (error) {
+      const code = errorCode(error)
+      // The rest does not exist yet, so the write creates plain folders there.
+      if (code === 'ENOENT' || code === 'ENOTDIR') break
+      throw error
+    }
+    throw new Error(
+      `Refusing to ${action}: "${walked}" is a link, and a path through a link can lead outside the vault.`
+    )
+  }
+  return folder
+}
+
 // Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars
 // plus `[ ] # ^`, which Obsidian ≥1.8 forbids in filenames (they break
 // wikilink syntax).
