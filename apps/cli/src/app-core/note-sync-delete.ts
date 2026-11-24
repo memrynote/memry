@@ -3,7 +3,7 @@ import { syncPendingDeletes, type NoteMetadata } from '@memry/db-schema/data-sch
 import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 import { deleteCanonicalNote } from '@memry/domain-notes'
 import { isAttachmentStoreRow } from '@memry/shared/attachment-store'
-import { getNoteMetadataById } from '@memry/storage-data'
+import { getNoteMetadataById, recordDeletedNoteAssets } from '@memry/storage-data'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { recordLocalDeleteClock } from '@memry/sync-client/tombstone-clocks'
 import { incrementClock } from '@memry/sync-core'
@@ -36,7 +36,8 @@ function contentDeletePayload(db: DrizzleDb, row: NoteMetadata): string | null {
 }
 
 /**
- * Drops a note's row and queues its sync delete for desktop (#5661).
+ * Drops a note's row and queues its sync delete for desktop (#5661), and
+ * records its attachments for desktop's release runner to free (#5693).
  *
  * The row holds the clock a tombstone needs. Once it is gone, desktop's watcher,
  * which sees the unlink later, has nothing to build one from, and the note stays
@@ -67,6 +68,7 @@ export function deleteNoteRowQueuingSyncDelete(db: DataDb, noteId: string): void
           .run()
         recordLocalDeleteClock(tx, type, noteId, payload, 'final')
       }
+      recordDeletedNoteAssets(tx, noteId)
       deleteCanonicalNote(tx, noteId)
     },
     { behavior: 'immediate' }

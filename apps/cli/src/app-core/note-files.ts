@@ -460,7 +460,7 @@ export function createAttachmentsService({
       const filename = uniqueAttachmentFilename(originalName)
       const folder = await vaultFolder(
         vaultPath,
-        `${ATTACHMENTS_DIR}/${noteId}`,
+        `${ATTACHMENTS_DIR}/${note.id}`,
         `attach "${originalName}"`
       )
       const relativePath = `${folder}/${filename}`
@@ -511,7 +511,14 @@ export function createAttachmentsService({
     },
 
     async list(noteId) {
-      const dir = path.join(vaultPath, ATTACHMENTS_DIR, noteId)
+      // `add` stores under the note's id, so a path resolves to it. A plain id with no note
+      // still names its folder, which outlives a deleted note.
+      const owner = (await notes.get(noteId))?.id ?? noteId
+      if (!isPlainSegment(owner)) {
+        throw new Error(`Refusing to list attachments: "${noteId}" is not a note id.`)
+      }
+      const folder = await vaultFolder(vaultPath, `${ATTACHMENTS_DIR}/${owner}`, 'list attachments')
+      const dir = path.join(vaultPath, folder)
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true })
         const attachments: AttachmentInfo[] = []
@@ -521,7 +528,7 @@ export function createAttachmentsService({
           const stats = await fs.stat(absolutePath)
           attachments.push({
             filename: entry.name,
-            path: normalizePath(path.join(ATTACHMENTS_DIR, noteId, entry.name)),
+            path: `${folder}/${entry.name}`,
             absolutePath,
             size: stats.size,
             mimeType: mimeType(entry.name),

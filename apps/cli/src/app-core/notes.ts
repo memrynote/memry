@@ -81,9 +81,8 @@ function wikilinks(content: string): string[] {
 // `createNote` since #1204: a note created inside a folder lands in that folder.
 // Only an unplaced note falls back to `defaultNoteFolder` — it is a
 // destination, not a notes root.
-function notePath(config: VaultConfig, title: string, folder?: string): string {
-  const dir = folder ?? normalizePath(config.defaultNoteFolder)
-  return normalizePath(`${dir}/${safeFilename(title)}.md`)
+function notePath(title: string, folder: string): string {
+  return normalizePath(`${folder}/${safeFilename(title)}.md`)
 }
 
 // The vault-relative folder a note currently sits in ('' = vault root).
@@ -291,13 +290,15 @@ export function createNotesService({
 }): NotesService {
   return {
     async create(input) {
-      const folder = input.folder
-        ? await vaultFolder(vaultPath, input.folder, `create note "${input.title}"`, {
-            allowRoot: true
-          })
-        : undefined
+      // An unplaced note lands in `defaultNoteFolder`, which a link can lead outside the vault.
+      const folder = await vaultFolder(
+        vaultPath,
+        input.folder || config.defaultNoteFolder,
+        `create note "${input.title}"`,
+        { allowRoot: true }
+      )
       const now = new Date().toISOString()
-      const relativePath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
+      const relativePath = await ensureUniquePath(vaultPath, notePath(input.title, folder))
       const id = createId('note')
       // User keys only — Memry identity/dates live in the metadata DB
       const frontmatter = frontmatterWithProperties(
