@@ -10,7 +10,7 @@ import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { attachmentDownloadFailures, noteMetadata } from '@memry/db-schema'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import {
@@ -33,7 +33,8 @@ const h = vi.hoisted(() => ({
   download: vi.fn(),
   /** The running sync runtime's monitor; null while sync is not running. */
   network: null as object | null,
-  token: vi.fn<() => Promise<string | null>>()
+  token: vi.fn<() => Promise<string | null>>(),
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
 vi.mock('electron', () => ({
@@ -73,9 +74,7 @@ vi.mock('../sync/note-attachment-metadata', () => ({
   recordDownloadedFileSize: vi.fn(),
   recordUploadedAttachment: vi.fn()
 }))
-vi.mock('../lib/logger', () => ({
-  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
-}))
+vi.mock('../lib/logger', () => ({ createLogger: () => h.log }))
 
 import {
   clearAttachmentState,
@@ -104,14 +103,24 @@ function holdNextToken(): (token: string) => void {
   return (token) => grant(token)
 }
 
-/** A pull's request for note-1's embed, with the claim the pull took for it. */
-function pullAsksForEmbed(): void {
+/** A pull's request for an embed of `noteId`, with the claim the pull took for it. */
+function pullAsksForEmbed(noteId = 'note-1', attachmentId = 'att-embed'): void {
   attachmentEvents.emitDownloadNeeded({
-    noteId: 'note-1',
-    attachmentId: 'att-embed',
-    diskPath: path.join(h.vaultPath, 'attachments', 'note-1'),
+    noteId,
+    attachmentId,
+    diskPath: path.join(h.vaultPath, 'attachments', noteId),
     intoDir: true,
-    claim: markDownloadRequested('note-1', 'att-embed')!
+    claim: markDownloadRequested(noteId, attachmentId)!
+  })
+}
+
+/** A pull's request for bin-1's own file. */
+function pullAsksForBinaryFile(): void {
+  attachmentEvents.emitDownloadNeeded({
+    noteId: 'bin-1',
+    attachmentId: 'att-bin',
+    diskPath: pdfPath(),
+    claim: markDownloadRequested('bin-1', 'att-bin')!
   })
 }
 
@@ -169,6 +178,7 @@ beforeEach(() => {
   h.sent = []
   h.download.mockReset()
   h.token.mockReset().mockResolvedValue('token')
+  for (const log of Object.values(h.log)) log.mockClear()
   h.network = Object.assign(new EventEmitter(), { online: true })
   h.db = createTestDataDb()
   h.vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-files-'))
@@ -440,6 +450,80 @@ describe('sync:download-note-files with auto-download on', () => {
     await settle()
 
     expect(fs.readFileSync(imagePath())).toEqual(PNG)
+  })
+
+  // #5697: the restart rejects both with DownloadQueueClearedError. Nothing
+  // else asks for them again: the new runtime's pull starts from its cursor.
+  it('has the re-driver land a running and a queued pull request a runtime restart cleared', async () => {
+    setAutoDownload(true)
+    const now = new Date().toISOString()
+    h.db
+      .insert(noteMetadata)
+      .values(
+        ['note-2', 'note-3'].map((id) => ({
+          id,
+          path: `${id}.md`,
+          title: id,
+          attachmentReferences: [`att-${id}`],
+          createdAt: now,
+          modifiedAt: now
+        }))
+      )
+      .run()
+    const abortTransfers: Array<() => void> = []
+    h.download.mockImplementation(
+      () =>
+        new Promise((_, reject) => abortTransfers.push(() => reject(new Error('Socket closed'))))
+    )
+
+    // Three transfers fill the queue's slots, so note-1's embed waits in it.
+    pullAsksForEmbed('note-2', 'att-note-2')
+    pullAsksForEmbed('note-3', 'att-note-3')
+    pullAsksForBinaryFile()
+    pullAsksForEmbed()
+    await settle()
+    expect(requested()).toEqual(['att-note-2', 'att-note-3', 'att-bin'])
+
+    resetAttachmentDownloadSession()
+    clearAttachmentState()
+    for (const abort of abortTransfers) abort()
+    await settle()
+
+    // The new runtime starts with the re-driver.
+    h.download.mockClear()
+    serveFiles()
+    await redriveAttachmentDownloads()
+    await settle()
+
+    expect(fs.readFileSync(imagePath())).toEqual(PNG)
+    expect(fs.readFileSync(pdfPath())).toEqual(PDF)
+    expect(requested()).toHaveLength(4)
+    expect(new Set(requested())).toEqual(
+      new Set(['att-bin', 'att-embed', 'att-note-2', 'att-note-3'])
+    )
+    expect(h.db.select().from(attachmentDownloadFailures).all()).toEqual([])
+    // Landed: the next re-drive asks for nothing.
+    await redriveAttachmentDownloads()
+    expect(h.download).toHaveBeenCalledTimes(4)
+  })
+
+  it('logs a download it cannot record as owed, with the file it is for', async () => {
+    setAutoDownload(true)
+    const grantToken = holdNextToken()
+
+    pullAsksForEmbed()
+    resetAttachmentDownloadSession()
+    clearAttachmentState()
+    // The data DB refuses the write as the stale request settles.
+    h.db.run(sql`DROP TABLE attachment_download_failures`)
+    grantToken('token')
+    await settle()
+
+    expect(h.download).not.toHaveBeenCalled()
+    expect(h.log.warn).toHaveBeenCalledWith(
+      expect.stringMatching(/owed/),
+      expect.objectContaining({ noteId: 'note-1', attachmentId: 'att-embed' })
+    )
   })
 
   it('reports a file the server no longer has, which the pull never downloaded', async () => {
