@@ -52,7 +52,7 @@ import {
   createDeferredDeletes,
   type DeferredDeletes,
   buildStatRenameKey,
-  buildFileIdentityKey,
+  buildAddedFileIdentityKey,
   processRename,
   type RenameMatch
 } from './rename-tracker'
@@ -986,7 +986,7 @@ export class VaultWatcher {
     const scan = await scanMarkdownFile(absolutePath, 0)
     const contentHash = scan?.contentHash ?? null
     const statKeys = [
-      buildFileIdentityKey(stats),
+      buildAddedFileIdentityKey(stats),
       buildStatRenameKey(stats.size, stats.mtime.toISOString())
     ]
 
