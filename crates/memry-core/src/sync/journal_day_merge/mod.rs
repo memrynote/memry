@@ -19,9 +19,9 @@
 
 mod owed;
 
-use owed::owe_holder;
 pub use owed::owed;
-pub(crate) use owed::{hold_for_merge, mark_deleted, plan_inbound};
+use owed::{drop_synced_tags, owe_holder};
+pub(crate) use owed::{hold_for_merge, mark_deleted, note_local_edit, plan_inbound};
 
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -65,10 +65,14 @@ pub struct OwedMerge {
     /// The newest foreign record's `tags`. Added to `j<date>` unless
     /// `deleted`: the deleting device added them already (§1.9.1 step 6).
     pub record_tags: Vec<String>,
-    /// A foreign local holder's stored tags, which may never have been
-    /// pushed: always added. Both lists are empty in a merge an older build
-    /// recorded.
+    /// A foreign local holder's stored tags, unioned across sightings: added
+    /// unless `deleted`, as record tags are.
     pub holder_tags: Vec<String>,
+    /// The holder tags this device may never have pushed: added even when
+    /// `deleted`, since the deleting device never saw them. Equal to
+    /// `holder_tags` in a merge an older build recorded; every list is empty
+    /// in one recorded before tags were kept.
+    pub unpushed_holder_tags: Vec<String>,
 }
 
 /// What one [`drain`] did.
@@ -280,14 +284,15 @@ fn settle(
     // The day's payload owns its tags; the fold carried only the body. A
     // set union over the tags the day holds now, read in this transaction,
     // so a re-run or a tag the day holds writes nothing (§1.9.1 step 6).
-    let record_tags = if merge.deleted {
-        &[][..]
+    // A deleted `F`'s pushed tags were added by the device that deleted it.
+    let added: Vec<&String> = if merge.deleted {
+        merge.unpushed_holder_tags.iter().collect()
     } else {
-        &merge.record_tags[..]
+        merge.holder_tags.iter().chain(&merge.record_tags).collect()
     };
-    if !(record_tags.is_empty() && merge.holder_tags.is_empty()) {
+    if !added.is_empty() {
         let mut union = tags::list(&tx, ITEM_TYPE, canonical)?;
-        union.extend(merge.holder_tags.iter().chain(record_tags).cloned());
+        union.extend(added.into_iter().cloned());
         metadata::set_tags(&tx, &merge.date, &union, device_id, now_ms)?;
     }
     // The foreign id's tombstone when it is live and clocked, then its body
@@ -319,6 +324,7 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     projectors::delete(tx, ITEM_TYPE, foreign, now_ms)?;
     update_log::purge_in(tx, foreign).map_err(crdt_failed)?;
     body_debt::settle(tx, foreign)?;
+    drop_synced_tags(tx, foreign)?;
     drop_owed(tx, foreign)
 }
 
